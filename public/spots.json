@@ -1,0 +1,10 @@
+[
+  {"id":"brandon","name":"Brandon Bay","county":"Kerry","lat":52.276,"lon":-10.024,"note":"Open Atlantic bay. Local launch, swell and tide conditions need checking."},
+  {"id":"dollymount","name":"Dollymount","county":"Dublin","lat":53.365,"lon":-6.135,"note":"Dublin Bay. Check local access, tidal depth and other beach users."},
+  {"id":"rusheen","name":"Rusheen Bay","county":"Galway","lat":53.251,"lon":-9.121,"note":"Tidal bay. Water depth and launch access vary with the tide."},
+  {"id":"keel","name":"Keel Beach","county":"Mayo","lat":53.971,"lon":-10.067,"note":"Exposed Atlantic beach. Check surf, shorebreak and local advice."},
+  {"id":"inchydoney","name":"Inchydoney","county":"Cork","lat":51.596,"lon":-8.867,"note":"Exposed coast. Check surf, shorebreak, tides and local access."},
+  {"id":"rossnowlagh","name":"Rossnowlagh","county":"Donegal","lat":54.559,"lon":-8.21,"note":"Atlantic beach. Check breaking waves, tide and beach activity."},
+  {"id":"tramore","name":"Tramore","county":"Waterford","lat":52.154,"lon":-7.136,"note":"Open bay. Check local launch restrictions, swell and tides."},
+  {"id":"ballyholme","name":"Ballyholme","county":"Down","lat":54.67,"lon":-5.645,"note":"Belfast Lough coast. Check local club guidance and water traffic."}
+]
