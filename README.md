@@ -1,6 +1,6 @@
 # wingfoil.ie — Ireland wind explorer
 
-An edge-to-edge Irish wind map powered by **Force5**, using real DWD ICON-EU forecast grids. Floating glass controls keep the map central; selecting a spot or map point opens a bottom forecast sheet. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
+An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU** and **Met Éireann HARMONIE-AROME DINI control** forecasts. Floating glass controls keep the map central; selecting a spot or map point opens a bottom forecast sheet. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
 
 ## Run the website
 
@@ -18,7 +18,8 @@ Features:
 - Pan/zoom Ireland and the surrounding Atlantic.
 - Wind-speed colours, downwind particles and eight selectable coastal spots.
 - Click anywhere inside the forecast domain for its modelled wind and gust.
-- Play or scrub 25 three-hour forecast times spanning 72 hours.
+- Switch weather model in the Force5 control at the top right: ICON-EU (6.5 km, 72 hours) or HARMONIE (2 km, 60 hours), both at three-hour steps in the bundled snapshots.
+- Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - Bottom forecast sheet with horizontally scrollable wind, gust and direction rows.
 - County/name search in a floating popover; point selection keeps the selected location above the sheet.
 - Knots/metres per second and independent display controls.
@@ -57,6 +58,44 @@ The importer:
 
 Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the current cropped JSON snapshot is roughly 22 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
 
+### HARMONIE refresh
+
+```sh
+npm run weather:refresh:harmonie
+# Optional shorter or hourly run:
+.venv/bin/python force5/ingest/fetch_harmonie.py --hours 24 --step 1
+```
+
+The importer inspects the public portal's last three hours of **file publication**
+(not a three-hour forecast horizon), selects the newest complete requested control
+run and downloads `fcYYYYMMDDHH+HHHCONTROL_grib2_ieIoI` ZIPs with two concurrent
+requests. No account is needed for this near-real-time endpoint. Archive access is
+separate and is not used. Complete 60-hour output may not be present yet while a
+run is publishing; failure preserves both published models.
+
+ecCodes validates the 10 m parameters, control member 0, provider, units, run/valid
+times, missing values and native Lambert geometry. The importer checks projection
+coordinates against ecCodes latitude/longitude coordinates, rotates native
+grid-relative vectors to true east/north, and then bilinearly resamples them.
+The rotation is independently tested against geodesic bearings. Display grid:
+233 × 236, 0.025° longitude × 0.02° latitude, 10.9°W–5.1°W / 51°N–55.7°N.
+This is an **Ireland crop**, not full model coverage; areas beyond it deliberately
+have no HARMONIE wind overlay and are not silently filled with ICON-EU.
+
+Source ZIPs are checked for their expected entry name and CRC. Only validated
+GRIB messages for U/V are retained in `.cache/harmonie`. Immutable output frames
+and spot series are published before atomically replacing `weather/harmonie.json`.
+The manifest records source filenames, extracted-wind SHA-256 hashes, processing
+notes and attribution. The bundled run is 13 September 2026 at 13 UTC, through
+16 September at 01 UTC: 21 frames, approximately 11 MB total.
+
+**HARMONIE gusts are intentionally unavailable.** This subset supplies signed gust
+components (GRIB2 parameters 23/24 with maximum statistics), not scalar gust speed
+(parameter 22). Their combination has not been validated, so the importer does
+not manufacture a speed or substitute ICON-EU gusts. The UI shows `—` with an
+explanation. Confirm gust-component semantics or add a validated scalar source
+before enabling HARMONIE gusts.
+
 ## Verify / build
 
 ```sh
@@ -79,8 +118,10 @@ Serve `dist/` through any static web host after building. No secrets or account 
 
 ```text
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
+force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 public/spots.json           Named locations and concise local context
 public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
+public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
@@ -90,7 +131,7 @@ src/ForecastSheet.tsx      Bottom forecast table for named and arbitrary points
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
-All U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout.
+All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
@@ -99,18 +140,18 @@ Both the browser and importer use bilinear interpolation. Direction is the meteo
 - Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html).
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
-- Future short-range adapter: [Met Éireann HARMONIE open data](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa). The older index was empty, but actual files were found through the [new portal](https://opendata.met.ie/nwp/near-realtime). Wind-field extraction, projection and vector validation are still pending; no Met Éireann forecast has been implemented or substituted into this snapshot.
+- HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase the model's native ~6.5 km effective detail; shelter, headlands and launch-site turbulence remain unresolved. There are no tide, wave or marine warning feeds, no rideability score, and no model switching yet. The source dialog links to official warnings.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. There are no tide, wave or marine warning feeds or rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
 ## Next implementation milestone
 
 The initial reference snapshot is committed for immediate local use. Runtime forecast
-directories are otherwise ignored by Git; only files referenced by `latest.json`
+directories are otherwise ignored by Git; only files referenced by `latest.json` and `harmonie.json`
 should be deliberately staged when updating a bundled snapshot. Caches, development
 tool settings, environment files, dependencies and build outputs are not committed.
 
@@ -119,4 +160,4 @@ showing values progressively and offering retry on failure. This can transfer th
 whole ~22 MB snapshot; a production point-series endpoint is a future bandwidth
 optimisation. Named spots use the small precomputed manifest series.
 
-Schedule the importer in a container, put immutable frames in object storage behind a CDN, publish the manifest last, and monitor run age/download failures. Preserve older files long enough for open browser sessions. Add retention and a single-run lock before unattended operation. Then implement HARMONIE against the same manifest contract and add a global fallback. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.
+Schedule both importers in a container, put immutable frames in object storage behind a CDN, publish each model's manifest last, and monitor run age/download failures. Preserve older files long enough for open browser sessions. Add retention and a single-run lock before unattended operation. Validate HARMONIE gust semantics, expand regional coverage if needed, and add a global model. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.

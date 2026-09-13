@@ -13,13 +13,13 @@ export interface Grid {
 export interface Wind {
   u: number;
   v: number;
-  gust: number;
+  gust: number | null;
 }
 export interface FrameInfo {
   hour: number;
   validTime: string;
   url: string;
-  gustIntervalHours: [number, number];
+  gustIntervalHours: [number, number] | null;
 }
 export interface Frame extends WindArrays {
   model: string;
@@ -31,7 +31,7 @@ export interface Frame extends WindArrays {
 interface WindArrays {
   u: number[];
   v: number[];
-  gust: number[];
+  gust: number[] | null;
 }
 export interface Spot {
   id: string;
@@ -65,6 +65,10 @@ export interface Manifest {
   sourceUrl: string;
   attribution: string;
   licenseUrl: string;
+  gustAvailable?: boolean;
+  gustDescription?: string;
+  modelDetail?: string;
+  processing?: string;
 }
 export const KNOTS = 1.94384449;
 export const convert = (speed: number, units: Units) =>
@@ -117,7 +121,7 @@ export function sample(frame: Frame, lon: number, lat: number): Wind | null {
   return {
     u: bilinear(frame.u),
     v: bilinear(frame.v),
-    gust: bilinear(frame.gust),
+    gust: frame.gust === null ? null : bilinear(frame.gust),
   };
 }
 
@@ -185,6 +189,19 @@ export function validateManifest(m: Manifest): Manifest {
       f.url.includes("..")
     )
       throw new Error("Forecast timeline is invalid.");
+    if (m.gustAvailable === false) {
+      if (f.gustIntervalHours !== null)
+        throw new Error("Unavailable gusts must not declare an interval.");
+    } else if (
+      !Array.isArray(f.gustIntervalHours) ||
+      f.gustIntervalHours.length !== 2 ||
+      !f.gustIntervalHours.every(Number.isFinite) ||
+      f.gustIntervalHours[0] < 0 ||
+      f.gustIntervalHours[0] > f.gustIntervalHours[1] ||
+      f.gustIntervalHours[1] !== f.hour
+    ) {
+      throw new Error("Invalid gust forecast interval.");
+    }
     previous = f.hour;
   }
   return m;
@@ -219,6 +236,11 @@ export function validateFrame(
       throw new Error("Forecast grids do not match.");
   }
   for (const field of ["u", "v", "gust"] as const) {
+    if (field === "gust" && manifest.gustAvailable === false) {
+      if (f.gust !== null)
+        throw new Error("Unavailable gust data must be null.");
+      continue;
+    }
     if (
       !Array.isArray(f[field]) ||
       f[field].length !== f.grid.width * f.grid.height ||
@@ -243,10 +265,11 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
   if (found) {
     cache.delete(url);
     cache.set(url, found);
-    return Promise.resolve(found);
+    return Promise.resolve(validateFrame(found, manifest, info));
   }
   const inflight = pending.get(url);
-  if (inflight) return inflight;
+  if (inflight)
+    return inflight.then((frame) => validateFrame(frame, manifest, info));
   const request = fetch(url, { signal: AbortSignal.timeout(20000) })
     .then(async (r) => {
       if (!r.ok)

@@ -101,7 +101,9 @@ export default function ForecastSheet({
   }, [index, key]);
 
   const reading = (w: Wind | null | undefined, gust = false) =>
-    w ? Math.round(convert(gust ? w.gust : speed(w), units)) : "—";
+    w && (!gust || w.gust !== null)
+      ? Math.round(convert(gust ? w.gust! : speed(w), units))
+      : "—";
   return (
     <section className="forecast-sheet glass" aria-label="Spot forecast">
       <div className="sheet-heading">
@@ -161,6 +163,17 @@ export default function ForecastSheet({
           <X size={20} />
         </button>
       </div>
+      {frame && !wind && (
+        <div className="sheet-loading" role="status">
+          This point is outside {manifest.modelName}'s forecast coverage. Select
+          a point inside the shaded map area or switch models.
+        </div>
+      )}
+      {manifest.gustAvailable === false && (
+        <div className="sheet-loading">
+          Gust speed unavailable for this HARMONIE source.
+        </div>
+      )}
       <div
         ref={scroll}
         className="forecast-scroll"

@@ -36,10 +36,10 @@ Containerise importer; run on a schedule; publish immutable run prefixes to obje
 
 ## Implemented and verified
 
-- All four implementation stages are complete. The data adapter is ICON-EU; HARMONIE and global model fallback remain future work, not selectable mock options.
+- The initial implementation stages are complete. ICON-EU and HARMONIE control wind now have real adapters and selectable snapshots; a global model remains future work.
 - Real DWD 2026-09-13 06 UTC snapshot: 25 frames, 72 hours, 321 × 177 grid. The crop includes an Atlantic/UK buffer so overview maps do not end at the Irish coastline.
 - Colour map, moving particles, eight spot markers and forecasts, arbitrary location picking, forecast playback/slider, units, layers, source information and mobile spot panel are implemented.
-- 15 TypeScript/snapshot tests, five importer tests and seven production-browser scenarios passed. Browser tests use the actual built app and real forecast assets.
+- 17 TypeScript/snapshot tests, twelve importer tests and eleven production-browser scenarios passed. Browser tests use the actual built app and real forecast assets.
 - The app is locally hosted, not deployed to wingfoil.ie. Refresh is a manual command; static snapshots retain their run/valid-time labels and are flagged as older or expired.
 
 ## Force5 / full-screen experience update
@@ -49,4 +49,13 @@ Containerise importer; run on a schedule; publish immutable run prefixes to obje
 - Left sidebar replaced by a bottom forecast sheet, initially closed, opening on point/spot selection.
 - Wind, gusts and direction across all forecast times; arbitrary-point series loaded from the genuine grids with bounded concurrency and retry.
 - Responsive phone layout, visible provider attribution, keyboard/Escape dismissal and camera adjustment to keep selections above the sheet.
-- HARMONIE and model switching are still pending. The new Met Éireann portal exposes actual downloads; the older empty index is not the only data-access route.
+- HARMONIE and model switching are implemented using the newer Met Éireann portal, not the empty legacy index.
+
+## HARMONIE integration
+
+- Met Éireann HARMONIE-AROME DINI control, native 2 km Lambert grid, member 0; bundled 13 September 2026 13 UTC run with 21 three-hourly frames through +60h.
+- Validates source parameters/member/run/times/scanning geometry. Checks ecCodes coordinates against pyproj and tests vector rotation against independent geodesic bearings.
+- Rotates native grid-relative U/V to earth-relative east/north before bilinear resampling. Ireland-only display crop is wholly inside native coverage, with no extrapolation or model blending.
+- Independent manifest and immutable hashed frames; failed import leaves previously published manifests intact. Source filenames and extracted-GRIB hashes are retained in the manifest.
+- Model switch loads and validates both manifest and first frame before atomically changing all UI consumers. Nearest valid time is selected explicitly, with a notice where timelines differ. Download failures and cancellations retain the previous model.
+- Gust speed is intentionally unavailable for HARMONIE: component maxima are present but their combination is not yet validated. The UI labels missing gusts; no synthetic or ICON-EU gust substitution is used.

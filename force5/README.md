@@ -10,17 +10,21 @@ model, initialization, valid times and source licences remain explicit.
 - `src/weather.ts`: provider-neutral types, validation, interpolation and frame cache.
 - `src/index.ts`: source-module exports consumed by the host app.
 - `src/Force5Brand.tsx`, `assets/force5-logo.png`: platform branding.
-- `ingest/`: ICON-EU download, validation and atomic snapshot publication.
+- `src/models.ts`: model registry and validated model-switch loading.
+- `ingest/`: independent ICON-EU and HARMONIE download, validation and atomic publication.
 
 This is a source module inside the prototype, not yet a published/licensable SDK.
 The host still supplies map-control styling from `src/styles.css`; bundling isolated
 styles, configurable data URLs, an embed API and versioned SDK builds remain future
 work. No commercial licence or trademark clearance is implied by the branding.
 
-HARMONIE is not implemented yet. Met Éireann's newer public portal exposes near-real-time
-downloads, but the control wind fields, Lambert projection and grid-relative vector
-rotation must be validated before a HARMONIE option can be enabled. The map currently
-uses only genuine DWD ICON-EU output.
+Both models are connected with genuine snapshots. HARMONIE uses Met Éireann's
+near-real-time control (member 0) files: native 2 km Lambert winds, rotated to
+true east/north then resampled for the map. Switching commits frame, metadata and
+time together and never substitutes data from the other model. HARMONIE coverage
+is an Ireland-only crop, with a 60-hour bundled forecast. Gust speed remains
+unavailable until the source gust-component semantics are validated; `null` is
+shown as unavailable, not calm. See the root README for refresh commands and details.
 
 ## Logo
 

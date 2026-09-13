@@ -40,8 +40,18 @@ const manifest = {
   runTime: frame.validTime,
   grid,
   frames: [
-    { hour: 0, validTime: frame.validTime, url: "weather/a.json" },
-    { hour: 3, validTime: "2026-09-13T09:00:00Z", url: "weather/b.json" },
+    {
+      hour: 0,
+      validTime: frame.validTime,
+      url: "weather/a.json",
+      gustIntervalHours: [0, 0],
+    },
+    {
+      hour: 3,
+      validTime: "2026-09-13T09:00:00Z",
+      url: "weather/b.json",
+      gustIntervalHours: [0, 3],
+    },
   ],
 } as Manifest;
 
@@ -79,6 +89,15 @@ describe("wind conventions", () => {
   });
 });
 describe("forecast integrity and freshness", () => {
+  it("keeps missing gusts null only when explicitly declared unavailable", () => {
+    const missing = { ...frame, gust: null };
+    const noGusts = { ...manifest, gustAvailable: false };
+    expect(validateFrame(missing, noGusts, manifest.frames[0])).toBe(missing);
+    expect(sample(missing, -9.5, 53.5)).toEqual({ u: 15, v: 5, gust: null });
+    expect(() =>
+      validateFrame(missing, manifest, manifest.frames[0]),
+    ).toThrow();
+  });
   it("accepts a matching grid and run", () => {
     expect(validateManifest(manifest)).toBe(manifest);
     expect(validateFrame(frame, manifest, manifest.frames[0])).toBe(frame);

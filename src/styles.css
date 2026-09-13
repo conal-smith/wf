@@ -288,6 +288,49 @@ button svg {
 .map-top-actions {
   pointer-events: auto;
 }
+.model-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.model-select select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  min-height: 36px;
+  padding: 0 20px 0 4px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.model-select select:focus-visible {
+  outline: 3px solid #176b91;
+  outline-offset: 2px;
+}
+.model-select select:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.model-select > svg {
+  position: absolute;
+  right: 2px;
+  pointer-events: none;
+}
+.model-status {
+  max-width: min(540px, calc(100% - 100px));
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .model-select select {
+    font-size: 9px;
+    padding-right: 15px;
+  }
+  .model-select > svg {
+    width: 10px;
+  }
+}
 .layers-button {
   height: 46px;
   padding: 0 16px;
