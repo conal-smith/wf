@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.venv/
+.cache/
+__pycache__/
+*.pyc
+.DS_Store
+test-results/
+playwright-report/
+.env
+.env.local
+.env.*
+!.env.example
+.codex/
+.multicode/
+public/weather/*/
+*.tsbuildinfo
