@@ -11,6 +11,37 @@ export const locationKindLabel = (kind: Spot["kind"]) =>
     area: "Area reference",
   })[kind || "spot"];
 
+/** The public layer shows riding places, not free operator/business listings. */
+export function ridingLocations(original: Spot[]): Spot[] {
+  const places: Record<string, { id: string; name: string; note: string }> = {
+    "osm-blast-kilcrea": {
+      id: "kilcrea",
+      name: "Kilcrea — Malahide Estuary",
+      note: "North side of Malahide Estuary near Kilcrea Road. Reference coordinate from a mapped watersports operator; not a verified launch or confirmation of public access.",
+    },
+    "osm-newtownards-sc": {
+      id: "newtownards",
+      name: "Newtownards — Strangford Lough",
+      note: "Strangford Lough's north-eastern shore. Reference coordinate from the sailing club site; check local access and launch arrangements.",
+    },
+  };
+  return mergeLocations(original).flatMap((spot): Spot[] => {
+    const place = places[spot.id];
+    if (place)
+      return [
+        {
+          ...spot,
+          ...place,
+          kind: "spot",
+          website: undefined,
+          aliases: [...(spot.aliases || []), spot.name],
+        },
+      ];
+    if (spot.kind !== "spot") return [];
+    return [{ ...spot, website: undefined }];
+  });
+}
+
 // Preserve original coordinates/IDs: bundled spot forecasts refer to those exact points.
 const existingIds: Record<string, string> = {
   "fi-inchydoney-east-beach": "inchydoney",
@@ -35,6 +66,10 @@ export function mergeLocations(original: Spot[]): Spot[] {
     if (existing) {
       existing.locationSources = [...(existing.locationSources || []), source];
       existing.aliases = [...(existing.aliases || []), row.name];
+      if ("website" in row && row.website) existing.website = row.website;
+      existing.sports = [
+        ...new Set([...(existing.sports || []), ...row.sports]),
+      ];
       continue;
     }
     const kind = row.kind as Spot["kind"];
@@ -46,6 +81,8 @@ export function mergeLocations(original: Spot[]): Spot[] {
       lon: row.lon,
       kind: kind || "spot",
       aliases: "aliases" in row ? row.aliases : [],
+      website: "website" in row && row.website ? row.website : undefined,
+      sports: row.sports,
       note: `${locationKindLabel(kind)}. Source-listed coordinate, not a verified launch. ${"note" in row ? row.note : "Access and suitability for wingfoiling have not been checked."}`,
       locationSources: [source],
     });

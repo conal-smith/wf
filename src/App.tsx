@@ -15,7 +15,7 @@ import {
 import { WindMap, Force5Brand } from "../force5/src";
 import ForecastSheet, { type ForecastSeries } from "./ForecastSheet";
 import ModelPicker from "./ModelPicker";
-import { mergeLocations, locationKindLabel } from "./locations";
+import { ridingLocations } from "./locations";
 import { windTrackBackground } from "../force5/src/timeline";
 import { forecastUrl } from "../force5/src/urls";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
@@ -66,6 +66,7 @@ export default function App() {
   );
   const [searchOpen, setSearchOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(true);
+  const [spotInfoOpen, setSpotInfoOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function App() {
         if (controller.signal.aborted) return;
         const validated = validateManifest(m);
         setManifest(validated);
-        setSpots(mergeLocations(s));
+        setSpots(ridingLocations(s));
         setRequestedIndex(nearestFrame(validated.frames));
         setPoint(
           s.find((spot: Spot) => spot.id === initialPoint.id) || initialPoint,
@@ -210,6 +211,18 @@ export default function App() {
     setPoint(spot);
     setSearchOpen(false);
     setSheetOpen(true);
+    setSpotInfoOpen(!!spot.id);
+  };
+  const closeSpotInfo = () => {
+    setSpotInfoOpen(false);
+    requestAnimationFrame(() => {
+      if (point.id)
+        document
+          .querySelector<HTMLButtonElement>(
+            `[data-spot-id="${CSS.escape(point.id)}"]`,
+          )
+          ?.focus({ preventScroll: true });
+    });
   };
   const closeSearch = () => {
     setSearchOpen(false);
@@ -221,6 +234,7 @@ export default function App() {
       if (searchOpen) {
         closeSearch();
       } else if (showLayers) setShowLayers(false);
+      else if (spotInfoOpen) closeSpotInfo();
       else {
         setSheetOpen(false);
         document
@@ -230,7 +244,7 @@ export default function App() {
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [searchOpen, showLayers]);
+  }, [searchOpen, showLayers, spotInfoOpen, point.id]);
   const openInfo = () => dialog.current?.showModal();
   const chooseModel = async (id: ModelId) => {
     if (!manifest || !frame || id === manifest.model) return;
@@ -335,9 +349,7 @@ export default function App() {
                       <MapPin size={16} />
                       <span className="spot-row-name">
                         {spot.name}
-                        <small>
-                          {spot.county} · {locationKindLabel(spot.kind)}
-                        </small>
+                        <small>{spot.county}</small>
                       </span>
                       <span className="spot-row-wind">
                         {w ? Math.round(convert(speed(w), units)) : "—"}{" "}
@@ -381,6 +393,8 @@ export default function App() {
               showSpots={showSpots}
               reducedMotion={reducedMotion}
               selectionOpen={sheetOpen}
+              spotInfoOpen={spotInfoOpen}
+              onCloseSpotInfo={closeSpotInfo}
               bottomInset={dockHeight}
             />
             <div className="map-topbar">
@@ -439,7 +453,10 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={showSpots}
-                    onChange={(e) => setShowSpots(e.target.checked)}
+                    onChange={(e) => {
+                      setShowSpots(e.target.checked);
+                      if (!e.target.checked) setSpotInfoOpen(false);
+                    }}
                   />
                 </label>
                 {reducedMotion && (
@@ -846,9 +863,9 @@ export default function App() {
           >
             © OpenStreetMap contributors (ODbL)
           </a>
-          ; and individually linked web references. Circles indicate spots;
-          squares indicate operators; flags indicate clubs; diamonds indicate
-          broad areas. Source-listed locations are not verified launches.
+          ; and individually linked web references. The public layer shows
+          riding-location references, not business listings. Source-listed
+          locations are not verified launches.
         </p>
         <p>
           <strong>Refreshing the snapshot.</strong> Run{" "}

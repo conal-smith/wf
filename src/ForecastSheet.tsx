@@ -273,7 +273,7 @@ export default function ForecastSheet({
                     style={
                       {
                         "--wind-colour": values[i]
-                          ? `rgba(${windColor(speed(values[i]!) * 1.94384449).join(",")}, 0.42)`
+                          ? `rgba(${windColor(speed(values[i]!) * 1.94384449).join(",")}, 0.65)`
                           : "transparent",
                       } as React.CSSProperties
                     }
@@ -310,7 +310,7 @@ export default function ForecastSheet({
                       {
                         "--wind-colour":
                           f.hour !== 0 && values[i]?.gust != null
-                            ? `rgba(${windColor(values[i]!.gust! * 1.94384449).join(",")}, 0.42)`
+                            ? `rgba(${windColor(values[i]!.gust! * 1.94384449).join(",")}, 0.65)`
                             : "transparent",
                       } as React.CSSProperties
                     }

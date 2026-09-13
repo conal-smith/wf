@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { mergeLocations } from "../src/locations";
+import { mergeLocations, ridingLocations } from "../src/locations";
 
 const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
   (name) => JSON.parse(readFileSync(`data/locations/${name}.json`, "utf8")),
@@ -8,7 +8,22 @@ const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
 const records = bundles.flatMap((bundle) => bundle.records);
 
 describe("saved Irish wind-sport coordinates", () => {
-  it("connects all collected records to the app while preserving original forecast IDs and coordinates", () => {
+  it("publishes riding places without operator advertising or island-wide pins", () => {
+    const spots = ridingLocations(
+      JSON.parse(readFileSync("public/spots.json", "utf8")),
+    );
+    expect(spots).toHaveLength(25);
+    expect(spots.every((s) => s.kind === "spot" && !s.website)).toBe(true);
+    expect(spots.find((s) => s.id === "kilcrea")).toMatchObject({
+      name: "Kilcrea — Malahide Estuary",
+      lat: 53.4690824,
+      lon: -6.1755492,
+    });
+    expect(
+      spots.some((s) => /Watersports|School|Club|Resort/.test(s.name)),
+    ).toBe(false);
+  });
+  it("retains all collected research records while preserving original forecast IDs and coordinates", () => {
     const original = JSON.parse(readFileSync("public/spots.json", "utf8"));
     const merged = mergeLocations(original);
     expect(merged).toHaveLength(52);

@@ -88,6 +88,21 @@ describe("wind conventions", () => {
     expect(windColor(-2)).toEqual(windColor(0));
     expect(windColor(100)).toEqual(windColor(65));
   });
+  it("uses blue below 10 kn, green through 30 kn, then warm and purple speed bands", () => {
+    for (const k of [0, 5, 9]) {
+      const [r, g, b] = windColor(k);
+      expect(b).toBeGreaterThan(g);
+      expect(b).toBeGreaterThan(r);
+    }
+    for (const k of [10, 15, 20, 25, 30]) {
+      const [r, g, b] = windColor(k);
+      expect(g).toBeGreaterThan(r);
+      expect(g).toBeGreaterThan(b);
+    }
+    expect(windColor(35)[0]).toBeGreaterThan(windColor(35)[1]);
+    expect(windColor(45)[0]).toBeGreaterThan(windColor(45)[1] * 2);
+    expect(windColor(65)[2]).toBeGreaterThan(windColor(65)[1]);
+  });
 });
 describe("forecast integrity and freshness", () => {
   it("allows explicitly missing initialization gusts but never hides a missing later field", () => {

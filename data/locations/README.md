@@ -1,6 +1,6 @@
 # Irish wind-sport coordinates
 
-Collected 13 September 2026. **46 sourced location records across 14 counties**, including Northern Ireland. The website now merges these records with the eight original forecast spots through `src/locations.ts`. Keel and Inchydoney are merged with existing entries, giving **52 distinct map/search locations**. Original forecast IDs and coordinates are preserved; new locations sample the forecast grids on demand.
+Collected 13 September 2026. **46 sourced research records across 14 counties**, including Northern Ireland. `src/locations.ts` merges these with the eight original forecast spots, deduplicating Keel and Inchydoney into 52 research entries. Its public filter shows **25 riding-place references**, not a business directory. Original forecast IDs and coordinates are preserved; new locations sample the forecast grids on demand.
 
 Open [the CSV](irish-wind-sport-locations.csv) in a spreadsheet to see every name, county, latitude, longitude, classification and source link.
 
@@ -13,7 +13,7 @@ Open [the CSV](irish-wind-sport-locations.csv) in a spreadsheet to see every nam
 
 ## What the pins mean
 
-There are **17 spot references, 23 operator locations, two clubs and four broad area references**. `source-located` means a coordinate was found in the cited source; it does not mean a launch was surveyed, public access checked, or wingfoiling suitability confirmed. `launchVerified` is false for every record.
+The raw research contains **17 spot references, 23 operator locations, two clubs and four broad area references**. Operator, club and broad area listings are excluded from the public map. Two explicitly curated place references, Kilcrea and Newtownards, retain their operator/club-derived coordinates with clear access caveats, not business promotion. `source-located` means a coordinate was found in the cited source; it does not mean a launch was surveyed, public access checked, or wingfoiling suitability confirmed. `launchVerified` is false for every collected record.
 
 Fáilte Ireland sport tags are retained as provider claims, not independent confirmation that every business currently teaches both sports. A windsurfing or kitesurfing entry is not automatically labelled wingfoiling.
 
@@ -23,7 +23,7 @@ Coordinates use WGS84 decimal degrees: latitude first, negative longitude west. 
 
 - Blast: **53.4690824, -6.1755492**, OSM node `10816824305`, on Kilcrea Road. Search aliases include Donabate, Malahide Estuary and Broadmeadows. This is the operator's pin, not a separately established north-shore launch.
 - Newtownards and Ballyholme coordinates are club-related locations, not a grant of access.
-- Keel and Inchydoney overlap places already represented on the prototype map; retain the existing forecast spot IDs when eventually merging. Nearby operator pins such as Rusheen Bay Watersports are distinct from a bay forecast point.
+- Keel and Inchydoney are merged with the original spots while preserving their forecast IDs. Nearby operator pins such as Rusheen Bay Watersports remain research-only, not additional public map points.
 - The Mayo Mayhem guide gives one map centre for Carrownisky/Silver Strand and repeats a broad map link for Falmore/Blacksod. Those ambiguous references were **not** turned into separate precise pins.
 - The four Fáilte Ireland island/area records are retained for transparency, but should not be displayed as specific launches.
 
@@ -35,4 +35,4 @@ Coordinates use WGS84 decimal degrees: latitude first, negative longitude west. 
 - [Newtownards winging and foiling](https://www.newtownardssailingclub.co.uk/winging-and-foiling.html)
 - [Ballyholme slipway coordinates, DAERA](https://www.daera-ni.gov.uk/publications/marine-licence-ml-619-ballyholme-yacht-club-slipway-repair)
 
-The map uses circles for spot references, squares for operators, flags for clubs and diamonds for broad areas. Search shows each location type and includes Blast's aliases. Selected-location sources and dataset attribution are available through the map's information button. These distinctions do not turn source-listed coordinates into verified launches.
+The public map uses spot circles only, with no business website buttons. Search includes Blast's aliases to find Kilcrea, but the display name is “Kilcrea — Malahide Estuary”. Spot popouts provide coordinates, notes and source links; dataset attribution remains in the information dialog. These references are not verified launches. Paid business listings would be a separate future feature; no billing or sponsored layer is implemented.
