@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { WindMap, Force5Brand } from "../force5/src";
 import ForecastSheet from "./ForecastSheet";
+import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import {
   convert,
   dayLabel,
@@ -91,6 +92,13 @@ export default function App() {
   const [dockHeight, setDockHeight] = useState(170);
   const [, tick] = useState(0);
   const dialog = useRef<HTMLDialogElement>(null);
+  const modelRequest = useRef<AbortController | null>(null);
+  const [pendingModel, setPendingModel] = useState<ModelId | null>(null);
+  const [modelError, setModelError] = useState("");
+  const [modelNotice, setModelNotice] = useState("");
+  const modelEpoch = useRef(0);
+
+  useEffect(() => () => modelRequest.current?.abort(), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -109,6 +117,7 @@ export default function App() {
       ),
     )
       .then(([m, s]) => {
+        if (controller.signal.aborted) return;
         const validated = validateManifest(m);
         setManifest(validated);
         setSpots(s);
@@ -150,18 +159,19 @@ export default function App() {
   }, [error]);
 
   useEffect(() => {
-    if (!manifest) return;
+    if (!manifest || pendingModel) return;
     let cancelled = false;
+    const epoch = modelEpoch.current;
     setFrameError("");
     loadFrame(manifest, requestedIndex)
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || epoch !== modelEpoch.current) return;
         setFrame(data);
         if (requestedIndex + 1 < manifest.frames.length)
           void loadFrame(manifest, requestedIndex + 1).catch(() => {});
       })
       .catch((e) => {
-        if (!cancelled) {
+        if (!cancelled && epoch === modelEpoch.current) {
           setFrameError(e.message);
           setPlaying(false);
         }
@@ -169,7 +179,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [manifest, requestedIndex, retry]);
+  }, [manifest, requestedIndex, retry, pendingModel]);
 
   const activeIndex =
     manifest && frame
@@ -191,6 +201,8 @@ export default function App() {
     `${s.name} ${s.county}`.toLowerCase().includes(search.toLowerCase()),
   );
   const selectTime = (i: number) => {
+    if (pendingModel) return;
+    setModelNotice("");
     setPlaying(false);
     setRequestedIndex(i);
   };
@@ -217,6 +229,39 @@ export default function App() {
     return () => window.removeEventListener("keydown", escape);
   }, [searchOpen, showLayers]);
   const openInfo = () => dialog.current?.showModal();
+  const chooseModel = async (id: ModelId) => {
+    if (!manifest || !frame || id === manifest.model) return;
+    modelRequest.current?.abort();
+    const controller = new AbortController();
+    modelRequest.current = controller;
+    modelEpoch.current++;
+    setPlaying(false);
+    setRequestedIndex(activeIndex);
+    setPendingModel(id);
+    setModelError("");
+    setModelNotice("");
+    setFrameError("");
+    const targetTime = frame.validTime;
+    try {
+      const next = await loadModel(id, targetTime, controller.signal);
+      if (controller.signal.aborted) return;
+      // React batches these together: metadata, map, series and time commit atomically.
+      setManifest(next.manifest);
+      setFrame(next.frame);
+      setRequestedIndex(next.index);
+      if (next.frame.validTime !== targetTime)
+        setModelNotice(
+          `Showing the nearest ${next.manifest.modelName} forecast: ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}. Model forecast times and ranges differ.`,
+        );
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setModelError(
+          `Could not switch to ${MODELS.find((m) => m.id === id)?.name}. ${manifest.modelName} is still shown. ${error instanceof Error ? error.message : "Please try again."}`,
+        );
+    } finally {
+      if (modelRequest.current === controller) setPendingModel(null);
+    }
+  };
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
       setRequestedIndex(0);
@@ -328,9 +373,24 @@ export default function App() {
                 <Force5Brand />
                 <span>WIND · 10 m</span>
                 <i />
-                <button onClick={openInfo}>
-                  {manifest?.modelName || "ICON-EU"} <ChevronDown size={13} />
-                </button>
+                <label className="model-select">
+                  <span className="sr-only">Weather model</span>
+                  <select
+                    aria-label="Weather model"
+                    value={manifest?.model || "icon-eu"}
+                    disabled={!frame || !!pendingModel}
+                    onChange={(event) =>
+                      void chooseModel(event.target.value as ModelId)
+                    }
+                  >
+                    {MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} aria-hidden="true" />
+                </label>
               </div>
               <div className="map-top-actions">
                 <button
@@ -408,32 +468,74 @@ export default function App() {
             )}
             {!sheetOpen && (
               <div className="map-instruction glass">
-                <span /> Select a spot. Find your wind.
+                <span />{" "}
+                {manifest?.model === "harmonie"
+                  ? "HARMONIE: Ireland coverage only"
+                  : "Select a spot. Find your wind."}
               </div>
             )}
-            {(loading || frameError) && (
+            {(pendingModel || modelError || modelNotice) && (
               <div
-                className={`frame-status ${frameError ? "is-error" : ""}`}
+                className={`frame-status model-status ${modelError ? "is-error" : ""}`}
                 role="status"
               >
-                {frameError ? (
+                {pendingModel ? (
                   <>
-                    {frameError}
-                    <button onClick={() => setRetry((v) => v + 1)}>
-                      Retry
+                    <span className="spinner" />
+                    Loading {
+                      MODELS.find((m) => m.id === pendingModel)?.name
+                    }… {manifest?.modelName} is still shown.
+                    <button
+                      onClick={() => {
+                        modelRequest.current?.abort();
+                        setPendingModel(null);
+                      }}
+                    >
+                      Cancel switch
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="spinner" /> Loading{" "}
-                    {manifest
-                      ? timeLabel(manifest.frames[requestedIndex].validTime)
-                      : "wind data"}
-                    …{frame && " Previous frame is still shown."}
+                    {modelError || modelNotice}
+                    <button
+                      aria-label="Dismiss model message"
+                      onClick={() => {
+                        setModelError("");
+                        setModelNotice("");
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
                   </>
                 )}
               </div>
             )}
+            {(loading || frameError) &&
+              !pendingModel &&
+              !modelError &&
+              !modelNotice && (
+                <div
+                  className={`frame-status ${frameError ? "is-error" : ""}`}
+                  role="status"
+                >
+                  {frameError ? (
+                    <>
+                      {frameError}
+                      <button onClick={() => setRetry((v) => v + 1)}>
+                        Retry
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="spinner" /> Loading{" "}
+                      {manifest
+                        ? timeLabel(manifest.frames[requestedIndex].validTime)
+                        : "wind data"}
+                      …{frame && " Previous frame is still shown."}
+                    </>
+                  )}
+                </div>
+              )}
             <div className="map-footer" ref={dock}>
               <div className="map-footer-meta">
                 <button className="model-info" onClick={openInfo}>
@@ -510,7 +612,7 @@ export default function App() {
                   <button
                     className="play-button"
                     aria-label={playing ? "Pause forecast" : "Play forecast"}
-                    disabled={!manifest || !!frameError}
+                    disabled={!manifest || !!frameError || !!pendingModel}
                     onClick={togglePlayback}
                   >
                     {playing ? (
@@ -533,7 +635,7 @@ export default function App() {
                       min="0"
                       max={Math.max(1, (manifest?.frames.length || 2) - 1)}
                       value={requestedIndex}
-                      disabled={!manifest}
+                      disabled={!manifest || !!pendingModel}
                       aria-label="Forecast time"
                       aria-valuetext={
                         manifest
@@ -626,16 +728,17 @@ export default function App() {
         <h2>A clearer picture of the wind.</h2>
         <p>
           Force5 powers this wind map using real {manifest?.provider || "DWD"}{" "}
-          {manifest?.modelName || "ICON-EU"} model output, cropped to Ireland.
-          Colours, particle direction and spot readings all use the same 10 m
-          wind grid.
+          {manifest?.modelDetail || manifest?.modelName || "ICON-EU"} model
+          output, cropped to Ireland. Colours, particle direction and spot
+          readings all use the same 10 m wind grid.
         </p>
         {manifest && (
           <dl>
             <div>
               <dt>Model resolution</dt>
               <dd>
-                {manifest.resolutionKm} km · grid spacing {manifest.grid.dx}°
+                {manifest.resolutionKm} km native · display grid{" "}
+                {manifest.grid.dx}° × {manifest.grid.dy}°
               </dd>
             </div>
             <div>
@@ -652,7 +755,7 @@ export default function App() {
               </dd>
             </div>
             <div>
-              <dt>Downloaded</dt>
+              <dt>Snapshot prepared</dt>
               <dd>{new Date(manifest.generatedAt).toUTCString()}</dd>
             </div>
           </dl>
@@ -662,15 +765,25 @@ export default function App() {
           model grid points. Direction labels show where wind comes from;
           particles and arrows travel downwind. Particle speed is illustrative.
           Gusts are modelled maxima over the source interval
-          {forecast
+          {forecast?.gustIntervalHours
             ? ` (+${forecast.gustIntervalHours[0]} to +${forecast.gustIntervalHours[1]} hours from the model run)`
             : ""}
           ; they are not continuous measurements.
         </p>
+        {manifest?.gustDescription && (
+          <p>
+            <strong>Gust availability.</strong> {manifest.gustDescription}
+          </p>
+        )}
+        {manifest?.processing && (
+          <p>
+            <strong>Map processing.</strong> {manifest.processing}
+          </p>
+        )}
         <p>
-          <strong>Before heading out.</strong> A 6.5 km model cannot resolve an
-          individual launch, headland or sheltered bay. This prototype does not
-          include waves, tides or warning feeds. Check{" "}
+          <strong>Before heading out.</strong> Even a high-resolution model
+          cannot fully resolve an individual launch, headland or sheltered bay.
+          This prototype does not include waves, tides or warning feeds. Check{" "}
           <a
             href="https://www.met.ie/warnings"
             target="_blank"
@@ -690,20 +803,32 @@ export default function App() {
         )}
         <p>
           <strong>Refreshing the snapshot.</strong> Run{" "}
-          <code>npm run weather:refresh</code>, then reload. Forecasts are not
-          automatically downloaded by the website yet; the previous successful
-          snapshot is kept if a refresh fails.
+          <code>
+            {manifest?.model === "harmonie"
+              ? "npm run weather:refresh:harmonie"
+              : "npm run weather:refresh"}
+          </code>
+          , then reload. Forecasts are not automatically downloaded by the
+          website yet; the previous successful snapshot is kept if a refresh
+          fails.
         </p>
         <div className="source-links">
           <a
-            href="https://opendata.dwd.de/weather/nwp/icon-eu/grib/"
+            href={
+              manifest?.sourceUrl ||
+              "https://opendata.dwd.de/weather/nwp/icon-eu/grib/"
+            }
             target="_blank"
             rel="noreferrer"
           >
-            DWD forecast data <ArrowUpRight size={14} />
+            {manifest?.provider || "DWD"} forecast data{" "}
+            <ArrowUpRight size={14} />
           </a>
           <a
-            href="https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"
+            href={
+              manifest?.licenseUrl ||
+              "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"
+            }
             target="_blank"
             rel="noreferrer"
           >
