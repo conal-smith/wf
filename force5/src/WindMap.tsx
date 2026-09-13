@@ -100,6 +100,7 @@ export default function WindMap({
   latest.current = { frame, particles, showWind, reducedMotion, onSelect };
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
+  const hasFrame = frame !== null;
   const markers = useRef<maplibregl.Marker[]>([]);
   const pickMarker = useRef<maplibregl.Marker | null>(null);
   const fitted = useRef(false);
@@ -436,6 +437,8 @@ export default function WindMap({
       canvas = overlay.current;
     if (!map || !ready || !canvas) return;
     const ctx = canvas.getContext("2d")!;
+    // Disabled effects have no animation callback or map listeners to keep waking up.
+    if (!hasFrame || !particles || !showWind || reducedMotion) return;
     type Particle = { x: number; y: number; age: number };
     let cloud: Particle[] = [],
       width = 0,
@@ -449,11 +452,9 @@ export default function WindMap({
       fieldHeight = 0,
       field = new Float32Array();
     const invalidate = () => {
+      if (!viewDirty) ctx.clearRect(0, 0, width, height);
       viewDirty = true;
-      ctx.clearRect(0, 0, width, height);
     };
-    map.on("move", invalidate);
-    map.on("resize", invalidate);
     const spawn = (): Particle => ({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -478,8 +479,20 @@ export default function WindMap({
       );
     };
     const draw = (now: number) => {
-      animation = requestAnimationFrame(draw);
+      animation = 0;
       const state = latest.current;
+      // In particular, never reproject the wind grid during a map gesture.
+      // moveend/visibilitychange restart the loop when it can do useful work.
+      if (
+        !state.frame ||
+        !state.particles ||
+        !state.showWind ||
+        state.reducedMotion ||
+        document.hidden ||
+        map.isMoving()
+      )
+        return;
+      animation = requestAnimationFrame(draw);
       const w = canvas.clientWidth,
         h = canvas.clientHeight;
       if (width !== w || height !== h) {
@@ -491,17 +504,6 @@ export default function WindMap({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         viewDirty = true;
       }
-      if (
-        !state.frame ||
-        !state.particles ||
-        !state.showWind ||
-        state.reducedMotion ||
-        document.hidden
-      ) {
-        ctx.clearRect(0, 0, width, height);
-        previousTime = now;
-        return;
-      }
       if (now - previousTime < 32) return;
       const dt = Math.min(60, now - previousTime) / 32;
       previousTime = now;
@@ -511,7 +513,6 @@ export default function WindMap({
         viewDirty = false;
         ctx.clearRect(0, 0, width, height);
       }
-      if (map.isMoving()) return;
       ctx.globalCompositeOperation = "destination-in";
       ctx.fillStyle = "rgba(0,0,0,0.92)";
       ctx.fillRect(0, 0, width, height);
@@ -560,14 +561,42 @@ export default function WindMap({
       }
       ctx.stroke();
     };
-    animation = requestAnimationFrame(draw);
+    const stop = () => {
+      cancelAnimationFrame(animation);
+      animation = 0;
+      previousTime = 0;
+      invalidate();
+    };
+    const resume = () => {
+      if (!animation && !document.hidden && !map.isMoving()) {
+        previousTime = performance.now();
+        animation = requestAnimationFrame(draw);
+      }
+    };
+    const resize = () => {
+      invalidate();
+      resume();
+    };
+    const visibility = () => {
+      if (document.hidden) stop();
+      else resume();
+    };
+    map.on("movestart", stop);
+    map.on("move", invalidate);
+    map.on("moveend", resume);
+    map.on("resize", resize);
+    document.addEventListener("visibilitychange", visibility);
+    resume();
     return () => {
       cancelAnimationFrame(animation);
+      map.off("movestart", stop);
       map.off("move", invalidate);
-      map.off("resize", invalidate);
+      map.off("moveend", resume);
+      map.off("resize", resize);
+      document.removeEventListener("visibilitychange", visibility);
       ctx.clearRect(0, 0, width, height);
     };
-  }, [ready]);
+  }, [ready, hasFrame, particles, showWind, reducedMotion]);
 
   useEffect(() => {
     const map = mapRef.current;
