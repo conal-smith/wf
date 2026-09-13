@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { mergeLocations } from "../src/locations";
 
 const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
   (name) => JSON.parse(readFileSync(`data/locations/${name}.json`, "utf8")),
@@ -7,6 +8,28 @@ const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
 const records = bundles.flatMap((bundle) => bundle.records);
 
 describe("saved Irish wind-sport coordinates", () => {
+  it("connects all collected records to the app while preserving original forecast IDs and coordinates", () => {
+    const original = JSON.parse(readFileSync("public/spots.json", "utf8"));
+    const merged = mergeLocations(original);
+    expect(merged).toHaveLength(52);
+    expect(new Set(merged.map((s) => s.id)).size).toBe(52);
+    for (const spot of original)
+      expect(merged.find((s) => s.id === spot.id)).toMatchObject(spot);
+    for (const row of records)
+      expect(
+        merged.some((s) =>
+          s.locationSources?.some(
+            (source) =>
+              source.name === row.name &&
+              source.lat === row.lat &&
+              source.lon === row.lon,
+          ),
+        ),
+      ).toBe(true);
+    expect(merged.find((s) => s.id === "osm-blast-kilcrea")?.aliases).toContain(
+      "Donabate",
+    );
+  });
   it("keeps unique source-backed coordinates in Ireland with explicit location types", () => {
     expect(records).toHaveLength(46);
     expect(new Set(records.map((record) => record.id)).size).toBe(

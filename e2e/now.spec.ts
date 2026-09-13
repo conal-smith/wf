@@ -83,7 +83,9 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
       return Math.abs(p.line - (p.a + ((p.b - p.a) * 2) / 3));
     })
     .toBeLessThan(1);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await expect(page.locator(".map-loading")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/forecast-now-mobile.png" });

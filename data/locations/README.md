@@ -1,6 +1,6 @@
 # Irish wind-sport coordinates
 
-Collected 13 September 2026. **46 sourced location records across 14 counties**, including Northern Ireland. This is a saved research dataset, not yet wired into the website's `public/spots.json`.
+Collected 13 September 2026. **46 sourced location records across 14 counties**, including Northern Ireland. The website now merges these records with the eight original forecast spots through `src/locations.ts`. Keel and Inchydoney are merged with existing entries, giving **52 distinct map/search locations**. Original forecast IDs and coordinates are preserved; new locations sample the forecast grids on demand.
 
 Open [the CSV](irish-wind-sport-locations.csv) in a spreadsheet to see every name, county, latitude, longitude, classification and source link.
 
@@ -35,4 +35,4 @@ Coordinates use WGS84 decimal degrees: latitude first, negative longitude west. 
 - [Newtownards winging and foiling](https://www.newtownardssailingclub.co.uk/winging-and-foiling.html)
 - [Ballyholme slipway coordinates, DAERA](https://www.daera-ni.gov.uk/publications/marine-licence-ml-619-ballyholme-yacht-club-slipway-repair)
 
-The next map integration can consume these records, preserving provenance, separating operator and spot markers, and showing their location type rather than implying every point is a verified launch.
+The map uses circles for spot references, squares for operators, flags for clubs and diamonds for broad areas. Search shows each location type and includes Blast's aliases. Selected-location sources and dataset attribution are available through the map's information button. These distinctions do not turn source-listed coordinates into verified launches.

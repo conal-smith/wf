@@ -15,6 +15,7 @@ import {
 import { WindMap, Force5Brand } from "../force5/src";
 import ForecastSheet, { type ForecastSeries } from "./ForecastSheet";
 import ModelPicker from "./ModelPicker";
+import { mergeLocations, locationKindLabel } from "./locations";
 import { windTrackBackground } from "../force5/src/timeline";
 import { forecastUrl } from "../force5/src/urls";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
@@ -113,7 +114,7 @@ export default function App() {
         if (controller.signal.aborted) return;
         const validated = validateManifest(m);
         setManifest(validated);
-        setSpots(s);
+        setSpots(mergeLocations(s));
         setRequestedIndex(nearestFrame(validated.frames));
         setPoint(
           s.find((spot: Spot) => spot.id === initialPoint.id) || initialPoint,
@@ -195,7 +196,9 @@ export default function App() {
     (pointSeries?.key === seriesKey ? pointSeries.values : []);
   const isStale = manifest ? freshness(manifest) : "fresh";
   const visibleSpots = spots.filter((s) =>
-    `${s.name} ${s.county}`.toLowerCase().includes(search.toLowerCase()),
+    `${s.name} ${s.county} ${(s.aliases || []).join(" ")}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
   );
   const selectTime = (i: number) => {
     if (pendingModel) return;
@@ -319,7 +322,7 @@ export default function App() {
                 aria-label="Irish spots"
               >
                 <div className="section-label">
-                  EXPLORE THE COAST <span>{visibleSpots.length} spots</span>
+                  EXPLORE THE COAST <span>{visibleSpots.length} locations</span>
                 </div>
                 {visibleSpots.map((spot) => {
                   const w = frame ? sample(frame, spot.lon, spot.lat) : null;
@@ -332,7 +335,9 @@ export default function App() {
                       <MapPin size={16} />
                       <span className="spot-row-name">
                         {spot.name}
-                        <small>{spot.county}</small>
+                        <small>
+                          {spot.county} · {locationKindLabel(spot.kind)}
+                        </small>
                       </span>
                       <span className="spot-row-wind">
                         {w ? Math.round(convert(speed(w), units)) : "—"}{" "}
@@ -430,7 +435,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  <span>Wingfoil spots</span>
+                  <span>Wind-sport locations</span>
                   <input
                     type="checkbox"
                     checked={showSpots}
@@ -802,6 +807,49 @@ export default function App() {
             </span>
           </p>
         )}
+        {!!point.locationSources?.length && (
+          <div className="location-sources">
+            <strong>Selected location sources</strong>
+            {point.locationSources.map((source) => (
+              <p key={source.url}>
+                <a href={source.url} target="_blank" rel="noreferrer">
+                  {source.name}
+                </a>
+                {" · "}
+                {source.licence}
+              </p>
+            ))}
+          </div>
+        )}
+        <p className="location-attribution">
+          Location directory: contains Irish Public Sector Data from{" "}
+          <a
+            href="https://data.gov.ie/ga/dataset/tourism-activities-and-attractions/resource/7a6245fd-d07a-4b2f-82a7-19373eb648b6"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Fáilte Ireland
+          </a>{" "}
+          under{" "}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CC BY 4.0
+          </a>
+          ;{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+          >
+            © OpenStreetMap contributors (ODbL)
+          </a>
+          ; and individually linked web references. Circles indicate spots;
+          squares indicate operators; flags indicate clubs; diamonds indicate
+          broad areas. Source-listed locations are not verified launches.
+        </p>
         <p>
           <strong>Refreshing the snapshot.</strong> Run{" "}
           <code>

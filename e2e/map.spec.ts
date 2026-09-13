@@ -24,7 +24,9 @@ test("map-first default has compact branding, collapsed search and a bottom-flus
     "aria-pressed",
     "true",
   );
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await expect(page.locator(".map-loading")).toHaveCount(0);
   await expect(
     page.locator(".legend, .site-identity, .model-select"),
@@ -95,14 +97,16 @@ test("scrubber wind colours follow the selected spot and arbitrary-point series"
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   const track = page.getByRole("slider", { name: "Forecast time" });
   const colour = () =>
     track.evaluate((el) => getComputedStyle(el).backgroundImage);
   const initial = await colour();
   await page.getByRole("button", { name: "Open spot search" }).click();
   await page.getByRole("searchbox").fill("Dublin");
-  await page.locator(".spot-row").click();
+  await page.locator(".spot-row").filter({ hasText: "Dollymount" }).click();
   await expect.poll(colour).not.toBe(initial);
   const dublin = await colour();
   await page
@@ -122,7 +126,9 @@ test("double-click zooms without selecting; single click picks a point", async (
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   const canvas = page.locator(".map-canvas canvas");
   const caption = await page.locator(".forecast-table caption").textContent();
   const separation = async () => {
@@ -153,7 +159,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(8, {
+    await expect(page.locator(".spot-marker")).toHaveCount(52, {
       timeout: 30000,
     });
     const slider = page.getByRole("slider", { name: "Forecast time" });
@@ -204,7 +210,9 @@ test("switches real models, uses their own times and values, and clamps the shor
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await page.locator(".spot-marker").first().click();
   await page.getByRole("slider", { name: "Forecast time" }).fill("6");
   const old = manifest.spotForecasts.brandon[6];
@@ -274,7 +282,9 @@ test("failed or mislabelled model download leaves the old model and forecast int
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   const picker = page.locator(".model-options");
   const before = await page
     .locator(".forecast-table thead button[aria-pressed=true]")
@@ -311,7 +321,9 @@ test("model frame failure and cancellation cannot relabel the displayed data", a
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   const picker = page.locator(".model-options");
   await page.getByRole("slider", { name: "Forecast time" }).fill("24");
   await expect(page.locator(".frame-status")).toHaveCount(0);
@@ -355,7 +367,9 @@ test("mobile HARMONIE picker and sheet remain within the viewport", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -365,7 +379,7 @@ test("mobile HARMONIE picker and sheet remain within the viewport", async ({
   await page
     .getByRole("searchbox", { name: "Search Irish spots" })
     .fill("Dublin");
-  await page.locator(".spot-row").click();
+  await page.locator(".spot-row").filter({ hasText: "Dollymount" }).click();
   await expect(page.getByRole("table", { name: /Dollymount/ })).toBeVisible();
   await expect(page.locator(".sheet-heading")).toHaveCount(0);
   await expect(page.locator(".forecast-table caption")).toContainText(
@@ -385,7 +399,9 @@ test("production map loads, follows forecast time, and agrees with the source va
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await expect(page.locator(".map-loading")).toHaveCount(0);
   await expect(page.locator(".forecast-sheet")).toHaveCount(1);
   const mapBounds = await page.locator(".map-canvas").boundingBox();
@@ -420,9 +436,9 @@ test("production map loads, follows forecast time, and agrees with the source va
   await expect(
     page.locator(".forecast-table tbody tr").first().locator("th small"),
   ).toHaveText("m/s");
-  await page.getByLabel("Wingfoil spots", { exact: true }).uncheck();
+  await page.getByLabel("Wind-sport locations", { exact: true }).uncheck();
   await expect(page.locator(".spot-marker")).toHaveCount(0);
-  await page.getByLabel("Wingfoil spots", { exact: true }).check();
+  await page.getByLabel("Wind-sport locations", { exact: true }).check();
   await page.getByLabel("Close layers").click();
   await page
     .locator(".map-canvas canvas")
@@ -451,12 +467,14 @@ test("mobile: search and inspect a spot in the bottom sheet without narrowing th
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await page.getByRole("button", { name: "Open spot search" }).click();
   await page
     .getByRole("searchbox", { name: "Search Irish spots" })
     .fill("Dublin");
-  await page.locator(".spot-row").click();
+  await page.locator(".spot-row").filter({ hasText: "Dollymount" }).click();
   await expect(page.getByRole("table", { name: /Dollymount/ })).toBeVisible();
   await expect(page.locator(".search-results")).toHaveCount(0);
   const sheet = await page.locator(".forecast-sheet").boundingBox();
@@ -482,7 +500,9 @@ test("missing frame keeps the previous displayed time and offers a retry", async
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   const previous = await page
     .locator(".forecast-table thead button[aria-pressed=true]")
     .getAttribute("data-forecast-index");
@@ -523,7 +543,9 @@ test("reduced motion disables particle animation and respects keyboard time cont
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(page.getByLabel("Moving particles")).toBeDisabled();
   await expect(page.getByLabel("Moving particles")).not.toBeChecked();
@@ -557,7 +579,9 @@ test("arbitrary point gets a complete source-backed forecast table, with keyboar
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(8, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    timeout: 30000,
+  });
   await page
     .locator(".map-canvas canvas")
     .click({ position: { x: 600, y: 300 } });
