@@ -19,7 +19,7 @@ import eccodes as ec
 import numpy as np
 from pyproj import Proj
 
-from fetch_forecast import ROOT, get, sample, write_json
+from fetch_forecast import ROOT, SPOTS_FILE, get, sample, write_json
 
 PORTAL = "https://opendata.met.ie"
 MODEL = "harmonie"
@@ -200,7 +200,7 @@ def main():
     output = ROOT / "public" / "weather"
     run_time = datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc)
     prefix = f"harmonie-{run}-{args.hours}h-v1"
-    spots = json.loads((ROOT / "public" / "spots.json").read_text())
+    spots = json.loads(SPOTS_FILE.read_text())
     series = {s["id"]: [] for s in spots}
     frames, sources, layout = [], [], None
     for hour in hours:

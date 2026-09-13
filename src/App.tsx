@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock3,
   Info,
   Layers3,
   MapPin,
@@ -15,7 +13,10 @@ import {
   X,
 } from "lucide-react";
 import { WindMap, Force5Brand } from "../force5/src";
-import ForecastSheet from "./ForecastSheet";
+import ForecastSheet, { type ForecastSeries } from "./ForecastSheet";
+import ModelPicker from "./ModelPicker";
+import { windTrackBackground } from "../force5/src/timeline";
+import { forecastUrl } from "../force5/src/urls";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import {
   convert,
@@ -27,7 +28,6 @@ import {
   speed,
   timeLabel,
   validateManifest,
-  KNOTS,
   type Frame,
   type Manifest,
   type Point,
@@ -43,30 +43,8 @@ const initialPoint: Point = {
   lon: -10.024,
 };
 
-function Brand() {
-  return (
-    <a
-      className="brand"
-      href={import.meta.env.BASE_URL}
-      aria-label="wingfoil.ie home"
-    >
-      <svg viewBox="0 0 45 42" aria-hidden="true">
-        <path d="M3 29 19 5l22 18-20-7-8 13Z" fill="currentColor" />
-        <path
-          d="M16 36h23"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
-      </svg>
-      <span>
-        wingfoil<span className="brand-domain">.ie</span>
-      </span>
-    </a>
-  );
-}
-
 export default function App() {
+  const [pointSeries, setPointSeries] = useState<ForecastSeries | null>(null);
   const [manifest, setManifest] = useState<Manifest | null>(null),
     [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null),
@@ -86,16 +64,26 @@ export default function App() {
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [searchOpen, setSearchOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(true);
   const searchInput = useRef<HTMLInputElement>(null);
+  const searchTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus();
+  }, [searchOpen]);
+
   const dock = useRef<HTMLDivElement>(null);
-  const [dockHeight, setDockHeight] = useState(170);
+  const [dockHeight, setDockHeight] = useState(110);
   const [, tick] = useState(0);
   const dialog = useRef<HTMLDialogElement>(null);
   const modelRequest = useRef<AbortController | null>(null);
   const [pendingModel, setPendingModel] = useState<ModelId | null>(null);
   const [modelError, setModelError] = useState("");
   const [modelNotice, setModelNotice] = useState("");
+  useEffect(() => {
+    if (!modelNotice) return;
+    const timer = window.setTimeout(() => setModelNotice(""), 6000);
+    return () => clearTimeout(timer);
+  }, [modelNotice]);
   const modelEpoch = useRef(0);
 
   useEffect(() => () => modelRequest.current?.abort(), []);
@@ -103,14 +91,19 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all(
-      ["weather/latest.json", "spots.json"].map((path) =>
-        fetch(`${import.meta.env.BASE_URL}${path}`, {
-          signal: controller.signal,
-          cache: "no-cache",
-        }).then(async (r) => {
+      ["weather/harmonie.json", "spots.json"].map((path) =>
+        fetch(
+          path.startsWith("weather/")
+            ? forecastUrl(path)
+            : `${import.meta.env.BASE_URL}${path}`,
+          {
+            signal: controller.signal,
+            cache: "no-cache",
+          },
+        ).then(async (r) => {
           if (!r.ok)
             throw new Error(
-              "The forecast snapshot is missing. Run npm run weather:refresh, then reload.",
+              "The forecast snapshot is missing. Run npm run weather:refresh:harmonie, then reload.",
             );
           return r.json();
         }),
@@ -152,7 +145,7 @@ export default function App() {
   useEffect(() => {
     if (!dock.current) return;
     const observer = new ResizeObserver(([entry]) =>
-      setDockHeight(entry.contentRect.height + 50),
+      setDockHeight(entry.target.getBoundingClientRect().height),
     );
     observer.observe(dock.current);
     return () => observer.disconnect();
@@ -196,6 +189,10 @@ export default function App() {
   }, [playing, manifest, requestedIndex, loading, frameError]);
 
   const forecast = manifest?.frames[activeIndex];
+  const seriesKey = `${manifest?.model}/${manifest?.run}/${point.lon}/${point.lat}`;
+  const timelineValues =
+    (point.id && manifest?.spotForecasts[point.id]) ||
+    (pointSeries?.key === seriesKey ? pointSeries.values : []);
   const isStale = manifest ? freshness(manifest) : "fresh";
   const visibleSpots = spots.filter((s) =>
     `${s.name} ${s.county}`.toLowerCase().includes(search.toLowerCase()),
@@ -211,12 +208,15 @@ export default function App() {
     setSearchOpen(false);
     setSheetOpen(true);
   };
+  const closeSearch = () => {
+    setSearchOpen(false);
+    requestAnimationFrame(() => searchTrigger.current?.focus());
+  };
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || dialog.current?.open) return;
       if (searchOpen) {
-        setSearchOpen(false);
-        searchInput.current?.blur();
+        closeSearch();
       } else if (showLayers) setShowLayers(false);
       else {
         setSheetOpen(false);
@@ -269,79 +269,89 @@ export default function App() {
   };
 
   return (
-    <div className={`app-shell ${sheetOpen ? "sheet-open" : ""}`}>
+    <div
+      className={`app-shell compact-layout ${sheetOpen ? "sheet-open" : ""}`}
+      style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
+    >
       <header className="site-header">
-        <div className="site-identity glass">
-          <Brand />
-          <span className="prototype-tag">PREVIEW</span>
-        </div>
-        <div className="search-panel">
-          <div className="search-box glass">
-            <Search size={18} />
-            <input
-              ref={searchInput}
-              type="search"
-              aria-label="Search Irish spots"
-              aria-expanded={searchOpen}
-              aria-controls="spot-search-results"
-              placeholder="Find a spot or county"
-              value={search}
-              onFocus={() => setSearchOpen(true)}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setSearchOpen(true);
-              }}
-            />
-            <button
-              aria-label={
-                searchOpen ? "Close spot search" : "Browse Irish spots"
-              }
-              onClick={() => {
-                setSearchOpen(!searchOpen);
-                if (!searchOpen) searchInput.current?.focus();
-              }}
-            >
-              {searchOpen ? <X size={17} /> : <MapPin size={17} />}
-            </button>
+        <button
+          ref={searchTrigger}
+          className="search-trigger glass"
+          aria-label="Open spot search"
+          aria-expanded={searchOpen}
+          aria-controls="spot-search-results"
+          hidden={searchOpen}
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search size={20} />
+        </button>
+        {searchOpen && (
+          <div className="search-panel">
+            <div className="search-box glass">
+              <Search size={18} />
+              <input
+                ref={searchInput}
+                type="search"
+                aria-label="Search Irish spots"
+                aria-expanded={searchOpen}
+                aria-controls="spot-search-results"
+                placeholder="Find a spot or county"
+                value={search}
+                onFocus={() => setSearchOpen(true)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSearchOpen(true);
+                }}
+              />
+              <button
+                aria-label={
+                  searchOpen ? "Close spot search" : "Browse Irish spots"
+                }
+                onClick={closeSearch}
+              >
+                {searchOpen ? <X size={17} /> : <MapPin size={17} />}
+              </button>
+            </div>
+            {searchOpen && (
+              <section
+                id="spot-search-results"
+                className="search-results glass"
+                aria-label="Irish spots"
+              >
+                <div className="section-label">
+                  EXPLORE THE COAST <span>{visibleSpots.length} spots</span>
+                </div>
+                {visibleSpots.map((spot) => {
+                  const w = frame ? sample(frame, spot.lon, spot.lat) : null;
+                  return (
+                    <button
+                      key={spot.id}
+                      className="spot-row"
+                      onClick={() => selectSpot(spot)}
+                    >
+                      <MapPin size={16} />
+                      <span className="spot-row-name">
+                        {spot.name}
+                        <small>{spot.county}</small>
+                      </span>
+                      <span className="spot-row-wind">
+                        {w ? Math.round(convert(speed(w), units)) : "—"}{" "}
+                        <small>{units}</small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                  );
+                })}
+                {!visibleSpots.length && (
+                  <p className="empty-spots">
+                    No matching spots. Try a county, or select a point on the
+                    map.
+                  </p>
+                )}
+              </section>
+            )}
           </div>
-          {searchOpen && (
-            <section
-              id="spot-search-results"
-              className="search-results glass"
-              aria-label="Irish spots"
-            >
-              <div className="section-label">
-                EXPLORE THE COAST <span>{visibleSpots.length} spots</span>
-              </div>
-              {visibleSpots.map((spot) => {
-                const w = frame ? sample(frame, spot.lon, spot.lat) : null;
-                return (
-                  <button
-                    key={spot.id}
-                    className="spot-row"
-                    onClick={() => selectSpot(spot)}
-                  >
-                    <MapPin size={16} />
-                    <span className="spot-row-name">
-                      {spot.name}
-                      <small>{spot.county}</small>
-                    </span>
-                    <span className="spot-row-wind">
-                      {w ? Math.round(convert(speed(w), units)) : "—"}{" "}
-                      <small>{units}</small>
-                    </span>
-                    <ChevronRight size={16} />
-                  </button>
-                );
-              })}
-              {!visibleSpots.length && (
-                <p className="empty-spots">
-                  No matching spots. Try a county, or select a point on the map.
-                </p>
-              )}
-            </section>
-          )}
-        </div>
+        )}
       </header>
       {error ? (
         <main className="fatal-error">
@@ -369,32 +379,17 @@ export default function App() {
               bottomInset={dockHeight}
             />
             <div className="map-topbar">
-              <div className="map-title-chip">
+              <button
+                className="platform-brand"
+                aria-label="About Force5"
+                onClick={openInfo}
+              >
                 <Force5Brand />
-                <span>WIND · 10 m</span>
-                <i />
-                <label className="model-select">
-                  <span className="sr-only">Weather model</span>
-                  <select
-                    aria-label="Weather model"
-                    value={manifest?.model || "icon-eu"}
-                    disabled={!frame || !!pendingModel}
-                    onChange={(event) =>
-                      void chooseModel(event.target.value as ModelId)
-                    }
-                  >
-                    {MODELS.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={13} aria-hidden="true" />
-                </label>
-              </div>
+              </button>
               <div className="map-top-actions">
                 <button
                   className={`layers-button ${showLayers ? "pressed" : ""}`}
+                  aria-label="Layers"
                   aria-expanded={showLayers}
                   onClick={() => {
                     setShowLayers((v) => !v);
@@ -466,14 +461,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {!sheetOpen && (
-              <div className="map-instruction glass">
-                <span />{" "}
-                {manifest?.model === "harmonie"
-                  ? "HARMONIE: Ireland coverage only"
-                  : "Select a spot. Find your wind."}
-              </div>
-            )}
             {(pendingModel || modelError || modelNotice) && (
               <div
                 className={`frame-status model-status ${modelError ? "is-error" : ""}`}
@@ -537,77 +524,7 @@ export default function App() {
                 </div>
               )}
             <div className="map-footer" ref={dock}>
-              <div className="map-footer-meta">
-                <button className="model-info" onClick={openInfo}>
-                  <Info size={14} />
-                  <span>
-                    {manifest?.modelName || "ICON-EU"} ·{" "}
-                    {manifest?.resolutionKm || "6.5"} km{" "}
-                    <span className="model-run">
-                      ·{" "}
-                      {manifest
-                        ? `${new Date(manifest.runTime).toLocaleDateString("en-IE", { day: "2-digit", month: "short", timeZone: "UTC" })} ${new Date(manifest.runTime).getUTCHours().toString().padStart(2, "0")} UTC run`
-                        : "Loading"}
-                    </span>
-                  </span>
-                </button>
-                <div className="legend">
-                  <div className="legend-heading">
-                    WIND SPEED <span>{units}</span>
-                  </div>
-                  <div className="legend-gradient" />
-                  <div className="legend-ticks">
-                    {[0, 10, 20, 30, 40, 50].map((v) => (
-                      <span key={v}>
-                        {Math.round(units === "kn" ? v : v / KNOTS)}
-                        {v === 50 ? "+" : ""}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {sheetOpen && manifest && (
-                <ForecastSheet
-                  manifest={manifest}
-                  frame={frame}
-                  point={point}
-                  units={units}
-                  index={activeIndex}
-                  onSelect={selectTime}
-                  onClose={() => {
-                    setSheetOpen(false);
-                    document
-                      .querySelector<HTMLCanvasElement>(".maplibregl-canvas")
-                      ?.focus();
-                  }}
-                />
-              )}
               <div className="timeline">
-                <div className="timeline-top">
-                  <div className="timeline-date">
-                    <span className="timeline-date-dot" />
-                    {forecast
-                      ? dayLabel(forecast.validTime)
-                      : "Loading forecast"}
-                    <strong>
-                      {forecast ? timeLabel(forecast.validTime) : "—"}
-                    </strong>
-                  </div>
-                  <div className="timeline-cadence">
-                    {manifest?.stepHours || 3}-hour forecast steps
-                    <span> · Irish time</span>
-                  </div>
-                  <button
-                    className="now-button"
-                    disabled={!manifest}
-                    onClick={() =>
-                      manifest && selectTime(nearestFrame(manifest.frames))
-                    }
-                  >
-                    <Clock3 size={13} />
-                    {isStale === "expired" ? "Latest" : "Now"}
-                  </button>
-                </div>
                 <div className="timeline-controls">
                   <button
                     className="play-button"
@@ -632,9 +549,25 @@ export default function App() {
                   <div className="slider-track">
                     <input
                       type="range"
+                      style={{
+                        background: windTrackBackground(
+                          timelineValues,
+                          manifest?.frames.length || 0,
+                          manifest?.frames.map((f) => f.hour),
+                        ),
+                      }}
+                      title="Track colours show forecast wind speed at the selected location"
                       min="0"
-                      max={Math.max(1, (manifest?.frames.length || 2) - 1)}
-                      value={requestedIndex}
+                      max={
+                        manifest?.stepRanges
+                          ? manifest.frames.at(-1)!.hour
+                          : Math.max(1, (manifest?.frames.length || 2) - 1)
+                      }
+                      value={
+                        manifest?.stepRanges
+                          ? manifest.frames[requestedIndex].hour
+                          : requestedIndex
+                      }
                       disabled={!manifest || !!pendingModel}
                       aria-label="Forecast time"
                       aria-valuetext={
@@ -642,15 +575,41 @@ export default function App() {
                           ? `${dayLabel(manifest.frames[requestedIndex].validTime)} ${timeLabel(manifest.frames[requestedIndex].validTime)}`
                           : "Loading"
                       }
-                      onChange={(e) => selectTime(Number(e.target.value))}
+                      onChange={(e) =>
+                        selectTime(
+                          manifest?.stepRanges
+                            ? nearestFrame(
+                                manifest.frames,
+                                Date.parse(manifest.runTime) +
+                                  Number(e.target.value) * 3600000,
+                              )
+                            : Number(e.target.value),
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (!manifest?.stepRanges) return;
+                        const delta = {
+                          ArrowRight: 1,
+                          ArrowUp: 1,
+                          ArrowLeft: -1,
+                          ArrowDown: -1,
+                          PageUp: 4,
+                          PageDown: -4,
+                        }[e.key];
+                        if (delta !== undefined) {
+                          e.preventDefault();
+                          selectTime(
+                            Math.max(
+                              0,
+                              Math.min(
+                                manifest.frames.length - 1,
+                                requestedIndex + delta,
+                              ),
+                            ),
+                          );
+                        }
+                      }}
                     />
-                    <div className="time-ticks">
-                      {manifest?.frames
-                        .filter((_, i) => i % 4 === 0)
-                        .map((f) => (
-                          <span key={f.hour}>{timeLabel(f.validTime)}</span>
-                        ))}
-                    </div>
                   </div>
                   <button
                     className="step-button"
@@ -662,53 +621,86 @@ export default function App() {
                   >
                     <ChevronRight size={17} />
                   </button>
-                </div>
-                <div className="timeline-days">
-                  {manifest &&
-                    Array.from(
-                      new Set(
-                        manifest.frames.map((f) => dayLabel(f.validTime)),
-                      ),
-                    ).map((day) => {
-                      const idx = manifest.frames.findIndex(
-                        (f) => dayLabel(f.validTime) === day,
-                      );
-                      return (
-                        <button
-                          key={day}
-                          className={
-                            forecast && dayLabel(forecast.validTime) === day
-                              ? "active"
-                              : ""
-                          }
-                          onClick={() => selectTime(idx)}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
+                  {sheetOpen && (
+                    <button
+                      className="grid-close"
+                      aria-label="Close forecast panel"
+                      onClick={() => {
+                        setSheetOpen(false);
+                        document
+                          .querySelector<HTMLCanvasElement>(
+                            ".maplibregl-canvas",
+                          )
+                          ?.focus();
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
+              {sheetOpen && manifest && (
+                <ForecastSheet
+                  manifest={manifest}
+                  point={point}
+                  units={units}
+                  index={activeIndex}
+                  scrollIndex={frameError ? activeIndex : requestedIndex}
+                  onSeriesChange={setPointSeries}
+                  onSelect={selectTime}
+                />
+              )}
+            </div>
+            <div className="map-model-controls">
+              <ModelPicker
+                model={manifest?.model}
+                disabled={!frame || !!pendingModel}
+                onSelect={(id) => void chooseModel(id)}
+              />
+              <button
+                className="model-info"
+                onClick={openInfo}
+                aria-label="Forecast data and sources"
+              >
+                <Info size={14} />
+                <span>
+                  {manifest?.modelName || "HARMONIE"} ·{" "}
+                  {manifest?.resolutionLabel ||
+                    `${manifest?.resolutionKm || 2} km`}
+                </span>
+              </button>
+              <span className="site-footer" role="status">
+                {isStale === "expired"
+                  ? "Archived snapshot"
+                  : isStale === "stale"
+                    ? (forecast?.hour || 0) >= 168
+                      ? "Older run · long-range outlook"
+                      : "Older model run"
+                    : (forecast?.hour || 0) >= 168
+                      ? "Long-range outlook · less certain"
+                      : ""}
+              </span>
+            </div>
+            <div className="map-credits" aria-label="Map attribution">
+              <a
+                href="https://openmaptiles.org/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                © OpenMapTiles
+              </a>
+              {" · "}
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noreferrer"
+              >
+                © OpenStreetMap contributors
+              </a>
             </div>
           </section>
         </main>
       )}
-      <footer className="site-footer">
-        <span>
-          <span
-            className={`status-dot ${isStale !== "fresh" ? "warning" : ""}`}
-          />
-          {isStale === "expired"
-            ? "Archived snapshot — forecast period has ended"
-            : isStale === "stale"
-              ? "Older model run — refresh recommended"
-              : "Forecast data, not live observations"}
-          <button onClick={openInfo}>Data & sources</button>
-        </span>
-        <span className="footer-right">
-          Built for the days out there. <ArrowUpRight size={13} />
-        </span>
-      </footer>
       <dialog
         ref={dialog}
         className="info-dialog"
@@ -737,8 +729,9 @@ export default function App() {
             <div>
               <dt>Model resolution</dt>
               <dd>
-                {manifest.resolutionKm} km native · display grid{" "}
-                {manifest.grid.dx}° × {manifest.grid.dy}°
+                {manifest.resolutionLabel ||
+                  `${manifest.resolutionKm} km native`}{" "}
+                · display grid {manifest.grid.dx}° × {manifest.grid.dy}°
               </dd>
             </div>
             <div>
@@ -752,6 +745,14 @@ export default function App() {
                 {timeLabel(manifest.frames[0].validTime)} →{" "}
                 {dayLabel(manifest.frames.at(-1)!.validTime)}{" "}
                 {timeLabel(manifest.frames.at(-1)!.validTime)}
+              </dd>
+            </div>
+            <div>
+              <dt>Forecast intervals</dt>
+              <dd>
+                {manifest.stepRanges
+                  ? "3-hourly through day 6; 6-hourly through day 15"
+                  : `${manifest.stepHours}-hourly`}
               </dd>
             </div>
             <div>
@@ -806,13 +807,20 @@ export default function App() {
           <code>
             {manifest?.model === "harmonie"
               ? "npm run weather:refresh:harmonie"
-              : "npm run weather:refresh"}
+              : manifest?.model === "ecmwf"
+                ? "npm run weather:refresh:ecmwf"
+                : "npm run weather:refresh"}
           </code>
           , then reload. Forecasts are not automatically downloaded by the
           website yet; the previous successful snapshot is kept if a refresh
           fails.
         </p>
         <div className="source-links">
+          {manifest?.termsUrl && (
+            <a href={manifest.termsUrl} target="_blank" rel="noreferrer">
+              Provider terms <ArrowUpRight size={14} />
+            </a>
+          )}
           <a
             href={
               manifest?.sourceUrl ||

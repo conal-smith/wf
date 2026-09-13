@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "source": "OpenStreetMap contributors",
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL-1.0",
+  "licenceUrl": "https://www.openstreetmap.org/copyright",
+  "retrievedAt": "2026-09-13",
+  "records": [
+    {
+      "retrievedAt": "2026-09-13",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "osm-blast-kilcrea",
+      "name": "Blast Windsurfing and Windfoiling — Kilcrea",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4690824,
+      "lon": -6.1755492,
+      "kind": "operator",
+      "coordinateType": "operator-reference",
+      "sports": ["windsurfing", "windfoiling"],
+      "sportsEvidence": "mapped-operator-name",
+      "aliases": [
+        "Blast Watersports",
+        "Kilcrea",
+        "Donabate",
+        "Malahide Estuary",
+        "Broadmeadows"
+      ],
+      "website": "https://blastwatersportsdublin.com/",
+      "sourceUrl": "https://api.openstreetmap.org/api/0.6/node/10816824305.json",
+      "osmUrl": "https://www.openstreetmap.org/node/10816824305",
+      "sourceId": "node/10816824305",
+      "sourceVersion": 1,
+      "sourceUpdatedAt": "2023-04-16T19:12:40Z",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Operator point on Kilcrea Road, not an independently verified water entry point."
+    },
+    {
+      "retrievedAt": "2026-09-13",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "osm-newtownards-sc",
+      "name": "Newtownards Sailing Club",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.56012,
+      "lon": -5.62772,
+      "kind": "club",
+      "coordinateType": "mapped-area-reference",
+      "sports": ["wingfoiling", "windsurfing"],
+      "sportsEvidence": "club-website",
+      "website": "https://www.newtownardssailingclub.co.uk/",
+      "sourceUrl": "https://mapcarta.com/W621582636",
+      "osmUrl": "https://www.openstreetmap.org/way/621582636",
+      "sourceId": "way/621582636",
+      "evidenceUrls": [
+        "https://www.newtownardssailingclub.co.uk/winging-and-foiling.html",
+        "https://www.newtownardssailingclub.co.uk/windsurfing.html"
+      ],
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Mapcarta's displayed OSM-derived club position; not the slipway edge. Club access conditions not checked."
+    }
+  ]
+}

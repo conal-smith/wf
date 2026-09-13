@@ -1,0 +1,8 @@
+**
+!force5/
+!force5/Dockerfile
+!force5/ingest/
+!force5/ingest/*.py
+!force5/ingest/requirements*.txt
+!public/
+!public/spots.json

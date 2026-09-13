@@ -20,7 +20,9 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("FORCE5_WORK_DIR", str(PROJECT_ROOT))).resolve()
+SPOTS_FILE = Path(os.environ.get("FORCE5_SPOTS_FILE", str(PROJECT_ROOT / "public" / "spots.json")))
 BASE = "https://opendata.dwd.de/weather/nwp/icon-eu/grib"
 PARAMS = {"u": "u_10m", "v": "v_10m", "gust": "vmax_10m"}
 BBOX = (-18.0, 48.0, 2.0, 59.0)  # Ireland + Atlantic buffer, west/south/east/north
@@ -89,6 +91,11 @@ def validate_metadata(metadata, field, run, hour):
 
 def decode(path, field, run, hour, layout=None):
     handle = ec.codes_new_from_message(bz2.decompress(path.read_bytes()))
+    return decode_handle(handle, field, run, hour, layout)
+
+
+def decode_handle(handle, field, run, hour, layout=None):
+    """Validate/crop a regular earth-relative GRIB; takes ownership of handle."""
     try:
         # ecCodes represents zero-length steps in minutes unless explicitly normalised.
         ec.codes_set(handle, "stepUnits", 1)
@@ -177,7 +184,7 @@ def main():
     prefix = f"icon-eu-{run}-{args.hours}h-v1"
     layout = None
     frames = []
-    spots = json.loads((ROOT / "public" / "spots.json").read_text())
+    spots = json.loads(SPOTS_FILE.read_text())
     spot_forecasts = {spot["id"]: [] for spot in spots}
     for hour in hours:
         fields = {}

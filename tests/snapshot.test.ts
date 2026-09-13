@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
 import type { Spot } from "../force5/src/weather";
 
-describe.each(["latest", "harmonie"])(
+describe.each(["latest", "harmonie", "ecmwf"])(
   "downloaded real %s forecast snapshot",
   (name) => {
     it("all files match the manifest and all spot summaries match their wind grid", () => {
@@ -27,7 +27,10 @@ describe.each(["latest", "harmonie"])(
             if (wind[field] === null || summary[field] === null) {
               expect(wind[field]).toBeNull();
               expect(summary[field]).toBeNull();
-              expect(m.gustAvailable).toBe(false);
+              expect(
+                m.gustAvailable === false ||
+                  m.gustMissingHours?.includes(info.hour),
+              ).toBeTruthy();
               continue;
             }
             expect(Math.abs(wind[field] - summary[field])).toBeLessThanOrEqual(

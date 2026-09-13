@@ -1,4 +1,5 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
+import { forecastUrl } from "./urls";
 export type Units = "kn" | "m/s";
 export interface Grid {
   width: number;
@@ -27,6 +28,7 @@ export interface Frame extends WindArrays {
   hour: number;
   validTime: string;
   grid: Grid;
+  gustIntervalHours: [number, number] | null;
 }
 interface WindArrays {
   u: number[];
@@ -57,15 +59,19 @@ export interface Manifest {
   run: string;
   runTime: string;
   generatedAt: string;
-  resolutionKm: number;
+  resolutionKm: number | null;
+  resolutionLabel?: string;
   stepHours: number;
+  stepRanges?: { throughHour: number; stepHours: number }[];
   grid: Grid;
   frames: FrameInfo[];
   spotForecasts: Record<string, (Wind & { hour: number; validTime: string })[]>;
   sourceUrl: string;
   attribution: string;
   licenseUrl: string;
+  termsUrl?: string;
   gustAvailable?: boolean;
+  gustMissingHours?: number[];
   gustDescription?: string;
   modelDetail?: string;
   processing?: string;
@@ -177,6 +183,43 @@ export function validateManifest(m: Manifest): Manifest {
   )
     throw new Error("Invalid forecast manifest. Run npm run weather:refresh.");
   validateGrid(m.grid);
+  if (
+    m.gustMissingHours &&
+    (!Array.isArray(m.gustMissingHours) ||
+      m.gustMissingHours.length !== 1 ||
+      m.gustMissingHours[0] !== 0 ||
+      m.frames[0].hour !== 0)
+  )
+    throw new Error(
+      "Invalid missing gust hours; only initialization may be absent.",
+    );
+  if (m.stepRanges) {
+    let end = 0;
+    const hours = [0];
+    for (const range of m.stepRanges) {
+      if (
+        !Number.isInteger(range.stepHours) ||
+        range.stepHours <= 0 ||
+        !Number.isInteger(range.throughHour) ||
+        range.throughHour <= end ||
+        range.throughHour > 1000 ||
+        (range.throughHour - end) % range.stepHours !== 0
+      )
+        throw new Error("Forecast cadence is invalid.");
+      for (
+        let h = end + range.stepHours;
+        h <= range.throughHour;
+        h += range.stepHours
+      )
+        hours.push(h);
+      end = range.throughHour;
+    }
+    if (
+      hours.length !== m.frames.length ||
+      hours.some((h, i) => h !== m.frames[i].hour)
+    )
+      throw new Error("Forecast timeline does not match source cadence.");
+  }
   let previous = -1;
   for (const f of m.frames) {
     if (
@@ -189,7 +232,7 @@ export function validateManifest(m: Manifest): Manifest {
       f.url.includes("..")
     )
       throw new Error("Forecast timeline is invalid.");
-    if (m.gustAvailable === false) {
+    if (m.gustAvailable === false || m.gustMissingHours?.includes(f.hour)) {
       if (f.gustIntervalHours !== null)
         throw new Error("Unavailable gusts must not declare an interval.");
     } else if (
@@ -198,7 +241,8 @@ export function validateManifest(m: Manifest): Manifest {
       !f.gustIntervalHours.every(Number.isFinite) ||
       f.gustIntervalHours[0] < 0 ||
       f.gustIntervalHours[0] > f.gustIntervalHours[1] ||
-      f.gustIntervalHours[1] !== f.hour
+      f.gustIntervalHours[1] !== f.hour ||
+      (f.hour > 0 && f.gustIntervalHours[0] === f.gustIntervalHours[1])
     ) {
       throw new Error("Invalid gust forecast interval.");
     }
@@ -222,6 +266,11 @@ export function validateFrame(
       "Forecast file does not match the selected model run. Refresh the page.",
     );
   validateGrid(f.grid);
+  if (
+    JSON.stringify(f.gustIntervalHours) !==
+    JSON.stringify(info.gustIntervalHours)
+  )
+    throw new Error("Gust period does not match the selected forecast.");
   for (const key of [
     "width",
     "height",
@@ -236,7 +285,11 @@ export function validateFrame(
       throw new Error("Forecast grids do not match.");
   }
   for (const field of ["u", "v", "gust"] as const) {
-    if (field === "gust" && manifest.gustAvailable === false) {
+    if (
+      field === "gust" &&
+      (manifest.gustAvailable === false ||
+        manifest.gustMissingHours?.includes(info.hour))
+    ) {
       if (f.gust !== null)
         throw new Error("Unavailable gust data must be null.");
       continue;
@@ -260,7 +313,7 @@ const cache = new Map<string, Frame>();
 const pending = new Map<string, Promise<Frame>>();
 export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
   const info = manifest.frames[index],
-    url = `${import.meta.env.BASE_URL}${info.url}`;
+    url = forecastUrl(info.url);
   const found = cache.get(url);
   if (found) {
     cache.delete(url);

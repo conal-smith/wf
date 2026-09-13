@@ -1,12 +1,6 @@
 .force5-logo {
-  width: 100px;
-  height: 34px;
+  width: 42px;
+  height: 30px;
   object-fit: contain;
   flex-shrink: 0;
-}
-@media (max-width: 760px) {
-  .force5-logo {
-    width: 77px;
-    height: 30px;
-  }
 }

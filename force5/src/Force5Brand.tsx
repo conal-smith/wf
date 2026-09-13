@@ -4,12 +4,16 @@ import "./brand.css";
 /** Platform branding is separate from both the host site and weather provider. */
 export function Force5Brand() {
   return (
-    <img
+    <svg
       className="force5-logo"
-      src={logo}
-      alt="Force5"
-      width="100"
-      height="34"
-    />
+      role="img"
+      aria-label="Force5"
+      viewBox="90 150 580 400"
+      width="42"
+      height="30"
+    >
+      <title>Force5</title>
+      <image href={logo} width="2048" height="683" />
+    </svg>
   );
 }
