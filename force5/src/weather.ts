@@ -52,6 +52,8 @@ export interface Point {
   note?: string;
   kind?: "spot" | "operator" | "club" | "area";
   aliases?: string[];
+  website?: string;
+  sports?: string[];
   locationSources?: {
     name: string;
     url: string;
@@ -141,15 +143,21 @@ export function sample(frame: Frame, lon: number, lat: number): Wind | null {
 }
 
 export const PALETTE: [number, [number, number, number]][] = [
-  [0, [67, 105, 151]],
-  [8, [65, 142, 166]],
-  [14, [67, 174, 172]],
-  [20, [114, 185, 151]],
-  [26, [185, 201, 127]],
-  [32, [220, 197, 113]],
-  [40, [220, 155, 104]],
-  [50, [190, 108, 111]],
-  [65, [158, 107, 165]],
+  // Speed bands, not safety or ability ratings: blue, green 10–30 kn, warm/purple.
+  [0, [53, 88, 151]],
+  [5, [42, 118, 184]],
+  [9, [46, 151, 190]],
+  [10, [32, 158, 120]],
+  [15, [50, 167, 79]],
+  [20, [91, 180, 55]],
+  [25, [146, 193, 52]],
+  [30, [191, 204, 58]],
+  [35, [232, 190, 48]],
+  [40, [234, 134, 45]],
+  [45, [221, 78, 56]],
+  [50, [190, 51, 79]],
+  [60, [146, 61, 152]],
+  [65, [114, 66, 151]],
 ];
 export function windColor(knots: number): [number, number, number] {
   const k = Math.max(0, Math.min(65, knots));

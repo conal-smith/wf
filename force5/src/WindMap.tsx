@@ -4,6 +4,7 @@ import type { StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { coverageCamera } from "./camera";
+import SpotPopup from "./SpotPopup";
 import {
   KNOTS,
   sample,
@@ -48,7 +49,7 @@ function heatImage(frame: Frame): string {
       const wind = sample(frame, g.west + ((g.east - g.west) * x) / 511, lat);
       const offset = (y * 512 + x) * 4;
       const rgb = windColor(wind ? speed(wind) * KNOTS : 0);
-      image.data.set([...rgb, wind ? 210 : 0], offset);
+      image.data.set([...rgb, wind ? 255 : 0], offset);
     }
   }
   ctx.putImageData(image, 0, 0);
@@ -60,6 +61,8 @@ type Props = {
   spots: Spot[];
   selected: Point;
   selectionOpen?: boolean;
+  spotInfoOpen?: boolean;
+  onCloseSpotInfo?: () => void;
   bottomInset?: number;
   units: Units;
   onSelect: (point: Point) => void;
@@ -80,6 +83,8 @@ export default function WindMap({
   showSpots,
   reducedMotion,
   selectionOpen = false,
+  spotInfoOpen = false,
+  onCloseSpotInfo,
   bottomInset = 170,
 }: Props) {
   const container = useRef<HTMLDivElement>(null),
@@ -337,7 +342,7 @@ export default function WindMap({
           type: "raster",
           source: "wind",
           paint: {
-            "raster-opacity": 0.73,
+            "raster-opacity": 0.86,
             "raster-fade-duration": 0,
             "raster-resampling": "linear",
           },
@@ -609,6 +614,19 @@ export default function WindMap({
         aria-label="Interactive Ireland wind forecast map"
       />
       <canvas ref={overlay} className="particle-canvas" aria-hidden="true" />
+      {ready &&
+        mapRef.current &&
+        spotInfoOpen &&
+        showSpots &&
+        selected.id &&
+        onCloseSpotInfo && (
+          <SpotPopup
+            map={mapRef.current}
+            point={selected}
+            bottomInset={bottomInset}
+            onClose={onCloseSpotInfo}
+          />
+        )}
       {!ready && !error && (
         <div className="map-loading">
           <span className="spinner" /> Opening Ireland…

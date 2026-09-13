@@ -68,6 +68,90 @@
 .compact-layout .sea-label {
   display: none;
 }
+.compact-layout .spot-popout {
+  z-index: 6;
+  font-family: inherit;
+}
+.spot-popout .maplibregl-popup-content {
+  padding: 0;
+  border-radius: 16px;
+  background: #edf6f2f2;
+  border: 1px solid #ffffffc9;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 5px 24px #183f4a30;
+  overflow: hidden;
+}
+.spot-popout.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.spot-popout.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.spot-popout.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: #edf6f2f2;
+}
+.spot-popout.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.spot-popout.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.spot-popout.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: #edf6f2f2;
+}
+.spot-popout-card {
+  position: relative;
+  width: min(278px, calc(100vw - 32px));
+  max-height: min(270px, calc(100dvh - var(--dock-height) - 110px));
+  overflow-y: auto;
+  padding: 14px;
+  color: #244e5a;
+}
+.spot-popout-type {
+  padding-right: 26px;
+  color: #567680;
+  font-size: 10px;
+}
+.spot-popout-card h3 {
+  margin: 5px 22px 8px 0;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 650;
+}
+.spot-popout-card p {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.spot-popout-coordinates {
+  font-size: 10px;
+  color: #567680;
+}
+.spot-popout-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+.spot-popout-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #1b626a;
+}
+.spot-popout-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+.spot-popout-close:focus-visible {
+  outline: 2px solid #245f6b;
+  outline-offset: -3px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .spot-popout .maplibregl-popup-content {
+    background: #edf6f2;
+    backdrop-filter: none;
+  }
+}
 .compact-layout .spot-marker {
   min-width: 0;
   padding: 0;

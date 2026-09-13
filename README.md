@@ -16,7 +16,8 @@ Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric a
 Features:
 
 - Pan/zoom Ireland and the surrounding Atlantic.
-- Wind-speed colours, downwind particles and 52 selectable locations, with distinct spot, operator, club and area markers.
+- Stronger Force5 wind colours: cool blues below 10 knots, green through yellow-green from 10–30, then yellow, orange, red and purple. The map, hourly cells and scrubber share the scale; colours indicate speed, not safety or rider suitability.
+- Downwind particles and 25 selectable riding-place references. Clicking a spot opens a compact glass popout with coordinates, access caveats and source links.
 - Click anywhere inside the forecast domain for its modelled wind and gust.
 - HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
@@ -30,7 +31,7 @@ Features:
 - Real source information, stale/expired snapshot status, retryable frame errors.
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
 
-The [location directory](data/locations/README.md) merges 46 sourced records with the eight original spots (two duplicates merged). All 52 locations appear on the map and in search; new locations sample the forecast grids on demand. Source links and attribution are available in the map's information dialog. These are source-listed references, not verified launches.
+The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged). The public map and search show only 25 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
 
 ## Live forecast worker
 

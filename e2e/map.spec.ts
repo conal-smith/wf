@@ -24,7 +24,7 @@ test("map-first default has compact branding, collapsed search and a bottom-flus
     "aria-pressed",
     "true",
   );
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
@@ -97,7 +97,7 @@ test("scrubber wind colours follow the selected spot and arbitrary-point series"
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   const track = page.getByRole("slider", { name: "Forecast time" });
@@ -126,7 +126,7 @@ test("double-click zooms without selecting; single click picks a point", async (
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   const canvas = page.locator(".map-canvas canvas");
@@ -159,7 +159,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(52, {
+    await expect(page.locator(".spot-marker")).toHaveCount(25, {
       timeout: 30000,
     });
     const slider = page.getByRole("slider", { name: "Forecast time" });
@@ -210,7 +210,7 @@ test("switches real models, uses their own times and values, and clamps the shor
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await page.locator(".spot-marker").first().click();
@@ -282,7 +282,7 @@ test("failed or mislabelled model download leaves the old model and forecast int
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   const picker = page.locator(".model-options");
@@ -321,7 +321,7 @@ test("model frame failure and cancellation cannot relabel the displayed data", a
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   const picker = page.locator(".model-options");
@@ -367,7 +367,7 @@ test("mobile HARMONIE picker and sheet remain within the viewport", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
@@ -399,7 +399,7 @@ test("production map loads, follows forecast time, and agrees with the source va
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
@@ -467,7 +467,7 @@ test("mobile: search and inspect a spot in the bottom sheet without narrowing th
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await page.getByRole("button", { name: "Open spot search" }).click();
@@ -500,7 +500,7 @@ test("missing frame keeps the previous displayed time and offers a retry", async
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   const previous = await page
@@ -543,7 +543,7 @@ test("reduced motion disables particle animation and respects keyboard time cont
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await page.getByRole("button", { name: "Layers", exact: true }).click();
@@ -579,7 +579,7 @@ test("arbitrary point gets a complete source-backed forecast table, with keyboar
   page,
 }) => {
   await openIcon(page);
-  await expect(page.locator(".spot-marker")).toHaveCount(52, {
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
   await page
