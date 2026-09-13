@@ -13,6 +13,8 @@ playwright-report/
 !.env.example
 .codex/
 .multicode/
+.claude/settings.local.json
+.mcp.json
 public/weather/*/
 # Small real ECMWF acceptance snapshot; later generated runs stay ignored.
 !public/weather/ecmwf-2026091300-360h-v1/
