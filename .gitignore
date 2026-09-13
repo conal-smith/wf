@@ -14,4 +14,7 @@ playwright-report/
 .codex/
 .multicode/
 public/weather/*/
+# Small real ECMWF acceptance snapshot; later generated runs stay ignored.
+!public/weather/ecmwf-2026091300-360h-v1/
+!public/weather/ecmwf-2026091300-360h-v2/
 *.tsbuildinfo

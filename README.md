@@ -1,6 +1,6 @@
 # wingfoil.ie — Ireland wind explorer
 
-An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU** and **Met Éireann HARMONIE-AROME DINI control** forecasts. Floating glass controls keep the map central; selecting a spot or map point opens a bottom forecast sheet. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
+An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU**, **Met Éireann HARMONIE-AROME DINI control**, and **ECMWF IFS 15-day** forecasts. Floating glass controls keep the map central; a bottom forecast grid is visible immediately for Brandon Bay and updates when you select a spot or map point. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
 
 ## Run the website
 
@@ -11,21 +11,37 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6. The genuine saved snapshot is included in `public/weather`, so Python is not required just to view it. It covers 13–16 September 2026; refresh to obtain a newer available run.
+Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6. Real sample snapshots are included in `public/weather`: the regional forecasts cover 13–16 September 2026 and ECMWF extends to 28 September. Later generated run directories are git-ignored. Refresh to obtain a newer available run.
 
 Features:
 
 - Pan/zoom Ireland and the surrounding Atlantic.
 - Wind-speed colours, downwind particles and eight selectable coastal spots.
 - Click anywhere inside the forecast domain for its modelled wind and gust.
-- Switch weather model in the Force5 control at the top right: ICON-EU (6.5 km, 72 hours) or HARMONIE (2 km, 60 hours), both at three-hour steps in the bundled snapshots.
+- HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
-- Bottom forecast sheet with horizontally scrollable wind, gust and direction rows.
-- County/name search in a floating popover; point selection keeps the selected location above the sheet.
+- **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
+- Edge-to-edge, bottom-flush forecast grid open on arrival: day-grouped time columns and aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
+- The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
+- Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
+- Small standalone Force5 branding; coastline outlines and a soft shadow above the wind layer add depth to the land.
 - Knots/metres per second and independent display controls.
 - Irish local time with explicit model initialization in UTC.
 - Real source information, stale/expired snapshot status, retryable frame errors.
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
+
+See [Irish spot-source research](docs/IRISH_SPOTS_SOURCES.md) for the proposed licensed, curated expansion beyond the eight current spots. Candidate beaches and operators have not yet been imported or verified as launches.
+
+## Live forecast worker
+
+See the [live forecast pipeline runbook](docs/LIVE_FORECAST_PIPELINE.md) for container build/run instructions, scheduled ECS tasks, safe S3 publishing, CDN caching, IAM, monitoring and remaining launch checks.
+
+```sh
+docker build -f force5/Dockerfile -t force5-forecast:local .
+docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
+```
+
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -57,6 +73,22 @@ The importer:
 7. Atomically replaces `public/weather/latest.json` only after all requested frames pass validation.
 
 Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the current cropped JSON snapshot is roughly 22 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+
+### ECMWF 15-day refresh
+
+```sh
+.venv/bin/pip install -r force5/ingest/requirements-worker.txt
+npm run weather:refresh:ecmwf
+.venv/bin/python force5/ingest/worker.py --models ecmwf --publish-only
+```
+
+Downloads the latest available full-length 00/12 UTC IFS control forecast from
+the public AWS mirror using ECMWF's client, with no API key. Publishes 85 validated
+frames through +360h, preserving source 3/6-hour sampling. The worker supports
+`--models harmonie icon-eu ecmwf`; its `--step` option does not override ECMWF's
+source cadence. See [ECMWF's catalogue](https://www.ecmwf.int/en/forecasts/datasets/open-data)
+and [the live-operation guide](docs/LIVE_FORECAST_PIPELINE.md) for deployment,
+attribution and refresh scheduling. Local verification does not deploy an AWS job.
 
 ### HARMONIE refresh
 
@@ -119,9 +151,11 @@ Serve `dist/` through any static web host after building. No secrets or account 
 ```text
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
+force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 public/spots.json           Named locations and concise local context
 public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
+public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
@@ -131,7 +165,7 @@ src/ForecastSheet.tsx      Bottom forecast table for named and arbitrary points
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
-All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero.
+All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
@@ -160,4 +194,4 @@ showing values progressively and offering retry on failure. This can transfer th
 whole ~22 MB snapshot; a production point-series endpoint is a future bandwidth
 optimisation. Named spots use the small precomputed manifest series.
 
-Schedule both importers in a container, put immutable frames in object storage behind a CDN, publish each model's manifest last, and monitor run age/download failures. Preserve older files long enough for open browser sessions. Add retention and a single-run lock before unattended operation. Validate HARMONIE gust semantics, expand regional coverage if needed, and add a global model. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.
+Deploy the prepared container worker and S3 publisher using the live runbook, then monitor run age/download failures for all three models. Local locking and conditional S3 pointer writes are implemented; production scheduling, monitoring and safe retention still need configuring. Preserve older files long enough for open browser sessions. Validate HARMONIE gust semantics before enabling them, and consider ensemble uncertainty. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.

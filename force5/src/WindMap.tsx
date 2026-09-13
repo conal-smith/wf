@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { Crosshair, Minus, Plus, RotateCcw } from "lucide-react";
+import { Minus, Plus, RotateCcw } from "lucide-react";
+import { coverageCamera } from "./camera";
 import {
   KNOTS,
   sample,
@@ -96,10 +97,13 @@ export default function WindMap({
     [error, setError] = useState("");
   const markers = useRef<maplibregl.Marker[]>([]);
   const pickMarker = useRef<maplibregl.Marker | null>(null);
+  const fitted = useRef(false);
 
   useEffect(() => {
     if (!container.current) return;
     let map: maplibregl.Map;
+    let pointClick: number | undefined;
+    const cancelPointClick = () => window.clearTimeout(pointClick);
     try {
       map = new maplibregl.Map({
         container: container.current,
@@ -115,7 +119,9 @@ export default function WindMap({
         pitchWithRotate: false,
         dragRotate: false,
         touchPitch: false,
-        attributionControl: { compact: true },
+        doubleClickZoom: true,
+        // The host renders the required linked credits beside the map controls.
+        attributionControl: false,
         canvasContextAttributes: { antialias: true },
       });
     } catch {
@@ -189,7 +195,32 @@ export default function WindMap({
         },
       });
       const water = style.layers.find((layer) => layer.id === "water");
-      if (water && water.type === "fill")
+      if (water && water.type === "fill") {
+        // Draw above the weather raster: a blurred, offset coast gives land
+        // depth without tinting or obscuring the forecast values inland.
+        map.addLayer(
+          {
+            id: "coast-shadow",
+            type: "line",
+            source: water.source,
+            "source-layer": water["source-layer"],
+            // OpenMapTiles distinguishes ocean from inland water. Keep lake
+            // detail crisp instead of accumulating shadows around tiny islands.
+            filter: import.meta.env.VITE_BASEMAP_STYLE_URL
+              ? water.filter
+              : ["==", "class", "ocean"],
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "#18383f",
+              "line-width": 4,
+              "line-blur": 2,
+              "line-opacity": 0.1,
+              "line-translate": [1, 2],
+              "line-translate-anchor": "viewport",
+            },
+          },
+          "town-labels",
+        );
         map.addLayer(
           {
             id: "coast-outline",
@@ -197,21 +228,16 @@ export default function WindMap({
             source: water.source,
             "source-layer": water["source-layer"],
             filter: water.filter,
+            layout: { "line-join": "round" },
             paint: {
-              "line-color": "#3b655e",
-              "line-width": 0.8,
-              "line-opacity": 0.5,
+              "line-color": "#24464c",
+              "line-width": 0.9,
+              "line-opacity": 0.65,
             },
           },
           "town-labels",
         );
-      map.fitBounds(
-        [
-          [-10.9, 51.3],
-          [-5.4, 55.5],
-        ],
-        { padding: { top: 75, bottom: 170, left: 55, right: 55 }, duration: 0 },
-      );
+      }
       setReady(true);
     });
     map.on("error", (event) => {
@@ -222,6 +248,8 @@ export default function WindMap({
         );
     });
     map.on("click", (event) => {
+      cancelPointClick();
+      if (event.originalEvent.detail > 1) return;
       const g = latest.current.frame?.grid;
       if (
         g &&
@@ -230,22 +258,55 @@ export default function WindMap({
         event.lngLat.lat >= g.south &&
         event.lngLat.lat <= g.north
       )
-        latest.current.onSelect({
-          name: "Selected location",
-          lat: event.lngLat.lat,
-          lon: event.lngLat.lng,
-        });
+        // Wait briefly for a second click; MapLibre handles double-click zoom.
+        pointClick = window.setTimeout(
+          () =>
+            latest.current.onSelect({
+              name: "Selected location",
+              lat: event.lngLat.lat,
+              lon: event.lngLat.lng,
+            }),
+          350,
+        );
     });
+    map.on("dblclick", cancelPointClick);
+    map.on("movestart", cancelPointClick);
     const resize = new ResizeObserver(() => map.resize());
     resize.observe(container.current);
     return () => {
       clearTimeout(loadTimeout);
+      cancelPointClick();
       resize.disconnect();
       setReady(false);
       map.remove();
       mapRef.current = null;
+      fitted.current = false;
     };
   }, []);
+
+  const fitCoverage = (duration = 0) => {
+    const map = mapRef.current;
+    if (!map || !frame) return;
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    const grid =
+      frame.model === "harmonie"
+        ? frame.grid
+        : { west: -10.9, east: -5.1, south: 51, north: 55.7 };
+    map.easeTo({
+      ...coverageCamera(grid, width, height, bottomInset, [
+        selected.lon,
+        selected.lat,
+      ]),
+      padding: 0,
+      duration,
+    });
+  };
+
+  useEffect(() => {
+    if (!ready || !frame || fitted.current) return;
+    fitted.current = true;
+    fitCoverage();
+  }, [ready, frame, bottomInset]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -278,7 +339,7 @@ export default function WindMap({
             "raster-resampling": "linear",
           },
         },
-        map.getLayer("coast-outline") ? "coast-outline" : "town-labels",
+        map.getLayer("coast-shadow") ? "coast-shadow" : "town-labels",
       );
     }
     map.setLayoutProperty(
@@ -475,25 +536,32 @@ export default function WindMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !selectionOpen) return;
+    if (!map || !ready || !frame || !selectionOpen) return;
     const position = map.project([selected.lon, selected.lat]);
     const { clientWidth: width, clientHeight: height } = map.getContainer();
     // Keep a picked location above the sheet without changing the user's zoom.
     if (
-      position.x < 55 ||
-      position.x > width - 65 ||
-      position.y < 140 ||
+      position.x < 20 ||
+      position.x > width - 50 ||
+      position.y < 60 ||
       position.y > height - bottomInset - 25
     ) {
       map.easeTo({
-        center: [selected.lon, selected.lat],
+        ...coverageCamera(
+          frame.grid,
+          width,
+          height,
+          bottomInset,
+          [selected.lon, selected.lat],
+          map.getZoom(),
+        ),
         padding: 0,
-        offset: [0, (140 - bottomInset) / 2],
         duration: reducedMotion ? 0 : 350,
       });
     }
   }, [
     ready,
+    frame?.model,
     selected.lon,
     selected.lat,
     selectionOpen,
@@ -501,17 +569,7 @@ export default function WindMap({
     reducedMotion,
   ]);
 
-  const reset = () =>
-    mapRef.current?.fitBounds(
-      [
-        [-10.9, 51.3],
-        [-5.4, 55.5],
-      ],
-      {
-        padding: { top: 75, bottom: 170, left: 55, right: 55 },
-        duration: reducedMotion ? 0 : 750,
-      },
-    );
+  const reset = () => fitCoverage(reducedMotion ? 0 : 750);
   return (
     <>
       <div
@@ -549,23 +607,10 @@ export default function WindMap({
         </button>
         <button
           aria-label="Reset Ireland view"
-          title="Show all Ireland"
+          title="Reset forecast view"
           onClick={reset}
         >
           <RotateCcw size={17} />
-        </button>
-        <button
-          aria-label="Centre on selected spot"
-          title="Centre on selected spot"
-          onClick={() =>
-            mapRef.current?.flyTo({
-              center: [selected.lon, selected.lat],
-              zoom: 8,
-              duration: reducedMotion ? 0 : 800,
-            })
-          }
-        >
-          <Crosshair size={18} />
         </button>
       </div>
       <span className="sea-label" aria-hidden="true">

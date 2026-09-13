@@ -15,7 +15,8 @@
     "format": "prettier --write src tests e2e *.ts *.md index.html package.json",
     "test:weather": ".venv/bin/python -m unittest discover -s force5/ingest -p 'test_*.py'",
     "weather:refresh": ".venv/bin/python force5/ingest/fetch_forecast.py",
-    "weather:refresh:harmonie": ".venv/bin/python force5/ingest/fetch_harmonie.py"
+    "weather:refresh:harmonie": ".venv/bin/python force5/ingest/fetch_harmonie.py",
+    "weather:refresh:ecmwf": ".venv/bin/python force5/ingest/fetch_ecmwf.py"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

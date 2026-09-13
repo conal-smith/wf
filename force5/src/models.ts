@@ -1,8 +1,25 @@
 import { loadFrame, nearestFrame, validateManifest } from "./weather";
+import { forecastUrl } from "./urls";
 
 export const MODELS = [
-  { id: "icon-eu", name: "ICON-EU", manifestUrl: "weather/latest.json" },
-  { id: "harmonie", name: "HARMONIE", manifestUrl: "weather/harmonie.json" },
+  {
+    id: "harmonie",
+    name: "HARMONIE",
+    detail: "2 km",
+    manifestUrl: "weather/harmonie.json",
+  },
+  {
+    id: "icon-eu",
+    name: "ICON-EU",
+    detail: "6.5 km",
+    manifestUrl: "weather/latest.json",
+  },
+  {
+    id: "ecmwf",
+    name: "ECMWF",
+    detail: "15 days",
+    manifestUrl: "weather/ecmwf.json",
+  },
 ] as const;
 export type ModelId = (typeof MODELS)[number]["id"];
 
@@ -13,13 +30,10 @@ export async function loadModel(
   signal: AbortSignal,
 ) {
   const model = MODELS.find((m) => m.id === id)!;
-  const response = await fetch(
-    `${import.meta.env.BASE_URL}${model.manifestUrl}`,
-    {
-      cache: "no-cache",
-      signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
-    },
-  );
+  const response = await fetch(forecastUrl(model.manifestUrl), {
+    cache: "no-cache",
+    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+  });
   if (!response.ok)
     throw new Error(
       `${model.name} forecast is unavailable. Your previous model is still shown.`,

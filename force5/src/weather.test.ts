@@ -32,6 +32,7 @@ const frame: Frame = {
   u: [0, 10, 20, 30],
   v: [2, 4, 6, 8],
   gust: [4, 12, 23, 35],
+  gustIntervalHours: [0, 0],
 };
 const manifest = {
   schemaVersion: 1,
@@ -89,10 +90,46 @@ describe("wind conventions", () => {
   });
 });
 describe("forecast integrity and freshness", () => {
+  it("allows explicitly missing initialization gusts but never hides a missing later field", () => {
+    const m = {
+      ...manifest,
+      gustAvailable: true,
+      gustMissingHours: [0],
+      frames: manifest.frames.map((f, i) =>
+        i === 0 ? { ...f, gustIntervalHours: null } : f,
+      ),
+    };
+    expect(validateManifest(m)).toBe(m);
+    expect(
+      validateFrame(
+        { ...frame, gust: null, gustIntervalHours: null },
+        m,
+        m.frames[0],
+      ).gust,
+    ).toBeNull();
+    expect(() =>
+      validateFrame(
+        { ...frame, gust: null, hour: 3, validTime: m.frames[1].validTime },
+        m,
+        m.frames[1],
+      ),
+    ).toThrow();
+    expect(() =>
+      validateManifest({ ...m, gustMissingHours: [0, 3] }),
+    ).toThrow();
+    expect(() =>
+      validateManifest({ ...m, gustMissingHours: undefined }),
+    ).toThrow();
+  });
   it("keeps missing gusts null only when explicitly declared unavailable", () => {
-    const missing = { ...frame, gust: null };
+    const missing = { ...frame, gust: null, gustIntervalHours: null };
     const noGusts = { ...manifest, gustAvailable: false };
-    expect(validateFrame(missing, noGusts, manifest.frames[0])).toBe(missing);
+    expect(
+      validateFrame(missing, noGusts, {
+        ...manifest.frames[0],
+        gustIntervalHours: null,
+      }),
+    ).toBe(missing);
     expect(sample(missing, -9.5, 53.5)).toEqual({ u: 15, v: 5, gust: null });
     expect(() =>
       validateFrame(missing, manifest, manifest.frames[0]),
@@ -101,6 +138,15 @@ describe("forecast integrity and freshness", () => {
   it("accepts a matching grid and run", () => {
     expect(validateManifest(manifest)).toBe(manifest);
     expect(validateFrame(frame, manifest, manifest.frames[0])).toBe(frame);
+  });
+  it("rejects a gust field whose period differs from the manifest", () => {
+    expect(() =>
+      validateFrame(
+        { ...frame, gustIntervalHours: [0, 3] },
+        manifest,
+        manifest.frames[0],
+      ),
+    ).toThrow(/Gust period/);
   });
   it("rejects mixed runs and invalid grid values", () => {
     expect(() =>
