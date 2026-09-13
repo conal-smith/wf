@@ -69,6 +69,8 @@
   display: none;
 }
 .compact-layout .spot-marker {
+  min-width: 0;
+  padding: 0;
   width: 30px;
   height: 30px;
   font-size: 11px;
@@ -77,6 +79,27 @@
 .compact-layout .spot-marker.active {
   width: 34px;
   height: 34px;
+}
+.compact-layout .spot-marker[data-kind="operator"],
+.compact-layout .spot-marker[data-kind="club"],
+.compact-layout .spot-marker[data-kind="area"] {
+  width: 23px;
+  height: 23px;
+  font-size: 15px;
+  background: #eef6eff2;
+  color: #245f6b;
+}
+.compact-layout .spot-marker[data-kind="operator"] {
+  border-radius: 6px;
+}
+.compact-layout .spot-marker[data-kind="area"] {
+  border-style: dashed;
+  background: #edf6efba;
+}
+.compact-layout .spot-marker.active {
+  z-index: 5;
+  background: #245f6b;
+  color: white;
 }
 .compact-layout .frame-status {
   top: 62px;

@@ -35,7 +35,7 @@ interface WindArrays {
   v: number[];
   gust: number[] | null;
 }
-export interface Spot {
+export interface Spot extends Point {
   id: string;
   name: string;
   county: string;
@@ -50,6 +50,15 @@ export interface Point {
   lon: number;
   id?: string;
   note?: string;
+  kind?: "spot" | "operator" | "club" | "area";
+  aliases?: string[];
+  locationSources?: {
+    name: string;
+    url: string;
+    licence: string;
+    lat: number;
+    lon: number;
+  }[];
 }
 export interface Manifest {
   schemaVersion: number;

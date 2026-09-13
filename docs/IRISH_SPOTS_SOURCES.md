@@ -1,6 +1,6 @@
 # Irish wind-sport spot sources
 
-Research date: 13 September 2026. **Collection update:** 46 sourced coordinate records have now been saved in [data/locations](../data/locations/README.md), including a spreadsheet-ready CSV. Fáilte Ireland data has been downloaded and filtered; individual web/OSM locations have been recorded. These have not yet been imported into the website, and no third-party contact has been performed. The records are not verified or assessed as safe launches.
+Research date: 13 September 2026. **Collection update:** 46 sourced coordinate records have now been saved in [data/locations](../data/locations/README.md), including a spreadsheet-ready CSV. Fáilte Ireland data has been downloaded and filtered; individual web/OSM locations have been recorded. The website now merges these with the original eight spots into 52 distinct map/search entries, preserving location types and provenance. No third-party contact has been performed. The records are not verified or assessed as safe launches.
 
 ## Best starting point: Fáilte Ireland open data
 

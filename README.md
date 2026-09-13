@@ -16,7 +16,7 @@ Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric a
 Features:
 
 - Pan/zoom Ireland and the surrounding Atlantic.
-- Wind-speed colours, downwind particles and eight selectable coastal spots.
+- Wind-speed colours, downwind particles and 52 selectable locations, with distinct spot, operator, club and area markers.
 - Click anywhere inside the forecast domain for its modelled wind and gust.
 - HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
@@ -30,7 +30,7 @@ Features:
 - Real source information, stale/expired snapshot status, retryable frame errors.
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
 
-See [Irish spot-source research](docs/IRISH_SPOTS_SOURCES.md) for the proposed licensed, curated expansion beyond the eight current spots. Candidate beaches and operators have not yet been imported or verified as launches.
+The [location directory](data/locations/README.md) merges 46 sourced records with the eight original spots (two duplicates merged). All 52 locations appear on the map and in search; new locations sample the forecast grids on demand. Source links and attribution are available in the map's information dialog. These are source-listed references, not verified launches.
 
 ## Live forecast worker
 
@@ -152,7 +152,9 @@ Serve `dist/` through any static web host after building. No secrets or account 
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
-public/spots.json           Named locations and concise local context
+public/spots.json           Original eight precomputed forecast locations
+data/locations/             Sourced location records and spreadsheet export
+src/locations.ts            Map/search merge, aliases and provenance
 public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
@@ -192,6 +194,6 @@ tool settings, environment files, dependencies and build outputs are not committ
 Arbitrary-point forecast sheets load all forecast times with two concurrent requests,
 showing values progressively and offering retry on failure. This can transfer the
 whole ~22 MB snapshot; a production point-series endpoint is a future bandwidth
-optimisation. Named spots use the small precomputed manifest series.
+optimisation. The original eight spots use the small precomputed manifest series; additional directory locations sample the frame grids like arbitrary map points.
 
 Deploy the prepared container worker and S3 publisher using the live runbook, then monitor run age/download failures for all three models. Local locking and conditional S3 pointer writes are implemented; production scheduling, monitoring and safe retention still need configuring. Preserve older files long enough for open browser sessions. Validate HARMONIE gust semantics before enabling them, and consider ensemble uncertainty. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.

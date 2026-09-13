@@ -98,6 +98,9 @@ export default function WindMap({
   const markers = useRef<maplibregl.Marker[]>([]);
   const pickMarker = useRef<maplibregl.Marker | null>(null);
   const fitted = useRef(false);
+  const lastLocatedPoint = useRef(
+    `${selected.id}/${selected.lon}/${selected.lat}`,
+  );
 
   useEffect(() => {
     if (!container.current) return;
@@ -359,14 +362,20 @@ export default function WindMap({
       const button = document.createElement("button");
       const wind = frame ? sample(frame, spot.lon, spot.lat) : null;
       button.className = `spot-marker ${selected.id === spot.id ? "active" : ""}`;
+      button.dataset.spotId = spot.id;
+      button.dataset.kind = spot.kind || "spot";
       button.setAttribute(
         "aria-label",
         `${spot.name}${wind ? `, ${Math.round(convert(speed(wind), units))} ${units}` : ""}`,
       );
-      button.textContent = wind
-        ? `${Math.round(convert(speed(wind), units))}`
-        : "•";
-      button.title = spot.name;
+      const symbol = { operator: "⌂", club: "⚑", area: "◇" }[
+        spot.kind as "operator" | "club" | "area"
+      ];
+      button.textContent =
+        symbol || (wind ? `${Math.round(convert(speed(wind), units))}` : "•");
+      button.title = `${spot.name}${spot.kind && spot.kind !== "spot" ? ` · ${spot.kind}` : ""}${wind ? ` · ${Math.round(convert(speed(wind), units))} ${units}` : ""}`;
+      if (spot.kind && spot.kind !== "spot")
+        button.setAttribute("aria-label", button.title);
       button.onclick = (event) => {
         event.stopPropagation();
         latest.current.onSelect(spot);
@@ -382,6 +391,27 @@ export default function WindMap({
       markers.current = [];
     };
   }, [ready, spots, frame, selected, units, showSpots]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !selected.id) return;
+    const key = `${selected.id}/${selected.lon}/${selected.lat}`;
+    if (key === lastLocatedPoint.current) return;
+    lastLocatedPoint.current = key;
+    const p = map.project([selected.lon, selected.lat]);
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    if (
+      p.x < 40 ||
+      p.x > width - 40 ||
+      p.y < 60 ||
+      p.y > height - bottomInset - 50
+    )
+      map.easeTo({
+        center: [selected.lon, selected.lat],
+        offset: [0, -bottomInset / 2],
+        duration: reducedMotion ? 0 : 350,
+      });
+  }, [selected.id, selected.lon, selected.lat, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
