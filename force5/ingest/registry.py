@@ -17,6 +17,8 @@ MODELS = {
                   "kind": "wind", "maxAgeHours": 24},
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12},
+    "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
+                     "kind": "wind", "maxAgeHours": 12},
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
               "kind": "tide", "maxAgeHours": 30},
 }
