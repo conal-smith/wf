@@ -483,6 +483,41 @@ gust is manufactured. The perturbed `enIoI` files _do_ carry scalar
 `max_i10fg` (parameter 22, a one-hour maximum), and so does `mbr000` on opendata2 —
 either is the route to real HARMONIE gusts once a usable member source exists.
 
+### Backfilling spot series
+
+A snapshot published before a riding location existed has no series for it, and the
+blend and candle views are unavailable wherever a series is missing. Re-downloading
+an old run is not possible — providers rotate them within hours — but every frame is
+bundled, and the adapters derive each series from nothing but the frame grids and
+`sample()`, so the missing series can be recomputed exactly:
+
+```sh
+.venv/bin/python force5/ingest/backfill_spots.py --all --check   # report, write nothing
+.venv/bin/python force5/ingest/backfill_spots.py harmonie icon-eu ecmwf gfs
+```
+
+Only `spotForecasts` (wind) or `spotSeries` (wave) is rewritten, atomically and in
+place: the frames are untouched, so no content hash moves, and the manifest keeps its
+key order and its `generatedAt`. Series that are already published are recomputed as
+a check and then kept byte-for-byte; a disagreement beyond 0.005 m/s means the frames
+and the manifest describe different data, so the run aborts without writing rather
+than papering over a corrupt bundle. Gust rules are taken from the manifest, not
+guessed: `gustAvailable: false` or an hour in `gustMissingHours` is `null` for every
+spot, and a frame that carries a gust the manifest calls unavailable is a fault. A
+spot outside the grid samples to `null`, as ECMWF and GFS publish it.
+
+Ensemble manifests are refused, because `spotMembers` holds per-member values while
+the bundled frames are only the ensemble mean. Wave bundles are recomputed the same
+way when they publish frames for every declared variable; SWAN publishes no frames
+and is skipped with a message, as is any bundle whose `frameVariables` narrows the
+frames or whose `spotCoverage` lacks a location, since that flag comes from the
+native land mask rather than the published grid.
+
+The bundled runs' horizons have passed, so `worker.py --publish-only` refuses them:
+`--max-age-hours` caps a run's **age**, not its horizon. ECMWF and GFS still validate
+through the worker; for HARMONIE and ICON-EU call
+`validate_bundle(public, model, now=<a time inside the run>)` directly.
+
 ## Verify / build
 
 ```sh
@@ -514,6 +549,7 @@ force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding locat
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
 force5/ingest/fetch_mi_swan.py Marine Institute Irish Shelf SWAN wave series per riding location
+force5/ingest/backfill_spots.py Recomputes a published manifest's spot series from its own frames
 force5/ingest/scheduler.py  Per-model cadences for the local deployment, one job at a time
 force5/ingest/prune.py      Retention: unreferenced aged objects and raw cache
 force5/ingest/status.py     Freshness report for every published manifest
@@ -556,7 +592,9 @@ All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies
 printed warning when it is absent. Regenerate it with `npm run spots:export` after
 changing `src/locations.ts` or `data/locations/`; the original eight ids and
 coordinates are asserted unchanged, because bundled snapshots refer to those points.
-Bundled snapshots predate the change and still carry only the original eight.
+The bundled snapshots predate the change and were published with only the original
+eight; their remaining series were recomputed from their own frames by
+`force5/ingest/backfill_spots.py`, so every bundled manifest now carries all 25.
 
 ### Optional manifest fields
 
