@@ -12,6 +12,7 @@ import {
 } from "../force5/src/weather";
 import {
   agreementLabel,
+  areaPath,
   axisTicks,
   bandPath,
   linePath,
@@ -19,6 +20,15 @@ import {
   valueScale,
   windGradientStops,
 } from "./chart";
+
+/**
+ * The wave band's own value axis, in metres. Waves do not belong on the wind
+ * scale, so the band gets a fixed nought-to-six-metre domain of its own — six
+ * metres is a storm sea on this coast — and a fixed slice of the plot's foot.
+ * It is drawn inside the existing plot box, so it costs the dock no height.
+ */
+const WAVE_BAND_MAX_M = 6;
+const WAVE_BAND_HEIGHT = 18;
 
 export interface BlendChartProps {
   width: number;
@@ -33,6 +43,11 @@ export interface BlendChartProps {
   units: Units;
   /** Top of the value axis, in display units. */
   max: number;
+  /**
+   * Significant wave height in metres per column for the optional band along
+   * the chart's foot, or null when the reader has it switched off.
+   */
+  waves?: readonly (number | null)[] | null;
   reducedMotion: boolean;
 }
 
@@ -50,6 +65,7 @@ export default function BlendChart({
   nights,
   units,
   max,
+  waves,
   reducedMotion,
 }: BlendChartProps) {
   // React's generated ids carry colons, which cannot appear in an SVG url().
@@ -111,6 +127,23 @@ export default function BlendChart({
     return [{ key: index, x: left, width: right - left }];
   });
 
+  // The band only earns its place if the plot is tall enough to give it a foot
+  // without eating into the wind band; a shorter chart simply goes without.
+  const waveBand =
+    waves &&
+    waves.some((value) => value !== null) &&
+    height > 3 * WAVE_BAND_HEIGHT
+      ? areaPath(
+          centres,
+          waves,
+          (metres: number) =>
+            height -
+            Math.max(0, Math.min(1, metres / WAVE_BAND_MAX_M)) *
+              WAVE_BAND_HEIGHT,
+          height,
+        )
+      : null;
+
   const nowX = timeToX(frames, Date.now(), centres);
   const hovered = hover === null ? null : stats[hover.index];
   const hoverModels =
@@ -163,7 +196,11 @@ export default function BlendChart({
           Math.min(...minimum.filter((v): v is number => v !== null), max),
         )} and ${Math.round(
           Math.max(...maximum.filter((v): v is number => v !== null), 0),
-        )} ${unitLabel(units)} across ${lines.length} model lines. The table view lists every value.`}
+        )} ${unitLabel(units)} across ${lines.length} model lines.${
+          waveBand
+            ? ` A band along the foot shows wave height up to ${WAVE_BAND_MAX_M} metres; the Waves row prints it.`
+            : ""
+        } The table view lists every value.`}
         onPointerMove={(event) => {
           if (event.pointerType === "touch") return;
           const box = event.currentTarget.getBoundingClientRect();
@@ -228,6 +265,9 @@ export default function BlendChart({
               y2={y(tick)}
             />
           ))}
+          {/* Behind the wind blend and along its foot: waves share the time
+              axis only, and the Waves row prints the numbers. */}
+          {waveBand && <path className="wave-band" d={waveBand} />}
           {/* Multiply so the core darkens exactly where the models agree. */}
           <g style={{ mixBlendMode: "multiply" }}>
             <path

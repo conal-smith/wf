@@ -279,7 +279,8 @@
   height: 24px;
   padding: 0 4px;
 }
-.compact-layout .forecast-table .tide-row th:first-child {
+.compact-layout .forecast-table .tide-row th:first-child,
+.compact-layout .forecast-table .wave-row th:first-child {
   height: 28px;
 }
 .forecast-table .blend-row td,
@@ -288,8 +289,30 @@
   padding: 1px 8px;
   font-size: 11px;
 }
-.forecast-table .tide-row td {
+.forecast-table .tide-row td,
+.forecast-table .wave-row td {
   height: 28px;
+}
+/* Arrow, height and period on one line: the row's whole budget is 28px, and a
+   wrapped period would take a second one. */
+.wave-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.wave-cell b {
+  font-weight: 600;
+  color: #1e4a57;
+}
+.wave-cell small {
+  font-size: 9px;
+  color: #6a8b94;
+}
+.wave-arrow {
+  flex: none;
+  color: #2a76b8; /* --sem-color-wind-k05, the chart's low-wind blue */
+  opacity: 0.85;
 }
 .row-label {
   /* Block-level: an inline-flex button in a table cell drags a line box,
@@ -350,6 +373,15 @@
   stroke: #2b7f95;
   stroke-opacity: 0.22;
   stroke-width: 1.2;
+}
+/* The chart's wave band: --sem-color-wind-k05, faint enough to sit under the
+   wind blend without competing with it for the value axis. */
+.wave-band {
+  fill: #2a76b8;
+  fill-opacity: 0.16;
+  stroke: #2a76b8;
+  stroke-opacity: 0.4;
+  stroke-width: 1;
 }
 
 /* ---------- hover card ---------- */
@@ -644,7 +676,9 @@
     height: 22px;
   }
   .forecast-table .tide-row td,
-  .compact-layout .forecast-table .tide-row th:first-child {
+  .forecast-table .wave-row td,
+  .compact-layout .forecast-table .tide-row th:first-child,
+  .compact-layout .forecast-table .wave-row th:first-child {
     height: 24px;
   }
   .compact-layout .forecast-table .blend-row th:first-child,
