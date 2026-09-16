@@ -21,6 +21,10 @@ public/weather/*/
 !public/weather/ecmwf-2026091300-360h-v2/
 # Small real GFS acceptance snapshot (2026-09-16 12 UTC, 120 h at 3-hour steps).
 !public/weather/gfs-2026091612-120h-v1/
+# Small real GFS-Wave acceptance snapshot (2026-09-16 18 UTC, 9 h at 3-hour steps).
+# Wave frames carry nine variables over 121 × 101 cells, so a longer bundled run
+# would be tens of megabytes; generate one locally for real use.
+!public/weather/gfs-wave-2026091618-9h-v1/
 # Generated tide predictions; nothing marine is bundled yet.
 public/marine/
 # Generated wave forecast; no wave snapshot is bundled with the site.
