@@ -2,3 +2,4 @@ eccodes>=2.40,<3
 numpy>=1.24,<3
 pyproj>=3.6,<4
 ecmwf-opendata>=0.3.34,<0.4
+requests>=2.31,<3
