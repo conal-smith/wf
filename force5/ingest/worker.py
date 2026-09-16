@@ -11,8 +11,7 @@ import sys
 import time
 
 from publish_s3 import publish, validate_bundle
-
-SCRIPTS = {"harmonie": "fetch_harmonie.py", "icon-eu": "fetch_forecast.py", "ecmwf": "fetch_ecmwf.py"}
+from registry import MODELS
 
 
 @contextmanager
@@ -26,7 +25,7 @@ def workspace_lock(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", nargs="+", choices=list(SCRIPTS), default=["harmonie"])
+    parser.add_argument("--models", nargs="+", choices=list(MODELS), default=["harmonie"])
     parser.add_argument("--step", type=int, choices=[1, 3], default=1,
                         help="HARMONIE/ICON cadence; ECMWF always uses native 3/6-hour steps")
     parser.add_argument("--run", help="Optional available run; normally discover automatically")
@@ -35,7 +34,8 @@ def main():
     parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET"), help="Omit for local-only output")
     parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
-    parser.add_argument("--max-age-hours", type=float, help="Default: 24 for ECMWF, 12 for other models")
+    parser.add_argument("--max-age-hours", type=float,
+                        help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:
@@ -61,19 +61,21 @@ def run_models(args, root, s3):
         started = time.monotonic()
         try:
             if not args.publish_only:
-                command = [sys.executable, str(Path(__file__).with_name(SCRIPTS[model]))]
-                if model != "ecmwf":
-                    command += ["--step", str(args.step)]
-                else:
+                command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
+                if model == "ecmwf":
                     command += ["--source", args.ecmwf_source]
-                if args.run:
+                elif MODELS[model]["kind"] == "wind":
+                    command += ["--step", str(args.step)]
+                if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
                 subprocess.run(command, check=True, timeout=args.timeout_seconds)
-            max_age = args.max_age_hours if args.max_age_hours is not None else (24 if model == "ecmwf" else 12)
-            manifest, _, _ = validate_bundle(root / "public", model, max_age)
+            max_age = args.max_age_hours if args.max_age_hours is not None else MODELS[model]["maxAgeHours"]
+            manifest, _, objects = validate_bundle(root / "public", model, max_age)
             status = publish(s3, root / "public", model, args.bucket, args.prefix, max_age) if s3 else "local-only"
-            print(json.dumps({"event": "forecast_complete", "model": model, "run": manifest["run"],
-                              "frames": len(manifest["frames"]), "status": status,
+            print(json.dumps({"event": "forecast_complete", "model": model,
+                              "kind": MODELS[model]["kind"], "run": manifest["run"],
+                              "objects": len(objects), "frames": len(manifest.get("frames", [])),
+                              "status": status,
                               "seconds": round(time.monotonic() - started),
                               "time": datetime.now(timezone.utc).isoformat()}), flush=True)
         except Exception as error:
