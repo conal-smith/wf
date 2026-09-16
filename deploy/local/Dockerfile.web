@@ -1,0 +1,22 @@
+# Static site image for the local deployment: build with Node 22, serve with Caddy.
+# No VITE_FORECAST_BASE_URL is set, so the browser reads /weather/* from this same
+# origin, where Caddy serves the ingest volume.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json vite.config.ts index.html ./
+COPY src ./src
+COPY data ./data
+COPY force5 ./force5
+COPY public ./public
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY deploy/local/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+# The volume is created from these directories, so the non-root worker (uid 10001)
+# can write to /data whichever service mounts it first.
+RUN mkdir -p /data/public/weather /data/public/marine && chown -R 10001:10001 /data \
+    && caddy validate --config /etc/caddy/Caddyfile
+EXPOSE 8080
