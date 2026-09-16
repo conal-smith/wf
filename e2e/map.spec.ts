@@ -359,9 +359,12 @@ test("model frame failure and cancellation cannot relabel the displayed data", a
     "true",
   );
   await page.unroute("**/weather/harmonie-*/*.json");
-  await page.route("**/weather/harmonie.json", async (route) => {
+  // Hold the frame, not the manifest: the dock fetches every manifest on load
+  // and they are cached for five minutes, so delaying one would not be seen and
+  // the switch would finish before the cancel button could be pressed.
+  await page.route("**/weather/harmonie-*/*.json", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 900));
-    await route.fulfill({ json: harmonie });
+    await route.continue();
   });
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await picker.locator('[data-model="harmonie"]').click();
@@ -372,7 +375,7 @@ test("model frame failure and cancellation cannot relabel the displayed data", a
     "true",
   );
   await expect(page.locator(".model-info")).toContainText("ICON-EU");
-  await page.unroute("**/weather/harmonie.json");
+  await page.unroute("**/weather/harmonie-*/*.json");
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await picker.locator('[data-model="harmonie"]').click();
   await expect(picker.locator('[data-model="harmonie"]')).toHaveAttribute(
