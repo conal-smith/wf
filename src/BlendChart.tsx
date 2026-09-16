@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { BlendInput, HourStats } from "../force5/src/blend";
 import { modelEntry, modelHue } from "../force5/src/manifests";
 import type { NightInterval } from "../force5/src/sun";
@@ -310,45 +311,54 @@ export default function BlendChart({
           )}
         </g>
       </svg>
-      {hover !== null && hovered && hovered.n > 0 && (
-        <div
-          className={`chart-hover-card${reducedMotion ? " is-static" : ""}`}
-          role="status"
-          style={{
-            left: Math.min(Math.max(hover.x, 120), window.innerWidth - 120),
-            top: hover.y - 10,
-          }}
-        >
-          <strong>
-            {dayLabel(hovered.time)} {timeLabel(hovered.time)}
-          </strong>
-          <dl>
-            {hoverModels.map((model) => (
-              <div key={model.id}>
-                <dt>
-                  <i style={{ background: modelHue(model.id).wind }} />
-                  {model.name}
-                  {model.members > 1 && <small>{model.members} members</small>}
-                </dt>
-                <dd>
-                  {model.speed === null ? "—" : Math.round(model.speed)}
-                  {model.gust !== null && (
-                    <small>g {Math.round(model.gust)}</small>
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p>
-            Median {Math.round(show(hovered.median) ?? 0)} {unitLabel(units)}
-            {directions[hover.index] !== null &&
-              ` from ${compass(directions[hover.index]!)}`}
-            {" · ±"}
-            {((show(hovered.spread) ?? 0) / 2).toFixed(1)} {unitLabel(units)}
-            {` · ${agreementLabel(hovered.agreement)}`}
-          </p>
-        </div>
-      )}
+      {hover !== null &&
+        hovered &&
+        hovered.n > 0 &&
+        // Into the body: the dock is backdrop-filtered, which makes it the
+        // containing block for fixed children and would hide the card below
+        // the fold.
+        createPortal(
+          <div
+            className={`chart-hover-card${reducedMotion ? " is-static" : ""}`}
+            role="status"
+            style={{
+              left: Math.min(Math.max(hover.x, 120), window.innerWidth - 120),
+              top: hover.y - 10,
+            }}
+          >
+            <strong>
+              {dayLabel(hovered.time)} {timeLabel(hovered.time)}
+            </strong>
+            <dl>
+              {hoverModels.map((model) => (
+                <div key={model.id}>
+                  <dt>
+                    <i style={{ background: modelHue(model.id).wind }} />
+                    {model.name}
+                    {model.members > 1 && (
+                      <small>{model.members} members</small>
+                    )}
+                  </dt>
+                  <dd>
+                    {model.speed === null ? "—" : Math.round(model.speed)}
+                    {model.gust !== null && (
+                      <small>g {Math.round(model.gust)}</small>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p>
+              Median {Math.round(show(hovered.median) ?? 0)} {unitLabel(units)}
+              {directions[hover.index] !== null &&
+                ` from ${compass(directions[hover.index]!)}`}
+              {" · ±"}
+              {((show(hovered.spread) ?? 0) / 2).toFixed(1)} {unitLabel(units)}
+              {` · ${agreementLabel(hovered.agreement)}`}
+            </p>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
