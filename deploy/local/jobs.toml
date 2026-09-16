@@ -37,13 +37,15 @@ timeout_seconds = 3300
 [[jobs]]
 id = "harmonie-eps"
 models = ["harmonie-eps"]
-minutes = [50]              # Lagged control members; one new hourly cycle each hour.
+enabled = false             # Lagged controls only (13 MB per member-step); enable knowingly.
+minutes = [50]
 timeout_seconds = 3300
 
 [[jobs]]
 id = "ecmwf-ens"
 models = ["ecmwf-ens"]
-minutes = [35]              # Hourly check for the newest complete 00/12 ENS run.
+hours = [8, 10, 20, 22]     # 00/12 UTC ENS publishes ~7-9 h after the run; ~2 GB each.
+minutes = [35]
 timeout_seconds = 3300
 
 [[jobs]]
