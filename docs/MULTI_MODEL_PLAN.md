@@ -1,8 +1,27 @@
 # Multi-model forecast plan
 
-Status: proposal, 16 September 2026. Research verified against live endpoints on that
-date. Nothing here is implemented yet. Mockup of the target dock:
-https://claude.ai/artifact/SsCHYWDuqLkfMBrpTokaVU
+Status: in progress, 16 September 2026. Research verified against live endpoints on
+that date. Mockup of the target dock: https://claude.ai/artifact/SsCHYWDuqLkfMBrpTokaVU
+
+## Delivered so far (16 September 2026)
+
+- Ingest foundations: `force5/ingest/registry.py` (one line per model), manifest
+  `kind` (wind / wave / tide), `gustKind`, `ensemble` + `spotMembers`, precomputed
+  series for all 25 riding locations (`public/riding-locations.json`, `npm run
+spots:export`).
+- Wind adapters: `gfs` (NOMADS subregion, ~0.6 MB per run, bundled snapshot),
+  `ecmwf-ens` (25 members, 6-hourly to +144 h, ~2 GB per run), `harmonie-eps` (a
+  time-lagged control ensemble only: see the correction under Wind models; shipped
+  disabled in the schedule).
+- Wave adapters: `gfs-wave` (9 km Arctic grid resampled to 0.05°, bundled snapshot)
+  and `mi-swan` (Marine Institute Irish Shelf SWAN, per-spot hourly series, 3 s per
+  run). Tides: `tides` (Marine Institute predictions, 15 stations for 25 spots).
+- Frontend data layer in `force5/src`: `units`, `manifests` (catalogue + cache),
+  `series`, `blend` (common axis, quantiles, candles), `sun`, `prefs`, `tides`.
+- Local deployment: `deploy/local/` Docker Compose stack (worker, scheduler sidecar
+  reading `jobs.toml`, Caddy on one origin, retention and status scripts).
+- Still open: the dock UI (blend, candles, filter popover), wave/tide rows wired to
+  the new manifests, and the browser validator for wave manifests.
 
 ## Goal
 
