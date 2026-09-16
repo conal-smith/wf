@@ -36,7 +36,7 @@ describe("display preferences", () => {
       wind: false,
       spread: true,
       gust: false,
-      dir: true,
+      dir: false,
       waves: true,
       sea: true,
       air: true,
