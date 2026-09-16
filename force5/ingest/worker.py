@@ -12,7 +12,7 @@ import time
 
 from publish_s3 import publish, validate_bundle
 
-SCRIPTS = {"harmonie": "fetch_harmonie.py", "icon-eu": "fetch_forecast.py", "ecmwf": "fetch_ecmwf.py"}
+SCRIPTS = {"harmonie": "fetch_harmonie.py", "icon-eu": "fetch_forecast.py", "ecmwf": "fetch_ecmwf.py", "gfs": "fetch_gfs.py"}
 
 
 @contextmanager
