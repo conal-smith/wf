@@ -12,6 +12,10 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "market:api": "tsx watch market/api/src/index.ts",
+    "market:api:build": "tsc -p market/api/tsconfig.json",
+    "market:api:start": "node market/api/dist/api/src/index.js",
+    "market:db": "docker compose -f market/docker-compose.yml up -d",
     "format": "prettier --write src tests e2e *.ts *.md index.html package.json",
     "test:weather": ".venv/bin/python -m unittest discover -s force5/ingest -p 'test_*.py'",
     "weather:refresh": ".venv/bin/python force5/ingest/fetch_forecast.py",
@@ -22,17 +26,27 @@
     "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1134.0",
+    "@aws-sdk/s3-request-presigner": "^3.1134.0",
+    "@clerk/backend": "^3.18.1",
+    "@clerk/clerk-react": "^5.61.9",
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.13.8",
     "lucide-react": "^0.577.0",
     "maplibre-gl": "^6.9.0",
+    "postgres": "^3.4.9",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
     "prettier": "^3.9.6",
+    "tsx": "^4.23.13",
     "typescript": "~5.9.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.0"
