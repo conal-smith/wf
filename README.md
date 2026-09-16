@@ -173,6 +173,76 @@ not manufacture a speed or substitute ICON-EU gusts. The UI shows `—` with an
 explanation. Confirm gust-component semantics or add a validated scalar source
 before enabling HARMONIE gusts.
 
+### HARMONIE ensemble refresh (probability blend)
+
+```sh
+npm run weather:refresh:harmonie-eps
+# Shorter, hourly, or a deeper lag:
+.venv/bin/python force5/ingest/fetch_harmonie_eps.py --hours 24 --step 3
+.venv/bin/python force5/ingest/fetch_harmonie_eps.py --hours 36 --step 1 --max-lag 11
+```
+
+Publishes `public/weather/harmonie-eps.json` with model id `harmonie-eps`: one
+precomputed wind series **per ensemble member** for every spot, so an uncertainty
+chart never downloads a frame. Default 0–48 hours at three-hour steps.
+
+**What the public endpoints actually allow.** Met Éireann's DINI ensemble runs an
+hourly cycle of a control plus five perturbed members, but neither public route
+exposes a coherent perturbed member (verified 16 September 2026):
+
+- The near-real-time portal addresses files by name, and all six files a cycle
+  writes for one step share the single name `fcYYYYMMDDHH+HHHgrib2_enIoI`. The
+  inventory lists six identical names with different sizes and timestamps, and
+  `download/nwp?files=<name>` returns exactly one of them — deterministically for a
+  given step, but a _different_ member from step to step. Cycle 2026091619 returned
+  members 7, 7, 10, 6, 6, 9, 0, 7, 9, 7 … for steps +000…+048, so no member's time
+  series can be reconstructed. No `member`, `timestamp`, `size` or `perturbationNumber`
+  selector changes the result, and `enIRL25` resolves to the same member as `enIoI`.
+- `https://opendata2.met.ie/nwp/<cycle>/mbrNNN/` keeps twelve hourly cycles and
+  rotates through all 30 perturbed members, but each perturbed directory publishes
+  only eight surface parameters (rain, total precipitation, cloud base, lightning,
+  skin/2 m temperature, dew point, visibility) and **no 10 m wind at all**. Only
+  `mbr000`, the control, publishes wind there, as speed/direction/gust on the full
+  1909 × 1609 DINI grid.
+
+The adapter therefore publishes a **time-lagged control ensemble**: member 0 is the
+control of the newest complete cycle, and each further member is the control of an
+older hourly cycle shifted onto the anchor's valid-time axis. `ensemble.memberRuns`
+gives every member's own initialization, `ensemble.memberLagHours` its lag, and the
+manifest states plainly that the spread reflects initialization lag only, not model
+perturbations. `--max-lag` (default 6) bounds how far back members may come from.
+
+Member count is limited by the portal keeping roughly three hours of publications:
+a cold run assembles two to four members. Validated files stay in
+`.cache/harmonie-eps/`, and a cycle qualifies when every file it owes is either
+still listed or already cached, so repeated `--step 1` runs accumulate members the
+portal has since dropped. `--step 3` runs do not share cached steps between
+consecutive anchors, because the three-hour axis shifts parity every hour.
+
+Each member/step is a separate 12.9–13.8 MB ZIP — about **13.0 MB per member-step**
+measured, with no server-side subsetting available — so a 17-step, 2-member run
+transfers roughly 443 MB and only 8.2 MB of validated U/V survives in the cache.
+Budget for this before scheduling hourly.
+
+ecCodes applies the control adapter's checks to every member and step: parameters,
+10 m level, Lambert geometry and scanning, earth radius, provider, units, missing
+values, `perturbationNumber`/`number` 0, `numberOfForecastsInEnsemble` 31, and each
+member's **own** initialization and valid time, which is what catches a lagged step
+being off by one. Vectors are rotated to true east/north at native points and
+resampled onto the same 233 × 236 Ireland display grid as HARMONIE, so members,
+the mean and the control model are directly comparable.
+
+`frames` and `spotForecasts` are the ensemble **mean** of all members, published on
+that display grid so the map can show the blend. `spotMembers[spotId][step]` holds
+`{hour, validTime, u[], v[], gust[]}` with the arrays indexed by member.
+
+**Gusts are null throughout.** The `ieIoI` control subset carries only signed gust
+components (parameters 23/24), never scalar gust speed, exactly as the HARMONIE
+control adapter documents, so `gustAvailable` is `false` and no mean or per-member
+gust is manufactured. The perturbed `enIoI` files _do_ carry scalar
+`max_i10fg` (parameter 22, a one-hour maximum), and so does `mbr000` on opendata2 —
+either is the route to real HARMONIE gusts once a usable member source exists.
+
 ## Verify / build
 
 ```sh
@@ -198,6 +268,7 @@ force5/ingest/fetch_forecast.py DWD discovery, download, validation and publicat
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
+force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
 public/spots.json           Original eight precomputed forecast locations
 data/locations/             Sourced location records and spreadsheet export
 src/locations.ts            Map/search merge, aliases and provenance
@@ -205,6 +276,7 @@ public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
+public/weather/harmonie-eps.json HARMONIE ensemble: member spot series, mean frames
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
@@ -215,6 +287,8 @@ IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
 All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. A model whose gust is instantaneous rather than a period maximum declares `gustKind: "instantaneous"` and a zero-length `gustIntervalHours` of `[hour, hour]` at every hour, including zero; without that declaration a zero-length interval after initialization is rejected.
+
+An ensemble manifest adds `ensemble` and `spotMembers`. `ensemble.members` is the member count, `ensemble.control` the index of the control member or `null`, and `ensemble.memberRuns` each member's own initialization when members come from different cycles. `spotMembers[spotId]` is the same valid-time axis as `spotForecasts`, but each entry's `u`, `v` and `gust` are arrays indexed by member; `spotForecasts` carries the ensemble mean. `frames` may be empty only when `ensemble` is present.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 

@@ -11,11 +11,58 @@ from pathlib import Path, PurePosixPath
 import re
 from cadence import expected_hours
 
-MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json", "gfs": "gfs.json"}
+MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json",
+             "gfs": "gfs.json", "harmonie-eps": "harmonie-eps.json"}
 
 
 def error_code(error):
     return getattr(error, "response", {}).get("Error", {}).get("Code", "")
+
+
+def finite(value, field):
+    return (isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+            and abs(value) <= 150 and (field != "gust" or value >= 0))
+
+
+def validate_ensemble(manifest, run):
+    """Check the optional ensemble keys; returns the member series hours, or None.
+
+    An ensemble may publish member series without frames, so this also supplies
+    the valid-time axis that a frameless bundle's freshness check needs.
+    """
+    ensemble, series = manifest.get("ensemble"), manifest.get("spotMembers")
+    if ensemble is None and series is None:
+        return None
+    if not isinstance(ensemble, dict) or not isinstance(series, dict) or not series:
+        raise ValueError("Ensemble metadata and spotMembers must be published together")
+    members, control = ensemble.get("members"), ensemble.get("control")
+    if not isinstance(members, int) or isinstance(members, bool) or not 2 <= members <= 200:
+        raise ValueError("Invalid ensemble member count")
+    if control is not None and not (isinstance(control, int) and not isinstance(control, bool)
+                                    and 0 <= control < members):
+        raise ValueError("The ensemble control must be a member index or null")
+    runs = ensemble.get("memberRuns", [])
+    if not isinstance(runs, list) or (runs and len(runs) != members) or any(
+            not isinstance(t, str) or datetime.fromisoformat(t.replace("Z", "+00:00")) > run for t in runs):
+        raise ValueError("Member run times must be one per member, none later than the published run")
+    step, hours = manifest["stepHours"], None
+    for spot, entries in series.items():
+        if spot not in (manifest.get("spotForecasts") or {}) or not isinstance(entries, list) or not entries:
+            raise ValueError("Member series must accompany the published spot forecasts")
+        axis = tuple(range(0, len(entries) * step, step))
+        if hours not in (None, axis):
+            raise ValueError("Member series lengths differ between spots")
+        for hour, entry in zip(axis, entries):
+            valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
+            if (entry.get("hour"), entry.get("validTime")) != (hour, valid):
+                raise ValueError("Member series is not on the published valid-time axis")
+            for field in ("u", "v", "gust"):
+                values = entry.get(field)
+                if not isinstance(values, list) or len(values) != members or not all(
+                        (value is None and field == "gust") or finite(value, field) for value in values):
+                    raise ValueError(f"Invalid member {field} series")
+        hours = axis
+    return hours
 
 
 def validate_bundle(public, model, max_age_hours=12, now=None):
@@ -38,7 +85,8 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
     if instantaneous and missing_gust_hours:
         raise ValueError("Instantaneous gusts exist at every forecast time")
     hours = expected_hours(manifest)
-    if not frames or len(frames) != len(hours):
+    series_hours = validate_ensemble(manifest, run)
+    if len(frames) != len(hours) or not (frames or series_hours):
         raise ValueError("Empty forecast or unsupported cadence")
     count = grid["width"] * grid["height"]
     if not isinstance(count, int) or not 4 <= count <= 10_000_000:
@@ -80,12 +128,11 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
                     raise ValueError("Unexpected gust data")
                 continue
             if not isinstance(values, list) or len(values) != count or not all(
-                isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
-                and abs(v) <= 150 and (field != "gust" or v >= 0) for v in values
-            ):
+                    finite(v, field) for v in values):
                 raise ValueError(f"Invalid {field} field")
         objects.append((str(path), data))
-    if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
+    horizon = frames[-1]["hour"] if frames else series_hours[-1]
+    if run + timedelta(hours=horizon) <= now:
         raise ValueError("Forecast horizon has already expired")
     return manifest, body, objects
 

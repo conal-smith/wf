@@ -19,7 +19,8 @@
     "weather:refresh": ".venv/bin/python force5/ingest/fetch_forecast.py",
     "weather:refresh:harmonie": ".venv/bin/python force5/ingest/fetch_harmonie.py",
     "weather:refresh:ecmwf": ".venv/bin/python force5/ingest/fetch_ecmwf.py",
-    "weather:refresh:gfs": ".venv/bin/python force5/ingest/fetch_gfs.py"
+    "weather:refresh:gfs": ".venv/bin/python force5/ingest/fetch_gfs.py",
+    "weather:refresh:harmonie-eps": ".venv/bin/python force5/ingest/fetch_harmonie_eps.py"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

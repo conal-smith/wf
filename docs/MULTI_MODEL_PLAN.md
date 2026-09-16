@@ -33,7 +33,7 @@ Ranked by value to the spread and ease of onboarding. All cover Irish waters
 
 | # | Model | Res / length / cycles | Access | Key | Gust | Notes |
 |---|---|---|---|---|---|---|
-| 1 | Met Éireann DINI-EPS members | 2 km, 54 h, hourly cycles | `opendata2.met.ie/nwp/<run>/mbrNNN/` | none | fg | Same portal/grid we already decode. Each hourly cycle adds control + 5 members; lag six cycles to assemble 1+30. Biggest cone-quality gain per line of code. |
+| 1 | Met Éireann DINI-EPS members | 2 km, 60 h, hourly cycles | `opendata2.met.ie/nwp/<run>/mbrNNN/` | none | fg | **Perturbed members are not obtainable.** See the correction below; `fetch_harmonie_eps.py` ships a time-lagged control ensemble instead. |
 | 2 | ECMWF ENS (`enfo`) | 0.25°, 360 h at 00/12, 144 h at 06/18 | `ecmwf-opendata`, stream `enfo` | none | 10fg per member | 50 members. Same client and `.index` byte ranges as `fetch_ecmwf.py`. |
 | 3 | NOAA GFS 0.25° | 0.25°, 384 h, 4/day, hourly to 120 h | NOMADS grib filter with subregion, or S3 `noaa-gfs-bdp-pds` + `.idx` | none | GUST | Independent of the European stack. ~2 KB per step for our box via the filter. Respect 120 hits/min. |
 | 4 | NOAA GEFS 0.25° | 31 members, 240 h, 4/day, 3 h | S3 `noaa-gefs-pds` + `.idx` | none | GUST | Second independent ensemble. |
@@ -48,6 +48,24 @@ Ranked by value to the spread and ease of onboarding. All cover Irish waters
 Drop from the candidate list: ICON-D2 (domain ends at 3.84°W), ALADIN (no product
 reaches Ireland), NEMS (proprietary), HRRR/NAM (North America), Open-Meteo as a live
 dependency (free tier is non-commercial; self-hosting is a separate project).
+
+Correction, verified 16 September 2026 while building `fetch_harmonie_eps.py`: the
+"lag six cycles to assemble 1+30" plan does not work. `opendata2.met.ie/nwp/<cycle>/`
+does keep twelve hourly cycles and does rotate through 30 perturbed members
+(cycle 12 → `mbr001`–`mbr005`, cycle 13 → `mbr006`–`mbr010`, … cycle 18 → `mbr001`
+again), but each perturbed directory publishes only eight surface parameters and
+**no 10 m wind**; only `mbr000` publishes `ws`/`wdir`/`fg`, on the full
+1909 × 1609 DINI grid at 4–7 MB per field-step. The near-real-time portal does carry
+member wind in `fcYYYYMMDDHH+HHHgrib2_enIoI` — including the scalar gust
+`max_i10fg` the control subset lacks — but all six files a cycle writes for one step
+share that one name, and `download/nwp?files=<name>` returns an arbitrary one of
+them that changes from step to step (cycle 2026091619 gave members 7, 7, 10, 6, 6,
+9, 0, 7, 9, 7 … for +000…+048). No `member`, `timestamp`, `size` or
+`perturbationNumber` parameter disambiguates it, `enIRL25` resolves to the same
+member as `enIoI`, and the inventory endpoint refuses windows wider than three
+hours or ending in the past. Real DINI-EPS members therefore need the authenticated
+archive or a request to Met Éireann for member-addressable names; ECMWF ENS
+(item 2) is the cheapest route to a genuine member ensemble.
 
 Findings that touch existing code: ECMWF Cycle 50r1 (May 2026) retired the `scda`
 stream and merged the ENS control into `oper`; 06/18 `oper` now reaches 144 h. Our
