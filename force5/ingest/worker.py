@@ -64,7 +64,7 @@ def run_models(args, root, s3):
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
                 if model in ("ecmwf", "ecmwf-ens"):
                     command += ["--source", args.ecmwf_source]
-                elif MODELS[model]["kind"] == "wind":
+                elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
