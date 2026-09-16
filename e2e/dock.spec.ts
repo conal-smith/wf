@@ -103,6 +103,16 @@ test("the blend draws every model that covers the spot, and candles share its ax
       .then((count) => count > 0),
   ).toBe(true);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
+  // Every three-hourly column is the same width, including the ones whose day
+  // group holds only them: the charts read the columns as evenly spaced.
+  const widths = await page
+    .locator(".forecast-table thead tr:nth-child(2) th")
+    .evaluateAll((cells) =>
+      cells
+        .slice(1)
+        .map((cell) => Math.round(cell.getBoundingClientRect().width)),
+    );
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
   await expect(page.locator(".tide-row")).toHaveCount(1);
   await expect(page.locator(".tide-underlay")).toHaveCount(1);
   await expect(page.locator(".forecast-credits")).toContainText("Fenit tide");
@@ -214,6 +224,11 @@ test("an arbitrary map point falls back to the table and says why", async ({
   await withTides(page);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  // The markers are the signal that the map has finished its opening move; a
+  // click before that lands on a different place than the one aimed at.
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+    timeout: 30000,
+  });
   await page
     .locator(".map-canvas canvas")
     .click({ position: { x: 600, y: 300 } });

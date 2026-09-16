@@ -6,7 +6,7 @@ import {
   type Manifest,
   type Point,
 } from "../force5/src/weather";
-import type { DayGroup } from "./chart";
+import { columnWeights, type DayGroup } from "./chart";
 
 interface Props {
   manifest: Manifest;
@@ -44,6 +44,16 @@ export default function ForecastHeader({
   };
   // Hourly sources would label every column; three-hourly ticks stay readable.
   const labelled = (hour: number) => manifest.stepHours >= 3 || hour % 3 === 0;
+  // A day group's label is pinned and would otherwise set the group's width.
+  // Capping it at the group's own width keeps the columns even and keeps one
+  // day's label out of the next day's, while a label that fits stays as narrow
+  // as its text so it slides out of view later. The group cell carries a
+  // hairline divider, and separated table borders sit outside the cell's width.
+  const weights = columnWeights(manifest.frames, manifest.stepHours);
+  const groupWidth = (day: DayGroup) =>
+    `calc(var(--forecast-column-width) * ${weights
+      .slice(day.start, day.start + day.count)
+      .reduce((sum, weight) => sum + weight, 0)} - 1px)`;
   // A day group is as wide as its own content, so sun times on a one-column
   // group at the edge of a run would stretch that column. A partial day shows
   // its label only.
@@ -58,7 +68,7 @@ export default function ForecastHeader({
           const set = sun.sunset && formatLocal(sun.sunset);
           return (
             <th key={day.date} scope="colgroup" colSpan={day.count}>
-              <span>
+              <span style={{ maxWidth: groupWidth(day) }}>
                 <b>{day.label}</b>
                 {showSun && day.count >= SUN_MIN_COLUMNS && rise && set && (
                   <span

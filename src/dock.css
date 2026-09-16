@@ -106,12 +106,18 @@
 .compact-layout .forecast-table .forecast-day-groups th {
   height: 26px;
 }
+/* The day label is pinned and paints outside its cell: a group as narrow as one
+   column would otherwise be as wide as its own label, and every view under it
+   reads the columns as evenly spaced. */
 .compact-layout .forecast-day-groups th:not(:first-child) span {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: max-content;
+  overflow: hidden;
   padding: 4px 10px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 .compact-layout .forecast-table thead th {
   height: 26px;
