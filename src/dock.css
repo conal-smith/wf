@@ -1,0 +1,676 @@
+/*
+ * Forecast dock: toolbar, shared time header, blend and candle charts, glyph
+ * rows and the display filter.
+ *
+ * Written against design/foundations/principles.md, with this product's raw
+ * values (the project does not consume --sem-* tokens yet; see the ruling of
+ * 2026-09-16 and the gaps list). The rules that matter here:
+ *   - one accent per view: Play keeps it, everything else is quiet until hover;
+ *   - structure is surfaces and hairlines, never boxes;
+ *   - no glass inside glass: the filter is a solid raised surface;
+ *   - 9px is only for tracked uppercase and axis ticks, 10px for sentences;
+ *   - the wind ramp only ever describes wind speed. Model hues identify a line.
+ */
+
+/* ---------- toolbar ---------- */
+.compact-layout .dock-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.compact-layout.sheet-open .dock-toolbar {
+  border-bottom: 1px solid var(--line);
+}
+.dock-place {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.25;
+}
+.dock-place strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-place small {
+  font-size: 10px;
+  color: #506c77;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-place small span::after {
+  content: " · ";
+}
+
+.dock-views {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 14px;
+  background: #567b821c;
+  flex-shrink: 0;
+}
+.dock-views button {
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 11px;
+  font-size: 11px;
+  color: #3d636f;
+  white-space: nowrap;
+}
+.dock-views button[aria-pressed="true"] {
+  background: #ffffffe0;
+  color: #12525f;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #20424a1f;
+}
+.dock-views button:disabled {
+  opacity: 0.45;
+}
+
+.dock-filter {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border-radius: 50%;
+  color: #3d636f;
+}
+.dock-filter.pressed {
+  background: #ffffff7a;
+  color: #12525f;
+}
+
+/* The scrubber is a thin strip under the toolbar, not a control bar of its own. */
+.compact-layout .timeline {
+  padding: 3px 16px 5px;
+}
+.compact-layout.sheet-open .timeline {
+  padding-bottom: 5px;
+}
+.compact-layout .timeline .step-button {
+  height: 18px;
+}
+
+/* ---------- shared header ---------- */
+.compact-layout .forecast-table .forecast-day-groups th {
+  height: 26px;
+}
+.compact-layout .forecast-day-groups th:not(:first-child) span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  line-height: 1.2;
+}
+.compact-layout .forecast-table thead th {
+  height: 26px;
+}
+.compact-layout .forecast-table thead button {
+  padding: 5px 4px;
+}
+.forecast-day-groups b {
+  font-weight: 600;
+}
+.day-sun {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  color: #4f737c;
+  font-variant-numeric: tabular-nums;
+}
+.day-sun svg {
+  opacity: 0.8;
+}
+.day-sun i {
+  font-style: normal;
+  margin-right: 4px;
+}
+
+/* ---------- chart row ---------- */
+.forecast-table th.chart-gutter {
+  position: sticky;
+  left: 0;
+  padding: 0;
+  height: auto;
+}
+.forecast-table td.chart-cell {
+  padding: 0;
+  height: auto;
+  min-width: 0;
+}
+.chart-holder {
+  position: relative;
+  height: var(--chart-height);
+  overflow: hidden;
+}
+/* Out of flow on purpose: an in-flow SVG carrying the previous model's width
+   would widen the cell it spans, which would widen every column under it. */
+.blend-chart,
+.candle-chart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  touch-action: pan-x;
+}
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #506c77;
+}
+.axis-scale {
+  position: absolute;
+  left: 7px;
+  width: 3px;
+  border-radius: 2px;
+  opacity: 0.9;
+}
+.axis-ticks {
+  position: absolute;
+  inset: 0 5px 0 12px;
+}
+.axis-ticks i {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: #567781;
+}
+
+.chart-night {
+  fill: #173d49;
+  opacity: 0.09;
+}
+.chart-gridline {
+  stroke: #4a7d8a;
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  opacity: 0.3;
+}
+.chart-now {
+  stroke: #bf6546;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.chart-cursor {
+  stroke: #1d5a68;
+  stroke-width: 1;
+  opacity: 0.45;
+}
+.blend-band,
+.blend-gust {
+  stroke: none;
+}
+.model-line {
+  fill: none;
+  stroke-width: 1;
+}
+.model-gust-line {
+  stroke-dasharray: 3 3;
+}
+.median-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.4;
+  opacity: 0.75;
+}
+.chart-arrow-halo {
+  fill: none;
+  stroke: #123c47;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+.chart-arrow {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.candle-wick {
+  stroke: #2b5f6c;
+  stroke-width: 1;
+  opacity: 0.55;
+}
+.candle-body {
+  stroke: #fff;
+  stroke-width: 1;
+  stroke-opacity: 0.7;
+}
+.candle-median {
+  stroke: #173d49;
+  stroke-width: 1.4;
+}
+.candle-gust {
+  fill: #e0803a;
+  opacity: 0.72;
+}
+
+/* ---------- glyph rows ---------- */
+/* Matching the compact layout's own `th:first-child` padding rule, which is
+   more specific than a plain row selector. */
+.compact-layout .forecast-table .blend-row th:first-child,
+.compact-layout .forecast-table .marine-row th:first-child {
+  height: 24px;
+  padding: 0 4px;
+}
+.compact-layout .forecast-table .tide-row th:first-child {
+  height: 28px;
+}
+.forecast-table .blend-row td,
+.forecast-table .marine-row td {
+  height: 24px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.forecast-table .tide-row td {
+  height: 28px;
+}
+.row-label {
+  /* Block-level: an inline-flex button in a table cell drags a line box,
+     and its descender space with it, into the row's height. */
+  display: flex;
+  justify-content: flex-start;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 3px;
+  gap: 2px;
+  border-radius: 9px;
+  color: #486d78;
+}
+.row-label small {
+  font-size: 9px;
+  color: #567781;
+}
+.row-tip {
+  position: fixed;
+  z-index: 60;
+  transform: translateY(-50%);
+  width: max-content;
+  max-width: 240px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #16404b;
+  color: #eaf5f2;
+  font-size: 11px;
+  line-height: 1.45;
+  box-shadow: 0 8px 26px #12333c3d;
+  pointer-events: none;
+}
+.row-tip strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: #a5c9c8;
+}
+
+.marine-rows {
+  position: relative;
+}
+.tide-underlay {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+.tide-fill {
+  fill: #2b7f95;
+  fill-opacity: 0.06;
+  stroke: none;
+}
+.tide-stroke {
+  fill: none;
+  stroke: #2b7f95;
+  stroke-opacity: 0.22;
+  stroke-width: 1.2;
+}
+
+/* ---------- hover card ---------- */
+.chart-hover-card {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -100%);
+  width: max-content;
+  max-width: 240px;
+  padding: 9px 11px;
+  border-radius: 14px;
+  background: #f4faf8;
+  border: 1px solid #cddedd;
+  box-shadow: 0 10px 30px #123c4b33;
+  font-size: 11px;
+  color: #173d49;
+  pointer-events: none;
+}
+.chart-hover-card > strong {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: #4f737c;
+  margin-bottom: 5px;
+}
+.chart-hover-card dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.chart-hover-card dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.chart-hover-card dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.chart-hover-card dt i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 7px;
+}
+.chart-hover-card dt small,
+.chart-hover-card dd small {
+  color: #567781;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.chart-hover-card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.chart-hover-card p {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: #3c5d6a;
+}
+
+/* ---------- credits ---------- */
+.forecast-credits {
+  padding: 0 16px 3px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #506c77;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layers-hint {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 12px;
+}
+
+/* ---------- display filter: a solid raised surface, never glass on glass ---------- */
+.display-filter {
+  position: fixed;
+  inset: auto 12px calc(var(--dock-height) + 12px) auto;
+  margin: 0;
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(580px, calc(100dvh - var(--dock-height) - 24px));
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid #cddedd;
+  border-radius: 20px;
+  background: #f4faf8;
+  box-shadow: 0 14px 44px #123c4b33;
+  color: #173d49;
+}
+.display-filter::backdrop {
+  background: #14344226;
+}
+.display-filter h2 {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #4f737c;
+  margin: 16px 0 6px;
+}
+.filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.filter-head h2 {
+  margin: 0;
+}
+.filter-close {
+  font-size: 11px;
+  font-weight: 600;
+  color: #12525f;
+  padding: 5px 9px;
+  border-radius: 10px;
+}
+.filter-switches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  margin-top: 6px;
+}
+.filter-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+.filter-switch input {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  width: 34px;
+  height: 22px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switch-track {
+  position: relative;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 19px;
+  border-radius: 10px;
+  background: #b9d0d3;
+  transition: background 0.16s ease;
+}
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #1c465024;
+  transition: left 0.16s ease;
+}
+.filter-switch input:checked + .switch-track {
+  background: #2c7f88;
+}
+.filter-switch input:checked + .switch-track::after {
+  left: 17px;
+}
+.filter-switch input:focus-visible + .switch-track {
+  outline: 3px solid #176b91;
+  outline-offset: 3px;
+}
+.filter-switch input:disabled + .switch-track {
+  opacity: 0.4;
+}
+.switch-text {
+  min-width: 0;
+}
+.filter-switch.is-unavailable .switch-text {
+  color: #7d949a;
+}
+.switch-text small {
+  display: block;
+  font-size: 10px;
+  color: #7d949a;
+}
+.filter-units {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 14px;
+  background: #567b821c;
+}
+.filter-units button {
+  flex: 1;
+  height: 28px;
+  border-radius: 11px;
+  font-size: 11px;
+  color: #3d636f;
+}
+.filter-units button[aria-pressed="true"] {
+  background: #ffffffe0;
+  color: #12525f;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #20424a1f;
+}
+.filter-models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+}
+.filter-model {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+.filter-model input {
+  accent-color: #277785;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+}
+.filter-model span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.filter-model small {
+  font-size: 10px;
+  color: #7d949a;
+}
+.filter-model.is-planned,
+.filter-model.is-unavailable {
+  color: #7d949a;
+  cursor: default;
+}
+.model-swatch {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 3px;
+}
+.filter-model.is-planned .model-swatch,
+.filter-model.is-unavailable .model-swatch {
+  opacity: 0.4;
+}
+.filter-note {
+  margin-top: 14px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 1.5;
+  color: #506c77;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 760px) {
+  .compact-layout .dock-toolbar {
+    height: 46px;
+    padding: 0 12px;
+    gap: 6px;
+  }
+  .dock-views button {
+    padding: 0 8px;
+  }
+  .dock-views button > span {
+    display: none;
+  }
+  .dock-place strong {
+    font-size: 13px;
+  }
+  .day-sun i {
+    margin-right: 2px;
+  }
+  .forecast-table .blend-row td,
+  .forecast-table .marine-row td {
+    height: 22px;
+  }
+  .forecast-table .tide-row td,
+  .compact-layout .forecast-table .tide-row th:first-child {
+    height: 24px;
+  }
+  .compact-layout .forecast-table .blend-row th:first-child,
+  .compact-layout .forecast-table .marine-row th:first-child {
+    height: 22px;
+  }
+  .row-label {
+    height: 22px;
+  }
+  .forecast-credits {
+    padding: 0 12px 3px;
+  }
+  .display-filter {
+    inset: auto 8px calc(var(--dock-height) + 8px) 8px;
+    width: auto;
+  }
+}
+@media (max-height: 550px) {
+  .compact-layout .dock-toolbar {
+    height: 42px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-track::after {
+    transition: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  /* The multiply layers must still read on the opaque fallback ground. */
+  .chart-hover-card,
+  .display-filter {
+    background: #eef6f4;
+  }
+}

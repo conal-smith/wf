@@ -23,6 +23,8 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await model.click();
   await expect(model).toHaveAttribute("aria-pressed", "true");
+  // The gust semantics this test is about are the table view's cells.
+  await page.locator('[data-view="table"]').click();
   await expect(page.locator(".wind-cell")).toHaveCount(85);
   await expect(page.locator(".gust-cell").nth(1)).toHaveAttribute(
     "title",
@@ -106,11 +108,21 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
 test("unavailable or mislabelled ECMWF snapshot preserves the current model", async ({
   page,
 }) => {
+  // Routed before the load: the dock warms every manifest on open, and a
+  // manifest already in the five-minute cache would never be refetched.
+  let body: unknown = null;
+  await page.route("**/weather/ecmwf.json", (route) =>
+    body
+      ? route.fulfill({ json: body })
+      : route.fulfill({ status: 503, body: "Unavailable" }),
+  );
   await page.goto("/");
   const model = page.locator('[data-model="ecmwf"]');
   await expect(model).toBeEnabled({ timeout: 30000 });
-  for (const body of [null, { ...ecmwf, model: "wrong" }]) {
-    await page.route("**/weather/ecmwf.json", (route) =>
+  await page.locator('[data-view="table"]').click();
+  for (const next of [null, { ...ecmwf, model: "wrong" }]) {
+    body = next;
+    await page.route("**/weather/unused-ecmwf.json", (route) =>
       body
         ? route.fulfill({ json: body })
         : route.fulfill({ status: 503, body: "Unavailable" }),
@@ -125,6 +137,6 @@ test("unavailable or mislabelled ECMWF snapshot preserves the current model", as
     await expect(page.locator(".wind-cell")).toHaveCount(
       harmonie.frames.length,
     );
-    await page.unroute("**/weather/ecmwf.json");
+    await page.unroute("**/weather/unused-ecmwf.json");
   }
 });

@@ -43,9 +43,18 @@ test("map-first default has compact branding, collapsed search and a bottom-flus
   expect(dock!.x).toBe(0);
   expect(dock!.width).toBe(390);
   expect(dock!.y + dock!.height).toBe(844);
-  expect(dock!.height).toBeLessThan(260);
+  // The default dock is the blend chart plus the spread, direction and tide
+  // rows: measured 305px with tides published and 281px without them. The old
+  // 260px budget was the three-row table, which is now the Table view.
+  expect(dock!.height).toBeLessThan(320);
   await expect(page.locator(".sheet-heading, .sheet-current")).toHaveCount(0);
   await expect(page.getByRole("table", { name: /Brandon Bay/ })).toBeVisible();
+  await expect(page.locator('[data-view="blend"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".blend-chart")).toBeVisible();
+  await page.locator('[data-view="table"]').click();
   await expect(page.locator(".forecast-table .wind-cell")).toHaveCount(
     harmonie.frames.length,
   );
@@ -214,6 +223,7 @@ test("switches real models, uses their own times and values, and clamps the shor
     timeout: 30000,
   });
   await page.locator(".spot-marker").first().click();
+  await page.locator('[data-view="table"]').click();
   await page.getByRole("slider", { name: "Forecast time" }).fill("6");
   const old = manifest.spotForecasts.brandon[6];
   await expect(page.locator(".wind-cell.selected-hour")).toHaveText(
@@ -281,7 +291,14 @@ test("switches real models, uses their own times and values, and clamps the shor
 test("failed or mislabelled model download leaves the old model and forecast intact", async ({
   page,
 }) => {
-  await openIcon(page);
+  // The dock asks every live model for its manifest on load, and manifests are
+  // cached for five minutes, so a route installed after the page has loaded
+  // would never be reached. Fail the target model from the start instead; the
+  // page still opens on HARMONIE, which is what must survive the failure.
+  await page.route("**/weather/latest.json", (route) =>
+    route.fulfill({ status: 503, body: "Unavailable" }),
+  );
+  await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
   });
@@ -289,29 +306,26 @@ test("failed or mislabelled model download leaves the old model and forecast int
   const before = await page
     .locator(".forecast-table thead button[aria-pressed=true]")
     .textContent();
-  await page.route("**/weather/harmonie.json", (route) =>
-    route.fulfill({ status: 503, body: "Unavailable" }),
-  );
   await page.getByLabel("Choose forecast model", { exact: true }).click();
-  await picker.locator('[data-model="harmonie"]').click();
+  await picker.locator('[data-model="icon-eu"]').click();
   await expect(page.locator(".model-status")).toContainText(
-    "ICON-EU is still shown",
+    "HARMONIE is still shown",
   );
-  await expect(picker.locator('[data-model="icon-eu"]')).toHaveAttribute(
+  await expect(picker.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await expect(
     page.locator(".forecast-table thead button[aria-pressed=true]"),
   ).toHaveText(before!);
-  await page.unroute("**/weather/harmonie.json");
-  await page.route("**/weather/harmonie.json", (route) =>
-    route.fulfill({ json: manifest }),
+  await page.unroute("**/weather/latest.json");
+  await page.route("**/weather/latest.json", (route) =>
+    route.fulfill({ json: harmonie }),
   );
   await page.getByLabel("Choose forecast model", { exact: true }).click();
-  await picker.locator('[data-model="harmonie"]').click();
+  await picker.locator('[data-model="icon-eu"]').click();
   await expect(page.locator(".model-status")).toContainText("does not match");
-  await expect(picker.locator('[data-model="icon-eu"]')).toHaveAttribute(
+  await expect(picker.locator('[data-model="harmonie"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -320,6 +334,11 @@ test("failed or mislabelled model download leaves the old model and forecast int
 test("model frame failure and cancellation cannot relabel the displayed data", async ({
   page,
 }) => {
+  // Inside HARMONIE's coverage, so the frame the switch needs is not the one
+  // the first paint already put in the frame cache.
+  await page.clock.setFixedTime(
+    new Date(Date.parse(harmonie.runTime) + 3600000),
+  );
   await openIcon(page);
   await expect(page.locator(".spot-marker")).toHaveCount(25, {
     timeout: 30000,
@@ -407,6 +426,7 @@ test("production map loads, follows forecast time, and agrees with the source va
   const mapBounds = await page.locator(".map-canvas").boundingBox();
   expect(mapBounds).toMatchObject({ x: 0, y: 0, width: 1440, height: 1000 });
   await page.locator(".spot-marker").first().click();
+  await page.locator('[data-view="table"]').click();
   await page.getByRole("slider", { name: "Forecast time" }).fill("6");
   const expected = manifest.spotForecasts.brandon[6];
   const value = Math.round(Math.hypot(expected.u, expected.v) * 1.94384449);
@@ -431,11 +451,18 @@ test("production map loads, follows forecast time, and agrees with the source va
   await page
     .getByRole("button", { name: "Pause forecast", exact: true })
     .click();
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
-  await page.getByRole("button", { name: "m/s", exact: true }).click();
+  // Units moved out of Layers and into the dock's display options, which now
+  // drive the table, the charts and the map readouts together.
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('[data-units="m/s"]').click();
+  await page.getByLabel("Close display options").click();
   await expect(
     page.locator(".forecast-table tbody tr").first().locator("th small"),
   ).toHaveText("m/s");
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('[data-units="kn"]').click();
+  await page.getByLabel("Close display options").click();
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await page.getByLabel("Wind-sport locations", { exact: true }).uncheck();
   await expect(page.locator(".spot-marker")).toHaveCount(0);
   await page.getByLabel("Wind-sport locations", { exact: true }).check();
@@ -571,6 +598,7 @@ test("unavailable basemap shows an error while spot forecasts remain usable", as
     .getByRole("searchbox", { name: "Search Irish spots" })
     .fill("Brandon");
   await page.locator(".spot-row").click();
+  await page.locator('[data-view="table"]').click();
   await expect(page.locator(".wind-cell.selected-hour")).not.toContainText("—");
   await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
 });

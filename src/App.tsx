@@ -1,39 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
-  ChevronLeft,
   ChevronRight,
   Info,
   Layers3,
   MapPin,
-  Pause,
-  Play,
   Search,
   Wind,
   X,
 } from "lucide-react";
 import { WindMap, Force5Brand } from "../force5/src";
-import ForecastSheet, { type ForecastSeries } from "./ForecastSheet";
+import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
 import { ridingLocations } from "./locations";
-import { windTrackBackground } from "../force5/src/timeline";
 import { forecastUrl } from "../force5/src/urls";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import {
   convert,
   dayLabel,
+  defaultPrefs,
   freshness,
   loadFrame,
+  loadPrefs,
   nearestFrame,
   sample,
+  savePrefs,
   speed,
   timeLabel,
   validateManifest,
   type Frame,
   type Manifest,
   type Point,
+  type Prefs,
   type Spot,
-  type Units,
 } from "../force5/src";
 
 const initialPoint: Point = {
@@ -45,13 +44,19 @@ const initialPoint: Point = {
 };
 
 export default function App() {
-  const [pointSeries, setPointSeries] = useState<ForecastSeries | null>(null);
+  // Display preferences drive the dock, the table and the map readouts alike.
+  const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
+  useEffect(() => setPrefs(loadPrefs()), []);
+  const changePrefs = (next: Prefs) => {
+    setPrefs(next);
+    savePrefs(next);
+  };
+  const units = prefs.units;
   const [manifest, setManifest] = useState<Manifest | null>(null),
     [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null),
     [requestedIndex, setRequestedIndex] = useState(0);
-  const [point, setPoint] = useState<Point>(initialPoint),
-    [units, setUnits] = useState<Units>("kn");
+  const [point, setPoint] = useState<Point>(initialPoint);
   const [error, setError] = useState(""),
     [frameError, setFrameError] = useState(""),
     [retry, setRetry] = useState(0);
@@ -191,10 +196,6 @@ export default function App() {
   }, [playing, manifest, requestedIndex, loading, frameError]);
 
   const forecast = manifest?.frames[activeIndex];
-  const seriesKey = `${manifest?.model}/${manifest?.run}/${point.lon}/${point.lat}`;
-  const timelineValues =
-    (point.id && manifest?.spotForecasts[point.id]) ||
-    (pointSeries?.key === seriesKey ? pointSeries.values : []);
   const isStale = manifest ? freshness(manifest) : "fresh";
   const visibleSpots = spots.filter((s) =>
     `${s.name} ${s.county} ${(s.aliases || []).join(" ")}`
@@ -230,7 +231,10 @@ export default function App() {
   };
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || dialog.current?.open) return;
+      // A dialog of our own - the source sheet or the display filter - owns
+      // Escape while it is open.
+      if (event.key !== "Escape" || document.querySelector("dialog[open]"))
+        return;
       if (searchOpen) {
         closeSearch();
       } else if (showLayers) setShowLayers(false);
@@ -464,23 +468,9 @@ export default function App() {
                     Animation is off to respect your reduced-motion setting.
                   </p>
                 )}
-                <div className="unit-control">
-                  <span>Wind units</span>
-                  <div>
-                    <button
-                      aria-pressed={units === "kn"}
-                      onClick={() => setUnits("kn")}
-                    >
-                      knots
-                    </button>
-                    <button
-                      aria-pressed={units === "m/s"}
-                      onClick={() => setUnits("m/s")}
-                    >
-                      m/s
-                    </button>
-                  </div>
-                </div>
+                <p className="layers-hint">
+                  Wind units live in the forecast dock&rsquo;s display options.
+                </p>
               </div>
             )}
             {(pendingModel || modelError || modelNotice) && (
@@ -546,130 +536,28 @@ export default function App() {
                 </div>
               )}
             <div className="map-footer" ref={dock}>
-              <div className="timeline">
-                <div className="timeline-controls">
-                  <button
-                    className="play-button"
-                    aria-label={playing ? "Pause forecast" : "Play forecast"}
-                    disabled={!manifest || !!frameError || !!pendingModel}
-                    onClick={togglePlayback}
-                  >
-                    {playing ? (
-                      <Pause size={17} fill="currentColor" />
-                    ) : (
-                      <Play size={17} fill="currentColor" />
-                    )}
-                  </button>
-                  <button
-                    className="step-button"
-                    aria-label="Previous forecast"
-                    disabled={requestedIndex === 0 || !manifest}
-                    onClick={() => selectTime(requestedIndex - 1)}
-                  >
-                    <ChevronLeft size={17} />
-                  </button>
-                  <div className="slider-track">
-                    <input
-                      type="range"
-                      style={{
-                        background: windTrackBackground(
-                          timelineValues,
-                          manifest?.frames.length || 0,
-                          manifest?.frames.map((f) => f.hour),
-                        ),
-                      }}
-                      title="Track colours show forecast wind speed at the selected location"
-                      min="0"
-                      max={
-                        manifest?.stepRanges
-                          ? manifest.frames.at(-1)!.hour
-                          : Math.max(1, (manifest?.frames.length || 2) - 1)
-                      }
-                      value={
-                        manifest?.stepRanges
-                          ? manifest.frames[requestedIndex].hour
-                          : requestedIndex
-                      }
-                      disabled={!manifest || !!pendingModel}
-                      aria-label="Forecast time"
-                      aria-valuetext={
-                        manifest
-                          ? `${dayLabel(manifest.frames[requestedIndex].validTime)} ${timeLabel(manifest.frames[requestedIndex].validTime)}`
-                          : "Loading"
-                      }
-                      onChange={(e) =>
-                        selectTime(
-                          manifest?.stepRanges
-                            ? nearestFrame(
-                                manifest.frames,
-                                Date.parse(manifest.runTime) +
-                                  Number(e.target.value) * 3600000,
-                              )
-                            : Number(e.target.value),
-                        )
-                      }
-                      onKeyDown={(e) => {
-                        if (!manifest?.stepRanges) return;
-                        const delta = {
-                          ArrowRight: 1,
-                          ArrowUp: 1,
-                          ArrowLeft: -1,
-                          ArrowDown: -1,
-                          PageUp: 4,
-                          PageDown: -4,
-                        }[e.key];
-                        if (delta !== undefined) {
-                          e.preventDefault();
-                          selectTime(
-                            Math.max(
-                              0,
-                              Math.min(
-                                manifest.frames.length - 1,
-                                requestedIndex + delta,
-                              ),
-                            ),
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-                  <button
-                    className="step-button"
-                    aria-label="Next forecast"
-                    disabled={
-                      !manifest || requestedIndex === manifest.frames.length - 1
-                    }
-                    onClick={() => selectTime(requestedIndex + 1)}
-                  >
-                    <ChevronRight size={17} />
-                  </button>
-                  {sheetOpen && (
-                    <button
-                      className="grid-close"
-                      aria-label="Close forecast panel"
-                      onClick={() => {
-                        setSheetOpen(false);
-                        document
-                          .querySelector<HTMLCanvasElement>(
-                            ".maplibregl-canvas",
-                          )
-                          ?.focus();
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {sheetOpen && manifest && (
-                <ForecastSheet
+              {manifest && (
+                <ForecastDock
                   manifest={manifest}
                   point={point}
-                  units={units}
+                  prefs={prefs}
+                  onPrefsChange={changePrefs}
                   index={activeIndex}
+                  requestedIndex={requestedIndex}
                   scrollIndex={frameError ? activeIndex : requestedIndex}
-                  onSeriesChange={setPointSeries}
                   onSelect={selectTime}
+                  open={sheetOpen}
+                  onClose={() => {
+                    setSheetOpen(false);
+                    document
+                      .querySelector<HTMLCanvasElement>(".maplibregl-canvas")
+                      ?.focus();
+                  }}
+                  playing={playing}
+                  onTogglePlay={togglePlayback}
+                  busy={!!pendingModel}
+                  playDisabled={!!frameError || !!pendingModel}
+                  reducedMotion={reducedMotion}
                 />
               )}
             </div>
@@ -787,11 +675,23 @@ export default function App() {
           <strong>What you’re seeing.</strong> Wind is interpolated between
           model grid points. Direction labels show where wind comes from;
           particles and arrows travel downwind. Particle speed is illustrative.
-          Gusts are modelled maxima over the source interval
-          {forecast?.gustIntervalHours
+        </p>
+        <p>
+          <strong>Two kinds of gust.</strong> Most sources publish a modelled{" "}
+          <em>maximum over an accumulation window</em> ending at the forecast
+          time
+          {manifest?.gustKind !== "instantaneous" && forecast?.gustIntervalHours
             ? ` (+${forecast.gustIntervalHours[0]} to +${forecast.gustIntervalHours[1]} hours from the model run)`
             : ""}
-          ; they are not continuous measurements.
+          ; others publish an <em>instantaneous</em> gust, a point value at the
+          forecast time itself, which has a reading at initialization where a
+          window-based gust has none.{" "}
+          {manifest?.gustKind === "instantaneous"
+            ? `${manifest.modelName} publishes instantaneous gusts.`
+            : manifest?.gustAvailable === false
+              ? `${manifest.modelName} publishes no usable gust speed.`
+              : `${manifest?.modelName ?? "This model"} publishes window maxima.`}{" "}
+          Neither kind is a continuous measurement.
         </p>
         {manifest?.gustDescription && (
           <p>
