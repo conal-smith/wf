@@ -1,0 +1,177 @@
+[
+  {
+    "id": "brandon",
+    "name": "Brandon Bay",
+    "county": "Kerry",
+    "lat": 52.276,
+    "lon": -10.024
+  },
+  {
+    "id": "dollymount",
+    "name": "Dollymount",
+    "county": "Dublin",
+    "lat": 53.365,
+    "lon": -6.135
+  },
+  {
+    "id": "rusheen",
+    "name": "Rusheen Bay",
+    "county": "Galway",
+    "lat": 53.251,
+    "lon": -9.121
+  },
+  {
+    "id": "keel",
+    "name": "Keel Beach",
+    "county": "Mayo",
+    "lat": 53.971,
+    "lon": -10.067
+  },
+  {
+    "id": "inchydoney",
+    "name": "Inchydoney",
+    "county": "Cork",
+    "lat": 51.596,
+    "lon": -8.867
+  },
+  {
+    "id": "rossnowlagh",
+    "name": "Rossnowlagh",
+    "county": "Donegal",
+    "lat": 54.559,
+    "lon": -8.21
+  },
+  {
+    "id": "tramore",
+    "name": "Tramore",
+    "county": "Waterford",
+    "lat": 52.154,
+    "lon": -7.136
+  },
+  {
+    "id": "ballyholme",
+    "name": "Ballyholme",
+    "county": "Down",
+    "lat": 54.67,
+    "lon": -5.645
+  },
+  {
+    "id": "fi-blackrock-beach",
+    "name": "Blackrock Beach",
+    "county": "Louth",
+    "lat": 53.9611771,
+    "lon": -6.366643399999999
+  },
+  {
+    "id": "fi-seancheibh-an-spideil",
+    "name": "Seanchéibh an Spidéil",
+    "county": "Galway",
+    "lat": 53.24306439999999,
+    "lon": -9.3056117
+  },
+  {
+    "id": "fi-fanore-beach",
+    "name": "Fanore Beach",
+    "county": "Clare",
+    "lat": 53.1177674,
+    "lon": -9.2889201
+  },
+  {
+    "id": "fi-grange-beach",
+    "name": "Grange Beach",
+    "county": "Wexford",
+    "lat": 52.19819510000001,
+    "lon": -6.829830899999999
+  },
+  {
+    "id": "fi-maharees-beach",
+    "name": "Maharees Beach",
+    "county": "Kerry",
+    "lat": 52.28924730000001,
+    "lon": -10.0312646
+  },
+  {
+    "id": "fi-mountshannon-lough-derg",
+    "name": "Mountshannon, Lough Derg",
+    "county": "Clare",
+    "lat": 52.93172399999999,
+    "lon": -8.429834399999997
+  },
+  {
+    "id": "fi-pollan-bay",
+    "name": "Pollan Bay",
+    "county": "Donegal",
+    "lat": 55.2999126,
+    "lon": -7.379950999999999
+  },
+  {
+    "id": "fi-tullan-strand",
+    "name": "Tullan Strand",
+    "county": "Donegal",
+    "lat": 54.4907142,
+    "lon": -8.2669329
+  },
+  {
+    "id": "fi-white-strand-doonbeg",
+    "name": "White Strand Doonbeg",
+    "county": "Clare",
+    "lat": 52.74797769999999,
+    "lon": -9.551282799999997
+  },
+  {
+    "id": "fi-lahinch-beach",
+    "name": "Lahinch Beach",
+    "county": "Clare",
+    "lat": 52.9336105,
+    "lon": -9.34783
+  },
+  {
+    "id": "kilcrea",
+    "name": "Kilcrea — Malahide Estuary",
+    "county": "Dublin",
+    "lat": 53.4690824,
+    "lon": -6.1755492
+  },
+  {
+    "id": "newtownards",
+    "name": "Newtownards — Strangford Lough",
+    "county": "Down",
+    "lat": 54.56012,
+    "lon": -5.62772
+  },
+  {
+    "id": "web-mulranny-murrivaugh",
+    "name": "Mulranny / Murrivaugh Beach",
+    "county": "Mayo",
+    "lat": 53.8998692,
+    "lon": -9.7641683
+  },
+  {
+    "id": "web-drum-beach",
+    "name": "Drum Beach",
+    "county": "Mayo",
+    "lat": 54.1915378,
+    "lon": -10.0860983
+  },
+  {
+    "id": "web-cross-beach-belmullet",
+    "name": "Cross Beach — Belmullet",
+    "county": "Mayo",
+    "lat": 54.2072894,
+    "lon": -10.0827191
+  },
+  {
+    "id": "web-benone-strand",
+    "name": "Benone Strand",
+    "county": "Derry",
+    "lat": 55.168,
+    "lon": -6.8395
+  },
+  {
+    "id": "web-magheraroarty",
+    "name": "Magheraroarty",
+    "county": "Donegal",
+    "lat": 55.151,
+    "lon": -8.1514
+  }
+]
