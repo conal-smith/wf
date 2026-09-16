@@ -150,7 +150,7 @@ class ContractTests(unittest.TestCase):
         hours = (0, 1, 2)
         spot_members = {"brandon": [{"hour": hour, "validTime": valid(hour),
                                      "u": [4.0 + index] * members, "v": [-2.0] * members,
-                                     "gust": [11.0] * (members - 1) + [None]} for hour in hours]
+                                     "gust": [11.0] * members} for hour in hours]
                         for index in [0]}
         means = {"brandon": [{"hour": hour, "validTime": valid(hour), "u": 4.0, "v": -2.0, "gust": 11.0}
                              for hour in hours]}

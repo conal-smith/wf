@@ -13,6 +13,8 @@ MODELS = {
                 "kind": "wind", "maxAgeHours": 12},
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
               "kind": "wind", "maxAgeHours": 24},
+    "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
+                  "kind": "wind", "maxAgeHours": 24},
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12},
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",

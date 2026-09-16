@@ -120,6 +120,7 @@ export interface Manifest {
   gustKind?: GustKind;
   /** Present only for ensembles; `spotForecasts` then holds the member mean. */
   ensemble?: Ensemble;
+  spotForecastsDescription?: string;
   spotMembers?: Record<string, MemberFrame[]>;
 }
 export const speed = (wind: Pick<Wind, "u" | "v">) =>

@@ -159,6 +159,67 @@ station file validates.
 
 These are astronomical predictions, not observations, and carry no surge or wind effect.
 
+### ECMWF ENS refresh
+
+```sh
+.venv/bin/pip install -r force5/ingest/requirements-worker.txt
+npm run weather:refresh:ecmwf-ens
+.venv/bin/python force5/ingest/worker.py --models ecmwf-ens --publish-only
+```
+
+Downloads ECMWF's open-data ensemble (stream `enfo`, type `pf`) with ranged HTTP
+reads and no API key, and publishes `public/weather/ecmwf-ens.json`. It feeds a
+future per-spot probability blend and is **not yet selectable in the website**.
+Defaults: **25 perturbed members, 6-hourly through +144h** (25 steps).
+`--members`, `--step` (3, 6 or 12) and `--hours` are configurable; 00/12 UTC runs
+reach +360h, 06/18 only +144h, and `--step 3` exists only within +144h. The
+importer never requests `type=cf`: IFS Cycle 50r1 retired `scda` and merged the
+ENS control into `oper`, published here as the separate `ecmwf` model, so
+`ensemble.control` is always `null`.
+
+Member messages are large, so members and horizon trade directly against
+bandwidth. Measured from the real 0.25° `enfo` index on 16 September 2026, one
+member-message is 0.84 MB (`10u`), 0.83 MB (`10v`) and 1.39 MB (`10fg`), plus a
+2.0 MB step index shared by a step's members: about 3.07 MB per member per step,
+or 1.67 MB at +0h, which has no gust period.
+
+| `--members`  | `--step` | `--hours` | Steps | Download per run |
+| ------------ | -------- | --------- | ----- | ---------------- |
+| 25 (default) | 6        | 144       | 25    | 1.95 GB          |
+| 20           | 6        | 144       | 25    | 1.58 GB          |
+| 15           | 6        | 240       | 41    | 1.97 GB          |
+| 50           | 6        | 72        | 13    | 2.01 GB          |
+| 50           | 6        | 144       | 25    | 3.87 GB          |
+| 50           | 6        | 240       | 41    | 6.35 GB          |
+
+The default keeps one run just under 2 GB and covers the days where the regional
+models stop (HARMONIE +60h, ICON-EU +72h) while the `ecmwf` control continues to
+day 15. All 50 members to day 10 would cost over 6 GB per run, twice daily.
+Ensemble members are exchangeable, so members 1–25 are a random half of the
+ensemble, not a selection of better members; `ensemble.members` records how many
+were actually used and `modelDetail` names that count.
+
+Only the ensemble **mean** u/v/gust becomes map frames, with the same crop,
+validation and frame JSON as the ECMWF control. `spotForecasts` holds the mean
+per spot — means, not most-likely outcomes — and `spotMembers[spotId][index]`
+holds `u`/`v`/`gust` arrays indexed by member for the same hour, so a browser
+drawing a probability blend never downloads member grids. `gust` is null for
+every member only at +0h (`gustMissingHours: [0]`).
+
+Every member message of every step is decoded and validated: centre `ecmf`,
+`dataType` `pf`, an expected `number`, the 0.25° grid with a constant signature,
+finite values within ±150 m/s, and one shared gust interval per step. A missing
+member, a duplicate, a changed grid or a disagreeing gust interval fails the run
+before anything is published, preserving the previous manifest. Raw per-step
+GRIB is cached under `.cache/ecmwf-ens/<run>/`, and each run reports its own
+measured transfer. The spot catalogue is `FORCE5_SPOTS_FILE` if set, otherwise
+`public/riding-locations.json` when it exists, otherwise `public/spots.json`.
+
+A verified default run of the live 12 UTC cycle on 16 September 2026 transferred
+1.954 GB, validated 1,850 member messages and published 25 mean frames (1.44 MB
+of JSON) plus a 114 kB manifest for eight spots in 172 seconds. No ENS snapshot
+is committed to the repository.
+
 ### HARMONIE refresh
 
 ```sh
@@ -224,6 +285,7 @@ force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regr
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
+force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 public/spots.json           Original eight precomputed forecast locations
 public/riding-locations.json The 25 public riding places every adapter samples
 scripts/export-riding-locations.mjs Regenerates that file from src/locations.ts
@@ -233,6 +295,7 @@ public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
+public/weather/ecmwf-ens.json ECMWF ENS mean frames, ensemble metadata and per-spot member series
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
@@ -285,6 +348,7 @@ spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
   into the curve. Spots with no station in range are published with a `reason`.
+  All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. The `ecmwf-ens` manifest adds `ensemble` (member count, `control: null`) and `spotMembers` (per-spot arrays indexed by member); its `frames` and `spotForecasts` are ensemble means, and `stepHours`/`stepRanges` describe its chosen cadence exactly.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
