@@ -111,6 +111,28 @@ by passing `--hours 144`, which the worker does not do. The AWS mirror returned
 sustained `503 SlowDown` during development while other jobs were active, so the
 importer allows 6 retries with a 10-second backoff and honours `--source ecmwf`
 or `--source google`; keep concurrency at 1–2 readers (`--workers`).
+`--models harmonie-eps` adds the Met Éireann ensemble adapter, which publishes
+per-member spot series for a probability chart plus ensemble-mean frames on the
+same 233 × 236 Ireland grid as HARMONIE. It is the one adapter whose members come
+from **several model runs**: the portal exposes no coherent perturbed member, so
+members are the controls of successive hourly cycles lagged onto one valid-time
+axis (see the README for the endpoint evidence). Two facts drive its deployment:
+
+- **Bandwidth.** There is no server-side subsetting, so every member/step is a
+  separate 12.9–13.8 MB ZIP. A measured 48 h / 3-hour run with two members
+  transferred 443 MB in 18 s and left 8.2 MB in `.cache/harmonie-eps`, publishing
+  17 frames (9.3 MB) and a 30 KB manifest. Use `--step 3`; `--step 1` multiplies the
+  transfer by three. Budget roughly 0.5–1.5 GB per hourly job and confirm this is
+  acceptable to the provider before scheduling it continuously.
+- **Member count.** The portal keeps about three hours of publications, so a cold
+  run finds two to four members. Validated files persist in the named volume's
+  cache and a cycle still counts once cached, so `--step 1` jobs accumulate members
+  up to `--max-lag` (default 6) over successive hours. `--min-members` (default 2)
+  fails the job rather than publishing a one-member "ensemble".
+
+Gusts are null for this model: the Ireland control subset publishes only signed
+gust components. Alarm on `forecast_failed` as for the other models, and treat a
+drop in `ensemble.members` between runs as a source-retention signal, not a bug.
 
 ## AWS setup checklist
 
@@ -121,7 +143,7 @@ or `--source google`; keep concurrency at 1–2 readers (`--workers`).
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
 7. Run a manual task and verify an entire published forecast through the CDN before enabling the schedule.
-8. Schedule HARMONIE checks hourly; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
+8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
 
 Suggested container arguments:
 
@@ -132,6 +154,7 @@ ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
+HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
@@ -158,6 +181,9 @@ weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
+weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
+weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
+weather/manifests/harmonie-eps/RUN-HASH.json    archived complete ensemble manifests
 ```
 
 Each model's immutable objects and archived manifests sit under the first segment of its

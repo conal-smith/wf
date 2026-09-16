@@ -6,7 +6,7 @@ https://claude.ai/artifact/SsCHYWDuqLkfMBrpTokaVU
 
 ## Goal
 
-Differentiate wingfoil.ie by showing forecast *uncertainty* rather than one model's
+Differentiate wingfoil.ie by showing forecast _uncertainty_ rather than one model's
 answer: a probability ribbon and a candlestick view built from many models and
 ensemble members, plus waves, tides, sunrise/sunset and general weather in the same
 bottom dock. Everything runs in the existing one-shot Docker worker on a local
@@ -31,23 +31,41 @@ machine and publishes static JSON, exactly like the three adapters we already ha
 Ranked by value to the spread and ease of onboarding. All cover Irish waters
 (11°W–5°W, 51°N–56°N) unless noted.
 
-| # | Model | Res / length / cycles | Access | Key | Gust | Notes |
-|---|---|---|---|---|---|---|
-| 1 | Met Éireann DINI-EPS members | 2 km, 54 h, hourly cycles | `opendata2.met.ie/nwp/<run>/mbrNNN/` | none | fg | Same portal/grid we already decode. Each hourly cycle adds control + 5 members; lag six cycles to assemble 1+30. Biggest cone-quality gain per line of code. |
-| 2 | ECMWF ENS (`enfo`) | 0.25°, 360 h at 00/12, 144 h at 06/18 | `ecmwf-opendata`, stream `enfo` | none | 10fg per member | 50 members. Same client and `.index` byte ranges as `fetch_ecmwf.py`. |
-| 3 | NOAA GFS 0.25° | 0.25°, 384 h, 4/day, hourly to 120 h | NOMADS grib filter with subregion, or S3 `noaa-gfs-bdp-pds` + `.idx` | none | GUST | Independent of the European stack. ~2 KB per step for our box via the filter. Respect 120 hits/min. |
-| 4 | NOAA GEFS 0.25° | 31 members, 240 h, 4/day, 3 h | S3 `noaa-gefs-pds` + `.idx` | none | GUST | Second independent ensemble. |
-| 5 | Météo-France ARPEGE 0.1° | 0.1°, ~102 h, 4/day | `meteo.data.gouv.fr` bulk GRIB2 | none | FF_RAF scalar | Etalab 2.0. Covers whole box with margin. |
-| 6 | Météo-France AROME 0.025° | 2.5 km, 51 h, ~8/day, hourly | same | none | FF_RAF | Domain 12°W–16°E, 37.5°N–55.4°N: island covered, Malin Head by ~2 km, north Donegal waters NOT. Needs an in-domain check per spot, ARPEGE fallback. |
-| 7 | DWD ICON global | 13 km, 180 h | `opendata.dwd.de/weather/nwp/icon/` | none | VMAX_10M | Icosahedral only; needs CDO or a stored grid file. No regular lat/lon product exists. |
-| 8 | DWD ICON-EU-EPS | 13 km, 40 members, 120 h | `opendata.dwd.de/.../icon-eu-eps/` | none | VMAX | Icosahedral; members bundled per file (~10 MB per field-step). |
-| 9 | Met Office UKV 2 km | 2 km regrid, 54/120 h, hourly cycles | AWS `met-office-atmospheric-model-data` (NetCDF) | none | yes | CC BY-SA, "unsupported, no SLA". DataHub is the supported paid route. |
-| 10 | ECMWF AIFS single | 0.25°, 360 h, 6 h | same client, `model="aifs-single"` | none | none | Trivial to add; wind-speed member only. |
-| 11 | ECCC GDPS / GEPS | 0.15° / 0.5° | `dd.weather.gc.ca` | none | unverified | Licence and latency unverified. |
+| #   | Model                        | Res / length / cycles                 | Access                                                               | Key  | Gust            | Notes                                                                                                                                               |
+| --- | ---------------------------- | ------------------------------------- | -------------------------------------------------------------------- | ---- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Met Éireann DINI-EPS members | 2 km, 60 h, hourly cycles             | `opendata2.met.ie/nwp/<run>/mbrNNN/`                                 | none | fg              | **Perturbed members are not obtainable.** See the correction below; `fetch_harmonie_eps.py` ships a time-lagged control ensemble instead.           |
+| 2   | ECMWF ENS (`enfo`)           | 0.25°, 360 h at 00/12, 144 h at 06/18 | `ecmwf-opendata`, stream `enfo`                                      | none | 10fg per member | 50 members. Same client and `.index` byte ranges as `fetch_ecmwf.py`.                                                                               |
+| 3   | NOAA GFS 0.25°               | 0.25°, 384 h, 4/day, hourly to 120 h  | NOMADS grib filter with subregion, or S3 `noaa-gfs-bdp-pds` + `.idx` | none | GUST            | Independent of the European stack. ~2 KB per step for our box via the filter. Respect 120 hits/min.                                                 |
+| 4   | NOAA GEFS 0.25°              | 31 members, 240 h, 4/day, 3 h         | S3 `noaa-gefs-pds` + `.idx`                                          | none | GUST            | Second independent ensemble.                                                                                                                        |
+| 5   | Météo-France ARPEGE 0.1°     | 0.1°, ~102 h, 4/day                   | `meteo.data.gouv.fr` bulk GRIB2                                      | none | FF_RAF scalar   | Etalab 2.0. Covers whole box with margin.                                                                                                           |
+| 6   | Météo-France AROME 0.025°    | 2.5 km, 51 h, ~8/day, hourly          | same                                                                 | none | FF_RAF          | Domain 12°W–16°E, 37.5°N–55.4°N: island covered, Malin Head by ~2 km, north Donegal waters NOT. Needs an in-domain check per spot, ARPEGE fallback. |
+| 7   | DWD ICON global              | 13 km, 180 h                          | `opendata.dwd.de/weather/nwp/icon/`                                  | none | VMAX_10M        | Icosahedral only; needs CDO or a stored grid file. No regular lat/lon product exists.                                                               |
+| 8   | DWD ICON-EU-EPS              | 13 km, 40 members, 120 h              | `opendata.dwd.de/.../icon-eu-eps/`                                   | none | VMAX            | Icosahedral; members bundled per file (~10 MB per field-step).                                                                                      |
+| 9   | Met Office UKV 2 km          | 2 km regrid, 54/120 h, hourly cycles  | AWS `met-office-atmospheric-model-data` (NetCDF)                     | none | yes             | CC BY-SA, "unsupported, no SLA". DataHub is the supported paid route.                                                                               |
+| 10  | ECMWF AIFS single            | 0.25°, 360 h, 6 h                     | same client, `model="aifs-single"`                                   | none | none            | Trivial to add; wind-speed member only.                                                                                                             |
+| 11  | ECCC GDPS / GEPS             | 0.15° / 0.5°                          | `dd.weather.gc.ca`                                                   | none | unverified      | Licence and latency unverified.                                                                                                                     |
 
 Drop from the candidate list: ICON-D2 (domain ends at 3.84°W), ALADIN (no product
 reaches Ireland), NEMS (proprietary), HRRR/NAM (North America), Open-Meteo as a live
 dependency (free tier is non-commercial; self-hosting is a separate project).
+
+Correction, verified 16 September 2026 while building `fetch_harmonie_eps.py`: the
+"lag six cycles to assemble 1+30" plan does not work. `opendata2.met.ie/nwp/<cycle>/`
+does keep twelve hourly cycles and does rotate through 30 perturbed members
+(cycle 12 → `mbr001`–`mbr005`, cycle 13 → `mbr006`–`mbr010`, … cycle 18 → `mbr001`
+again), but each perturbed directory publishes only eight surface parameters and
+**no 10 m wind**; only `mbr000` publishes `ws`/`wdir`/`fg`, on the full
+1909 × 1609 DINI grid at 4–7 MB per field-step. The near-real-time portal does carry
+member wind in `fcYYYYMMDDHH+HHHgrib2_enIoI` — including the scalar gust
+`max_i10fg` the control subset lacks — but all six files a cycle writes for one step
+share that one name, and `download/nwp?files=<name>` returns an arbitrary one of
+them that changes from step to step (cycle 2026091619 gave members 7, 7, 10, 6, 6,
+9, 0, 7, 9, 7 … for +000…+048). No `member`, `timestamp`, `size` or
+`perturbationNumber` parameter disambiguates it, `enIRL25` resolves to the same
+member as `enIoI`, and the inventory endpoint refuses windows wider than three
+hours or ending in the past. Real DINI-EPS members therefore need the authenticated
+archive or a request to Met Éireann for member-addressable names; ECMWF ENS
+(item 2) is the cheapest route to a genuine member ensemble.
 
 Findings that touch existing code: ECMWF Cycle 50r1 (May 2026) retired the `scda`
 stream and merged the ENS control into `oper`; 06/18 `oper` now reaches 144 h. Our
@@ -56,14 +74,14 @@ step tables are stale.
 
 ## Wave models
 
-| # | Source | Coverage / res / length | Access | Key | Partitions | Notes |
-|---|---|---|---|---|---|---|
-| 1 | NOAA GFS-Wave `arctic.9km` (+ `global.0p25` tail) | yes, 9 km polar stereo, 384 h, 4/day | NOMADS filter with subregion (~40 KB/step all params) or S3 `.idx` | none | wind sea + 3 swell | Verified valid SWH in Irish Sea and west-coast bays. Avoid `global.0p16` (stops 52.5°N) and `atlocn.0p16` (west Atlantic). |
-| 2 | Met Office NWS Wave 1.5 km | 16°W–13°E, 46–62.7°N, 60 h, 4/day, hourly | anonymous S3 `met-office-nws-wave-model-data`, NetCDF, one file per param | none | wind sea + 3 swell | Best coastal resolution. No spatial subsetting; read one timestep chunk at a time. CC BY-SA. |
-| 3 | Marine Institute Irish Shelf SWAN | 15°W–3°W, 49–56°N, 0.025°, 6 days, 1/day, hourly | ERDDAP griddap with true bbox/time subsetting; ~14 KB per spot for the whole run | none | swell Hs only | Only Irish-authority wave model. One run/day at ~9 h latency, sometimes late. 200 m Connemara nest for Galway Bay. CC BY 4.0. |
-| 4 | ECMWF `stream="wave"` | global 0.25°, 360 h | existing client + `.index` | none | none (period-band heights instead) | Cheapest integration; 15-day horizon. `aifs-single` wave is ~2 h fresher. |
-| 5 | CMEMS IBI wave (MFWAM) | 19°W–5°E, 2.7 km, 10 days, hourly | `copernicusmarine` subset (ARCO tiles ~50–100 KB/var per spot) | free account | WW + SW1 + SW2 | Best quality; ~13.5 h latency. Attribution DOI required. |
-| 6 | DWD EWAM | clipped at 10.5°W, ~6 km, 78 h, 2/day | `opendata.dwd.de/weather/maritime/wave_models/ewam/` | none | full split | Misses the Atlantic-exposed spots that matter most. Second opinion only. |
+| #   | Source                                            | Coverage / res / length                          | Access                                                                           | Key          | Partitions                         | Notes                                                                                                                         |
+| --- | ------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------- | ------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | NOAA GFS-Wave `arctic.9km` (+ `global.0p25` tail) | yes, 9 km polar stereo, 384 h, 4/day             | NOMADS filter with subregion (~40 KB/step all params) or S3 `.idx`               | none         | wind sea + 3 swell                 | Verified valid SWH in Irish Sea and west-coast bays. Avoid `global.0p16` (stops 52.5°N) and `atlocn.0p16` (west Atlantic).    |
+| 2   | Met Office NWS Wave 1.5 km                        | 16°W–13°E, 46–62.7°N, 60 h, 4/day, hourly        | anonymous S3 `met-office-nws-wave-model-data`, NetCDF, one file per param        | none         | wind sea + 3 swell                 | Best coastal resolution. No spatial subsetting; read one timestep chunk at a time. CC BY-SA.                                  |
+| 3   | Marine Institute Irish Shelf SWAN                 | 15°W–3°W, 49–56°N, 0.025°, 6 days, 1/day, hourly | ERDDAP griddap with true bbox/time subsetting; ~14 KB per spot for the whole run | none         | swell Hs only                      | Only Irish-authority wave model. One run/day at ~9 h latency, sometimes late. 200 m Connemara nest for Galway Bay. CC BY 4.0. |
+| 4   | ECMWF `stream="wave"`                             | global 0.25°, 360 h                              | existing client + `.index`                                                       | none         | none (period-band heights instead) | Cheapest integration; 15-day horizon. `aifs-single` wave is ~2 h fresher.                                                     |
+| 5   | CMEMS IBI wave (MFWAM)                            | 19°W–5°E, 2.7 km, 10 days, hourly                | `copernicusmarine` subset (ARCO tiles ~50–100 KB/var per spot)                   | free account | WW + SW1 + SW2                     | Best quality; ~13.5 h latency. Attribution DOI required.                                                                      |
+| 6   | DWD EWAM                                          | clipped at 10.5°W, ~6 km, 78 h, 2/day            | `opendata.dwd.de/weather/maritime/wave_models/ewam/`                             | none         | full split                         | Misses the Atlantic-exposed spots that matter most. Second opinion only.                                                      |
 
 Met Éireann publishes no wave data. Met Office DataHub has no wave product.
 
