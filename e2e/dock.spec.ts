@@ -126,6 +126,13 @@ test("the blend draws every model that covers the spot, and candles share its ax
   await page.mouse.move(chart.x + 260, chart.y + chart.height / 2);
   const card = page.locator(".chart-hover-card");
   await expect(card).toBeVisible();
+  // The dock is backdrop-filtered, which makes it the containing block for
+  // fixed children: an unportalled card lands below the fold.
+  const cardBox = (await card.boundingBox())!;
+  expect(cardBox.y).toBeGreaterThanOrEqual(0);
+  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  );
   await expect(card).toContainText("HARMONIE");
   await expect(card).toContainText("Median");
   await expect(card).toContainText(/models agree|some spread|models disagree/);
@@ -291,6 +298,12 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   const tip = page.getByRole("tooltip");
   await expect(tip).toBeVisible();
   await expect(tip).toContainText("Half the gap between the highest");
+  const tipBox = (await tip.boundingBox())!;
+  expect(tipBox.y).toBeGreaterThanOrEqual(0);
+  expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  );
+  expect(tipBox.x).toBeGreaterThanOrEqual(0);
   await page.screenshot({ path: "test-results/dock-row-tooltip-390.png" });
   const dock = (await page.locator(".map-footer").boundingBox())!;
   expect(dock.height).toBeLessThan(320);

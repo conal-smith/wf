@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface Props {
   /** Inline stroke glyph; the row's name is carried by `label`, not by text. */
@@ -15,8 +16,9 @@ const LONG_PRESS_MS = 400;
 /**
  * A row's glyph label. The dock has no room for nine written row names, so each
  * row is a glyph with a real accessible name and an explanation on hover, focus
- * or long press. The tooltip is positioned in the viewport rather than inside
- * the scroller, which would clip it.
+ * or long press. The tooltip is positioned in the viewport and rendered into
+ * the document body: the dock is a backdrop-filtered surface, which makes it
+ * the containing block for fixed children and would put the tip off-screen.
  */
 export default function RowLabel({ glyph, label, help, unit }: Props) {
   const id = `row-help-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
@@ -59,17 +61,19 @@ export default function RowLabel({ glyph, label, help, unit }: Props) {
         {glyph}
         {unit && <small>{unit}</small>}
       </button>
-      {tip && (
-        <span
-          id={id}
-          role="tooltip"
-          className="row-tip"
-          style={{ left: tip.left, top: tip.top }}
-        >
-          <strong>{label}</strong>
-          {help}
-        </span>
-      )}
+      {tip &&
+        createPortal(
+          <span
+            id={id}
+            role="tooltip"
+            className="row-tip"
+            style={{ left: tip.left, top: tip.top }}
+          >
+            <strong>{label}</strong>
+            {help}
+          </span>,
+          document.body,
+        )}
     </>
   );
 }
