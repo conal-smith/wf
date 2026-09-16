@@ -26,8 +26,19 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
     by the product as `--f5-model-hue`; `__model--gust` is the dashed gust line.
   - `__median` — the white line through the middle of the models.
   - `__arrow` with `__arrow-halo` — wind direction on the median.
+  - `__wave-band` — an optional band along the plot's foot for wave height, on
+    its own fixed nought-to-six-metre scale in `--sem-color-wind-k05` at low
+    opacity. It is drawn behind the wind bands and inside the existing plot box,
+    so it borrows no height from the chart and adds none to the dock.
   - `__now` — the warm marker for real clock time.
 - **Card** (`__card`) — what each model says at one hour, on hover or press.
+- **Wave row** (`__wave-row`) — one marine row per sea state, 28px tall and 24px
+  compact, the same as the tide row's, drawn over the tide underlay. Each cell is
+  a `__wave-cell`: a small `__wave-arrow` rotated by the bearing so it travels
+  the way the waves do, the significant height in metres to one decimal, then the
+  period in whole seconds as muted small text. The unit is stated once on the
+  row's glyph, never in the cells, and a step the model did not resolve is an em
+  dash. Swell and wind sea are the same row with a different glyph.
 - **Filter** (`.f5-forecast-filter`) — a dialog holding the row switches, the
   units control and the models in the blend.
 
@@ -46,6 +57,11 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
 - `.f5-forecast-chart` — at rest.
 - `.f5-forecast-chart__card` — a column is under the pointer or held; the
   cursor line marks it and the card names every model's reading.
+- `.f5-forecast-chart__wave-band` — the wave band is switched on.
+- `.f5-forecast-chart__wave-cell` — a column with a wave reading. A column with
+  no forecast step close enough carries no cell at all: it reads as an em dash in
+  the row's own muted colour, never as a zero, because zero metres would be a
+  measured flat calm and this is an absence.
 - `.f5-forecast-chart[data-state="empty"]` — no model publishes a series for
   this spot yet. The chart says so rather than drawing an empty box.
 - `.f5-forecast-chart--candles` — the candle variant.
@@ -71,6 +87,16 @@ would silently disagree with the numbers beside it.
 Do show the gust as a continuation upward from the wind median, not as a
 separate band elsewhere on the chart. A gust is the same wind, harder.
 
+Do give waves their own scale and say so. Wave height is not a wind speed, so it
+must never be read off the value axis or coloured by the wind ramp; the band is
+one quiet blue on a fixed domain, and the numbers live in the wave row. Keep the
+wave rows' arrows on the same convention as the wind's — rotated by the bearing
+the waves come from, so the arrow travels the way they do.
+
+Don't make a partition look like a total. Swell and wind sea are separate wave
+trains whose heights add in energy, not in metres, so they never sum to the
+combined height on screen and the row's explanation says so.
+
 Don't add a second filled action inside the dock. The toolbar's Play button is
 the view's one accent; the filter trigger and the view switch stay quiet.
 
@@ -95,6 +121,11 @@ Agreement is written in words in the hover card — "models agree", "some spread
 "models disagree" — never carried by colour alone. Each row's glyph label is a
 button with a real accessible name and an explanation on hover, focus or long
 press, so the row's meaning is reachable without a pointer.
+
+The wave band carries no reading of its own: the chart's `aria-label` says it is
+there and what its scale is, and the wave row beside it prints every value as
+text. A wave arrow is `aria-hidden`, because the row's numbers and its glyph
+explanation already carry the direction convention in words.
 
 The filter is a modal dialog: focus is trapped while it is open, Escape closes
 it, and the trigger takes focus back afterwards. Its switches are real

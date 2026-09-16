@@ -5,11 +5,14 @@ import { windModels } from "./manifests";
 
 export type RowKey =
   | "blend"
+  | "waveOverlay"
   | "wind"
   | "spread"
   | "gust"
   | "dir"
   | "waves"
+  | "swell"
+  | "windsea"
   | "sea"
   | "air"
   | "tide";
@@ -25,11 +28,14 @@ export interface Prefs {
 
 export const ROW_KEYS: readonly RowKey[] = [
   "blend",
+  "waveOverlay",
   "wind",
   "spread",
   "gust",
   "dir",
   "waves",
+  "swell",
+  "windsea",
   "sea",
   "air",
   "tide",
@@ -37,15 +43,22 @@ export const ROW_KEYS: readonly RowKey[] = [
 export const VIEWS: readonly ForecastView[] = ["table", "blend", "candles"];
 export const PREFS_KEY = "force5.prefs.v1";
 
-/** Per-model wind and gust rows start off: the blend replaces them by default. */
+/**
+ * Per-model wind and gust rows start off: the blend replaces them by default.
+ * So do the wave partitions and the chart's wave band: the total sea is the
+ * reading a rider wants, and the partitions are for the days it matters.
+ */
 export const defaultPrefs = (): Prefs => ({
   rows: {
     blend: true,
+    waveOverlay: false,
     wind: false,
     spread: true,
     gust: false,
     dir: false,
     waves: true,
+    swell: false,
+    windsea: false,
     sea: true,
     air: true,
     tide: true,

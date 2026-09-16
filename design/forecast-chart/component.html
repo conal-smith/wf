@@ -437,6 +437,109 @@
   </div>
 </template>
 
+<template id="waves">
+  <div class="f5-forecast-chart f5-forecast-chart--blend demo-scale short">
+    <div class="f5-forecast-chart__gutter">
+      <span
+        class="f5-forecast-chart__scale"
+        role="img"
+        aria-label="Wind scale, 0 to 40 knots"
+      ></span>
+    </div>
+    <div class="f5-forecast-chart__plot">
+      <svg
+        class="f5-forecast-chart__svg"
+        width="560"
+        height="104"
+        role="img"
+        aria-label="Model blend: wind between 10 and 24 knots. A band along the foot shows wave height up to 6 metres; the Waves row prints it. The table view lists every value."
+      >
+        <!-- Behind the wind, along the foot, on its own 0-6 m scale. -->
+        <path
+          class="f5-forecast-chart__wave-band"
+          d="M20 95 C 110 92, 200 86, 290 83 C 380 80, 470 84, 540 88 L540 104 L20 104 Z"
+        />
+        <path
+          class="f5-forecast-chart__median"
+          d="M20 62 C 110 55, 200 40, 290 34 C 380 30, 470 44, 540 52"
+        />
+      </svg>
+    </div>
+  </div>
+  <!-- One marine row per sea state, drawn over the tide underlay. -->
+  <table style="width: 100%; border-collapse: collapse; margin-top: 4px">
+    <tr class="f5-forecast-chart__wave-row">
+      <th
+        scope="row"
+        style="width: 56px; text-align: left; font-weight: 400"
+        aria-label="Waves"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          aria-hidden="true"
+          style="color: var(--sem-color-text-muted)"
+        >
+          <path d="M2 12c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3" />
+          <path d="M2 17c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3" />
+        </svg>
+        <small
+          style="
+            font-size: var(--sem-text-eyebrow-font-size);
+            color: var(--sem-color-text-muted);
+          "
+          >m</small
+        >
+      </th>
+      <td style="text-align: center">
+        <span class="f5-forecast-chart__wave-cell">
+          <svg
+            class="f5-forecast-chart__wave-arrow"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+            style="transform: rotate(315deg)"
+          >
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+          <b>1.4</b><small>10s</small>
+        </span>
+      </td>
+      <td style="text-align: center">
+        <span class="f5-forecast-chart__wave-cell">
+          <svg
+            class="f5-forecast-chart__wave-arrow"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+            style="transform: rotate(300deg)"
+          >
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+          <b>2.1</b><small>11s</small>
+        </span>
+      </td>
+      <!-- No step fell close enough to this column: a dash, never a zero. -->
+      <td style="text-align: center; color: var(--sem-color-text-muted)">
+        &mdash;
+      </td>
+    </tr>
+  </table>
+</template>
+
 <template id="card">
   <div class="f5-forecast-chart__card" role="status">
     <strong>Tue, 15 Sept 14:00</strong>
@@ -577,6 +680,10 @@
       "chart",
     ],
     ["--candles &mdash; wick, body, median tick, gust bar", "candles"],
+    [
+      "__wave-band with __wave-row &mdash; waves on their own 0&ndash;6 m scale",
+      "waves",
+    ],
     ['[data-state="empty"] &mdash; no series for this spot', "empty"],
     ["__card &mdash; a column under the pointer", "card"],
     [".f5-forecast-filter[open] &mdash; switches, units, models", "filter"],

@@ -8,3 +8,4 @@ export * from "./blend";
 export * from "./sun";
 export * from "./prefs";
 export * from "./tides";
+export * from "./waves";
