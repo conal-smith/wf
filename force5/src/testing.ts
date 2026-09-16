@@ -1,6 +1,7 @@
 // Synthetic manifests for unit tests. Not exported from index.ts and never
 // bundled into the app; the bundled snapshots in public/weather remain the
 // acceptance data.
+import type { WaveManifest, WaveStep, WaveVariable } from "./waves";
 import type { Manifest, MemberFrame, Wind } from "./weather";
 
 export const testGrid = {
@@ -139,6 +140,115 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
         gust: mean(frame.gust),
       })),
     },
+    ...extra,
+  };
+}
+
+/** The nine GFS-Wave variables, partitions included, as the importer names them. */
+export const GFS_WAVE_VARIABLES: Record<string, WaveVariable> =
+  Object.fromEntries(
+    (
+      [
+        ["swh", "m", "Wave height"],
+        ["pp1d", "s", "Peak period"],
+        ["mwd", "degrees true", "Peak direction"],
+        ["shww", "m", "Wind-wave height"],
+        ["mpww", "s", "Wind-wave period"],
+        ["mdww", "degrees true", "Wind-wave direction"],
+        ["swell1_h", "m", "Primary swell height"],
+        ["swell1_p", "s", "Primary swell period"],
+        ["swell1_d", "degrees true", "Primary swell direction"],
+      ] as const
+    ).map(([name, units, label]) => [
+      name,
+      { units, label, description: `${label}, synthetic` },
+    ]),
+  );
+/** Irish Shelf SWAN: a swell height but no swell period, and a derived wind sea. */
+export const SWAN_VARIABLES: Record<string, WaveVariable> = Object.fromEntries(
+  (
+    [
+      ["swh", "m", "Wave height"],
+      ["hswe", "m", "Swell height"],
+      ["shww", "m", "Wind-sea height"],
+      ["mwp", "s", "Mean period"],
+      ["pp1d", "s", "Peak period"],
+      ["mwd", "deg", "Mean direction"],
+    ] as const
+  ).map(([name, units, label]) => [
+    name,
+    { units, label, description: `${label}, synthetic` },
+  ]),
+);
+
+export interface WaveFixture {
+  model?: string;
+  runTime?: string;
+  hours?: number[];
+  spotId?: string;
+  variables?: Record<string, WaveVariable>;
+  /** Value generator; omitted variables are published as null, as land is. */
+  values?: (
+    hour: number,
+    index: number,
+  ) => Record<string, number | null> | null;
+  withFrames?: boolean;
+  extra?: Partial<WaveManifest>;
+}
+
+/** A wave manifest with one precomputed spot series and no frames by default. */
+export function waveManifest(options: WaveFixture = {}): WaveManifest {
+  const {
+    model = "gfs-wave",
+    runTime = "2026-09-16T18:00:00Z",
+    hours = [0, 3, 6],
+    spotId = "brandon",
+    variables = GFS_WAVE_VARIABLES,
+    values = (hour: number): Record<string, number | null> => ({
+      swh: 1 + hour / 10,
+      pp1d: 9,
+      mwd: 300,
+    }),
+    withFrames = false,
+    extra = {},
+  } = options;
+  const step = hours.length > 1 ? hours[1] - hours[0] : 3;
+  const series: WaveStep[] = hours.map((hour, index) => ({
+    hour,
+    validTime: validTime(runTime, hour),
+    values: Object.fromEntries(
+      Object.keys(variables).map((name) => [
+        name,
+        values(hour, index)?.[name] ?? null,
+      ]),
+    ),
+  }));
+  return {
+    schemaVersion: 1,
+    kind: "wave",
+    model,
+    modelName: model,
+    provider: "test",
+    run: runTime.replace(/\D/g, "").slice(0, 10),
+    runTime,
+    generatedAt: runTime,
+    stepHours: step,
+    ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
+    resolutionKm: 9,
+    variables,
+    frames: withFrames
+      ? hours.map((hour) => ({
+          hour,
+          validTime: validTime(runTime, hour),
+          url: `weather/${model}-${hour}.json`,
+          gustIntervalHours: null,
+        }))
+      : [],
+    ...(withFrames ? { grid: testGrid } : {}),
+    spotSeries: { [spotId]: series },
+    sourceUrl: "https://example.test/waves",
+    attribution: "Test wave data",
+    licenseUrl: "https://example.test/licence",
     ...extra,
   };
 }
