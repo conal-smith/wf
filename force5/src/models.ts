@@ -20,6 +20,12 @@ export const MODELS = [
     detail: "15 days",
     manifestUrl: "weather/ecmwf.json",
   },
+  {
+    id: "gfs",
+    name: "GFS",
+    detail: "0.25°",
+    manifestUrl: "weather/gfs.json",
+  },
 ] as const;
 export type ModelId = (typeof MODELS)[number]["id"];
 
