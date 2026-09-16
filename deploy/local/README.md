@@ -23,8 +23,9 @@ Because the site and the data share an origin, the frontend needs **no**
 
 - Docker with Compose v2 or newer (`docker compose version`). A plain Docker install
   is enough; the build does not depend on the buildx plugin.
-- About 6 GB of RAM for the ingest container and 10–20 GB of disk for runs and raw
-  GRIB caches, depending on how many models you enable.
+- 4–6 GB of RAM available to Docker for the ingest container, and 10–20 GB of disk for
+  runs and raw GRIB caches, depending on how many models you enable. On macOS or
+  Windows that is the VM's allocation, not the machine's.
 - Outbound HTTPS to the forecast providers (Met Éireann, DWD, ECMWF, NOAA). No
   inbound port needs to be open to the internet.
 
