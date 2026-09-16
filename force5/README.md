@@ -10,7 +10,16 @@ model, initialization, valid times and source licences remain explicit.
 - `src/weather.ts`: provider-neutral types, validation, interpolation and frame cache.
 - `src/index.ts`: source-module exports consumed by the host app.
 - `src/Force5Brand.tsx`, `assets/force5-logo.png`: platform branding.
-- `src/models.ts`: model registry and validated model-switch loading.
+- `src/models.ts`: the three map models and validated model-switch loading.
+- `src/manifests.ts`: full model registry (including planned models) and the manifest cache.
+- `src/units.ts`: display units, conversion and formatting.
+- `src/series.ts`: precomputed per-spot and per-member series access.
+- `src/blend.ts`: common hourly axis, interpolation, per-hour statistics, candles and plot helpers.
+- `src/sun.ts`: sunrise, sunset, civil twilight and night intervals.
+- `src/prefs.ts`: dock display preferences with best-effort persistence.
+- `src/tides.ts`: tide manifest, station curves and readings.
+- `src/timeline.ts`: fractional now-position and scrubber colours.
+- `src/testing.ts`: synthetic manifests for unit tests; never bundled.
 - `ingest/`: independent ICON-EU and HARMONIE download, validation and atomic publication.
 
 This is a source module inside the prototype, not yet a published/licensable SDK.

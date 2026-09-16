@@ -288,6 +288,37 @@ spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
+## Multi-model data layer
+
+Data-layer modules for the planned probability blend. They are pure TypeScript with
+unit tests and no UI: nothing in the dock consumes them yet. See the
+[multi-model plan](docs/MULTI_MODEL_PLAN.md) for the ingest side.
+
+```text
+force5/src/units.ts      Units type, conversion, labels, formatted speeds
+force5/src/manifests.ts  Model registry (live and planned) and the manifest cache
+force5/src/series.ts     Precomputed per-spot and per-member series access
+force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles, plot helpers
+force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
+force5/src/prefs.ts      Row/unit/view/model preferences, persisted best effort
+force5/src/tides.ts      Tide manifest, station curves, heights and high/low events
+```
+
+`validateManifest` now also accepts the optional keys the new adapters publish, at
+`schemaVersion` 1: `kind` (`wind`, `wave` or `tide`; absent means wind), `gustKind`
+(`instantaneous` gusts declare `[hour, hour]` at every frame including hour 0 and
+have no `gustMissingHours`), and `ensemble` plus `spotMembers` for per-member spot
+series. Only an ensemble manifest may publish an empty `frames` list, because the
+chart reads precomputed series and never downloads frames.
+
+Blend statistics are per hour: count, min, max, quartiles, median, mean, spread and
+an agreement label. Spread is the full range in metres per second; agreement is
+`high` below 4 knots of spread and `moderate` below 8. Interpolation happens in u/v
+space, never between speeds or wrapped bearings, and never across a gap wider than
+twice a model's median cadence. The registry lists models whose adapter is still
+planned with `planned: true` so the dock can show them greyed instead of hiding them;
+model identity hues are provisional pending a design ruling.
+
 ## Sources and limitations
 
 - Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html).
