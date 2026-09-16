@@ -29,8 +29,14 @@ spots:export`).
 - Forecast dock in `src/`: `ForecastDock`, `ForecastHeader`, `BlendChart`,
   `CandleChart`, `DisplayFilter`, `RowLabel` (see "Forecast dock" in the root README),
   with a `design/forecast-chart` component and the dated hue ruling.
-- Still open: wave rows wired to the `gfs-wave` and `mi-swan` manifests, the browser
-  validator for wave manifests, and regenerated bundled snapshots with 25-spot series.
+- Second wave (17 September): 25-spot series backfilled into every bundled snapshot
+  (`backfill_spots.py`), HARMONIE scalar gusts from the control's gust components
+  (component magnitude matches the provider's scalar to 0.0014 m/s), ICON-EU surface
+  weather (`icon-eu-weather`), NOAA GEFS (31 members, ~19 MB per run via the NOMADS
+  filter), and wave rows in the dock reading `gfs-wave` / `mi-swan` through
+  `force5/src/waves.ts`.
+- Still open: weather rows in the dock, ARPEGE/AROME, AIFS and the ECMWF wave stream,
+  an in-situ sea-temperature source, Northern Ireland tides, open-tab refresh.
 
 ## Goal
 
