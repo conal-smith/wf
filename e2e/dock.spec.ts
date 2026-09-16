@@ -172,7 +172,7 @@ test("display choices survive a reload", async ({ page }) => {
   await withTides(page);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
-  await expect(page.locator(".blend-row")).toHaveCount(2);
+  await expect(page.locator(".blend-row")).toHaveCount(1);
   await page.getByLabel("Display options", { exact: true }).click();
   await page.locator('input[data-row="gust"]').check();
   await page.locator('input[data-row="spread"]').uncheck();
