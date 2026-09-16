@@ -23,7 +23,18 @@
     "weather:refresh:ecmwf": ".venv/bin/python force5/ingest/fetch_ecmwf.py",
     "weather:refresh:gfs": ".venv/bin/python force5/ingest/fetch_gfs.py",
     "weather:refresh:ecmwf-ens": ".venv/bin/python force5/ingest/fetch_ecmwf_ens.py",
-    "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py"
+    "weather:refresh:harmonie-eps": ".venv/bin/python force5/ingest/fetch_harmonie_eps.py",
+    "weather:refresh:mi-swan": ".venv/bin/python force5/ingest/fetch_mi_swan.py",
+    "weather:refresh:gfs-wave": ".venv/bin/python force5/ingest/fetch_gfswave.py",
+    "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py",
+    "deploy:build": "docker compose -f deploy/local/docker-compose.yml build",
+    "deploy:up": "docker compose -f deploy/local/docker-compose.yml up -d",
+    "deploy:down": "docker compose -f deploy/local/docker-compose.yml down",
+    "deploy:logs": "docker compose -f deploy/local/docker-compose.yml logs -f --tail=100",
+    "deploy:status": "docker compose -f deploy/local/docker-compose.yml run --rm status",
+    "deploy:schedule": "docker compose -f deploy/local/docker-compose.yml run --rm scheduler --list",
+    "deploy:run": "docker compose -f deploy/local/docker-compose.yml run --rm worker",
+    "deploy:prune": "docker compose -f deploy/local/docker-compose.yml run --rm prune"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1134.0",

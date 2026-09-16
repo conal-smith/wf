@@ -6,7 +6,10 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
 
 - wind  frames of u/v/gust grids plus `spotForecasts`. Optional `gustKind`
         ("interval", the default, or "instantaneous") and `ensemble`/`spotMembers`.
-- wave  frames of one array per declared variable plus `spotSeries`.
+- wave  `spotSeries` per riding location plus optional frames of one array per
+        gridded variable. `frames` may be empty, and `horizonHours` then declares
+        the horizon the series covers; `frameVariables` may narrow the frames to a
+        subset of `variables`.
 - tide  a station manifest plus immutable per-station prediction files.
 """
 from datetime import datetime, timedelta, timezone
@@ -196,10 +199,26 @@ def validate_wave_bundle(public, model, manifest, run, now):
         if any(not isinstance(meta.get(key), str) or not meta[key].strip()
                for key in ("units", "label", "description")):
             raise ValueError(f"Wave variable {name} needs units, label and description")
-    frames, grid = manifest["frames"], manifest["grid"]
+    frames = manifest["frames"]
     hours = expected_hours(manifest)
-    if not frames or len(frames) != len(hours):
+    horizon = manifest.get("horizonHours")
+    if horizon is not None and horizon != hours[-1]:
+        raise ValueError("Declared wave horizon does not match the published cadence")
+    if not frames:
+        # Wave frames are optional: the precomputed spot series is the product, and
+        # a full wave grid is far larger than a site showing beach series needs.
+        validate_spot_series(manifest.get("spotSeries"), variables, hours, run)
+        if run + timedelta(hours=hours[-1]) <= now:
+            raise ValueError("Wave horizon has already expired")
+        return []
+    grid = manifest["grid"]
+    if len(frames) != len(hours):
         raise ValueError("Empty wave forecast or unsupported cadence")
+    # Frames may carry a declared subset: a map needs fewer fields than a spot series.
+    gridded = manifest.get("frameVariables", list(variables))
+    if (not isinstance(gridded, list) or not gridded or len(set(gridded)) != len(gridded)
+            or not set(gridded) <= set(variables)):
+        raise ValueError("Frame variables must be a distinct subset of the declared variables")
     count = grid_count(grid)
     objects = []
     for index, info in enumerate(frames):
@@ -212,7 +231,7 @@ def validate_wave_bundle(public, model, manifest, run, now):
         if any(frame.get(k) != v for k, v in {"model": model, "run": manifest["run"],
                "grid": grid, "hour": hour, "validTime": valid}.items()):
             raise ValueError("Mixed model/run/frame metadata")
-        for name in variables:
+        for name in gridded:
             values = frame.get(name)
             # Land and unresolved cells are null; they are never filled with zero.
             if not isinstance(values, list) or len(values) != count or not all(

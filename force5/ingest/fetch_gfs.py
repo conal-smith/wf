@@ -138,8 +138,11 @@ def object_key(run, hour):
     return f"gfs.{run[:8]}/{run[-2:]}/atmos/gfs.t{run[-2:]}z.pgrb2.0p25.f{hour:03d}"
 
 
-def index_ranges(text, hour):
-    """Byte ranges of u, v and gust in a GFS `.idx` sidecar, in file order."""
+def index_ranges(text, hour, records=RECORDS):
+    """Byte ranges of the requested `.idx` records, in file order.
+
+    Defaults to this importer's u, v and gust; the GFS-Wave adapter passes its
+    own (name, level) selectors because the sidecar format is identical."""
     entries = []
     for line in text.splitlines():
         parts = line.split(":")
@@ -149,7 +152,7 @@ def index_ranges(text, hour):
         raise ValueError("Unreadable GFS index")
     step = "anl" if hour == 0 else f"{hour} hour fcst"
     ranges = []
-    for name, level in RECORDS:
+    for name, level in records:
         found = [i for i, entry in enumerate(entries) if entry[1:] == (name, level, step)]
         if len(found) != 1:
             raise ValueError(f"GFS index has no single {name} at {level} for +{hour:03d}h")
