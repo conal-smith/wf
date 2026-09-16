@@ -21,6 +21,10 @@ public/weather/*/
 !public/weather/ecmwf-2026091300-360h-v2/
 # Small real GFS acceptance snapshot (2026-09-16 12 UTC, 120 h at 3-hour steps).
 !public/weather/gfs-2026091612-120h-v1/
+# Small real ICON-EU surface weather acceptance snapshot (2026-09-16 18 UTC, two
+# frames at 3-hour steps). A weather frame is five arrays over 56,817 cells, about
+# 1.25 MB, so the default 72-hour run is 30 MB and is generated locally.
+!public/weather/icon-eu-weather-2026091618-3h-v1/
 # Small real GFS-Wave acceptance snapshot (2026-09-16 18 UTC, 9 h at 3-hour steps).
 # Wave frames carry nine variables over 121 × 101 cells, so a longer bundled run
 # would be tens of megabytes; generate one locally for real use.

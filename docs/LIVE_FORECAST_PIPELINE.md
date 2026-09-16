@@ -164,6 +164,34 @@ path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
 publish when the cut-out does not land on the source lattice, which is the check
 that would catch NOAA changing the grid or the filter's coordinate arithmetic.
 
+ICON-EU surface weather is the first **weather** bundle: `--models icon-eu-weather`
+runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level parameters
+(temperature, dew point, humidity, accumulated precipitation, four cloud layers,
+mean-sea-level pressure, visibility, mean-layer CAPE, WMO present weather and ground
+temperature) from one cycle and publishes `weather/icon-eu-weather.json` with
+immutable frames beside it. The worker passes `--step`/`--run` only to wind models, so
+this task takes the importer's defaults: 0–72 h at three-hour steps, 25 frames. Its
+registry age limit is 12 hours, the same as ICON-EU wind.
+
+Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
+parameter per step with no server-side subsetting, so a default run transfers **301 MB
+in 325 bz2 GRIB files** (measured against the live 18 UTC run on 16 September 2026)
+and completes download, validation, cropping and publication in **67 seconds**,
+writing 25 frames of 1.19–1.27 MB (30.3 MB) and a 156 KB manifest. `--step 1` triples
+that transfer. The cache lives in the same `.cache/grib/<run>/` directory as the wind
+importer under distinct parameter names, so a volume holding both ICON jobs for one
+run needs roughly 400 MB.
+
+Frames carry a declared subset of the variables (`t2m`, `precip`, `clct`, `pmsl`,
+`ww`) because thirteen arrays over 56,817 cells would be about 3 MB per frame;
+`spotSeries` carries every variable at every hour, which is what a chart reads.
+`precip` is differenced from DWD's `tot_prec` accumulation and is `null` at hour 0;
+`ww` is a WMO code that must never be interpolated or blended; `tg` over sea is a
+model SST **proxy** and must be labelled as one wherever it is shown. Schedule it on
+the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
+(`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
+so the two never share the worker lock), and alarm on the same 12-hour threshold.
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
@@ -173,13 +201,14 @@ that would catch NOAA changing the grid or the filter's coordinate arithmetic.
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
 7. Run a manual task and verify an entire published forecast through the CDN before enabling the schedule.
-8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
+8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay; give `icon-eu-weather` its own slot on those same cycles rather than adding it to the wind task, because it transfers about 300 MB and must not delay the wind publication. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
 
 Suggested container arguments:
 
 ```text
 HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
+ICON-EU WEATHER: --models icon-eu-weather --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
@@ -213,6 +242,9 @@ weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
 weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
 weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
 weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
+weather/icon-eu-weather.json               current ICON-EU surface weather pointer + spot series
+weather/icon-eu-weather-RUN-72h-v1/HOUR-HASH.json  immutable surface variable grids
+weather/manifests/icon-eu-weather/RUN-HASH.json    archived complete weather manifests
 weather/gfs-wave.json                      current GFS-Wave pointer + metadata
 weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
 weather/manifests/gfs-wave/RUN-HASH.json   archived complete GFS-Wave manifests
@@ -242,6 +274,11 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   published hour; `frameVariables` may narrow frames to a subset of `variables`.
   Marine Institute Irish Shelf SWAN (`mi-swan`) is the first wave adapter and publishes
   no frames by default.
+- `weather` runs the same validator as `wave` for surface variables. It allows
+  measurements up to 100,000 (hectopascals, millimetres, J/kg) instead of 1,000, and a
+  variable may declare `"kind": "code"` for a whole code-table entry such as WMO present
+  weather, which is checked for being a small integer rather than range-checked.
+  ICON-EU surface weather (`icon-eu-weather`) is the first weather adapter.
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.

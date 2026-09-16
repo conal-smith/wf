@@ -66,7 +66,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu ecmwf gfs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -99,6 +99,72 @@ The importer:
 7. Atomically replaces `public/weather/latest.json` only after all requested frames pass validation.
 
 Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the current cropped JSON snapshot is roughly 22 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+
+### ICON-EU surface weather refresh
+
+```sh
+npm run weather:refresh:icon-weather
+# Shorter, hourly, or every variable on the map:
+.venv/bin/python force5/ingest/fetch_icon_weather.py --hours 12 --step 3
+.venv/bin/python force5/ingest/fetch_icon_weather.py --hours 24 --step 1
+.venv/bin/python force5/ingest/fetch_icon_weather.py --hours 12 --frame-variables all
+```
+
+The same DWD ICON-EU open data as the wind importer (CC BY 4.0, no API key), read for
+thirteen single-level surface parameters and published as a **`kind: "weather"`
+variables bundle** — the same shape as the wave bundle: a declared `variables` map, one
+array per gridded variable in every frame, and a precomputed `spotSeries` for all 25
+riding locations. Model id `icon-eu-weather`, manifest `public/weather/icon-eu-weather.json`.
+Default: 0–72 hours at three-hour steps (25 frames); `--step 1` works to +72 h, and
+`--hours` takes 3–72 divisible by the step. Discovery, the four-cycle inventory check,
+the 12-hour freshness limit, at most four concurrent downloads into `.cache/grib/<run>/`
+and the bz2/GRIB checks are the wind importer's, reused unchanged. **Nothing in the
+website reads this manifest yet**; it is an ingest deliverable.
+
+Fourteen published variables, converted and rounded once so nothing downstream guesses:
+
+| Variable                       | DWD parameter                  | Published as        |
+| ------------------------------ | ------------------------------ | ------------------- |
+| `t2m`, `td2m`                  | `t_2m`, `td_2m` (K)            | °C, 0.1             |
+| `rh2m`                         | `relhum_2m`                    | %, whole            |
+| `tp`                           | `tot_prec` (kg/m² since run)   | mm, 0.1             |
+| `precip`                       | derived from `tot_prec`        | mm, 0.1 per step    |
+| `clct`, `clcl`, `clcm`, `clch` | `clct`, `clcl`, `clcm`, `clch` | %, whole            |
+| `pmsl`                         | `pmsl` (Pa)                    | hPa, 0.1            |
+| `vis`                          | `vis` (m)                      | km, 0.1             |
+| `cape`                         | `cape_ml`                      | J/kg, whole         |
+| `ww`                           | `ww`                           | WMO code, integer   |
+| `tg`                           | `t_g` (K)                      | °C, 0.1 — SST proxy |
+
+All thirteen directories were confirmed present in the live index on 17 September 2026;
+none had to be dropped. `tot_prec` is an accumulation (`stepType: accum`, always starting
+at initialization), so `precip[h] = tp[h] − tp[h−step]`, clamped at zero and `null` at hour
+0, which has no interval; every frame and series step carries the interval in
+`precipIntervalHours`. `ww` is a **code table**, not a measurement: its variable declares
+`"kind": "code"`, so the publisher checks it is a whole code rather than range-checking it,
+and a spot reads the code of the cell it sits in — a code is never interpolated, averaged
+or blended. `tg` is the model's ground/skin temperature: over sea it is ICON's own SST
+field and published as a labelled **proxy**, not an observation, and over land it is the
+skin temperature, which on a sunny afternoon runs far above `t2m`. ecCodes checks the
+parameter category/number, the numeric level and level type, units, statistical processing,
+initialization, valid time and the originating centre (`edzw`, because DWD's own local
+tables are what name the cloud, CAPE and present-weather parameters) on all thirteen
+messages of every step, and a value outside its plausible range fails the run instead of
+being published.
+
+The Ireland/Atlantic crop and 0.0625° grid are the wind importer's: 321 × 177 = 56,817
+cells, 18°W–2°E / 48°–59°N, rows north-to-south. Thirteen arrays per frame would be about
+3 MB of JSON, so frames carry a declared subset — `t2m`, `precip`, `clct`, `pmsl`, `ww`,
+about 1.2 MB a frame — while `spotSeries` carries every variable at every hour.
+`--frame-variables` takes any distinct subset, or `all`.
+
+A measured live run (18 UTC on 16 September 2026, cold cache, default 0–72 h): **67
+seconds**, 301 MB of bz2 GRIB in 325 files, 25 frames totalling 30.3 MB (1.19–1.27 MB
+each) and a 156 KB manifest. The bundled acceptance snapshot is the same run through
++3 h: 2 frames, 2.4 MB, with a 17 KB manifest. Brandon Bay from that run: 15.6 °C with
+97 % cloud and 1016.8 hPa at 18 UTC, then 0.6 mm of rain in 18–21 UTC (`ww` 61, rain)
+at 16.0 °C and 1014.6 hPa, 0.5 mm more by midnight with `ww` 80 (showers), and a drier
+14.2 °C at 03 UTC with 63 % cloud and 1012.9 hPa.
 
 ### ECMWF 15-day refresh
 
@@ -510,6 +576,7 @@ force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regr
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
 force5/ingest/fetch_gfswave.py NOAA GFS-Wave 9 km polar-stereo decode and resampling
+force5/ingest/fetch_icon_weather.py DWD ICON-EU surface weather variables (temperature to CAPE)
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
@@ -531,6 +598,7 @@ public/weather/ecmwf-ens.json ECMWF ENS mean frames, ensemble metadata and per-s
 public/weather/harmonie-eps.json HARMONIE ensemble: member spot series, mean frames
 public/weather/mi-swan.json Irish Shelf SWAN wave series per riding location (git-ignored)
 public/weather/gfs-wave.json GFS-Wave variables, display grid, spot series and coverage
+public/weather/icon-eu-weather.json ICON-EU surface variables, frame subset and 25 spot series
 public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
@@ -565,14 +633,14 @@ models that do not use it. `force5/ingest/registry.py` holds one line per model 
 `validate_bundle` dispatches on `kind`.
 
 ```text
-kind          "wind" (default when absent) | "wave" | "tide"
+kind          "wind" (default when absent) | "wave" | "weather" | "tide"
 gustKind      "interval" (default) | "instantaneous"
 ensemble      {members, control | null, description}
 spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
-variables     {shortName: {units, label, description}}          wave bundles
+variables     {shortName: {units, label, description, kind?}}   wave/weather bundles
 spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
 horizonHours  last published hour                               frameless wave bundles
-frameVariables[shortName]  the subset of variables frames carry  wave bundles
+frameVariables[shortName]  the subset of variables frames carry  wave/weather bundles
 ```
 
 - **wind** keeps the existing frame rules. `gustKind: "instantaneous"` is for sources
@@ -599,6 +667,14 @@ frameVariables[shortName]  the subset of variables frames carry  wave bundles
   numbers mean. Wave directions are the bearing waves come **from**, like the wind.
   The browser's `validateManifest` cannot read a wave manifest yet, so
   `tests/snapshot.test.ts` checks the wave contract in its own block.
+- **weather** bundles are validated by the same code as waves: a `variables` map, a
+  `spotSeries` per riding location and frames of one array per gridded variable, with
+  `frameVariables` narrowing the map fields. Two things differ. Measurements may be as
+  large as 100,000 rather than 1,000, because the units include hectopascals, millimetres
+  and J/kg; and a variable may declare `"kind": "code"`, which makes its values whole
+  code-table entries (WMO present weather) that are checked for being small integers
+  instead of range-checked, and that no sampler, chart or blend may interpolate.
+  ICON-EU surface weather (`icon-eu-weather`) is the first adapter of this kind.
 - **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
@@ -690,7 +766,7 @@ Default dock height, measured with the bundled snapshots: **363px at 1440** and
 
 ## Sources and limitations
 
-- Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html).
+- Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The same source supplies the `icon-eu-weather` surface variables (`t_2m`, `td_2m`, `relhum_2m`, `tot_prec`, `clct`/`clcl`/`clcm`/`clch`, `pmsl`, `vis`, `cape_ml`, `ww`, `t_g`); `t_g` over sea is a model SST **proxy**, not an observation, and `ww` is DWD's WMO present-weather interpretation, not an observed report.
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
 - GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
@@ -701,7 +777,7 @@ Default dock height, measured with the bundled snapshots: **363px at 1440** and
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, Irish Shelf SWAN and GFS-Wave series are ingested but not yet shown in the browser; there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, Irish Shelf SWAN, GFS-Wave and ICON-EU surface weather series are ingested but not yet shown in the browser; there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
