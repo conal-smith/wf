@@ -56,6 +56,42 @@ hourly to discover the two full-length 00/12 UTC products when they are publishe
 The 06/18 cycles are shorter and cannot replace this snapshot. See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
+### ECMWF ENS (ensemble)
+
+`--models ecmwf-ens` runs `fetch_ecmwf_ens.py`, which imports ECMWF's open-data
+ensemble (stream `enfo`, type `pf`) and publishes `weather/ecmwf-ens.json`. It
+never requests `type=cf`: IFS Cycle 50r1 retired the `scda` stream and merged the
+ENS control into `oper`, which we publish separately as the `ecmwf` model, so
+`ensemble.control` is `null`. The worker passes `--source`; member count, step and
+horizon are the importer's own options and default to **25 members, 6-hourly to
++144h** (25 steps, `stepHours: 6` with a single-entry `stepRanges` ladder that
+describes the cadence exactly).
+
+Only the ensemble **mean** is published as map frames, with the same Ireland crop
+and frame contract as the control product. Per-spot member series live in the
+manifest (`spotMembers[spotId][index].u/v/gust`, arrays indexed by member), so
+browsers never fetch member grids. `spotForecasts` holds the ensemble mean.
+The publisher validates member counts, alignment, finiteness and ranges for
+every spot and step before uploading anything.
+
+Bandwidth is the operational constraint, not CPU. Measured on 16 September 2026
+from the real 0.25° `enfo` index: **0.84 MB** per `10u` member-message, **0.83 MB**
+per `10v`, **1.39 MB** per `10fg`, plus a **2.0 MB** index per step — about
+3.07 MB per member per step. The default run therefore downloads about **1.95 GB**;
+all 50 members to +240h would be **6.35 GB** per run. Measured transfer on the
+ECMWF mirror was roughly 5–8 MB/s with one or two concurrent readers, so a default
+run moves its ~2 GB in a few minutes. Each run prints its own measured transfer.
+Egress-priced environments should count 2 GB × 2 runs per day, plus per-step index
+overhead that shrinks when fewer, larger steps are requested.
+
+Schedule ENS **twice daily** against the 00 and 12 UTC cycles (hourly discovery
+checks are fine: the importer refuses a run older than 24 hours and publishes only
+a complete member set). The 06/18 cycles exist but stop at +144h; they can be used
+by passing `--hours 144`, which the worker does not do. The AWS mirror returned
+sustained `503 SlowDown` during development while other jobs were active, so the
+importer allows 6 retries with a 10-second backoff and honours `--source ecmwf`
+or `--source google`; keep concurrency at 1–2 readers (`--workers`).
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
@@ -73,6 +109,7 @@ Suggested container arguments:
 HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
+ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 ```
 
 These are deployment instructions, not provisioned infrastructure. No bucket, registry, schedule or cloud task has been created by this change.
@@ -88,7 +125,17 @@ weather/harmonie.json                     current HARMONIE pointer + metadata
 weather/latest.json                       current ICON-EU pointer + metadata
 weather/ecmwf.json                        current ECMWF pointer + metadata
 weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
+weather/ecmwf-ens.json                    current ECMWF ENS pointer + member series
+weather/ecmwf-ens-RUN-144h-25m-v1/HOUR-HASH.json  immutable ensemble-mean frames
+weather/manifests/ecmwf-ens/RUN-HASH.json  archived complete ENS manifests
 ```
+
+The ENS prefix records the horizon and member count, so changing either publishes
+a new immutable frame set instead of colliding with the previous one. The ENS
+manifest is larger than the others because it carries every member: about 16 KB
+for 8 spots × 5 steps × 6 members, so roughly 1 MB for 25 spots × 25 steps ×
+25 members. It is served with the short-lived pointer cache policy and benefits
+from compression; a per-spot series endpoint would be the next optimisation.
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.
 
