@@ -66,6 +66,8 @@ npm run deploy:run -- --models gfs --step 3
 npm run deploy:run -- --models harmonie --step 1
 npm run deploy:run -- --models icon-eu --step 1
 npm run deploy:run -- --models ecmwf
+npm run deploy:run -- --models ecmwf-ens
+npm run deploy:run -- --models tides
 ```
 
 Reload the page afterwards. Each model publishes independently: a provider outage
@@ -76,14 +78,16 @@ leaves the other models exactly as they were.
 Cadences live in [`jobs.toml`](jobs.toml), in UTC, because model cycles are published
 in UTC. The shipped schedule is:
 
-| Job        | When (UTC)         | Why                                                  |
-| ---------- | ------------------ | ---------------------------------------------------- |
-| `harmonie` | every hour at :45  | Met Éireann publishes an hourly DINI cycle           |
-| `icon-eu`  | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag     |
-| `ecmwf`    | every hour at :20  | hourly check; the importer picks the newest full run |
-| `gfs`      | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag            |
-| `prune`    | 05:10 daily        | retention (see below)                                |
-| `status`   | every hour at :55  | a freshness line in the log                          |
+| Job         | When (UTC)         | Why                                                  |
+| ----------- | ------------------ | ---------------------------------------------------- |
+| `harmonie`  | every hour at :45  | Met Éireann publishes an hourly DINI cycle           |
+| `icon-eu`   | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag     |
+| `ecmwf`     | every hour at :20  | hourly check; the importer picks the newest full run |
+| `ecmwf-ens` | every hour at :35  | hourly check for the newest complete 00/12 ENS run   |
+| `gfs`       | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag            |
+| `tides`     | 01:05 daily        | predictions, not a forecast cycle                    |
+| `prune`     | 05:10 daily        | retention (see below)                                |
+| `status`    | every hour at :55  | a freshness line in the log                          |
 
 Edit the file, then check and apply it:
 
@@ -94,9 +98,10 @@ docker compose -f deploy/local/docker-compose.yml restart scheduler
 
 The scheduler runs **one job at a time**, so jobs never contend for the worker's
 filesystem lock. A slot that passes while an earlier job is still running is skipped
-and logged rather than queued. A job whose model has no importer yet — `ecmwf-ens`,
-`harmonie-eps`, `gfs-wave`, `mi-swan`, `tides` — is rejected with one log line and
-every other job keeps running, so you can write its entry before the adapter lands.
+and logged rather than queued. Model ids are the ones in
+`force5/ingest/registry.py`; a job for a model the registry does not have yet —
+`harmonie-eps`, `gfs-wave`, `mi-swan` — is rejected with one log line and every other
+job keeps running, so you can write its entry before the adapter lands.
 Set `FORCE5_RUN_AT_START=1` to fire every enabled job once when the scheduler starts.
 
 The stack restarts with Docker (`restart: unless-stopped`), so it survives a reboot as
@@ -110,10 +115,11 @@ npm run deploy:status         # per-model run age, frame count, horizon
 docker compose -f deploy/local/docker-compose.yml ps
 ```
 
-`status` prints one row per model and exits nonzero if any model is `absent`,
-`unreadable`, `incomplete` (a manifest referencing a frame that is not on disk),
-`stale` (older than 12 h, or 24 h for ECMWF) or `expired` (its last forecast hour has
-passed). `--json` emits one object per line for a monitoring script, and
+`status` prints one row per registered model and exits nonzero if any model is
+`absent`, `unreadable`, `incomplete` (a manifest referencing an object that is not on
+disk), `stale` (older than the registry's limit for that model: 12 h for the regional
+models, 24 h for the ECMWF products, 30 h for tides) or `expired` (its coverage has
+already ended). `--json` emits one object per line for a monitoring script, and
 `--models gfs` narrows it to the models you actually serve. `web` also has a Docker
 health check on `/healthz`; that only proves the server is up, so judge freshness with
 `status`, never with the health check.
@@ -124,12 +130,14 @@ code.
 
 ## 5. Retention
 
-`prune` deletes run directories that **no current manifest references** and that have
-not been written to for `FORCE5_RETAIN_HOURS` (default 48), plus raw downloads under
-`.cache` older than `FORCE5_CACHE_DAYS` (default 3). Pointer manifests and the
-archived-manifest directory are never deleted, and an unreadable manifest aborts the
-whole sweep rather than risking a run that is still in use. The window exists so a
-browser tab that is already reading a superseded run keeps working.
+`prune` deletes published objects that **no current manifest references** and that
+have not been written to for `FORCE5_RETAIN_HOURS` (default 48): run directories under
+`weather/` and superseded station files under `marine/`. It also removes raw downloads
+under `.cache` older than `FORCE5_CACHE_DAYS` (default 3). Pointer manifests are never
+deleted — including one for a model the registry has not adopted yet — nor is the
+archived-manifest directory, and an unreadable manifest aborts the whole sweep rather
+than risking objects that are still in use. The window exists so a browser tab that is
+already reading a superseded run keeps working.
 
 ```sh
 npm run deploy:prune -- --dry-run          # report only
@@ -188,12 +196,13 @@ provider licences and attribution requirements first. Caddy itself runs plain HT
 
 ## Cache headers
 
-| Path                                  | `Cache-Control`                       |
-| ------------------------------------- | ------------------------------------- |
-| `/weather/<run>/…`, `/marine/<run>/…` | `public, max-age=31536000, immutable` |
-| `/weather/*.json`, `/marine/*.json`   | `max-age=0, must-revalidate`          |
-| `/assets/…` (content-hashed)          | `public, max-age=31536000, immutable` |
-| `/`, `/index.html`                    | `max-age=0, must-revalidate`          |
+| Path                                    | `Cache-Control`                       |
+| --------------------------------------- | ------------------------------------- |
+| `/weather/<run>/…`                      | `public, max-age=31536000, immutable` |
+| `/marine/…-<hash>.json` (station files) | `public, max-age=31536000, immutable` |
+| `/weather/*.json`, `/marine/tides.json` | `max-age=0, must-revalidate`          |
+| `/assets/…` (content-hashed)            | `public, max-age=31536000, immutable` |
+| `/`, `/index.html`                      | `max-age=0, must-revalidate`          |
 
 Frame and asset names contain a content hash, so they can be cached forever; the
 pointer manifests are replaced in place on every new run and must be revalidated.
@@ -207,9 +216,10 @@ curl -I http://127.0.0.1:8080/weather/<run-directory>/000-<hash>.json
 curl -I http://127.0.0.1:8080/assets/maplibre-gl-worker-<hash>.js
 ```
 
-`/marine/*` is served from the same volume for the tide and wave outputs in
-[`docs/MULTI_MODEL_PLAN.md`](../../docs/MULTI_MODEL_PLAN.md); it returns 404 until an
-adapter writes there.
+`/marine/*` is served from the same volume: `marine/tides.json` and its immutable
+per-station prediction files today, wave output as those adapters land
+([`docs/MULTI_MODEL_PLAN.md`](../../docs/MULTI_MODEL_PLAN.md)). It returns 404 until
+the tides job has run, because the repository ships no bundled marine snapshot.
 
 ## Stopping and removing
 
