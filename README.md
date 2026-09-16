@@ -43,7 +43,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu ecmwf tides`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu ecmwf gfs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -220,6 +220,70 @@ A verified default run of the live 12 UTC cycle on 16 September 2026 transferred
 of JSON) plus a 114 kB manifest for eight spots in 172 seconds. No ENS snapshot
 is committed to the repository.
 
+### Irish Shelf SWAN refresh
+
+```sh
+npm run weather:refresh:mi-swan
+# Shorter and three-hourly, with optional map frames, or the shelf grid only:
+.venv/bin/python force5/ingest/fetch_mi_swan.py --hours 48 --step 3
+.venv/bin/python force5/ingest/fetch_mi_swan.py --hours 24 --step 3 --frames
+.venv/bin/python force5/ingest/fetch_mi_swan.py --no-nest
+```
+
+Marine Institute Irish Shelf SWAN wave model through public ERDDAP griddap, CC BY 4.0, no
+account. ERDDAP subsets server-side, so a whole 145-step, seven-variable series for one
+location is a single 10 KB request. This is Ireland's own wave model; it is a **wave**
+bundle, so nothing in the browser reads it yet.
+
+**Run identity.** The dataset aggregates about eight days of hindcast followed by six days
+of forecast on one hourly `time` axis, and the axis alone cannot say where the forecast
+starts. The importer takes the model day from the dataset's global `date` attribute and uses
+that day at **00 UTC** as `run`: the first forecast hour. It refuses to publish unless the
+axis ends exactly 144 hours later, so a half-updated or late aggregate fails instead of
+being mislabelled. Series hours count from `run`, which keeps `validTime` equal to
+`runTime + hour` as the contract requires, and the hindcast is not published. ERDDAP exposes
+no publication time, so `sourceUpdated` is the provider's own `history` timestamp, which
+states no time zone and is republished verbatim next to `sourceDate` and the whole `history`
+string. One run a day appears around 08:20–09:30 UTC and is occasionally a day late, so the
+registry allows 36 hours of age rather than 24.
+
+**Nearest wet cell.** The shelf grid is 0.025°: about 2.8 km north–south but only about
+1.6 km east–west at Irish latitudes. Riding locations are beaches, so the cell containing
+one is usually dry. Each spot gets one small single-timestep height query around it and
+takes the closest wet cell within 8 km, recording `nearestOffsetKm`, whether a neighbour was
+needed and how many cells were searched. The 200 m Connemara nest (10.80°W–8.90°W,
+52.95–53.73°N) is queried as well for spots inside it and wins when its nearest wet cell is
+at least as close; `comparedWith` then keeps the shelf's offset and the mean absolute wave-height
+difference between the two grids. A location with no wet cell inside the limit is published
+as nulls with a stated reason rather than borrowing open water: on 16 September 2026 that
+was Lough Derg (inland) and Strangford Lough.
+
+**Variables.** `swh`, `hswe` (swell), `mwp` (tm02), `pp1d` (peak), `mwd`, `pwd` and
+`spread` are source values, rounded only. `shww` is **derived** by Force5 as
+`sqrt(max(0, swh² − hswe²))`: SWAN publishes total and swell heights, not a wind sea, and
+`shww` is null whenever either input is null. `pwd` comes off SWAN's discrete 10° spectral
+direction bins and is far coarser than `mwd`. Directions are meteorological, the bearing
+waves come from. `energy_period` and `orbital_velocity` are available and unused.
+
+**Frames are off by default.** The full grid is 480 × 280 cells × 9 variables per hour, so
+the spot series is the product and `frames` is empty. `--frames` publishes the 11°W–5°W /
+51°N–56°N crop at native resolution (240 × 200, rows north-to-south) carrying `swh`, `mwp`
+and `mwd` only, declared through `frameVariables`. It costs about 3.2 MB transferred and
+0.74 MB published per frame, and the whole bundle shares one cadence, so pair it with
+`--step 3`.
+
+A clean live run on 16 September 2026 took **3.5 seconds** for all 25 riding locations: 58
+requests at two concurrent connections, 0.65 MB of cached raw CSV, and a 0.56 MB manifest
+(62 KB gzipped) holding 145 hourly steps. 19 of the 23 published locations needed a
+neighbour cell and 3 used the Connemara nest. Brandon Bay took the cell 2.79 km away at
+52.2875°N, 9.9875°W and read 0.44 m at 10.9 s from 15° at the run hour. Raw responses are
+cached under `.cache/mi-swan/<run>/` and reused; `public/weather/mi-swan.json` is replaced
+by a single atomic write after everything else succeeds, so a failure preserves the last
+published wave forecast. That file is git-ignored: no wave snapshot is bundled with the site.
+
+Best endeavours, not for safety-critical use. A 2.8 km wave model does not resolve a
+shorebreak, and an offset cell is open water near the spot, not the spot itself.
+
 ### HARMONIE refresh
 
 ```sh
@@ -357,6 +421,7 @@ force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
+force5/ingest/fetch_mi_swan.py Marine Institute Irish Shelf SWAN wave series per riding location
 public/spots.json           Original eight precomputed forecast locations
 public/riding-locations.json The 25 public riding places every adapter samples
 scripts/export-riding-locations.mjs Regenerates that file from src/locations.ts
@@ -369,6 +434,7 @@ public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attrib
 public/weather/ecmwf-ens.json ECMWF ENS mean frames, ensemble metadata and per-spot member series
 public/weather/harmonie-eps.json HARMONIE ensemble: member spot series, mean frames
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
+public/weather/mi-swan.json Irish Shelf SWAN wave series per riding location (git-ignored)
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
@@ -390,8 +456,8 @@ Bundled snapshots predate the change and still carry only the original eight.
 
 ### Optional manifest fields
 
-`schemaVersion` stays 1; every field below is optional and absent from the current
-three wind models. `force5/ingest/registry.py` holds one line per model and
+`schemaVersion` stays 1; every field below is optional and absent from the wind
+models that do not use it. `force5/ingest/registry.py` holds one line per model and
 `validate_bundle` dispatches on `kind`.
 
 ```text
@@ -401,6 +467,8 @@ ensemble      {members, control | null, description}
 spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
 variables     {shortName: {units, label, description}}          wave bundles
 spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
+horizonHours  last published hour                               frameless wave bundles
+frameVariables[shortName]  the subset of variables frames carry  wave bundles
 ```
 
 - **wind** keeps the existing frame rules. `gustKind: "instantaneous"` is for sources
@@ -413,9 +481,15 @@ spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
   empty **only** when `ensemble` is present, for models shown on the chart but not
   the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
   chart-only model needs that frontend check relaxed first.
-- **wave** bundles declare `variables` and carry one numeric array per variable in
-  each frame, `null` for land or unresolved cells, never zero, plus `spotSeries`.
-  No wave adapter exists yet; the validator and its fake-bundle tests do.
+- **wave** bundles declare `variables` and publish `spotSeries` for every riding
+  location, with `null` for land, unresolved cells and locations with no usable grid
+  cell, never zero. Frames are **optional**: `frames` may be empty when `spotSeries`
+  is present, and `horizonHours` then declares the last published hour instead of the
+  frame count implying it. When frames are published they carry one numeric array per
+  gridded variable; `frameVariables` may narrow that to a distinct subset of
+  `variables`, because a map needs fewer fields than a series. Frames and series share
+  one `stepHours`. Marine Institute Irish Shelf SWAN (`mi-swan`) is the first adapter
+  of this kind and publishes no frames by default.
 - **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
@@ -463,11 +537,12 @@ model identity hues are provisional pending a design ruling.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
 - GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
+- Waves: Marine Institute [Irish Shelf SWAN](https://erddap.marine.ie/erddap/info/IMI_IRISH_SHELF_SWAN_WAVE/index.html) and the 200 m [Connemara nest](https://erddap.marine.ie/erddap/info/IMI_CONNEMARA_SWAN_WAVE/index.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wave forecast © Marine Institute; best endeavours, not for safety-critical use. One run a day, and a beach series is the nearest open-water cell, not the shorebreak.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions are ingested but not yet shown in the browser; there are no wave or marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and Irish Shelf SWAN wave series are ingested but not yet shown in the browser; there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 

@@ -21,6 +21,9 @@ MODELS = {
                      "kind": "wind", "maxAgeHours": 12},
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
               "kind": "tide", "maxAgeHours": 30},
+    # One SWAN run a day, published around 09 UTC and occasionally a day late.
+    "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
+                "kind": "wave", "maxAgeHours": 36},
 }
 
 MANIFESTS = {model: entry["manifest"] for model, entry in MODELS.items()}
