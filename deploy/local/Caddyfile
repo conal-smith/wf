@@ -26,14 +26,21 @@
 	@data path /weather/* /marine/*
 	handle @data {
 		root * /data/public
-		# Content-addressed frame directories: weather/<run>/<hour>-<hash>.json.
-		@frame path_regexp ^/(?:weather|marine)/[^/]+/.+$
-		# Pointer manifests are replaced in place whenever a new run publishes.
-		@manifest path_regexp ^/(?:weather|marine)/[^/]+\.json$
-		header @frame Cache-Control "public, max-age=31536000, immutable"
-		header @manifest Cache-Control "max-age=0, must-revalidate"
 		header Content-Type "application/json; charset=utf-8"
-		file_server
+		# Everything the importers publish immutably is content-addressed: a frame
+		# inside a run directory, or a file whose name ends in its content hash
+		# (marine/tides-DUBLIN-20260914-20260923-<hash>.json). The first matching
+		# handle wins, so only the pointer manifests fall through to revalidation.
+		@immutable path_regexp ^/(?:weather|marine)/(?:[^/]+/.+|[^/]*-[0-9a-f]{8,}\.json)$
+		handle @immutable {
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+		# Pointer manifests are replaced in place whenever a new run publishes.
+		handle {
+			header Cache-Control "max-age=0, must-revalidate"
+			file_server
+		}
 	}
 
 	handle {

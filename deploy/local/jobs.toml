@@ -9,9 +9,9 @@
 #
 # command = "worker" (default) runs force5/ingest/worker.py --models <models> <args>.
 # command = "prune" or "status" runs the retention and freshness scripts instead.
-# A model id with no importer disables only its own job; the rest keep running, so
-# you can write entries for ecmwf-ens, harmonie-eps, gfs-wave, mi-swan or tides
-# before those adapters land and enable them by adding the importer.
+# Model ids are the ones in force5/ingest/registry.py. An id with no registry entry
+# disables only its own job; the rest keep running, so you can write entries for
+# harmonie-eps, gfs-wave or mi-swan now and enable them by adding the adapter.
 
 [[jobs]]
 id = "harmonie"
@@ -35,12 +35,25 @@ minutes = [20]              # Hourly check; the importer picks the newest full r
 timeout_seconds = 3300
 
 [[jobs]]
+id = "ecmwf-ens"
+models = ["ecmwf-ens"]
+minutes = [35]              # Hourly check for the newest complete 00/12 ENS run.
+timeout_seconds = 3300
+
+[[jobs]]
 id = "gfs"
 models = ["gfs"]
 args = ["--step", "3"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag.
 minutes = [0]
 timeout_seconds = 2400
+
+[[jobs]]
+id = "tides"
+models = ["tides"]
+hours = [1]                 # Daily: predictions, not a forecast cycle. 30 h limit.
+minutes = [5]
+timeout_seconds = 1800
 
 [[jobs]]
 id = "prune"
@@ -55,14 +68,8 @@ command = "status"
 minutes = [55]              # Hourly freshness line in the scheduler log.
 timeout_seconds = 120
 
-# Examples for adapters that do not exist yet. They stay rejected (with one log
-# line each) until the importer is registered in worker.py SCRIPTS.
-# [[jobs]]
-# id = "tides"
-# models = ["tides"]
-# hours = [1]
-# minutes = [5]
-#
+# An example for an adapter that does not exist yet. It stays rejected, with one
+# log line, until the model is registered in force5/ingest/registry.py.
 # [[jobs]]
 # id = "gfs-wave"
 # models = ["gfs-wave"]

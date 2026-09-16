@@ -17,7 +17,7 @@ import sys
 import time
 import tomllib
 
-from worker import SCRIPTS
+from registry import MODELS
 
 DEFAULT_JOBS_FILE = "/app/deploy/local/jobs.toml"
 KNOWN_COMMANDS = {"worker": "worker.py", "prune": "prune.py", "status": "status.py"}
@@ -65,10 +65,10 @@ def load_jobs(path):
                 raise ValueError("models must be a list of model ids")
             if command == "worker" and not models:
                 raise ValueError("A worker job needs at least one model")
-            unknown = [model for model in models if model not in SCRIPTS]
+            unknown = [model for model in models if model not in MODELS]
             if unknown:
                 raise ValueError(f"No importer for {', '.join(unknown)};"
-                                 f" available: {', '.join(SCRIPTS)}")
+                                 f" the registry has: {', '.join(MODELS)}")
             extra = entry.get("args", [])
             if not isinstance(extra, list) or not all(isinstance(a, str) for a in extra):
                 raise ValueError("args must be a list of strings")

@@ -1,11 +1,12 @@
-"""Delete forecast runs no current manifest references, and aged raw cache.
+"""Delete published objects no current manifest references, and aged raw cache.
 
-Retention is deliberately conservative: a run directory is removed only when no
-pointer manifest references any file inside it AND nothing in it was written
-within the retention window, so an already-open browser session keeps working
-while it finishes reading the run it loaded. Pointer manifests themselves, the
-archived-manifest directory and lock files are never deleted. An unreadable
-manifest aborts the whole prune rather than risking a referenced run.
+Retention is deliberately conservative: a run directory or station file is
+removed only when no pointer manifest references it AND nothing in it was
+written inside the retention window, so a browser session that is already
+reading a superseded run keeps working while it finishes. Anything that reads
+like a pointer manifest is never deleted, even for a model the registry does not
+know yet, and an unreadable registry manifest aborts the whole sweep rather than
+risking objects that are still in use.
 """
 import argparse
 from datetime import datetime, timezone
@@ -15,42 +16,77 @@ from pathlib import Path, PurePosixPath
 import shutil
 import sys
 
+from registry import MANIFESTS
+
+DATA_ROOTS = sorted({PurePosixPath(path).parts[0] for path in MANIFESTS.values()})
 ARCHIVE_DIRECTORY = "manifests"  # Archived manifests, never a prunable run.
 KEEP_CACHE_NAMES = {"worker.lock"}
 DEFAULT_MAX_AGE_HOURS = 48.0
 DEFAULT_CACHE_DAYS = 3.0
+MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 
 
-def read_manifests(weather):
-    """Pointer manifests are the JSON files directly inside weather/."""
+def read_manifests(public):
+    """Every registered pointer manifest that exists, by its published path."""
     manifests = {}
-    for path in sorted(weather.glob("*.json")):
+    for path in MANIFESTS.values():
+        source = public / path
+        if not source.is_file():
+            continue
         try:
-            manifests[path] = json.loads(path.read_text())
+            manifests[path] = json.loads(source.read_text())
         except (OSError, ValueError) as error:
-            raise ValueError(f"Unreadable manifest {path.name}: {error}") from error
+            raise ValueError(f"Unreadable manifest {path}: {error}") from error
     return manifests
 
 
-def referenced_runs(manifests):
-    """Run directory names the current manifests depend on."""
-    names = set()
+def manifest_urls(value):
+    """Every object path a manifest points at, whatever its kind declares."""
+    urls = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "url" and isinstance(item, str):
+                urls.add(item)
+            else:
+                urls |= manifest_urls(item)
+    elif isinstance(value, list):
+        for item in value:
+            urls |= manifest_urls(item)
+    return urls
+
+
+def referenced(manifests):
+    """Published paths, and the run directories holding them, that must survive."""
+    files, directories = set(), set()
     for path, manifest in manifests.items():
-        frames = manifest.get("frames") if isinstance(manifest, dict) else None
-        if not isinstance(frames, list) or not frames:
-            raise ValueError(f"Manifest {path.name} lists no frames")
-        for frame in frames:
-            url = frame.get("url") if isinstance(frame, dict) else None
-            parts = PurePosixPath(url).parts if isinstance(url, str) else ()
-            if len(parts) != 3 or parts[0] != "weather" or ".." in parts:
-                raise ValueError(f"Manifest {path.name} has an unusable frame path {url!r}")
-            names.add(parts[1])
-    return names
+        urls = manifest_urls(manifest)
+        if not urls:
+            raise ValueError(f"Manifest {path} references no published objects")
+        for url in urls:
+            parts = PurePosixPath(url).parts
+            if not 2 <= len(parts) <= 3 or parts[0] not in DATA_ROOTS or ".." in parts:
+                raise ValueError(f"Manifest {path} has an unusable object path {url!r}")
+            files.add("/".join(parts))
+            if len(parts) == 3:
+                directories.add("/".join(parts[:2]))
+    return files, directories
 
 
-def newest_mtime(directory):
-    newest = directory.stat().st_mtime
-    for base, _, files in os.walk(directory):
+def looks_like_a_manifest(path):
+    """A pointer for a model the registry has not adopted yet is still a pointer."""
+    if path.suffix != ".json":
+        return False
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(value, dict) and isinstance(value.get("model"), str) \
+        and isinstance(value.get("run"), str) and any(key in value for key in MANIFEST_KEYS)
+
+
+def newest_mtime(path):
+    newest = path.stat().st_mtime
+    for base, _, files in os.walk(path):
         for name in files:
             try:
                 newest = max(newest, Path(base, name).stat().st_mtime)
@@ -59,9 +95,11 @@ def newest_mtime(directory):
     return newest
 
 
-def directory_size(directory):
+def size_of(path):
+    if path.is_file():
+        return path.stat().st_size
     total = 0
-    for base, _, files in os.walk(directory):
+    for base, _, files in os.walk(path):
         for name in files:
             try:
                 total += Path(base, name).stat().st_size
@@ -70,25 +108,37 @@ def directory_size(directory):
     return total
 
 
-def prune_runs(weather, max_age_hours, now=None, dry_run=False):
-    """Remove unreferenced run directories older than the retention window."""
+def prune_published(public, max_age_hours, now=None, dry_run=False):
+    """Remove unreferenced runs and station files older than the retention window."""
     cutoff = (now or datetime.now(timezone.utc)).timestamp() - max_age_hours * 3600
-    keep = referenced_runs(read_manifests(weather))
+    keep_files, keep_directories = referenced(read_manifests(public))
     removed, kept, freed = [], [], 0
-    for directory in sorted(path for path in weather.iterdir() if path.is_dir()):
-        if directory.name == ARCHIVE_DIRECTORY:
+    for root in DATA_ROOTS:
+        directory = public / root
+        if not directory.is_dir():
             continue
-        if directory.name in keep:
-            kept.append({"run": directory.name, "reason": "referenced"})
-            continue
-        if newest_mtime(directory) > cutoff:
-            kept.append({"run": directory.name, "reason": "within-window"})
-            continue
-        freed += directory_size(directory)
-        removed.append(directory.name)
-        if not dry_run:
-            shutil.rmtree(directory)
-    return {"removedRuns": removed, "keptRuns": kept, "freedBytes": freed}
+        for entry in sorted(directory.iterdir()):
+            published = f"{root}/{entry.name}"
+            if entry.name == ARCHIVE_DIRECTORY or published in MANIFESTS.values():
+                continue
+            if published in keep_files or published in keep_directories:
+                kept.append({"path": published, "reason": "referenced"})
+                continue
+            if entry.is_file() and looks_like_a_manifest(entry):
+                kept.append({"path": published, "reason": "manifest"})
+                continue
+            if newest_mtime(entry) > cutoff:
+                kept.append({"path": published, "reason": "within-window"})
+                continue
+            freed += size_of(entry)
+            removed.append(published)
+            if dry_run:
+                continue
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+    return {"removed": removed, "kept": kept, "freedBytes": freed}
 
 
 def prune_cache(cache, cache_days, now=None, dry_run=False):
@@ -126,10 +176,10 @@ def main(argv=None):
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", default=os.environ.get(
         "FORCE5_WORK_DIR", str(Path(__file__).resolve().parents[2])),
-        help="Work directory holding public/weather and .cache")
+        help="Work directory holding public/ and .cache")
     parser.add_argument("--max-age-hours", type=float, default=float(
         os.environ.get("FORCE5_RETAIN_HOURS") or DEFAULT_MAX_AGE_HOURS),
-        help="Keep unreferenced runs this long (default 48)")
+        help="Keep unreferenced objects this long (default 48)")
     parser.add_argument("--cache-days", type=float, default=float(
         os.environ.get("FORCE5_CACHE_DAYS") or DEFAULT_CACHE_DAYS),
         help="Keep raw downloads this many days (default 3)")
@@ -137,14 +187,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.max_age_hours < 0 or args.cache_days < 0:
         parser.error("Retention windows cannot be negative")
-    weather = Path(args.root) / "public" / "weather"
-    if not weather.is_dir():
+    public = Path(args.root) / "public"
+    if not any((public / root).is_dir() for root in DATA_ROOTS):
         print(json.dumps({"event": "prune_failed",
-                          "error": f"No weather directory below {args.root}"}),
+                          "error": f"No published output below {public}"}),
               file=sys.stderr, flush=True)
         return 1
     try:
-        result = prune_runs(weather, args.max_age_hours, dry_run=args.dry_run)
+        result = prune_published(public, args.max_age_hours, dry_run=args.dry_run)
         result.update(prune_cache(Path(args.root) / ".cache", args.cache_days,
                                   dry_run=args.dry_run))
     except (OSError, ValueError) as error:
@@ -153,7 +203,7 @@ def main(argv=None):
         return 1
     print(json.dumps({"event": "prune_complete", "dryRun": args.dry_run,
                       "maxAgeHours": args.max_age_hours, "cacheDays": args.cache_days,
-                      "removedRuns": result["removedRuns"], "keptRuns": len(result["keptRuns"]),
+                      "removed": result["removed"], "kept": len(result["kept"]),
                       "removedCacheFiles": result["removedCacheFiles"],
                       "freedBytes": result["freedBytes"] + result["freedCacheBytes"],
                       "time": datetime.now(timezone.utc).isoformat()}), flush=True)
