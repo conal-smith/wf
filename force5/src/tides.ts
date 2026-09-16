@@ -18,8 +18,14 @@ export interface TideStation {
   sourceUrl?: string;
 }
 export interface TideSpotLink {
-  station: string;
+  /**
+   * Null when no station is within the adapter's distance limit. Those spots
+   * are published deliberately, with a `reason`, rather than being dropped or
+   * given a station that says nothing about them.
+   */
+  station: string | null;
   distanceKm: number;
+  reason?: string;
 }
 export interface TideManifest {
   schemaVersion: number;
@@ -84,10 +90,11 @@ export function validateTideManifest(m: TideManifest): TideManifest {
     !Object.values(m.spots).every(
       (link) =>
         link &&
-        typeof link.station === "string" &&
         finite(link.distanceKm) &&
         link.distanceKm >= 0 &&
-        stations.some((station) => station.id === link.station),
+        (link.station === null ||
+          (typeof link.station === "string" &&
+            stations.some((station) => station.id === link.station))),
     )
   )
     throw new Error("Invalid tide manifest. Refresh the tide predictions.");
@@ -150,6 +157,24 @@ export interface SpotTide {
   curve: TideCurve;
 }
 
+/**
+ * Why a spot has no tide curve, or null when it has one. The manifest states
+ * the reason for a spot it deliberately left unmapped; the UI shows that rather
+ * than implying the predictions failed.
+ */
+export function tideSpotNote(
+  manifest: TideManifest,
+  spotId: string,
+): string | null {
+  const link = manifest.spots?.[spotId];
+  if (!link) return "This spot is not in the tide predictions.";
+  if (link.station === null)
+    return link.reason ?? "No tide station is close enough to this spot.";
+  return tideStation(manifest, link.station)
+    ? null
+    : "This spot's tide station is missing from the predictions.";
+}
+
 /** Curve for the station nearest a spot, or null when no station is mapped. */
 export async function tideForSpot(
   manifest: TideManifest,
@@ -157,7 +182,8 @@ export async function tideForSpot(
   signal?: AbortSignal,
 ): Promise<SpotTide | null> {
   const link = manifest.spots?.[spotId];
-  const station = link && tideStation(manifest, link.station);
+  const station =
+    link && link.station ? tideStation(manifest, link.station) : undefined;
   if (!link || !station) return null;
   const curve = validateTideCurve(
     (await loadJson(

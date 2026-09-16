@@ -5,6 +5,7 @@ import {
   loadTides,
   tideAt,
   tideForSpot,
+  tideSpotNote,
   tideStation,
   tideStations,
   validateTideCurve,
@@ -146,6 +147,44 @@ describe("station curve", () => {
     await tideForSpot(m, "dollymount");
     expect(urls[1]).toContain("marine/tides/dublin-port.json");
     expect(await tideForSpot(m, "mizen")).toBeNull();
+  });
+  it("keeps a spot the adapter left unmapped, and explains it", () => {
+    const m = validateTideManifest({
+      ...manifest(),
+      spots: {
+        ...manifest().spots,
+        ballyholme: {
+          station: null,
+          distanceKm: 103.9,
+          reason: "Nearest station is 104 km away, beyond the 40 km limit.",
+        },
+        rusheen: { station: null, distanceKm: 61 },
+      },
+    });
+    expect(tideSpotNote(m, "brandon")).toBeNull();
+    expect(tideSpotNote(m, "ballyholme")).toBe(
+      "Nearest station is 104 km away, beyond the 40 km limit.",
+    );
+    expect(tideSpotNote(m, "rusheen")).toMatch(/close enough/);
+    expect(tideSpotNote(m, "mizen")).toMatch(/not in the tide predictions/);
+  });
+  it("still refuses a spot pointing at a station that is not published", () => {
+    expect(() =>
+      validateTideManifest({
+        ...manifest(),
+        spots: { brandon: { station: "cobh", distanceKm: 1 } },
+      }),
+    ).toThrow(/Invalid tide manifest/);
+  });
+  it("returns no curve for an unmapped spot without fetching", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const m = validateTideManifest({
+      ...manifest(),
+      spots: { ballyholme: { station: null, distanceKm: 103.9 } },
+    });
+    expect(await tideForSpot(m, "ballyholme")).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
 
