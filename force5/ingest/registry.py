@@ -19,6 +19,8 @@ MODELS = {
             "kind": "wind", "maxAgeHours": 12},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
                      "kind": "wind", "maxAgeHours": 12},
+    "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
+                 "kind": "wave", "maxAgeHours": 12},
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
               "kind": "tide", "maxAgeHours": 30},
     # One SWAN run a day, published around 09 UTC and occasionally a day late.

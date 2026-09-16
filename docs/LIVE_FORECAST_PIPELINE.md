@@ -145,6 +145,18 @@ default: the whole shelf grid is far larger than the site needs, and `--frames`
 transfers about 3.2 MB per frame. A clean run is roughly 4 seconds, 58 requests at two
 concurrent connections and a 0.56 MB manifest, so this job is far cheaper than any
 GRIB model.
+GFS-Wave is the first **wave** bundle: `--models gfs-wave` imports NOAA's
+WAVEWATCH III `arctic.9km` output, nine wave variables on a 0.05° Ireland display
+grid, and publishes `weather/gfs-wave.json` with immutable frames beside it. The
+worker only passes `--step`/`--run` to wind models, so a wave task takes the
+importer's defaults: 0–240 h at three-hour steps, 81 frames. A measured live run
+took 75 seconds, downloading 5.3 MB through the NOMADS wave filter (about 70 KB a
+step) and publishing 45 MB of frames plus a 372 KB manifest — an order of
+magnitude more output than a wind model, so size the volume and CDN accordingly.
+Run `fetch_gfswave.py --source s3` directly if the filter service is down; that
+path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
+publish when the cut-out does not land on the source lattice, which is the check
+that would catch NOAA changing the grid or the filter's coordinate arithmetic.
 
 ## AWS setup checklist
 
@@ -164,6 +176,7 @@ HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
+GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
@@ -194,6 +207,9 @@ weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
 weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
 weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
 weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
+weather/gfs-wave.json                      current GFS-Wave pointer + metadata
+weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
+weather/manifests/gfs-wave/RUN-HASH.json   archived complete GFS-Wave manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
@@ -273,6 +289,7 @@ The current browser fetches the manifest on page load and model changes, then re
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers.
