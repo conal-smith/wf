@@ -11,6 +11,7 @@ test("glyph rows and map dropdown replace the bottom toolbar, with keyboard dism
   });
   await expect(page.locator(".forecast-toolbar")).toHaveCount(0);
   await expect(page.locator(".site-footer")).toBeEmpty();
+  await page.locator('[data-view="table"]').click();
   for (const name of [
     "Wind speed (kn)",
     "Wind gusts (kn)",
@@ -39,7 +40,9 @@ test("glyph rows and map dropdown replace the bottom toolbar, with keyboard dism
   const dock = (await page.locator(".map-footer").boundingBox())!;
   const picker = (await trigger.boundingBox())!;
   expect(picker.y + picker.height).toBeLessThan(dock.y);
-  expect(dock.height).toBeLessThan(205);
+  // The Table view of the new dock: toolbar, scrubber, day and hour header,
+  // three rows and the credits line. Measured 244px, or 220px with no tides.
+  expect(dock.height).toBeLessThan(260);
   await trigger.focus();
   await trigger.press("Enter");
   await expect(options).toBeVisible();

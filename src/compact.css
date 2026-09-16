@@ -317,6 +317,9 @@
 }
 .forecast-content {
   --forecast-column-width: 73px;
+  /* Shared by the table's row labels and the charts' y-axis gutter. */
+  --forecast-label-width: 56px;
+  --chart-height: 140px;
   position: relative;
   width: max-content;
   min-width: 100%;
@@ -345,9 +348,9 @@
   box-shadow: 0 1px 3px #203e3c20;
 }
 .compact-layout .forecast-table th:first-child {
-  min-width: 64px;
-  width: 64px;
-  padding: 4px 9px;
+  min-width: var(--forecast-label-width);
+  width: var(--forecast-label-width);
+  padding: 4px 7px;
   z-index: 3;
 }
 .compact-layout .forecast-table th:first-child svg {
@@ -375,7 +378,7 @@
 }
 .compact-layout .forecast-day-groups th:not(:first-child) span {
   position: sticky;
-  left: 64px;
+  left: var(--forecast-label-width);
   padding: 6px 10px;
 }
 .compact-layout .forecast-table thead button {
@@ -525,6 +528,8 @@
 @media (max-width: 760px) {
   .forecast-content {
     --forecast-column-width: 63px;
+    --forecast-label-width: 52px;
+    --chart-height: 104px;
   }
   .compact-layout.sheet-open .timeline .now-button,
   .compact-layout.sheet-open .timeline .step-button {
@@ -532,9 +537,6 @@
   }
   .compact-layout.sheet-open .timeline-date {
     font-size: 10px;
-  }
-  .compact-layout .forecast-day-groups th:not(:first-child) span {
-    left: 64px;
   }
   .compact-layout .site-header:has(.search-panel) ~ .workspace .platform-brand {
     visibility: hidden;

@@ -1,0 +1,604 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Forecast chart - Force5</title>
+<link rel="stylesheet" href="../foundations/tokens.css" />
+<link rel="stylesheet" href="component.css" />
+<style>
+  /* Demo scaffolding only. Nothing here is part of the component. */
+  body {
+    margin: 0;
+    font:
+      400 12px/1.5 "DM Sans",
+      system-ui,
+      sans-serif;
+  }
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 900px) {
+    .modes {
+      grid-template-columns: 1fr;
+    }
+  }
+  .mode {
+    padding: 24px;
+    min-height: 100vh;
+    background:
+      linear-gradient(135deg, #0000 0 49%, #ffffff14 50% 51%, #0000 52%),
+      var(--sem-color-bg-page);
+  }
+  .mode > h3 {
+    margin: 0 0 16px;
+    text-transform: uppercase;
+    font: var(--sem-text-eyebrow-font-weight)
+      var(--sem-text-eyebrow-font-size) / var(--sem-text-eyebrow-line-height)
+      var(--sem-text-eyebrow-font-family);
+    letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+    color: var(--sem-color-text-muted);
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .cap {
+    font-size: var(--sem-text-caption-font-size);
+    color: var(--sem-color-text-muted);
+    margin: 0 0 6px;
+  }
+  .dock {
+    background: var(--sem-color-surface-solid);
+    border-radius: var(--sem-radius-surface);
+    padding: 12px;
+    overflow: hidden;
+  }
+  /* The product supplies the turned wind ramp and each model's hue. */
+  .demo-scale {
+    --f5-chart-scale: linear-gradient(
+      to top,
+      var(--sem-color-wind-k00) 0%,
+      var(--sem-color-wind-k05) 8%,
+      var(--sem-color-wind-k09) 14%,
+      var(--sem-color-wind-k10) 15%,
+      var(--sem-color-wind-k15) 23%,
+      var(--sem-color-wind-k20) 31%,
+      var(--sem-color-wind-k25) 38%,
+      var(--sem-color-wind-k30) 46%,
+      var(--sem-color-wind-k35) 54%,
+      var(--sem-color-wind-k40) 62%,
+      var(--sem-color-wind-k45) 69%,
+      var(--sem-color-wind-k50) 77%,
+      var(--sem-color-wind-k60) 92%,
+      var(--sem-color-wind-k65) 100%
+    );
+  }
+  .short {
+    --f5-chart-height: 104px;
+  }
+  .card-holder {
+    display: flex;
+    justify-content: center;
+    margin-top: -60px;
+  }
+  /* An open non-modal dialog is absolutely positioned by the UA. The product
+     anchors it to the filter button; the demo just lets it sit in the page. */
+  .f5-forecast-filter[open] {
+    position: static;
+  }
+</style>
+
+<template id="chart">
+  <div class="f5-forecast-chart f5-forecast-chart--blend demo-scale">
+    <div class="f5-forecast-chart__gutter">
+      <span
+        class="f5-forecast-chart__scale"
+        role="img"
+        aria-label="Wind scale, 0 to 40 knots"
+      ></span>
+      <span class="f5-forecast-chart__ticks" aria-hidden="true">
+        <span style="top: 7px">40</span>
+        <span style="top: 40px">30</span>
+        <span style="top: 73px">20</span>
+        <span style="top: 106px">10</span>
+        <span style="top: 137px">0</span>
+      </span>
+    </div>
+    <div class="f5-forecast-chart__plot">
+      <svg
+        class="f5-forecast-chart__svg"
+        width="560"
+        height="140"
+        role="img"
+        aria-label="Model blend: wind between 8 and 26 knots across 4 model lines. The table view lists every value."
+      >
+        <defs>
+          <linearGradient
+            id="ramp"
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="137"
+            x2="0"
+            y2="7"
+          >
+            <stop offset="0" stop-color="var(--sem-color-wind-k00)" />
+            <stop offset="0.125" stop-color="var(--sem-color-wind-k05)" />
+            <stop offset="0.25" stop-color="var(--sem-color-wind-k10)" />
+            <stop offset="0.375" stop-color="var(--sem-color-wind-k15)" />
+            <stop offset="0.5" stop-color="var(--sem-color-wind-k20)" />
+            <stop offset="0.625" stop-color="var(--sem-color-wind-k25)" />
+            <stop offset="0.75" stop-color="var(--sem-color-wind-k30)" />
+            <stop offset="0.875" stop-color="var(--sem-color-wind-k35)" />
+            <stop offset="1" stop-color="var(--sem-color-wind-k40)" />
+          </linearGradient>
+        </defs>
+        <rect
+          class="f5-forecast-chart__night"
+          x="0"
+          y="0"
+          width="150"
+          height="140"
+        />
+        <rect
+          class="f5-forecast-chart__night"
+          x="400"
+          y="0"
+          width="160"
+          height="140"
+        />
+        <line
+          class="f5-forecast-chart__gridline"
+          x1="0"
+          x2="560"
+          y1="40"
+          y2="40"
+        />
+        <line
+          class="f5-forecast-chart__gridline"
+          x1="0"
+          x2="560"
+          y1="73"
+          y2="73"
+        />
+        <line
+          class="f5-forecast-chart__gridline"
+          x1="0"
+          x2="560"
+          y1="106"
+          y2="106"
+        />
+        <g class="f5-forecast-chart__bands">
+          <path
+            class="f5-forecast-chart__band"
+            fill="url(#ramp)"
+            d="M0 96 C40 90 80 70 140 62 C200 54 260 60 320 48 C380 36 440 40 560 30 L560 74 C440 82 380 78 320 86 C260 94 200 92 140 98 C80 104 40 110 0 116 Z"
+          />
+          <path
+            class="f5-forecast-chart__band f5-forecast-chart__band--mid"
+            fill="url(#ramp)"
+            d="M0 102 C40 97 80 80 140 72 C200 64 260 69 320 58 C380 47 440 50 560 41 L560 65 C440 74 380 70 320 77 C260 85 200 83 140 89 C80 95 40 101 0 108 Z"
+          />
+          <path
+            class="f5-forecast-chart__band f5-forecast-chart__band--core"
+            fill="url(#ramp)"
+            d="M0 105 C40 100 80 84 140 77 C200 69 260 73 320 63 C380 52 440 55 560 46 L560 58 C440 67 380 64 320 71 C260 79 200 77 140 84 C80 90 40 97 0 105 Z"
+          />
+          <path
+            class="f5-forecast-chart__band f5-forecast-chart__band--gust"
+            fill="url(#ramp)"
+            d="M0 106 C40 100 80 82 140 74 C200 66 260 71 320 60 C380 49 440 52 560 43 L560 22 C440 30 380 26 320 36 C260 48 200 42 140 50 C80 58 40 78 0 84 Z"
+          />
+        </g>
+        <path
+          class="f5-forecast-chart__model"
+          style="--f5-model-hue: #1a9e8a"
+          d="M0 104 C40 99 80 83 140 76 C200 68 260 72 320 62 C380 51 440 54 560 45"
+        />
+        <path
+          class="f5-forecast-chart__model f5-forecast-chart__model--gust"
+          style="--f5-model-hue: #1a9e8a"
+          d="M0 88 C40 82 80 66 140 58 C200 50 260 54 320 44 C380 33 440 36 560 27"
+        />
+        <path
+          class="f5-forecast-chart__model"
+          style="--f5-model-hue: #3f6fd8"
+          d="M0 110 C40 104 80 88 140 80 C200 72 260 76 320 66 C380 55 440 58 560 49"
+        />
+        <path
+          class="f5-forecast-chart__model"
+          style="--f5-model-hue: #8a4bc9"
+          d="M0 99 C40 94 80 78 140 71 C200 63 260 67 320 57 C380 46 440 49 560 40"
+        />
+        <path
+          class="f5-forecast-chart__model f5-forecast-chart__model--member"
+          style="--f5-model-hue: #6e5bd6"
+          d="M0 113 C40 108 80 92 140 85 C200 77 260 81 320 71 C380 60 440 63 560 54"
+        />
+        <path
+          class="f5-forecast-chart__median"
+          d="M0 104 C40 99 80 82 140 75 C200 67 260 71 320 61 C380 50 440 53 560 44"
+        />
+        <g transform="translate(140 75) rotate(220)">
+          <path
+            class="f5-forecast-chart__arrow-halo"
+            d="M0 -5 L0 5 M-3 1.6 L0 5 L3 1.6"
+          />
+          <path
+            class="f5-forecast-chart__arrow"
+            d="M0 -5 L0 5 M-3 1.6 L0 5 L3 1.6"
+          />
+        </g>
+        <g transform="translate(320 61) rotate(250)">
+          <path
+            class="f5-forecast-chart__arrow-halo"
+            d="M0 -5 L0 5 M-3 1.6 L0 5 L3 1.6"
+          />
+          <path
+            class="f5-forecast-chart__arrow"
+            d="M0 -5 L0 5 M-3 1.6 L0 5 L3 1.6"
+          />
+        </g>
+        <line class="f5-forecast-chart__now" x1="96" x2="96" y1="0" y2="140" />
+      </svg>
+    </div>
+  </div>
+</template>
+
+<template id="candles">
+  <div class="f5-forecast-chart f5-forecast-chart--candles demo-scale short">
+    <div class="f5-forecast-chart__gutter">
+      <span
+        class="f5-forecast-chart__scale"
+        role="img"
+        aria-label="Wind scale, 0 to 40 knots"
+      ></span>
+      <span class="f5-forecast-chart__ticks" aria-hidden="true">
+        <span style="top: 7px">40</span>
+        <span style="top: 57px">20</span>
+        <span style="top: 101px">0</span>
+      </span>
+    </div>
+    <div class="f5-forecast-chart__plot">
+      <svg
+        class="f5-forecast-chart__svg"
+        width="560"
+        height="104"
+        role="img"
+        aria-label="Candles per three-hour column: wick shows the full model range, body the middle half, tick the median, in knots. The table view lists every value."
+      >
+        <rect
+          class="f5-forecast-chart__night"
+          x="0"
+          y="0"
+          width="150"
+          height="104"
+        />
+        <line
+          class="f5-forecast-chart__gridline"
+          x1="0"
+          x2="560"
+          y1="30"
+          y2="30"
+        />
+        <line
+          class="f5-forecast-chart__gridline"
+          x1="0"
+          x2="560"
+          y1="60"
+          y2="60"
+        />
+        <g>
+          <line
+            class="f5-forecast-chart__wick"
+            x1="50"
+            x2="50"
+            y1="58"
+            y2="88"
+          />
+          <rect
+            class="f5-forecast-chart__body"
+            x="30"
+            y="66"
+            width="40"
+            height="16"
+            fill="var(--sem-color-wind-k10)"
+          />
+          <line
+            class="f5-forecast-chart__tick"
+            x1="30"
+            x2="70"
+            y1="74"
+            y2="74"
+          />
+          <rect
+            class="f5-forecast-chart__gust-bar"
+            x="74"
+            y="50"
+            width="3"
+            height="26"
+          />
+        </g>
+        <g>
+          <line
+            class="f5-forecast-chart__wick"
+            x1="190"
+            x2="190"
+            y1="44"
+            y2="76"
+          />
+          <rect
+            class="f5-forecast-chart__body"
+            x="170"
+            y="52"
+            width="40"
+            height="16"
+            fill="var(--sem-color-wind-k15)"
+          />
+          <line
+            class="f5-forecast-chart__tick"
+            x1="170"
+            x2="210"
+            y1="60"
+            y2="60"
+          />
+          <rect
+            class="f5-forecast-chart__gust-bar"
+            x="214"
+            y="36"
+            width="3"
+            height="26"
+          />
+        </g>
+        <g>
+          <line
+            class="f5-forecast-chart__wick"
+            x1="330"
+            x2="330"
+            y1="30"
+            y2="66"
+          />
+          <rect
+            class="f5-forecast-chart__body"
+            x="310"
+            y="40"
+            width="40"
+            height="16"
+            fill="var(--sem-color-wind-k25)"
+          />
+          <line
+            class="f5-forecast-chart__tick"
+            x1="310"
+            x2="350"
+            y1="48"
+            y2="48"
+          />
+          <rect
+            class="f5-forecast-chart__gust-bar"
+            x="354"
+            y="22"
+            width="3"
+            height="28"
+          />
+        </g>
+        <g>
+          <line
+            class="f5-forecast-chart__wick"
+            x1="470"
+            x2="470"
+            y1="22"
+            y2="60"
+          />
+          <rect
+            class="f5-forecast-chart__body"
+            x="450"
+            y="32"
+            width="40"
+            height="16"
+            fill="var(--sem-color-wind-k30)"
+          />
+          <line
+            class="f5-forecast-chart__tick"
+            x1="450"
+            x2="490"
+            y1="40"
+            y2="40"
+          />
+          <rect
+            class="f5-forecast-chart__gust-bar"
+            x="494"
+            y="14"
+            width="3"
+            height="28"
+          />
+        </g>
+        <line class="f5-forecast-chart__now" x1="96" x2="96" y1="0" y2="104" />
+      </svg>
+    </div>
+  </div>
+</template>
+
+<template id="empty">
+  <div
+    class="f5-forecast-chart f5-forecast-chart--blend demo-scale short"
+    data-state="empty"
+  >
+    <div class="f5-forecast-chart__gutter">
+      <span
+        class="f5-forecast-chart__scale"
+        role="img"
+        aria-label="Wind scale, 0 to 40 knots"
+      ></span>
+    </div>
+    <div class="f5-forecast-chart__plot">
+      <p class="f5-forecast-chart__empty" role="status">
+        No model publishes a series for this spot yet.
+      </p>
+    </div>
+  </div>
+</template>
+
+<template id="card">
+  <div class="f5-forecast-chart__card" role="status">
+    <strong>Tue, 15 Sept 14:00</strong>
+    <dl>
+      <div>
+        <dt>
+          <i
+            class="f5-forecast-chart__swatch"
+            style="--f5-model-hue: #1a9e8a"
+            aria-hidden="true"
+          ></i
+          >HARMONIE
+        </dt>
+        <dd>18<small>g 26</small></dd>
+      </div>
+      <div>
+        <dt>
+          <i
+            class="f5-forecast-chart__swatch"
+            style="--f5-model-hue: #3f6fd8"
+            aria-hidden="true"
+          ></i
+          >ICON-EU
+        </dt>
+        <dd>16<small>g 24</small></dd>
+      </div>
+      <div>
+        <dt>
+          <i
+            class="f5-forecast-chart__swatch"
+            style="--f5-model-hue: #8a4bc9"
+            aria-hidden="true"
+          ></i
+          >ECMWF
+        </dt>
+        <dd>19</dd>
+      </div>
+    </dl>
+    <p>Median 18 kn from WSW &middot; &plusmn;1.5 kn &middot; models agree</p>
+  </div>
+</template>
+
+<template id="filter">
+  <dialog class="f5-forecast-filter" open aria-label="Forecast display options">
+    <h2 style="margin-top: 0">Show</h2>
+    <div class="f5-forecast-filter__switches">
+      <label class="f5-forecast-filter__switch">
+        <input type="checkbox" role="switch" checked />
+        <span class="f5-forecast-filter__track" aria-hidden="true"></span>
+        <span>Model blend</span>
+      </label>
+      <label class="f5-forecast-filter__switch">
+        <input type="checkbox" role="switch" />
+        <span class="f5-forecast-filter__track" aria-hidden="true"></span>
+        <span>Wind (median)</span>
+      </label>
+      <label class="f5-forecast-filter__switch">
+        <input type="checkbox" role="switch" checked />
+        <span class="f5-forecast-filter__track" aria-hidden="true"></span>
+        <span>Spread</span>
+      </label>
+      <label class="f5-forecast-filter__switch">
+        <input type="checkbox" role="switch" disabled />
+        <span class="f5-forecast-filter__track" aria-hidden="true"></span>
+        <span>Waves<small>no source yet</small></span>
+      </label>
+    </div>
+    <h2>Units</h2>
+    <div class="f5-forecast-filter__units" role="group" aria-label="Wind units">
+      <button aria-pressed="true">kn</button>
+      <button aria-pressed="false">m/s</button>
+      <button aria-pressed="false">km/h</button>
+      <button aria-pressed="false">mph</button>
+    </div>
+    <h2>Models in the blend</h2>
+    <div class="f5-forecast-filter__models">
+      <label class="f5-forecast-filter__model">
+        <input type="checkbox" checked />
+        <i
+          class="f5-forecast-chart__swatch"
+          style="--f5-model-hue: #1a9e8a"
+          aria-hidden="true"
+        ></i>
+        <span>HARMONIE<small>2 km</small></span>
+      </label>
+      <label class="f5-forecast-filter__model">
+        <input type="checkbox" checked />
+        <i
+          class="f5-forecast-chart__swatch"
+          style="--f5-model-hue: #3f6fd8"
+          aria-hidden="true"
+        ></i>
+        <span>ICON-EU<small>6.5 km</small></span>
+      </label>
+      <label class="f5-forecast-filter__model">
+        <input type="checkbox" disabled />
+        <i
+          class="f5-forecast-chart__swatch"
+          style="--f5-model-hue: #4aa3b8"
+          aria-hidden="true"
+        ></i>
+        <span>GEFS<small>coming</small></span>
+      </label>
+      <label class="f5-forecast-filter__model">
+        <input type="checkbox" disabled />
+        <i
+          class="f5-forecast-chart__swatch"
+          style="--f5-model-hue: #2f7fb5"
+          aria-hidden="true"
+        ></i>
+        <span>ARPEGE<small>coming</small></span>
+      </label>
+    </div>
+    <p class="f5-forecast-filter__note">
+      Model colours identify a line on the chart. Wind speed is always coloured
+      by the wind scale, never by model.
+    </p>
+  </dialog>
+</template>
+
+<div class="modes">
+  <section class="mode" data-mode="light">
+    <h3>Light</h3>
+    <div class="stack" data-demo></div>
+  </section>
+  <section class="mode" data-mode="dark">
+    <h3>Dark</h3>
+    <div class="stack" data-demo></div>
+  </section>
+</div>
+
+<script>
+  // Demo scaffolding: the same markup is stamped into both modes so the two
+  // columns cannot drift apart. The gradient id is made unique per copy.
+  const parts = [
+    [
+      "--blend &mdash; bands, model lines, median, arrows, night shading, Now",
+      "chart",
+    ],
+    ["--candles &mdash; wick, body, median tick, gust bar", "candles"],
+    ['[data-state="empty"] &mdash; no series for this spot', "empty"],
+    ["__card &mdash; a column under the pointer", "card"],
+    [".f5-forecast-filter[open] &mdash; switches, units, models", "filter"],
+  ];
+  let seq = 0;
+  for (const host of document.querySelectorAll("[data-demo]")) {
+    for (const [caption, id] of parts) {
+      const block = document.createElement("div");
+      block.innerHTML = `<p class="cap">${caption}</p>`;
+      const shell = document.createElement("div");
+      shell.className = id === "filter" || id === "card" ? "" : "dock";
+      const copy = document.getElementById(id).content.cloneNode(true);
+      const unique = `ramp-${seq++}`;
+      copy.querySelectorAll("linearGradient").forEach((node) => {
+        node.id = unique;
+      });
+      copy.querySelectorAll("[fill^='url(#ramp']").forEach((node) => {
+        node.setAttribute("fill", `url(#${unique})`);
+      });
+      shell.appendChild(copy);
+      block.appendChild(shell);
+      host.appendChild(block);
+    }
+  }
+</script>
