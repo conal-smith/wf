@@ -172,7 +172,8 @@ test("display choices survive a reload", async ({ page }) => {
   await withTides(page);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
-  await expect(page.locator(".blend-row")).toHaveCount(2);
+  // Spread only: the direction row is off by default, its arrows live on the chart.
+  await expect(page.locator(".blend-row")).toHaveCount(1);
   await page.getByLabel("Display options", { exact: true }).click();
   await page.locator('input[data-row="gust"]').check();
   await page.locator('input[data-row="spread"]').uncheck();
@@ -277,13 +278,18 @@ test("a missing tide manifest hides the row and explains itself in the filter", 
   const tide = page.locator('.filter-switch:has(input[data-row="tide"])');
   await expect(tide.locator("input")).toBeDisabled();
   await expect(tide).toContainText("npm run tides:refresh");
-  // Waves, sea and air have no adapter at all yet, and say so.
-  for (const row of ["waves", "sea", "air"]) {
+  // Sea and air temperature have no adapter at all yet, and say so.
+  for (const row of ["sea", "air"]) {
     const entry = page.locator(`.filter-switch:has(input[data-row="${row}"])`);
     await expect(entry.locator("input")).toBeDisabled();
     await expect(entry).toContainText("no source yet");
   }
-  await expect(page.locator(".marine-rows")).toHaveCount(0);
+  // Waves do have one now, so the block survives the tides going missing.
+  await expect(
+    page.locator('.filter-switch:has(input[data-row="waves"]) input'),
+  ).toBeEnabled();
+  await expect(page.locator(".tide-row")).toHaveCount(0);
+  await expect(page.locator('.wave-row[data-row="waves"]')).toHaveCount(1);
 });
 
 test("row glyphs explain themselves, and the dock fits its budget", async ({
@@ -317,6 +323,146 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   await page.locator(".map-footer").screenshot({
     path: "test-results/dock-blend-1440.png",
   });
+});
+
+/**
+ * The bundled GFS-Wave run is 2026-09-16 18 UTC, +0 to +9 h. HARMONIE's bundled
+ * run ends on 16 September at 01 UTC, so the dock's columns — which are the
+ * selected wind model's own forecast times — have to come from a model that
+ * reaches the wave hours. GFS runs from 16 September 12 UTC to 21 September.
+ */
+const WAVE_CLOCK = "2026-09-16T20:00:00Z";
+async function withWaveColumns(page: Page) {
+  await withTides(page);
+  await page.clock.setFixedTime(new Date(WAVE_CLOCK));
+  await page.goto("/");
+  await expect(page.locator('[data-model="gfs"]')).toBeEnabled({
+    timeout: 30000,
+  });
+  await page.getByLabel("Choose forecast model", { exact: true }).click();
+  await page.locator('[data-model="gfs"]').click();
+  await expect(page.locator('[data-model="gfs"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".blend-chart")).toBeVisible();
+}
+/** The wave cells that actually carry a reading, in column order. */
+const waveReadings = (page: Page, row: string) =>
+  page
+    .locator(`.wave-row[data-row="${row}"] .wave-cell`)
+    .evaluateAll((cells) => cells.map((cell) => cell.textContent ?? ""));
+
+test("the Waves row reads the bundled GFS-Wave run for Brandon Bay", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withWaveColumns(page);
+  await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay");
+
+  const row = page.locator('.wave-row[data-row="waves"]');
+  await expect(row).toHaveCount(1);
+  // Four native wave steps land on four of GFS's three-hourly columns.
+  expect(await waveReadings(page, "waves")).toHaveLength(4);
+  // Height in metres to one decimal; the run hour reads 0.66 m at 9.51 s.
+  await expect(row.locator(".wave-cell b").first()).toHaveText("0.7");
+  await expect(row.locator(".wave-cell small").first()).toHaveText("10s");
+  for (const part of ["b", "small"] as const)
+    for (const text of await row
+      .locator(`.wave-cell ${part}`)
+      .allTextContents())
+      expect(text).toMatch(part === "b" ? /^\d+\.\d$/ : /^\d+s$/);
+  // The row's unit is stated once, on the glyph, not in every cell.
+  await expect(row.locator("th .row-label small")).toHaveText("m");
+
+  // Every other column is empty, and empty is a dash, never a zero.
+  const cells = await row.locator("td").allTextContents();
+  expect(cells.filter((text) => text === "—").length).toBe(cells.length - 4);
+  expect(cells).not.toContain("0");
+  expect(cells).not.toContain("0.0");
+
+  // One arrow per reading, rotated to where the waves are going.
+  const rotations = await row
+    .locator(".wave-arrow")
+    .evaluateAll((arrows) =>
+      arrows.map((arrow) => (arrow as SVGElement).style.transform),
+    );
+  expect(rotations).toHaveLength(4);
+  for (const rotation of rotations) expect(rotation).toMatch(/^rotate\(\d/);
+
+  // The glyph says what the row means, and the credits name the source used.
+  await page.getByRole("button", { name: "Waves", exact: true }).focus();
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toContainText("Significant wave height and peak period");
+  await expect(tip).toContainText("direction is where waves come from");
+  await expect(page.locator(".forecast-credits")).toContainText(
+    "GFS-Wave waves",
+  );
+  await page.locator(".map-footer").screenshot({
+    path: "test-results/dock-waves-1440.png",
+  });
+  expect(errors).toEqual([]);
+});
+
+test("the swell and wind-sea rows are off until the filter turns them on", async ({
+  page,
+}) => {
+  await withWaveColumns(page);
+  await expect(page.locator('.wave-row[data-row="swell"]')).toHaveCount(0);
+  await expect(page.locator('.wave-row[data-row="windsea"]')).toHaveCount(0);
+
+  await page.getByLabel("Display options", { exact: true }).click();
+  for (const row of ["swell", "windsea", "waveOverlay"]) {
+    const input = page.locator(`input[data-row="${row}"]`);
+    await expect(input).toBeEnabled();
+    await expect(input).not.toBeChecked();
+    await input.check();
+  }
+  await page.getByLabel("Close display options").click();
+
+  await expect(page.locator('.wave-row[data-row="windsea"]')).toHaveCount(1);
+  await expect(page.locator('.wave-row[data-row="swell"]')).toHaveCount(1);
+  // The wind sea is published at every step in this run; the first swell
+  // partition is separated only at the run hour, so its row is sparser — and
+  // the columns it has nothing for are dashes, not zeroes.
+  expect(await waveReadings(page, "windsea")).toHaveLength(4);
+  expect(await waveReadings(page, "swell")).toHaveLength(1);
+  expect(
+    await page.locator('.wave-row[data-row="swell"] td').allTextContents(),
+  ).not.toContain("0.0");
+  // The chart's wave band is a single path under the wind blend.
+  await expect(page.locator(".blend-chart .wave-band")).toHaveCount(1);
+  await page.locator(".map-footer").screenshot({
+    path: "test-results/dock-waves-partitions-1440.png",
+  });
+
+  // And the choices persist, like every other row switch.
+  await page.reload();
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await page.getByLabel("Display options", { exact: true }).click();
+  await expect(page.locator('input[data-row="swell"]')).toBeChecked();
+  await expect(page.locator('input[data-row="waveOverlay"]')).toBeChecked();
+});
+
+test("a spot with no wave coverage hides the row and says so in the filter", async ({
+  page,
+}) => {
+  await withWaveColumns(page);
+  // Rusheen is land-masked in every cell reaching it, so GFS-Wave publishes it
+  // as nulls with a stated reason rather than borrowing a neighbour's sea.
+  await page.getByRole("button", { name: "Open spot search" }).click();
+  await page.getByRole("searchbox").fill("Rusheen");
+  await page.locator(".spot-row").first().click();
+  await expect(page.locator(".wave-row")).toHaveCount(0);
+  await expect(page.locator(".forecast-credits")).not.toContainText("waves");
+
+  await page.getByLabel("Display options", { exact: true }).click();
+  for (const row of ["waves", "swell", "windsea", "waveOverlay"]) {
+    const entry = page.locator(`.filter-switch:has(input[data-row="${row}"])`);
+    await expect(entry.locator("input")).toBeDisabled();
+    await expect(entry).toContainText("no wave data at this spot");
+  }
 });
 
 test("an instantaneous-gust model reads at initialization", async ({

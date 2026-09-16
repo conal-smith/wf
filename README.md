@@ -175,7 +175,10 @@ hourly wave files; `--hours` takes 3–384 divisible by the step. Inventory-base
 discovery of the newest complete cycle, the 12-hour freshness limit, two throttled
 connections and the `--source s3` fallback all work as in the GFS wind importer.
 A live 240-hour run took 75 seconds: 5.3 MB downloaded, 81 frames and 45 MB published.
-**Nothing in the website reads this manifest yet**; it is an ingest deliverable.
+The dock reads this manifest: it is the fallback wave source for every spot the
+Irish shelf model cannot resolve, and the only one a fresh checkout has, because
+`mi-swan.json` is git-ignored. Map frames are still an ingest deliverable; the
+browser reads only `spotSeries`.
 
 Nine variables per frame, all SI: `swh`/`pp1d`/`mwd` for the whole spectrum,
 `shww`/`mpww`/`mdww` for the local wind sea, and `swell1_h`/`swell1_p`/`swell1_d` for
@@ -323,8 +326,9 @@ npm run weather:refresh:mi-swan
 
 Marine Institute Irish Shelf SWAN wave model through public ERDDAP griddap, CC BY 4.0, no
 account. ERDDAP subsets server-side, so a whole 145-step, seven-variable series for one
-location is a single 10 KB request. This is Ireland's own wave model; it is a **wave**
-bundle, so nothing in the browser reads it yet.
+location is a single 10 KB request. This is Ireland's own wave model, and the dock
+prefers it over GFS-Wave for every spot it resolves; `npm run weather:refresh:mi-swan`
+is what puts it on screen, because the manifest is not committed.
 
 **Run identity.** The dataset aggregates about eight days of hindcast followed by six days
 of forecast on one hourly `time` axis, and the axis alone cannot say where the forecast
@@ -535,6 +539,7 @@ public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
+force5/src/waves.ts        Wave manifest contract and the dock's wave readers
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
 src/App.tsx                Full-screen forecast explorer and floating controls
@@ -597,8 +602,10 @@ frameVariables[shortName]  the subset of variables frames carry  wave bundles
   GFS-Wave (`gfs-wave`) publishes frames and adds `spotCoverage` so the UI can say why
   a location has no waves, plus `directionConvention`/`partitionNote` for what the
   numbers mean. Wave directions are the bearing waves come **from**, like the wind.
-  The browser's `validateManifest` cannot read a wave manifest yet, so
-  `tests/snapshot.test.ts` checks the wave contract in its own block.
+  The browser reads wave manifests through `force5/src/waves.ts`, whose
+  `validateWaveManifest` mirrors these manifest-level rules; `tests/snapshot.test.ts`
+  adds what only a committed snapshot can check, which is that the frame files on
+  disk agree with the manifest.
 - **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
@@ -622,6 +629,7 @@ force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles,
 force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
 force5/src/prefs.ts      Row/unit/view/model preferences, persisted best effort
 force5/src/tides.ts      Tide manifest, station curves, heights and high/low events
+force5/src/waves.ts      Wave contract, per-spot series, partitions, coverage notes
 ```
 
 `validateManifest` now also accepts the optional keys the new adapters publish, at
@@ -630,6 +638,21 @@ force5/src/tides.ts      Tide manifest, station curves, heights and high/low eve
 have no `gustMissingHours`), and `ensemble` plus `spotMembers` for per-member spot
 series. Only an ensemble manifest may publish an empty `frames` list, because the
 chart reads precomputed series and never downloads frames.
+
+A **wave** manifest is a separate contract with its own validator, because it
+declares its own variables instead of publishing u/v/gust and its frames are
+optional. `MODEL_CATALOG` says which contract a manifest URL holds, so one cache
+serves both: `loadAnyManifest` fetches and validates by `kind`, and `loadManifest`
+and `loadWaveManifest` are the two typed doors onto it. `availableModels()` sweeps
+wind and wave models together and hands each result back already narrowed, as
+`wind` or `wave`. `validateWaveManifest` mirrors the manifest-level rules of
+`validate_wave_bundle`: the variable map, the optional frame list, the declared
+`horizonHours` for a frameless bundle, `frameVariables` as a distinct subset, and
+every `spotSeries` entry covering every step with every variable present and
+bounded. Frame _contents_ are not checked, because the dock never downloads a wave
+frame. `waveSeries`, `waveFields`, `waveCoverageNote` and `preferredWaveSource`
+are what the dock reads; `waveAtAxis` matches native steps onto the dock's columns
+and never interpolates between two sea states.
 
 Blend statistics are per hour: count, min, max, quartiles, median, mean, spread and
 an agreement label. Spread is the full range in metres per second; agreement is
@@ -673,10 +696,25 @@ auto-scroll and the column hooks are shared:
 - **Rows** below the chart, each optional: spread, direction, the median wind and
   the gust maximum, then a marine block where the tide curve is drawn as a faint
   underlay. Each row is a glyph with an explanation on hover, focus or long press.
+- **Waves** in that marine block, read from a wave manifest: per column, a small
+  arrow rotated to where the waves are going, the significant height in metres to
+  one decimal, and the peak period in whole seconds beside it, muted. `mi-swan` is
+  preferred for a spot it resolves and `gfs-wave` is the fallback; the credits
+  line names the source actually used, and the glyph's explanation carries the
+  manifest's own coverage note when a location is land-masked or read from the
+  water next to it. **Swell** and **wind sea** are separate rows, off by default,
+  shown when the source publishes those partitions (`swell1_h/p/d` and
+  `shww/mpww/mdww` from GFS-Wave; `hswe` and the derived `shww` from SWAN). Their
+  heights add in energy, not in metres, so they do not sum to the total. Wave
+  values are never interpolated: a column takes the nearest native forecast step
+  within 1.5 hours and is otherwise empty. A spot no wave model resolves hides the
+  rows and the filter says "no wave data at this spot".
 - **Display options**: row switches, units and the models in the blend, persisted
   to local storage. Units drive the charts, the table and the map readouts
   together. Planned models are listed greyed; rows with no adapter yet say "no
-  source yet" rather than disappearing.
+  source yet" rather than disappearing. One switch is a chart layer rather than a
+  row: a faint wave band along the chart's foot, on its own nought-to-six-metre
+  scale, off by default.
 
 The charts read precomputed per-spot series only and never download a map frame.
 An arbitrary map point, or a named spot no selected model publishes a series for,
@@ -684,9 +722,17 @@ disables both charts with the reason in the switch's tooltip and shows the Table
 view, which samples the grids as it always has. Tide predictions are not committed:
 without `npm run tides:refresh` the tide row is hidden and the filter says why.
 
-Default dock height, measured with the bundled snapshots: **363px at 1440** and
-**305px at 390** (281px with no tide predictions published). The Table view is
-268px and 244px; blend and tide alone are 315px and 261px.
+The dock's columns are the **selected wind model's** own forecast times, which the
+wave rows are matched onto. A wave run that does not overlap the wind model on
+screen therefore reads as dashes rather than as a shorter row: with the bundled
+snapshots that means HARMONIE (13–16 September) shows no wave numbers and GFS
+(16–21 September) or ECMWF (to 28 September) shows them, because the bundled
+GFS-Wave run starts on 16 September at 18 UTC.
+
+Default dock height, measured with the bundled snapshots: **367px at 1440** and
+**307px at 390** (339px and 283px with no tide predictions published). The Table
+view is 268px and 244px. The waves row is 28px, 24px compact, the same as the
+tide row's.
 
 ## Sources and limitations
 
@@ -701,7 +747,7 @@ Default dock height, measured with the bundled snapshots: **363px at 1440** and
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, Irish Shelf SWAN and GFS-Wave series are ingested but not yet shown in the browser; there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and wave series are shown in the dock; sea and air temperature have no source yet, and there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
