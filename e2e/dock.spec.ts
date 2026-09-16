@@ -264,6 +264,32 @@ test("an arbitrary map point falls back to the table and says why", async ({
   await expect(page.locator(".blend-chart")).toBeVisible();
 });
 
+test("a riding place outside the original eight gets the blend too", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "Open spot search" }).click();
+  await page.getByRole("searchbox").fill("Lahinch");
+  await page.locator(".spot-row").first().click();
+  await expect(page.locator(".dock-place strong")).toHaveText("Lahinch Beach");
+  // The bundled runs were published before this spot existed; their series were
+  // recomputed from the same frames, so the blend is no longer a table fallback.
+  const blend = page.locator('[data-view="blend"]');
+  await expect(blend).toBeEnabled();
+  await expect(blend).not.toHaveAttribute("title", /named spot|precomputed/);
+  await expect(blend).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".blend-chart")).toBeVisible();
+  const hues = await page
+    .locator(".model-line")
+    .evaluateAll((lines) =>
+      Array.from(new Set(lines.map((line) => line.getAttribute("stroke")))),
+    );
+  expect(hues.length).toBeGreaterThanOrEqual(3);
+  await expect(page.locator(".median-line")).toHaveCount(1);
+});
+
 test("a missing tide manifest hides the row and explains itself in the filter", async ({
   page,
 }) => {
