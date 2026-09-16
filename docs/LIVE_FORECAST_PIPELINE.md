@@ -1,5 +1,11 @@
 # Running Force5 forecasts live
 
+> **Running this on your own machine instead?** See the
+> [local self-hosted deployment](../deploy/local/README.md): one Docker Compose stack —
+> site, scheduler, retention and ingest volume on a single origin — with no cloud
+> account, no S3 bucket and no secrets. This document describes the AWS design, which
+> that option does not need.
+
 ## What runs where
 
 We do **not** run the HARMONIE weather simulation ourselves. Met Éireann runs it. Our job downloads a complete run, decodes its wind fields, rotates/regrids/crops them for our map, validates the result and publishes static JSON. No GPU or continuously running forecast API is required for this design.
@@ -18,7 +24,7 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 
 ## Code supplied
 
-- `force5/Dockerfile`: non-root, one-shot Python worker image; only ingest code and the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) enter the build context. No saved forecasts, Git history, frontend dependencies or credentials.
+- `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
 - `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything; uploads gzip-compressed immutable frames and an archived manifest, then updates the public pointer with an ETag conditional write.
@@ -292,7 +298,7 @@ The current browser fetches the manifest on page load and model changes, then re
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
-- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers.
+- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem and is what the local deployment schedules; an S3 lifecycle rule is not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
 ## Validation status / remaining launch work
