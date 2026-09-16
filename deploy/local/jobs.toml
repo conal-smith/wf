@@ -64,6 +64,13 @@ minutes = [0]
 timeout_seconds = 2400
 
 [[jobs]]
+id = "gefs"
+models = ["gefs"]
+hours = [5, 11, 17, 23]     # 00/06/12/18 UTC cycles plus ~5 h: the 0.25° members
+minutes = [10]              # finish 4.5-6 h after run time. ~19 MB, ~13 min per run.
+timeout_seconds = 3300
+
+[[jobs]]
 id = "gfs-wave"
 models = ["gfs-wave"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag.
