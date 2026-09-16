@@ -101,6 +101,41 @@ class ContractTests(unittest.TestCase):
                 self.assertEqual(s3.writes, [])
         frame.write_text(json.dumps(original))
 
+    def test_wave_frames_are_optional_when_a_spot_series_is_published(self):
+        manifest = self.wave_bundle()
+        self.save("fake-wave", {**manifest, "frames": [], "horizonHours": 2})
+        published, _, objects = validate_bundle(self.root, "fake-wave", now=NOW)
+        self.assertEqual(objects, [])
+        self.assertEqual(len(published["spotSeries"]["brandon"]), 3)
+        s3 = FakeS3()
+        self.assertEqual(publish(s3, self.root, "fake-wave", "test", now=NOW), "published")
+        self.assertEqual(len(s3.writes), 2)  # The archived manifest, then the pointer.
+
+    def test_a_frameless_wave_bundle_declares_a_horizon_its_series_covers(self):
+        manifest = self.wave_bundle()
+        cases = [{"frames": []},  # No declared horizon at all.
+                 {"frames": [], "horizonHours": 3},  # A horizon the series stops short of.
+                 {"frames": [], "horizonHours": 2, "spotSeries": {}},
+                 {"horizonHours": 5}]  # Disagrees with the published frame list.
+        for change in cases:
+            with self.subTest(change=sorted(change)), self.assertRaises(ValueError):
+                self.save("fake-wave", {**manifest, **change})
+                validate_bundle(self.root, "fake-wave", now=NOW)
+
+    def test_frames_may_carry_a_declared_subset_of_the_wave_variables(self):
+        manifest = self.wave_bundle()
+        for path in sorted((self.root / "weather/run").glob("*.json")):
+            frame = json.loads(path.read_text())
+            path.write_text(json.dumps({k: v for k, v in frame.items() if k != "mwp"}))
+        with self.assertRaises(ValueError):  # Every declared variable is gridded by default.
+            validate_bundle(self.root, "fake-wave", now=NOW)
+        self.save("fake-wave", {**manifest, "frameVariables": ["swh"]})
+        self.assertEqual(len(validate_bundle(self.root, "fake-wave", now=NOW)[2]), 3)
+        for narrowing in ([], ["swh", "swh"], ["swh", "gust"], "swh"):
+            with self.subTest(narrowing=narrowing), self.assertRaises(ValueError):
+                self.save("fake-wave", {**manifest, "frameVariables": narrowing})
+                validate_bundle(self.root, "fake-wave", now=NOW)
+
     def test_wave_horizon_must_not_have_expired(self):
         self.wave_bundle()
         with self.assertRaises(ValueError):
