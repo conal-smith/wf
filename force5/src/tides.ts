@@ -1,0 +1,210 @@
+// Tide predictions. A tide manifest is not a wind manifest: it maps spots to
+// gauge stations and points at one curve file per station. Heights are metres
+// above the station's own datum, which must be shown with every reading.
+import { forecastUrl } from "./urls";
+
+export const TIDES_URL = "marine/tides.json";
+/** Fallback layout when a station entry carries no explicit url. */
+const stationPath = (id: string) => `marine/tides/${id}.json`;
+
+export interface TideStation {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  /** Vertical reference, e.g. "LAT" or "OD Malin"; never assume one. */
+  datum?: string;
+  url?: string;
+  sourceUrl?: string;
+}
+export interface TideSpotLink {
+  station: string;
+  distanceKm: number;
+}
+export interface TideManifest {
+  schemaVersion: number;
+  kind: "tide";
+  generatedAt?: string;
+  stations: TideStation[] | Record<string, TideStation>;
+  spots: Record<string, TideSpotLink>;
+  attribution?: string;
+  licenseUrl?: string;
+  sourceUrl?: string;
+}
+export interface TideEvent {
+  time: string;
+  kind: "high" | "low";
+  height: number;
+}
+export interface TideCurve {
+  stepMinutes: number;
+  from: string;
+  to: string;
+  datum: string;
+  /** Heights in metres above `datum`, every `stepMinutes` from `from`. */
+  curve: number[];
+  events: TideEvent[];
+}
+
+const finite = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+/** Stations as a list whether the manifest used an array or an id map. */
+export function tideStations(manifest: TideManifest): TideStation[] {
+  const stations = manifest.stations;
+  return Array.isArray(stations)
+    ? stations
+    : Object.entries(stations ?? {}).map(([id, station]) => ({
+        ...station,
+        id: station.id ?? id,
+      }));
+}
+export const tideStation = (manifest: TideManifest, id: string) =>
+  tideStations(manifest).find((station) => station.id === id);
+
+export function validateTideManifest(m: TideManifest): TideManifest {
+  const stations = m && typeof m === "object" ? tideStations(m) : [];
+  if (
+    !m ||
+    m.schemaVersion !== 1 ||
+    m.kind !== "tide" ||
+    !stations.length ||
+    !stations.every(
+      (station) =>
+        typeof station.id === "string" &&
+        station.id &&
+        typeof station.name === "string" &&
+        finite(station.lat) &&
+        finite(station.lon) &&
+        Math.abs(station.lat) <= 90 &&
+        Math.abs(station.lon) <= 180,
+    ) ||
+    !m.spots ||
+    typeof m.spots !== "object" ||
+    !Object.values(m.spots).every(
+      (link) =>
+        link &&
+        typeof link.station === "string" &&
+        finite(link.distanceKm) &&
+        link.distanceKm >= 0 &&
+        stations.some((station) => station.id === link.station),
+    )
+  )
+    throw new Error("Invalid tide manifest. Refresh the tide predictions.");
+  return m;
+}
+
+export function validateTideCurve(c: TideCurve): TideCurve {
+  if (
+    !c ||
+    !Number.isInteger(c.stepMinutes) ||
+    c.stepMinutes < 1 ||
+    c.stepMinutes > 60 ||
+    typeof c.datum !== "string" ||
+    !c.datum ||
+    !Number.isFinite(Date.parse(c.from)) ||
+    !Number.isFinite(Date.parse(c.to)) ||
+    Date.parse(c.to) <= Date.parse(c.from) ||
+    !Array.isArray(c.curve) ||
+    c.curve.length < 2 ||
+    !c.curve.every((height) => finite(height) && Math.abs(height) <= 20) ||
+    Math.abs(
+      Date.parse(c.from) +
+        (c.curve.length - 1) * c.stepMinutes * 60000 -
+        Date.parse(c.to),
+    ) > 1000 ||
+    !Array.isArray(c.events) ||
+    !c.events.every(
+      (event) =>
+        Number.isFinite(Date.parse(event.time)) &&
+        (event.kind === "high" || event.kind === "low") &&
+        finite(event.height) &&
+        Math.abs(event.height) <= 20,
+    )
+  )
+    throw new Error("Invalid tide curve for this station.");
+  return c;
+}
+
+async function loadJson(path: string, signal?: AbortSignal): Promise<unknown> {
+  const response = await fetch(forecastUrl(path), {
+    cache: "no-cache",
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(20000)])
+      : AbortSignal.timeout(20000),
+  });
+  if (!response.ok)
+    throw new Error("Tide predictions are unavailable for this location.");
+  return response.json();
+}
+
+export async function loadTides(signal?: AbortSignal): Promise<TideManifest> {
+  return validateTideManifest(
+    (await loadJson(TIDES_URL, signal)) as TideManifest,
+  );
+}
+
+export interface SpotTide {
+  station: TideStation;
+  distanceKm: number;
+  curve: TideCurve;
+}
+
+/** Curve for the station nearest a spot, or null when no station is mapped. */
+export async function tideForSpot(
+  manifest: TideManifest,
+  spotId: string,
+  signal?: AbortSignal,
+): Promise<SpotTide | null> {
+  const link = manifest.spots?.[spotId];
+  const station = link && tideStation(manifest, link.station);
+  if (!link || !station) return null;
+  const curve = validateTideCurve(
+    (await loadJson(
+      station.url ?? stationPath(station.id),
+      signal,
+    )) as TideCurve,
+  );
+  return { station, distanceKm: link.distanceKm, curve };
+}
+
+const millis = (time: string | number | Date) =>
+  time instanceof Date ? time.getTime() : new Date(time).getTime();
+
+/** Height in metres above the curve's datum, interpolated; null outside it. */
+export function tideAt(
+  curve: TideCurve,
+  time: string | number | Date,
+): number | null {
+  const t = millis(time);
+  const from = Date.parse(curve.from);
+  const step = curve.stepMinutes * 60000;
+  const position = (t - from) / step;
+  if (
+    !Number.isFinite(position) ||
+    position < 0 ||
+    position > curve.curve.length - 1
+  )
+    return null;
+  const index = Math.floor(position);
+  const fraction = position - index;
+  if (fraction === 0) return curve.curve[index];
+  const a = curve.curve[index];
+  return a + (curve.curve[index + 1] - a) * fraction;
+}
+
+/** High and low waters inside a window, inclusive of both ends, in order. */
+export function eventsBetween(
+  curve: TideCurve,
+  from: string | number | Date,
+  to: string | number | Date,
+): TideEvent[] {
+  const start = millis(from);
+  const end = millis(to);
+  return curve.events
+    .filter((event) => {
+      const t = Date.parse(event.time);
+      return t >= start && t <= end;
+    })
+    .sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+}
