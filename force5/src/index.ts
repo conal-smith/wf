@@ -1,3 +1,10 @@
 export { default as WindMap } from "./WindMap";
 export { Force5Brand } from "./Force5Brand";
 export * from "./weather";
+export * from "./units";
+export * from "./manifests";
+export * from "./series";
+export * from "./blend";
+export * from "./sun";
+export * from "./prefs";
+export * from "./tides";
