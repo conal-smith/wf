@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
 import type { Spot } from "../force5/src/weather";
+import {
+  validateWaveManifest,
+  waveCoverageNote,
+  waveHours,
+  type WaveManifest,
+} from "../force5/src/waves";
 
 /** Adapters precompute a series per riding place; older bundled runs hold the original eight. */
 const places: Spot[] = JSON.parse(
@@ -52,20 +58,13 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs"])(
 
 /**
  * Wave manifests carry one array per declared variable and a `spotSeries` map,
- * not `u`/`v`/`gust` with gust intervals, so `validateManifest` cannot read one
- * yet: it still demands a gust interval on every frame. Until the shared
- * validator understands `kind`, this block checks the wave contract directly.
+ * not `u`/`v`/`gust` with gust intervals, so they have their own contract and
+ * their own validator: `validateWaveManifest`, which the browser now runs on
+ * every wave bundle it loads. That covers the manifest; this block adds what
+ * only a bundled snapshot can check, which is that the committed frame files
+ * agree with the manifest and that every spot series matches its own grid.
  */
-interface WaveGrid {
-  width: number;
-  height: number;
-  west: number;
-  east: number;
-  north: number;
-  south: number;
-  dx: number;
-  dy: number;
-}
+type WaveGrid = NonNullable<WaveManifest["grid"]>;
 type WaveValues = (number | null)[];
 
 /** The importer's sampler: bilinear, and null as soon as a neighbour is null. */
@@ -96,17 +95,21 @@ function sampleWave(
 
 describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
   it("every frame matches the manifest and every spot series matches the frames", () => {
-    const m = JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8"));
-    expect(m.schemaVersion).toBe(1);
-    expect(m.kind).toBe("wave");
+    // The shared validator owns the contract: version, kind, the variable map,
+    // the frame list, the declared horizon and the shape of every spot series.
+    const m = validateWaveManifest(
+      JSON.parse(
+        readFileSync(`public/weather/${name}.json`, "utf8"),
+      ) as WaveManifest,
+    );
     expect(m.model).toBe(name);
-    expect(Number.isFinite(Date.parse(m.runTime))).toBe(true);
     expect([1, 3]).toContain(m.stepHours);
     expect(m.stepRanges).toBeUndefined();
+    expect(waveHours(m)).toEqual(m.frames.map((frame) => frame.hour));
     for (const field of ["provider", "attribution", "licenseUrl", "processing"])
-      expect(typeof m[field]).toBe("string");
+      expect(typeof m[field as keyof WaveManifest]).toBe("string");
 
-    const g: WaveGrid = m.grid;
+    const g: WaveGrid = m.grid!;
     expect(Number.isInteger(g.width) && g.width >= 2).toBe(true);
     expect(Number.isInteger(g.height) && g.height >= 2).toBe(true);
     expect(Math.abs(g.east - g.west - (g.width - 1) * g.dx)).toBeLessThan(1e-5);
@@ -119,7 +122,7 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
     expect(variables.length).toBeGreaterThan(0);
     for (const key of variables) {
       expect(key).toMatch(/^[a-z][a-z0-9_]{0,31}$/);
-      for (const field of ["units", "label", "description"])
+      for (const field of ["units", "label", "description"] as const)
         expect(m.variables[key][field].trim().length).toBeGreaterThan(0);
     }
 
@@ -127,9 +130,13 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
     const covered = places.filter((place) => m.spotSeries[place.id]);
     expect(covered.length).toBe(places.length);
     for (const place of places) {
-      const coverage = m.spotCoverage[place.id];
+      const coverage = m.spotCoverage![place.id];
       expect(typeof coverage.landMasked).toBe("boolean");
-      expect(coverage.note.trim().length).toBeGreaterThan(0);
+      expect(coverage.note!.trim().length).toBeGreaterThan(0);
+      // The browser reads this note only where there is something to explain.
+      expect(waveCoverageNote(m, place.id) === null).toBe(
+        !coverage.landMasked && coverage.resolved !== false,
+      );
     }
 
     expect(m.frames.length).toBeGreaterThan(0);
