@@ -177,8 +177,10 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertEqual(identities, ["harmonie", "icon-eu", "ecmwf", "harmonie-eps",
                                       "ecmwf-ens", "gfs", "gfs-wave", "mi-swan",
                                       "tides", "prune", "status"])
+        # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
+        # bandwidth for a thin spread, so an operator enables it knowingly.
+        self.assertEqual([job["id"] for job in jobs if not job["enabled"]], ["harmonie-eps"])
         for job in jobs:
-            self.assertTrue(job["enabled"], job["id"])
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])
             for model in job["models"]:
                 self.assertIn(model, MODELS)
