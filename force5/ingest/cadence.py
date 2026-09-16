@@ -35,4 +35,12 @@ def expected_hours(manifest):
         return hours
     if step not in (1, 3, 6):
         raise ValueError("Unsupported source cadence")
+    if not manifest["frames"] and manifest.get("kind") == "wave":
+        # A wave bundle may publish spot series with no map frames; the horizon is
+        # then declared rather than implied by the frame count.
+        horizon = manifest.get("horizonHours")
+        if (not isinstance(horizon, int) or isinstance(horizon, bool)
+                or not 0 < horizon <= 384 or horizon % step):
+            raise ValueError("Unsupported source cadence")
+        return tuple(range(0, horizon + step, step))
     return tuple(range(0, len(manifest["frames"]) * step, step))
