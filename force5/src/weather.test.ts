@@ -140,7 +140,7 @@ describe("forecast integrity and freshness", () => {
     const instant = {
       ...manifest,
       gustAvailable: true,
-      gustKind: "instantaneous",
+      gustKind: "instantaneous" as const,
       frames: manifest.frames.map((f) => ({
         ...f,
         gustIntervalHours: [f.hour, f.hour] as [number, number],
