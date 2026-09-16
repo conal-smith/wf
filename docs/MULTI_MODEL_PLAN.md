@@ -20,8 +20,11 @@ spots:export`).
   `series`, `blend` (common axis, quantiles, candles), `sun`, `prefs`, `tides`.
 - Local deployment: `deploy/local/` Docker Compose stack (worker, scheduler sidecar
   reading `jobs.toml`, Caddy on one origin, retention and status scripts).
-- Still open: the dock UI (blend, candles, filter popover), wave/tide rows wired to
-  the new manifests, and the browser validator for wave manifests.
+- Forecast dock in `src/`: `ForecastDock`, `ForecastHeader`, `BlendChart`,
+  `CandleChart`, `DisplayFilter`, `RowLabel` (see "Forecast dock" in the root README),
+  with a `design/forecast-chart` component and the dated hue ruling.
+- Still open: wave rows wired to the `gfs-wave` and `mi-swan` manifests, the browser
+  validator for wave manifests, and regenerated bundled snapshots with 25-spot series.
 
 ## Goal
 

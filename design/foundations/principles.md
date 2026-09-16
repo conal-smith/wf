@@ -153,6 +153,26 @@ the warm family together (`warm.800` on `warm.100` in light, `warm.100` on
 ground was tried and rejected: at 1.10:1 against the dark page the strip stopped
 reading as a strip at all.
 
+**2026-09-16 — Per-model identity hues are permitted only inside the forecast
+chart and filter swatches; they never colour wind speed.**
+The multi-model dock has to answer "which line is which model", and a fifth
+colour family was previously forbidden outright. The exception is narrow and it
+is drawn where the ambiguity is: a model hue may stroke a faint line on the
+forecast chart and fill a swatch beside that model's name in the display filter.
+It may not fill an area, colour a number, colour a map, colour a chip, or appear
+anywhere outside those two places. Wind speed is still described by the wind
+ramp and by height on the value axis, both of which come from `PALETTE`. The
+hues themselves live in `MODEL_CATALOG` (`force5/src/manifests.ts`) and reach
+the CSS through a `--f5-model-hue` custom property, so the component never
+names one.
+
+*Pending:* whether those hues become `ref.color.model.*` tokens with `sem`
+aliases. They are currently twelve literals in TypeScript, half of them for
+models whose adapter does not exist yet, and they have not been checked for
+contrast against either ground or for distinguishability from each other. Adding
+them as tokens would make a fifth family official; leaving them in the registry
+keeps them where the model list is. Decide before the third ensemble lands.
+
 **2026-09-14 — Dark mode is authored, not yet adopted.** See the gap below.
 
 ---
@@ -168,10 +188,22 @@ one should update this list.
   The map basemap in particular is a third-party style that will need its own
   dark variant before the app can honestly offer the mode. Until that happens,
   dark is a bundle feature, not a product feature.
-- **The forecast grid has no component.** It is the densest and most complicated
-  surface in the product — sticky headers, per-cell wind fills, a now-line, a
-  selected column — and it is not yet expressed here. It is the single biggest
-  thing standing between this bundle and covering the real UI.
+- **The forecast grid still has no component.** `forecast-chart` covers the
+  dock's two chart views and its display filter, but the grid itself — sticky
+  headers, per-cell wind fills, the now-line, the selected column, the glyph row
+  labels — is still only in product CSS. It remains the biggest thing standing
+  between this bundle and covering the real UI.
+- **Model identity hues are not tokens.** See the ruling of 2026-09-16. They
+  live in `MODEL_CATALOG` and are passed in as `--f5-model-hue`.
+- **The wind gradient exists only left to right.** `sem.gradient.wind` is
+  authored at 90deg for the horizontal legend, and a precomposed gradient cannot
+  be re-angled by a consumer. The chart's vertical ramp is therefore supplied by
+  the product through `--f5-chart-scale`. A turned variant of the token, or a
+  stop list a consumer can compose, would close this.
+- **No plot-height scale.** The chart box is 140px on a desktop and 104px on a
+  phone. Neither is a step in any scale, and both are declared with a
+  `ds-lint-allow`. Whether component dimensions like these deserve a scale at
+  all is undecided.
 - **No motion spec beyond two durations.** There are easing curves in the product
   that are not tokenised, and `sheet-in` is the only named animation.
 - **No spec for the map's own controls.** MapLibre's attribution and control

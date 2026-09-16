@@ -17,7 +17,7 @@ model, initialization, valid times and source licences remain explicit.
 - `src/blend.ts`: common hourly axis, interpolation, per-hour statistics, candles and plot helpers.
 - `src/sun.ts`: sunrise, sunset, civil twilight and night intervals.
 - `src/prefs.ts`: dock display preferences with best-effort persistence.
-- `src/tides.ts`: tide manifest, station curves and readings.
+- `src/tides.ts`: tide manifest, station curves, readings, and the stated reason a spot has no station.
 - `src/timeline.ts`: fractional now-position and scrubber colours.
 - `src/testing.ts`: synthetic manifests for unit tests; never bundled.
 - `ingest/`: independent ICON-EU and HARMONIE download, validation and atomic publication.

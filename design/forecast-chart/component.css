@@ -1,0 +1,456 @@
+/* Forecast chart: the probability blend, the candle column and the display
+   filter. Height on the value axis is wind speed, and the fill is the wind ramp
+   read off that axis, so colour and position never disagree. */
+
+.f5-forecast-chart {
+  /* The product owns these two: the gutter matches the forecast table's
+     row-label column, and the plot is shorter on a phone than on a desktop. */
+  --f5-chart-gutter: 56px; /* ds-lint-allow: set by the table's label column, which is product layout, not a step in the shared scale */
+  --f5-chart-height: 140px; /* ds-lint-allow: plot height is a per-breakpoint component dimension; the scale has no height ramp */
+  --f5-model-hue: var(--sem-color-text-muted);
+  /* --sem-gradient-wind is authored left to right for the horizontal legend.
+     The gutter's ramp runs bottom to top, so the product supplies the turned
+     form from the same fourteen stops. See the gap in principles.md. */
+  --f5-chart-scale: var(--sem-gradient-wind);
+  display: grid;
+  grid-template-columns: var(--f5-chart-gutter) 1fr;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.f5-forecast-chart__gutter {
+  position: relative;
+}
+
+.f5-forecast-chart__scale {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--sem-space-gap-tight);
+  width: var(
+    --sem-stroke-focus-width
+  ); /* ds-lint-allow: a 3px rule; there is no decorative-width scale, and reusing a stroke token here would misname it */
+  border-radius: var(--sem-radius-round);
+  background-image: var(--f5-chart-scale);
+}
+
+.f5-forecast-chart__ticks {
+  position: absolute;
+  inset: 0;
+  font-family: var(--sem-text-eyebrow-font-family);
+  font-size: var(--sem-text-eyebrow-font-size);
+  line-height: var(--sem-text-eyebrow-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--sem-color-text-muted);
+}
+
+.f5-forecast-chart__ticks > span {
+  position: absolute;
+  right: var(--sem-space-gap-tight);
+  transform: translateY(-50%);
+}
+
+.f5-forecast-chart__plot {
+  position: relative;
+  height: var(--f5-chart-height);
+  overflow: hidden;
+}
+
+/* Out of flow: an SVG carrying a stale width would widen the cell it spans,
+   and every forecast column under it. */
+.f5-forecast-chart__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  touch-action: pan-x;
+}
+
+.f5-forecast-chart__night {
+  fill: var(--sem-color-text-primary);
+  opacity: 0.09;
+}
+
+.f5-forecast-chart__gridline {
+  stroke: var(--sem-color-border-strong);
+  stroke-width: var(--sem-stroke-hairline);
+  stroke-dasharray: 2 4;
+  opacity: 0.3;
+}
+
+/* The three bands multiply so the core darkens where the models agree. */
+.f5-forecast-chart__bands {
+  mix-blend-mode: multiply;
+}
+
+.f5-forecast-chart__band {
+  stroke: none;
+  opacity: 0.5;
+}
+
+.f5-forecast-chart__band--mid {
+  opacity: 0.22;
+}
+
+.f5-forecast-chart__band--core {
+  opacity: 0.2;
+}
+
+.f5-forecast-chart__band--gust {
+  opacity: 0.22;
+}
+
+.f5-forecast-chart__band--gust-median {
+  opacity: 0.16;
+}
+
+/* Identity, not measurement: faint, never filled, never on a number. */
+.f5-forecast-chart__model {
+  fill: none;
+  stroke: var(--f5-model-hue);
+  stroke-width: var(--sem-stroke-hairline);
+  opacity: 0.35;
+}
+
+.f5-forecast-chart__model--gust {
+  stroke-dasharray: 3 3;
+  opacity: 0.22;
+}
+
+.f5-forecast-chart__model--member {
+  opacity: 0.12;
+}
+
+.f5-forecast-chart__median {
+  fill: none;
+  stroke: var(--sem-color-text-inverse);
+  stroke-width: 1.4;
+  opacity: 0.75;
+}
+
+.f5-forecast-chart__arrow,
+.f5-forecast-chart__arrow-halo {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.f5-forecast-chart__arrow {
+  stroke: var(--sem-color-text-inverse);
+  stroke-width: 1.4;
+}
+
+.f5-forecast-chart__arrow-halo {
+  stroke: var(--sem-color-surface-inverse);
+  stroke-width: 3.4;
+  opacity: 0.4;
+}
+
+.f5-forecast-chart__now {
+  stroke: var(--sem-color-status-now);
+  stroke-width: var(--sem-stroke-emphasis);
+  stroke-dasharray: 4 3;
+}
+
+.f5-forecast-chart__cursor {
+  stroke: var(--sem-color-action-quiet);
+  stroke-width: var(--sem-stroke-hairline);
+  opacity: 0.45;
+}
+
+/* --- candles --- */
+.f5-forecast-chart__wick {
+  stroke: var(--sem-color-text-secondary);
+  stroke-width: var(--sem-stroke-hairline);
+  opacity: 0.55;
+}
+
+.f5-forecast-chart__body {
+  stroke: var(--sem-color-text-inverse);
+  stroke-width: var(--sem-stroke-hairline);
+  stroke-opacity: 0.7;
+}
+
+.f5-forecast-chart__tick {
+  stroke: var(--sem-color-text-primary);
+  stroke-width: 1.4;
+}
+
+.f5-forecast-chart__gust-bar {
+  fill: var(--sem-color-status-warn-fg);
+  opacity: 0.72;
+}
+
+/* --- the empty state --- */
+.f5-forecast-chart__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: var(--sem-text-body-font-family);
+  font-size: var(--sem-text-body-font-size);
+  color: var(--sem-color-text-muted);
+}
+
+/* --- the hover card --- */
+.f5-forecast-chart__card {
+  width: max-content;
+  max-width: 240px; /* ds-lint-allow: a readable measure for two columns of readings; the scale carries spacing, not text widths */
+  padding: var(--sem-space-gap) var(--sem-space-gap-loose);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-surface-raised);
+  box-shadow: var(--sem-effect-shadow-surface);
+  font-family: var(--sem-text-body-font-family);
+  font-size: var(--sem-text-body-font-size);
+  color: var(--sem-color-text-primary);
+  pointer-events: none;
+}
+
+.f5-forecast-chart__card > strong {
+  display: block;
+  margin-bottom: var(--sem-space-gap-tight);
+  font-family: var(--sem-text-eyebrow-font-family);
+  font-size: var(--sem-text-eyebrow-font-size);
+  font-weight: var(--sem-text-eyebrow-font-weight);
+  letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+  text-transform: uppercase;
+  color: var(--sem-color-text-muted);
+}
+
+.f5-forecast-chart__card dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-gap-tight);
+}
+
+.f5-forecast-chart__card dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sem-space-gap-loose);
+}
+
+.f5-forecast-chart__card dt {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+}
+
+.f5-forecast-chart__card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.f5-forecast-chart__card p {
+  margin: var(--sem-space-gap) 0 0;
+  padding-top: var(--sem-space-gap-tight);
+  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-text-secondary);
+}
+
+.f5-forecast-chart__swatch {
+  width: var(--sem-space-gap);
+  height: var(--sem-space-gap);
+  flex: 0 0 var(--sem-space-gap);
+  border-radius: var(--sem-radius-round);
+  background: var(--f5-model-hue);
+}
+
+/* --- display filter: a solid raised surface, never glass on glass --- */
+.f5-forecast-filter {
+  margin: 0;
+  width: 330px; /* ds-lint-allow: the popover's own measure, anchored to a control rather than to a layout column */
+  max-width: 100%;
+  padding: var(--sem-space-pad-control);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-surface-raised);
+  box-shadow: var(--sem-effect-shadow-surface);
+  color: var(--sem-color-text-primary);
+  font-family: var(--sem-text-body-font-family);
+  font-size: var(--sem-text-body-font-size);
+}
+
+.f5-forecast-filter::backdrop {
+  background: var(--sem-color-surface-scrim);
+}
+
+.f5-forecast-filter h2 {
+  margin: var(--sem-space-pad-control) 0 var(--sem-space-gap-tight);
+  font-family: var(--sem-text-eyebrow-font-family);
+  font-size: var(--sem-text-eyebrow-font-size);
+  font-weight: var(--sem-text-eyebrow-font-weight);
+  letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+  text-transform: uppercase;
+  color: var(--sem-color-text-muted);
+}
+
+.f5-forecast-filter__switches,
+.f5-forecast-filter__models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--sem-space-gap-loose);
+}
+
+.f5-forecast-filter__switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  padding: var(--sem-space-gap-tight) 0;
+  cursor: pointer;
+}
+
+.f5-forecast-filter__switch input {
+  position: absolute;
+  z-index: 1; /* ds-lint-allow: stacking inside one control so the hit area sits over its own track; not a layer in the product's z scale */
+  left: 0;
+  margin: 0;
+  width: var(--sem-space-pad-surface);
+  height: var(--sem-space-pad-control);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.f5-forecast-filter__track {
+  position: relative;
+  flex: 0 0 var(--sem-space-pad-dialog);
+  width: var(--sem-space-pad-dialog);
+  height: var(--sem-space-pad-surface);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-border-strong);
+  transition: background var(--sem-effect-duration-fast) ease;
+}
+
+.f5-forecast-filter__track::after {
+  content: "";
+  position: absolute;
+  top: var(--sem-space-gap-tight);
+  left: var(--sem-space-gap-tight);
+  width: var(--sem-space-gap-loose);
+  height: var(--sem-space-gap-loose);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-text-inverse);
+  transition: left var(--sem-effect-duration-fast) ease;
+}
+
+.f5-forecast-filter__switch input:checked + .f5-forecast-filter__track {
+  background: var(--sem-color-action-bg);
+}
+
+.f5-forecast-filter__switch input:checked + .f5-forecast-filter__track::after {
+  left: calc(100% - var(--sem-space-gap-loose) - var(--sem-space-gap-tight));
+}
+
+.f5-forecast-filter__switch input:focus-visible + .f5-forecast-filter__track {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: var(--sem-stroke-focus-offset);
+}
+
+.f5-forecast-filter__switch input:disabled + .f5-forecast-filter__track {
+  opacity: 0.4;
+}
+
+.f5-forecast-filter__switch small {
+  display: block;
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-text-disabled);
+}
+
+.f5-forecast-filter__switch:has(input:disabled) {
+  color: var(--sem-color-text-disabled);
+  cursor: default;
+}
+
+.f5-forecast-filter__units {
+  display: flex;
+  gap: 0;
+  padding: var(--sem-stroke-focus-offset);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-surface-sunken);
+}
+
+.f5-forecast-filter__units button {
+  flex: 1;
+  height: var(--sem-control-height-sm);
+  border: 0;
+  border-radius: var(--sem-radius-control);
+  background: none;
+  font: inherit;
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-action-quiet);
+  cursor: pointer;
+}
+
+.f5-forecast-filter__units button[aria-pressed="true"] {
+  background: var(--sem-color-surface-raised);
+  color: var(--sem-color-text-primary);
+  font-weight: var(--sem-text-label-font-weight);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-forecast-filter__units button:focus-visible {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: var(--sem-stroke-focus-offset);
+}
+
+.f5-forecast-filter__model {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  padding: var(--sem-space-gap-tight) 0;
+  cursor: pointer;
+}
+
+.f5-forecast-filter__model span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.f5-forecast-filter__model small {
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-text-disabled);
+}
+
+.f5-forecast-filter__model:has(input:disabled) {
+  color: var(--sem-color-text-disabled);
+  cursor: default;
+}
+
+.f5-forecast-filter__model:has(input:disabled) .f5-forecast-chart__swatch {
+  opacity: 0.4;
+}
+
+.f5-forecast-filter__note {
+  margin: var(--sem-space-pad-control) 0 0;
+  padding-top: var(--sem-space-gap-loose);
+  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  line-height: var(--sem-text-caption-line-height);
+  color: var(--sem-color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f5-forecast-filter__track,
+  .f5-forecast-filter__track::after {
+    transition: none;
+  }
+}
+
+/* The multiplied bands are drawn over the opaque surface, where the whole text
+   ramp is contrast-tested, rather than over the glass dock. */
+@media (prefers-reduced-transparency: reduce) {
+  .f5-forecast-chart {
+    background: var(--sem-color-surface-solid);
+  }
+}

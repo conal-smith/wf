@@ -23,11 +23,11 @@ Features:
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
 - **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
-- Edge-to-edge, bottom-flush forecast grid open on arrival: day-grouped time columns and aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
+- Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
 - Small standalone Force5 branding; coastline outlines and a soft shadow above the wind layer add depth to the land.
-- Knots/metres per second and independent display controls.
+- Knots, metres per second, km/h and mph, chosen in the dock's display options, which drive the charts, the table and the map readouts together.
 - Irish local time with explicit model initialization in UTC.
 - Real source information, stale/expired snapshot status, retryable frame errors.
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
@@ -538,7 +538,14 @@ force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
 src/App.tsx                Full-screen forecast explorer and floating controls
-src/ForecastSheet.tsx      Bottom forecast table for named and arbitrary points
+src/ForecastDock.tsx       Dock shell: toolbar, scrubber, shared header, rows, filter
+src/ForecastHeader.tsx     Day groups with sun times and the hour columns every view shares
+src/ForecastSheet.tsx      Table view rows for named and arbitrary points
+src/BlendChart.tsx         Probability blend: gradient bands, model lines, median, arrows
+src/CandleChart.tsx        One candle per three-hour column
+src/DisplayFilter.tsx      Rows, units and blend models, persisted in preferences
+src/chart.ts               Chart geometry, scales and path builders (pure, unit-tested)
+src/dock.css               Dock, chart and filter styles
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
@@ -603,8 +610,8 @@ Both the browser and importer use bilinear interpolation. Direction is the meteo
 
 ## Multi-model data layer
 
-Data-layer modules for the planned probability blend. They are pure TypeScript with
-unit tests and no UI: nothing in the dock consumes them yet. See the
+Data-layer modules behind the probability blend. They are pure TypeScript with unit
+tests and no UI; the dock consumes them through `src/ForecastDock.tsx`. See the
 [multi-model plan](docs/MULTI_MODEL_PLAN.md) for the ingest side.
 
 ```text
@@ -629,8 +636,57 @@ an agreement label. Spread is the full range in metres per second; agreement is
 `high` below 4 knots of spread and `moderate` below 8. Interpolation happens in u/v
 space, never between speeds or wrapped bearings, and never across a gap wider than
 twice a model's median cadence. The registry lists models whose adapter is still
-planned with `planned: true` so the dock can show them greyed instead of hiding them;
-model identity hues are provisional pending a design ruling.
+planned with `planned: true` so the dock shows them greyed and labelled "coming"
+instead of hiding them. Model identity hues are permitted on the chart's own lines
+and on its filter swatches, and nowhere else; see the ruling of 2026-09-16 in
+`design/foundations/principles.md`.
+
+A tide manifest maps every riding location, including the ones with no station
+inside the adapter's distance limit: those are published as `station: null` with a
+stated reason, `tideForSpot` returns no curve for them without fetching anything,
+and `tideSpotNote` gives the UI the manifest's own words. Heights are metres above
+the station's datum, which the dock prints in its credits line with every reading.
+
+## Forecast dock
+
+One shell, three views, all hung off the same time columns so the Now line, the
+auto-scroll and the column hooks are shared:
+
+- **Toolbar** (48px): the Play button — the view's one filled action — the spot
+  name with its county and a caption naming how many models are in the blend and
+  which tide station is being read, a Table / Blend / Candles switch (icons only
+  under 760px), the display filter and close. The scrubber sits directly beneath.
+- **Time header**: day groups carrying sunrise and sunset in Irish time, then the
+  hour ticks. A day group too narrow to hold its sun times shows only its label,
+  because a group is as wide as its own content and would otherwise stretch the
+  columns beneath it.
+- **Blend**: the models filled between, coloured by speed from the wind ramp read
+  off the value axis — full range, quartiles and an inner core, multiplied so the
+  core darkens where the models agree — plus the gust continuation above the wind
+  median, one faint line per model in that model's hue, gusts dashed, ensemble
+  members fainter still, the white median, direction arrows, night shading from
+  the sun times and the Now line. Hovering or pressing a column gives a card with
+  each model's reading, the spread and the agreement in words.
+- **Candles**: one candle per three-hour column — wick for the full model range,
+  body for the middle half, tick for the median, filled by the median's own wind
+  colour, with a thin warm bar beside it for the gust range.
+- **Rows** below the chart, each optional: spread, direction, the median wind and
+  the gust maximum, then a marine block where the tide curve is drawn as a faint
+  underlay. Each row is a glyph with an explanation on hover, focus or long press.
+- **Display options**: row switches, units and the models in the blend, persisted
+  to local storage. Units drive the charts, the table and the map readouts
+  together. Planned models are listed greyed; rows with no adapter yet say "no
+  source yet" rather than disappearing.
+
+The charts read precomputed per-spot series only and never download a map frame.
+An arbitrary map point, or a named spot no selected model publishes a series for,
+disables both charts with the reason in the switch's tooltip and shows the Table
+view, which samples the grids as it always has. Tide predictions are not committed:
+without `npm run tides:refresh` the tide row is hidden and the filter says why.
+
+Default dock height, measured with the bundled snapshots: **363px at 1440** and
+**305px at 390** (281px with no tide predictions published). The Table view is
+268px and 244px; blend and tide alone are 315px and 261px.
 
 ## Sources and limitations
 
