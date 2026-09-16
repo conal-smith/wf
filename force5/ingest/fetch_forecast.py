@@ -122,10 +122,12 @@ def decode(path, field, run, hour, layout=None):
     return decode_handle(handle, field, run, hour, layout)
 
 
-def decode_handle(handle, field, run, hour, layout=None, validate=validate_metadata):
+def decode_handle(handle, field, run, hour, layout=None, validate=validate_metadata, convert=None):
     """Validate/crop a regular earth-relative GRIB; takes ownership of handle.
 
-    `validate` lets another provider apply its own parameter/level/step rules."""
+    `validate` lets another provider apply its own parameter/level/step rules.
+    `convert` lets a non-wind field publish its own units, range check and
+    rounding; without it the values are wind in m/s, rounded to 0.01 m/s."""
     try:
         # ecCodes represents zero-length steps in minutes unless explicitly normalised.
         ec.codes_set(handle, "stepUnits", 1)
@@ -152,7 +154,11 @@ def decode_handle(handle, field, run, hour, layout=None, validate=validate_metad
         if signature != layout[0]:
             raise ValueError("Grid changed within a run")
         values = ec.codes_get_values(handle)[layout[1]]
-        if not np.all(np.isfinite(values)) or np.any(np.abs(values) > 150) or (field == "gust" and np.any(values < 0)):
+        if not np.all(np.isfinite(values)):
+            raise ValueError("Missing values in the cropped field")
+        if convert is not None:
+            return convert(field, values), layout, metadata
+        if np.any(np.abs(values) > 150) or (field == "gust" and np.any(values < 0)):
             raise ValueError("Missing or implausible wind values")
         return np.round(values, 2).tolist(), layout, metadata
     finally:

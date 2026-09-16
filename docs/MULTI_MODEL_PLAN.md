@@ -6,7 +6,7 @@ that date. Mockup of the target dock: https://claude.ai/artifact/SsCHYWDuqLkfMBr
 ## Delivered so far (16 September 2026)
 
 - Ingest foundations: `force5/ingest/registry.py` (one line per model), manifest
-  `kind` (wind / wave / tide), `gustKind`, `ensemble` + `spotMembers`, precomputed
+  `kind` (wind / wave / weather / tide), `gustKind`, `ensemble` + `spotMembers`, precomputed
   series for all 25 riding locations (`public/riding-locations.json`, `npm run
 spots:export`).
 - Wind adapters: `gfs` (NOMADS subregion, ~0.6 MB per run, bundled snapshot),
@@ -16,6 +16,10 @@ spots:export`).
 - Wave adapters: `gfs-wave` (9 km Arctic grid resampled to 0.05°, bundled snapshot)
   and `mi-swan` (Marine Institute Irish Shelf SWAN, per-spot hourly series, 3 s per
   run). Tides: `tides` (Marine Institute predictions, 15 stations for 25 spots).
+- Weather variables: `icon-eu-weather` (DWD ICON-EU surface fields as a `weather`
+  bundle sharing the wave validator, 14 variables, 25 frames and 25 spot series per run,
+  301 MB in and 30 MB out; bundled two-frame snapshot). `ww` is a code table and `t_g` a
+  labelled SST proxy.
 - Frontend data layer in `force5/src`: `units`, `manifests` (catalogue + cache),
   `series`, `blend` (common axis, quantiles, candles), `sun`, `prefs`, `tides`.
 - Local deployment: `deploy/local/` Docker Compose stack (worker, scheduler sidecar
@@ -121,8 +125,12 @@ Met Éireann publishes no wave data. Met Office DataHub has no wave product.
   offsets. Avoid TPXO for a public site.
 - **Sunrise/sunset/civil twilight:** pure algorithm (`suncalc` in the browser or
   `astral` in Python). Compute in UTC, format with `Europe/Dublin`.
-- **Weather variables:** ICON-EU has everything (`t_2m`, `tot_prec`, `clct`, `pmsl`,
-  `vis`, `relhum_2m`, `cape_ml`, `ww`, `t_g` as SST proxy). HARMONIE `ieIoI` files
+- **Weather variables:** delivered for ICON-EU as the `icon-eu-weather` adapter
+  (`t_2m`, `td_2m`, `relhum_2m`, `tot_prec` plus a derived per-step `precip`, `clct`,
+  `clcl`, `clcm`, `clch`, `pmsl`, `vis`, `cape_ml`, `ww`, `t_g` as a labelled SST proxy);
+  all thirteen directories exist in the live index. Still open: the same rows from
+  HARMONIE and ECMWF for a multi-model weather blend, and a browser reader for the
+  `weather` kind. HARMONIE `ieIoI` files
   carry T2m, dew point, precipitation, MSLP, visibility, CAPE; cloud/humidity fields use
   local GRIB tables that need `grib_ls` confirmation. ECMWF open data has `2t`, `tp`,
   `tcc`, `msl`, `sp`, `mucape`, `ptype`, `skt` but no visibility.

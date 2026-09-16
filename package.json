@@ -25,6 +25,7 @@
     "weather:refresh:harmonie-eps": ".venv/bin/python force5/ingest/fetch_harmonie_eps.py",
     "weather:refresh:mi-swan": ".venv/bin/python force5/ingest/fetch_mi_swan.py",
     "weather:refresh:gfs-wave": ".venv/bin/python force5/ingest/fetch_gfswave.py",
+    "weather:refresh:icon-weather": ".venv/bin/python force5/ingest/fetch_icon_weather.py",
     "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py",
     "deploy:build": "docker compose -f deploy/local/docker-compose.yml build",
     "deploy:up": "docker compose -f deploy/local/docker-compose.yml up -d",

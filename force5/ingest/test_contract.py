@@ -1,7 +1,7 @@
-"""Fake bundles for the optional manifest extensions no adapter emits yet.
+"""Fake bundles for the optional manifest extensions, kind by kind.
 
-Wave, ensemble and instantaneous-gust models are validated here so the adapters
-that will produce them can rely on a settled contract.
+Wave, weather, ensemble and instantaneous-gust bundles are validated here, so an
+adapter that publishes one can rely on a settled contract.
 """
 from datetime import datetime, timedelta, timezone
 import json
@@ -140,6 +140,73 @@ class ContractTests(unittest.TestCase):
         self.wave_bundle()
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "fake-wave", max_age_hours=48, now=RUN + timedelta(hours=9))
+
+    # --- weather ---------------------------------------------------------
+    def weather_bundle(self, kind="weather", **changes):
+        """A surface-variables bundle: hectopascals, nulls and a code table."""
+        self.register("fake-weather", "weather/fake-weather.json", kind)
+        grid = {"width": 2, "height": 2}
+        variables = {
+            "t2m": {"units": "°C", "label": "Air temperature",
+                    "description": "Air temperature 2 m above ground"},
+            "pmsl": {"units": "hPa", "label": "Pressure (MSL)",
+                     "description": "Pressure reduced to mean sea level"},
+            "ww": {"units": "WMO code", "label": "Present weather", "kind": "code",
+                   "description": "WMO present-weather interpretation code"},
+        }
+        frames, series = [], {"brandon": []}
+        for hour in (0, 1, 2):
+            url = f"weather/run/{hour}.json"
+            frames.append({"hour": hour, "validTime": valid(hour), "url": url})
+            (self.root / url).write_text(json.dumps({"model": "fake-weather", "run": "2026091312",
+                "hour": hour, "validTime": valid(hour), "grid": grid,
+                # Null is an hour with no interval or a cell with no value, never zero.
+                "t2m": [14.2, 13.9, None, 12.0], "pmsl": [1013.2, 1013.0, 1012.8, 1014.1],
+                "ww": [0, 45, 61, 95]}))
+            series["brandon"].append({"hour": hour, "validTime": valid(hour),
+                                      "values": {"t2m": 14.0, "pmsl": 1013.1, "ww": 45}})
+        return self.save("fake-weather", {**self.identity("fake-weather", kind), "grid": grid,
+                                          "variables": variables, "frames": frames,
+                                          "spotSeries": series, **changes})
+
+    def test_weather_bundles_carry_hectopascals_and_whole_weather_codes(self):
+        self.weather_bundle()
+        manifest, _, objects = validate_bundle(self.root, "fake-weather", now=NOW)
+        self.assertEqual(len(objects), 3)
+        self.assertEqual(manifest["kind"], "weather")
+        s3 = FakeS3()
+        self.assertEqual(publish(s3, self.root, "fake-weather", "test", now=NOW), "published")
+        self.assertEqual(s3.writes[-1], "weather/fake-weather.json")
+
+    def test_weather_rejects_fractional_codes_and_unknown_variable_kinds(self):
+        manifest = self.weather_bundle()
+        frame = self.root / "weather/run/1.json"
+        original = json.loads(frame.read_text())
+        cases = [
+            # A code table has no half-codes and no out-of-table entries.
+            ({}, {"ww": [0, 45.5, 61, 95]}),
+            ({}, {"ww": [0, 45, 61, 1000]}),
+            ({}, {"ww": [0, 45, 61, True]}),
+            ({}, {"pmsl": [1013.2, 1013.0, 1012.8, "1014.1"]}),
+            ({"variables": {**manifest["variables"],
+                            "ww": {**manifest["variables"]["ww"], "kind": "flag"}}}, None),
+            ({"spotSeries": {"brandon": [{"hour": hour, "validTime": valid(hour),
+                                          "values": {"t2m": 14.0, "pmsl": 1013.1, "ww": 45.5}}
+                                         for hour in (0, 1, 2)]}}, None),
+        ]
+        for change, frame_change in cases:
+            with self.subTest(change=sorted(change), frame=frame_change):
+                self.save("fake-weather", {**manifest, **change})
+                frame.write_text(json.dumps({**original, **(frame_change or {})}))
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-weather", now=NOW)
+        frame.write_text(json.dumps(original))
+
+    def test_a_wave_bundle_still_refuses_a_weather_sized_measurement(self):
+        """Waves are metres and seconds: the same 1013 hPa field is out of range."""
+        self.weather_bundle(kind="wave")
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-weather", now=NOW)
 
     # --- instantaneous gusts ---------------------------------------------
     def gust_bundle(self, kind, interval):
