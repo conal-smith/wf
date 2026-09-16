@@ -32,6 +32,9 @@ test("public riding places are on the map and the Blast alias finds Kilcrea with
   await expect(page.locator(".sheet-loading")).toHaveCount(0, {
     timeout: 30000,
   });
+  // Kilcrea's series was recomputed from the bundled frames, so the dock now
+  // opens on the blend here; the per-hour numbers live in the table view.
+  await page.locator('[data-view="table"]').click();
   await expect(page.locator(".wind-cell").first()).toHaveText(/^\d+$/);
   await expect(page.locator(".wind-cell").last()).toHaveText(/^\d+$/);
   const marker = (await blast.boundingBox())!;
