@@ -23,6 +23,7 @@ Features:
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
 - **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
+- **GEFS · 31 members** adds NOAA's public-domain global ensemble over the same box at 0.25°, 6-hourly to +240 h. The map draws the ensemble **mean**, and the manifest also carries every member's own series for each riding place, so a probability view never downloads member grids. A mean is not the most likely outcome, its gusts are instantaneous like GFS's, and averaging 31 of them reads lower than any single member's gust.
 - Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts are hourly maxima from the control's gust components; the bundled snapshot predates this and still shows `—`.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
@@ -66,7 +67,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -380,6 +381,131 @@ A verified default run of the live 12 UTC cycle on 16 September 2026 transferred
 of JSON) plus a 114 kB manifest for eight spots in 172 seconds. No ENS snapshot
 is committed to the repository.
 
+### GEFS refresh
+
+```sh
+.venv/bin/pip install -r force5/ingest/requirements-worker.txt
+npm run weather:refresh:gefs
+.venv/bin/python force5/ingest/worker.py --models gefs --publish-only
+# Shorter, denser, fewer members, or the S3 fallback:
+.venv/bin/python force5/ingest/fetch_gefs.py --hours 120 --step 3
+.venv/bin/python force5/ingest/fetch_gefs.py --members 11 --hours 240
+.venv/bin/python force5/ingest/fetch_gefs.py --hours 24 --source s3
+```
+
+Downloads NOAA's Global Ensemble Forecast System at 0.25° and publishes
+`public/weather/gefs.json`. Public domain, no API key. Defaults: **all 31 members,
+6-hourly through +240h** (41 steps, `stepHours: 6` with a single-entry `stepRanges`
+ladder that describes the cadence exactly). `--members` (2–31), `--step` (3 or 6)
+and `--hours` (3–240, divisible by the step) are configurable. Member 0 is the
+`gec00` low-resolution control and 1–30 are `gep01`–`gep30`; the control is
+included in the published mean, so unlike ECMWF ENS this ensemble has a real
+`ensemble.control` of `0`.
+
+The source files are the `pgrb2sp25` "s" parameter set
+(`gefs.YYYYMMDD/HH/atmos/pgrb2sp25/ge{c00|pNN}.tHHz.pgrb2s.0p25.fFFF`), which is the
+only 0.25° GEFS set carrying UGRD/VGRD at 10 m and GUST at the surface, and which
+stops at +240h — beyond that GEFS is 0.5° only, so `--hours` is capped at 240.
+
+**Bandwidth: the NOMADS filter is not a convenience here, it is the only affordable
+route.** Both paths were measured on the live 18 UTC cycle of 16 September 2026,
+`+006h`:
+
+| Route                   | UGRD    | VGRD    | GUST    | Sidecar | Per member-step | Per default run (31 × 41) |
+| ----------------------- | ------- | ------- | ------- | ------- | --------------- | ------------------------- |
+| NOMADS filter (default) | 5.65 kB | 5.19 kB | 4.28 kB | –       | 14.7–15.6 kB    | **19.3 MB**               |
+| S3 `.idx` byte ranges   | 830 kB  | 808 kB  | 536 kB  | 2.4 kB  | 2.18–2.24 MB    | 2.84 GB                   |
+
+The filter crops the Ireland box server-side, so one member-step is an 81 × 45
+grid of three messages and averages **15.2 kB** across all 31 members. The S3 path
+must transfer whole-globe messages, which is about **148 times** the traffic: it is
+an outage fallback, not the normal route, and `--source s3` prints its own measured
+total. The default therefore keeps a run around 19 MB, far under the 500 MB budget;
+even all 31 members at `--step 3` (81 steps) is only about 38 MB.
+
+The two routes were verified to decode to **identical** cropped member values on the
+same 81 × 45 grid for `gec00` and `gep01` at +000h and +006h of the 2026-09-16
+12 UTC cycle, so `--source s3` changes only the bytes on the wire.
+
+Request count, not bytes, is the binding constraint. A default run makes 1,271
+filter requests; at NOMADS' asked-for two connections and a minimum pause between
+them that is the bulk of the run's wall time. `--step 3` doubles it.
+
+| `--members`  | `--step` | `--hours` | Steps | Requests | Download per run |
+| ------------ | -------- | --------- | ----- | -------- | ---------------- |
+| 31 (default) | 6        | 240       | 41    | 1,271    | 19.3 MB          |
+| 31           | 6        | 120       | 21    | 651      | 9.9 MB           |
+| 31           | 3        | 240       | 81    | 2,511    | 38.2 MB          |
+| 11           | 6        | 240       | 41    | 451      | 6.9 MB           |
+
+The importer lists the provider's own inventory **per member** for each 6-hourly
+cycle, newest first, and selects the newest cycle that contains every requested
+step for every requested member. A cycle still writing later members is skipped —
+this is common, because the 0.25° members finish 4.5–6 hours after run time and not
+in member order. Runs older than 12 hours or dated in the future are refused.
+
+GEFS longitudes run 0–360°; they are normalised to −180…180° before cropping to the
+shared Ireland/Atlantic box (18°W–2°E, 48°–59°N), giving the same 81 × 45 grid at
+0.25° as the GFS control product. Every member message of every step is decoded and
+validated with the GFS contract plus the ensemble checks: centre `kwbc`,
+`perturbationNumber` equal to the requested member, `cf` for the control and `pf`
+for a perturbed member, 30 perturbed members declared in the message, parameter,
+level, units, earth-relative vectors, regular geometry, a constant grid signature,
+initialization and valid time, finite values within ±150 m/s and a non-negative
+gust. A missing member, a duplicate message, a changed grid or a mislabelled member
+fails the run before anything is published, preserving the previous manifest. Raw
+per-member GRIB is cached under `.cache/gefs/<run>/`, and a cache entry that will
+not revalidate is fetched once more rather than published.
+
+**GEFS gusts are instantaneous, not period maxima**, exactly like the GFS control:
+the manifest declares `gustKind: "instantaneous"` with `gustIntervalHours:
+[hour, hour]` on every frame, initialization included, and no `gustMissingHours`.
+Averaging instantaneous gusts across 31 members lowers them further than any single
+member's gust, so do not compare a GEFS mean gust with an ICON-EU or ECMWF interval
+maximum.
+
+Only the ensemble **mean** u/v/gust becomes map frames
+(`weather/gefs-<run>-<hours>h-v1/<hhh>-<hash>.json`), with the same crop, validation
+and frame JSON as the GFS control. `spotForecasts` holds the mean per spot — a mean,
+not a most-likely outcome — and `spotMembers[spotId][step]` holds `u`/`v`/`gust`
+arrays indexed by member with the control at index 0, so a browser drawing a
+probability blend never downloads member grids. A riding location that falls outside
+the 0.25° crop keeps its mean series of nulls but gets no member series, because the
+ensemble contract requires a number per member; all 25 published locations are
+inside the crop. No GEFS snapshot is committed: an ensemble manifest is large.
+
+The mean is a **vector** mean of u and v. When members disagree on direction its
+speed is lower than the members' median speed, and increasingly so with lead time:
+in the verified run below, Brandon Bay at +168 h has a mean of 1.7 kt against a
+median member speed of 4.4 kt. Read the mean as a vector average, not as a forecast
+wind strength, and derive a speed distribution from `spotMembers`.
+
+A verified default run of the live 12 UTC cycle on 16 September 2026 transferred
+**18.4 MB** over 1,271 member-steps (**14.5 kB** each), validated 3,813 member
+messages, and published 41 ensemble-mean frames (2.38 MB of JSON, 56–61 kB each)
+plus a **659 kB** manifest carrying 25 locations × 41 steps × 31 members, in
+**781 seconds** with two readers. Requests, not bytes, took that time. The 18 UTC
+cycle was skipped as incomplete — 12 of its 31 members were still being written
+about 5.5 hours after run time — so the importer used the 12 UTC cycle, 11.5 hours
+old against the 12-hour limit. The run wrote only to a scratch work directory and
+created no AWS resources.
+
+Brandon Bay (`brandon`) member spread from that run, wind speed in knots:
+
+| Lead   | Valid (UTC)      | Mean | Min  | p10  | Median | p90  | Max  | Mean gust |
+| ------ | ---------------- | ---- | ---- | ---- | ------ | ---- | ---- | --------- |
+| +0 h   | 2026-09-16 12:00 | 12.4 | 10.7 | 11.5 | 12.4   | 13.2 | 13.8 | 15.7      |
+| +24 h  | 2026-09-17 12:00 | 18.1 | 15.5 | 16.4 | 18.5   | 19.7 | 20.7 | 24.4      |
+| +48 h  | 2026-09-18 12:00 | 16.9 | 12.1 | 14.8 | 17.2   | 19.3 | 20.7 | 30.8      |
+| +72 h  | 2026-09-19 12:00 | 12.3 | 4.9  | 8.2  | 12.0   | 17.2 | 19.6 | 18.1      |
+| +120 h | 2026-09-21 12:00 | 5.9  | 2.0  | 3.5  | 6.2    | 9.4  | 10.7 | 8.8       |
+| +240 h | 2026-09-26 12:00 | 2.9  | 1.4  | 1.8  | 6.9    | 13.7 | 20.1 | 9.9       |
+
+The spread widens with lead time as it should: a 3 kt range at initialization, a
+5 kt range on day one, and on day ten members that disagree between 1 and 20 kt.
+That is model uncertainty, not a rideability probability, and it says nothing about
+shelter, headlands or launch-site turbulence.
+
 ### Irish Shelf SWAN refresh
 
 ```sh
@@ -621,6 +747,7 @@ force5/ingest/fetch_forecast.py DWD discovery, download, validation and publicat
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
+force5/ingest/fetch_gefs.py NOAA GEFS 0.25° ensemble members, mean frames and per-spot series
 force5/ingest/fetch_gfswave.py NOAA GFS-Wave 9 km polar-stereo decode and resampling
 force5/ingest/fetch_icon_weather.py DWD ICON-EU surface weather variables (temperature to CAPE)
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
@@ -642,6 +769,7 @@ public/weather/harmonie.json HARMONIE's independent run, grid, frames and attrib
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
 public/weather/ecmwf-ens.json ECMWF ENS mean frames, ensemble metadata and per-spot member series
+public/weather/gefs.json   NOAA GEFS mean frames, ensemble metadata and per-spot member series (not committed)
 public/weather/harmonie-eps.json HARMONIE ensemble: member spot series, mean frames
 public/weather/mi-swan.json Irish Shelf SWAN wave series per riding location (git-ignored)
 public/weather/gfs-wave.json GFS-Wave variables, display grid, spot series and coverage
@@ -695,12 +823,17 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
 
 - **wind** keeps the existing frame rules. `gustKind: "instantaneous"` is for sources
   that publish a surface gust at the valid time rather than a period maximum (NOAA
-  GFS): every frame, hour 0 included, then carries `gustIntervalHours: [hour, hour]`,
-  which the validator accepts only under that declaration.
+  GFS and GEFS): every frame, hour 0 included, then carries
+  `gustIntervalHours: [hour, hour]`, which the validator accepts only under that
+  declaration, and such a model has no `gustMissingHours`.
 - **ensemble** manifests hold the ensemble **mean** in `spotForecasts` and every
   member in `spotMembers`; member arrays must all have length `members`, with finite
-  values, |u| and |v| at most 150 m/s and gusts at or above zero. `frames` may be
-  empty **only** when `ensemble` is present, for models shown on the chart but not
+  values, |u| and |v| at most 150 m/s and gusts at or above zero. Because a member
+  value may not be null, a location the grid cannot sample is published in
+  `spotForecasts` with nulls and left out of `spotMembers` entirely. `ensemble.control`
+  is the control member's index (`0` for GEFS, whose `gec00` control is a member of the
+  published mean) or `null` when the product has no control (ECMWF ENS). `frames` may
+  be empty **only** when `ensemble` is present, for models shown on the chart but not
   the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
   chart-only model needs that frontend check relaxed first.
 - **wave** bundles declare `variables` and publish `spotSeries` for every riding
@@ -731,7 +864,7 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
   into the curve. Spots with no station in range are published with a `reason`.
-  All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. The `ecmwf-ens` manifest adds `ensemble` (member count, `control: null`) and `spotMembers` (per-spot arrays indexed by member); its `frames` and `spotForecasts` are ensemble means, and `stepHours`/`stepRanges` describe its chosen cadence exactly.
+  All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. The `ecmwf-ens` manifest adds `ensemble` (member count, `control: null`) and `spotMembers` (per-spot arrays indexed by member); its `frames` and `spotForecasts` are ensemble means, and `stepHours`/`stepRanges` describe its chosen cadence exactly. The `gefs` manifest is the same shape with `control: 0`, `gustKind: "instantaneous"` and no `gustMissingHours`.
   An ensemble manifest adds `ensemble` and `spotMembers`. `ensemble.members` is the member count, `ensemble.control` the index of the control member or `null`, and `ensemble.memberRuns` each member's own initialization when members come from different cycles. `spotMembers[spotId]` is the same valid-time axis as `spotForecasts`, but each entry's `u`, `v` and `gust` are arrays indexed by member; `spotForecasts` carries the ensemble mean. `frames` may be empty only when `ensemble` is present.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
@@ -861,6 +994,7 @@ tide row's.
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
 - GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
+- GEFS: [NOAA NCEP ensemble product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gens/), [NOMADS GEFS 0.25° GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gefs-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). Same public-domain terms as GFS: Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site. Ensemble spread describes model uncertainty, not a measured probability of rideable conditions.
 - GFS-Wave: [NOAA/NCEP WAVEWATCH III](https://polar.ncep.noaa.gov/waves/), [NOMADS wave GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl), same [Open Data bucket](https://registry.opendata.aws/noaa-gfs-bdp-pds/) and [NWS disclaimer](https://www.weather.gov/disclaimer). Public-domain US Government work; Force5 publishes resampled output, not official government material, and NOAA/NWS does not endorse this site. The `arctic.9km` product is the only GFS-Wave grid that covers all Irish waters.
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
 - Waves: Marine Institute [Irish Shelf SWAN](https://erddap.marine.ie/erddap/info/IMI_IRISH_SHELF_SWAN_WAVE/index.html) and the 200 m [Connemara nest](https://erddap.marine.ie/erddap/info/IMI_CONNEMARA_SWAN_WAVE/index.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wave forecast © Marine Institute; best endeavours, not for safety-critical use. One run a day, and a beach series is the nearest open-water cell, not the shorebreak.
