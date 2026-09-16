@@ -7,3 +7,8 @@
 !public/
 !public/spots.json
 !public/riding-locations.json
+# Marketplace API image (market/Dockerfile) builds from the same root context.
+!market/
+market/api/dist/
+!package.json
+!package-lock.json

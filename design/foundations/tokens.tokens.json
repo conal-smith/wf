@@ -1344,6 +1344,23 @@
           }
         }
       },
+      "prose": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.lg}",
+          "fontWeight": "{ref.font.weight.regular}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.normal}"
+        },
+        "$description": "Body copy read at length, away from the map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Listing descriptions, form inputs, long-form paragraphs on content pages."
+          }
+        }
+      },
       "label": {
         "$type": "typography",
         "$value": {
@@ -1358,6 +1375,23 @@
           "com.multicode": {
             "role": "typography",
             "use": "Buttons, chips, segments."
+          }
+        }
+      },
+      "lead": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.xl}",
+          "fontWeight": "{ref.font.weight.semibold}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.tight}"
+        },
+        "$description": "Louder than body, quieter than title: the one thing a card leads with.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "A listing price, a card title, a section heading. Several per view, one per card."
           }
         }
       },
