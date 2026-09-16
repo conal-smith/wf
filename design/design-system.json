@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "name": "Force5",
+  "version": "0.1.0",
+  "description": "The design system behind wingfoil.ie's Force5 forecast map: a glass-on-sea surface language over one teal ramp and one canonical wind scale.",
+  "modes": ["light", "dark"],
+  "namingGrammar": {
+    "tiers": ["ref", "sem"],
+    "pattern": "<tier>.<category>.<subject>[.<variant>][.<step>]",
+    "rules": [
+      "ref.* is the raw scale. It names a value and nothing about where it is used.",
+      "sem.* is meaning. It aliases ref.* and never holds a literal value.",
+      "Component CSS consumes --sem-* only. --ref-* in a component is a lint failure.",
+      "Numeric steps run light to dark for colour (50 lightest, 950 darkest) and small to large for dimension.",
+      "Wind steps are named for the knot value they anchor: ref.color.wind.k35 is the colour at 35 knots."
+    ]
+  },
+  "contents": {
+    "foundations": ["principles.md", "tokens.tokens.json"],
+    "components": [
+      "surface",
+      "button",
+      "chip",
+      "search-field",
+      "segmented",
+      "spot-marker",
+      "wind-scale"
+    ],
+    "patterns": [],
+    "glyphs": [],
+    "assets": []
+  },
+  "derived": {
+    "foundations/tokens.css": "scripts/build-tokens.mjs",
+    "catalog/index.html": "scripts/build-catalog.mjs"
+  },
+  "provenance": {
+    "derivedFrom": "source",
+    "sources": [
+      "src/styles.css",
+      "src/compact.css",
+      "force5/src/brand.css",
+      "force5/src/weather.ts#PALETTE"
+    ],
+    "method": "Harvested every colour, radius, type size, weight, spacing and shadow literal from the UI sources; clustered the 70 opaque and 49 alpha colour literals by OKLab lightness at their shared hue; anchored the resulting ramp on the values that carried meaning (--ink #173d49, the action teal #245f6b, the sea #83afb9, the glass #edf5f3).",
+    "harvestedAt": "2026-09-14",
+    "harvestedFromCommit": "35ed653"
+  }
+}

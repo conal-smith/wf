@@ -1,0 +1,1629 @@
+{
+  "$description": "Force5 design tokens. Design Tokens Format Module shape: nested groups, $type + $value per token, {dotted.path} aliases. Mode-varying tokens carry $extensions['com.multicode'].modes; $value always holds the light value so a consumer that ignores modes still renders.",
+  "ref": {
+    "$description": "Raw scale. Names a value, never a use. Never referenced from component CSS.",
+    "color": {
+      "teal": {
+        "$type": "color",
+        "$description": "The one hue this product is built from (OKLab h=215deg), stepped evenly in perceptual lightness. Step 800 reproduces the historical --ink #173d49; step 400 reproduces the historical sea #83afb9.",
+        "50": {
+          "$value": "#f1fafc",
+          "$description": "Lightest wash. Dialog insets and pressed-pill grounds."
+        },
+        "100": {
+          "$value": "#e6f4f8",
+          "$description": "Panel ground. The opaque stand-in for the glass gradient."
+        },
+        "200": {
+          "$value": "#d1e6ec",
+          "$description": "Sunken ground: table header bands, track fills."
+        },
+        "300": {
+          "$value": "#afcdd5",
+          "$description": "Hairlines and dividers at full opacity; disabled fills."
+        },
+        "400": {
+          "$value": "#82aab4",
+          "$description": "The sea. Map ground behind the tiles."
+        },
+        "500": {
+          "$value": "#568996",
+          "$description": "3.50:1 on the panel ground. UI strokes and icons only, never text."
+        },
+        "600": {
+          "$value": "#346a76",
+          "$description": "5.46:1 on the panel ground. The floor for body text and the resting action colour."
+        },
+        "700": {
+          "$value": "#20525d",
+          "$description": "7.81:1. Emphasised text and the hovered action fill."
+        },
+        "800": {
+          "$value": "#163f49",
+          "$description": "10.29:1. Primary text."
+        },
+        "900": {
+          "$value": "#103138",
+          "$description": "Dark-mode panel ground."
+        },
+        "950": {
+          "$value": "#0a2126",
+          "$description": "Dark-mode page ground and the base every shadow is tinted with."
+        }
+      },
+      "white": {
+        "$type": "color",
+        "$description": "Alpha whites. The glass language is built from these: every highlight, inner stroke and hover wash is white at some alpha, never a new hex.",
+        "a05": {
+          "$value": "#ffffff0d",
+          "$description": "Barely-there wash. Dark-mode hover."
+        },
+        "a15": {
+          "$value": "#ffffff26",
+          "$description": "Ghost-button hover on glass."
+        },
+        "a25": {
+          "$value": "#ffffff40",
+          "$description": "Inset blocks inside dialogs."
+        },
+        "a40": {
+          "$value": "#ffffff66",
+          "$description": "Icon-button ground; pill fills."
+        },
+        "a55": {
+          "$value": "#ffffff8c",
+          "$description": "Row hover on a panel."
+        },
+        "a70": {
+          "$value": "#ffffffb3",
+          "$description": "Glass border, lower edge."
+        },
+        "a85": {
+          "$value": "#ffffffd9",
+          "$description": "Glass border, lit edge; the top highlight of a raised surface."
+        },
+        "a95": {
+          "$value": "#fffffff2",
+          "$description": "Near-solid white for marker grounds."
+        },
+        "full": {
+          "$value": "#ffffff",
+          "$description": "Pure white. Text on a filled action, and nothing else."
+        }
+      },
+      "ink": {
+        "$type": "color",
+        "$description": "Alpha inks tinted with teal.950, for shadows, scrims and hairlines. A shadow is never neutral black in this system.",
+        "a08": {
+          "$value": "#0a212614",
+          "$description": "Hairline between rows."
+        },
+        "a12": {
+          "$value": "#0a21261f",
+          "$description": "Resting shadow of a small control."
+        },
+        "a20": {
+          "$value": "#0a212633",
+          "$description": "Shadow of a floating panel."
+        },
+        "a30": {
+          "$value": "#0a21264d",
+          "$description": "Shadow of the dock and of a lifted marker."
+        },
+        "a45": {
+          "$value": "#0a212673",
+          "$description": "Dialog scrim."
+        }
+      },
+      "warm": {
+        "$type": "color",
+        "$description": "The only hue family outside the teal ramp. Reserved for the now-marker and for degraded states; it is never decorative.",
+        "100": {
+          "$value": "#fff4e8",
+          "$description": "Warning ground."
+        },
+        "500": {
+          "$value": "#bb6c23",
+          "$description": "Warning mark on a light ground (5.28:1 on white)."
+        },
+        "700": {
+          "$value": "#a8442e",
+          "$description": "The now-marker fill. White on it is 5.95:1."
+        },
+        "800": {
+          "$value": "#854d31",
+          "$description": "Warning text (6.77:1 on white)."
+        }
+      },
+      "green": {
+        "$type": "color",
+        "$description": "Liveness only: the dot that says the forecast pipeline is current.",
+        "600": {
+          "$value": "#3c8a72",
+          "$description": "Healthy status dot."
+        }
+      },
+      "wind": {
+        "$type": "color",
+        "$description": "THE canonical wind scale. These fourteen stops are the PALETTE in force5/src/weather.ts, which paints the map, the forecast cells and the legend. Speed bands, not safety or ability ratings. Nothing else in the system may describe wind speed with colour, and the legend gradient is generated from these stops rather than restated.",
+        "k00": {
+          "$value": "#355897",
+          "$description": "0 kn. Deep blue."
+        },
+        "k05": {
+          "$value": "#2a76b8",
+          "$description": "5 kn."
+        },
+        "k09": {
+          "$value": "#2e97be",
+          "$description": "9 kn."
+        },
+        "k10": {
+          "$value": "#209e78",
+          "$description": "10 kn. The step into rideable wind."
+        },
+        "k15": {
+          "$value": "#32a74f",
+          "$description": "15 kn."
+        },
+        "k20": {
+          "$value": "#5bb437",
+          "$description": "20 kn."
+        },
+        "k25": {
+          "$value": "#92c134",
+          "$description": "25 kn."
+        },
+        "k30": {
+          "$value": "#bfcc3a",
+          "$description": "30 kn. The top of the green band."
+        },
+        "k35": {
+          "$value": "#e8be30",
+          "$description": "35 kn."
+        },
+        "k40": {
+          "$value": "#ea862d",
+          "$description": "40 kn."
+        },
+        "k45": {
+          "$value": "#dd4e38",
+          "$description": "45 kn."
+        },
+        "k50": {
+          "$value": "#be334f",
+          "$description": "50 kn."
+        },
+        "k60": {
+          "$value": "#923d98",
+          "$description": "60 kn."
+        },
+        "k65": {
+          "$value": "#724297",
+          "$description": "65 kn and above. The scale is clamped here."
+        }
+      }
+    },
+    "gradient": {
+      "$type": "gradient",
+      "$description": "Gradients, composed from ref colours. A gradient is never written out as a second list of stops.",
+      "wind": {
+        "$value": [
+          {
+            "color": "{ref.color.wind.k00}",
+            "position": 0.0
+          },
+          {
+            "color": "{ref.color.wind.k05}",
+            "position": 0.0769
+          },
+          {
+            "color": "{ref.color.wind.k09}",
+            "position": 0.1385
+          },
+          {
+            "color": "{ref.color.wind.k10}",
+            "position": 0.1538
+          },
+          {
+            "color": "{ref.color.wind.k15}",
+            "position": 0.2308
+          },
+          {
+            "color": "{ref.color.wind.k20}",
+            "position": 0.3077
+          },
+          {
+            "color": "{ref.color.wind.k25}",
+            "position": 0.3846
+          },
+          {
+            "color": "{ref.color.wind.k30}",
+            "position": 0.4615
+          },
+          {
+            "color": "{ref.color.wind.k35}",
+            "position": 0.5385
+          },
+          {
+            "color": "{ref.color.wind.k40}",
+            "position": 0.6154
+          },
+          {
+            "color": "{ref.color.wind.k45}",
+            "position": 0.6923
+          },
+          {
+            "color": "{ref.color.wind.k50}",
+            "position": 0.7692
+          },
+          {
+            "color": "{ref.color.wind.k60}",
+            "position": 0.9231
+          },
+          {
+            "color": "{ref.color.wind.k65}",
+            "position": 1.0
+          }
+        ],
+        "$description": "The wind legend. Its stops ARE the PALETTE stops, positioned by knots over the clamped 0-65 range, so the legend cannot drift from what the map paints."
+      }
+    },
+    "space": {
+      "$type": "dimension",
+      "$description": "A 2px-based scale. The product is dense by nature (a map with tools floating over it), so the low end is finely stepped and the high end is not.",
+      "0": {
+        "$value": "0px",
+        "$description": "No space."
+      },
+      "2": {
+        "$value": "2px",
+        "$description": "Optical nudge; the gap inside a tight icon pair."
+      },
+      "4": {
+        "$value": "4px",
+        "$description": "Icon-to-label in a dense control."
+      },
+      "6": {
+        "$value": "6px",
+        "$description": "Tight stack."
+      },
+      "8": {
+        "$value": "8px",
+        "$description": "The default gap."
+      },
+      "10": {
+        "$value": "10px",
+        "$description": "Comfortable gap inside a control."
+      },
+      "12": {
+        "$value": "12px",
+        "$description": "Control padding; gap between sibling controls."
+      },
+      "16": {
+        "$value": "16px",
+        "$description": "Panel padding at compact widths."
+      },
+      "20": {
+        "$value": "20px",
+        "$description": "Panel padding."
+      },
+      "24": {
+        "$value": "24px",
+        "$description": "Viewport inset for floating chrome."
+      },
+      "32": {
+        "$value": "32px",
+        "$description": "Dialog padding."
+      },
+      "40": {
+        "$value": "40px",
+        "$description": "The largest gap the system offers."
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "$description": "Rounding scale. The product reads as soft glass, so the steps are large relative to the control heights.",
+      "sm": {
+        "$value": "4px",
+        "$description": "Chips inside text; the now-marker label."
+      },
+      "md": {
+        "$value": "8px",
+        "$description": "Small inner blocks."
+      },
+      "lg": {
+        "$value": "12px",
+        "$description": "Buttons and list rows."
+      },
+      "xl": {
+        "$value": "16px",
+        "$description": "Inner cards and popouts."
+      },
+      "2xl": {
+        "$value": "20px",
+        "$description": "Panels."
+      },
+      "3xl": {
+        "$value": "24px",
+        "$description": "Pills and the floating chrome."
+      },
+      "4xl": {
+        "$value": "30px",
+        "$description": "Dialogs."
+      },
+      "full": {
+        "$value": "9999px",
+        "$description": "Circles and capsules."
+      }
+    },
+    "stroke": {
+      "$type": "dimension",
+      "$description": "Stroke widths. Three, and the focus ring is always the thickest.",
+      "thin": {
+        "$value": "1px",
+        "$description": "Every border in the system except a focus ring or a deliberate emphasis."
+      },
+      "medium": {
+        "$value": "2px",
+        "$description": "A selected tab's underline; a dashed area outline."
+      },
+      "thick": {
+        "$value": "3px",
+        "$description": "The focus ring, and nothing else."
+      }
+    },
+    "font": {
+      "family": {
+        "$type": "fontFamily",
+        "sans": {
+          "$value": [
+            "DM Sans",
+            "-apple-system",
+            "BlinkMacSystemFont",
+            "sans-serif"
+          ],
+          "$description": "Everything that is read."
+        },
+        "display": {
+          "$value": [
+            "Manrope",
+            "sans-serif"
+          ],
+          "$description": "The wordmark, and nothing else."
+        }
+      },
+      "size": {
+        "$type": "dimension",
+        "$description": "Ten steps. The product renders dense numeric data over a map, so the scale starts small, but 9px is the floor and it is reserved for tracked uppercase labels.",
+        "2xs": {
+          "$value": "9px",
+          "$description": "Tracked uppercase eyebrows and axis ticks. Never sentence-case prose."
+        },
+        "xs": {
+          "$value": "10px",
+          "$description": "Metadata, captions, table sub-labels."
+        },
+        "sm": {
+          "$value": "11px",
+          "$description": "Secondary control text."
+        },
+        "md": {
+          "$value": "12px",
+          "$description": "Body. The default."
+        },
+        "lg": {
+          "$value": "14px",
+          "$description": "Emphasised body."
+        },
+        "xl": {
+          "$value": "17px",
+          "$description": "Card and popout titles."
+        },
+        "2xl": {
+          "$value": "20px",
+          "$description": "Place name in the forecast dock at compact widths."
+        },
+        "3xl": {
+          "$value": "25px",
+          "$description": "Place name; dialog title."
+        },
+        "4xl": {
+          "$value": "32px",
+          "$description": "The wind reading at compact widths."
+        },
+        "5xl": {
+          "$value": "48px",
+          "$description": "The wind reading. The largest type in the product."
+        }
+      },
+      "weight": {
+        "$type": "fontWeight",
+        "$description": "Five weights. The variable fonts offer half-steps; this system does not use them.",
+        "regular": {
+          "$value": 400,
+          "$description": "Body and data."
+        },
+        "medium": {
+          "$value": 500,
+          "$description": "Emphasis inside body."
+        },
+        "semibold": {
+          "$value": 600,
+          "$description": "Labels, headings, active states."
+        },
+        "bold": {
+          "$value": 700,
+          "$description": "The selected column; the strongest emphasis available to prose."
+        },
+        "display": {
+          "$value": 800,
+          "$description": "The wordmark only."
+        }
+      },
+      "tracking": {
+        "$type": "dimension",
+        "tight": {
+          "$value": "-0.7px",
+          "$description": "Large headings, to close them up."
+        },
+        "normal": {
+          "$value": "0px",
+          "$description": "Body."
+        },
+        "label": {
+          "$value": "1.1px",
+          "$description": "Tracked uppercase eyebrows."
+        }
+      },
+      "leading": {
+        "$type": "number",
+        "tight": {
+          "$value": 1.3,
+          "$description": "Headings."
+        },
+        "normal": {
+          "$value": 1.5,
+          "$description": "Body."
+        },
+        "loose": {
+          "$value": 1.75,
+          "$description": "Dialog prose."
+        }
+      }
+    },
+    "shadow": {
+      "$type": "shadow",
+      "$description": "Four elevations, all tinted with teal.950. A shadow says how far a thing floats above the map, and nothing else.",
+      "sm": {
+        "$value": {
+          "color": "{ref.color.ink.a12}",
+          "offsetX": "0px",
+          "offsetY": "1px",
+          "blur": "5px",
+          "spread": "0px"
+        },
+        "$description": "A control at rest."
+      },
+      "md": {
+        "$value": {
+          "color": "{ref.color.ink.a20}",
+          "offsetX": "0px",
+          "offsetY": "3px",
+          "blur": "12px",
+          "spread": "0px"
+        },
+        "$description": "A marker; a small popover."
+      },
+      "lg": {
+        "$value": {
+          "color": "{ref.color.ink.a20}",
+          "offsetX": "0px",
+          "offsetY": "10px",
+          "blur": "40px",
+          "spread": "0px"
+        },
+        "$description": "A floating panel."
+      },
+      "dock": {
+        "$value": {
+          "color": "{ref.color.ink.a20}",
+          "offsetX": "0px",
+          "offsetY": "-4px",
+          "blur": "24px",
+          "spread": "0px"
+        },
+        "$description": "The edge-to-edge dock, which casts upward."
+      }
+    },
+    "duration": {
+      "$type": "duration",
+      "fast": {
+        "$value": "150ms",
+        "$description": "Hover and press feedback."
+      },
+      "base": {
+        "$value": "250ms",
+        "$description": "A surface entering."
+      },
+      "slow": {
+        "$value": "400ms",
+        "$description": "A map camera settling."
+      }
+    },
+    "blur": {
+      "$type": "dimension",
+      "glass": {
+        "$value": "28px",
+        "$description": "The backdrop blur that makes a surface read as glass."
+      },
+      "scrim": {
+        "$value": "5px",
+        "$description": "The blur behind a modal scrim."
+      }
+    },
+    "z": {
+      "$type": "number",
+      "$description": "Nine layers. The map is the floor; the header is the ceiling. A component may not invent a value between two of these.",
+      "map": {
+        "$value": 1,
+        "$description": "Map canvas."
+      },
+      "overlay": {
+        "$value": 3,
+        "$description": "Particles, sea labels, instructions painted over the map."
+      },
+      "marker": {
+        "$value": 4,
+        "$description": "Spot markers."
+      },
+      "popover": {
+        "$value": 6,
+        "$description": "A marker's popout."
+      },
+      "dock": {
+        "$value": 7,
+        "$description": "The forecast dock and footer."
+      },
+      "chrome": {
+        "$value": 8,
+        "$description": "Floating controls: navigation, status."
+      },
+      "panel": {
+        "$value": 15,
+        "$description": "A panel opened from the chrome."
+      },
+      "header": {
+        "$value": 20,
+        "$description": "Identity and search."
+      },
+      "dialog": {
+        "$value": 30,
+        "$description": "Modal dialogs."
+      }
+    },
+    "control": {
+      "$type": "dimension",
+      "$description": "Three control heights. Everything clickable is one of these; 30px is the floor, and it is only allowed where the tap target is padded by its parent.",
+      "sm": {
+        "$value": "30px",
+        "$description": "Dense inline control."
+      },
+      "md": {
+        "$value": "40px",
+        "$description": "The default."
+      },
+      "lg": {
+        "$value": "46px",
+        "$description": "Search, and the primary chrome pills."
+      }
+    }
+  },
+  "sem": {
+    "$description": "Meaning. Every token here aliases a ref token and carries a role and a use. These are the only tokens a component may consume.",
+    "color": {
+      "bg": {
+        "$type": "color",
+        "page": {
+          "$value": "{ref.color.teal.400}",
+          "$description": "The ground behind everything, seen as the sea around the tiles.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "background",
+              "use": "The app shell and the map panel.",
+              "modes": {
+                "light": "{ref.color.teal.400}",
+                "dark": "{ref.color.teal.950}"
+              }
+            }
+          }
+        }
+      },
+      "surface": {
+        "$type": "color",
+        "glass": {
+          "$value": "#e6f4f8db",
+          "$description": "The glass a floating surface is made of. Pairs with sem.effect.blur.glass; falls back to surface.solid where transparency is reduced or backdrop-filter is unsupported.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "Panels, the dock, pills, popovers.",
+              "modes": {
+                "light": "#e6f4f8db",
+                "dark": "#103138db"
+              }
+            }
+          }
+        },
+        "solid": {
+          "$value": "{ref.color.teal.100}",
+          "$description": "The opaque stand-in for glass. Required wherever transparency is reduced.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "Reduced-transparency fallback; any surface over unpredictable content.",
+              "modes": {
+                "light": "{ref.color.teal.100}",
+                "dark": "{ref.color.teal.900}"
+              }
+            }
+          }
+        },
+        "raised": {
+          "$value": "{ref.color.white.a40}",
+          "$description": "A block lifted off a surface it already sits on.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "Icon-button grounds, inset definition lists, pill fills.",
+              "modes": {
+                "light": "{ref.color.white.a40}",
+                "dark": "{ref.color.white.a05}"
+              }
+            }
+          }
+        },
+        "sunken": {
+          "$value": "{ref.color.teal.200}",
+          "$description": "A recess in a surface.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "Sticky table headers, segmented-control trough, slider track.",
+              "modes": {
+                "light": "{ref.color.teal.200}",
+                "dark": "{ref.color.teal.950}"
+              }
+            }
+          }
+        },
+        "inverse": {
+          "$value": "{ref.color.teal.700}",
+          "$description": "A surface that flips the text on it to inverse.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "The active marker; a selected segment.",
+              "modes": {
+                "light": "{ref.color.teal.700}",
+                "dark": "{ref.color.teal.300}"
+              }
+            }
+          }
+        },
+        "scrim": {
+          "$value": "{ref.color.ink.a45}",
+          "$description": "What a modal puts between itself and the map.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "Dialog backdrop."
+            }
+          }
+        }
+      },
+      "border": {
+        "$type": "color",
+        "hairline": {
+          "$value": "{ref.color.ink.a08}",
+          "$description": "The faintest division the system draws: between rows, between a heading and its table.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "border",
+              "use": "Dividers inside a surface.",
+              "modes": {
+                "light": "{ref.color.ink.a08}",
+                "dark": "{ref.color.white.a05}"
+              }
+            }
+          }
+        },
+        "glass": {
+          "$value": "{ref.color.white.a70}",
+          "$description": "The lit edge that makes a glass surface read as an object rather than a stain.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "border",
+              "use": "Every glass surface's own border.",
+              "modes": {
+                "light": "{ref.color.white.a70}",
+                "dark": "{ref.color.white.a15}"
+              }
+            }
+          }
+        },
+        "strong": {
+          "$value": "{ref.color.teal.500}",
+          "$description": "A border that has to be seen: a dashed area marker, a selected column edge.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "border",
+              "use": "Emphasised and dashed outlines.",
+              "modes": {
+                "light": "{ref.color.teal.500}",
+                "dark": "{ref.color.teal.400}"
+              }
+            }
+          }
+        }
+      },
+      "text": {
+        "$type": "color",
+        "primary": {
+          "$value": "{ref.color.teal.800}",
+          "$description": "Everything read at length. 10.29:1 on the panel ground.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "text",
+              "use": "Body, headings, the wind reading.",
+              "modes": {
+                "light": "{ref.color.teal.800}",
+                "dark": "{ref.color.teal.100}"
+              }
+            }
+          }
+        },
+        "secondary": {
+          "$value": "{ref.color.teal.700}",
+          "$description": "Supporting text that is still prose. 7.81:1.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "text",
+              "use": "Dialog paragraphs, sub-labels that carry meaning.",
+              "modes": {
+                "light": "{ref.color.teal.700}",
+                "dark": "{ref.color.teal.200}"
+              }
+            }
+          }
+        },
+        "muted": {
+          "$value": "{ref.color.teal.600}",
+          "$description": "The quietest text the system permits. 5.46:1 on the panel ground, and the floor: nothing readable is lighter than this.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "text",
+              "use": "Eyebrows, coordinates, ticks, captions, table metadata.",
+              "modes": {
+                "light": "{ref.color.teal.600}",
+                "dark": "{ref.color.teal.300}"
+              }
+            }
+          }
+        },
+        "inverse": {
+          "$value": "{ref.color.white.full}",
+          "$description": "Text on a filled action or an inverse surface.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "text",
+              "use": "Labels on action.bg, on the active marker, on the now-marker.",
+              "modes": {
+                "light": "{ref.color.white.full}",
+                "dark": "{ref.color.teal.950}"
+              }
+            }
+          }
+        },
+        "disabled": {
+          "$value": "{ref.color.teal.500}",
+          "$description": "A control that cannot be used. Paired with reduced opacity on the control itself.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "text",
+              "use": "Disabled labels. Never for text that is merely low priority - that is text.muted.",
+              "modes": {
+                "light": "{ref.color.teal.500}",
+                "dark": "{ref.color.teal.500}"
+              }
+            }
+          }
+        }
+      },
+      "action": {
+        "$type": "color",
+        "bg": {
+          "$value": "{ref.color.teal.600}",
+          "$description": "The filled action. There is one per view.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "action",
+              "use": "Play, and the single primary button in an error state.",
+              "modes": {
+                "light": "{ref.color.teal.600}",
+                "dark": "{ref.color.teal.400}"
+              }
+            }
+          }
+        },
+        "bgHover": {
+          "$value": "{ref.color.teal.700}",
+          "$description": "The filled action, hovered.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "action",
+              "use": "Hover and active on a filled action.",
+              "modes": {
+                "light": "{ref.color.teal.700}",
+                "dark": "{ref.color.teal.300}"
+              }
+            }
+          }
+        },
+        "fg": {
+          "$value": "{ref.color.white.full}",
+          "$description": "The label on a filled action. 6.05:1 on action.bg.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "action",
+              "use": "Text and icons inside a filled action.",
+              "modes": {
+                "light": "{ref.color.white.full}",
+                "dark": "{ref.color.teal.950}"
+              }
+            }
+          }
+        },
+        "quiet": {
+          "$value": "{ref.color.teal.700}",
+          "$description": "An action with no fill until it is touched.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "action",
+              "use": "Ghost and icon buttons at rest.",
+              "modes": {
+                "light": "{ref.color.teal.700}",
+                "dark": "{ref.color.teal.200}"
+              }
+            }
+          }
+        },
+        "quietHover": {
+          "$value": "{ref.color.white.a55}",
+          "$description": "The wash a quiet action picks up on hover.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "action",
+              "use": "Hover ground for ghost buttons and list rows.",
+              "modes": {
+                "light": "{ref.color.white.a55}",
+                "dark": "{ref.color.white.a15}"
+              }
+            }
+          }
+        },
+        "focus": {
+          "$value": "{ref.color.teal.700}",
+          "$description": "The focus ring. One colour, every control, both modes.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "focus",
+              "use": "outline on :focus-visible. Never removed, never restyled per component.",
+              "modes": {
+                "light": "{ref.color.teal.700}",
+                "dark": "{ref.color.teal.200}"
+              }
+            }
+          }
+        }
+      },
+      "status": {
+        "$type": "color",
+        "ok": {
+          "$value": "{ref.color.green.600}",
+          "$description": "The pipeline is current.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "status",
+              "use": "The liveness dot."
+            }
+          }
+        },
+        "warnFg": {
+          "$value": "{ref.color.warm.800}",
+          "$description": "Text on a degraded state. The pair inverts wholesale in dark rather than sliding one end, so the strip keeps its contrast.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "status",
+              "use": "Stale-frame and fetch-failure messages.",
+              "modes": {
+                "light": "{ref.color.warm.800}",
+                "dark": "{ref.color.warm.100}"
+              }
+            }
+          }
+        },
+        "warnBg": {
+          "$value": "{ref.color.warm.100}",
+          "$description": "The ground under a degraded state.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "status",
+              "use": "Warning status strips.",
+              "modes": {
+                "light": "{ref.color.warm.100}",
+                "dark": "{ref.color.warm.800}"
+              }
+            }
+          }
+        },
+        "now": {
+          "$value": "{ref.color.warm.700}",
+          "$description": "This instant. The only warm mark on the forecast grid, which is why it is legible against fourteen wind colours.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "status",
+              "use": "The now line and its label. Nothing else may use warm.700."
+            }
+          }
+        }
+      },
+      "wind": {
+        "$type": "color",
+        "$description": "The speed bands, for anything that paints a wind value: map cells, forecast cells, the legend.",
+        "k00": {
+          "$value": "{ref.color.wind.k00}",
+          "$description": "Wind at 0 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k05": {
+          "$value": "{ref.color.wind.k05}",
+          "$description": "Wind at 5 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k09": {
+          "$value": "{ref.color.wind.k09}",
+          "$description": "Wind at 9 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k10": {
+          "$value": "{ref.color.wind.k10}",
+          "$description": "Wind at 10 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k15": {
+          "$value": "{ref.color.wind.k15}",
+          "$description": "Wind at 15 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k20": {
+          "$value": "{ref.color.wind.k20}",
+          "$description": "Wind at 20 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k25": {
+          "$value": "{ref.color.wind.k25}",
+          "$description": "Wind at 25 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k30": {
+          "$value": "{ref.color.wind.k30}",
+          "$description": "Wind at 30 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k35": {
+          "$value": "{ref.color.wind.k35}",
+          "$description": "Wind at 35 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k40": {
+          "$value": "{ref.color.wind.k40}",
+          "$description": "Wind at 40 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k45": {
+          "$value": "{ref.color.wind.k45}",
+          "$description": "Wind at 45 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k50": {
+          "$value": "{ref.color.wind.k50}",
+          "$description": "Wind at 50 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k60": {
+          "$value": "{ref.color.wind.k60}",
+          "$description": "Wind at 60 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        },
+        "k65": {
+          "$value": "{ref.color.wind.k65}",
+          "$description": "Wind at 65 knots.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "data",
+              "use": "Fills that encode wind speed. Identical in both modes: the scale is data, and data does not re-theme."
+            }
+          }
+        }
+      }
+    },
+    "space": {
+      "$type": "dimension",
+      "gapTight": {
+        "$value": "{ref.space.4}",
+        "$description": "Icon to label.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Inside a dense control."
+          }
+        }
+      },
+      "gap": {
+        "$value": "{ref.space.8}",
+        "$description": "The default gap.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Between items in a row or stack."
+          }
+        }
+      },
+      "gapLoose": {
+        "$value": "{ref.space.12}",
+        "$description": "Between sibling controls.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Between two controls that are not one unit."
+          }
+        }
+      },
+      "padControl": {
+        "$value": "{ref.space.12}",
+        "$description": "Horizontal padding inside a control.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Buttons, chips, fields."
+          }
+        }
+      },
+      "padSurface": {
+        "$value": "{ref.space.20}",
+        "$description": "Padding inside a panel.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Panels and popovers."
+          }
+        }
+      },
+      "padDialog": {
+        "$value": "{ref.space.32}",
+        "$description": "Padding inside a dialog.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Modal dialogs only."
+          }
+        }
+      },
+      "inset": {
+        "$value": "{ref.space.24}",
+        "$description": "How far floating chrome sits from the viewport edge.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "spacing",
+            "use": "Always combined with the matching env(safe-area-inset-*)."
+          }
+        }
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "control": {
+        "$value": "{ref.radius.lg}",
+        "$description": "A button or a row.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "radius",
+            "use": "Buttons, list rows, segments."
+          }
+        }
+      },
+      "surface": {
+        "$value": "{ref.radius.2xl}",
+        "$description": "A panel.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "radius",
+            "use": "Panels and popovers."
+          }
+        }
+      },
+      "pill": {
+        "$value": "{ref.radius.3xl}",
+        "$description": "Floating chrome.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "radius",
+            "use": "Chips, search, the chrome pills."
+          }
+        }
+      },
+      "dialog": {
+        "$value": "{ref.radius.4xl}",
+        "$description": "A modal.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "radius",
+            "use": "Dialogs only."
+          }
+        }
+      },
+      "round": {
+        "$value": "{ref.radius.full}",
+        "$description": "A circle or capsule.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "radius",
+            "use": "Icon buttons, dots, markers."
+          }
+        }
+      }
+    },
+    "stroke": {
+      "$type": "dimension",
+      "hairline": {
+        "$value": "{ref.stroke.thin}",
+        "$description": "The width of an ordinary border.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "border",
+            "use": "Every border on a surface or control."
+          }
+        }
+      },
+      "emphasis": {
+        "$value": "{ref.stroke.medium}",
+        "$description": "A stroke that marks a selection.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "border",
+            "use": "Active tab underline; dashed area marker."
+          }
+        }
+      },
+      "focusWidth": {
+        "$value": "{ref.stroke.thick}",
+        "$description": "The focus ring.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "focus",
+            "use": "outline-width on :focus-visible. Identical on every control."
+          }
+        }
+      },
+      "focusOffset": {
+        "$value": "{ref.stroke.medium}",
+        "$description": "How far the focus ring stands off its control.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "focus",
+            "use": "outline-offset on :focus-visible."
+          }
+        }
+      }
+    },
+    "text": {
+      "eyebrow": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.2xs}",
+          "fontWeight": "{ref.font.weight.semibold}",
+          "letterSpacing": "{ref.font.tracking.label}",
+          "lineHeight": "{ref.font.leading.normal}"
+        },
+        "$description": "Tracked uppercase label above a heading.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Section labels and eyebrows. Always uppercase; never a sentence."
+          }
+        }
+      },
+      "caption": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.xs}",
+          "fontWeight": "{ref.font.weight.regular}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.normal}"
+        },
+        "$description": "Metadata under or beside a thing.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Coordinates, ticks, run times, attribution."
+          }
+        }
+      },
+      "body": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.md}",
+          "fontWeight": "{ref.font.weight.regular}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.normal}"
+        },
+        "$description": "The default.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Prose and control labels."
+          }
+        }
+      },
+      "label": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.sm}",
+          "fontWeight": "{ref.font.weight.semibold}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.tight}"
+        },
+        "$description": "A control's own label.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Buttons, chips, segments."
+          }
+        }
+      },
+      "title": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.3xl}",
+          "fontWeight": "{ref.font.weight.semibold}",
+          "letterSpacing": "{ref.font.tracking.tight}",
+          "lineHeight": "{ref.font.leading.tight}"
+        },
+        "$description": "A place name or a dialog heading.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "One per surface."
+          }
+        }
+      },
+      "reading": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.5xl}",
+          "fontWeight": "{ref.font.weight.regular}",
+          "letterSpacing": "{ref.font.tracking.tight}",
+          "lineHeight": "{ref.font.leading.tight}"
+        },
+        "$description": "The wind speed, which is the one number the product exists to show.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "The current wind reading. Exactly one per view."
+          }
+        }
+      }
+    },
+    "effect": {
+      "shadowControl": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.sm}",
+        "$description": "A control at rest.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "elevation",
+            "use": "Buttons and small pills."
+          }
+        }
+      },
+      "shadowMarker": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.md}",
+        "$description": "A marker on the map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "elevation",
+            "use": "Markers and popovers."
+          }
+        }
+      },
+      "shadowSurface": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.lg}",
+        "$description": "A panel floating over the map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "elevation",
+            "use": "Panels and dialogs."
+          }
+        }
+      },
+      "shadowDock": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.dock}",
+        "$description": "The dock, which casts upward.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "elevation",
+            "use": "The edge-to-edge forecast dock only."
+          }
+        }
+      },
+      "blurGlass": {
+        "$type": "dimension",
+        "$value": "{ref.blur.glass}",
+        "$description": "What makes glass glass.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "effect",
+            "use": "backdrop-filter on a glass surface. Must ship with a solid fallback."
+          }
+        }
+      },
+      "blurScrim": {
+        "$type": "dimension",
+        "$value": "{ref.blur.scrim}",
+        "$description": "The blur behind a modal.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "effect",
+            "use": "Dialog backdrops."
+          }
+        }
+      },
+      "durationFast": {
+        "$type": "duration",
+        "$value": "{ref.duration.fast}",
+        "$description": "Feedback.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "motion",
+            "use": "Hover, press, focus. Must be disabled under prefers-reduced-motion."
+          }
+        }
+      },
+      "durationBase": {
+        "$type": "duration",
+        "$value": "{ref.duration.base}",
+        "$description": "A surface entering.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "motion",
+            "use": "Sheets and panels."
+          }
+        }
+      }
+    },
+    "control": {
+      "$type": "dimension",
+      "heightSm": {
+        "$value": "{ref.control.sm}",
+        "$description": "Dense inline control.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "sizing",
+            "use": "Only where the parent pads the tap target to 44px."
+          }
+        }
+      },
+      "heightMd": {
+        "$value": "{ref.control.md}",
+        "$description": "The default control height.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "sizing",
+            "use": "Buttons, segments, icon buttons."
+          }
+        }
+      },
+      "heightLg": {
+        "$value": "{ref.control.lg}",
+        "$description": "The tallest control.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "sizing",
+            "use": "Search and the primary chrome pills."
+          }
+        }
+      }
+    },
+    "z": {
+      "$type": "number",
+      "map": {
+        "$value": "{ref.z.map}",
+        "$description": "The map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Map canvas."
+          }
+        }
+      },
+      "overlay": {
+        "$value": "{ref.z.overlay}",
+        "$description": "Painted on the map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Particles and labels."
+          }
+        }
+      },
+      "marker": {
+        "$value": "{ref.z.marker}",
+        "$description": "Markers.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Spot markers."
+          }
+        }
+      },
+      "popover": {
+        "$value": "{ref.z.popover}",
+        "$description": "A marker's popout.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Popouts."
+          }
+        }
+      },
+      "dock": {
+        "$value": "{ref.z.dock}",
+        "$description": "The dock.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Forecast dock and footer."
+          }
+        }
+      },
+      "chrome": {
+        "$value": "{ref.z.chrome}",
+        "$description": "Floating controls.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Navigation and status."
+          }
+        }
+      },
+      "panel": {
+        "$value": "{ref.z.panel}",
+        "$description": "An opened panel.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Layers panel."
+          }
+        }
+      },
+      "header": {
+        "$value": "{ref.z.header}",
+        "$description": "Identity and search.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Site header."
+          }
+        }
+      },
+      "dialog": {
+        "$value": "{ref.z.dialog}",
+        "$description": "Modals.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "layer",
+            "use": "Dialogs."
+          }
+        }
+      }
+    },
+    "gradient": {
+      "$type": "gradient",
+      "wind": {
+        "$value": "{ref.gradient.wind}",
+        "$description": "The legend ramp.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "data",
+            "use": "The wind legend only. Never a decorative background."
+          }
+        }
+      }
+    }
+  }
+}

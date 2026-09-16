@@ -1,0 +1,117 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Chip - Force5</title>
+<link rel="stylesheet" href="../foundations/tokens.css" />
+<link rel="stylesheet" href="component.css" />
+<style>
+  /* Demo scaffolding only. Nothing here is part of the component. */
+  body { margin: 0; font: 400 12px/1.5 "DM Sans", system-ui, sans-serif; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 700px) { .modes { grid-template-columns: 1fr; } }
+  .mode {
+    padding: 24px; min-height: 100vh;
+    background:
+      linear-gradient(135deg, #0000 0 49%, #ffffff14 50% 51%, #0000 52%),
+      var(--sem-color-bg-page);
+  }
+  .mode > h3 {
+    margin: 0 0 16px; text-transform: uppercase;
+    font: var(--sem-text-eyebrow-font-weight) var(--sem-text-eyebrow-font-size) /
+      var(--sem-text-eyebrow-line-height) var(--sem-text-eyebrow-font-family);
+    letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+    color: var(--sem-color-text-muted);
+  }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .cap {
+    font-size: var(--sem-text-caption-font-size);
+    color: var(--sem-color-text-muted); margin: 0 0 6px;
+  }
+  .pane {
+    background: var(--sem-color-surface-solid);
+    border-radius: var(--sem-radius-surface);
+    padding: 16px;
+  }
+
+</style>
+
+<div class="modes">
+  <section class="mode" data-mode="light">
+    <h3>Light</h3>
+    <div class="stack">
+      <div>
+        <p class="cap">Variants</p>
+        <div class="pane row">
+          <span class="f5-chip">ECMWF &middot; 00Z</span>
+          <span class="f5-chip f5-chip--eyebrow">Forecast</span>
+          <span class="f5-chip f5-chip--glass">12 spots</span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--status &mdash; the dot never carries the state alone</p>
+        <div class="pane row">
+          <span class="f5-chip f5-chip--status" data-status="ok">
+            <i class="f5-chip__dot"></i>Updated 40 min ago
+          </span>
+          <span class="f5-chip f5-chip--status" data-status="warn">
+            <i class="f5-chip__dot"></i>Snapshot is 9 h old
+          </span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--warn &mdash; degraded, and only degraded</p>
+        <div class="pane row">
+          <span class="f5-chip f5-chip--warn">Frame failed to load</span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--glass over the map, not on a surface</p>
+        <div class="row">
+          <span class="f5-chip f5-chip--glass f5-chip--status" data-status="ok">
+            <i class="f5-chip__dot"></i>Live
+          </span>
+          <span class="f5-chip f5-chip--glass">HARMONIE 2.5 km</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="mode" data-mode="dark">
+    <h3>Dark</h3>
+    <div class="stack">
+      <div>
+        <p class="cap">Variants</p>
+        <div class="pane row">
+          <span class="f5-chip">ECMWF &middot; 00Z</span>
+          <span class="f5-chip f5-chip--eyebrow">Forecast</span>
+          <span class="f5-chip f5-chip--glass">12 spots</span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--status &mdash; the dot never carries the state alone</p>
+        <div class="pane row">
+          <span class="f5-chip f5-chip--status" data-status="ok">
+            <i class="f5-chip__dot"></i>Updated 40 min ago
+          </span>
+          <span class="f5-chip f5-chip--status" data-status="warn">
+            <i class="f5-chip__dot"></i>Snapshot is 9 h old
+          </span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--warn &mdash; degraded, and only degraded</p>
+        <div class="pane row">
+          <span class="f5-chip f5-chip--warn">Frame failed to load</span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">--glass over the map, not on a surface</p>
+        <div class="row">
+          <span class="f5-chip f5-chip--glass f5-chip--status" data-status="ok">
+            <i class="f5-chip__dot"></i>Live
+          </span>
+          <span class="f5-chip f5-chip--glass">HARMONIE 2.5 km</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
