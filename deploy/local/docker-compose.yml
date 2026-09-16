@@ -1,0 +1,109 @@
+# Force5 / wingfoil.ie on one machine: no cloud, no S3, no secrets.
+#
+#   npm run deploy:build && npm run deploy:up
+#
+# `web` serves the built site and the ingest volume on one origin; `scheduler` runs
+# the one-shot worker per model on the cadences in jobs.toml; `worker`, `prune` and
+# `status` are manual one-shots (`docker compose ... run --rm <name> [args]`).
+name: force5-local
+
+x-ingest: &ingest
+  image: ${FORCE5_WORKER_IMAGE:-force5-worker:local}
+  build:
+    context: ../..
+    dockerfile: force5/Dockerfile
+  environment:
+    FORCE5_WORK_DIR: /data
+    FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-48}
+    FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-3}
+    TZ: ${FORCE5_TZ:-Etc/UTC}
+  volumes:
+    - data:/data
+  restart: "no"
+
+x-site: &site
+  image: ${FORCE5_WEB_IMAGE:-force5-web:local}
+  build:
+    context: ../..
+    dockerfile: deploy/local/Dockerfile.web
+
+services:
+  # One-shot: give a fresh volume the bundled acceptance snapshots so the site has
+  # something to draw before the first ingest job finishes. Never overwrites output.
+  seed:
+    <<: *site
+    user: "10001:10001"
+    entrypoint: ["/bin/sh", "-euc"]
+    command:
+      - |
+        mkdir -p /data/public/weather /data/public/marine
+        if ls /data/public/weather/*.json >/dev/null 2>&1; then
+          echo "seed: volume already holds manifests, leaving it untouched"
+        else
+          echo "seed: copying the bundled acceptance snapshots into the volume"
+          cp -R /srv/weather/. /data/public/weather/
+        fi
+        ls -1 /data/public/weather
+    volumes:
+      - data:/data
+    restart: "no"
+
+  web:
+    <<: *site
+    environment:
+      FORCE5_SITE_ADDRESS: ${FORCE5_SITE_ADDRESS:-:8080}
+    ports:
+      - "${FORCE5_WEB_BIND:-127.0.0.1}:${FORCE5_WEB_PORT:-8080}:8080"
+    volumes:
+      - data:/data:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+
+  scheduler:
+    <<: *ingest
+    entrypoint: ["python", "/app/force5/ingest/scheduler.py"]
+    command: []
+    environment:
+      FORCE5_WORK_DIR: /data
+      FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-48}
+      FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-3}
+      FORCE5_JOBS_FILE: /app/deploy/local/jobs.toml
+      FORCE5_RUN_AT_START: ${FORCE5_RUN_AT_START:-0}
+      TZ: ${FORCE5_TZ:-Etc/UTC}
+    volumes:
+      - data:/data
+      - ./jobs.toml:/app/deploy/local/jobs.toml:ro
+    restart: unless-stopped
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+
+  # Manual one-shots. `docker compose ... run --rm worker --models gfs --step 3`.
+  worker:
+    <<: *ingest
+    profiles: ["manual"]
+    command: ["--models", "harmonie", "--step", "1"]
+
+  prune:
+    <<: *ingest
+    profiles: ["manual"]
+    entrypoint: ["python", "/app/force5/ingest/prune.py"]
+    command: []
+
+  status:
+    <<: *ingest
+    profiles: ["manual"]
+    entrypoint: ["python", "/app/force5/ingest/status.py"]
+    command: []
+
+volumes:
+  data:
+    name: ${FORCE5_DATA_VOLUME:-force5-data}

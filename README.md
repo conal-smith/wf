@@ -34,9 +34,32 @@ Features:
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged). The public map and search show only 25 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
 
+## Run it yourself on one machine
+
+The [local deployment guide](deploy/local/README.md) sets up the whole site on a single
+computer with Docker Compose: a Caddy container serving the built site and the forecast
+data on one origin, a scheduler running the ingest worker per model on documented
+cadences, and a retention job. No cloud account, no S3 bucket, no CDN and no secrets,
+reachable over your LAN or a Tailscale mesh.
+
+```sh
+npm run deploy:build
+npm run deploy:up
+npm run deploy:run -- --models gfs --step 3   # the quickest real forecast, ~1 minute
+npm run deploy:status                          # each manifest's run age
+open http://127.0.0.1:8080/
+```
+
+Check freshness with `npm run deploy:status`: it prints every model's run, age, frame
+count and forecast horizon, and exits nonzero when a model is missing, stale or
+expired. `npm run deploy:logs` follows the ingest and web logs; each job logs a JSON
+`forecast_complete` or `forecast_failed` event.
+
 ## Live forecast worker
 
-See the [live forecast pipeline runbook](docs/LIVE_FORECAST_PIPELINE.md) for container build/run instructions, scheduled ECS tasks, safe S3 publishing, CDN caching, IAM, monitoring and remaining launch checks.
+See the [live forecast pipeline runbook](docs/LIVE_FORECAST_PIPELINE.md) for the
+separate AWS design: container build/run instructions, scheduled ECS tasks, safe S3
+publishing, CDN caching, IAM, monitoring and remaining launch checks.
 
 ```sh
 docker build -f force5/Dockerfile -t force5-forecast:local .
@@ -491,6 +514,10 @@ force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding locat
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
 force5/ingest/fetch_mi_swan.py Marine Institute Irish Shelf SWAN wave series per riding location
+force5/ingest/scheduler.py  Per-model cadences for the local deployment, one job at a time
+force5/ingest/prune.py      Retention: unreferenced aged objects and raw cache
+force5/ingest/status.py     Freshness report for every published manifest
+deploy/local/               Docker Compose stack, Caddyfile, schedule and guide
 public/spots.json           Original eight precomputed forecast locations
 public/riding-locations.json The 25 public riding places every adapter samples
 scripts/export-riding-locations.mjs Regenerates that file from src/locations.ts

@@ -1,0 +1,97 @@
+# Force5 local ingest schedule. Edit, then `npm run deploy:up` (or
+# `docker compose -f deploy/local/docker-compose.yml restart scheduler`).
+#
+# All times are UTC, because model cycles are published in UTC. `hours` defaults
+# to every hour and `minutes` defaults to [0]. Jobs run one at a time in the order
+# written here, so two slots in the same minute never fight over the worker lock.
+# Check a change before restarting:
+#   docker compose -f deploy/local/docker-compose.yml run --rm scheduler --list
+#
+# command = "worker" (default) runs force5/ingest/worker.py --models <models> <args>.
+# command = "prune" or "status" runs the retention and freshness scripts instead.
+# Model ids are the ones in force5/ingest/registry.py. An id with no registry entry
+# disables only its own job; the rest keep running, so you can write entries for
+# harmonie-eps, gfs-wave or mi-swan now and enable them by adding the adapter.
+
+[[jobs]]
+id = "harmonie"
+models = ["harmonie"]
+args = ["--step", "1"]
+minutes = [45]              # Hourly: Met Éireann publishes an hourly DINI cycle.
+timeout_seconds = 3300
+
+[[jobs]]
+id = "icon-eu"
+models = ["icon-eu"]
+args = ["--step", "1"]
+hours = [3, 9, 15, 21]      # 00/06/12/18 UTC cycles plus ~3.5 h publication lag.
+minutes = [30]
+timeout_seconds = 3300
+
+[[jobs]]
+id = "ecmwf"
+models = ["ecmwf"]
+minutes = [20]              # Hourly check; the importer picks the newest full run.
+timeout_seconds = 3300
+
+[[jobs]]
+id = "harmonie-eps"
+models = ["harmonie-eps"]
+minutes = [50]              # Lagged control members; one new hourly cycle each hour.
+timeout_seconds = 3300
+
+[[jobs]]
+id = "ecmwf-ens"
+models = ["ecmwf-ens"]
+minutes = [35]              # Hourly check for the newest complete 00/12 ENS run.
+timeout_seconds = 3300
+
+[[jobs]]
+id = "gfs"
+models = ["gfs"]
+args = ["--step", "3"]
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag.
+minutes = [0]
+timeout_seconds = 2400
+
+[[jobs]]
+id = "gfs-wave"
+models = ["gfs-wave"]
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag.
+minutes = [30]
+timeout_seconds = 2400
+
+[[jobs]]
+id = "mi-swan"
+models = ["mi-swan"]
+hours = [10, 14, 18]        # One SWAN run a day, published around 09 UTC, sometimes late.
+minutes = [15]
+timeout_seconds = 1800
+
+[[jobs]]
+id = "tides"
+models = ["tides"]
+hours = [1]                 # Daily: predictions, not a forecast cycle. 30 h limit.
+minutes = [5]
+timeout_seconds = 1800
+
+[[jobs]]
+id = "prune"
+command = "prune"
+hours = [5]                 # Daily retention sweep; see FORCE5_RETAIN_HOURS.
+minutes = [10]
+timeout_seconds = 900
+
+[[jobs]]
+id = "status"
+command = "status"
+minutes = [55]              # Hourly freshness line in the scheduler log.
+timeout_seconds = 120
+
+# An example for an adapter that does not exist yet. It stays rejected, with one
+# log line, until the model is registered in force5/ingest/registry.py.
+# [[jobs]]
+# id = "gfs-wave"
+# models = ["gfs-wave"]
+# hours = [5, 11, 17, 23]
+# minutes = [30]
