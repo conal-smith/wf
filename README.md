@@ -43,7 +43,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu ecmwf tides`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -52,6 +52,7 @@ Requires Python 3.9+ and an internet connection. This is an ingestion command, n
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r force5/ingest/requirements.txt
+npm run spots:export     # only after changing src/locations.ts or data/locations/
 npm run weather:refresh
 ```
 
@@ -135,6 +136,29 @@ read lower than an interval maximum covering the same time; do not compare them
 with ICON-EU or ECMWF gusts. The bundled acceptance snapshot is 16 September
 2026 at 12 UTC through +120 h: 41 frames, approximately 2.4 MB.
 
+### Tide refresh
+
+```sh
+npm run tides:refresh
+.venv/bin/python force5/ingest/fetch_tides.py --max-distance-km 25 --days-ahead 5
+```
+
+Marine Institute ERDDAP tidal predictions, CC BY 4.0, no account. The station list is
+fetched with a `distinct()` query and cached for a week. Each riding location takes its
+nearest station by great-circle distance; anything beyond 40 km is published without
+tides and with a stated reason rather than being attached to a distant station. Ballyholme,
+Newtownards and Lough Derg currently have none. Benone Strand falls just inside the limit
+at 38.7 km from Malin Head, which is a different tidal regime from Lough Foyle: treat it as
+indicative, or lower `--max-distance-km`. The window is yesterday through eight days ahead: the 5-minute
+curve republished at 10 minutes (every second source sample, no interpolation) plus the
+high/low events. Event heights above LAT are read from the curve, because the events
+dataset publishes Ordnance Datum Malin only; the two are cross-checked against each
+station's constant datum offset. A live run took 10 seconds for 15 stations across the 25
+riding locations, 188 KB total. `public/marine/tides.json` is replaced only after every
+station file validates.
+
+These are astronomical predictions, not observations, and carry no surge or wind effect.
+
 ### HARMONIE refresh
 
 ```sh
@@ -194,11 +218,15 @@ Serve `dist/` through any static web host after building. No secrets or account 
 ## Files and data contract
 
 ```text
+force5/ingest/registry.py  The model table: script, manifest, kind, freshness limit
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
+force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
 public/spots.json           Original eight precomputed forecast locations
+public/riding-locations.json The 25 public riding places every adapter samples
+scripts/export-riding-locations.mjs Regenerates that file from src/locations.ts
 data/locations/             Sourced location records and spreadsheet export
 src/locations.ts            Map/search merge, aliases and provenance
 public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
@@ -206,6 +234,8 @@ public/weather/harmonie.json HARMONIE's independent run, grid, frames and attrib
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
+public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
+public/marine/tides-*.json Immutable per-station curves and high/low events
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
@@ -216,6 +246,46 @@ IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 
 All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. A model whose gust is instantaneous rather than a period maximum declares `gustKind: "instantaneous"` and a zero-length `gustIntervalHours` of `[hour, hour]` at every hour, including zero; without that declaration a zero-length interval after initialization is rejected.
 
+`spotForecasts` covers every id in `public/riding-locations.json`. Adapters read
+`FORCE5_SPOTS_FILE`, defaulting to that file and falling back to `spots.json` with a
+printed warning when it is absent. Regenerate it with `npm run spots:export` after
+changing `src/locations.ts` or `data/locations/`; the original eight ids and
+coordinates are asserted unchanged, because bundled snapshots refer to those points.
+Bundled snapshots predate the change and still carry only the original eight.
+
+### Optional manifest fields
+
+`schemaVersion` stays 1; every field below is optional and absent from the current
+three wind models. `force5/ingest/registry.py` holds one line per model and
+`validate_bundle` dispatches on `kind`.
+
+```text
+kind          "wind" (default when absent) | "wave" | "tide"
+gustKind      "interval" (default) | "instantaneous"
+ensemble      {members, control | null, description}
+spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
+variables     {shortName: {units, label, description}}          wave bundles
+spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
+```
+
+- **wind** keeps the existing frame rules. `gustKind: "instantaneous"` is for sources
+  that publish a surface gust at the valid time rather than a period maximum (NOAA
+  GFS): every frame, hour 0 included, then carries `gustIntervalHours: [hour, hour]`,
+  which the validator accepts only under that declaration.
+- **ensemble** manifests hold the ensemble **mean** in `spotForecasts` and every
+  member in `spotMembers`; member arrays must all have length `members`, with finite
+  values, |u| and |v| at most 150 m/s and gusts at or above zero. `frames` may be
+  empty **only** when `ensemble` is present, for models shown on the chart but not
+  the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
+  chart-only model needs that frontend check relaxed first.
+- **wave** bundles declare `variables` and carry one numeric array per variable in
+  each frame, `null` for land or unresolved cells, never zero, plus `spotSeries`.
+  No wave adapter exists yet; the validator and its fake-bundle tests do.
+- **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
+  station. Heights are metres above Chart Datum (LAT); each station publishes its
+  `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
+  into the curve. Spots with no station in range are published with a `reason`.
+
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
 ## Sources and limitations
@@ -224,11 +294,12 @@ Both the browser and importer use bilinear interpolation. Direction is the meteo
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
 - GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
+- Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. There are no tide, wave or marine warning feeds or rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions are ingested but not yet shown in the browser; there are no wave or marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 

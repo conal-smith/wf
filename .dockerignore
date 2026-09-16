@@ -6,3 +6,4 @@
 !force5/ingest/requirements*.txt
 !public/
 !public/spots.json
+!public/riding-locations.json

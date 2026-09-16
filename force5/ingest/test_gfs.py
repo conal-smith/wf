@@ -11,8 +11,8 @@ from unittest.mock import patch
 import eccodes as ec
 
 import fetch_gfs
-from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory, load_spots,
-                       main, object_key, run_datetime, usable_spots, validate_metadata)
+from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory,
+                       main, object_key, run_datetime, validate_metadata)
 from publish_s3 import validate_bundle
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
@@ -189,31 +189,6 @@ class GfsTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     main()
 
-    # --- spots ----------------------------------------------------------
-    def test_spot_catalogue_prefers_riding_locations_but_never_trusts_it_blindly(self):
-        spots = self.root / "spots.json"
-        spots.write_text(json.dumps([{"id": "a", "lat": 53.0, "lon": -9.0}]))
-        riding = self.root / "riding-locations.json"
-        with patch("fetch_gfs.SPOTS_FILE", spots), patch.dict("os.environ", {}, clear=True):
-            self.assertEqual(load_spots()[0], spots)
-            riding.write_text(json.dumps([{"id": "b", "lat": 54.0, "lon": -8.0}]))
-            self.assertEqual(load_spots(), (riding, [{"id": "b", "lat": 54.0, "lon": -8.0}]))
-            for broken in ["[]", "{}", "not json", '[{"id": "b"}]', '[{"lat": 1, "lon": 2}]',
-                           '[{"id": "b", "lat": 54, "lon": -8}, {"id": "b", "lat": 55, "lon": -8}]']:
-                with self.subTest(broken=broken):
-                    riding.write_text(broken)
-                    self.assertEqual(load_spots()[0], spots)
-        with patch("fetch_gfs.SPOTS_FILE", spots), \
-             patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(spots)}, clear=True):
-            riding.write_text(json.dumps([{"id": "b", "lat": 54.0, "lon": -8.0}]))
-            self.assertEqual(load_spots()[0], spots)  # An explicit override wins.
-
-    def test_spot_records_need_a_unique_id_and_numeric_position(self):
-        self.assertEqual(usable_spots({"locations": [{"id": "a", "lat": 1, "lon": 2}]}),
-                         [{"id": "a", "lat": 1, "lon": 2}])
-        with self.assertRaises(ValueError):
-            usable_spots([{"id": "a", "lat": True, "lon": 2}])
-
     # --- published contract ---------------------------------------------
     def bundle(self, hours=(0, 3, 6), gust_kind="instantaneous"):
         run_time = datetime.strptime(RUN, "%Y%m%d%H").replace(tzinfo=timezone.utc)
@@ -300,7 +275,7 @@ class GfsTests(unittest.TestCase):
         run = now.replace(minute=0, second=0, microsecond=0,
                           hour=now.hour // 6 * 6).strftime("%Y%m%d%H")
         with patch("sys.argv", ["fetch_gfs.py", "--hours", "3", "--step", "3", "--run", run]), \
-             patch("fetch_gfs.ROOT", self.root), patch("fetch_gfs.SPOTS_FILE", spots), \
+             patch("fetch_gfs.ROOT", self.root), \
              patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(spots)}, clear=True), \
              patch("fetch_gfs.inventory", return_value={0, 3}), \
              patch("fetch_gfs.download", return_value=b"GRIB-stub"), \

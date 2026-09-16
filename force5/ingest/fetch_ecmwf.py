@@ -16,7 +16,7 @@ import requests
 from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
-from fetch_forecast import ROOT, SPOTS_FILE, decode_handle, sample, write_json
+from fetch_forecast import ROOT, decode_handle, load_spots, sample, write_json
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
 
@@ -168,7 +168,7 @@ def main():
         gusts = dict(pool.map(fetch_gust, ECMWF_HOURS))
     output = ROOT / "public" / "weather"
     prefix = f"ecmwf-{run}-360h-v2"
-    spots = json.loads(SPOTS_FILE.read_text())
+    spots = load_spots()
     spot_forecasts = {spot["id"]: [] for spot in spots}
     grid = decoded[0][1][2]
     signature = decoded[0][1][0]

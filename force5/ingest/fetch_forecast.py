@@ -22,13 +22,41 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path(os.environ.get("FORCE5_WORK_DIR", str(PROJECT_ROOT))).resolve()
-SPOTS_FILE = Path(os.environ.get("FORCE5_SPOTS_FILE", str(PROJECT_ROOT / "public" / "spots.json")))
+RIDING_LOCATIONS_FILE = PROJECT_ROOT / "public" / "riding-locations.json"
+ORIGINAL_SPOTS_FILE = PROJECT_ROOT / "public" / "spots.json"
 BASE = "https://opendata.dwd.de/weather/nwp/icon-eu/grib"
 PARAMS = {"u": "u_10m", "v": "v_10m", "gust": "vmax_10m"}
 BBOX = (-18.0, 48.0, 2.0, 59.0)  # Ireland + Atlantic buffer, west/south/east/north
 KEYS = ["Ni", "Nj", "latitudeOfFirstGridPointInDegrees", "longitudeOfFirstGridPointInDegrees",
         "iDirectionIncrementInDegrees", "jDirectionIncrementInDegrees", "jScansPositively",
         "iScansNegatively", "jPointsAreConsecutive", "alternativeRowScanning"]
+
+
+def spots_file():
+    """Every adapter precomputes series for the public riding places.
+
+    `npm run spots:export` regenerates riding-locations.json from src/locations.ts,
+    so the browser and the pipeline cannot disagree about ids or coordinates.
+    """
+    configured = os.environ.get("FORCE5_SPOTS_FILE")
+    if configured:
+        return Path(configured)
+    if RIDING_LOCATIONS_FILE.exists():
+        return RIDING_LOCATIONS_FILE
+    print(f"Warning: {RIDING_LOCATIONS_FILE} is absent; using the original eight spots. "
+          "Run 'npm run spots:export' to publish series for every riding location.", file=sys.stderr)
+    return ORIGINAL_SPOTS_FILE
+
+
+def load_spots():
+    spots = json.loads(spots_file().read_text())
+    ids = [spot["id"] for spot in spots]
+    if not spots or len(set(ids)) != len(ids):
+        raise ValueError("Empty or duplicated spot catalogue")
+    for spot in spots:
+        if not (-90 <= spot["lat"] <= 90 and -180 <= spot["lon"] <= 180):
+            raise ValueError(f"Invalid coordinate for spot {spot['id']}")
+    return spots
 
 
 def get(url):
@@ -186,7 +214,7 @@ def main():
     prefix = f"icon-eu-{run}-{args.hours}h-v1"
     layout = None
     frames = []
-    spots = json.loads(SPOTS_FILE.read_text())
+    spots = load_spots()
     spot_forecasts = {spot["id"]: [] for spot in spots}
     for hour in hours:
         fields = {}

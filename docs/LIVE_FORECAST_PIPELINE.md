@@ -18,8 +18,9 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 
 ## Code supplied
 
-- `force5/Dockerfile`: non-root, one-shot Python worker image; only ingest code and the spot catalogue enter the build context. No saved forecasts, Git history, frontend dependencies or credentials.
-- `force5/ingest/worker.py`: invokes any selection of the three importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
+- `force5/Dockerfile`: non-root, one-shot Python worker image; only ingest code and the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) enter the build context. No saved forecasts, Git history, frontend dependencies or credentials.
+- `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
+- `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
 - `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything; uploads gzip-compressed immutable frames and an archived manifest, then updates the public pointer with an ETag conditional write.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
@@ -86,7 +87,13 @@ HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
+TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 ```
+
+Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
+published nine-day window. The manifest's `run` is the ingest hour, which keeps the
+existing staleness and compare-and-swap rules working unchanged; its default age limit is
+30 hours.
 
 These are deployment instructions, not provisioned infrastructure. No bucket, registry, schedule or cloud task has been created by this change.
 
@@ -104,7 +111,33 @@ weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
 weather/gfs.json                          current GFS pointer + metadata
 weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
 weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
+marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
+marine/manifests/tides/RUN-HASH.json       archived tide manifests
+marine/tides.json                          current tide pointer + metadata
 ```
+
+Each model's immutable objects and archived manifests sit under the first segment of its
+registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
+`S3_PREFIX` still goes before that segment.
+
+Bundle kinds are all `schemaVersion` 1 and every added field is optional; see the README
+contract section for the field list. `validate_bundle` dispatches on `kind`:
+
+- `wind` (default when `kind` is absent) keeps the existing frame, grid and gust rules,
+  and adds `gustKind: "instantaneous"` for sources publishing a surface gust at the valid
+  time (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
+  `ensemble`/`spotMembers`. An ensemble manifest holds the **mean** in `spotForecasts`
+  and may publish an empty `frames` list — only an ensemble may.
+- `wave` validates a `variables` map, one array per variable per frame with `null` for
+  land, and `spotSeries`. No wave adapter exists yet; the validator and fake-bundle
+  tests do, so a later adapter has a fixed target.
+- `tide` validates the station manifest and every referenced station file: monotonic
+  times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
+  extremes to within 0.15 m.
+
+All adapters precompute `spotForecasts` for the 25 ids in `public/riding-locations.json`,
+so a browser chart never has to download grid frames. Regenerate that file with
+`npm run spots:export`.
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.
 
