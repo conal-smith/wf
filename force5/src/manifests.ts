@@ -92,8 +92,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     ensemble: true,
     hue: { wind: "#4aa3b8", gust: "#e07b3a" },
-    mapCapable: false,
-    planned: true,
+    mapCapable: true,
   },
   {
     id: "arpege",

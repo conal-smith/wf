@@ -56,22 +56,28 @@ describe("model registry", () => {
       "ecmwf",
       "gfs",
       "ecmwf-ens",
+      "gefs",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(requireModel("harmonie-eps").planned).toBe(true);
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("ecmwf-ens").mapCapable).toBe(false);
+    // GEFS is the ensemble whose mean the map can draw.
+    expect(requireModel("gefs").ensemble).toBe(true);
+    expect(requireModel("gefs").mapCapable).toBe(true);
+    expect(requireModel("gefs").planned).toBeUndefined();
     expect(modelEntry("nope")).toBeUndefined();
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
     expect(modelHue("nope").wind).toMatch(/^#/);
   });
-  it("keeps the four map models the picker shows", () => {
+  it("keeps the five map models the picker shows", () => {
     expect(MODELS.map((model) => [model.id, model.name, model.detail])).toEqual(
       [
         ["harmonie", "HARMONIE", "2 km"],
         ["icon-eu", "ICON-EU", "6.5 km"],
         ["ecmwf", "ECMWF", "15 days"],
         ["gfs", "GFS", "0.25° · 16 days"],
+        ["gefs", "GEFS", "31 members"],
       ],
     );
   });
@@ -165,7 +171,7 @@ describe("availability sweep", () => {
     );
     expect(
       availability.filter((model) => model.available).map((model) => model.id),
-    ).toEqual(["harmonie", "icon-eu", "ecmwf"]);
+    ).toEqual(["harmonie", "icon-eu", "ecmwf", "gefs"]);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();
     expect(absent.error).toContain("unavailable");
