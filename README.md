@@ -136,6 +136,74 @@ read lower than an interval maximum covering the same time; do not compare them
 with ICON-EU or ECMWF gusts. The bundled acceptance snapshot is 16 September
 2026 at 12 UTC through +120 h: 41 frames, approximately 2.4 MB.
 
+### GFS-Wave refresh
+
+```sh
+npm run weather:refresh:gfs-wave
+# Shorter, hourly, or the S3 fallback:
+.venv/bin/python force5/ingest/fetch_gfswave.py --hours 48 --step 3
+.venv/bin/python force5/ingest/fetch_gfswave.py --hours 24 --step 1
+.venv/bin/python force5/ingest/fetch_gfswave.py --hours 240 --step 3 --source s3
+```
+
+NOAA's WAVEWATCH III wave forecast, public domain, no API key. Default: 0–240 hours
+at three-hour steps (81 frames). `--step 1` reaches +120 h, as far as NOAA publishes
+hourly wave files; `--hours` takes 3–384 divisible by the step. Inventory-based
+discovery of the newest complete cycle, the 12-hour freshness limit, two throttled
+connections and the `--source s3` fallback all work as in the GFS wind importer.
+A live 240-hour run took 75 seconds: 5.3 MB downloaded, 81 frames and 45 MB published.
+**Nothing in the website reads this manifest yet**; it is an ingest deliverable.
+
+Nine variables per frame, all SI: `swh`/`pp1d`/`mwd` for the whole spectrum,
+`shww`/`mpww`/`mdww` for the local wind sea, and `swell1_h`/`swell1_p`/`swell1_d` for
+the first swell partition. Directions are the bearing waves come **from**, degrees
+true, like the wind rows. The partitions are separate wave trains arriving together,
+so their heights add in energy, not in metres. Partitions 2 and 3 exist in the source
+and are deliberately not published: they would add two thirds again to every frame.
+ecCodes checks discipline 10 / category 0, the parameter number, the fixed surface
+(code 1 for the surface fields, 241 carrying the partition number for the swell
+sequence), units, instantaneous processing, initialization, valid time and ranges
+(0–30 m, 0–30 s, one turn of direction) on all nine messages of every step.
+
+The source grid is `arctic.9km`: 1006 × 1006 **polar stereographic** cells of 9 km,
+true at 70°N, oriented on 0°, centred on the pole, and it does cover the Irish Sea.
+`global.0p16` stops at 52.5°N and `atlocn.0p16` is the west Atlantic, so neither can
+serve Ireland. ecCodes cannot compute coordinates for this grid — its polar
+stereographic iterator supports only a spherical earth, and these files declare
+WGS84 — so the importer reconstructs them with pyproj and checks them first:
+
+- the whole grid's published corner projects onto the pole-centred lattice to better
+  than a metre on WGS84 and nowhere near it on any sphere, which is what identifies
+  the declared shape as the one the grid was built with;
+- NOMADS rewrites a cut-out's corner coordinates using NCEP's legacy 6367.47 km
+  sphere, about one cell from the WGS84 position of the same point, so the corner is
+  matched back to an integer parent cell on that sphere and the block is then placed
+  on the declared WGS84 lattice. The two Ireland cut-outs resolve to parent blocks
+  (409, 18) and (398, 4), both confirmed against the whole-grid message by identical
+  values. A corner that is not on the lattice fails the run.
+
+Values are then bilinearly resampled onto a regular 0.05° display grid, 121 × 101,
+11°W–5°W / 51°–56°N, rows north-to-south, columns west-to-east. The download box is a
+degree larger on every side because the native block is a rotated quadrilateral in
+latitude and longitude. A display cell whose four native neighbours are all land, ice
+or unresolved is `null`, never zero; where part of the stencil is land the remaining
+weights are renormalised, so the coastal water the product exists for survives, and
+water values can reach up to one 9 km cell inland. Directions are averaged as unit
+vectors, never as degrees. Point sampling of a direction is then the same plain
+bilinear as every other variable, which is wrong inside a cell straddling 0°/360°.
+
+**Nine of the 25 riding locations have no waves at 9 km.** `spotCoverage` records per
+spot whether the cell over it is land (`landMasked`), whether any value resolved, and
+a sentence the UI can show. Rusheen Bay, Tramore, Lahinch, Pollan Bay, Tullan Strand,
+Spiddal, Mulranny, Newtownards and Lough Derg sit in land or enclosed cells; seven
+more are land-masked but take values from the resolved water beside them, which
+describes the nearby open sea rather than the shoreline. This is a 9 km global wave
+model: no breaking waves, no refraction round a headland, no idea a bay is sheltered.
+
+The bundled acceptance snapshot is 16 September 2026 at 18 UTC through +9 h: 4 frames,
+approximately 2.2 MB. Wave frames carry nine arrays over 12,221 cells, about 560 KB
+each, so a full 240-hour run is roughly 45 MB and is generated locally, not committed.
+
 ### Tide refresh
 
 ```sh
@@ -223,6 +291,7 @@ force5/ingest/fetch_forecast.py DWD discovery, download, validation and publicat
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
+force5/ingest/fetch_gfswave.py NOAA GFS-Wave 9 km polar-stereo decode and resampling
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
 public/spots.json           Original eight precomputed forecast locations
 public/riding-locations.json The 25 public riding places every adapter samples
@@ -233,7 +302,8 @@ public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
 public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
-public/weather/<run>/*.json Immutable cropped U/V/gust grids
+public/weather/gfs-wave.json GFS-Wave variables, display grid, spot series and coverage
+public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
@@ -280,7 +350,12 @@ spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
   chart-only model needs that frontend check relaxed first.
 - **wave** bundles declare `variables` and carry one numeric array per variable in
   each frame, `null` for land or unresolved cells, never zero, plus `spotSeries`.
-  No wave adapter exists yet; the validator and its fake-bundle tests do.
+  GFS-Wave is the first such adapter; it adds `spotCoverage` so the UI can say why a
+  location has no waves, and `directionConvention`/`partitionNote` for what the
+  numbers mean. Wave directions are the bearing waves come **from**, like the wind.
+  The browser's `validateManifest` cannot read a wave manifest yet — it still expects
+  a gust interval on every frame — so `tests/snapshot.test.ts` checks the wave
+  contract in its own block.
 - **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
@@ -294,12 +369,13 @@ Both the browser and importer use bilinear interpolation. Direction is the meteo
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
 - GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
+- GFS-Wave: [NOAA/NCEP WAVEWATCH III](https://polar.ncep.noaa.gov/waves/), [NOMADS wave GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl), same [Open Data bucket](https://registry.opendata.aws/noaa-gfs-bdp-pds/) and [NWS disclaimer](https://www.weather.gov/disclaimer). Public-domain US Government work; Force5 publishes resampled output, not official government material, and NOAA/NWS does not endorse this site. The `arctic.9km` product is the only GFS-Wave grid that covers all Irish waters.
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions are ingested but not yet shown in the browser; there are no wave or marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and GFS-Wave output are ingested but not yet shown in the browser; there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
