@@ -56,6 +56,18 @@ hourly to discover the two full-length 00/12 UTC products when they are publishe
 The 06/18 cycles are shorter and cannot replace this snapshot. See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
+GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
+deterministic run. The worker's `--step` selects the horizon GFS actually
+publishes at that cadence: `--step 3` gives 0–240 h (81 frames) and `--step 1`
+gives 0–120 h (121 frames), which is as far as NOAA writes hourly files. No API
+key is needed, and through the default NOMADS GRIB filter each step transfers
+only about 14 KB because NOAA crops the subregion server-side — well under a
+megabyte for a whole run. The `noaa-gfs-bdp-pds` fallback is not wired into the
+worker; run `fetch_gfs.py --source s3` directly when NOMADS is unavailable, at
+about 2.5 MB per step for whole-globe messages. GFS gusts are instantaneous
+surface values, published as `gustKind: "instantaneous"` with `[hour, hour]`
+intervals at every hour.
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
@@ -65,7 +77,7 @@ The 06/18 cycles are shorter and cannot replace this snapshot. See the
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
 7. Run a manual task and verify an entire published forecast through the CDN before enabling the schedule.
-8. Schedule HARMONIE checks hourly; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
+8. Schedule HARMONIE checks hourly; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
 
 Suggested container arguments:
 
@@ -73,6 +85,7 @@ Suggested container arguments:
 HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
+GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 ```
 
 These are deployment instructions, not provisioned infrastructure. No bucket, registry, schedule or cloud task has been created by this change.
@@ -88,6 +101,9 @@ weather/harmonie.json                     current HARMONIE pointer + metadata
 weather/latest.json                       current ICON-EU pointer + metadata
 weather/ecmwf.json                        current ECMWF pointer + metadata
 weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
+weather/gfs.json                          current GFS pointer + metadata
+weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
+weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
 ```
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.
@@ -122,7 +138,7 @@ The current browser fetches the manifest on page load and model changes, then re
 
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
-- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers.
