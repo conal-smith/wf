@@ -10,6 +10,10 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
         gridded variable. `frames` may be empty, and `horizonHours` then declares
         the horizon the series covers; `frameVariables` may narrow the frames to a
         subset of `variables`.
+- weather  the same shape as wave, for surface variables (temperature,
+        precipitation, cloud, pressure, humidity, visibility, CAPE). A variable
+        may declare `"kind": "code"`, making its values whole code-table entries
+        rather than measurements, so no range check applies to them.
 - tide  a station manifest plus immutable per-station prediction files.
 """
 from datetime import datetime, timedelta, timezone
@@ -24,6 +28,10 @@ from registry import MANIFESTS, MODELS, object_root
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
 MIN_HEIGHT_METRES = -1.0
+# How large a measurement a variables bundle may publish: metres and seconds for
+# waves, but a weather bundle carries hectopascals, millimetres and J/kg as well.
+VARIABLE_LIMITS = {"wave": 1000, "weather": 100_000}
+MAX_CODE = 1000  # A code-table entry is a small whole number, never a measurement.
 
 
 def error_code(error):
@@ -77,8 +85,10 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Refusing to publish a stale or future-dated run")
     if datetime.fromisoformat(manifest["runTime"].replace("Z", "+00:00")) != run:
         raise ValueError("Run time does not match run identity")
-    validator = {"wind": validate_wind_bundle, "wave": validate_wave_bundle,
-                 "tide": validate_tide_bundle}[kind]
+    # Wave and weather bundles are the same shape: declared variables, optional
+    # frames of one array each, and a precomputed series per riding location.
+    validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
+                 "weather": validate_variables_bundle, "tide": validate_tide_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
@@ -189,31 +199,48 @@ def validate_ensemble(manifest, ensemble, run):
     return last
 
 
-def validate_wave_bundle(public, model, manifest, run, now):
+def variable_value(value, name, codes, limit):
+    """One published cell or spot value: null, a code-table entry, or a measurement."""
+    if value is None:
+        return True  # Land, an unresolved cell or an hour with no interval.
+    if name in codes:
+        return whole(value) and 0 <= value < MAX_CODE
+    return number(value, limit)
+
+
+def validate_variables_bundle(public, model, manifest, run, now):
+    """A wave or weather bundle: declared variables, optional frames, spot series."""
+    kind = manifest.get("kind", "wave")
+    limit = VARIABLE_LIMITS[kind]
     variables = manifest.get("variables")
     if not isinstance(variables, dict) or not variables:
-        raise ValueError("Wave manifests must declare their variables")
+        raise ValueError(f"A {kind} manifest must declare its variables")
     for name, meta in variables.items():
         if not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", name) or not isinstance(meta, dict):
-            raise ValueError(f"Invalid wave variable {name!r}")
+            raise ValueError(f"Invalid {kind} variable {name!r}")
         if any(not isinstance(meta.get(key), str) or not meta[key].strip()
                for key in ("units", "label", "description")):
-            raise ValueError(f"Wave variable {name} needs units, label and description")
+            raise ValueError(f"Variable {name} needs units, label and description")
+        if meta.get("kind") not in (None, "code"):
+            raise ValueError(f"Unknown variable kind for {name}")
+    # A code variable is an index into a code table (WMO present weather), so it is
+    # checked for being a whole small number instead of for a physical range.
+    codes = {name for name, meta in variables.items() if meta.get("kind") == "code"}
     frames = manifest["frames"]
     hours = expected_hours(manifest)
     horizon = manifest.get("horizonHours")
     if horizon is not None and horizon != hours[-1]:
-        raise ValueError("Declared wave horizon does not match the published cadence")
+        raise ValueError(f"Declared {kind} horizon does not match the published cadence")
     if not frames:
-        # Wave frames are optional: the precomputed spot series is the product, and
-        # a full wave grid is far larger than a site showing beach series needs.
-        validate_spot_series(manifest.get("spotSeries"), variables, hours, run)
+        # Frames are optional: the precomputed spot series is the product, and a full
+        # gridded run is far larger than a site showing beach series needs.
+        validate_spot_series(manifest.get("spotSeries"), variables, hours, run, codes, limit)
         if run + timedelta(hours=hours[-1]) <= now:
-            raise ValueError("Wave horizon has already expired")
+            raise ValueError(f"The {kind} horizon has already expired")
         return []
     grid = manifest["grid"]
     if len(frames) != len(hours):
-        raise ValueError("Empty wave forecast or unsupported cadence")
+        raise ValueError(f"Empty {kind} forecast or unsupported cadence")
     # Frames may carry a declared subset: a map needs fewer fields than a spot series.
     gridded = manifest.get("frameVariables", list(variables))
     if (not isinstance(gridded, list) or not gridded or len(set(gridded)) != len(gridded)
@@ -227,24 +254,24 @@ def validate_wave_bundle(public, model, manifest, run, now):
         hour = hours[index]
         valid = valid_time(run, hour)
         if (info["hour"], info["validTime"]) != (hour, valid):
-            raise ValueError("Incomplete or misordered wave forecast")
+            raise ValueError(f"Incomplete or misordered {kind} forecast")
         if any(frame.get(k) != v for k, v in {"model": model, "run": manifest["run"],
                "grid": grid, "hour": hour, "validTime": valid}.items()):
             raise ValueError("Mixed model/run/frame metadata")
         for name in gridded:
             values = frame.get(name)
-            # Land and unresolved cells are null; they are never filled with zero.
+            # Land, unresolved cells and hours with no interval are null; never zero.
             if not isinstance(values, list) or len(values) != count or not all(
-                    value is None or number(value, 1000) for value in values):
+                    variable_value(value, name, codes, limit) for value in values):
                 raise ValueError(f"Invalid {name} field")
         objects.append((path, data))
-    validate_spot_series(manifest.get("spotSeries"), variables, hours, run)
+    validate_spot_series(manifest.get("spotSeries"), variables, hours, run, codes, limit)
     if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
-        raise ValueError("Wave horizon has already expired")
+        raise ValueError(f"The {kind} horizon has already expired")
     return objects
 
 
-def validate_spot_series(series, variables, hours, run):
+def validate_spot_series(series, variables, hours, run, codes=frozenset(), limit=1000):
     if not isinstance(series, dict) or not series:
         raise ValueError("Missing precomputed spot series")
     for spot, steps in series.items():
@@ -256,7 +283,8 @@ def validate_spot_series(series, variables, hours, run):
             values = step.get("values")
             if not isinstance(values, dict) or set(values) != set(variables):
                 raise ValueError(f"Spot series for {spot} must carry every variable")
-            if not all(value is None or number(value, 1000) for value in values.values()):
+            if not all(variable_value(value, name, codes, limit)
+                       for name, value in values.items()):
                 raise ValueError(f"Invalid spot value for {spot}")
 
 

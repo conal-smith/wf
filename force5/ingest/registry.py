@@ -11,6 +11,8 @@ MODELS = {
                  "kind": "wind", "maxAgeHours": 12},
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
                 "kind": "wind", "maxAgeHours": 12},
+    "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
+                        "kind": "weather", "maxAgeHours": 12},
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
               "kind": "wind", "maxAgeHours": 24},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
