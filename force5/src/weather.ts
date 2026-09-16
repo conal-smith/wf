@@ -62,6 +62,13 @@ export interface Point {
     lon: number;
   }[];
 }
+export interface EnsembleSeries {
+  hour: number;
+  validTime: string;
+  u: number[];
+  v: number[];
+  gust: (number | null)[];
+}
 export interface Manifest {
   schemaVersion: number;
   model: string;
@@ -77,6 +84,10 @@ export interface Manifest {
   grid: Grid;
   frames: FrameInfo[];
   spotForecasts: Record<string, (Wind & { hour: number; validTime: string })[]>;
+  /** Ensemble products only: spotForecasts holds means, spotMembers the members. */
+  ensemble?: { members: number; control: number | null; description: string };
+  spotMembers?: Record<string, EnsembleSeries[]>;
+  spotForecastsDescription?: string;
   sourceUrl: string;
   attribution: string;
   licenseUrl: string;

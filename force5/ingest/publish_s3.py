@@ -11,11 +11,47 @@ from pathlib import Path, PurePosixPath
 import re
 from cadence import expected_hours
 
-MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json"}
+MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json",
+             "ecmwf-ens": "ecmwf-ens.json"}
 
 
 def error_code(error):
     return getattr(error, "response", {}).get("Error", {}).get("Code", "")
+
+
+def validate_ensemble(manifest, hours, run):
+    """Check optional ensemble metadata and per-spot member series, when present."""
+    ensemble, series = manifest.get("ensemble"), manifest.get("spotMembers")
+    if ensemble is None and series is None:
+        return
+    count = ensemble.get("members") if isinstance(ensemble, dict) else None
+    if (not isinstance(count, int) or isinstance(count, bool) or not 2 <= count <= 100
+            or ensemble.get("control") is not None):
+        raise ValueError("Invalid ensemble metadata")
+    if not isinstance(series, dict) or set(series) != set(manifest["spotForecasts"]):
+        raise ValueError("Ensemble member series must cover exactly the published spots")
+    missing_gust_hours = manifest.get("gustMissingHours", [])
+    for spot, entries in series.items():
+        if not isinstance(entries, list) or len(entries) != len(hours):
+            raise ValueError(f"Incomplete ensemble series for {spot}")
+        for entry, hour, mean in zip(entries, hours, manifest["spotForecasts"][spot]):
+            valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
+            if entry.get("hour") != hour or entry.get("validTime") != valid:
+                raise ValueError(f"Misaligned ensemble series for {spot}")
+            gust_missing = manifest.get("gustAvailable") is False or hour in missing_gust_hours
+            for field in ("u", "v", "gust"):
+                values = entry.get(field)
+                if not isinstance(values, list) or len(values) != count:
+                    raise ValueError(f"Expected {count} ensemble {field} values for {spot}")
+                # A member value may only be null where the mean is null too: an
+                # unavailable gust hour, or a spot outside the published grid.
+                if (gust_missing and field == "gust") or mean.get(field) is None:
+                    if any(value is not None for value in values):
+                        raise ValueError(f"Unexpected ensemble {field} for {spot} at +{hour}h")
+                elif any(not isinstance(value, (int, float)) or isinstance(value, bool)
+                         or not math.isfinite(value) or abs(value) > 150
+                         or (field == "gust" and value < 0) for value in values):
+                    raise ValueError(f"Invalid ensemble {field} values for {spot} at +{hour}h")
 
 
 def validate_bundle(public, model, max_age_hours=12, now=None):
@@ -80,6 +116,7 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
             ):
                 raise ValueError(f"Invalid {field} field")
         objects.append((str(path), data))
+    validate_ensemble(manifest, hours, run)
     if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
         raise ValueError("Forecast horizon has already expired")
     return manifest, body, objects
