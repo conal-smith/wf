@@ -265,6 +265,11 @@ def main():
                 "hour": hour, "validTime": valid,
                 "gust": sample(grid, gust, lon, lat) if gust is not None else None,
                 **{field: sample(grid, values, lon, lat) for field, values in mean.items()}})
+            if sample(grid, mean["u"], lon, lat) is None:
+                # Outside the crop: the mean series carries nulls, but the
+                # publisher rejects null member values, so publish no members.
+                spot_members.pop(spot["id"], None)
+                continue
             spot_members[spot["id"]].append({
                 "hour": hour, "validTime": valid,
                 "u": [sample(grid, fields["u"][m], lon, lat) for m in members],
