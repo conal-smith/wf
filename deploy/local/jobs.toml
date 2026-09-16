@@ -55,6 +55,13 @@ minutes = [0]
 timeout_seconds = 2400
 
 [[jobs]]
+id = "gfs-wave"
+models = ["gfs-wave"]
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag.
+minutes = [30]
+timeout_seconds = 2400
+
+[[jobs]]
 id = "mi-swan"
 models = ["mi-swan"]
 hours = [10, 14, 18]        # One SWAN run a day, published around 09 UTC, sometimes late.
