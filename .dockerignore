@@ -1,14 +1,41 @@
+# One allowlist for both images, so `docker compose build` works on a plain Docker
+# install with no buildx plugin (a per-Dockerfile ignore file needs BuildKit).
+# The worker image still copies only ingest code, the spot catalogues and the
+# schedule; the site image is the only one that reads the frontend sources.
 **
 !force5/
 !force5/Dockerfile
 !force5/ingest/
 !force5/ingest/*.py
 !force5/ingest/requirements*.txt
+!deploy/
+!deploy/local/
+!deploy/local/jobs.toml
+!deploy/local/Caddyfile
 !public/
-!public/spots.json
-!public/riding-locations.json
-# Marketplace API image (market/Dockerfile) builds from the same root context.
-!market/
-market/api/dist/
+!public/*.json
+!public/favicon.svg
+!public/weather/**
 !package.json
 !package-lock.json
+# Marketplace API image (market/Dockerfile) builds from this same root context.
+!market/**
+market/api/dist
+!tsconfig.json
+!vite.config.ts
+!index.html
+!data/
+!data/locations/*.json
+!src/**
+!force5/src/**
+!force5/assets/**
+# Never build from a local install, build output, cache or credential file.
+**/node_modules
+dist
+.venv
+.cache
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+!.env.example

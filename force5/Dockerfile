@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir -r force5/ingest/requirements-worker.txt \
     && mkdir /data && chown 10001:10001 /data
 COPY force5/ingest/ /app/force5/ingest/
 COPY public/spots.json public/riding-locations.json /app/public/
+# Default cadence schedule; the local deployment bind-mounts its own over this one.
+COPY deploy/local/jobs.toml /app/deploy/local/jobs.toml
 USER 10001:10001
 VOLUME ["/data"]
 ENTRYPOINT ["python", "/app/force5/ingest/worker.py"]

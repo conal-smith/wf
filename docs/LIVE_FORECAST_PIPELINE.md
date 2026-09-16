@@ -1,5 +1,11 @@
 # Running Force5 forecasts live
 
+> **Running this on your own machine instead?** See the
+> [local self-hosted deployment](../deploy/local/README.md): one Docker Compose stack —
+> site, scheduler, retention and ingest volume on a single origin — with no cloud
+> account, no S3 bucket and no secrets. This document describes the AWS design, which
+> that option does not need.
+
 ## What runs where
 
 We do **not** run the HARMONIE weather simulation ourselves. Met Éireann runs it. Our job downloads a complete run, decodes its wind fields, rotates/regrids/crops them for our map, validates the result and publishes static JSON. No GPU or continuously running forecast API is required for this design.
@@ -18,7 +24,7 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 
 ## Code supplied
 
-- `force5/Dockerfile`: non-root, one-shot Python worker image; only ingest code and the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) enter the build context. No saved forecasts, Git history, frontend dependencies or credentials.
+- `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
 - `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything; uploads gzip-compressed immutable frames and an archived manifest, then updates the public pointer with an ETag conditional write.
@@ -111,6 +117,52 @@ by passing `--hours 144`, which the worker does not do. The AWS mirror returned
 sustained `503 SlowDown` during development while other jobs were active, so the
 importer allows 6 retries with a 10-second backoff and honours `--source ecmwf`
 or `--source google`; keep concurrency at 1–2 readers (`--workers`).
+`--models harmonie-eps` adds the Met Éireann ensemble adapter, which publishes
+per-member spot series for a probability chart plus ensemble-mean frames on the
+same 233 × 236 Ireland grid as HARMONIE. It is the one adapter whose members come
+from **several model runs**: the portal exposes no coherent perturbed member, so
+members are the controls of successive hourly cycles lagged onto one valid-time
+axis (see the README for the endpoint evidence). Two facts drive its deployment:
+
+- **Bandwidth.** There is no server-side subsetting, so every member/step is a
+  separate 12.9–13.8 MB ZIP. A measured 48 h / 3-hour run with two members
+  transferred 443 MB in 18 s and left 8.2 MB in `.cache/harmonie-eps`, publishing
+  17 frames (9.3 MB) and a 30 KB manifest. Use `--step 3`; `--step 1` multiplies the
+  transfer by three. Budget roughly 0.5–1.5 GB per hourly job and confirm this is
+  acceptable to the provider before scheduling it continuously.
+- **Member count.** The portal keeps about three hours of publications, so a cold
+  run finds two to four members. Validated files persist in the named volume's
+  cache and a cycle still counts once cached, so `--step 1` jobs accumulate members
+  up to `--max-lag` (default 6) over successive hours. `--min-members` (default 2)
+  fails the job rather than publishing a one-member "ensemble".
+
+Gusts are null for this model: the Ireland control subset publishes only signed
+gust components. Alarm on `forecast_failed` as for the other models, and treat a
+drop in `ensemble.members` between runs as a source-retention signal, not a bug.
+Marine Institute Irish Shelf SWAN waves are the first `wave` bundle:
+`--models mi-swan` publishes hourly wave series for every riding location through
++144 h. The model runs **once a day** and the aggregate appears around 08:20–09:30
+UTC, occasionally a day late, so schedule one attempt at **10:00 UTC and a retry at
+14:00 UTC**; the importer refuses a day whose time axis does not end exactly 144 h
+after it, so an early or half-updated attempt fails cheaply and the retry picks the
+run up. Its registry age limit is 36 hours, which tolerates a day-late run published
+in the morning but still rejects a silently stalled aggregate. Map frames are off by
+default: the whole shelf grid is far larger than the site needs, and `--frames`
+transfers about 3.2 MB per frame. A clean run is roughly 4 seconds, 58 requests at two
+concurrent connections and a 0.56 MB manifest, so this job is far cheaper than any
+GRIB model.
+GFS-Wave is the first **wave** bundle: `--models gfs-wave` imports NOAA's
+WAVEWATCH III `arctic.9km` output, nine wave variables on a 0.05° Ireland display
+grid, and publishes `weather/gfs-wave.json` with immutable frames beside it. The
+worker only passes `--step`/`--run` to wind models, so a wave task takes the
+importer's defaults: 0–240 h at three-hour steps, 81 frames. A measured live run
+took 75 seconds, downloading 5.3 MB through the NOMADS wave filter (about 70 KB a
+step) and publishing 45 MB of frames plus a 372 KB manifest — an order of
+magnitude more output than a wind model, so size the volume and CDN accordingly.
+Run `fetch_gfswave.py --source s3` directly if the filter service is down; that
+path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
+publish when the cut-out does not land on the source lattice, which is the check
+that would catch NOAA changing the grid or the filter's coordinate arithmetic.
 
 ## AWS setup checklist
 
@@ -121,7 +173,7 @@ or `--source google`; keep concurrency at 1–2 readers (`--workers`).
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
 7. Run a manual task and verify an entire published forecast through the CDN before enabling the schedule.
-8. Schedule HARMONIE checks hourly; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
+8. Schedule HARMONIE and the HARMONIE ensemble checks hourly, the ensemble with `--step 3` because of its bandwidth; use a separate ICON-EU task schedule matching the full-horizon main cycles, initially every six hours with an appropriate publication delay. GFS runs four cycles a day (00/06/12/18 UTC) and publishes its longer lead times roughly 3.5–5.5 hours after each run time, so check hourly in the window after a cycle rather than firing once at a fixed offset; the importer refuses a cycle whose requested steps are not all listed yet. The importers discover the latest **complete** run, rather than assuming a scheduled run is ready. Tune scheduling against actual publication latency. See [scheduling ECS tasks with EventBridge Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tasks-scheduled-eventbridge-scheduler.html).
 
 Suggested container arguments:
 
@@ -130,8 +182,11 @@ HARMONIE: --models harmonie --step 1 --bucket YOUR_FORECAST_BUCKET
 ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
+GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
+HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
+MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
@@ -155,9 +210,18 @@ weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
 weather/gfs.json                          current GFS pointer + metadata
 weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
 weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
+weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
+weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
+weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
+weather/gfs-wave.json                      current GFS-Wave pointer + metadata
+weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
+weather/manifests/gfs-wave/RUN-HASH.json   archived complete GFS-Wave manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
+weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
+weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
+weather/manifests/harmonie-eps/RUN-HASH.json    archived complete ensemble manifests
 ```
 
 Each model's immutable objects and archived manifests sit under the first segment of its
@@ -172,9 +236,12 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   time (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
   `ensemble`/`spotMembers`. An ensemble manifest holds the **mean** in `spotForecasts`
   and may publish an empty `frames` list — only an ensemble may.
-- `wave` validates a `variables` map, one array per variable per frame with `null` for
-  land, and `spotSeries`. No wave adapter exists yet; the validator and fake-bundle
-  tests do, so a later adapter has a fixed target.
+- `wave` validates a `variables` map and a `spotSeries` per riding location, plus
+  optional frames holding one array per gridded variable with `null` for land. `frames`
+  may be empty when `spotSeries` is present, and `horizonHours` then declares the last
+  published hour; `frameVariables` may narrow frames to a subset of `variables`.
+  Marine Institute Irish Shelf SWAN (`mi-swan`) is the first wave adapter and publishes
+  no frames by default.
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.
@@ -227,10 +294,11 @@ The current browser fetches the manifest on page load and model changes, then re
 
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
-- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
-- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers.
+- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem and is what the local deployment schedules; an S3 lifecycle rule is not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
 ## Validation status / remaining launch work
