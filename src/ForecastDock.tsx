@@ -421,7 +421,7 @@ export default function ForecastDock({
     manifest.stepRanges ? "3/6" : manifest.stepHours
   }-hour wind forecast, in ${units}. Times are local to Ireland.${
     manifest.gustAvailable === false
-      ? ` Gust speed unavailable for this ${manifest.modelName} integration.`
+      ? ` Gust speed unavailable for this ${manifest.modelName} run.`
       : ""
   }`;
   const toolbarCaption = [
