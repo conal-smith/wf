@@ -102,8 +102,10 @@ npm run tides:refresh
 Marine Institute ERDDAP tidal predictions, CC BY 4.0, no account. The station list is
 fetched with a `distinct()` query and cached for a week. Each riding location takes its
 nearest station by great-circle distance; anything beyond 40 km is published without
-tides and with a stated reason, so Northern Ireland spots are not silently attached to a
-distant Irish station. The window is yesterday through eight days ahead: the 5-minute
+tides and with a stated reason rather than being attached to a distant station. Ballyholme,
+Newtownards and Lough Derg currently have none. Benone Strand falls just inside the limit
+at 38.7 km from Malin Head, which is a different tidal regime from Lough Foyle: treat it as
+indicative, or lower `--max-distance-km`. The window is yesterday through eight days ahead: the 5-minute
 curve republished at 10 minutes (every second source sample, no interpolation) plus the
 high/low events. Event heights above LAT are read from the curve, because the events
 dataset publishes Ordnance Datum Malin only; the two are cross-checked against each
