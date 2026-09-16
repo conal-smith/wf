@@ -38,7 +38,8 @@ def describe(public, model, now, override=None):
         last = datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00"))
     except (OSError, ValueError, KeyError, IndexError, TypeError) as error:
         return {**row, "state": "unreadable", "error": str(error)}
-    missing = sum(1 for frame in frames if not (public / frame["url"]).is_file())
+    urls = [frame.get("url", "") if isinstance(frame, dict) else "" for frame in frames]
+    missing = sum(1 for url in urls if not (public / str(url).lstrip("/")).is_file())
     age = (now - run).total_seconds() / 3600
     row.update({"run": manifest["run"], "ageHours": round(age, 2), "frames": len(frames),
                 "missingFrames": missing, "horizonEnds": frames[-1]["validTime"],
