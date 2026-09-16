@@ -94,14 +94,16 @@ def decode(path, field, run, hour, layout=None):
     return decode_handle(handle, field, run, hour, layout)
 
 
-def decode_handle(handle, field, run, hour, layout=None):
-    """Validate/crop a regular earth-relative GRIB; takes ownership of handle."""
+def decode_handle(handle, field, run, hour, layout=None, validate=validate_metadata):
+    """Validate/crop a regular earth-relative GRIB; takes ownership of handle.
+
+    `validate` lets another provider apply its own parameter/level/step rules."""
     try:
         # ecCodes represents zero-length steps in minutes unless explicitly normalised.
         ec.codes_set(handle, "stepUnits", 1)
         metadata = {key: ec.codes_get(handle, key) for key in ["parameterCategory", "parameterNumber", "units", "level", "typeOfLevel",
                     "gridType", "uvRelativeToGrid", "stepUnits", "startStep", "endStep", "dataDate", "dataTime", "validityDate", "validityTime", "stepType"]}
-        validate_metadata(metadata, field, run, hour)
+        validate(metadata, field, run, hour)
         signature = tuple(ec.codes_get(handle, key) for key in KEYS)
         if layout is None:
             lats = ec.codes_get_array(handle, "latitudes")

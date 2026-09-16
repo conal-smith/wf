@@ -82,6 +82,8 @@ export interface Manifest {
   licenseUrl: string;
   termsUrl?: string;
   gustAvailable?: boolean;
+  /** "instantaneous" means gusts are valid at the forecast time, not maxima. */
+  gustKind?: string;
   gustMissingHours?: number[];
   gustDescription?: string;
   modelDetail?: string;
@@ -259,7 +261,10 @@ export function validateManifest(m: Manifest): Manifest {
       f.gustIntervalHours[0] < 0 ||
       f.gustIntervalHours[0] > f.gustIntervalHours[1] ||
       f.gustIntervalHours[1] !== f.hour ||
-      (f.hour > 0 && f.gustIntervalHours[0] === f.gustIntervalHours[1])
+      // Instantaneous gusts are valid at the forecast time itself, so their
+      // interval is [hour, hour] at every hour; a period maximum must span one.
+      (f.gustIntervalHours[0] === f.gustIntervalHours[1]) !==
+        (f.hour === 0 || m.gustKind === "instantaneous")
     ) {
       throw new Error("Invalid gust forecast interval.");
     }

@@ -136,6 +136,42 @@ describe("forecast integrity and freshness", () => {
       validateManifest({ ...m, gustMissingHours: undefined }),
     ).toThrow();
   });
+  it("accepts instantaneous gusts valid at every hour, initialization included", () => {
+    const instant = {
+      ...manifest,
+      gustAvailable: true,
+      gustKind: "instantaneous",
+      frames: manifest.frames.map((f) => ({
+        ...f,
+        gustIntervalHours: [f.hour, f.hour] as [number, number],
+      })),
+    };
+    expect(validateManifest(instant)).toBe(instant);
+    expect(
+      validateFrame(
+        { ...frame, gustIntervalHours: [0, 0] },
+        instant,
+        instant.frames[0],
+      ).gust,
+    ).not.toBeNull();
+    // Without that declaration a later zero-length interval is still a mistake.
+    expect(() =>
+      validateManifest({ ...instant, gustKind: undefined }),
+    ).toThrow();
+    // An instantaneous gust must not claim a preceding maximum period either.
+    expect(() =>
+      validateManifest({
+        ...instant,
+        frames: [
+          instant.frames[0],
+          {
+            ...instant.frames[1],
+            gustIntervalHours: [0, 3] as [number, number],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
   it("keeps missing gusts null only when explicitly declared unavailable", () => {
     const missing = { ...frame, gust: null, gustIntervalHours: null };
     const noGusts = { ...manifest, gustAvailable: false };

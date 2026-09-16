@@ -19,4 +19,6 @@ public/weather/*/
 # Small real ECMWF acceptance snapshot; later generated runs stay ignored.
 !public/weather/ecmwf-2026091300-360h-v1/
 !public/weather/ecmwf-2026091300-360h-v2/
+# Small real GFS acceptance snapshot (2026-09-16 12 UTC, 120 h at 3-hour steps).
+!public/weather/gfs-2026091612-120h-v1/
 *.tsbuildinfo
