@@ -6,7 +6,7 @@ the system that draws data rather than chrome, and the first one allowed to use
 a colour family outside the teal ramp — see the ruling of 2026-09-16.
 
 The chart never explains wind speed with a new palette. Height on the value axis
-*is* speed, and the fill is the wind ramp read off that axis, so a band that
+_is_ speed, and the fill is the wind ramp read off that axis, so a band that
 reaches the yellow part of the scale is yellow for the same reason the map is.
 
 ## Anatomy
@@ -75,7 +75,7 @@ Don't add a second filled action inside the dock. The toolbar's Play button is
 the view's one accent; the filter trigger and the view switch stay quiet.
 
 Don't use the warm family for anything but the Now marker and the gust range.
-Warm means *this instant* or *this is degraded*, never emphasis.
+Warm means _this instant_ or _this is degraded_, never emphasis.
 
 Don't animate the chart. It is a dense read, not a transition.
 
