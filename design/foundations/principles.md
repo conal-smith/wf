@@ -1,0 +1,181 @@
+# Force5 principles
+
+What the tokens cannot decide. Read this before the catalog: it settles the
+arguments the token names only imply.
+
+Force5 is a map with tools floating over it. The map is the product; everything
+else is chrome that has to earn the pixels it covers the sea with. That single
+fact decides most of what follows.
+
+---
+
+## The accent rule
+
+**One accent per view.** `--sem-color-action-bg` is the filled action, and a view
+gets one: Play in the timeline, or Retry in an error state, never both at once. A
+second filled button does not add emphasis, it removes it.
+
+Everything else that can be pressed is quiet — `--sem-color-action-quiet` with no
+fill until hover. On a map this is not timidity: a screen of filled buttons over
+moving water is unreadable.
+
+**Warm is not an accent.** The warm family (`ref.color.warm.*`) means one of two
+things and nothing else: *this instant* (the now-marker) or *this is degraded*
+(a stale snapshot, a failed fetch). It is never used to make something stand out.
+
+## What structure is made of
+
+Structure is **surfaces, not lines.** A thing is separated from the map by being
+a glass pane with an elevation, not by being boxed in. Inside a surface, division
+is `--sem-color-border-hairline` and nothing heavier.
+
+There are exactly four kinds of surface — pane, pill, dock, dialog — and they are
+distinguished by radius and elevation, not by colour. If a new surface does not
+fit one of the four, the answer is usually that it should not be a surface.
+
+**Never glass on glass.** Two backdrop blurs stacked compound into mud and cost a
+frame. A surface inside a surface uses `--sem-color-surface-raised` (lifted) or
+`--sem-color-surface-sunken` (recessed).
+
+**Every glass surface ships a solid fallback.** `prefers-reduced-transparency`
+and browsers without `backdrop-filter` both get `--sem-color-surface-solid`, and
+the whole text ramp is contrast-tested against that solid ground rather than
+against the glass — so the fallback is the accessible case, not a degradation of
+one.
+
+## Ceilings
+
+**Type.** Ten steps, 9px to 48px.
+
+- 9px (`2xs`) is the floor, and it is only for tracked uppercase labels and axis
+  ticks. Never a sentence.
+- 10px (`xs`) is the floor for anything sentence-case.
+- One `title` per surface. One `reading` per view — the wind speed is the number
+  the product exists to show, and a second thing that size competes with it.
+- Above `3xl`, only the wind reading. There is no display type in this product
+  besides the wordmark.
+
+**Radius.** Four steps plus `round`. A view may use at most three, and they must
+nest inward: a pill inside a pane inside a dialog goes large to small, never the
+reverse. A rounded thing inside a more-rounded thing reads as a mistake.
+
+**Elevation.** Four shadows, and they are a hierarchy, not a palette: everything
+at the same z casts the same shadow. If two things at the same layer look
+different, one of them is at the wrong layer.
+
+**Colour.** One hue. `ref.color.teal.*` is the entire structural palette; the only
+other families are `warm` (degraded / now), `green` (one liveness dot) and
+`wind` (data). A fifth family is a design change, not an implementation detail.
+
+## The wind scale is data, not decoration
+
+The fourteen stops in `ref.color.wind.*` are the `PALETTE` in
+`force5/src/weather.ts`. They are speed bands — not safety ratings, not ability
+ratings — and they are the only way colour may describe wind.
+
+They do **not** re-theme in dark mode. A colour that means 35 knots means 35
+knots at night; a data scale that shifts with the theme means nothing.
+
+The legend is generated from those stops (`sem.gradient.wind`), never restated.
+That is the whole reason the token exists — see the ruling of 2026-09-14 below.
+
+## Don't
+
+- Don't add a hex, a px, a radius or a duration to product code. A missing value
+  is a missing step in a scale; add the step with semantics and regenerate.
+- Don't put a second filled action on a view.
+- Don't use the wind ramp for anything that is not wind speed.
+- Don't nest glass in glass.
+- Don't restyle a focus ring. It is one token, one width, one colour, every
+  control, both modes.
+- Don't let colour be the only carrier of a state. Status chips say the status in
+  words; markers carry kind as shape; the selected segment is raised as well as
+  filled.
+- Don't use `--sem-color-text-disabled` for text that is merely low priority.
+  That is `--sem-color-text-muted`. Disabled means unavailable.
+- Don't go below `--sem-control-height-sm`, and only use that size where the
+  parent pads the tap target out to 44px.
+- Don't hand-edit a derived file. `foundations/tokens.css` and
+  `catalog/index.html` are outputs; the manifest's `derived` map names the
+  generator for each.
+
+---
+
+## Rulings
+
+Dated, because an undated rule cannot be told from an opinion and gets
+relitigated.
+
+**2026-09-14 — The ramp is derived from the product, not invented.**
+Every colour, radius, type size, weight and spacing literal in `src/` and
+`force5/src/` was harvested and clustered in OKLab. The result was 70 opaque and
+49 alpha colour literals sitting on a single hue (190–198°), smeared across
+near-duplicate lightnesses — 25 of them inside one 7-point band. The eleven-step
+teal ramp is that cluster, regularised: step 800 (`#163f49`) reproduces the
+historical `--ink` `#173d49`, and step 400 (`#82aab4`) reproduces the historical
+sea `#83afb9`. Nothing about the product's colour was chosen afresh.
+
+**2026-09-14 — `teal.600` is the floor for text; `teal.500` is never text.**
+Measured on the panel ground, 600 is 5.46:1 and 500 is 3.50:1. Four colours in
+the old set (`#567c82`, `#567781`, `#557871`, `#567680`) sat at 4.12–4.41:1 —
+under AA, at 9–11px, on captions and coordinates. They all resolve to
+`--sem-color-text-muted` (600). 500 survives for UI strokes and icons, where 3:1
+is the bar, and is barred from text by name.
+
+**2026-09-14 — The legend is generated from `PALETTE`, never restated.**
+The CSS `.legend-gradient` carried eight stops. `PALETTE` in
+`force5/src/weather.ts` — which actually paints the map, the forecast cells and
+the wind fills — carries fourteen, and they are different colours. The legend has
+been telling the reader a scale the map does not use. `ref.gradient.wind` is
+composed from the same fourteen tokens the cells consume, positioned by knots over
+the clamped 0–65 range, so the two cannot drift again.
+
+**2026-09-14 — Five weights, no half-steps.**
+The variable fonts were being used at 400, 450, 500, 550, 600, 650, 700 and 800.
+Eight weights is not a hierarchy, it is eight opinions. The scale is 400 / 500 /
+600 / 700 / 800. The half-steps are retired; where one was load-bearing, round up.
+
+**2026-09-14 — 9px is the floor, and only for tracked uppercase.**
+The product had type at 6px, 7px and 8px. Those are gone. 9px survives for
+tracked uppercase eyebrows and axis ticks; sentence-case text stops at 10px.
+
+**2026-09-14 — Shape carries kind on the map; colour carries the reading.**
+Spot markers were separating riding spots, operators, clubs and areas partly by
+colour, while the same markers also carry a wind reading. Two colour meanings on
+one object is one too many: kind is now round / squared / dashed, and colour on a
+marker only ever means wind.
+
+**2026-09-14 — The warm pair inverts wholesale in dark, not one end of it.**
+Mapping `warnFg` to `warm.500` while leaving `warnBg` at `warm.800` put warning
+text at 1.70:1 in dark mode — unreadable. Foreground and background swap ends of
+the warm family together (`warm.800` on `warm.100` in light, `warm.100` on
+`warm.800` in dark), which holds at 6.24:1 both ways. A dedicated dark warm
+ground was tried and rejected: at 1.10:1 against the dark page the strip stopped
+reading as a strip at all.
+
+**2026-09-14 — Dark mode is authored, not yet adopted.** See the gap below.
+
+---
+
+## Gaps
+
+Recorded rather than invented. These are known-missing, and a change that closes
+one should update this list.
+
+- **Dark mode ships in the tokens but not in the product.** The 22 mode-varying
+  tokens are a designed proposal, reviewed in the catalog in both modes; no
+  product surface reads them yet, and no one has seen the real map under them.
+  The map basemap in particular is a third-party style that will need its own
+  dark variant before the app can honestly offer the mode. Until that happens,
+  dark is a bundle feature, not a product feature.
+- **The forecast grid has no component.** It is the densest and most complicated
+  surface in the product — sticky headers, per-cell wind fills, a now-line, a
+  selected column — and it is not yet expressed here. It is the single biggest
+  thing standing between this bundle and covering the real UI.
+- **No motion spec beyond two durations.** There are easing curves in the product
+  that are not tokenised, and `sheet-in` is the only named animation.
+- **No spec for the map's own controls.** MapLibre's attribution and control
+  container are restyled in product CSS with `!important`; whether those become
+  components or stay an explicit exception has not been decided.
+- **No icon set.** `glyphs/` is empty; the product uses `lucide-react` directly.
+  Whether Force5 wraps it or adopts it wholesale is undecided.

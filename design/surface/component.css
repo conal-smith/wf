@@ -1,0 +1,55 @@
+.f5-surface {
+  background: var(--sem-color-surface-glass);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
+  border-radius: var(--sem-radius-surface);
+  padding: var(--sem-space-pad-surface);
+  box-shadow: var(--sem-effect-shadow-surface);
+  -webkit-backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+  backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+  color: var(--sem-color-text-primary);
+}
+
+.f5-surface--pill {
+  border-radius: var(--sem-radius-pill);
+  padding: var(--sem-space-gap-tight) var(--sem-space-pad-control);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-surface--dock {
+  border-radius: 0;
+  border-width: 0;
+  border-top-width: var(--sem-stroke-hairline);
+  border-top-color: var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-dock);
+}
+
+.f5-surface--dialog {
+  border-radius: var(--sem-radius-dialog);
+  padding: var(--sem-space-pad-dialog);
+}
+
+.f5-surface--sunken {
+  background: var(--sem-color-surface-sunken);
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.f5-surface[data-elevated="false"] {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .f5-surface {
+    background: var(--sem-color-surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) { /* ds-lint-allow: feature-detection probe, not a design value */
+  .f5-surface {
+    background: var(--sem-color-surface-solid);
+  }
+}
