@@ -1,6 +1,15 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
 import { forecastUrl } from "./urls";
-export type Units = "kn" | "m/s";
+// Units live in units.ts; re-exported so existing weather imports keep working.
+export {
+  KNOTS,
+  UNITS,
+  convert,
+  formatSpeed,
+  isUnits,
+  unitLabel,
+} from "./units";
+export type { Units } from "./units";
 export interface Grid {
   width: number;
   height: number;
@@ -62,6 +71,27 @@ export interface Point {
     lon: number;
   }[];
 }
+/** What a manifest describes. Absent means wind, the original contract. */
+export type ManifestKind = "wind" | "wave" | "tide";
+/**
+ * `interval` gusts are a maximum over the source accumulation window ending at
+ * the frame; `instantaneous` gusts are a point value, so their window collapses
+ * to `[hour, hour]` at every frame, including initialization.
+ */
+export type GustKind = "interval" | "instantaneous";
+export interface Ensemble {
+  members: number;
+  control: number | null;
+  description: string;
+}
+/** One ensemble time step for one spot; every array is indexed by member. */
+export interface MemberFrame {
+  hour: number;
+  validTime: string;
+  u: number[];
+  v: number[];
+  gust: (number | null)[];
+}
 export interface Manifest {
   schemaVersion: number;
   model: string;
@@ -86,10 +116,12 @@ export interface Manifest {
   gustDescription?: string;
   modelDetail?: string;
   processing?: string;
+  kind?: ManifestKind;
+  gustKind?: GustKind;
+  /** Present only for ensembles; `spotForecasts` then holds the member mean. */
+  ensemble?: Ensemble;
+  spotMembers?: Record<string, MemberFrame[]>;
 }
-export const KNOTS = 1.94384449;
-export const convert = (speed: number, units: Units) =>
-  speed * (units === "kn" ? KNOTS : 1);
 export const speed = (wind: Pick<Wind, "u" | "v">) =>
   Math.hypot(wind.u, wind.v);
 export const direction = (u: number, v: number) =>
@@ -190,21 +222,87 @@ export function validateGrid(g: Grid): void {
   )
     throw new Error("Invalid forecast grid. Refresh the weather snapshot.");
 }
+const KINDS: ManifestKind[] = ["wind", "wave", "tide"];
+function validateEnsemble(e: Ensemble): void {
+  if (
+    !e ||
+    !Number.isInteger(e.members) ||
+    e.members < 1 ||
+    e.members > 200 ||
+    !(
+      e.control === null ||
+      (Number.isInteger(e.control) && e.control >= 0 && e.control < e.members)
+    ) ||
+    typeof e.description !== "string" ||
+    !e.description
+  )
+    throw new Error("Invalid ensemble description.");
+}
+function validateSpotMembers(m: Manifest): void {
+  const members = m.ensemble?.members;
+  if (!members)
+    throw new Error("Member series require an ensemble description.");
+  for (const [spot, series] of Object.entries(m.spotMembers!)) {
+    if (!Array.isArray(series) || !series.length)
+      throw new Error(`Invalid ensemble series for ${spot}.`);
+    let previous = -1;
+    for (const f of series) {
+      if (
+        !Number.isFinite(f.hour) ||
+        f.hour <= previous ||
+        !Number.isFinite(Date.parse(f.validTime)) ||
+        Date.parse(f.validTime) !== Date.parse(m.runTime) + f.hour * 3600000
+      )
+        throw new Error(`Invalid ensemble timeline for ${spot}.`);
+      previous = f.hour;
+      for (const field of ["u", "v"] as const) {
+        if (
+          !Array.isArray(f[field]) ||
+          f[field].length !== members ||
+          !f[field].every((v) => Number.isFinite(v) && Math.abs(v) <= 150)
+        )
+          throw new Error(`Invalid ensemble ${field} values for ${spot}.`);
+      }
+      if (
+        !Array.isArray(f.gust) ||
+        f.gust.length !== members ||
+        !f.gust.every(
+          (v) => v === null || (Number.isFinite(v) && v >= 0 && v <= 150),
+        )
+      )
+        throw new Error(`Invalid ensemble gust values for ${spot}.`);
+    }
+  }
+}
 export function validateManifest(m: Manifest): Manifest {
   if (
     !m ||
     m.schemaVersion !== 1 ||
     !Array.isArray(m.frames) ||
-    !m.frames.length ||
+    // Chart-only ensembles publish member series without map frames.
+    (!m.frames.length && !m.ensemble) ||
     !Number.isFinite(Date.parse(m.runTime))
   )
     throw new Error("Invalid forecast manifest. Run npm run weather:refresh.");
-  validateGrid(m.grid);
+  if (m.kind !== undefined && !KINDS.includes(m.kind))
+    throw new Error("Unknown forecast kind.");
+  if (
+    m.gustKind !== undefined &&
+    m.gustKind !== "interval" &&
+    m.gustKind !== "instantaneous"
+  )
+    throw new Error("Unknown gust kind.");
+  if (m.gustKind === "instantaneous" && m.gustMissingHours)
+    throw new Error("Instantaneous gusts have no missing hours.");
+  if (m.ensemble !== undefined) validateEnsemble(m.ensemble);
+  if (m.spotMembers) validateSpotMembers(m);
+  if (m.grid || m.frames.length) validateGrid(m.grid);
   if (
     m.gustMissingHours &&
     (!Array.isArray(m.gustMissingHours) ||
       m.gustMissingHours.length !== 1 ||
       m.gustMissingHours[0] !== 0 ||
+      !m.frames.length ||
       m.frames[0].hour !== 0)
   )
     throw new Error(
@@ -252,6 +350,15 @@ export function validateManifest(m: Manifest): Manifest {
     if (m.gustAvailable === false || m.gustMissingHours?.includes(f.hour)) {
       if (f.gustIntervalHours !== null)
         throw new Error("Unavailable gusts must not declare an interval.");
+    } else if (m.gustKind === "instantaneous") {
+      // A point gust has no window: every frame, hour 0 included, is [hour, hour].
+      if (
+        !Array.isArray(f.gustIntervalHours) ||
+        f.gustIntervalHours.length !== 2 ||
+        f.gustIntervalHours[0] !== f.hour ||
+        f.gustIntervalHours[1] !== f.hour
+      )
+        throw new Error("Invalid gust forecast interval.");
     } else if (
       !Array.isArray(f.gustIntervalHours) ||
       f.gustIntervalHours.length !== 2 ||
@@ -363,12 +470,24 @@ export function nearestFrame(frames: FrameInfo[], now = Date.now()): number {
     0,
   );
 }
+/** Last time the manifest covers, from map frames or from its spot series. */
+export function lastValidTime(m: Manifest): number | null {
+  const times = m.frames.length
+    ? [Date.parse(m.frames[m.frames.length - 1].validTime)]
+    : [
+        ...Object.values(m.spotForecasts ?? {}),
+        ...Object.values(m.spotMembers ?? {}),
+      ].flatMap((series) =>
+        series.length ? [Date.parse(series[series.length - 1].validTime)] : [],
+      );
+  return times.length ? Math.max(...times) : null;
+}
 export function freshness(
   m: Manifest,
   now = Date.now(),
 ): "expired" | "stale" | "fresh" {
-  if (Date.parse(m.frames[m.frames.length - 1].validTime) < now)
-    return "expired";
+  const last = lastValidTime(m);
+  if (last === null || last < now) return "expired";
   if (now - Date.parse(m.runTime) > 18 * 3600000) return "stale";
   return "fresh";
 }
