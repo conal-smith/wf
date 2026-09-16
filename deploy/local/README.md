@@ -68,6 +68,7 @@ npm run deploy:run -- --models icon-eu --step 1
 npm run deploy:run -- --models ecmwf
 npm run deploy:run -- --models ecmwf-ens
 npm run deploy:run -- --models harmonie-eps
+npm run deploy:run -- --models gfs-wave
 npm run deploy:run -- --models mi-swan
 npm run deploy:run -- --models tides
 ```
@@ -88,6 +89,7 @@ in UTC. The shipped schedule is:
 | `harmonie-eps` | every hour at :50  | lagged control members; one new cycle each hour       |
 | `ecmwf-ens`    | every hour at :35  | hourly check for the newest complete 00/12 ENS run    |
 | `gfs`          | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
+| `gfs-wave`     | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
 | `mi-swan`      | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
 | `tides`        | 01:05 daily        | predictions, not a forecast cycle                     |
 | `prune`        | 05:10 daily        | retention (see below)                                 |
@@ -104,7 +106,7 @@ The scheduler runs **one job at a time**, so jobs never contend for the worker's
 filesystem lock. A slot that passes while an earlier job is still running is skipped
 and logged rather than queued. Model ids are the ones in
 `force5/ingest/registry.py`; a job for a model the registry does not have yet —
-`gfs-wave`, `nws-wave`, `gefs` — is rejected with one log line and every other
+`nws-wave`, `gefs`, `arpege` — is rejected with one log line and every other
 job keeps running, so you can write its entry before the adapter lands.
 Set `FORCE5_RUN_AT_START=1` to fire every enabled job once when the scheduler starts.
 

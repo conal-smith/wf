@@ -175,8 +175,8 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertNotIn("schedule_warning", out.getvalue())
         identities = [job["id"] for job in jobs]
         self.assertEqual(identities, ["harmonie", "icon-eu", "ecmwf", "harmonie-eps",
-                                      "ecmwf-ens", "gfs", "mi-swan", "tides",
-                                      "prune", "status"])
+                                      "ecmwf-ens", "gfs", "gfs-wave", "mi-swan",
+                                      "tides", "prune", "status"])
         for job in jobs:
             self.assertTrue(job["enabled"], job["id"])
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])
