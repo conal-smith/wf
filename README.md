@@ -1,6 +1,6 @@
 # wingfoil.ie — Ireland wind explorer
 
-An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU**, **Met Éireann HARMONIE-AROME DINI control**, and **ECMWF IFS 15-day** forecasts. Floating glass controls keep the map central; a bottom forecast grid is visible immediately for Brandon Bay and updates when you select a spot or map point. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
+An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU**, **Met Éireann HARMONIE-AROME DINI control**, **ECMWF IFS 15-day** and **NOAA GFS 0.25°** forecasts. Floating glass controls keep the map central; a bottom forecast grid is visible immediately for Brandon Bay and updates when you select a spot or map point. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
 
 ## Run the website
 
@@ -22,6 +22,7 @@ Features:
 - HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
+- **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
 - Edge-to-edge, bottom-flush forecast grid open on arrival: day-grouped time columns and aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
@@ -91,6 +92,49 @@ source cadence. See [ECMWF's catalogue](https://www.ecmwf.int/en/forecasts/datas
 and [the live-operation guide](docs/LIVE_FORECAST_PIPELINE.md) for deployment,
 attribution and refresh scheduling. Local verification does not deploy an AWS job.
 
+### GFS refresh
+
+```sh
+npm run weather:refresh:gfs
+# Shorter, hourly, or the S3 fallback:
+.venv/bin/python force5/ingest/fetch_gfs.py --hours 48 --step 3
+.venv/bin/python force5/ingest/fetch_gfs.py --hours 120 --step 1
+.venv/bin/python force5/ingest/fetch_gfs.py --hours 240 --step 3 --source s3
+```
+
+Default: 0–240 hours at three-hour steps (81 frames), no API key. With `--step 1`
+the default horizon is +120 h (121 frames), which is as far as NOAA publishes
+hourly files. `--hours` accepts 3–384 divisible by the step; an hourly request
+beyond +120 h is rejected rather than silently resampled.
+
+The importer lists the provider's own inventory for each 6-hourly cycle, newest
+first, and selects the newest cycle that actually contains **every** requested
+step; a cycle still publishing is skipped. Runs older than 12 hours or dated in
+the future are refused.
+
+The default source is NOAA's **NOMADS GRIB filter**, which crops server-side and
+returns roughly 14 KB per step for u, v and gust — about 0.6 MB for a 41-frame
+run. Requests are limited to two concurrent connections with a minimum pause
+between them, retries with backoff, and an identifying User-Agent, as NOMADS
+asks. `--source s3` reads the same fields from the `noaa-gfs-bdp-pds` Open Data
+bucket instead, using the `.idx` sidecar and three HTTP range requests per step
+(no boto3, no credentials). That path transfers whole-globe messages, about
+2.5 MB per step, and is a fallback for NOMADS outages rather than the normal
+route. Both sources were verified to produce byte-identical frames.
+
+GFS longitudes run 0–360°; they are normalised to −180…180° before cropping to
+the shared Ireland/Atlantic box (18°W–2°E, 48°–59°N), giving an 81 × 45 grid at
+the native 0.25°. ecCodes checks parameter, level (10 m for wind, surface for
+gust), units, earth-relative vectors, regular geometry, initialization, valid
+time and value ranges for every message.
+
+**GFS gusts are instantaneous, not period maxima.** The manifest declares
+`gustKind: "instantaneous"` with `gustIntervalHours: [hour, hour]` on every
+frame, initialization included, and no `gustMissingHours`. Instantaneous gusts
+read lower than an interval maximum covering the same time; do not compare them
+with ICON-EU or ECMWF gusts. The bundled acceptance snapshot is 16 September
+2026 at 12 UTC through +120 h: 41 frames, approximately 2.4 MB.
+
 ### HARMONIE refresh
 
 ```sh
@@ -153,12 +197,14 @@ Serve `dist/` through any static web host after building. No secrets or account 
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
+force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
 public/spots.json           Original eight precomputed forecast locations
 data/locations/             Sourced location records and spreadsheet export
 src/locations.ts            Map/search merge, aliases and provenance
 public/weather/latest.json Model/source/grid metadata, frame URLs, spot series
 public/weather/harmonie.json HARMONIE's independent run, grid, frames and attribution
 public/weather/ecmwf.json  ECMWF's 85-frame timeline, mixed cadence and attribution
+public/weather/gfs.json    GFS's 0.25° timeline, instantaneous gusts and attribution
 public/weather/<run>/*.json Immutable cropped U/V/gust grids
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
@@ -168,7 +214,7 @@ src/ForecastSheet.tsx      Bottom forecast table for named and arbitrary points
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
-All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication.
+All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. A model whose gust is instantaneous rather than a period maximum declares `gustKind: "instantaneous"` and a zero-length `gustIntervalHours` of `[hour, hour]` at every hour, including zero; without that declaration a zero-length interval after initialization is rejected.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
@@ -177,6 +223,7 @@ Both the browser and importer use bilinear interpolation. Direction is the meteo
 - Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html).
 - Basemap: [OpenFreeMap](https://openfreemap.org/quick_start/), with OpenMapTiles/OpenStreetMap attribution. External basemap and Google Fonts requests require internet. Fonts have local fallback stacks.
 - Renderer: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/).
+- GFS: [NOAA NCEP product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), [NOMADS GRIB filter](https://nomads.ncep.noaa.gov/), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gfs-bdp-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). US Government work in the public domain; Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
