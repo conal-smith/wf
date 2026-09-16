@@ -69,6 +69,19 @@ about 2.5 MB per step for whole-globe messages. GFS gusts are instantaneous
 surface values, published as `gustKind: "instantaneous"` with `[hour, hour]`
 intervals at every hour.
 
+Marine Institute Irish Shelf SWAN waves are the first `wave` bundle:
+`--models mi-swan` publishes hourly wave series for every riding location through
++144 h. The model runs **once a day** and the aggregate appears around 08:20–09:30
+UTC, occasionally a day late, so schedule one attempt at **10:00 UTC and a retry at
+14:00 UTC**; the importer refuses a day whose time axis does not end exactly 144 h
+after it, so an early or half-updated attempt fails cheaply and the retry picks the
+run up. Its registry age limit is 36 hours, which tolerates a day-late run published
+in the morning but still rejects a silently stalled aggregate. Map frames are off by
+default: the whole shelf grid is far larger than the site needs, and `--frames`
+transfers about 3.2 MB per frame. A clean run is roughly 4 seconds, 58 requests at two
+concurrent connections and a 0.56 MB manifest, so this job is far cheaper than any
+GRIB model.
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
@@ -88,6 +101,7 @@ ICON-EU:  --models icon-eu --step 1 --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
+MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
@@ -111,6 +125,9 @@ weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
 weather/gfs.json                          current GFS pointer + metadata
 weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
 weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
+weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
+weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
+weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
@@ -128,9 +145,12 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   time (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
   `ensemble`/`spotMembers`. An ensemble manifest holds the **mean** in `spotForecasts`
   and may publish an empty `frames` list — only an ensemble may.
-- `wave` validates a `variables` map, one array per variable per frame with `null` for
-  land, and `spotSeries`. No wave adapter exists yet; the validator and fake-bundle
-  tests do, so a later adapter has a fixed target.
+- `wave` validates a `variables` map and a `spotSeries` per riding location, plus
+  optional frames holding one array per gridded variable with `null` for land. `frames`
+  may be empty when `spotSeries` is present, and `horizonHours` then declares the last
+  published hour; `frameVariables` may narrow frames to a subset of `variables`.
+  Marine Institute Irish Shelf SWAN (`mi-swan`) is the first wave adapter and publishes
+  no frames by default.
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.
@@ -171,7 +191,7 @@ The current browser fetches the manifest on page load and model changes, then re
 
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
-- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers.

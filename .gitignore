@@ -23,4 +23,6 @@ public/weather/*/
 !public/weather/gfs-2026091612-120h-v1/
 # Generated tide predictions; nothing marine is bundled yet.
 public/marine/
+# Generated wave forecast; no wave snapshot is bundled with the site.
+public/weather/mi-swan.json
 *.tsbuildinfo
