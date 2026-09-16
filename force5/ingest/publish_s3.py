@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 import re
 from cadence import expected_hours
 
-MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json"}
+MANIFESTS = {"harmonie": "harmonie.json", "icon-eu": "latest.json", "ecmwf": "ecmwf.json", "gfs": "gfs.json"}
 
 
 def error_code(error):
@@ -34,6 +34,9 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
     missing_gust_hours = manifest.get("gustMissingHours", [])
     if missing_gust_hours not in ([], [0]):
         raise ValueError("Only initialization gusts may be explicitly missing")
+    instantaneous = manifest.get("gustKind") == "instantaneous"
+    if instantaneous and missing_gust_hours:
+        raise ValueError("Instantaneous gusts exist at every forecast time")
     hours = expected_hours(manifest)
     if not frames or len(frames) != len(hours):
         raise ValueError("Empty forecast or unsupported cadence")
@@ -60,10 +63,12 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         gust_missing = manifest.get("gustAvailable") is False or hour in missing_gust_hours
         interval = info.get("gustIntervalHours")
         if not gust_missing:
+            # An instantaneous gust is valid at the forecast time itself: [hour, hour],
+            # hour 0 included. A period maximum must span a real interval instead.
             if (not isinstance(interval, list) or len(interval) != 2
                     or not all(isinstance(x, int) and not isinstance(x, bool) for x in interval)
                     or interval[0] < 0 or interval[0] > interval[1] or interval[1] != hour
-                    or (hour > 0 and interval[0] == interval[1])
+                    or (interval[0] == interval[1]) != (hour == 0 or instantaneous)
                     or frame.get("gustIntervalHours") != interval):
                 raise ValueError("Invalid or mismatched gust interval")
         elif interval is not None or frame.get("gustIntervalHours") is not None:
