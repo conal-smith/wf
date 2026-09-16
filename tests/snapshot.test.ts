@@ -49,3 +49,137 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs"])(
     });
   },
 );
+
+/**
+ * Wave manifests carry one array per declared variable and a `spotSeries` map,
+ * not `u`/`v`/`gust` with gust intervals, so `validateManifest` cannot read one
+ * yet: it still demands a gust interval on every frame. Until the shared
+ * validator understands `kind`, this block checks the wave contract directly.
+ */
+interface WaveGrid {
+  width: number;
+  height: number;
+  west: number;
+  east: number;
+  north: number;
+  south: number;
+  dx: number;
+  dy: number;
+}
+type WaveValues = (number | null)[];
+
+/** The importer's sampler: bilinear, and null as soon as a neighbour is null. */
+function sampleWave(
+  g: WaveGrid,
+  values: WaveValues,
+  lon: number,
+  lat: number,
+): number | null {
+  const x = (lon - g.west) / g.dx,
+    y = (g.north - lat) / g.dy;
+  if (x < 0 || y < 0 || x > g.width - 1 || y > g.height - 1) return null;
+  const x0 = Math.min(Math.floor(x), g.width - 2),
+    y0 = Math.min(Math.floor(y), g.height - 2);
+  const tx = x - x0,
+    ty = y - y0,
+    i = y0 * g.width + x0;
+  const corners = [
+    values[i],
+    values[i + 1],
+    values[i + g.width],
+    values[i + g.width + 1],
+  ];
+  if (corners.some((value) => value === null)) return null;
+  const [a, b, c, d] = corners as number[];
+  return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+}
+
+describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
+  it("every frame matches the manifest and every spot series matches the frames", () => {
+    const m = JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8"));
+    expect(m.schemaVersion).toBe(1);
+    expect(m.kind).toBe("wave");
+    expect(m.model).toBe(name);
+    expect(Number.isFinite(Date.parse(m.runTime))).toBe(true);
+    expect([1, 3]).toContain(m.stepHours);
+    expect(m.stepRanges).toBeUndefined();
+    for (const field of ["provider", "attribution", "licenseUrl", "processing"])
+      expect(typeof m[field]).toBe("string");
+
+    const g: WaveGrid = m.grid;
+    expect(Number.isInteger(g.width) && g.width >= 2).toBe(true);
+    expect(Number.isInteger(g.height) && g.height >= 2).toBe(true);
+    expect(Math.abs(g.east - g.west - (g.width - 1) * g.dx)).toBeLessThan(1e-5);
+    expect(Math.abs(g.north - g.south - (g.height - 1) * g.dy)).toBeLessThan(
+      1e-5,
+    );
+    const cells = g.width * g.height;
+
+    const variables = Object.keys(m.variables);
+    expect(variables.length).toBeGreaterThan(0);
+    for (const key of variables) {
+      expect(key).toMatch(/^[a-z][a-z0-9_]{0,31}$/);
+      for (const field of ["units", "label", "description"])
+        expect(m.variables[key][field].trim().length).toBeGreaterThan(0);
+    }
+
+    /** Adapters precompute a wave series for every riding place they resolve. */
+    const covered = places.filter((place) => m.spotSeries[place.id]);
+    expect(covered.length).toBe(places.length);
+    for (const place of places) {
+      const coverage = m.spotCoverage[place.id];
+      expect(typeof coverage.landMasked).toBe("boolean");
+      expect(coverage.note.trim().length).toBeGreaterThan(0);
+    }
+
+    expect(m.frames.length).toBeGreaterThan(0);
+    m.frames.forEach(
+      (info: { hour: number; validTime: string; url: string }, i: number) => {
+        expect(info.hour).toBe(i * m.stepHours);
+        expect(Date.parse(info.validTime)).toBe(
+          Date.parse(m.runTime) + info.hour * 3600000,
+        );
+        expect(
+          info.url.startsWith("weather/") && !info.url.includes(".."),
+        ).toBe(true);
+        const frame = JSON.parse(readFileSync(`public/${info.url}`, "utf8"));
+        expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
+          m.model,
+          m.run,
+          info.hour,
+          info.validTime,
+        ]);
+        expect(frame.grid).toEqual(g);
+        for (const key of variables) {
+          const values: WaveValues = frame[key];
+          expect(values).toHaveLength(cells);
+          // Land, ice and unresolved cells are null; they are never zeroed.
+          expect(
+            values.every(
+              (value) =>
+                value === null ||
+                (Number.isFinite(value) && Math.abs(value) <= 1000),
+            ),
+          ).toBe(true);
+        }
+        for (const place of covered) {
+          const step = m.spotSeries[place.id][i];
+          expect(step.validTime).toBe(info.validTime);
+          expect(Object.keys(step.values).sort()).toEqual(
+            [...variables].sort(),
+          );
+          for (const key of variables) {
+            const wave = sampleWave(g, frame[key], place.lon, place.lat);
+            const summary = step.values[key];
+            if (wave === null || summary === null) {
+              expect(wave).toBeNull();
+              expect(summary).toBeNull();
+              continue;
+            }
+            expect(Math.abs(wave - summary)).toBeLessThanOrEqual(0.00501);
+          }
+        }
+      },
+    );
+  });
+});
