@@ -9,6 +9,7 @@ import {
   modelEntry,
   modelHue,
   requireModel,
+  waveModels,
   windModels,
 } from "./manifests";
 import { loadManifest } from "./manifests";
@@ -39,6 +40,8 @@ describe("model registry", () => {
       "icon",
       "ukv",
       "aifs",
+      "gfs-wave",
+      "mi-swan",
     ])
       expect(ids).toContain(id);
     const hues = MODEL_CATALOG.map((model) => model.hue.wind);
@@ -56,8 +59,14 @@ describe("model registry", () => {
       "ecmwf",
       "gfs",
       "ecmwf-ens",
+      "gfs-wave",
+      "mi-swan",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
+    expect(waveModels().map((model) => model.id)).toEqual([
+      "gfs-wave",
+      "mi-swan",
+    ]);
     expect(requireModel("harmonie-eps").planned).toBe(true);
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("ecmwf-ens").mapCapable).toBe(false);

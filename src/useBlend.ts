@@ -17,6 +17,12 @@ import {
   type SpotTide,
   type TideManifest,
 } from "../force5/src/tides";
+import {
+  preferredWaveSource,
+  waveAtAxis,
+  type WaveSource,
+  type WaveStep,
+} from "../force5/src/waves";
 import type { Manifest } from "../force5/src/weather";
 import { axisVectors, meanDirections } from "./chart";
 
@@ -100,6 +106,45 @@ export function useSpotTide(spotId: string | undefined): TideState {
   return state;
 }
 
+export interface SpotWaves {
+  /** The source actually read for this spot, or null when none covers it. */
+  source: WaveSource | null;
+  /** Whether any wave manifest answered at all, however it covers this spot. */
+  published: boolean;
+  /** The nearest native wave step per dock column; null where none is close. */
+  columns: (WaveStep | null)[];
+}
+
+const NO_WAVES: SpotWaves = { source: null, published: false, columns: [] };
+
+/**
+ * Waves for one spot on the dock's own columns. The wave manifests come from
+ * the same availability sweep the blend uses, so no extra request is made, and
+ * the columns hold native forecast steps rather than interpolated sea states.
+ */
+export function useSpotWaves(
+  models: readonly ModelAvailability[],
+  spotId: string | undefined,
+  axis: readonly string[],
+): SpotWaves {
+  const axisKey = axis.length ? `${axis[0]}/${axis.at(-1)}/${axis.length}` : "";
+  const waves = useMemo(
+    () =>
+      models.filter((model) => model.wave !== null).map((model) => model.wave!),
+    [models],
+  );
+  return useMemo(() => {
+    if (!waves.length) return NO_WAVES;
+    const source = preferredWaveSource(waves, spotId);
+    return {
+      source,
+      published: true,
+      columns: source ? waveAtAxis(source.series, axis) : [],
+    };
+    // axisKey stands in for the axis array, which is rebuilt every render.
+  }, [waves, spotId, axisKey]);
+}
+
 export interface Blend {
   /** One line per deterministic model and per ensemble member. */
   lines: BlendInput[];
@@ -134,10 +179,8 @@ export function useBlend(
   const manifests = useMemo(
     () =>
       models
-        .filter(
-          (model) => model.manifest !== null && selected.includes(model.id),
-        )
-        .map((model) => model.manifest!),
+        .filter((model) => model.wind !== null && selected.includes(model.id))
+        .map((model) => model.wind!),
     // The sorted selection key is what actually changes the result.
     [models, selectedKey],
   );

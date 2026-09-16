@@ -2,6 +2,7 @@
 // product knows about, including ones whose ingest adapter is still planned, so
 // the dock can list them greyed out instead of hiding future work.
 import { forecastUrl } from "./urls";
+import { validateWaveManifest, type WaveManifest } from "./waves";
 import { validateManifest, type Manifest } from "./weather";
 
 export interface ModelHues {
@@ -153,7 +154,6 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wave",
     hue: { wind: "#1f6f8b", gust: "#cf7d2f" },
     mapCapable: true,
-    planned: true,
   },
   {
     id: "mi-swan",
@@ -163,7 +163,6 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wave",
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
     mapCapable: true,
-    planned: true,
   },
 ];
 
@@ -177,6 +176,8 @@ export function requireModel(id: string): ModelEntry {
 export const liveModels = () => MODEL_CATALOG.filter((m) => !m.planned);
 export const windModels = () =>
   MODEL_CATALOG.filter((m) => m.kind === "wind" && !m.planned);
+export const waveModels = () =>
+  MODEL_CATALOG.filter((m) => m.kind === "wave" && !m.planned);
 export const modelHue = (id: string) =>
   modelEntry(id)?.hue ?? { wind: "#7d8b91", gust: "#b9a06a" };
 
@@ -192,12 +193,22 @@ export class ManifestUnavailableError extends Error {
   }
 }
 
+/**
+ * Either contract. The catalogue entry's `kind` says which one a URL holds, so
+ * the cache is shared and only the validator differs; `loadManifest` and
+ * `loadWaveManifest` are the two typed doors onto it.
+ */
+export type AnyManifest = Manifest | WaveManifest;
+export const isWaveManifest = (
+  manifest: AnyManifest,
+): manifest is WaveManifest => manifest.kind === "wave";
+
 export const MANIFEST_REVALIDATE_MS = 5 * 60 * 1000;
 const cached = new Map<
   string,
-  { url: string; at: number; manifest: Manifest }
+  { url: string; at: number; manifest: AnyManifest }
 >();
-const inflight = new Map<string, Promise<Manifest>>();
+const inflight = new Map<string, Promise<AnyManifest>>();
 
 /** Reject as soon as the caller aborts without cancelling a shared request. */
 function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
@@ -215,7 +226,7 @@ function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
 async function fetchManifest(
   entry: ModelEntry,
   url: string,
-): Promise<Manifest> {
+): Promise<AnyManifest> {
   const response = await fetch(url, {
     cache: "no-cache",
     signal: AbortSignal.timeout(20000),
@@ -226,7 +237,13 @@ async function fetchManifest(
       response.status,
       `${entry.name} forecast is unavailable. Your previous model is still shown.`,
     );
-  const manifest = validateManifest(await response.json());
+  const body = await response.json();
+  // The registry, not the file, decides which contract to hold it to: a wind
+  // URL that suddenly answers with a wave bundle is a fault, not a conversion.
+  const manifest =
+    entry.kind === "wave"
+      ? validateWaveManifest(body as WaveManifest)
+      : validateManifest(body);
   if (manifest.model !== entry.id)
     throw new Error("The forecast source does not match the requested model.");
   cached.set(entry.id, { url, at: Date.now(), manifest });
@@ -234,14 +251,15 @@ async function fetchManifest(
 }
 
 /**
- * Validated manifest for one model, deduped while in flight and cached per id
- * against its URL; a cache entry older than five minutes is refetched.
+ * Validated manifest for one model, whichever contract it follows, deduped
+ * while in flight and cached per id against its URL; a cache entry older than
+ * five minutes is refetched.
  */
-export function loadManifest(
+export function loadAnyManifest(
   id: string,
   signal?: AbortSignal,
   now = Date.now(),
-): Promise<Manifest> {
+): Promise<AnyManifest> {
   const entry = requireModel(id);
   const url = forecastUrl(entry.manifestUrl);
   const hit = cached.get(id);
@@ -254,6 +272,38 @@ export function loadManifest(
   return abortable(shared, signal);
 }
 
+/**
+ * The wind manifest for one model. Asking a wave model for one is a programming
+ * error, not a data error, so it rejects rather than widening every wind call
+ * site's type.
+ */
+export async function loadManifest(
+  id: string,
+  signal?: AbortSignal,
+  now = Date.now(),
+): Promise<Manifest> {
+  const manifest = await loadAnyManifest(id, signal, now);
+  if (isWaveManifest(manifest))
+    throw new Error(
+      `${requireModel(id).name} is a wave model, not a wind model.`,
+    );
+  return manifest;
+}
+
+/** The wave manifest for one model, through the same cache. */
+export async function loadWaveManifest(
+  id: string,
+  signal?: AbortSignal,
+  now = Date.now(),
+): Promise<WaveManifest> {
+  const manifest = await loadAnyManifest(id, signal, now);
+  if (!isWaveManifest(manifest))
+    throw new Error(
+      `${requireModel(id).name} is a wind model, not a wave model.`,
+    );
+  return manifest;
+}
+
 export function clearManifestCache(id?: string): void {
   if (id === undefined) cached.clear();
   else cached.delete(id);
@@ -262,13 +312,20 @@ export function clearManifestCache(id?: string): void {
 export interface ModelAvailability {
   id: string;
   entry: ModelEntry;
-  manifest: Manifest | null;
+  manifest: AnyManifest | null;
+  /** The same manifest narrowed by contract, so callers need no cast. */
+  wind: Manifest | null;
+  wave: WaveManifest | null;
   available: boolean;
   /** Why it is unavailable, for a tooltip; never thrown at the caller. */
   error: string | null;
 }
 
-/** Try every non-planned manifest at once. A missing model is not an error. */
+/**
+ * Try every non-planned manifest at once, wind and wave alike. A missing model
+ * is not an error: `mi-swan.json` is git-ignored, so a fresh checkout simply
+ * has one wave source instead of two.
+ */
 export function availableModels(
   signal?: AbortSignal,
   models: readonly ModelEntry[] = liveModels(),
@@ -276,11 +333,14 @@ export function availableModels(
   return Promise.all(
     models.map(async (entry): Promise<ModelAvailability> => {
       try {
-        const manifest = await loadManifest(entry.id, signal);
+        const manifest = await loadAnyManifest(entry.id, signal);
+        const wave = isWaveManifest(manifest);
         return {
           id: entry.id,
           entry,
           manifest,
+          wind: wave ? null : manifest,
+          wave: wave ? manifest : null,
           available: true,
           error: null,
         };
@@ -289,6 +349,8 @@ export function availableModels(
           id: entry.id,
           entry,
           manifest: null,
+          wind: null,
+          wave: null,
           available: false,
           error: error instanceof Error ? error.message : String(error),
         };
