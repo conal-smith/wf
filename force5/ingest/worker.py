@@ -12,7 +12,8 @@ import time
 
 from publish_s3 import publish, validate_bundle
 
-SCRIPTS = {"harmonie": "fetch_harmonie.py", "icon-eu": "fetch_forecast.py", "ecmwf": "fetch_ecmwf.py"}
+SCRIPTS = {"harmonie": "fetch_harmonie.py", "icon-eu": "fetch_forecast.py", "ecmwf": "fetch_ecmwf.py",
+           "ecmwf-ens": "fetch_ecmwf_ens.py"}
 
 
 @contextmanager
@@ -28,7 +29,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", nargs="+", choices=list(SCRIPTS), default=["harmonie"])
     parser.add_argument("--step", type=int, choices=[1, 3], default=1,
-                        help="HARMONIE/ICON cadence; ECMWF always uses native 3/6-hour steps")
+                        help="HARMONIE/ICON cadence; the ECMWF products keep their own source steps")
     parser.add_argument("--run", help="Optional available run; normally discover automatically")
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
                         default=os.environ.get("ECMWF_SOURCE", "aws"), help="Official ECMWF public mirror")
@@ -62,14 +63,14 @@ def run_models(args, root, s3):
         try:
             if not args.publish_only:
                 command = [sys.executable, str(Path(__file__).with_name(SCRIPTS[model]))]
-                if model != "ecmwf":
+                if not model.startswith("ecmwf"):
                     command += ["--step", str(args.step)]
                 else:
                     command += ["--source", args.ecmwf_source]
                 if args.run:
                     command += ["--run", args.run]
                 subprocess.run(command, check=True, timeout=args.timeout_seconds)
-            max_age = args.max_age_hours if args.max_age_hours is not None else (24 if model == "ecmwf" else 12)
+            max_age = args.max_age_hours if args.max_age_hours is not None else (24 if model.startswith("ecmwf") else 12)
             manifest, _, _ = validate_bundle(root / "public", model, max_age)
             status = publish(s3, root / "public", model, args.bucket, args.prefix, max_age) if s3 else "local-only"
             print(json.dumps({"event": "forecast_complete", "model": model, "run": manifest["run"],
