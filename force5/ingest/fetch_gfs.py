@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 
 import eccodes as ec
 
-from fetch_forecast import BBOX, ROOT, SPOTS_FILE, decode_handle, sample, write_json
+from fetch_forecast import BBOX, ROOT, decode_handle, load_spots, sample, spots_file, write_json
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
 BUCKET = "https://noaa-gfs-bdp-pds.s3.amazonaws.com"
@@ -221,30 +221,6 @@ def run_datetime(run):
     return value
 
 
-def load_spots():
-    """Spot catalogue: the env override, else riding locations beside it, else spots."""
-    preferred = SPOTS_FILE.parent / "riding-locations.json"
-    if not os.environ.get("FORCE5_SPOTS_FILE") and preferred.exists():
-        try:
-            return preferred, usable_spots(json.loads(preferred.read_text()))
-        except Exception as error:
-            # A partly written or reshaped catalogue must not fail the forecast.
-            print(f"Ignoring {preferred.name}: {error}", file=sys.stderr)
-    return SPOTS_FILE, usable_spots(json.loads(SPOTS_FILE.read_text()))
-
-
-def usable_spots(value):
-    spots = value.get("locations", value) if isinstance(value, dict) else value
-    if not isinstance(spots, list) or not spots:
-        raise ValueError("Expected a non-empty list of spots")
-    chosen = [spot for spot in spots if isinstance(spot, dict) and isinstance(spot.get("id"), str)
-              and spot["id"] and all(isinstance(spot.get(key), (int, float))
-                                     and not isinstance(spot.get(key), bool) for key in ("lat", "lon"))]
-    if len(chosen) != len(spots) or len({spot["id"] for spot in chosen}) != len(chosen):
-        raise ValueError("Spots need a unique id and numeric lat/lon")
-    return chosen
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--hours", type=int, help=f"3–{MAX_HOURS}, divisible by --step; "
@@ -294,8 +270,8 @@ def main():
         decoded = dict(pool.map(fetch, hours))
     output = ROOT / "public" / "weather"
     prefix = f"gfs-{run}-{args.hours}h-v1"
-    spots_file, spots = load_spots()
-    print(f"Sampling {len(spots)} spots from {spots_file}", flush=True)
+    spots = load_spots()
+    print(f"Sampling {len(spots)} spots from {spots_file()}", flush=True)
     spot_forecasts = {spot["id"]: [] for spot in spots}
     signature, grid = decoded[0][1][0], decoded[0][1][2]
     frames = []
