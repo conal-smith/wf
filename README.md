@@ -22,7 +22,7 @@ Features:
 - HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
-- Edge-to-edge, bottom-flush forecast grid open on arrival: day-grouped time columns and aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
+- Edge-to-edge, bottom-flush forecast grid open on arrival: day-grouped time columns and aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts are now published as hourly maxima; a run whose source lacks gust components still renders `—` with an explanation.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
 - Small standalone Force5 branding; coastline outlines and a soft shadow above the wind layer add depth to the land.
@@ -106,28 +106,39 @@ requests. No account is needed for this near-real-time endpoint. Archive access 
 separate and is not used. Complete 60-hour output may not be present yet while a
 run is publishing; failure preserves both published models.
 
-ecCodes validates the 10 m parameters, control member 0, provider, units, run/valid
-times, missing values and native Lambert geometry. The importer checks projection
-coordinates against ecCodes latitude/longitude coordinates, rotates native
-grid-relative vectors to true east/north, and then bilinearly resamples them.
+ecCodes validates the 10 m wind and gust parameters, control member 0, provider,
+units, run/valid times, the gust maximum's statistical window, missing values and
+native Lambert geometry. The importer checks projection coordinates against ecCodes
+latitude/longitude coordinates, rotates native grid-relative wind vectors to true
+east/north, and then bilinearly resamples them.
 The rotation is independently tested against geodesic bearings. Display grid:
 233 × 236, 0.025° longitude × 0.02° latitude, 10.9°W–5.1°W / 51°N–55.7°N.
 This is an **Ireland crop**, not full model coverage; areas beyond it deliberately
 have no HARMONIE wind overlay and are not silently filled with ICON-EU.
 
 Source ZIPs are checked for their expected entry name and CRC. Only validated
-GRIB messages for U/V are retained in `.cache/harmonie`. Immutable output frames
-and spot series are published before atomically replacing `weather/harmonie.json`.
-The manifest records source filenames, extracted-wind SHA-256 hashes, processing
-notes and attribution. The bundled run is 13 September 2026 at 13 UTC, through
-16 September at 01 UTC: 21 frames, approximately 11 MB total.
+GRIB messages for the 10 m wind and gust components are retained in
+`.cache/harmonie`. Immutable output frames and spot series are published before
+atomically replacing `weather/harmonie.json`. The manifest records source
+filenames, extracted-field SHA-256 hashes, processing notes and attribution.
+The bundled run is 13 September 2026 at 13 UTC, through 16 September at 01 UTC:
+21 frames, approximately 11 MB total, and predates gust support, so it still
+declares `gustAvailable: false`. A fresh 60-hour run with gusts is about 17 MB,
+which is deliberately not committed; regenerate it locally to see gust values.
 
-**HARMONIE gusts are intentionally unavailable.** This subset supplies signed gust
-components (GRIB2 parameters 23/24 with maximum statistics), not scalar gust speed
-(parameter 22). Their combination has not been validated, so the importer does
-not manufacture a speed or substitute ICON-EU gusts. The UI shows `—` with an
-explanation. Confirm gust-component semantics or add a validated scalar source
-before enabling HARMONIE gusts.
+**HARMONIE gusts are hourly maxima taken from the control's own gust components.**
+The Ireland subset publishes the time-maximum gust as the signed component pair
+`max_10efg` / `max_10nfg` (GRIB2 parameters 23/24), not as the scalar
+`max_i10fg` (parameter 22). Met Éireann's full-domain `CONTROL_grib2_ie`
+export carries all three together, and there the components' magnitude reproduces
+the scalar to within GRIB packing precision across the whole 1909 × 1609 grid,
+so the magnitude is the provider's gust rather than a derived estimate. See
+[gust data notes](docs/GUST_DATA.md) for the measured agreement. Each value is the
+maximum over the one hour ending at the forecast time, read from
+`lengthOfTimeRange` / `indicatorOfUnitForTimeRange`, never assumed. Initialization
+(+0h) has a zero-length window and is published as unavailable, not zero. If any
+later step lacks both components the whole run publishes wind-only with
+`gustAvailable: false`; ICON-EU gusts are never substituted.
 
 ## Verify / build
 
@@ -151,7 +162,7 @@ Serve `dist/` through any static web host after building. No secrets or account 
 
 ```text
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
-force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
+force5/ingest/fetch_harmonie.py Met Éireann control download, gusts, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
 public/spots.json           Original eight precomputed forecast locations
 data/locations/             Sourced location records and spreadsheet export
@@ -168,7 +179,7 @@ src/ForecastSheet.tsx      Bottom forecast table for named and arbitrary points
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
 ```
 
-All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication.
+All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF and HARMONIE declare `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. An empty `gustMissingHours` is never written — a run without gusts omits the key and sets `gustAvailable: false`. HARMONIE's gust frames use a `60h-v2` style prefix so wind-only files from older runs keep their own immutable URLs.
 
 Both the browser and importer use bilinear interpolation. Direction is the meteorological bearing **from** which the wind blows; arrows/particles move **towards** the opposite bearing. Calm wind has no meaningful direction. The particle advection speed is a visual scale, not a real-time speed measurement.
 
@@ -197,4 +208,4 @@ showing values progressively and offering retry on failure. This can transfer th
 whole ~22 MB snapshot; a production point-series endpoint is a future bandwidth
 optimisation. The original eight spots use the small precomputed manifest series; additional directory locations sample the frame grids like arbitrary map points.
 
-Deploy the prepared container worker and S3 publisher using the live runbook, then monitor run age/download failures for all three models. Local locking and conditional S3 pointer writes are implemented; production scheduling, monitoring and safe retention still need configuring. Preserve older files long enough for open browser sessions. Validate HARMONIE gust semantics before enabling them, and consider ensemble uncertainty. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.
+Deploy the prepared container worker and S3 publisher using the live runbook, then monitor run age/download failures for all three models. Local locking and conditional S3 pointer writes are implemented; production scheduling, monitoring and safe retention still need configuring. Preserve older files long enough for open browser sessions. Consider ensemble uncertainty. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.

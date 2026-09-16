@@ -5,6 +5,10 @@ const manifest = JSON.parse(readFileSync("public/weather/latest.json", "utf8"));
 const harmonie = JSON.parse(
   readFileSync("public/weather/harmonie.json", "utf8"),
 );
+// A bundled HARMONIE run may or may not carry gusts, depending on when it was
+// captured. Both states are valid; assert against the snapshot that is present.
+const harmonieGusts = harmonie.gustAvailable !== false;
+const knots = (value: number) => String(Math.round(value * 1.94384449));
 
 test("map-first default has compact branding, collapsed search and a bottom-flush dock", async ({
   page,
@@ -247,7 +251,12 @@ test("switches real models, uses their own times and values, and clamps the shor
   await expect(page.locator(".forecast-table .wind-cell")).toHaveCount(21);
   await expect(
     page.locator(".forecast-table tbody tr").nth(1).locator("td"),
-  ).toHaveText(Array(21).fill("—"));
+  ).toHaveText(
+    harmonie.spotForecasts.brandon.map(
+      (s: { hour: number; gust: number | null }) =>
+        s.hour === 0 || s.gust == null ? "—" : knots(s.gust),
+    ),
+  );
   await page.locator(".model-info").click();
   await expect(page.locator("dialog")).toContainText(
     "HARMONIE-AROME DINI control",
@@ -382,9 +391,24 @@ test("mobile HARMONIE picker and sheet remain within the viewport", async ({
   await page.locator(".spot-row").filter({ hasText: "Dollymount" }).click();
   await expect(page.getByRole("table", { name: /Dollymount/ })).toBeVisible();
   await expect(page.locator(".sheet-heading")).toHaveCount(0);
-  await expect(page.locator(".forecast-table caption")).toContainText(
-    "Gust speed unavailable",
-  );
+  if (harmonieGusts) {
+    await expect(page.locator(".forecast-table caption")).not.toContainText(
+      "Gust speed unavailable",
+    );
+    await expect(page.locator(".gust-cell").nth(1)).toHaveAttribute(
+      "title",
+      /Maximum gust over 1 hour:/,
+    );
+    await expect(page.locator(".gust-cell").first()).toHaveText("—");
+  } else {
+    await expect(page.locator(".forecast-table caption")).toContainText(
+      "Gust speed unavailable for this HARMONIE run",
+    );
+    await expect(page.locator(".gust-cell").nth(1)).toHaveAttribute(
+      "title",
+      /Gusts unavailable for this HARMONIE run/,
+    );
+  }
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

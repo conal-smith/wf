@@ -224,7 +224,7 @@ export default function ForecastSheet({
               {point.name}: {manifest.stepRanges ? "3/6" : manifest.stepHours}
               -hour wind forecast, in {units}. Times are local to Ireland.
               {manifest.gustAvailable === false &&
-                ` Gust speed unavailable for this ${manifest.modelName} integration.`}
+                ` Gust speed unavailable for this ${manifest.modelName} run.`}
             </caption>
             <thead>
               <tr className="forecast-day-groups">
@@ -288,7 +288,7 @@ export default function ForecastSheet({
                   aria-label={`Wind gusts (${units})`}
                   title={
                     manifest.gustAvailable === false
-                      ? `Wind gusts (${units}) — unavailable for this ${manifest.modelName} integration`
+                      ? `Wind gusts (${units}) — unavailable for this ${manifest.modelName} run`
                       : `Wind gusts (${units})`
                   }
                 >
@@ -304,7 +304,7 @@ export default function ForecastSheet({
                         ? "No preceding forecast gust period at initialization"
                         : f.gustIntervalHours
                           ? `Maximum gust over ${f.gustIntervalHours[1] - f.gustIntervalHours[0]} hour${f.gustIntervalHours[1] - f.gustIntervalHours[0] === 1 ? "" : "s"}: ${dayLabel(new Date(Date.parse(manifest.runTime) + f.gustIntervalHours[0] * 3600000).toISOString())} ${timeLabel(new Date(Date.parse(manifest.runTime) + f.gustIntervalHours[0] * 3600000).toISOString())} to ${dayLabel(f.validTime)} ${timeLabel(f.validTime)} (Irish time)`
-                          : `Gusts unavailable for ${manifest.modelName}`
+                          : `Gusts unavailable for this ${manifest.modelName} run`
                     }
                     style={
                       {
