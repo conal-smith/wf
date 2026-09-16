@@ -1,27 +1,12 @@
-import { loadFrame, nearestFrame, validateManifest } from "./weather";
-import { forecastUrl } from "./urls";
+import { loadFrame, nearestFrame } from "./weather";
+import { loadManifest, requireModel, type ModelEntry } from "./manifests";
 
-export const MODELS = [
-  {
-    id: "harmonie",
-    name: "HARMONIE",
-    detail: "2 km",
-    manifestUrl: "weather/harmonie.json",
-  },
-  {
-    id: "icon-eu",
-    name: "ICON-EU",
-    detail: "6.5 km",
-    manifestUrl: "weather/latest.json",
-  },
-  {
-    id: "ecmwf",
-    name: "ECMWF",
-    detail: "15 days",
-    manifestUrl: "weather/ecmwf.json",
-  },
-] as const;
-export type ModelId = (typeof MODELS)[number]["id"];
+/** Models the map itself can show today; the full registry is MODEL_CATALOG. */
+export const MAP_MODEL_IDS = ["harmonie", "icon-eu", "ecmwf"] as const;
+export type ModelId = (typeof MAP_MODEL_IDS)[number];
+const mapModel = <T extends ModelId>(id: T) => ({ ...requireModel(id), id });
+export const MODELS: readonly (ModelEntry & { id: ModelId })[] =
+  MAP_MODEL_IDS.map(mapModel);
 
 /** Load and validate a complete display transaction before replacing the old model. */
 export async function loadModel(
@@ -29,18 +14,7 @@ export async function loadModel(
   validTime: string,
   signal: AbortSignal,
 ) {
-  const model = MODELS.find((m) => m.id === id)!;
-  const response = await fetch(forecastUrl(model.manifestUrl), {
-    cache: "no-cache",
-    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
-  });
-  if (!response.ok)
-    throw new Error(
-      `${model.name} forecast is unavailable. Your previous model is still shown.`,
-    );
-  const manifest = validateManifest(await response.json());
-  if (manifest.model !== id)
-    throw new Error("The forecast source does not match the requested model.");
+  const manifest = await loadManifest(id, signal);
   const index = nearestFrame(manifest.frames, Date.parse(validTime));
   const frame = await loadFrame(manifest, index);
   signal.throwIfAborted();
