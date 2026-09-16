@@ -75,6 +75,59 @@ about 2.5 MB per step for whole-globe messages. GFS gusts are instantaneous
 surface values, published as `gustKind: "instantaneous"` with `[hour, hour]`
 intervals at every hour.
 
+### GEFS (ensemble)
+
+`--models gefs` runs `fetch_gefs.py`, which imports NOAA's public-domain 0.25°
+Global Ensemble Forecast System and publishes `weather/gefs.json`. It is the second
+ensemble bundle and the first one whose **mean is drawn on the map**
+(`mapCapable: true`, and `gefs` is in `MAP_MODEL_IDS`). Member 0 is the `gec00`
+low-resolution control, so `ensemble.control` is `0` rather than `null`. The worker
+passes nothing model-specific: GEFS has no hourly product, so its registry entry
+sets `workerStep: false` and the worker never forces its 1/3-hour `--step` on it.
+Member count, step and horizon are the importer's own options and default to
+**31 members, 6-hourly to +240h** (41 steps).
+
+Bandwidth is not the constraint here; request count is. Measured on the live 18 UTC
+cycle of 16 September 2026 at `+006h`, the NOMADS 0.25° ensemble filter
+(`filter_gefs_atmos_0p25s.pl`) returns the Ireland subregion for one member-step in
+**14.7–15.6 kB** (5.65 kB UGRD, 5.19 kB VGRD, 4.28 kB GUST), averaging 15.2 kB across
+all 31 members, so a default run transfers about **19.3 MB**. The same three messages
+read from `noaa-gefs-pds` through the `.idx` sidecar are **2.18–2.24 MB** per
+member-step, because the bucket holds whole-globe messages — about 2.84 GB per run,
+148 times the filter. `--source s3` exists only for a NOMADS outage, and each run
+prints its own measured transfer. A default run makes 1,271 filter requests at the
+two connections and minimum pause NOMADS asks for, which dominates its wall time;
+`--step 3` (81 steps) doubles both to 2,511 requests and about 38 MB.
+
+Only the ensemble mean becomes map frames, with the same Ireland crop and frame
+contract as the GFS control, including `gustKind: "instantaneous"` and
+`[hour, hour]` intervals at every hour. Per-spot member series live in the manifest
+(`spotMembers[spotId][step].u/v/gust`, arrays indexed by member with the control at
+index 0), so browsers never fetch member grids. Every member message is validated
+(centre `kwbc`, `perturbationNumber`, `cf`/`pf` type, 30 declared perturbed members,
+a constant grid signature, finite values in range) before anything is published.
+
+Verified against the live 12 UTC run on 16 September 2026: the default settings
+transferred **18.4 MB** over 1,271 member-steps (14.5 kB each), validated 3,813
+member messages, and published 41 ensemble-mean frames (2.38 MB of JSON) plus a
+659 kB manifest for 25 locations × 41 steps × 31 members in **781 seconds** with two
+readers. The 18 UTC cycle was skipped because 12 of its 31 members were still being
+written about 5.5 hours after run time. The two source routes were also verified to
+decode to identical cropped member values. The run wrote only to a scratch work
+directory; no AWS resources were created.
+
+An ensemble manifest is much larger than a deterministic one — 659 kB here against a
+few tens of kilobytes — so serve it with the short-lived pointer cache policy and
+compression, as for ECMWF ENS. A per-spot series endpoint is the next optimisation
+for both.
+
+Schedule GEFS **four times a day at cycle + about 5 hours**. The 0.25° members finish
+4.5–6 hours after run time and not in member order, so the newest cycle is often still
+incomplete at that point and the importer falls back to the previous one, which is
+then about 11 hours old against a 12-hour limit. That is deliberately tight: if a
+slot finds neither cycle complete it publishes nothing and the next slot retries six
+hours later. Widen `maxAgeHours` before moving the slot later.
+
 ### ECMWF ENS (ensemble)
 
 `--models ecmwf-ens` runs `fetch_ecmwf_ens.py`, which imports ECMWF's open-data
@@ -212,6 +265,7 @@ ICON-EU WEATHER: --models icon-eu-weather --bucket YOUR_FORECAST_BUCKET
 ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
+GEFS:     --models gefs --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
@@ -239,6 +293,9 @@ weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
 weather/gfs.json                          current GFS pointer + metadata
 weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
 weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
+weather/gefs.json                         current GEFS ensemble pointer + member series
+weather/gefs-RUN-240h-v1/HOUR-HASH.json     immutable GEFS ensemble-mean frames
+weather/manifests/gefs/RUN-HASH.json       archived complete GEFS manifests
 weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
 weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
 weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
@@ -332,7 +389,7 @@ The current browser fetches the manifest on page load and model changes, then re
 - Send container stdout/stderr to CloudWatch. Alarm on `forecast_failed`, ECS nonzero task exit, unusually long task duration, and age of the **published manifest's runTime**. A scheduler successfully starting an ECS task does not prove that the forecast succeeded.
 - Configure Scheduler delivery retries/DLQ for failures to start the task. Separately monitor ECS task completion and retry failed jobs; Scheduler delivery retries alone do not handle an ingest process exiting unsuccessfully.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
-- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle.
+- Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
 - Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, plus a chosen recovery window. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem and is what the local deployment schedules; an S3 lifecycle rule is not a substitute, because it cannot see which frames the current manifest references.

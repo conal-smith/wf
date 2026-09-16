@@ -339,7 +339,10 @@ def main():
         "spotForecastsDescription": "spotForecasts holds the ensemble MEAN u/v/gust per spot, "
         "sampled from the published mean frames. Per-member values are in spotMembers, indexed "
         "identically for every hour with the control at index 0. A mean is not the most likely "
-        "outcome; use the members for spread and probabilities.",
+        "outcome; use the members for spread and probabilities. It is also a VECTOR mean of u "
+        "and v, so when members disagree on direction its speed is lower than the members' "
+        "median speed, increasingly so with lead time. Derive a speed distribution from "
+        "spotMembers rather than reading the mean as a forecast wind strength.",
         "gustAvailable": True, "gustKind": "instantaneous",
         "gustDescription": "Ensemble-mean instantaneous surface wind gust valid at the forecast "
         "time itself, not a maximum over a preceding period. Every frame therefore declares a "
