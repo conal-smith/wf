@@ -17,7 +17,7 @@ Fields are earth-relative 10 m eastward/northward wind and scalar maximum gust,
 in m/s. Derive speed and direction consistently for the map, spots, table and
 scrubber. Gusts retain their own source maximum periods; these can differ from
 the spacing of the displayed times. Only initialization gusts are unavailable.
-See [gust semantics and validation](GUST_DATA.md), including the HARMONIE limitation.
+See [gust semantics and validation](GUST_DATA.md), including the HARMONIE component-to-scalar verification.
 
 At +168h and beyond, the existing compact status line says “Long-range outlook ·
 less certain”. No invented confidence percentage, fake hourly samples, or claim
@@ -112,7 +112,7 @@ rights to the underlying CC BY weather data.
 - 3h → 6h transition never fabricates a +147h field; keyboard navigation works.
 - Failed or mislabelled ECMWF loads leave the previous model intact.
 - Regional model, mobile, playback and point-selection regressions remain green.
-- Deferred: HARMONIE scalar gust validation, ensemble spread/probabilities, waves, automatic
+- Deferred: ensemble spread/probabilities, waves, automatic
   model blending, global coverage and automatic refresh of already-open pages.
 
 ## Local verification, 13 September 2026
