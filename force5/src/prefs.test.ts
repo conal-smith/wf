@@ -33,11 +33,14 @@ describe("display preferences", () => {
     expect(prefs.units).toBe("kn");
     expect(prefs.rows).toEqual({
       blend: true,
+      waveOverlay: false,
       wind: false,
       spread: true,
       gust: false,
       dir: false,
       waves: true,
+      swell: false,
+      windsea: false,
       sea: true,
       air: true,
       tide: true,

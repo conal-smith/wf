@@ -44,7 +44,12 @@ import {
   valueScale,
   windGradientStops,
 } from "./chart";
-import { useBlend, useModelAvailability, useSpotTide } from "./useBlend";
+import {
+  useBlend,
+  useModelAvailability,
+  useSpotTide,
+  useSpotWaves,
+} from "./useBlend";
 import { usePointSeries } from "./usePointSeries";
 import { candles as candleColumns } from "../force5/src/blend";
 import { dayNights } from "../force5/src/sun";
@@ -66,6 +71,7 @@ import {
   type Point,
 } from "../force5/src/weather";
 import { tideAt } from "../force5/src/tides";
+import type { WaveFieldSet } from "../force5/src/waves";
 
 interface Props {
   manifest: Manifest;
@@ -115,18 +121,73 @@ const TideGlyph = () => (
   </svg>
 );
 
+/** A single long swell line: one wave train that travelled to get here. */
+const SwellGlyph = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2 14c5 0 5-6 10-6s5 6 10 6" />
+  </svg>
+);
+/** Short chop under wind ticks: sea the local wind is raising right now. */
+const WindSeaGlyph = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2 16c1.7 0 1.7-3 3.3-3s1.7 3 3.4 3 1.6-3 3.3-3 1.7 3 3.3 3 1.7-3 3.4-3 1.6 3 3.3 3" />
+    <path d="M4 7h9m3 0h4M4 10.5h5" />
+  </svg>
+);
+
 const ROW_HELP: Record<RowKey, string> = {
   blend:
     "Every selected model on one chart. The band is where the models put the wind; the white line is the middle of them.",
+  waveOverlay:
+    "A faint band along the bottom of the chart for wave height, on its own nought-to-six-metre scale. It shares the chart's time axis, not its value axis.",
   wind: "The middle model at each hour — half the models sit above it, half below.",
   spread:
     "Half the gap between the highest and lowest model at that hour. Small means the models agree.",
   gust: "The strongest gust any selected model shows for that hour.",
   dir: "Where the wind blows from, averaged across the selected models. Arrows on the chart show the same thing.",
-  waves: "Significant wave height — the average of the highest third of waves.",
+  waves:
+    "Significant wave height and peak period; direction is where waves come from.",
+  swell:
+    "The swell part of the sea on its own: waves that were raised elsewhere and travelled here. Heights add in energy, not in metres, so swell and wind sea do not sum to the total.",
+  windsea:
+    "The sea the local wind is raising right now, separately from the swell.",
   sea: "Sea surface temperature at the nearest available source.",
   air: "Air temperature two metres above the ground.",
   tide: "Predicted tide height at the nearest station. Astronomical prediction only: no surge and no wind effect.",
+};
+
+/** The three wave rows, in the order the marine block stacks them. */
+const WAVE_ROWS = ["waves", "swell", "windsea"] as const;
+type WaveRowKey = (typeof WAVE_ROWS)[number];
+const WAVE_ROW_LABEL: Record<WaveRowKey, string> = {
+  waves: "Waves",
+  swell: "Swell",
+  windsea: "Wind sea",
+};
+const WAVE_ROW_GLYPH: Record<WaveRowKey, ReactNode> = {
+  waves: <Waves size={18} aria-hidden="true" />,
+  swell: <SwellGlyph />,
+  windsea: <WindSeaGlyph />,
 };
 
 /** Interpolate between actual timestamp centres, including mixed 3/6-hour columns. */
@@ -209,6 +270,7 @@ export default function ForecastDock({
     [manifest],
   );
   const blend = useBlend(models, prefs.blendModels, point.id, axis);
+  const waves = useSpotWaves(models, point.id, axis);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -351,23 +413,42 @@ export default function ForecastDock({
   const setView = (next: ForecastView) =>
     onPrefsChange({ ...prefs, view: next });
 
-  const waveSources = models.filter(
-    (model) => model.entry.kind === "wave" && model.available,
-  );
   const tideOffer = !named
     ? "named spots only"
     : tide.loading
       ? undefined
       : (tide.error ?? undefined);
+  // A wave source that answered but cannot see this beach is a different thing
+  // from no adapter at all, and the filter says which.
+  const waveOffer = !named
+    ? "named spots only"
+    : !waves.published
+      ? "no source yet"
+      : waves.source
+        ? undefined
+        : "no wave data at this spot";
+  const partitionOffer = (key: "swell" | "windsea") =>
+    waveOffer ??
+    (waves.source?.fields[key]
+      ? undefined
+      : key === "swell"
+        ? "no swell partition here"
+        : "no wind-sea partition here");
   const rowOffers: Record<RowKey, RowOffer> = {
     blend: { label: "Model blend" },
+    waveOverlay: { label: "Wave band on the chart", unavailable: waveOffer },
     wind: { label: "Wind (median)" },
     spread: { label: "Spread" },
     gust: { label: "Gust" },
     dir: { label: "Direction row" },
-    waves: {
-      label: "Waves",
-      unavailable: waveSources.length ? undefined : "no source yet",
+    waves: { label: WAVE_ROW_LABEL.waves, unavailable: waveOffer },
+    swell: {
+      label: WAVE_ROW_LABEL.swell,
+      unavailable: partitionOffer("swell"),
+    },
+    windsea: {
+      label: WAVE_ROW_LABEL.windsea,
+      unavailable: partitionOffer("windsea"),
     },
     sea: { label: "Sea temp", unavailable: "no source yet" },
     air: { label: "Air temp", unavailable: "no source yet" },
@@ -375,10 +456,58 @@ export default function ForecastDock({
   };
 
   const showTide = rows.tide && !tideOffer && !!tide.tide;
-  const marineRows = (["waves", "sea", "air"] as const).filter(
+  const waveRows = WAVE_ROWS.filter(
     (key) => rows[key] && !rowOffers[key].unavailable,
   );
+  const marineRows: RowKey[] = [
+    ...waveRows,
+    ...(["sea", "air"] as const).filter(
+      (key) => rows[key] && !rowOffers[key].unavailable,
+    ),
+  ];
   const showMarine = showTide || marineRows.length > 0;
+  /** The field set each wave row reads, from the source's own variable map. */
+  const waveFieldSet = (key: WaveRowKey): WaveFieldSet | null =>
+    (key === "waves"
+      ? waves.source?.fields.total
+      : waves.source?.fields[key]) ?? null;
+  const waveCell = (key: WaveRowKey, column: number): ReactNode => {
+    const set = waveFieldSet(key);
+    const step = waves.columns[column];
+    const height = set && step ? step.values[set.height] : null;
+    // A null is a sea state the model did not resolve, not a flat calm.
+    if (typeof height !== "number") return "—";
+    const period = set!.period ? step!.values[set!.period] : null;
+    const angle = set!.direction ? step!.values[set!.direction] : null;
+    return (
+      <span className="wave-cell">
+        {typeof angle === "number" && (
+          // Wave direction is the bearing they come from, so the arrow rotated
+          // by that bearing travels the way the waves do — as on the wind rows.
+          <ArrowDown
+            className="wave-arrow"
+            size={13}
+            style={{ transform: `rotate(${angle}deg)` }}
+            aria-hidden="true"
+          />
+        )}
+        <b>{height.toFixed(1)}</b>
+        {typeof period === "number" && <small>{Math.round(period)}s</small>}
+      </span>
+    );
+  };
+  const waveHelp = (key: WaveRowKey) =>
+    [ROW_HELP[key], waves.source?.note].filter(Boolean).join(" ");
+  const waveOverlayValues = useMemo(
+    () =>
+      rows.waveOverlay && waves.source
+        ? waves.columns.map((step) => {
+            const value = step?.values[waves.source!.fields.total.height];
+            return typeof value === "number" ? value : null;
+          })
+        : null,
+    [rows.waveOverlay, waves.source, waves.columns],
+  );
   const tideValues = useMemo(
     () =>
       tide.tide
@@ -647,6 +776,7 @@ export default function ForecastDock({
                                   nights={nights}
                                   units={units}
                                   max={max}
+                                  waves={waveOverlayValues}
                                   reducedMotion={reducedMotion}
                                 />
                               ) : (
@@ -782,29 +912,54 @@ export default function ForecastDock({
                 )}
                 {showMarine && (
                   <tbody className="marine-rows" ref={marine}>
-                    {marineRows.map((key) => (
-                      <tr key={key} className="marine-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={
-                              key === "waves" ? (
-                                <Waves size={18} aria-hidden="true" />
-                              ) : key === "sea" ? (
-                                <Thermometer size={18} aria-hidden="true" />
-                              ) : (
-                                <ThermometerSun size={18} aria-hidden="true" />
-                              )
-                            }
-                            label={rowOffers[key].label}
-                            help={ROW_HELP[key]}
-                          />
-                        </th>
-                        {frames.map((frame) => (
-                          <td key={frame.hour}>—</td>
-                        ))}
-                      </tr>
-                    ))}
-                    {showTide && marineRows.length === 0 && (
+                    {marineRows.map((key) => {
+                      const wave = (WAVE_ROWS as readonly RowKey[]).includes(
+                        key,
+                      )
+                        ? (key as WaveRowKey)
+                        : null;
+                      return (
+                        <tr
+                          key={key}
+                          className={`marine-row${wave ? " wave-row" : ""}`}
+                          data-row={key}
+                        >
+                          <th scope="row">
+                            <RowLabel
+                              glyph={
+                                wave ? (
+                                  WAVE_ROW_GLYPH[wave]
+                                ) : key === "sea" ? (
+                                  <Thermometer size={18} aria-hidden="true" />
+                                ) : (
+                                  <ThermometerSun
+                                    size={18}
+                                    aria-hidden="true"
+                                  />
+                                )
+                              }
+                              label={rowOffers[key].label}
+                              help={wave ? waveHelp(wave) : ROW_HELP[key]}
+                              unit={wave ? "m" : undefined}
+                            />
+                          </th>
+                          {frames.map((frame, column) => (
+                            <td
+                              key={frame.hour}
+                              className={
+                                index === column ? "selected-hour" : ""
+                              }
+                            >
+                              {wave ? waveCell(wave, column) : "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                    {/* The tide keeps its own row even under the wave rows: the
+                        underlay is a picture, and this is where the heights are
+                        actually readable. */}
+                    {showTide && (
                       <tr className="marine-row tide-row">
                         <th scope="row">
                           <RowLabel
@@ -869,6 +1024,13 @@ export default function ForecastDock({
               ? blend.manifests.map((entry) => entry.modelName)
               : [manifest.modelName]
             ).join(", ")}
+            {waves.source && (
+              <>
+                {" · "}
+                {waves.source.manifest.modelName} waves,{" "}
+                {waves.source.manifest.provider}
+              </>
+            )}
             {tide.tide && (
               <>
                 {" · "}
