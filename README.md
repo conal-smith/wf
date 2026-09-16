@@ -230,7 +230,8 @@ spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
   member in `spotMembers`; member arrays must all have length `members`, with finite
   values, |u| and |v| at most 150 m/s and gusts at or above zero. `frames` may be
   empty **only** when `ensemble` is present, for models shown on the chart but not
-  the map.
+  the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
+  chart-only model needs that frontend check relaxed first.
 - **wave** bundles declare `variables` and carry one numeric array per variable in
   each frame, `null` for land or unresolved cells, never zero, plus `spotSeries`.
   No wave adapter exists yet; the validator and its fake-bundle tests do.
