@@ -382,6 +382,24 @@ class ENSTests(unittest.TestCase):
                     publish(s3, self.root, "ecmwf-ens", "test", max_age_hours=24, now=now)
                 self.assertEqual(s3.writes, [])
 
+    def test_a_smaller_ensemble_cannot_replace_a_larger_published_one(self):
+        manifest, now = self.bundle()
+        self.write_bundle(manifest)
+        s3 = FakeS3()
+        self.assertEqual(publish(s3, self.root, "ecmwf-ens", "test", max_age_hours=24, now=now),
+                         "published")
+        smaller = json.loads(json.dumps(manifest))
+        smaller["ensemble"]["members"] = 2
+        for entries in smaller["spotMembers"].values():
+            for entry in entries:
+                for field in ("u", "v", "gust"):
+                    entry[field] = entry[field][:2]
+        self.write_bundle(smaller)
+        writes = len(s3.writes)
+        self.assertEqual(publish(s3, self.root, "ecmwf-ens", "test", max_age_hours=24, now=now),
+                         "unchanged-or-newer")
+        self.assertEqual(len(s3.writes), writes)
+
     def test_non_ensemble_manifests_skip_the_ensemble_checks(self):
         manifest, _ = self.bundle()
         plain = {k: v for k, v in manifest.items() if k not in ("ensemble", "spotMembers")}

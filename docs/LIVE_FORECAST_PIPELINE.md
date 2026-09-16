@@ -78,11 +78,18 @@ Bandwidth is the operational constraint, not CPU. Measured on 16 September 2026
 from the real 0.25° `enfo` index: **0.84 MB** per `10u` member-message, **0.83 MB**
 per `10v`, **1.39 MB** per `10fg`, plus a **2.0 MB** index per step — about
 3.07 MB per member per step. The default run therefore downloads about **1.95 GB**;
-all 50 members to +240h would be **6.35 GB** per run. Measured transfer on the
-ECMWF mirror was roughly 5–8 MB/s with one or two concurrent readers, so a default
-run moves its ~2 GB in a few minutes. Each run prints its own measured transfer.
-Egress-priced environments should count 2 GB × 2 runs per day, plus per-step index
-overhead that shrinks when fewer, larger steps are requested.
+all 50 members to +240h would be **6.35 GB** per run. Each run prints its own
+measured transfer. Egress-priced environments should count 2 GB × 2 runs per day,
+plus the per-step index overhead, which shrinks when fewer, larger steps are asked
+for.
+
+Verified against the live 12 UTC run on 16 September 2026: the default settings
+transferred **1.954 GB** (1.904 GB of member GRIB plus 50 MB of step indexes) and
+completed download, validation of all 1,850 member messages, publication of 25
+ensemble-mean frames (1.44 MB of JSON, 39–61 kB each) and bundle validation in
+**172 seconds** with two readers against `--source ecmwf`. Source gust maxima were
+1-hour intervals through +90h and 3-hour intervals from +96h, recorded per frame.
+The run wrote only to a scratch work directory; no AWS resources were created.
 
 Schedule ENS **twice daily** against the 00 and 12 UTC cycles (hourly discovery
 checks are fine: the importer refuses a run older than 24 hours and publishes only
@@ -132,9 +139,9 @@ weather/manifests/ecmwf-ens/RUN-HASH.json  archived complete ENS manifests
 
 The ENS prefix records the horizon and member count, so changing either publishes
 a new immutable frame set instead of colliding with the previous one. The ENS
-manifest is larger than the others because it carries every member: about 16 KB
-for 8 spots × 5 steps × 6 members, so roughly 1 MB for 25 spots × 25 steps ×
-25 members. It is served with the short-lived pointer cache policy and benefits
+manifest is larger than the others because it carries every member: a measured
+114 kB for 8 spots × 25 steps × 25 members, so roughly 350 kB for a 25-location
+catalogue. It is served with the short-lived pointer cache policy and benefits
 from compression; a per-spot series endpoint would be the next optimisation.
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.

@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 
 import eccodes as ec
 
@@ -43,11 +44,18 @@ class MeteredSession(ForecastSession):
     """
     index_bytes = 0
     grib_bytes = 0
+    lock = threading.Lock()
+
+    @classmethod
+    def count(cls, index=0, grib=0):
+        with cls.lock:
+            cls.index_bytes += index
+            cls.grib_bytes += grib
 
     def request(self, *args, **kwargs):
         response = super().request(*args, **kwargs)
         if response.status_code == 200 and str(response.url).endswith(".index"):
-            MeteredSession.index_bytes += int(response.headers.get("Content-Length") or 0)
+            MeteredSession.count(index=int(response.headers.get("Content-Length") or 0))
         return response
 
 
@@ -135,7 +143,7 @@ def fetch(cache, source, run, hour, members, refresh=False):
         if stream.read(4) != b"GRIB":
             raise ValueError(f"Not a GRIB response for +{hour:03d}h")
     os.replace(temporary, path)
-    MeteredSession.grib_bytes += path.stat().st_size
+    MeteredSession.count(grib=path.stat().st_size)
     return path
 
 
