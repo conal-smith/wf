@@ -154,6 +154,8 @@ def validate_ensemble(manifest, ensemble, run):
     series, means = manifest.get("spotMembers"), manifest.get("spotForecasts")
     if not isinstance(series, dict) or not series or not isinstance(means, dict):
         raise ValueError("Ensemble manifests need spotMembers and mean spotForecasts")
+    missing_gust_hours = manifest.get("gustMissingHours", [])
+    gust_available = manifest.get("gustAvailable") is not False
     last = None
     for spot, steps in series.items():
         mean = means.get(spot)
@@ -167,12 +169,17 @@ def validate_ensemble(manifest, ensemble, run):
             if step.get("validTime") != valid_time(run, hour):
                 raise ValueError(f"Member valid time does not match the run for {spot}")
             previous = hour
+            gust_missing = not gust_available or hour in missing_gust_hours
             for field in ("u", "v", "gust"):
                 values = step.get(field)
                 if not isinstance(values, list) or len(values) != members:
                     raise ValueError(f"Expected {members} {field} members for {spot}")
-                if not all((field == "gust" and value is None)
-                           or number(value, 150, 0 if field == "gust" else None) for value in values):
+                if field == "gust" and gust_missing:
+                    # Members may not carry a gust where the mean declares none.
+                    if any(value is not None for value in values):
+                        raise ValueError(f"Unexpected gust members for {spot} at +{hour}h")
+                    continue
+                if not all(number(value, 150, 0 if field == "gust" else None) for value in values):
                     raise ValueError(f"Invalid {field} member value for {spot}")
         horizon = datetime.fromisoformat(steps[-1]["validTime"].replace("Z", "+00:00"))
         last = horizon if last is None else min(last, horizon)
@@ -344,6 +351,9 @@ def already_current(current, incoming):
             return True  # An older wind-only worker must not remove published gusts.
         # A slower/coarser job must not downgrade an hourly run.
         if current.get("stepHours", 0) < incoming.get("stepHours", 0):
+            return True
+        # A diagnostic run with fewer members must not replace a fuller ensemble.
+        if (current.get("ensemble") or {}).get("members", 0) > (incoming.get("ensemble") or {}).get("members", 0):
             return True
         return {k: v for k, v in current.items() if k != "generatedAt"} == {
             k: v for k, v in incoming.items() if k != "generatedAt"}

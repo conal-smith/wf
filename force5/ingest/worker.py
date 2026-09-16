@@ -62,7 +62,7 @@ def run_models(args, root, s3):
         try:
             if not args.publish_only:
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
-                if model == "ecmwf":
+                if model in ("ecmwf", "ecmwf-ens"):
                     command += ["--source", args.ecmwf_source]
                 elif MODELS[model]["kind"] == "wind":
                     command += ["--step", str(args.step)]
