@@ -70,11 +70,13 @@ def describe(public, model, now, override=None):
 
 
 def render(rows):
-    lines = [f"{'model':<10} {'kind':<5} {'state':<11} {'run':<11} {'age':>8} "
+    # Wide enough for the longest model id in the report, so columns stay aligned.
+    width = max((len(row["model"]) for row in rows), default=5) + 1
+    lines = [f"{'model':<{width}} {'kind':<5} {'state':<11} {'run':<11} {'age':>8} "
              f"{'objects':>8} {'missing':>8}  coverage ends"]
     for row in rows:
         age = f"{row['ageHours']:.1f} h" if "ageHours" in row else "-"
-        lines.append(f"{row['model']:<10} {row['kind']:<5} {row['state']:<11} "
+        lines.append(f"{row['model']:<{width}} {row['kind']:<5} {row['state']:<11} "
                      f"{row.get('run', '-'):<11} {age:>8} {row.get('objects', '-'):>8} "
                      f"{row.get('missing', '-'):>8}  {row.get('coverageEnds', '-')}")
     return "\n".join(lines)

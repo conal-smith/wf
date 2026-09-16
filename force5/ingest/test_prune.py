@@ -127,12 +127,12 @@ class PrunePublishedTest(unittest.TestCase):
                          "2026091600-abc.json").is_file())
 
     def test_keeps_a_manifest_for_a_model_the_registry_lacks(self):
-        self.tree.pointer("weather/harmonie-eps.json",
-                          wind_manifest("harmonie-eps", "2026091600", "harmonie-eps-live"))
-        self.tree.age(self.public("weather") / "harmonie-eps.json", 400)
+        self.tree.pointer("weather/nws-wave.json",
+                          wind_manifest("nws-wave", "2026091600", "nws-wave-live"))
+        self.tree.age(self.public("weather") / "nws-wave.json", 400)
         result = self.prune()
-        self.assertNotIn("weather/harmonie-eps.json", result["removed"])
-        self.assertIn({"path": "weather/harmonie-eps.json", "reason": "manifest"},
+        self.assertNotIn("weather/nws-wave.json", result["removed"])
+        self.assertIn({"path": "weather/nws-wave.json", "reason": "manifest"},
                       result["kept"])
 
     def test_reasons_explain_every_kept_object(self):

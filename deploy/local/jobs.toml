@@ -35,6 +35,12 @@ minutes = [20]              # Hourly check; the importer picks the newest full r
 timeout_seconds = 3300
 
 [[jobs]]
+id = "harmonie-eps"
+models = ["harmonie-eps"]
+minutes = [50]              # Lagged control members; one new hourly cycle each hour.
+timeout_seconds = 3300
+
+[[jobs]]
 id = "ecmwf-ens"
 models = ["ecmwf-ens"]
 minutes = [35]              # Hourly check for the newest complete 00/12 ENS run.
@@ -47,6 +53,13 @@ args = ["--step", "3"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag.
 minutes = [0]
 timeout_seconds = 2400
+
+[[jobs]]
+id = "mi-swan"
+models = ["mi-swan"]
+hours = [10, 14, 18]        # One SWAN run a day, published around 09 UTC, sometimes late.
+minutes = [15]
+timeout_seconds = 1800
 
 [[jobs]]
 id = "tides"
