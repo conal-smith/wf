@@ -29,6 +29,13 @@ minutes = [30]
 timeout_seconds = 3300
 
 [[jobs]]
+id = "icon-eu-weather"
+models = ["icon-eu-weather"]
+hours = [3, 9, 15, 21]      # The same four ICON-EU cycles, after the wind job's slot.
+minutes = [40]
+timeout_seconds = 3300
+
+[[jobs]]
 id = "ecmwf"
 models = ["ecmwf"]
 minutes = [20]              # Hourly check; the importer picks the newest full run.
