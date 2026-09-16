@@ -127,10 +127,14 @@ Met Éireann publishes no wave data. Met Office DataHub has no wave product.
    atomic manifest. Register in `worker.py` `SCRIPTS` and `publish_s3.py` `MANIFESTS`.
 5. **Shared helpers**: `.idx`/`.index` byte-range fetch (NOAA and ECMWF), NOMADS
    grib-filter client with rate limiting, NetCDF reader for Met Office S3.
-6. **Local deployment**: `docker-compose.yml` with the worker image, a scheduler
-   container (cron or `ofelia`) running per-model cadences, a named volume for
-   `/data`, and a static file server (nginx or Caddy) serving `public/weather` plus the
-   built site on the LAN/mesh. Retention job that protects current manifests.
+6. **Local deployment** — **built**, see [`deploy/local/README.md`](../deploy/local/README.md):
+   a Compose stack with the worker image, a `force5/ingest/scheduler.py` sidecar running
+   per-model cadences from an editable `deploy/local/jobs.toml`, a named volume for
+   `/data`, and Caddy serving `/weather/*` and `/marine/*` from that volume beside the
+   built site on one origin. `force5/ingest/prune.py` is the retention job and protects
+   current manifests; `force5/ingest/status.py` reports run ages. A new adapter needs a
+   `[[jobs]]` entry; an id with no importer is rejected on its own without disturbing the
+   other jobs, and new tide/wave output should publish under `marine/`.
 7. **Dependencies**: `requests`, `boto3` (unsigned), `netCDF4`/`xarray` for NetCDF
    sources, `copernicusmarine` only if CMEMS is adopted. Pin ecCodes with libaec.
 
@@ -163,7 +167,7 @@ Met Éireann publishes no wave data. Met Office DataHub has no wave product.
 ## Phases
 
 1. **Foundations** (ingest): manifest v2, all-spot series, shared byte-range helper,
-   Docker Compose + scheduler. Tides adapter and sun times (cheap, high value).
+   Docker Compose + scheduler (done). Tides adapter and sun times (cheap, high value).
 2. **Wind breadth**: HARMONIE EPS members, ECMWF ENS, GFS. This alone gives 80+
    members for the cone.
 3. **Frontend uncertainty views**: common axis, ribbon, candles, hover card, night
