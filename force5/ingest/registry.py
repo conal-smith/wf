@@ -22,8 +22,9 @@ MODELS = {
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12},
     # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.
+    # The newest GEFS cycle is often still publishing at its slot; accept the previous one.
     "gefs": {"script": "fetch_gefs.py", "manifest": "weather/gefs.json",
-             "kind": "wind", "maxAgeHours": 12, "workerStep": False},
+             "kind": "wind", "maxAgeHours": 18, "workerStep": False},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
                      "kind": "wind", "maxAgeHours": 12},
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",

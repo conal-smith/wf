@@ -254,11 +254,10 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(series[1]["gust"], [11, 12, 13, 14])
         self.assertEqual(series[0]["gust"], [None] * 4)
         self.assertEqual(series[1]["validTime"], manifest["frames"][1]["validTime"])
-        # A spot outside the grid still keeps one entry per hour, with null values.
-        self.assertEqual(series[1]["u"], [1, 2, 3, 4])
-        off = manifest["spotMembers"]["offgrid"][1]
-        self.assertEqual((off["u"], manifest["spotForecasts"]["offgrid"][1]["u"]),
-                         ([None] * 4, None))
+        # A spot outside the grid keeps null mean values but publishes no member
+        # series, because the publisher rejects null member values.
+        self.assertNotIn("offgrid", manifest["spotMembers"])
+        self.assertIsNone(manifest["spotForecasts"]["offgrid"][1]["u"])
         self.assertEqual(sorted(client.requests[0]["number"]), [1, 2, 3, 4])
         self.assertEqual(client.requests[0]["stream"], "enfo")
         self.assertEqual(client.requests[0]["type"], "pf")
