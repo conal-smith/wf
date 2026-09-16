@@ -21,6 +21,7 @@
     "weather:refresh:harmonie": ".venv/bin/python force5/ingest/fetch_harmonie.py",
     "weather:refresh:ecmwf": ".venv/bin/python force5/ingest/fetch_ecmwf.py",
     "weather:refresh:gfs": ".venv/bin/python force5/ingest/fetch_gfs.py",
+    "weather:refresh:mi-swan": ".venv/bin/python force5/ingest/fetch_mi_swan.py",
     "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py"
   },
   "dependencies": {
