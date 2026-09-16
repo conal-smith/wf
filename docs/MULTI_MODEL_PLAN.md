@@ -10,6 +10,8 @@ that date. Mockup of the target dock: https://claude.ai/artifact/SsCHYWDuqLkfMBr
   series for all 25 riding locations (`public/riding-locations.json`, `npm run
 spots:export`).
 - Wind adapters: `gfs` (NOMADS subregion, ~0.6 MB per run, bundled snapshot),
+  `gefs` (31 members, 6-hourly to +240 h, ~19 MB per run through the NOMADS 0.25°
+  ensemble filter; the first ensemble whose mean the map draws),
   `ecmwf-ens` (25 members, 6-hourly to +144 h, ~2 GB per run), `harmonie-eps` (a
   time-lagged control ensemble only: see the correction under Wind models; shipped
   disabled in the schedule).

@@ -33,4 +33,8 @@ public/weather/*/
 public/marine/
 # Generated wave forecast; no wave snapshot is bundled with the site.
 public/weather/mi-swan.json
+# Generated ensemble manifests: they carry every member and are far too large
+# to bundle, so no snapshot of either is committed.
+public/weather/gefs.json
+public/weather/ecmwf-ens.json
 *.tsbuildinfo
