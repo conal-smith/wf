@@ -2,7 +2,9 @@
 
 `script` runs inside the worker, `manifest` is the published pointer path under
 `public/` (its first segment is also the immutable object root for that model),
-`kind` selects the validator, `maxAgeHours` is the default freshness limit.
+`kind` selects the validator, `maxAgeHours` is the default freshness limit, and
+`workerStep` is False for an adapter whose cadence is its own, so the worker never
+forces its 1/3-hour `--step` on a source that does not publish those steps.
 Adding a model means adding one entry here and its fetch script.
 """
 
@@ -19,6 +21,9 @@ MODELS = {
                   "kind": "wind", "maxAgeHours": 24},
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12},
+    # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.
+    "gefs": {"script": "fetch_gefs.py", "manifest": "weather/gefs.json",
+             "kind": "wind", "maxAgeHours": 12, "workerStep": False},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
                      "kind": "wind", "maxAgeHours": 12},
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
