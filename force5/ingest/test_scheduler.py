@@ -76,11 +76,11 @@ class LoadJobsTest(unittest.TestCase):
         self.assertTrue(jobs[0]["enabled"])
 
     def test_an_unknown_model_disables_only_its_own_job(self):
-        jobs, log = load('[[jobs]]\nid = "eps"\nmodels = ["harmonie-eps"]\n\n'
+        jobs, log = load('[[jobs]]\nid = "wave"\nmodels = ["nws-wave"]\n\n'
                          '[[jobs]]\nid = "gfs"\nmodels = ["gfs"]\n')
         self.assertEqual([job["id"] for job in jobs], ["gfs"])
         self.assertIn("schedule_rejected", log)
-        self.assertIn("No importer for harmonie-eps", log)
+        self.assertIn("No importer for nws-wave", log)
 
     def test_rejects_duplicate_ids_but_keeps_the_first(self):
         jobs, log = load('[[jobs]]\nid = "gfs"\nmodels = ["gfs"]\n\n'
@@ -116,7 +116,7 @@ class LoadJobsTest(unittest.TestCase):
 
     def test_a_schedule_with_no_usable_job_is_fatal(self):
         with self.assertRaises(ValueError), contextlib.redirect_stdout(io.StringIO()):
-            scheduler.load_jobs(write('[[jobs]]\nid = "eps"\nmodels = ["harmonie-eps"]\n'))
+            scheduler.load_jobs(write('[[jobs]]\nid = "wave"\nmodels = ["nws-wave"]\n'))
 
     def test_a_file_without_a_jobs_array_is_fatal(self):
         with self.assertRaises(ValueError):
@@ -174,8 +174,9 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertNotIn("schedule_rejected", out.getvalue())
         self.assertNotIn("schedule_warning", out.getvalue())
         identities = [job["id"] for job in jobs]
-        self.assertEqual(identities, ["harmonie", "icon-eu", "ecmwf", "ecmwf-ens", "gfs",
-                                      "tides", "prune", "status"])
+        self.assertEqual(identities, ["harmonie", "icon-eu", "ecmwf", "harmonie-eps",
+                                      "ecmwf-ens", "gfs", "mi-swan", "tides",
+                                      "prune", "status"])
         for job in jobs:
             self.assertTrue(job["enabled"], job["id"])
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])

@@ -133,9 +133,9 @@ class MainTest(Fixture):
         self.assertIn("fresh", output)
 
     def test_an_unknown_model_is_reported_without_crashing(self):
-        code, output = self.run_main(["--models", "harmonie-eps"])
+        code, output = self.run_main(["--models", "nws-wave"])
         self.assertEqual(code, 1)
-        self.assertNotIn("harmonie-eps", output)
+        self.assertNotIn("nws-wave", output)
 
     def test_json_output_is_one_object_per_model(self):
         _, output = self.run_main(["--models", "gfs", "tides", "--json"])
