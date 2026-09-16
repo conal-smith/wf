@@ -3,10 +3,17 @@ import { readFileSync } from "node:fs";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
 import type { Spot } from "../force5/src/weather";
 
-/** Adapters precompute a series per riding place; older bundled runs hold the original eight. */
+/**
+ * Every bundled manifest carries a series for every riding place. Runs published
+ * before `riding-locations.json` existed held only the original eight; their
+ * series were recomputed from their own frames by
+ * `force5/ingest/backfill_spots.py`, so there is no longer a partial snapshot and
+ * the blend is available everywhere the map offers a spot.
+ */
 const places: Spot[] = JSON.parse(
   readFileSync("public/riding-locations.json", "utf8"),
 );
+const placeIds = places.map((place) => place.id);
 const originalIds: string[] = JSON.parse(
   readFileSync("public/spots.json", "utf8"),
 ).map((spot: Spot) => spot.id);
@@ -18,7 +25,8 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs"])(
       const m = validateManifest(
         JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8")),
       );
-      const covered = places.filter((place) => m.spotForecasts[place.id]);
+      // Exactly the published catalogue: no riding place missing, none invented.
+      expect(Object.keys(m.spotForecasts).sort()).toEqual([...placeIds].sort());
       for (const id of originalIds) expect(m.spotForecasts[id]).toBeTruthy();
       m.frames.forEach((info, i) => {
         const frame = validateFrame(
@@ -26,24 +34,31 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs"])(
           m,
           info,
         );
-        for (const spot of covered) {
+        for (const spot of places) {
           const wind = sample(frame, spot.lon, spot.lat)!;
           const summary = m.spotForecasts[spot.id][i];
           expect(summary.validTime).toBe(info.validTime);
-          for (const field of ["u", "v", "gust"] as const) {
-            if (wind[field] === null || summary[field] === null) {
-              expect(wind[field]).toBeNull();
-              expect(summary[field]).toBeNull();
-              expect(
-                m.gustAvailable === false ||
-                  m.gustMissingHours?.includes(info.hour),
-              ).toBeTruthy();
-              continue;
-            }
-            expect(Math.abs(wind[field] - summary[field])).toBeLessThanOrEqual(
-              0.00501,
-            );
+          // Every riding place sits inside every bundled grid, so a null u or v
+          // would mean the series and the frames describe different points.
+          for (const field of ["u", "v"] as const) {
+            expect(typeof summary[field]).toBe("number");
+            expect(
+              Math.abs(wind[field]! - summary[field]!),
+            ).toBeLessThanOrEqual(0.00501);
           }
+          // A null gust is only ever a declared absence, never a quiet gap.
+          if (wind.gust === null || summary.gust === null) {
+            expect(wind.gust).toBeNull();
+            expect(summary.gust).toBeNull();
+            expect(
+              m.gustAvailable === false ||
+                m.gustMissingHours?.includes(info.hour),
+            ).toBeTruthy();
+            continue;
+          }
+          expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(
+            0.00501,
+          );
         }
       });
     });
@@ -123,9 +138,9 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
         expect(m.variables[key][field].trim().length).toBeGreaterThan(0);
     }
 
-    /** Adapters precompute a wave series for every riding place they resolve. */
-    const covered = places.filter((place) => m.spotSeries[place.id]);
-    expect(covered.length).toBe(places.length);
+    /** Wave bundles carry the same full catalogue as the wind manifests. */
+    expect(Object.keys(m.spotSeries).sort()).toEqual([...placeIds].sort());
+    const covered = places;
     for (const place of places) {
       const coverage = m.spotCoverage[place.id];
       expect(typeof coverage.landMasked).toBe("boolean");
