@@ -23,7 +23,7 @@ Features:
 - Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
 - **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
-- Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts remain explicitly unavailable for the current source.
+- Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts are hourly maxima from the control's gust components; the bundled snapshot predates this and still shows `—`.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
 - Small standalone Force5 branding; coastline outlines and a soft shadow above the wind layer add depth to the land.
@@ -406,12 +406,19 @@ The manifest records source filenames, extracted-wind SHA-256 hashes, processing
 notes and attribution. The bundled run is 13 September 2026 at 13 UTC, through
 16 September at 01 UTC: 21 frames, approximately 11 MB total.
 
-**HARMONIE gusts are intentionally unavailable.** This subset supplies signed gust
-components (GRIB2 parameters 23/24 with maximum statistics), not scalar gust speed
-(parameter 22). Their combination has not been validated, so the importer does
-not manufacture a speed or substitute ICON-EU gusts. The UI shows `—` with an
-explanation. Confirm gust-component semantics or add a validated scalar source
-before enabling HARMONIE gusts.
+**HARMONIE gusts are hourly maxima taken from the control's own gust components.**
+The Ireland subset publishes the time-maximum gust as the signed component pair
+`max_10efg` / `max_10nfg` (GRIB2 parameters 23/24), not as the scalar
+`max_i10fg` (parameter 22). Met Éireann's full-domain `CONTROL_grib2_ie`
+export carries all three together, and there the components' magnitude reproduces
+the scalar to within GRIB packing precision across the whole 1909 × 1609 grid,
+so the magnitude is the provider's gust rather than a derived estimate. See
+[gust data notes](docs/GUST_DATA.md) for the measured agreement. Each value is the
+maximum over the one hour ending at the forecast time, read from
+`lengthOfTimeRange` / `indicatorOfUnitForTimeRange`, never assumed. Initialization
+(+0h) has a zero-length window and is published as unavailable, not zero. If any
+later step lacks both components the whole run publishes wind-only with
+`gustAvailable: false`; ICON-EU gusts are never substituted.
 
 ### HARMONIE ensemble refresh (probability blend)
 

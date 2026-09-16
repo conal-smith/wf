@@ -86,7 +86,7 @@ export default function ForecastSheet({
           aria-label={`Wind gusts (${units})`}
           title={
             manifest.gustAvailable === false
-              ? `Wind gusts (${units}) — unavailable for this ${manifest.modelName} integration`
+              ? `Wind gusts (${units}) — unavailable for this ${manifest.modelName} run`
               : instantaneous
                 ? `Instantaneous gust (${units})`
                 : `Wind gusts (${units})`
@@ -108,7 +108,7 @@ export default function ForecastSheet({
                     ? `Instantaneous gust at ${dayLabel(f.validTime)} ${timeLabel(f.validTime)} (Irish time)`
                     : f.gustIntervalHours
                       ? windowLabel(f.gustIntervalHours)
-                      : `Gusts unavailable for ${manifest.modelName}`
+                      : `Gusts unavailable for this ${manifest.modelName} run`
               }
               style={
                 {

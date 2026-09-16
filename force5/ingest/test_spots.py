@@ -113,7 +113,8 @@ class AdapterSeriesTests(unittest.TestCase):
              patch("fetch_harmonie.inventory", return_value=[]), \
              patch("fetch_harmonie.discover", return_value=("2026091300", {0: "zero", 3: "three"})), \
              patch("fetch_harmonie.download", return_value=self.root / "unused"), \
-             patch("fetch_harmonie.decode", side_effect=lambda path, run, hour, layout: (values[hour], None)):
+             patch("fetch_harmonie.has_gust", return_value=False), \
+             patch("fetch_harmonie.decode", side_effect=lambda path, run, hour, layout, gusts=False: ({**values[hour], "gust": None, "gustIntervalHours": None}, None)):
             (self.root / "unused").write_bytes(b"fake")
             fetch_harmonie.main()
         manifest = json.loads((self.root / "public/weather/harmonie.json").read_text())
