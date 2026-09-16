@@ -163,6 +163,9 @@ def already_current(current, incoming):
         # A slower/coarser job must not downgrade an hourly run.
         if current["stepHours"] < incoming["stepHours"]:
             return True
+        # A diagnostic run with fewer members must not replace a fuller ensemble.
+        if (current.get("ensemble") or {}).get("members", 0) > (incoming.get("ensemble") or {}).get("members", 0):
+            return True
         return {k: v for k, v in current.items() if k != "generatedAt"} == {
             k: v for k, v in incoming.items() if k != "generatedAt"}
     return False
