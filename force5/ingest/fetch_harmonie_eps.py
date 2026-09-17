@@ -245,7 +245,7 @@ def main():
     run_time = cycle_time(run)
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     spots = load_spots()
-    print(f"Sampling {len(spots)} spots from {spots_file}", flush=True)
+    print(f"Sampling {len(spots)} spots from {spots_file()}", flush=True)
     mean_series = {spot["id"]: [] for spot in spots}
     member_series = {spot["id"]: [] for spot in spots}
     absent = [None] * len(members)

@@ -20,6 +20,13 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
+from registry import PUBLISHED_RUN_ENV
+
+# The two answers `already_published` can give, which mean different things: the
+# first ends the job, the second only skips the download. Both are truthy.
+PUBLISHED_IN_BUCKET = "bucket"
+PUBLISHED_ON_DISK = "local"
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path(os.environ.get("FORCE5_WORK_DIR", str(PROJECT_ROOT))).resolve()
 RIDING_LOCATIONS_FILE = PROJECT_ROOT / "public" / "riding-locations.json"
@@ -191,18 +198,37 @@ def sample(grid, values, lon, lat):
 
 
 def already_published(manifest, run, prefix):
-    """Whether the pointer manifest already serves this exact run bundle.
+    """Where this exact run bundle already exists: PUBLISHED_IN_BUCKET, ON_DISK or False.
 
     Raw downloads are not kept, so an importer that is scheduled more often than
     its source publishes asks this first instead of downloading the run again.
+    A one-shot container has no previous output on disk, so the worker reads the
+    model's current manifest from the bucket and passes that run in
+    FORCE5_PUBLISHED_RUN.
+
+    The two answers are **not** interchangeable, and the caller must not collapse
+    them. Only the bucket's answer means "the public site already serves this run,
+    so there is nothing to do". Finding the run on disk means only that a previous
+    attempt got as far as writing it — the publish may have failed, and on a
+    persistent work directory (the local deployment, or `-v force5-work:/data`) the
+    bucket can still be serving an older run. That case must fall through to the
+    worker's validate-and-publish, exactly as it did before the bucket existed.
+
+    The bucket answer compares the run only, not `prefix`. A change to the object
+    prefix, member count or horizon therefore does not force an immediate
+    re-import: it lands with the source's next run, within one cycle. Pass `--run`
+    to re-import the current one at once.
     """
+    if os.environ.get(PUBLISHED_RUN_ENV) == run:
+        return PUBLISHED_IN_BUCKET
     try:
         value = json.loads(manifest.read_text())
     except (OSError, ValueError):
         return False
     frames = value.get("frames") or []
-    return (value.get("run") == run and bool(frames) and (manifest.parent / prefix).is_dir()
-            and all(str(frame.get("url", "")).startswith(f"weather/{prefix}/") for frame in frames))
+    on_disk = (value.get("run") == run and bool(frames) and (manifest.parent / prefix).is_dir()
+               and all(str(frame.get("url", "")).startswith(f"weather/{prefix}/") for frame in frames))
+    return PUBLISHED_ON_DISK if on_disk else False
 
 
 def write_json(path, value):

@@ -1,6 +1,12 @@
 """Validate a local snapshot; publish immutable objects before its S3 pointer.
 
-No bucket creation, ACL changes, deletion or credentials stored in this module.
+No bucket creation, ACL changes or credentials stored in this module. It does
+delete, but only ever the immutable objects the pointer manifest it has just
+replaced referenced and the new one does not: nothing a live manifest points at
+can be in that set, and nothing is listed to find it.
+
+The backend is AWS S3 or any S3-compatible store; Cloudflare R2 is selected by
+passing an endpoint URL. Credentials come from the standard environment chain.
 
 Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
 
@@ -28,7 +34,9 @@ import json
 import math
 from pathlib import Path, PurePosixPath
 import re
+import sys
 from cadence import expected_hours
+from prune import ARCHIVE_DIRECTORY, delete_keys, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
@@ -42,9 +50,52 @@ OBSERVATION_MIN_CELSIUS, OBSERVATION_MAX_CELSIUS = -2.0, 35.0
 OBSERVATION_SKEW_SECONDS = 300  # Clock skew allowance; no observation is from the future.
 OBSERVATION_NETWORKS = ("coastal", "sentinel", "buoy")
 
+IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
+POINTER_CACHE = "public, max-age=0, s-maxage=60, must-revalidate"
+# The condition held but the object was already there. This is the normal answer.
+PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict", "409")
+# A different answer entirely: the backend says it does not implement the feature.
+# Deliberately narrow. `InvalidArgument`/`InvalidRequest` are *not* here: they also
+# cover a malformed request, and treating one as "no conditional writes" would throw
+# away the compare-and-swap on a bug. R2's real answer is unverified (no credentials
+# exist yet) and must be confirmed against a live bucket before this list is trusted;
+# anything else still fails the job loudly, which is the right way round.
+UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
+MISSING_CODES = ("NoSuchKey", "NotFound", "404")
+
 
 def error_code(error):
     return getattr(error, "response", {}).get("Error", {}).get("Code", "")
+
+
+def log_event(event, error=None, **fields):
+    """One JSON line, as the worker logs. Never carries credentials: only keys and counts."""
+    payload = {"event": event, **fields}
+    if error is not None:
+        payload["error"] = str(error)
+    print(json.dumps(payload), file=sys.stderr if error is not None else sys.stdout, flush=True)
+
+
+def object_prefix(prefix):
+    """Normalise an optional bucket prefix, refusing anything that is not relative."""
+    if prefix and (prefix.startswith("/") or ".." in PurePosixPath(prefix).parts):
+        raise ValueError("S3 prefix must be a relative object prefix")
+    return prefix.rstrip("/") + "/" if prefix else ""
+
+
+def make_client(endpoint_url=None, region=None):
+    """A boto3 S3 client; an endpoint URL points it at Cloudflare R2 instead of AWS.
+
+    Credentials stay in the standard AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY chain
+    and are never read, copied or logged here. R2 ignores the region while boto3
+    insists on having one, so an endpoint without an explicit region gets "auto".
+    """
+    import boto3
+    from botocore.config import Config
+    return boto3.client("s3", endpoint_url=endpoint_url or None,
+                        region_name=region or ("auto" if endpoint_url else None),
+                        config=Config(retries={"mode": "standard", "max_attempts": 5},
+                                      connect_timeout=15, read_timeout=90))
 
 
 def number(value, limit, minimum=None):
@@ -461,32 +512,115 @@ def validate_observation_bundle(public, model, manifest, run, now):
     return []
 
 
-def put_immutable(s3, bucket, key, body):
+def no_collision(s3, bucket, key, digest, error=None):
+    """An existing immutable key is only acceptable when it holds exactly these bytes."""
+    existing = s3.head_object(Bucket=bucket, Key=key)
+    if existing.get("Metadata", {}).get("sha256") != digest:
+        raise ValueError(f"Immutable object collision: {key}") from error
+
+
+def put_immutable(s3, bucket, key, body, state=None):
+    """Write bytes that must never change again, refusing to overwrite different ones.
+
+    `IfNoneMatch="*"` does this in one request and is the only path on AWS S3. A
+    backend that does not implement it says so by rejecting the header, and then a
+    head + sha256 compare + plain put gives the same guarantee in two requests.
+    `state` remembers that answer for the rest of a publish, so a 250-frame ECMWF
+    run does not pay the extra round trip 250 times over.
+    """
     digest = hashlib.sha256(body).hexdigest()
+    args = {"Bucket": bucket, "Key": key, "Body": gzip.compress(body, mtime=0),
+            "ContentType": "application/json", "ContentEncoding": "gzip",
+            "CacheControl": IMMUTABLE_CACHE, "Metadata": {"sha256": digest}}
+    state = {} if state is None else state
+    if state.get("conditional", True):
+        try:
+            s3.put_object(**args, IfNoneMatch="*")
+            return
+        except Exception as error:
+            code = error_code(error)
+            if code in PRECONDITION_CODES:
+                return no_collision(s3, bucket, key, digest, error)
+            if code not in UNSUPPORTED_CONDITION_CODES:
+                raise
+            state["conditional"] = False
+            log_event("conditional_put_unsupported", key=key, code=code)
     try:
-        s3.put_object(Bucket=bucket, Key=key, Body=gzip.compress(body, mtime=0),
-                      ContentType="application/json", ContentEncoding="gzip",
-                      CacheControl="public, max-age=31536000, immutable",
-                      Metadata={"sha256": digest}, IfNoneMatch="*")
+        s3.head_object(Bucket=bucket, Key=key)
     except Exception as error:
-        if error_code(error) not in ("PreconditionFailed", "412"):
+        if error_code(error) not in MISSING_CODES:
             raise
-        existing = s3.head_object(Bucket=bucket, Key=key)
-        if existing.get("Metadata", {}).get("sha256") != digest:
-            raise ValueError(f"Immutable object collision: {key}") from error
+    else:
+        # Present already: the collision check is the whole point, so keep it.
+        return no_collision(s3, bucket, key, digest)
+    s3.put_object(**args)
 
 
 def read_current(s3, bucket, key):
+    """The pointer manifest the bucket serves now, with its ETag for compare-and-swap.
+
+    A pointer that is present but unparseable is reported as absent: the next good
+    run then republishes over it (still conditionally, on its ETag), and because
+    the caller learns nothing about what it referenced, nothing is deleted from it.
+    """
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
     except Exception as error:
-        if error_code(error) in ("NoSuchKey", "404"):
+        if error_code(error) in MISSING_CODES:
             return None, None
         raise
     body = response["Body"].read()
     if response.get("ContentEncoding") == "gzip":
         body = gzip.decompress(body)
-    return json.loads(body), response["ETag"]
+    try:
+        return json.loads(body), response["ETag"]
+    except ValueError as error:
+        log_event("unreadable_pointer", key=key, error=error)
+        return None, response["ETag"]
+
+
+def superseded_objects(model, previous, manifest):
+    """Immutable objects the manifest we are replacing referenced and the new one does not.
+
+    Five guards, because this is the only code in the pipeline that deletes from the
+    bucket: the source is one model's own previous pointer (never a listing, so an
+    upload in flight for another model is invisible to it); anything the new manifest
+    still references is excluded first; the path must sit under that model's object
+    root; its run directory or station file must be named for this model and for no
+    other, which every adapter satisfies (`weather/ecmwf-RUN-360h-v2/…`,
+    `marine/tides-STATION-…json`) — "harmonie" must not match "harmonie-eps", nor
+    "gfs" match "gfs-wave"; and pointer manifests and the archive directory are never
+    touched. An adapter that ever stops using that naming simply stops deleting, and
+    the bucket sweep collects its leftovers instead: the safe direction to fail in.
+    """
+    if not isinstance(previous, dict) or previous.get("model") != model:
+        return []
+    keep, root = manifest_urls(manifest), object_root(model)
+    pointers = set(MANIFESTS.values())
+    stale = []
+    for url in sorted(manifest_urls(previous) - keep):
+        parts = PurePosixPath(url).parts
+        if not 2 <= len(parts) <= 3 or parts[0] != root or ".." in parts:
+            continue  # Not one of ours to delete; an absolute or foreign URL is left alone.
+        if url in pointers or parts[1] == ARCHIVE_DIRECTORY or not model_owns(model, parts[1]):
+            continue
+        stale.append(url)
+    return stale
+
+
+def drop_superseded_objects(s3, bucket, prefix, model, previous, manifest):
+    """Delete the replaced run's objects. Never fails the forecast that just published."""
+    stale = superseded_objects(model, previous, manifest)
+    if not stale:
+        return 0
+    try:
+        deleted = delete_keys(s3, bucket, [prefix + url for url in stale])
+    except Exception as error:
+        # The forecast is live; these objects are only cost. The bucket sweep gets them.
+        log_event("superseded_delete_failed", model=model, objects=len(stale), error=error)
+        return 0
+    log_event("superseded_deleted", model=model, run=previous.get("run"), objects=deleted)
+    return deleted
 
 
 def already_current(current, incoming):
@@ -505,38 +639,61 @@ def already_current(current, incoming):
         # A diagnostic run with fewer members must not replace a fuller ensemble.
         if (current.get("ensemble") or {}).get("members", 0) > (incoming.get("ensemble") or {}).get("members", 0):
             return True
-        return {k: v for k, v in current.items() if k != "generatedAt"} == {
-            k: v for k, v in incoming.items() if k != "generatedAt"}
+        return same_manifest(current, incoming)
     return False
 
 
+def same_manifest(current, incoming):
+    """The published pointer is byte-for-byte this bundle, give or take when it was made."""
+    return bool(current) and {k: v for k, v in current.items() if k != "generatedAt"} == {
+        k: v for k, v in incoming.items() if k != "generatedAt"}
+
+
 def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
-    if prefix and (prefix.startswith("/") or ".." in PurePosixPath(prefix).parts):
-        raise ValueError("S3 prefix must be a relative object prefix")
-    prefix = prefix.rstrip("/") + "/" if prefix else ""
+    prefix = object_prefix(prefix)
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
     pointer = prefix + MANIFESTS[model]
-    current, _ = read_current(s3, bucket, pointer)
-    if already_current(current, manifest):
+    replaced, _ = read_current(s3, bucket, pointer)
+    if already_current(replaced, manifest):
         return "unchanged-or-newer"
+    state = {}  # Whether this backend honours conditional puts; answered once per publish.
     for path, data in objects:
-        put_immutable(s3, bucket, prefix + path, data)
+        put_immutable(s3, bucket, prefix + path, data, state)
     archive = (f"{object_root(model)}/manifests/{model}/"
                f"{manifest['run']}-{hashlib.sha256(body).hexdigest()[:16]}.json")
-    put_immutable(s3, bucket, prefix + archive, body)
+    put_immutable(s3, bucket, prefix + archive, body, state)
     for _ in range(4):
         current, etag = read_current(s3, bucket, pointer)
         if already_current(current, manifest):
+            if same_manifest(current, manifest):
+                # Our own bundle is up there although we never saw the answer: a PUT
+                # that succeeded server-side and then reported PreconditionFailed on a
+                # retry. The pointer is in place, so the run it replaced is still ours
+                # to delete; without this it would leak until the next bucket sweep.
+                drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
             return "unchanged-or-newer"
+        replaced = current  # The newest manifest we have seen that this publish replaces.
         condition = {"IfMatch": etag} if etag else {"IfNoneMatch": "*"}
         try:
             # The only mutable object. Publish LAST using compare-and-swap.
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
-                          ContentType="application/json",
-                          CacheControl="public, max-age=0, s-maxage=60, must-revalidate",
-                          **condition)
-            return "published"
+                          ContentType="application/json", CacheControl=POINTER_CACHE, **condition)
         except Exception as error:
-            if error_code(error) not in ("PreconditionFailed", "412", "ConditionalRequestConflict", "409"):
+            code = error_code(error)
+            if code in PRECONDITION_CODES:
+                continue
+            if code not in UNSUPPORTED_CONDITION_CODES:
                 raise
+            # The backend has no conditional writes at all, so this write gives up the
+            # compare-and-swap. We re-read the pointer immediately above and only one
+            # job per model runs at a time, but it is a real downgrade: log it as one.
+            log_event("conditional_put_unsupported", key=pointer, code=code)
+            log_event("pointer_put_unconditional", model=model, key=pointer,
+                      note="Compare-and-swap unavailable on this backend")
+            s3.put_object(Bucket=bucket, Key=pointer, Body=body,
+                          ContentType="application/json", CacheControl=POINTER_CACHE)
+        # The new pointer is in place. Only now is the one it replaced junk, and only
+        # now can deleting what it referenced not break a manifest anybody can read.
+        drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
+        return "published"
     raise RuntimeError("Manifest changed repeatedly during publish; retry the job")

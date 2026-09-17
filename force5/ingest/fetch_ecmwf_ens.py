@@ -22,7 +22,8 @@ import eccodes as ec
 
 from cadence import ladder_hours
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
-from fetch_forecast import PROJECT_ROOT, ROOT, already_published, decode_handle, sample, write_json
+from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample, write_json
+from registry import UNCHANGED_EXIT
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
 # 0.84 MB (10u), 0.83 MB (10v) and 1.39 MB (10fg), plus a 2.0 MB step index.
@@ -229,9 +230,15 @@ def main():
         raise ValueError("Refusing a stale/future ECMWF ENS run (maximum age 24 hours)")
     output = ROOT / "public" / "weather"
     prefix = f"ecmwf-ens-{run}-{args.hours}h-{len(members)}m-v1"
-    if not args.run and already_published(output / "ecmwf-ens.json", run, prefix):
+    published = already_published(output / "ecmwf-ens.json", run, prefix) if not args.run else False
+    if published == PUBLISHED_IN_BUCKET:
         print(f"ECMWF ENS {run} is already published; nothing to download.", flush=True)
-        return
+        return UNCHANGED_EXIT
+    if published == PUBLISHED_ON_DISK:
+        # An earlier attempt wrote it but may never have published it. Skip the
+        # download, and let the worker validate and publish what is on disk.
+        print(f"ECMWF ENS {run} is already on disk; publishing it without downloading.", flush=True)
+        return 0
     print(f"Fetching ECMWF ENS {run}: {len(members)} members × {len(hours)} steps "
           f"to +{args.hours}h (about {len(members) * (3 * len(hours) - 1)} member messages)", flush=True)
     cache = ROOT / ".cache" / "ecmwf-ens" / run
@@ -325,7 +332,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"ECMWF ENS refresh failed: {error}. Last published manifest preserved.", file=sys.stderr)
         sys.exit(1)

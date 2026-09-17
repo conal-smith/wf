@@ -5,6 +5,11 @@
 > site, scheduler, retention and ingest volume on a single origin — with no cloud
 > account, no S3 bucket and no secrets. This document describes the AWS design, which
 > that option does not need.
+>
+> **The design we are actually deploying** is Cloudflare R2 behind its CDN, with the
+> importer run as one-shot batch containers on our own machines: see
+> [Cloudflare R2 and one-shot batch containers](#cloudflare-r2-and-one-shot-batch-containers)
+> below. It reuses everything here except ECS, CloudFront and the bucket policy.
 
 ## What runs where
 
@@ -408,6 +413,292 @@ it served fall back to a stated reason, and the run keeps publishing for the res
 
 These are deployment instructions, not provisioned infrastructure. No bucket, registry, schedule or cloud task has been created by this change.
 
+## Cloudflare R2 and one-shot batch containers
+
+This is the deployment [the forecast data plan](FORECAST_DATA_PLAN.md) Phase 1 chose,
+and it replaces the ECS/CloudFront design above rather than adding to it. Two things
+change, and everything else in this document still applies.
+
+**Where it runs.** "Home Compute" starts the importer image as a **one-shot batch
+container** on whichever of our machines is free. Every run therefore begins with a
+**completely empty disk**: no `public/` from last time and no `.cache`. Overlapping
+runs of the same job are prevented by Home Compute; jobs for **different models run
+at the same time on different machines**, which is why nothing in the publisher
+depends on the workspace lock or on a bucket listing. The lock still exists and is
+still taken, because two containers could share a mount.
+
+**Where it goes.** A **Cloudflare R2** bucket over the S3 API, with Cloudflare's CDN
+in front of it on a custom domain. `publish_s3.py` talks to it through boto3 with an
+explicit endpoint URL; nothing else differs from S3.
+
+### Environment
+
+| Variable | Meaning |
+| --- | --- |
+| `S3_BUCKET` | The R2 bucket name. Without it the worker only writes locally. |
+| `S3_ENDPOINT_URL` | `https://<account-id>.r2.cloudflarestorage.com`. Unset for AWS S3. |
+| `AWS_REGION` | Optional. Defaults to `auto` whenever an endpoint URL is given, which is what R2 wants; boto3 insists on having some region. |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | An R2 API token with object read/write **and delete** on this bucket. The standard chain; never baked into the image, never logged, never sent to the browser. |
+| `S3_PREFIX` | Optional object prefix, before `weather/`. The frontend's `VITE_FORECAST_BASE_URL` must include it. |
+| `FORCE5_WORK_DIR` | Scratch directory, `/data` in the image. Discarded when the container exits. |
+| `FORCE5_SPOTS_FILE` | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image. |
+| `FORCE5_SWEEP_MIN_AGE_HOURS` | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason. |
+
+`FORCE5_PUBLISHED_RUN` is set **by** the worker for the adapters that read it and must
+not be set in a job's environment; the worker clears any inherited value.
+
+Unlike the AWS design, the token **does** need `DeleteObject`: the publisher removes
+the run it supersedes, and the sweep removes failed uploads.
+
+### One-shot invocations, as Home Compute runs them
+
+Every job is the same image with a different `--models`. `--endpoint-url` can be left
+out when `S3_ENDPOINT_URL` is set in the job's environment; it is spelled out here.
+
+```sh
+R2="--bucket wingfoil-forecast --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com"
+
+# Hourly
+docker run --rm --env-file r2.env force5-forecast:latest --models harmonie --step 1 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
+
+# Four cycles a day
+docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu-weather $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models gfs --step 3 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models gefs $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models aifs $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models arpege --step 3 $R2
+
+# Eight times a day / twice daily / daily
+docker run --rm --env-file r2.env force5-forecast:latest --models arome --step 3 $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-ens $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf-wave $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models gfs-wave $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
+
+# Retention: the bucket sweep, a few times a day, any machine. --dry-run first.
+docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
+  /app/force5/ingest/prune.py --bucket wingfoil-forecast \
+  --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com --dry-run
+```
+
+Cadence and publication lags are unchanged; see the per-model sections above and
+`deploy/local/jobs.toml`, which remains the reference schedule.
+
+### Nothing new costs nothing
+
+`ecmwf` is scheduled hourly against a twice-daily source (about 250 MB a run) and
+`ecmwf-ens` twice per run (about 2 GB). Raw downloads are not kept, so without a check
+each slot would re-download a run it has already published. On an empty disk there is
+nothing local to check, so the **bucket is the truth**: when a bucket is configured the
+worker reads the model's current pointer manifest and passes its run to the adapter in
+`FORCE5_PUBLISHED_RUN`. An adapter that resolves that same run, and was not given an
+explicit `--run`, writes nothing and exits `UNCHANGED_EXIT` (3). The worker logs
+
+```json
+{"event":"forecast_unchanged","model":"ecmwf","run":"2026091700","seconds":4}
+```
+
+and exits **0**, without validating anything, because there is no bundle to validate.
+
+**Only the bucket's answer ends a job.** `already_published` returns `"bucket"`,
+`"local"` or `False`, and the two truthy answers are not interchangeable. Finding the
+run on disk means only that an earlier attempt wrote it — its publish may have failed,
+and on a persistent work directory (`deploy/local`, or `-v force5-work:/data`) the
+bucket can still be serving an older run. That case returns **0**, skipping only the
+download, so the worker validates and publishes what is on disk exactly as it did
+before any of this existed. Collapsing the two would leave the site stale for a whole
+source cycle while the worker logged success.
+
+Symmetrically, the worker accepts exit 3 as "nothing new" **only from an adapter that
+declares `readsPublishedRun` in the registry and that it actually gave
+`FORCE5_PUBLISHED_RUN` to**. If the pointer could not be read, or the adapter is not
+part of the contract, exit 3 is an ordinary failure. The variable is also stripped from
+the inherited environment before each job, so a stray value cannot make a job claim
+success. `ecmwf` and `ecmwf-ens` are the only two adapters in the contract today,
+because they are the only two scheduled more often than their source publishes; the
+mechanism itself is generic and lives in `fetch_forecast.already_published`.
+
+The bucket answer compares the **run id** only. So a change to an adapter's object
+prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an immediate
+re-import of the run already published: the new objects land with the source's next
+cycle, within 12 hours. Pass `--run YYYYMMDDHH` to re-import the current one at once —
+an explicit `--run` always skips the check.
+
+### Deleting what is superseded
+
+`publish()` used to only add objects, so the bucket grew for ever. It now deletes, and
+the rules are deliberately narrow:
+
+- The set is computed from **one model's own previous pointer manifest** — the one
+  this publish has just replaced, which the publisher had already read for its
+  compare-and-swap. There is **no bucket listing**, so an upload in flight on another
+  machine for another model cannot be seen, let alone deleted.
+- Anything the **new** manifest still references is removed from the set first.
+- A path must sit under that model's own object root (`weather/` or `marine/`), be two
+  or three segments long, and have its run directory or station file named for **this**
+  model and no other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
+  `gfs-wave-…`. Pointer manifests and anything under `manifests/` are never deleted; an
+  absolute, `..`-bearing or `https://` URL is left alone. An adapter that ever stopped
+  naming its objects `<model>-…` would simply stop deleting, and the sweep would collect
+  its leftovers — the safe direction to fail in.
+- It happens **after** the new pointer is successfully in place, never before. A
+  failed or racing publish deletes nothing at all.
+- Deletes are batched (`delete_objects`, 1000 keys a request). A failure is logged as
+  `superseded_delete_failed` and **does not fail the forecast that just published** —
+  the data is live, the leftovers are only cost, and the sweep collects them.
+
+**Archived manifests (`<root>/manifests/<model>/RUN-HASH.json`) are kept.** They are a
+few kilobytes each and R2's free tier stores 10 GB. They are a **record of what was
+published, not a rollback path**: the owner's policy is to keep only the newest run, so
+by the time an archived manifest is old its frames have already been deleted and
+restoring it would point the site at objects that no longer exist. Real rollback would
+need bucket object versioning, which this design deliberately does not use. Treat them
+as an audit trail — which run, which frames, which hashes — and nothing more.
+
+### The bucket sweep
+
+A failed or interrupted upload leaves objects nothing references. `prune.py --bucket`
+is the bucket-side equivalent of the local `prune_published`, sharing its
+`manifest_urls`/`referenced` logic:
+
+1. Read **every** registry pointer manifest from the bucket. A manifest that is present
+   but unreadable **aborts the sweep without deleting anything**, because everything it
+   references would otherwise look unreferenced. A manifest that is **absent** is just
+   as dangerous the other way — every object that model has ever written would look
+   unreferenced — so the sweep keeps everything named for such a model and reports it
+   under `noPointer`/`protectedModels`. That covers a first run, a model being
+   onboarded and a pointer deleted by hand.
+2. List every object under each data root, **paginated**.
+3. Delete an object only when it is unreferenced, is not a pointer or an archived
+   manifest, and its `LastModified` is **older than `--min-age-hours` (default 6, or
+   `FORCE5_SWEEP_MIN_AGE_HOURS`)**. That guard is the important one: jobs run on
+   different machines, a run's frames go up before its manifest does, and six hours is
+   longer than any job timeout, so a run another machine is still uploading is never
+   mistaken for wreckage.
+4. A two-segment `.json` object that reads like a pointer manifest is kept even for a
+   model the registry has not adopted yet, exactly as on disk. So is anything that
+   cannot be read: the sweep never deletes on a guess.
+5. **Read the pointer manifests again, after the listing**, and delete only what is
+   unreferenced in both reads. The listing is slow and paginated, and the age guard
+   cannot cover everything: `put_immutable` leaves an object that is already there
+   untouched, so a stable key a new run re-references — a tide station file, whose name
+   only changes with the day — keeps its old `LastModified` and would look both
+   unreferenced and long past the guard. Both reads abort on an unreadable manifest and
+   both contribute to `noPointer`.
+
+`--bucket` must be given **explicitly**; it is deliberately not defaulted from
+`S3_BUCKET`, because the scheduler's environment carries that for the worker and
+picking it up here would silently turn the hourly local retention job into a bucket
+sweep. Combining `--bucket` with `--root`, `--max-age-hours` or `--cache-days` is an
+error rather than a silent no-op, for the same reason.
+
+`--dry-run` reports without deleting and is worth running first. The command logs
+`sweep_complete` (or `sweep_failed`, exit 1) with `removed`, `keptObjects`,
+`withinGuard`, `protectedObjects`, `protectedModels`, `noPointer` and `freedBytes` —
+note that the **local** sweep's `kept` is a list of reasons while the bucket sweep's
+`keptObjects` is a count, hence the different key. `prune` is already in the
+scheduler's `KNOWN_COMMANDS`, so the local deployment can schedule it with
+`args = ["--bucket", "..."]` and no scheduler change.
+
+### CORS and cache headers
+
+R2's S3 API takes the same `PutBucketCors` document as S3, so
+`force5/deploy/s3-cors.example.json` works unchanged. The **Cloudflare dashboard**
+takes the rules as a bare JSON array instead, without the `CORSRules` wrapper; that
+form is `force5/deploy/r2-cors.example.json`. Allow `GET`/`HEAD` only and expose
+`ETag`, which the open-tab refresh revalidates against.
+
+Cache headers are set by the uploader and unchanged from the AWS design:
+
+| Objects | Header |
+| --- | --- |
+| Hashed frames, station files, archived manifests | `public, max-age=31536000, immutable` |
+| Pointer manifests (`weather/*.json`, `marine/*.json`) | `public, max-age=0, s-maxage=60, must-revalidate` |
+
+Cloudflare cache rules can override origin headers, so verify the served response, not
+just the uploaded metadata — in particular that the pointer's edge TTL is short enough
+for the browser's five-minute revalidation to see a new run.
+
+### Conditional writes on R2
+
+`put_immutable` writes each immutable object with `If-None-Match: *`, which is what
+makes a re-run cost one request per object and makes an overwrite impossible. **R2's
+support for it is unverified** — no credentials exist yet. So the publisher asks, and
+distinguishes two answers: `PreconditionFailed`/`412` means the object is already there
+(check its `sha256` metadata, as before), while **`NotImplemented`/`501` only** means
+the backend does not have the feature. On the second it logs
+`conditional_put_unsupported` **once**, then falls back to `head_object` + sha256
+compare + plain put for the rest of that publish, so a 250-frame ECMWF run does not pay
+the extra round trip 250 times. Collision detection is identical on both paths; only
+the atomicity of the check-and-write is lost.
+
+The trigger is deliberately narrow. `InvalidArgument` and `InvalidRequest` are **not**
+treated as "no conditional writes": they also mean "your request was malformed", and on
+the pointer path the fallback gives up the compare-and-swap entirely, so a bug must not
+be able to buy that. Anything outside the narrow list fails the job loudly instead.
+**The code R2 actually returns has to be confirmed against a live bucket** before this
+list is trusted — and if R2 turns out to support `If-None-Match`, the fallback should be
+deleted rather than left in. When the pointer write does degrade it logs a second,
+distinct `pointer_put_unconditional` event, because losing compare-and-swap on the one
+mutable object is worth seeing in the logs; it is safe here only because one job per
+model runs at a time and the pointer is re-read immediately before the write.
+
+### What an empty disk changes, per adapter
+
+Audited against every entry in `registry.py`:
+
+- **Clean, no change needed.** `harmonie`, `icon-eu`, `icon-eu-weather`, `gfs`,
+  `gefs`, `gfs-wave`, `aifs`, `ecmwf-wave`, `arpege`, `arome`, `sea-temperature`: all
+  cache under `.cache/<model>/<run>/` and only ever read files they wrote earlier in
+  the same process.
+- **Re-derived, one extra request.** `tides` re-downloads the ERDDAP station
+  catalogue every run instead of reusing a 7-day-old copy; an empty catalogue still
+  fails the run loudly. `mi-swan` re-reads its dataset info and last-time files
+  live — which also **removes a latent bug**, because those two cache files had no
+  freshness check and a stale pair could republish yesterday's SWAN run under today's
+  manifest.
+- **`harmonie-eps` publishes a smaller ensemble.** Its members are the controls of
+  successive hourly cycles, and cycles whose source files the portal has already
+  dropped were kept only in `.cache`. With no cache it can use only the portal's
+  three-hour window, so expect roughly 3–4 members instead of up to 7, and a
+  `RuntimeError` when fewer than `--min-members` (default 2) are retrievable. The job
+  is **disabled** in `deploy/local/jobs.toml` and stays disabled. Fixing it properly
+  means pulling previous cycles' GRIB back from the bucket at start-up, which is a
+  design decision, not a patch.
+- **`status.py` no longer means anything in a batch container.** It inspects the local
+  `public/`, defaults to all registered models, and the disk is gone when the
+  container exits. Until it is taught to read the bucket, monitor
+  `forecast_complete` / `forecast_unchanged` / `forecast_failed` in the container logs
+  and the age of each published manifest's `runTime` through the CDN.
+- **`backfill_spots.py`** needs previously published output and must be run against a
+  local mirror of the bucket (`--public /path/to/mirror`), never inside a batch
+  container.
+- **The spot catalogue is safe.** `FORCE5_SPOTS_FILE` points at
+  `/app/public/riding-locations.json`, which is copied into the **image**, not the
+  work directory, so an empty `/data` cannot silently reduce the run to eight spots.
+- **`/data` ownership is the thing to check first on the real platform.** The image
+  runs as uid 10001 and pre-creates `/data`. If Home Compute mounts a fresh
+  root-owned directory over it, every write fails with `EACCES`. The `VOLUME`
+  declaration has been removed so plain Docker no longer leaves an anonymous volume
+  behind per run.
+
+### Still to verify against a live bucket
+
+No R2 credentials exist, so **none of this has been run against real R2**. Everything
+above is covered by unit tests against a fake S3 (superseded deletes, a tolerated
+delete failure, the sweep's age guard, unreadable-manifest abort and pagination, the
+conditional-put fallback and collision detection without it, and the unchanged-run
+skip path), and no test makes a network call. Before this is called live: create the
+bucket and token, confirm whether R2 accepts `If-None-Match: *` (and remove the
+fallback if it does), check the CORS and cache-rule behaviour through the CDN, run one
+job of each model end to end, confirm a second run really deletes the first run's
+objects, and run the sweep with `--dry-run` and read its output before letting it
+delete.
+
 ## Object layout and publication safety
 
 ```text
@@ -528,12 +819,12 @@ The browser fetches the manifest on page load and model changes, then reads its 
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
-- Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
-- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The S3 publisher does not delete superseded objects yet; an S3 lifecycle rule is not a substitute, because it cannot see which frames the current manifest references.
+- Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: there, an archived manifest is a record of what was published, not something that can be restored, because its frames are deleted as soon as the run is superseded.
+- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
 ## Validation status / remaining launch work
 
-The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency and competing newer runs. The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
+The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded-object deletion, a tolerated delete failure, the conditional-put fallback, the bucket sweep (age guard, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
 
 Open-tab refresh is implemented in the browser and covered by unit and end-to-end tests; what remains untested is its behaviour against a **real** CDN, where a manifest served from a cache with a minimum TTL above zero can hide a new run from a tab for as long as that TTL. Also required before calling the site continuously live: provision the cloud resources, test IAM/CORS/cache policies (including that the latest-pointer TTL is short enough for the five-minute revalidation to see a new run), configure alerts/retries, benchmark hourly processing, and review provider licensing/attribution for the intended service. The current website is still a saved-snapshot prototype until those pieces are deployed.
