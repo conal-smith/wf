@@ -1,4 +1,4 @@
-// The blend against the sample bundles: HARMONIE (3-hourly, 60 h, no gusts),
+// The blend against the sample bundles: HARMONIE (hourly, 24 h, no gusts),
 // ICON-EU (3-hourly, 72 h) and ECMWF (3-hourly then 6-hourly, 360 h), all at
 // Brandon Bay. The values are synthetic (tests/fixtures/weather), but the run
 // times, cadences and gust availability are the ones the adapters publish, which
@@ -47,29 +47,42 @@ describe("axis across the three models", () => {
     expect(axis).toHaveLength(15 * 24 + 1);
   });
   it("can restrict itself to the hours all three cover", () => {
+    // HARMONIE is the short one at both ends: it starts last and stops first.
     const axis = commonAxis(all, { coverage: "intersection" });
     expect(axis[0]).toBe("2026-09-13T13:00:00.000Z");
-    expect(axis.at(-1)).toBe("2026-09-16T01:00:00.000Z");
-    expect(axis).toHaveLength(61);
+    expect(axis.at(-1)).toBe("2026-09-14T13:00:00.000Z");
+    expect(axis).toHaveLength(25);
   });
 });
 
 describe("interpolating the published series", () => {
-  it("puts HARMONIE's three-hourly series on whole hours", () => {
+  it("leaves an hourly series alone on an hourly axis", () => {
     const points = spotSeries(harmonie, "brandon")!;
     const axis = commonAxis([harmonie]);
     const values = interpolateSeries(points, axis);
     expect(values.speed.every((value) => value !== null)).toBe(true);
     expect(values.gust.every((value) => value === null)).toBe(true);
-    // 13 September 16:00 is a published frame: u 6.13, v -5.04.
-    expect(values.speed[axis.indexOf("2026-09-13T16:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(6.13, -5.04),
+    // HARMONIE publishes every hour, so every axis hour is a published one:
+    // 13 September 14:00 is u 4.24, v -6.03 and nothing is interpolated.
+    expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(4.24, -6.03),
       10,
     );
-    // 14:00 sits a third of the way from 13:00 (3.06, -5.84) to 16:00, and the
+  });
+  it("puts ICON-EU's three-hourly series on whole hours", () => {
+    const points = spotSeries(iconEu, "brandon")!;
+    const axis = commonAxis([iconEu]);
+    const values = interpolateSeries(points, axis);
+    expect(values.speed.every((value) => value !== null)).toBe(true);
+    // 13 September 06:00 is a published frame: u 6.34, v -0.48.
+    expect(values.speed[axis.indexOf("2026-09-13T06:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(6.34, -0.48),
+      10,
+    );
+    // 04:00 sits a third of the way from 03:00 (6.36, -4.52) to 06:00, and the
     // interpolation runs in u/v, never between speeds or bearings.
-    expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(3.06 + (6.13 - 3.06) / 3, -5.84 + (-5.04 + 5.84) / 3),
+    expect(values.speed[axis.indexOf("2026-09-13T04:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(6.36 + (6.34 - 6.36) / 3, -4.52 + (-0.48 + 4.52) / 3),
       10,
     );
   });
@@ -133,7 +146,8 @@ describe("blending the three models", () => {
       expect(hour.spread!).toBeCloseTo(hour.max! - hour.min!, 10);
       expect(hour.max!).toBeLessThan(60);
     }
-    expect(stats.filter((hour) => hour.n === 3).length).toBeGreaterThan(48);
+    // All three cover the day HARMONIE runs for, and only that day.
+    expect(stats.filter((hour) => hour.n === 3).length).toBe(25);
   });
   it("condenses the hourly statistics into three-hour candles", () => {
     const columns = candles(stats, 3);

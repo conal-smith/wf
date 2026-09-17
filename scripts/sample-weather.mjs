@@ -817,8 +817,13 @@ const CATALOGUE = [
     kind: "wind",
     name: "HARMONIE",
     seed: 0.05,
-    stepHours: 3,
-    horizonHours: 60,
+    // Hourly, as the production adapter publishes it. The dock's near term is
+    // the finest run on offer, so an hourly one is the case its columns, its
+    // candle grouping and a bare point's load order all have to survive; a
+    // three-hourly stand-in never exercised any of them. Twenty-four hours
+    // keeps the bundle to about the file count it had at three-hourly +60 h.
+    stepHours: 1,
+    horizonHours: 24,
     gust: "none",
     resolutionKm: 2,
     spacing: { fixtures: 0.5, live: 0.125 },

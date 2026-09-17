@@ -6,8 +6,9 @@ const harmonie = JSON.parse(
 );
 const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
 
-async function relativePosition(page: Page) {
-  return page.locator(".forecast-now").evaluate((line) => {
+/** Where the Now line sits relative to the centres of two named columns. */
+async function relativePosition(page: Page, columns: [number, number]) {
+  return page.locator(".forecast-now").evaluate((line, [first, second]) => {
     const parent = line.closest(".forecast-content")!;
     const centre = (i: number) => {
       const r = parent
@@ -18,15 +19,16 @@ async function relativePosition(page: Page) {
     };
     return {
       line: line.getBoundingClientRect().left,
-      a: centre(2),
-      b: centre(3),
+      a: centre(first),
+      b: centre(second),
     };
-  });
+  }, columns);
 }
 
 test("Now opens centred between timestamps and remains independent of scrubbing", async ({
   page,
 }) => {
+  // Half past the hour, so the line sits midway between two hourly columns.
   const now = new Date(Date.parse(harmonie.runTime) + 7.5 * 3600000);
   await page.clock.setFixedTime(now);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -34,10 +36,11 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   const line = page.getByRole("img", { name: /^Now:/ });
   await expect(line).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await expect(slider).toHaveValue("2");
+  // HARMONIE is hourly, so +7 h is the column the opening selection lands on.
+  await expect(slider).toHaveValue("7");
   await expect
     .poll(async () => {
-      const p = await relativePosition(page);
+      const p = await relativePosition(page, [7, 8]);
       return Math.abs(p.line - (p.a + p.b) / 2);
     })
     .toBeLessThan(1);
@@ -77,10 +80,12 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   ).toBeGreaterThan(parseFloat(originalLeft));
   await slider.fill("2");
   await page.setViewportSize({ width: 760, height: 844 });
+  // The clock is now exactly +8 h, which is a published hour: the line lands on
+  // that column's centre however the dock is resized around it.
   await expect
     .poll(async () => {
-      const p = await relativePosition(page);
-      return Math.abs(p.line - (p.a + ((p.b - p.a) * 2) / 3));
+      const p = await relativePosition(page, [8, 9]);
+      return Math.abs(p.line - p.a);
     })
     .toBeLessThan(1);
   await expect(page.locator(".spot-marker")).toHaveCount(25, {
