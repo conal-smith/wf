@@ -349,9 +349,9 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
   drop them only under real bandwidth pressure.
 - **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45
   minutes, about eight hours after each cycle, with a 24-hour registry age limit — the
-  same shape as the wind control. Both new jobs pass `--ecmwf-source ecmwf` explicitly:
-  the worker still defaults to the AWS mirror, which returned sustained `503 SlowDown`
-  during development.
+  same shape as the wind control. Every ECMWF adapter and the worker now default to
+  the ECMWF-hosted source; the AWS mirror returned sustained `503 SlowDown` during
+  development and remains available as `--ecmwf-source aws`.
 - **Coverage is the thing to communicate, not a fault to fix.** A 0.25° cell is about
   28 km across. Of the 25 riding locations, 3 are read from their own four cells
   (Brandon Bay, Maharees, Keel), 21 from the nearest cell the model solved (1.5 km at
