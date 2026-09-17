@@ -16,8 +16,14 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npm run preview -- --port ${port}`,
+    // `preview:e2e` puts the synthetic sample bundles in public/weather if it is
+    // empty, builds, then serves dist/. No forecast output is committed, so a
+    // clean clone has no weather data at all; the generator refuses to touch a
+    // public/weather that already holds manifests, so a working checkout with
+    // real ingest output is served exactly as it is.
+    command: `npm run preview:e2e -- --port ${port}`,
     url: `http://127.0.0.1:${port}`,
+    timeout: 180000,
     reuseExistingServer: !process.env.CI,
   },
 });

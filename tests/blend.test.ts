@@ -1,8 +1,10 @@
-// The blend against the real bundled snapshots: HARMONIE (3-hourly, 60 h, no
-// gusts), ICON-EU (3-hourly, 72 h) and ECMWF (3-hourly then 6-hourly, 360 h),
-// all at Brandon Bay.
+// The blend against the sample bundles: HARMONIE (3-hourly, 60 h, no gusts),
+// ICON-EU (3-hourly, 72 h) and ECMWF (3-hourly then 6-hourly, 360 h), all at
+// Brandon Bay. The values are synthetic (tests/fixtures/weather), but the run
+// times, cadences and gust availability are the ones the adapters publish, which
+// is what the axis, the gap bridging and the per-hour statistics are about.
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readBundle } from "./bundles";
 import {
   blendInputs,
   blendStats,
@@ -15,9 +17,7 @@ import { memberSeries, spotSeries } from "../force5/src/series";
 import { validateManifest, type Manifest } from "../force5/src/weather";
 
 const bundled = (name: string): Manifest =>
-  validateManifest(
-    JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8")),
-  );
+  validateManifest(readBundle<Manifest>(name));
 const harmonie = bundled("harmonie");
 const iconEu = bundled("latest");
 const ecmwf = bundled("ecmwf");
@@ -39,7 +39,7 @@ describe("bundled spot series", () => {
   });
 });
 
-describe("axis across the real models", () => {
+describe("axis across the three models", () => {
   it("spans the union of their valid ranges, hourly", () => {
     const axis = commonAxis(all);
     expect(axis[0]).toBe("2026-09-13T00:00:00.000Z");
@@ -54,21 +54,22 @@ describe("axis across the real models", () => {
   });
 });
 
-describe("interpolating the real series", () => {
+describe("interpolating the published series", () => {
   it("puts HARMONIE's three-hourly series on whole hours", () => {
     const points = spotSeries(harmonie, "brandon")!;
     const axis = commonAxis([harmonie]);
     const values = interpolateSeries(points, axis);
     expect(values.speed.every((value) => value !== null)).toBe(true);
     expect(values.gust.every((value) => value === null)).toBe(true);
-    // 13 September 16:00 is a real frame: u 4.47, v 2.44.
+    // 13 September 16:00 is a published frame: u 6.13, v -5.04.
     expect(values.speed[axis.indexOf("2026-09-13T16:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(4.47, 2.44),
+      Math.hypot(6.13, -5.04),
       10,
     );
-    // 14:00 sits a third of the way from 13:00 (0.61, -0.51) to 16:00.
+    // 14:00 sits a third of the way from 13:00 (3.06, -5.84) to 16:00, and the
+    // interpolation runs in u/v, never between speeds or bearings.
     expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(0.61 + (4.47 - 0.61) / 3, -0.51 + (2.44 + 0.51) / 3),
+      Math.hypot(3.06 + (6.13 - 3.06) / 3, -5.84 + (-5.04 + 5.84) / 3),
       10,
     );
   });
@@ -87,7 +88,7 @@ describe("interpolating the real series", () => {
   });
 });
 
-describe("blending the three real models", () => {
+describe("blending the three models", () => {
   const axis = commonAxis(all);
   const inputs = blendInputs(
     all,
