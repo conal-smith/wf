@@ -12,6 +12,7 @@ import {
 import { WindMap, Force5Brand } from "../force5/src";
 import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
+import useRunRefresh from "./useRunRefresh";
 import { ridingLocations } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
@@ -283,6 +284,25 @@ export default function App() {
       if (modelRequest.current === controller) setPendingModel(null);
     }
   };
+  // A tab left open follows the runs. The check is silent unless it finds a new
+  // one, and the swap is the same atomic manifest/frame/time commit a model
+  // switch makes, at the frame nearest the time the reader had selected.
+  useRunRefresh({
+    manifest,
+    validTime:
+      manifest?.frames[requestedIndex]?.validTime ?? frame?.validTime ?? null,
+    switching: !!pendingModel,
+    playing,
+    onRun: ({ manifest: next, frame: nextFrame, index }, label) => {
+      modelEpoch.current++;
+      setManifest(next);
+      setFrame(nextFrame);
+      setRequestedIndex(index);
+      setFrameError("");
+      setModelError("");
+      setModelNotice(`Updated to the ${label} run.`);
+    },
+  });
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
       setRequestedIndex(0);
