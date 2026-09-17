@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { sampleColumn, sampleColumns } from "./columns";
 
 for (const width of [320, 390, 820, 1440]) {

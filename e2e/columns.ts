@@ -1,20 +1,22 @@
-import { readFileSync } from "node:fs";
+import { readSample } from "./sample";
 
 interface Bundle {
   runTime: string;
   frames: { validTime: string }[];
 }
-const read = (model: string): Bundle =>
-  JSON.parse(readFileSync(`public/weather/${model}.json`, "utf8"));
 
-const harmonie = read("harmonie");
-const ecmwf = read("ecmwf");
-const aifs = read("aifs");
+const harmonie = readSample<Bundle>("harmonie");
+const ecmwf = readSample<Bundle>("ecmwf");
+const aifs = readSample<Bundle>("aifs");
 
 /**
  * A clock inside HARMONIE's sample run, eight hours after it was initialised.
  * The dock's columns depend on which runs have expired, so a spec that counts
  * columns has to say when it is standing.
+ *
+ * Every spec stands here by default: `e2e/fixtures.ts` pins it before the page
+ * is opened, so a suite written against a calendar frozen in September 2026
+ * gives the same answers whatever the wall clock says.
  */
 export const SAMPLE_CLOCK = new Date(
   Date.parse(harmonie.runTime) + 8 * 3600000,
@@ -22,19 +24,29 @@ export const SAMPLE_CLOCK = new Date(
 
 /**
  * The axis `dockColumns` builds from two runs: the near one's own times, with
- * the far one's on either side of them — the hours before the near run was
- * initialised as well as the days after it ends. Written out here rather than
- * imported, so a spec states the expectation instead of re-deriving it.
+ * the far one's after them. There is a head before them only when the near run
+ * has not started yet — and the sample HARMONIE run started eight hours before
+ * `SAMPLE_CLOCK`, so here there is none. Written out rather than imported, so a
+ * spec states the expectation instead of re-deriving it.
  */
-const join = (near: Bundle, far: Bundle): string[] => {
+const join = (near: Bundle, far: Bundle, now = SAMPLE_CLOCK.getTime()) => {
   const first = Date.parse(near.frames[0].validTime);
   const last = Date.parse(near.frames.at(-1)!.validTime);
+  const times = far.frames.map((frame) => frame.validTime);
+  // The head runs from the last far time the clock has already passed up to
+  // (not including) the near run's first, and only when that first is ahead.
+  const from =
+    first > now
+      ? times.reduce(
+          (start, validTime) =>
+            Date.parse(validTime) <= now ? Date.parse(validTime) : start,
+          -Infinity,
+        )
+      : Infinity;
   const outside = (keep: (time: number) => boolean) =>
-    far.frames
-      .filter((frame) => keep(Date.parse(frame.validTime)))
-      .map((frame) => frame.validTime);
+    times.filter((validTime) => keep(Date.parse(validTime)));
   return [
-    ...outside((time) => time < first),
+    ...outside((time) => time >= from && time < first),
     ...near.frames.map((frame) => frame.validTime),
     ...outside((time) => time > last),
   ];

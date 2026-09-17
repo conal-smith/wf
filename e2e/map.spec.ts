@@ -1,11 +1,9 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./fixtures";
 import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
-import { readFileSync } from "node:fs";
+import { readSample } from "./sample";
 
-const manifest = JSON.parse(readFileSync("public/weather/latest.json", "utf8"));
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
+const manifest = readSample("latest");
+const harmonie = readSample("harmonie");
 // A bundled HARMONIE run may or may not carry gusts, depending on when it was
 // captured. Both states are valid; assert against the snapshot that is present.
 const harmonieGusts = harmonie.gustAvailable !== false;
@@ -291,7 +289,7 @@ test("switches real models, uses their own times and values, and clamps the shor
     "true",
   );
   await expect(page.locator(".model-info")).toContainText(
-    "HARMONIE · 0.5° sample grid",
+    "HARMONIE · 0.5° × 0.4° sample grid",
   );
   const target = Date.parse(old.validTime);
   const index = harmonie.frames.reduce(
@@ -672,6 +670,12 @@ test("missing snapshot is actionable, and expired snapshots are labelled", async
     "npm run weather:refresh",
   );
   await page.unroute("**/weather/harmonie.json");
+  // At the sample clock the run is live, so the label is a statement about the
+  // reader's own time and not about the fixture always being old by now.
+  await page.goto("/");
+  await expect(page.locator(".site-footer")).not.toContainText(
+    "Archived snapshot",
+  );
   await page.clock.install({ time: new Date("2030-01-01T12:00:00Z") });
   await page.goto("/");
   await expect(page.locator(".site-footer")).toContainText("Archived snapshot");
