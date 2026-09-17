@@ -11,7 +11,15 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6. Real sample snapshots are included in `public/weather`: the regional forecasts cover 13–16 September 2026 and ECMWF extends to 28 September. Later generated run directories are git-ignored. Refresh to obtain a newer available run.
+Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6.
+
+No forecast data is committed: `public/weather/` is generated and git-ignored. A clean clone therefore starts with no weather at all, and the site says so. Either refresh a real run (see [Refresh the forecast](#refresh-the-forecast)) or write the synthetic sample bundles:
+
+```sh
+npm run weather:sample
+```
+
+That writes nine bundles in exactly the published format — HARMONIE, ICON-EU, ECMWF, GFS, ARPEGE, AROME, AIFS, GFS-Wave and ICON-EU surface weather — carrying a smooth analytic field rather than a forecast, on a fixed sample calendar covering 13–28 September 2026. Every manifest says what it is in its provider and attribution ("Synthetic sample data for tests — not a forecast"), so it can never be mistaken for model output. The generator refuses to overwrite manifests that are already in `public/weather`; pass `--force` to replace them, or `--profile live` for run times anchored to the wall clock.
 
 Features:
 
@@ -167,9 +175,10 @@ about 1.2 MB a frame — while `spotSeries` carries every variable at every hour
 
 A measured live run (18 UTC on 16 September 2026, cold cache, default 0–72 h): **67
 seconds**, 301 MB of bz2 GRIB in 325 files, 25 frames totalling 30.3 MB (1.19–1.27 MB
-each) and a 156 KB manifest. The bundled acceptance snapshot is the same run through
-+3 h: 2 frames, 2.4 MB, with a 17 KB manifest. Brandon Bay from that run: 15.6 °C with
-97 % cloud and 1016.8 hPa at 18 UTC, then 0.6 mm of rain in 18–21 UTC (`ww` 61, rain)
+each) and a 156 KB manifest. No snapshot is committed; the acceptance bundle the
+tests read is the synthetic one in `tests/fixtures/weather`, the same run hours
+(18 UTC through +3 h) with sample values. Brandon Bay from the measured live run:
+15.6 °C with 97 % cloud and 1016.8 hPa at 18 UTC, then 0.6 mm of rain in 18–21 UTC (`ww` 61, rain)
 at 16.0 °C and 1014.6 hPa, 0.5 mm more by midnight with `ww` 80 (showers), and a drier
 14.2 °C at 03 UTC with 63 % cloud and 1012.9 hPa.
 
@@ -230,8 +239,8 @@ time and value ranges for every message.
 `gustKind: "instantaneous"` with `gustIntervalHours: [hour, hour]` on every
 frame, initialization included, and no `gustMissingHours`. Instantaneous gusts
 read lower than an interval maximum covering the same time; do not compare them
-with ICON-EU or ECMWF gusts. The bundled acceptance snapshot is 16 September
-2026 at 12 UTC through +120 h: 41 frames, approximately 2.4 MB.
+with ICON-EU or ECMWF gusts. No snapshot is committed; the sample bundle the
+tests read is 16 September 2026 at 06 UTC through +24 h.
 
 ### GFS-Wave refresh
 
@@ -300,9 +309,9 @@ more are land-masked but take values from the resolved water beside them, which
 describes the nearby open sea rather than the shoreline. This is a 9 km global wave
 model: no breaking waves, no refraction round a headland, no idea a bay is sheltered.
 
-The bundled acceptance snapshot is 16 September 2026 at 18 UTC through +9 h: 4 frames,
-approximately 2.2 MB. Wave frames carry nine arrays over 12,221 cells, about 560 KB
-each, so a full 240-hour run is roughly 45 MB and is generated locally, not committed.
+No snapshot is committed; the sample bundle the tests read is 16 September 2026 at
+18 UTC through +9 h, 4 frames on a coarse grid. Wave frames carry nine arrays over
+12,221 cells, about 560 KB each, so a full 240-hour run is roughly 45 MB.
 
 ### Tide refresh
 
@@ -706,8 +715,8 @@ Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
 transferred in 1,236 requests (1,130 of them 1 KB header reads), 32 seconds** wall
 time with three concurrent package walks, publishing 35 frames (12 MB of JSON) and a
 76 kB manifest for 25 locations. Brandon Bay read 18.2 kn at initialization, 20.1 kn
-gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. The bundled acceptance
-snapshot is the same run through +12 h: 5 frames, 1.72 MB.
+gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. No snapshot is
+committed; the sample bundle the tests read is a 12 UTC run through +12 h, 5 frames.
 
 ### AROME refresh
 
@@ -1054,7 +1063,9 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests start the production preview on port 4173. They use the real map/data, so they require internet for OpenFreeMap. Tests cover time/units/point inspection, particles, mobile search, failed-frame recovery, missing and expired snapshots, reduced motion, and unavailable basemaps. Screenshots and failure traces go into ignored `test-results/`.
+`npm test` and `npm run test:weather` need nothing downloaded: the bundles they read are the small synthetic ones committed under `tests/fixtures/weather/`, written by `npm run weather:fixtures` (`scripts/sample-weather.mjs`). Regenerate them after changing the generator and re-run both suites; they are deterministic, so an unchanged generator rewrites the same bytes.
+
+Browser tests start the production preview on port 4173 (`PREVIEW_PORT` overrides it, so several worktrees can run at once). The web server step runs `npm run weather:sample -- --if-missing` before building, so a clean clone gets the same sample bundles automatically and a checkout that already holds real ingest output is served untouched. The tests use the real map, so they require internet for OpenFreeMap. They cover time/units/point inspection, particles, mobile search, failed-frame recovery, missing and expired snapshots, reduced motion, and unavailable basemaps. Screenshots and failure traces go into ignored `test-results/`.
 
 ```sh
 npm run preview
@@ -1132,10 +1143,10 @@ All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies
 `FORCE5_SPOTS_FILE`, defaulting to that file and falling back to `spots.json` with a
 printed warning when it is absent. Regenerate it with `npm run spots:export` after
 changing `src/locations.ts` or `data/locations/`; the original eight ids and
-coordinates are asserted unchanged, because bundled snapshots refer to those points.
-The bundled snapshots predate the change and were published with only the original
-eight; their remaining series were recomputed from their own frames by
-`force5/ingest/backfill_spots.py`, so every bundled manifest now carries all 25.
+coordinates are asserted unchanged, because published manifests refer to those points.
+Runs published before the change carried only the original eight; their remaining
+series were recomputed from their own frames by `force5/ingest/backfill_spots.py`, so
+every manifest now carries all 25, and the sample bundles do too.
 
 ### Optional manifest fields
 

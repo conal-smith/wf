@@ -243,7 +243,9 @@ test("switches real models, uses their own times and values, and clamps the shor
     "aria-pressed",
     "true",
   );
-  await expect(page.locator(".model-info")).toContainText("HARMONIE · 2 km");
+  await expect(page.locator(".model-info")).toContainText(
+    "HARMONIE · 0.5° sample grid",
+  );
   const target = Date.parse(old.validTime);
   const index = harmonie.frames.reduce(
     (best: number, f: { validTime: string }, i: number) =>
@@ -270,12 +272,14 @@ test("switches real models, uses their own times and values, and clamps the shor
     ),
   );
   await page.locator(".model-info").click();
+  // The dialog describes the model behind the map and links its source. The
+  // sample bundle names itself in both places rather than crediting anyone.
   await expect(page.locator("dialog")).toContainText(
-    "HARMONIE-AROME DINI control",
+    "HARMONIE shaped sample bundle",
   );
   await expect(
-    page.getByRole("link", { name: "Met Éireann forecast data" }),
-  ).toHaveAttribute("href", "https://opendata.met.ie/nwp/near-realtime");
+    page.getByRole("link", { name: "Synthetic sample data forecast data" }),
+  ).toHaveAttribute("href", "https://wingfoil.ie/");
   await page.getByLabel("Close forecast information").click();
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await picker.locator('[data-model="icon-eu"]').click();
