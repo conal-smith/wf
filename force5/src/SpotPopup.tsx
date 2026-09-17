@@ -76,15 +76,36 @@ export default function SpotPopup({
     };
     const observer = new ResizeObserver(fit);
     observer.observe(content);
-    // Choosing a spot flies the camera, so the first measurement can be taken
-    // mid-flight and be stale by the time it lands. Measure again at rest; the
-    // correction is a zero-duration pan, whose own `moveend` finds nothing left
-    // to do and stops.
-    map.on("moveend", fit);
+    /**
+     * Choosing a spot flies the camera, so the first measurement can be taken
+     * mid-flight and be stale by the time it lands: fit again when that flight
+     * comes to rest.
+     *
+     * Once, and only for that flight. Refitting after every move would re-clamp
+     * the card after each of the reader's own pans, pinning the marker to the
+     * screen and making the map impossible to move away from. The first touch
+     * of the map is the reader taking over, and from then on the card goes
+     * wherever the map goes.
+     */
+    let opening = true;
+    const handOver = () => {
+      opening = false;
+    };
+    const landed = () => {
+      if (!opening) return;
+      handOver();
+      fit();
+    };
+    const container = map.getContainer();
+    container.addEventListener("pointerdown", handOver);
+    container.addEventListener("keydown", handOver);
+    map.on("moveend", landed);
     return () => {
       cancelAnimationFrame(layoutFrame);
       observer.disconnect();
-      map.off("moveend", fit);
+      container.removeEventListener("pointerdown", handOver);
+      container.removeEventListener("keydown", handOver);
+      map.off("moveend", landed);
       popup.remove();
     };
   }, [map, point.id, point.lat, point.lon, bottomInset, content]);
