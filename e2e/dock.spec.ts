@@ -1119,6 +1119,49 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   expect(errors).toEqual([]);
 });
 
+test("a tab coming back lands on now, unless the reader chose a later hour", async ({
+  page,
+}) => {
+  await withTides(page);
+  // A controlled clock, so the morning can pass without waiting for it.
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+
+  // The reader steps back a couple of hours and leaves the tab for six.
+  await page.getByLabel("Previous forecast", { exact: true }).click();
+  await page.getByLabel("Previous forecast", { exact: true }).click();
+  const behind = Number(await slider.inputValue());
+  // Six hours pass with the tab in the background: the clock moves, the page's
+  // own timers do not, which is exactly what a hidden tab sees.
+  await page.clock.setSystemTime(
+    new Date(SAMPLE_CLOCK.getTime() + 6 * 3600000),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+
+  // Coming back, the hour they were reading is already gone: it lands on now.
+  const atNow = sampleColumn("2026-09-14T04:00:00Z");
+  expect(atNow).toBeGreaterThan(behind);
+  await expect(slider).toHaveValue(String(atNow));
+  await expect(
+    page.locator(`[data-forecast-index="${atNow}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  // A time chosen in the future is the reader's own, and is kept.
+  const later = sampleColumn("2026-09-15T12:00:00Z");
+  await slider.fill(String(later));
+  await page.clock.setSystemTime(
+    new Date(SAMPLE_CLOCK.getTime() + 8 * 3600000),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+  await expect(slider).toHaveValue(String(later));
+});
+
 test("a failed background check leaves the forecast alone and says nothing", async ({
   page,
 }) => {
