@@ -56,6 +56,14 @@ minutes = [35]
 timeout_seconds = 3300
 
 [[jobs]]
+id = "aifs"
+models = ["aifs"]
+args = ["--ecmwf-source", "ecmwf"]
+hours = [0, 6, 12, 18]      # All four AIFS cycles, each published ~6 h after its
+minutes = [25]              # run time. ~92 MB, 61 frames, no gust field.
+timeout_seconds = 3300
+
+[[jobs]]
 id = "gfs"
 models = ["gfs"]
 args = ["--step", "3"]
@@ -83,6 +91,14 @@ models = ["mi-swan"]
 hours = [10, 14, 18]        # One SWAN run a day, published around 09 UTC, sometimes late.
 minutes = [15]
 timeout_seconds = 1800
+
+[[jobs]]
+id = "ecmwf-wave"
+models = ["ecmwf-wave"]
+args = ["--ecmwf-source", "ecmwf"]
+hours = [8, 20]             # The 00/12 UTC wave stream, published ~8 h after the run.
+minutes = [45]              # ~715 MB with the period bands; the AWS mirror throttles.
+timeout_seconds = 3300
 
 [[jobs]]
 id = "tides"
