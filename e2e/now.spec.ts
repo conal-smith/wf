@@ -1,13 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test, type Page } from "./fixtures";
+import { readSample } from "./sample";
 
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
-const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
+const harmonie = readSample("harmonie");
+const ecmwf = readSample("ecmwf");
 
-async function relativePosition(page: Page) {
-  return page.locator(".forecast-now").evaluate((line) => {
+/** Where the Now line sits relative to the centres of two named columns. */
+async function relativePosition(page: Page, columns: [number, number]) {
+  return page.locator(".forecast-now").evaluate((line, [first, second]) => {
     const parent = line.closest(".forecast-content")!;
     const centre = (i: number) => {
       const r = parent
@@ -18,15 +17,16 @@ async function relativePosition(page: Page) {
     };
     return {
       line: line.getBoundingClientRect().left,
-      a: centre(2),
-      b: centre(3),
+      a: centre(first),
+      b: centre(second),
     };
-  });
+  }, columns);
 }
 
 test("Now opens centred between timestamps and remains independent of scrubbing", async ({
   page,
 }) => {
+  // Half past the hour, so the line sits midway between two hourly columns.
   const now = new Date(Date.parse(harmonie.runTime) + 7.5 * 3600000);
   await page.clock.setFixedTime(now);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -34,10 +34,12 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   const line = page.getByRole("img", { name: /^Now:/ });
   await expect(line).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await expect(slider).toHaveValue("2");
+  // HARMONIE already covers now, so the axis opens on its own first hour and
+  // +7 h is column seven, which is where the opening selection lands.
+  await expect(slider).toHaveValue("7");
   await expect
     .poll(async () => {
-      const p = await relativePosition(page);
+      const p = await relativePosition(page, [7, 8]);
       return Math.abs(p.line - (p.a + p.b) / 2);
     })
     .toBeLessThan(1);
@@ -77,10 +79,12 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   ).toBeGreaterThan(parseFloat(originalLeft));
   await slider.fill("2");
   await page.setViewportSize({ width: 760, height: 844 });
+  // The clock is now exactly +8 h, which is a published hour: the line lands on
+  // that column's centre however the dock is resized around it.
   await expect
     .poll(async () => {
-      const p = await relativePosition(page);
-      return Math.abs(p.line - (p.a + ((p.b - p.a) * 2) / 3));
+      const p = await relativePosition(page, [8, 9]);
+      return Math.abs(p.line - p.a);
     })
     .toBeLessThan(1);
   await expect(page.locator(".spot-marker")).toHaveCount(25, {
@@ -91,7 +95,7 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   await page.screenshot({ path: "test-results/forecast-now-mobile.png" });
 });
 
-test("Now uses actual model times and disappears for expired forecasts", async ({
+test("Now uses the dock's own column times and disappears past them", async ({
   page,
 }) => {
   const now = new Date(Date.parse(ecmwf.runTime) + 147 * 3600000);
@@ -100,7 +104,24 @@ test("Now uses actual model times and disappears for expired forecasts", async (
   await expect(page.locator('[data-model="ecmwf"]')).toBeEnabled({
     timeout: 30000,
   });
-  await expect(page.locator(".forecast-now")).toHaveCount(0); // HARMONIE already expired.
+  // HARMONIE's run expired two days ago, so it owns no column any more and the
+  // dock's axis is ECMWF's. The Now line follows the columns, not the map, so
+  // it is there before the reader switches the map to ECMWF as well.
+  await expect(page.locator(".forecast-now")).toHaveCount(1);
+  // And the dead run answers no cell: the band names ECMWF the whole way, and
+  // every column carries a value, none of them from a forecast that has been
+  // and gone.
+  const band = page.locator(".forecast-model-band th[scope=colgroup]");
+  await expect(band).toHaveCount(1);
+  await expect(band).toContainText("ECMWF");
+  await expect(band).not.toContainText("HARMONIE");
+  await page.locator('[data-view="table"]').click();
+  const wind = await page
+    .locator(".forecast-table .wind-cell")
+    .allTextContents();
+  expect(wind).toHaveLength(ecmwf.frames.length);
+  expect(wind.filter((text) => text === "\u2014")).toHaveLength(0);
+  await page.locator('[data-view="blend"]').click();
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await page.locator('[data-model="ecmwf"]').click();
   await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(

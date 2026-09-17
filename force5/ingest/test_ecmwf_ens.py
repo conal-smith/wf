@@ -9,6 +9,7 @@ from unittest.mock import patch
 import eccodes as ec
 
 from cadence import expected_hours, ladder_hours
+import f5bin
 import fetch_ecmwf_ens as ens
 from fetch_ecmwf_ens import average, decode_step, load_spots, main, parameter_sets, run_datetime
 from publish_s3 import publish, validate_ensemble
@@ -239,11 +240,13 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(manifest["gustMissingHours"], [0])
         self.assertEqual(expected_hours(manifest), (0, 6, 12))
         # Members 1..4 hold u = member, v = -member, gust = 10 + member.
-        frame = json.loads((self.root / "public" / manifest["frames"][1]["url"]).read_text())
+        frame = f5bin.decode_frame(
+            (self.root / "public" / manifest["frames"][1]["url"]).read_bytes())
         self.assertEqual(frame["u"], [2.5] * 4)
         self.assertEqual(frame["v"], [-2.5] * 4)
         self.assertEqual(frame["gust"], [12.5] * 4)
-        self.assertEqual(frame["gustIntervalHours"], [0, 6])
+        self.assertEqual((frame["run"], frame["hour"]), (manifest["run"], 6))
+        self.assertEqual(manifest["frames"][1]["gustIntervalHours"], [0, 6])
         self.assertEqual(manifest["frames"][0]["gustIntervalHours"], None)
         mean = manifest["spotForecasts"]["brandon"][1]
         self.assertEqual((mean["u"], mean["v"], mean["gust"]), (2.5, -2.5, 12.5))
@@ -295,7 +298,7 @@ class ENSTests(unittest.TestCase):
 
     # --- publisher -----------------------------------------------------------
     def bundle(self, members=4):
-        (self.root / "weather/run").mkdir(parents=True, exist_ok=True)
+        (self.root / "weather/ecmwf-ens-run").mkdir(parents=True, exist_ok=True)
         run = datetime(2026, 9, 16, tzinfo=timezone.utc)
         hours = (0, 6, 12)
         manifest = {"model": "ecmwf-ens", "run": "2026091600", "runTime": run.isoformat(),
@@ -309,9 +312,9 @@ class ENSTests(unittest.TestCase):
             interval = None if hour == 0 else [hour - 6, hour]
             gust = None if hour == 0 else [9.0] * 4
             manifest["frames"].append({"hour": hour, "validTime": valid,
-                                       "url": f"weather/run/{hour}.json",
+                                       "url": f"weather/ecmwf-ens-run/{hour}.json",
                                        "gustIntervalHours": interval})
-            (self.root / f"weather/run/{hour}.json").write_text(json.dumps(
+            (self.root / f"weather/ecmwf-ens-run/{hour}.json").write_text(json.dumps(
                 {"model": "ecmwf-ens", "run": "2026091600", "hour": hour, "validTime": valid,
                  "grid": manifest["grid"], "gustIntervalHours": interval,
                  "u": [1.0] * 4, "v": [2.0] * 4, "gust": gust}))

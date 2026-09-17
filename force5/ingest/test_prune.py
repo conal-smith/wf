@@ -7,8 +7,10 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import prune
+from workspace import workspace_lock
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
 
@@ -118,6 +120,26 @@ class PrunePublishedTest(unittest.TestCase):
                      self.station_live, self.station_new):
             self.assertTrue(kept.exists(), kept)
         self.assertGreater(result["freedBytes"], 0)
+
+    def test_a_binary_frames_sidecars_live_and_die_with_their_run(self):
+        """`.bin.br`/`.bin.gz` are never referenced, so only whole-run retention saves them.
+
+        The sweep works on top-level entries under `weather/`, keeping or removing
+        a run directory entire, which is exactly what the sidecars need: nothing
+        points at them, so a file-by-file sweep would collect them the moment they
+        were written.
+        """
+        for directory in (self.referenced_old, self.orphan_old):
+            for suffix in (".bin", ".bin.br", ".bin.gz"):
+                (directory / f"000-abc{suffix}").write_bytes(b"F5F1")
+        self.tree.age(self.referenced_old, 100)
+        self.tree.age(self.orphan_old, 100)
+        result = self.prune()
+        self.assertIn("weather/harmonie-previous", result["removed"])
+        for suffix in (".bin", ".bin.br", ".bin.gz"):
+            self.assertTrue((self.referenced_old / f"000-abc{suffix}").is_file(), suffix)
+            self.assertFalse((self.orphan_old / f"000-abc{suffix}").exists(), suffix)
+        self.assertNotIn("weather/harmonie-live", result["removed"])
 
     def test_keeps_pointer_manifests_and_the_archive(self):
         self.prune()
@@ -245,6 +267,246 @@ class MainTest(unittest.TestCase):
         code, event = run_main(["--root", self.directory.name])
         self.assertEqual((code, event["event"]), (1, "prune_failed"))
         self.assertTrue((self.tree.public / "weather" / "harmonie-previous").exists())
+
+    def test_main_keeps_nothing_superseded_by_default(self):
+        self.tree.run_directory("harmonie-an-hour-ago", age_hours=1)
+        code, event = run_main(["--root", self.directory.name])
+        self.assertEqual(code, 0)
+        self.assertEqual(event["removed"], ["weather/harmonie-an-hour-ago",
+                                            "weather/harmonie-previous"])
+
+    def test_main_skips_the_sweep_while_an_import_holds_the_lock(self):
+        # A run that is still being written is unreferenced too; only the lock protects it.
+        self.tree.run_directory("harmonie-arriving", age_hours=0)
+        with workspace_lock(Path(self.directory.name)):
+            code, event = run_main(["--root", self.directory.name])
+        self.assertEqual((code, event["event"]), (0, "prune_skipped"))
+        self.assertTrue((self.tree.public / "weather" / "harmonie-arriving").exists())
+        self.assertTrue((self.tree.public / "weather" / "harmonie-previous").exists())
+
+
+class BucketPruneTest(unittest.TestCase):
+    """The bucket sweep clears failed uploads and nothing else, ever."""
+
+    def setUp(self):
+        from test_publish_s3 import FakeS3
+        self.s3 = FakeS3()
+        self.pointer = self.s3.seed("weather/harmonie.json", json.dumps(
+            wind_manifest("harmonie", "2026091600", "harmonie-live")).encode(), NOW)
+        # Both models need a pointer: with none, the sweep protects everything of
+        # theirs rather than treating it as unreferenced.
+        self.tide_pointer = self.s3.seed("marine/tides.json", json.dumps(
+            tide_manifest("2026091600", "tides-DUBLIN-live.json")).encode(), NOW)
+        self.live = [self.s3.seed(f"weather/harmonie-live/{hour:03d}-abc.json", b'{"u":[0]}',
+                                  NOW - timedelta(hours=100)) for hour in (0, 3)]
+        self.station_live = self.s3.seed("marine/tides-DUBLIN-live.json",
+                                         b'{"station":"DUBLIN","curve":[1,2]}',
+                                         NOW - timedelta(hours=99))
+        self.orphan = self.s3.seed("weather/harmonie-previous/000-abc.json", b'{"u":[0,0]}',
+                                   NOW - timedelta(hours=100))
+        self.arriving = self.s3.seed("weather/harmonie-arriving/000-abc.json", b'{"u":[0]}',
+                                     NOW - timedelta(hours=1))
+        self.archive = self.s3.seed("weather/manifests/harmonie/2026091600-abc.json", b"{}",
+                                    NOW - timedelta(hours=500))
+        self.station = self.s3.seed("marine/tides-DUBLIN-previous.json",
+                                    b'{"station":"DUBLIN","curve":[1,2]}', NOW - timedelta(hours=99))
+
+    def sweep(self, **kwargs):
+        return prune.bucket_prune(self.s3, "test", now=NOW, **kwargs)
+
+    def test_removes_only_unreferenced_objects_past_the_guard(self):
+        result = self.sweep()
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
+                                             "weather/harmonie-previous/000-abc.json"])
+        self.assertGreater(result["freedBytes"], 0)
+        for key in [*self.live, self.arriving, self.archive, self.pointer,
+                    self.tide_pointer, self.station_live]:
+            self.assertIn(key, self.s3.objects, key)
+
+    def test_a_model_with_no_pointer_keeps_everything_it_owns(self):
+        # An absent pointer says nothing about what that model still needs, so
+        # "unreferenced" is meaningless for it. Only tides may be swept here.
+        del self.s3.objects["weather/harmonie.json"]
+        result = self.sweep()
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json"])
+        self.assertIn("harmonie", result["noPointer"])
+        self.assertIn("harmonie", result["protectedModels"])
+        # The two live frames and the previous run; the arriving one is already
+        # held back by the age guard and never reaches this stage.
+        self.assertEqual((result["protectedObjects"], result["withinGuard"]), (3, 1))
+        self.assertIn(self.orphan, self.s3.objects)
+        for key in self.live:
+            self.assertIn(key, self.s3.objects, key)
+
+    def test_a_sibling_models_missing_pointer_does_not_protect_this_one(self):
+        # harmonie-eps has published no pointer, but "harmonie-previous" is harmonie's
+        # and harmonie has one, so the nesting must not hand it a free pass.
+        self.assertFalse(prune.model_owns("harmonie-eps", "harmonie-previous"))
+        result = self.sweep()
+        self.assertIn("harmonie-eps", result["noPointer"])
+        self.assertIn("weather/harmonie-previous/000-abc.json", result["removed"])
+        self.assertNotIn(self.orphan, self.s3.objects)
+
+    def test_an_object_referenced_while_the_listing_ran_is_not_deleted(self):
+        # The keep-set is read before a slow paginated listing, and put_immutable
+        # leaves an already-present object alone, so a re-referenced stable key keeps
+        # its old LastModified and the age guard cannot protect it. The second read can.
+        listing = prune.bucket_objects
+
+        def publish_midway(s3, bucket, prefix):
+            yield from list(listing(s3, bucket, prefix))
+            self.s3.seed("marine/tides.json", json.dumps(tide_manifest(
+                "2026091612", "tides-DUBLIN-previous.json")).encode(), NOW)
+
+        with patch.object(prune, "bucket_objects", publish_midway):
+            result = self.sweep()
+        self.assertNotIn("marine/tides-DUBLIN-previous.json", result["removed"])
+        self.assertIn(self.station, self.s3.objects)
+
+    def test_a_young_orphan_is_a_run_another_machine_may_still_be_uploading(self):
+        self.assertEqual(self.sweep()["withinGuard"], 1)
+        self.assertIn(self.arriving, self.s3.objects)
+        # Past the guard it is ordinary wreckage.
+        self.assertIn("weather/harmonie-arriving/000-abc.json",
+                      self.sweep(min_age_hours=0.5)["removed"])
+
+    def test_an_unreadable_manifest_aborts_before_deleting_anything(self):
+        self.s3.seed("weather/harmonie.json", b"{not json")
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_manifest_that_cannot_be_read_at_all_aborts(self):
+        self.s3.deny.add("weather/harmonie.json")
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_manifest_referencing_nothing_aborts(self):
+        self.s3.seed("weather/harmonie.json", json.dumps(
+            {"model": "harmonie", "run": "2026091600", "frames": []}).encode())
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_pointer_for_a_model_the_registry_lacks_is_kept(self):
+        self.s3.seed("weather/nws-wave.json", json.dumps(
+            wind_manifest("nws-wave", "2026091600", "nws-wave-live")).encode(),
+            NOW - timedelta(hours=400))
+        self.assertNotIn("weather/nws-wave.json", self.sweep()["removed"])
+        self.assertIn("weather/nws-wave.json", self.s3.objects)
+
+    def test_dry_run_reports_without_deleting(self):
+        result = self.sweep(dry_run=True)
+        self.assertIn("weather/harmonie-previous/000-abc.json", result["removed"])
+        self.assertEqual(self.s3.deleted, [])
+        self.assertIn(self.orphan, self.s3.objects)
+
+    def test_listings_and_deletes_are_paginated(self):
+        self.s3.page_size = 400
+        keys = [self.s3.seed(f"weather/harmonie-failed/{i:05d}-abc.json", b"{}",
+                             NOW - timedelta(hours=50)) for i in range(1100)]
+        result = self.sweep()
+        self.assertEqual(len(result["removed"]), 1100 + 2)
+        self.assertGreater(self.s3.list_calls, 3)
+        self.assertEqual(self.s3.delete_calls, 2)  # 1102 keys, 1000 to a request.
+        for key in keys:
+            self.assertNotIn(key, self.s3.objects)
+
+    def test_a_prefix_confines_the_sweep(self):
+        self.s3.objects = {f"cdn/{key}": value for key, value in self.s3.objects.items()}
+        result = prune.bucket_prune(self.s3, "test", "cdn/", now=NOW)
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
+                                             "weather/harmonie-previous/000-abc.json"])
+        self.assertIn("cdn/weather/harmonie-live/000-abc.json", self.s3.objects)
+
+
+class SweepCommandTest(unittest.TestCase):
+    def test_the_bucket_mode_reports_and_never_touches_a_work_directory(self):
+        from test_publish_s3 import FakeS3
+        s3 = FakeS3()
+        s3.seed("weather/harmonie.json", json.dumps(
+            wind_manifest("harmonie", "2026091600", "harmonie-live")).encode())
+        s3.seed("weather/harmonie-live/000-abc.json", b"{}")
+        orphan = s3.seed("weather/harmonie-previous/000-abc.json", b"{}",
+                         datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("publish_s3.make_client", return_value=s3):
+            code, event = run_main(["--bucket", "test", "--endpoint-url",
+                                    "https://account.r2.cloudflarestorage.com"])
+        self.assertEqual((code, event["event"]), (0, "sweep_complete"))
+        self.assertEqual(event["removed"], ["weather/harmonie-previous/000-abc.json"])
+        self.assertNotIn(orphan, s3.objects)
+
+    def test_s3_bucket_in_the_environment_does_not_hijack_the_local_sweep(self):
+        # The scheduler's environment carries S3_BUCKET for the worker. If this
+        # command picked it up, the hourly retention job would quietly become a
+        # bucket sweep and the disk would fill.
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        tree = Tree(directory.name)
+        tree.pointer("weather/harmonie.json",
+                     wind_manifest("harmonie", "2026091600", "harmonie-live"))
+        tree.run_directory("harmonie-live", age_hours=1)
+        tree.run_directory("harmonie-previous", age_hours=200)
+        with patch.dict(os.environ, {"S3_BUCKET": "wingfoil-forecast"}):
+            code, event = run_main(["--root", directory.name])
+        self.assertEqual((code, event["event"]), (0, "prune_complete"))
+        self.assertEqual(event["removed"], ["weather/harmonie-previous"])
+
+    def test_local_only_options_cannot_be_combined_with_a_bucket(self):
+        for extra in (["--max-age-hours", "48"], ["--cache-days", "1"], ["--root", "/tmp"]):
+            with self.subTest(extra=extra[0]), contextlib.redirect_stderr(io.StringIO()) as err:
+                with self.assertRaises(SystemExit):
+                    prune.main(["--bucket", "test", *extra])
+            self.assertIn(extra[0], err.getvalue())
+
+    def test_a_broken_manifest_fails_the_command_without_deleting(self):
+        from test_publish_s3 import FakeS3
+        s3 = FakeS3()
+        s3.seed("weather/harmonie.json", b"nope")
+        s3.seed("weather/harmonie-previous/000-abc.json", b"{}",
+                datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("publish_s3.make_client", return_value=s3):
+            code, event = run_main(["--bucket", "test"])
+        self.assertEqual((code, event["event"]), (1, "sweep_failed"))
+        self.assertEqual(s3.deleted, [])
+
+
+class WorkerTest(unittest.TestCase):
+    def test_a_published_run_deletes_the_one_it_replaced(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            tree.pointer("weather/harmonie.json",
+                         wind_manifest("harmonie", "2026091600", "harmonie-live"))
+            tree.run_directory("harmonie-live", age_hours=0)
+            tree.run_directory("harmonie-previous", age_hours=0)
+            self.assertEqual(worker.drop_superseded(tree.public), 1)
+            self.assertTrue((tree.public / "weather" / "harmonie-live").exists())
+            self.assertFalse((tree.public / "weather" / "harmonie-previous").exists())
+
+    def test_raw_downloads_go_after_the_job_but_small_state_stays(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            raw = tree.cache_file("ecmwf-ens/2026091600/000.grib2", days=0)
+            state = tree.cache_file("mi-swan/info/shelf.json", days=0)
+            lock = tree.cache_file("worker.lock", days=0)
+            worker.drop_downloads(tree.root, "ecmwf-ens")
+            worker.drop_downloads(tree.root, "mi-swan")
+            self.assertFalse(raw.exists())
+            self.assertTrue(state.exists())
+            self.assertTrue(lock.exists())
+
+    def test_a_failed_sweep_never_fails_the_forecast(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            tree.run_directory("harmonie-previous", age_hours=0)
+            (tree.public / "weather" / "harmonie.json").write_text("nope")
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(worker.drop_superseded(tree.public), 0)
+            self.assertTrue((tree.public / "weather" / "harmonie-previous").exists())
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test, type Page } from "./fixtures";
+import { readSample } from "./sample";
+import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
+import { encodeFrame } from "../scripts/f5bin.mjs";
 
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
+const harmonie = readSample("harmonie");
 
 /**
  * A tide fixture, so the marine row is tested the same way whether or not
@@ -162,15 +162,22 @@ test("the blend draws every model that covers the spot, and candles share its ax
   ).toBe(true);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   // Every three-hourly column is the same width, including the ones whose day
-  // group holds only them: the charts read the columns as evenly spaced.
+  // group holds only them: the charts read the columns as evenly spaced. Past
+  // day six the axis turns six-hourly and those columns keep twice the room.
   const widths = await page
-    .locator(".forecast-table thead tr:nth-child(2) th")
+    .locator(".forecast-table thead .forecast-hours th")
     .evaluateAll((cells) =>
       cells
         .slice(1)
         .map((cell) => Math.round(cell.getBoundingClientRect().width)),
     );
-  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
+  expect(widths).toHaveLength(sampleColumns.length);
+  const sizes = [...new Set(widths)].sort((a, b) => a - b);
+  expect(sizes).toHaveLength(2);
+  expect(sizes[1] / sizes[0]).toBeCloseTo(2, 1);
+  expect(widths.filter((width) => width === sizes[0]).length).toBeGreaterThan(
+    40,
+  );
   await expect(page.locator(".tide-row")).toHaveCount(1);
   await expect(page.locator(".tide-underlay")).toHaveCount(1);
   await expect(page.locator(".forecast-credits")).toContainText("Fenit tide");
@@ -180,8 +187,14 @@ test("the blend draws every model that covers the spot, and candles share its ax
   );
 
   // Hovering a column names each model's reading, the spread and the agreement.
+  // The plot is as wide as fifteen days of columns and scrolls with them, so
+  // hover over the middle of whatever part of it is actually on screen.
   const chart = (await page.locator(".chart-holder").boundingBox())!;
-  await page.mouse.move(chart.x + 260, chart.y + chart.height / 2);
+  const view = page.viewportSize()!;
+  await page.mouse.move(
+    (Math.max(chart.x, 0) + Math.min(chart.x + chart.width, view.width)) / 2,
+    chart.y + chart.height / 2,
+  );
   const card = page.locator(".chart-hover-card");
   await expect(card).toBeVisible();
   // The dock is backdrop-filtered, which makes it the containing block for
@@ -202,6 +215,117 @@ test("the blend draws every model that covers the spot, and candles share its ax
   await expect(page.locator(".candle-gust").first()).toHaveCount(1);
   await page.screenshot({ path: "test-results/dock-candles.png" });
   expect(errors).toEqual([]);
+});
+
+test("the dock shows fifteen days with HARMONIE on the map, and says whose", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // HARMONIE stops at +60 h; the dock does not.
+  const days = page.locator(".forecast-day-groups th[scope=colgroup]");
+  expect(await days.count()).toBeGreaterThanOrEqual(15);
+  const span =
+    (Date.parse(sampleColumns.at(-1)!) - Date.parse(sampleColumns[0])) /
+    86400000;
+  expect(span).toBeGreaterThan(14);
+
+  // The model band names the run behind each stretch, in one thin header row.
+  // HARMONIE already covers now, so the axis opens on it and there is exactly
+  // one seam: the hour HARMONIE stops and ECMWF carries on to day fifteen.
+  const band = page.locator(".forecast-model-band th[scope=colgroup]");
+  await expect(band).toHaveCount(2);
+  await expect(band.nth(0)).toContainText("HARMONIE");
+  await expect(band.nth(1)).toContainText("ECMWF");
+  // ECMWF's sample run is more than eighteen hours old, and still owns its
+  // columns: the band says it is an older run rather than dropping it.
+  await expect(band.nth(1)).toContainText("older run");
+  expect(
+    await band.nth(0).evaluate((cell) => cell.getBoundingClientRect().height),
+  ).toBeLessThanOrEqual(16);
+
+  // Every wind cell has a value for a named spot, past HARMONIE's reach too,
+  // and none of it costs a frame download.
+  await page.locator('[data-view="table"]').click();
+  const wind = await page
+    .locator(".forecast-table .wind-cell")
+    .allTextContents();
+  expect(wind).toHaveLength(sampleColumns.length);
+  expect(wind.filter((text) => text === "\u2014")).toHaveLength(0);
+
+  // Later days have fewer models, and the chart draws its edge dashed there.
+  await page.locator('[data-view="blend"]').click();
+  await expect(page.locator(".blend-chart .blend-sparse")).toHaveCount(1);
+});
+
+test("a column past the map model offers the run that reaches it", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const chip = page.getByRole("button", { name: /Show ECMWF on the map/ });
+  await expect(chip).toHaveCount(0);
+  const dockHeight = (await page.locator(".map-footer").boundingBox())!.height;
+
+  // Day twelve: HARMONIE cannot draw it, so the map keeps its last frame.
+  const far = sampleColumn("2026-09-25T12:00:00Z");
+  const drawn = await page.locator(".spot-marker.active").textContent();
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+  await slider.fill(String(far));
+  await expect(page.locator(`[data-forecast-index="${far}"]`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".spot-marker.active")).toHaveText(drawn!);
+  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(chip).toBeVisible();
+  // Playback follows the map model's frames, and from here there are none to
+  // follow: Play is disabled rather than teleporting the reader to the start.
+  const play = page.getByRole("button", { name: "Play forecast", exact: true });
+  await expect(play).toBeDisabled();
+  await expect(play).toHaveAttribute("title", /does not reach this hour/);
+  // The chip comes and goes as the reader scrubs across the seam, and the dock
+  // does not resize under the map when it does.
+  expect((await page.locator(".map-footer").boundingBox())!.height).toBe(
+    dockHeight,
+  );
+  // Even at the narrowest supported width the chip stays inside the page.
+  await page.setViewportSize({ width: 320, height: 844 });
+  await expect(chip).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
+  // Nothing switched by itself; the chip is the reader asking.
+  await chip.click();
+  // The chip has gone, and focus went to the control the reader was working
+  // rather than falling to the document.
+  await expect(
+    page.getByRole("slider", { name: "Forecast time" }),
+  ).toBeFocused();
+  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+    { timeout: 20000 },
+  );
+  // The map is now at that very hour, and the selection never moved.
+  await expect(slider).toHaveValue(String(far));
+  // It landed on the hour itself, so there is no 'nearest forecast' notice.
+  await expect(page.locator(".model-status")).toHaveCount(0);
+  await expect(chip).toHaveCount(0);
+  await expect(page.locator(".spot-marker.active")).not.toHaveText(drawn!);
 });
 
 test("units drive the chart axis, the table and the map readouts together", async ({
@@ -288,6 +412,7 @@ test("an arbitrary map point falls back to the table and says why", async ({
   page,
 }) => {
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   // The markers are the signal that the map has finished its opening move; a
@@ -313,8 +438,16 @@ test("an arbitrary map point falls back to the table and says why", async ({
     "true",
   );
   await expect(page.locator(".blend-chart")).toHaveCount(0);
+  // The dock keeps all fifteen days whatever the map is drawing; a bare point
+  // is read from the map model alone, so only its own hours carry a value.
   await expect(page.locator(".forecast-table .wind-cell")).toHaveCount(
-    harmonie.frames.length,
+    sampleColumns.length,
+  );
+  await expect(
+    page.locator(".forecast-table .wind-cell").nth(harmonie.frames.length - 1),
+  ).not.toHaveText("—", { timeout: 30000 });
+  await expect(page.locator(".forecast-table .wind-cell").last()).toHaveText(
+    "—",
   );
   // Returning to a named spot restores the chart the reader chose.
   await page.getByRole("button", { name: "Open spot search" }).click();
@@ -419,9 +552,16 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   const dock = (await page.locator(".map-footer").boundingBox())!;
   // Three surface-weather rows are on by default — weather, air and rain — at
   // the compact row height of 22px, which is 66px on top of the 307px this was
-  // before they existed. The budget is per row, not per dock: a row that wanted
-  // more than 22px here would be the failure.
-  expect(dock.height).toBeLessThan(380);
+  // before they existed, and the model band adds a 15px hairline. The budget is
+  // per row, not per dock: a row that wanted more than 22px here would be the
+  // failure, and so would a model band that wanted more than a hairline.
+  expect(dock.height).toBeLessThan(400);
+  expect(
+    await page
+      .locator(".forecast-model-band th")
+      .first()
+      .evaluate((cell) => Math.round(cell.getBoundingClientRect().height)),
+  ).toBeLessThanOrEqual(16);
   const compactRows = await page
     .locator(".forecast-table .marine-row td:first-of-type")
     .evaluateAll((cells) =>
@@ -435,8 +575,9 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await expect(page.locator(".dock-views button > span").first()).toBeVisible();
   const wide = (await page.locator(".map-footer").boundingBox())!;
-  // Two weather rows on by default at the full 24px: 48px on top of the previous 367px.
-  expect(wide.height).toBeLessThan(450);
+  // Two weather rows on by default at the full 24px: 48px on top of the previous
+  // 367px, plus the model band's hairline.
+  expect(wide.height).toBeLessThan(470);
   const rows = await page
     .locator(".forecast-table .marine-row td:first-of-type")
     .evaluateAll((cells) =>
@@ -457,10 +598,12 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
 });
 
 /**
- * The bundled GFS-Wave run is 2026-09-16 18 UTC, +0 to +9 h. HARMONIE's bundled
+ * The sample GFS-Wave run is 2026-09-16 18 UTC, +0 to +9 h. HARMONIE's sample
  * run ends on 16 September at 01 UTC, so the dock's columns — which are the
  * selected wind model's own forecast times — have to come from a model that
- * reaches the wave hours. GFS runs from 16 September 12 UTC to 21 September.
+ * reaches the wave hours. GFS runs from 16 September 06 UTC to +24 h. The
+ * numbers below are the ones scripts/sample-weather.mjs publishes; the run
+ * times, cadences and coverage are the ones the real adapters publish.
  */
 const WAVE_CLOCK = "2026-09-16T20:00:00Z";
 async function withWaveColumns(page: Page) {
@@ -496,9 +639,9 @@ test("the Waves row reads the bundled GFS-Wave run for Brandon Bay", async ({
   await expect(row).toHaveCount(1);
   // Four native wave steps land on four of GFS's three-hourly columns.
   expect(await waveReadings(page, "waves")).toHaveLength(4);
-  // Height in metres to one decimal; the run hour reads 0.66 m at 9.51 s.
-  await expect(row.locator(".wave-cell b").first()).toHaveText("0.7");
-  await expect(row.locator(".wave-cell small").first()).toHaveText("10s");
+  // Height in metres to one decimal; the run hour reads 2.95 m at 7.29 s.
+  await expect(row.locator(".wave-cell b").first()).toHaveText("3.0");
+  await expect(row.locator(".wave-cell small").first()).toHaveText("7s");
   for (const part of ["b", "small"] as const)
     for (const text of await row
       .locator(`.wave-cell ${part}`)
@@ -630,21 +773,21 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   await page.getByLabel("Close display options").click();
   await expect(page.locator('.weather-row[data-row="rain"]')).toHaveCount(1);
 
-  // Two native steps land on two of GFS's three-hourly columns: 15.6 °C then
-  // 16.0 °C, as whole degrees. Every other column is a dash, never a zero.
+  // Two native steps land on two of GFS's three-hourly columns: 13.6 °C then
+  // 11.2 °C, as whole degrees. Every other column is a dash, never a zero.
   const air = await weatherReadings(page, "air");
-  expect(air.filter((text) => text !== "—")).toEqual(["16", "16"]);
+  expect(air.filter((text) => text !== "—")).toEqual(["14", "11"]);
   expect(air.filter((text) => text === "—").length).toBe(air.length - 2);
   expect(air).not.toContain("0");
 
   // The run hour has no interval to difference, so its rain is a dash with the
-  // reason in the cell; the 18–21 UTC interval carries 0.6 mm.
+  // reason in the cell; the 18–21 UTC interval carries 1.3 mm.
   const rain = page.locator('.weather-row[data-row="rain"]');
-  expect(await weatherReadings(page, "rain")).toContain("0.6");
+  expect(await weatherReadings(page, "rain")).toContain("1.3");
   await expect(rain.locator("td.rain-cell")).toHaveCount(1);
   await expect(rain.locator("td.rain-cell")).toHaveAttribute(
     "title",
-    /0\.6 mm in the 3 hours to/,
+    /1\.3 mm in the 3 hours to/,
   );
   // The unit is stated once on each glyph, not in every cell.
   await expect(rain.locator("th .row-label small")).toHaveText("mm");
@@ -658,21 +801,23 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   ).toHaveAttribute("title", /dew point .* humidity \d+ %/);
 
   // Present weather is an inline stroke glyph per code, with the code's words.
+  // The code belongs to the cell containing the location, so Brandon Bay reads
+  // the codes of its own cell — fog, then cloudy — whatever the catalogue order.
   const glyphs = page.locator(".weather-cell");
   await expect(glyphs).toHaveCount(2);
-  await expect(glyphs.nth(0)).toHaveAttribute("data-weather", "cloudy");
-  await expect(glyphs.nth(0)).toHaveAttribute("data-code", "3");
-  await expect(glyphs.nth(1)).toHaveAttribute("data-weather", "rain");
-  await expect(glyphs.nth(1)).toHaveAttribute("data-code", "61");
+  await expect(glyphs.nth(0)).toHaveAttribute("data-weather", "fog");
+  await expect(glyphs.nth(0)).toHaveAttribute("data-code", "10");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-weather", "cloudy");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-code", "3");
   await expect(glyphs.first().locator("svg")).toHaveAttribute(
     "stroke",
     "currentColor",
   );
   await expect(
     page.locator('.weather-row[data-row="weather"] td[title]').first(),
-  ).toHaveAttribute("title", /WMO present-weather code 3/);
+  ).toHaveAttribute("title", /WMO present-weather code 10/);
   await expect(page.locator(".weather-cell .sr-only").nth(1)).toHaveText(
-    "Slight rain",
+    "Cloudy or overcast, clouds developing",
   );
 
   // The glyph explains the row, and the credits name DWD for it.
@@ -680,8 +825,9 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   await expect(page.getByRole("tooltip")).toContainText(
     "an amount, not a rate",
   );
+  // The credits name the source the row used; a sample bundle names itself.
   await expect(page.locator(".forecast-credits")).toContainText(
-    "ICON-EU surface weather, DWD",
+    "ICON-EU surface weather, Synthetic sample data",
   );
   await page.locator(".map-footer").screenshot({
     path: "test-results/dock-weather-1440.png",
@@ -704,18 +850,18 @@ test("the cloud, pressure and sea rows are off until the filter turns them on", 
 
   // Cloud is a number plus a three-level bar for high, medium and low.
   const cloud = page.locator('.weather-row[data-row="cloud"]');
-  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("97");
+  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("24");
   await expect(
     cloud.locator(".cloud-cell").first().locator(".cloud-bars s"),
   ).toHaveCount(3);
   await expect(cloud.locator("td[title]").first()).toHaveAttribute(
     "title",
-    /high 0 %, medium 73 %, low 89 %/,
+    /high 35 %, medium 23 %, low 66 %/,
   );
   // Pressure is whole hectopascals.
   expect(
     (await weatherReadings(page, "pressure")).filter((text) => text !== "—"),
-  ).toEqual(["1017", "1015"]);
+  ).toEqual(["1017", "1014"]);
   // The sea row is the model's skin temperature, drawn back and labelled as an
   // approximation in both the cell and the row's explanation.
   const sea = page.locator('.weather-row[data-row="sea"]');
@@ -740,26 +886,32 @@ test("the cloud, pressure and sea rows are off until the filter turns them on", 
     await expect(page.locator(`input[data-row="${row}"]`)).toBeChecked();
 });
 
-test("a wind model whose hours miss the weather run reads as dashes", async ({
+test("columns the weather run cannot reach read as dashes", async ({
   page,
 }) => {
-  // HARMONIE's bundled run ends on 16 September at 01 UTC, hours the ICON-EU
-  // surface run does not reach. The rows stay, and say nothing, rather than
-  // borrowing a step from three days away.
+  // The ICON-EU surface run is two steps on 16 September. The dock spans
+  // fifteen days, so almost every column has nothing from it — and says
+  // nothing, rather than borrowing a step from three days away.
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   await expect(page.locator('.weather-row[data-row="air"]')).toHaveCount(1);
   const air = await weatherReadings(page, "air");
-  expect(air.length).toBeGreaterThan(0);
-  expect(new Set(air)).toEqual(new Set(["—"]));
-  await expect(page.locator(".weather-cell")).toHaveCount(0);
+  expect(air).toHaveLength(sampleColumns.length);
+  // Both readings sit on the two columns the surface run actually publishes.
+  const readings = air.flatMap((text, column) =>
+    text === "—" ? [] : [sampleColumns[column]],
+  );
+  expect(readings).toEqual(["2026-09-16T18:00:00Z", "2026-09-16T21:00:00Z"]);
+  await expect(page.locator(".weather-cell")).toHaveCount(2);
 });
 
 test("an instantaneous-gust model reads at initialization", async ({
   page,
 }) => {
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator('[data-model="gfs"]')).toBeEnabled({
     timeout: 30000,
@@ -771,9 +923,14 @@ test("an instantaneous-gust model reads at initialization", async ({
     "true",
   );
   await page.locator('[data-view="table"]').click();
-  const first = page.locator(".gust-cell").first();
-  await expect(first).toHaveText(/^\d+$/);
-  await expect(first).toHaveAttribute("title", /^Instantaneous gust at/);
+  // GFS's own initialization hour, which is not the first column on the axis:
+  // the hours before its run belong to whoever else covers them.
+  const gfs = readSample("gfs");
+  const zero = page
+    .locator(".gust-cell")
+    .nth(sampleColumn(gfs.frames[0].validTime));
+  await expect(zero).toHaveText(/^\d+$/);
+  await expect(zero).toHaveAttribute("title", /^Instantaneous gust at/);
   await page.locator(".model-info").click();
   await expect(page.locator("dialog.info-dialog")).toContainText(
     "publishes instantaneous gusts",
@@ -892,10 +1049,12 @@ const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
 const NEWER_RUN_DIR = `weather/harmonie-${NEWER_RUN}-24h-test`;
 const newerValidTime = (hour: number) =>
   new Date(Date.parse(NEWER_RUN_TIME) + hour * 3600000).toISOString();
-const newerFrames = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => ({
+const newerFrames = Array.from({ length: 25 }, (_, hour) => ({
   hour,
   validTime: newerValidTime(hour),
-  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.json`,
+  // The fixture bundle publishes binary frames, and this synthetic newer run
+  // inherits its `encoding`, so its frames must be binary too.
+  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.bin`,
   gustIntervalHours: null,
 }));
 const newerHarmonie = {
@@ -932,11 +1091,14 @@ const newerFrame = (hour: number) => ({
   gust: null,
 });
 async function withNewerRunFrames(page: Page) {
-  await page.route(`**/${NEWER_RUN_DIR}/*.json`, (route) => {
+  await page.route(`**/${NEWER_RUN_DIR}/*`, (route) => {
     const hour = Number(
-      /(\d+)\.json$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
+      /(\d+)\.bin$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
     );
-    return route.fulfill({ json: newerFrame(hour) });
+    return route.fulfill({
+      body: encodeFrame(newerFrame(hour)),
+      contentType: "application/octet-stream",
+    });
   });
 }
 
@@ -985,10 +1147,11 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   });
   await expect(page.locator(".model-status.is-error")).toHaveCount(0);
 
-  // The reader keeps the valid time they were reading. It is one column further
-  // left, because the newer run starts three hours later than the old one.
+  // The reader keeps the valid time they were reading. Its column moves three
+  // to the left: the axis begins at the near run's first hour, and the newer
+  // hourly run was initialised three hours later than the one it replaces.
   await expect(slider).toHaveAttribute("aria-valuetext", showing);
-  expect(Number(await slider.inputValue())).toBe(column - 1);
+  expect(Number(await slider.inputValue())).toBe(column - 3);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   await expect(page.locator(".blend-chart")).toBeVisible();
 
@@ -998,6 +1161,187 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
     "16:00:00 GMT",
   );
   expect(errors).toEqual([]);
+});
+
+test("a tab coming back lands on now, unless the reader chose a later hour", async ({
+  page,
+}) => {
+  await withTides(page);
+  // A controlled clock, so the morning can pass without waiting for it.
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+
+  // The reader steps back a couple of hours and leaves the tab for six.
+  await page.getByLabel("Previous forecast", { exact: true }).click();
+  await page.getByLabel("Previous forecast", { exact: true }).click();
+  const behind = Number(await slider.inputValue());
+  // Six hours pass with the tab in the background: the clock moves, the page's
+  // own timers do not, which is exactly what a hidden tab sees.
+  await page.clock.setSystemTime(
+    new Date(SAMPLE_CLOCK.getTime() + 6 * 3600000),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+
+  // Coming back, the hour they were reading is already gone: it lands on now.
+  const atNow = sampleColumn("2026-09-14T03:00:00Z");
+  expect(atNow).toBeGreaterThan(behind);
+  await expect(slider).toHaveValue(String(atNow));
+  await expect(
+    page.locator(`[data-forecast-index="${atNow}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  // A time chosen in the future is the reader's own, and is kept.
+  const later = sampleColumn("2026-09-15T12:00:00Z");
+  await slider.fill(String(later));
+  await page.clock.setSystemTime(
+    new Date(SAMPLE_CLOCK.getTime() + 8 * 3600000),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+  await expect(slider).toHaveValue(String(later));
+});
+
+test("a newer run leaves a far selection exactly where the reader put it", async ({
+  page,
+}) => {
+  let published = harmonie;
+  await withTides(page);
+  await withNewerRunFrames(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({ json: published }),
+  );
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+
+  // Day twelve, far past anything HARMONIE will ever publish.
+  const slider = page.getByLabel("Forecast time", { exact: true });
+  await slider.fill(String(sampleColumn("2026-09-25T12:00:00Z")));
+  const showing = (await slider.getAttribute("aria-valuetext"))!;
+  published = newerHarmonie;
+
+  await page.getByLabel("Display options", { exact: true }).focus();
+  await page.clock.fastForward("05:01");
+  await expect(page.locator(".model-status")).toContainText(
+    "Updated to the 16:00 UTC run",
+    { timeout: 20000 },
+  );
+
+  // The new run cannot draw that hour and never could: the reader's place is
+  // theirs, and the chip is still the only way the map moves to it.
+  await expect(slider).toHaveAttribute("aria-valuetext", showing);
+  await expect(
+    page.getByRole("button", { name: /Show ECMWF on the map/ }),
+  ).toBeVisible();
+});
+
+test("a coarser model on the map is read between its steps, and says so", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await page.getByLabel("Choose forecast model", { exact: true }).click();
+  await page.locator('[data-model="ecmwf"]').click();
+  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.locator('[data-view="table"]').click();
+
+  // HARMONIE's hourly columns, with three-hourly ECMWF on the map: one column
+  // in three is a published step and the two between it are read across.
+  const owns = sampleColumn(harmonie.frames[0].validTime);
+  const cells = page.locator(".forecast-table .wind-cell");
+  const hourly = await cells.evaluateAll(
+    (tds, [from, count]) =>
+      tds.slice(from, from + count).map((td) => ({
+        text: (td.textContent ?? "").trim(),
+        between: td.hasAttribute("data-interpolated"),
+        title: td.getAttribute("title") ?? "",
+      })),
+    [owns, harmonie.frames.length],
+  );
+  expect(hourly).toHaveLength(harmonie.frames.length);
+  // Never a dash, and never the same number three columns running: a coarse
+  // model repeating one frame across three hours is exactly what this is not.
+  expect(hourly.every((cell) => cell.text !== "\u2014")).toBe(true);
+  expect(
+    hourly.some(
+      (cell, index) =>
+        index > 1 &&
+        cell.text === hourly[index - 1].text &&
+        cell.text === hourly[index - 2].text,
+    ),
+  ).toBe(false);
+  // Two in three sit between ECMWF's steps, and they say which model and how far.
+  const between = hourly.filter((cell) => cell.between);
+  expect(between.length).toBeGreaterThan(hourly.length / 2);
+  expect(between[0].title).toMatch(/Between ECMWF's 3-hourly steps/);
+  // And the ones on its own steps claim nothing of the sort.
+  expect(
+    hourly.filter((cell) => !cell.between).every((cell) => !cell.title),
+  ).toBe(true);
+
+  // Three hourly columns make one candle; the six-hourly tail makes one each.
+  await page.locator('[data-view="candles"]').click();
+  const candles = await page.locator(".candle").count();
+  expect(candles).toBeLessThan(sampleColumns.length);
+  expect(candles).toBeGreaterThan(sampleColumns.length / 3);
+
+  // A hundred columns at the narrowest supported width, and the page still
+  // does not scroll sideways: the dock's own scroller carries them.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(sampleColumns.length).toBeGreaterThan(95);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+});
+
+test("a bare point reads every third hour of an hourly run first", async ({
+  page,
+}) => {
+  const hours: number[] = [];
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.route("**/weather/harmonie-*/*", async (route) => {
+    hours.push(
+      Number(/(\d+)-[0-9a-f]+\.\w+$/.exec(route.request().url())?.[1] ?? -1),
+    );
+    await route.continue();
+  });
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".blend-chart")).toBeVisible();
+
+  // Only what the click itself asks for.
+  hours.length = 0;
+  await page
+    .locator(".map-canvas canvas")
+    .click({ position: { x: 600, y: 300 } });
+  await expect(
+    page.getByRole("table", { name: /Selected location/ }),
+  ).toBeVisible();
+  await expect(page.locator(".sheet-loading")).toHaveCount(0, {
+    timeout: 30000,
+  });
+
+  // The first frames asked for are on a three-hour stride out from the hour on
+  // screen — the table is readable long before the last file lands — and the
+  // rest follow. Fewer requests than frames is the frame cache doing its job.
+  expect(hours.length).toBeGreaterThan(15);
+  expect(new Set(hours.slice(0, 7).map((hour) => hour % 3))).toEqual(
+    new Set([8 % 3]),
+  );
+  expect(new Set(hours)).toEqual(new Set(hours.slice().sort((a, b) => a - b)));
 });
 
 test("a failed background check leaves the forecast alone and says nothing", async ({

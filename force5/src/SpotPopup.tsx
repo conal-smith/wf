@@ -60,21 +60,52 @@ export default function SpotPopup({
             : card.right > right
               ? card.right - right
               : 0;
+        // A card taller than the band between the header and the dock cannot be
+        // satisfied, and chasing it would pan the map back and forth for ever.
         const dy =
-          card.top < top
-            ? card.top - top
-            : card.bottom > bottom
-              ? card.bottom - bottom
-              : 0;
+          card.height > bottom - top
+            ? 0
+            : card.top < top
+              ? card.top - top
+              : card.bottom > bottom
+                ? card.bottom - bottom
+                : 0;
         if (Math.abs(dx) > 1 || Math.abs(dy) > 1)
           map.panBy([dx, dy], { duration: 0 });
       });
     };
     const observer = new ResizeObserver(fit);
     observer.observe(content);
+    /**
+     * Choosing a spot flies the camera, so the first measurement can be taken
+     * mid-flight and be stale by the time it lands: fit again when that flight
+     * comes to rest.
+     *
+     * Once, and only for that flight. Refitting after every move would re-clamp
+     * the card after each of the reader's own pans, pinning the marker to the
+     * screen and making the map impossible to move away from. The first touch
+     * of the map is the reader taking over, and from then on the card goes
+     * wherever the map goes.
+     */
+    let opening = true;
+    const handOver = () => {
+      opening = false;
+    };
+    const landed = () => {
+      if (!opening) return;
+      handOver();
+      fit();
+    };
+    const container = map.getContainer();
+    container.addEventListener("pointerdown", handOver);
+    container.addEventListener("keydown", handOver);
+    map.on("moveend", landed);
     return () => {
       cancelAnimationFrame(layoutFrame);
       observer.disconnect();
+      container.removeEventListener("pointerdown", handOver);
+      container.removeEventListener("keydown", handOver);
+      map.off("moveend", landed);
       popup.remove();
     };
   }, [map, point.id, point.lat, point.lon, bottomInset, content]);

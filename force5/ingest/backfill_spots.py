@@ -20,25 +20,71 @@ paper over, so the run aborts without writing.
 
 Ensemble manifests are refused: `spotMembers` holds per-member values and the
 bundled frames are the ensemble mean, so the members are not recoverable.
+
+Binary frames (`encoding: "f5-int16-v1"`) are decoded and resampled the same way,
+but they store tenths of a metre per second while an adapter's own series was
+sampled from the full-precision field, so recomputation over them agrees only to
+`BINARY_TOLERANCE` rather than to rounding noise. That looser limit applies to a
+binary manifest and to nothing else.
+
+**A series this tool adds to a binary bundle is therefore coarser than one the
+adapter published.** The adapter sampled the source field; this samples the
+quantised frame, because the source is long gone — that is the whole point of
+the tool. The difference is at most 0.06 m/s, well under a tenth of a knot, and
+it is invisible in the table and the chart. It is worth knowing about anyway:
+a backfilled spot's series and a freshly ingested one are not byte-identical,
+and only the fresh one is exact. The next run publishes the exact series.
 """
 import argparse
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import sys
 
+import f5bin
 from fetch_forecast import ROOT, load_spots, sample, spots_file, write_json
-from publish_s3 import referenced
-from registry import MANIFESTS, MODELS, object_root
+from publish_s3 import frame_encoding, referenced
+from registry import MANIFESTS, MODELS
 
 WIND_FIELDS = ("u", "v", "gust")
 # The manifest's own agreement limit: recomputation is deterministic, so anything
 # above rounding noise means the frames and the published series disagree.
 TOLERANCE = 0.005
+# A binary frame stores tenths of a metre per second while the series it is
+# checked against was sampled from the full-precision field and rounded to
+# hundredths. Each of the four cells a bilinear sample reads is at most 0.05 out,
+# and a convex combination of them is too, so the sample is at most 0.05 out;
+# the two roundings to 0.01 add 0.005 each. Anything past 0.06 is a real
+# disagreement, not the quantisation.
+BINARY_TOLERANCE = 0.06
 
 
-def read_frame(public, model, info):
-    """One referenced frame, through the publisher's own unsafe-path guard."""
-    _, data = referenced(public, info["url"], object_root(model), 3)
+def tolerance(manifest):
+    """How far a recomputed value may sit from its published one, per encoding."""
+    return BINARY_TOLERANCE if frame_encoding(manifest) else TOLERANCE
+
+
+def read_frame(public, model, manifest, info):
+    """One referenced frame, through the publisher's own unsafe-path guard.
+
+    `referenced` requires the run directory to be named for this model, which is
+    what establishes a binary frame's model — the file itself does not carry one.
+    Its header carries the run, the hour and the grid size, and its name is the
+    hash of its own bytes, so a file from the wrong step or with the wrong
+    contents is refused. The valid time is the manifest's, as it is for JSON.
+    """
+    _, data = referenced(public, info["url"], model, 3)
+    if frame_encoding(manifest):
+        decoded = f5bin.decode_frame(data)
+        if (decoded["run"], decoded["hour"]) != (manifest["run"], info["hour"]):
+            raise ValueError(f"{info['url']} is not the frame the manifest lists at "
+                             f"+{info['hour']}h of run {manifest['run']}")
+        if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, info["hour"], data):
+            raise ValueError(f"{info['url']} does not hold the frame its name claims")
+        grid = manifest["grid"]
+        if (decoded["width"], decoded["height"]) != (grid["width"], grid["height"]):
+            raise ValueError(f"{info['url']} does not match the published grid")
+        return {"model": model, "hour": decoded["hour"], "validTime": info["validTime"],
+                "grid": grid, "u": decoded["u"], "v": decoded["v"], "gust": decoded["gust"]}
     frame = json.loads(data)
     if (frame.get("hour"), frame.get("validTime")) != (info["hour"], info["validTime"]):
         raise ValueError(f"{info['url']} is not the frame the manifest lists at "
@@ -60,7 +106,7 @@ def wind_series(manifest, model, public, spots, order):
     missing_gust_hours = manifest.get("gustMissingHours", [])
     series = {spot["id"]: [] for spot in spots}
     for info in manifest["frames"]:
-        frame = read_frame(public, model, info)
+        frame = read_frame(public, model, manifest, info)
         grid, hour = frame["grid"], frame["hour"]
         # A gust the manifest declares absent is null everywhere, never zero; a
         # gust it declares present must actually be in the frame.
@@ -93,7 +139,7 @@ def wave_series(manifest, model, public, spots, variables):
 
     series = {spot["id"]: [] for spot in spots}
     for info in manifest["frames"]:
-        frame = read_frame(public, model, info)
+        frame = read_frame(public, model, manifest, info)
         grid = frame["grid"]
         for name in variables:
             if not isinstance(frame.get(name), list):
@@ -124,16 +170,16 @@ def disagreements(published, rebuilt, describe):
     return faults
 
 
-def wind_faults(spot, step, other):
+def wind_faults(spot, step, other, limit=TOLERANCE):
     for field in WIND_FIELDS:
         was, now = step.get(field), other[field]
         if (was is None) != (now is None):
             yield f"{spot} +{step['hour']}h {field}: published {was}, frames give {now}"
-        elif was is not None and abs(was - now) > TOLERANCE:
+        elif was is not None and abs(was - now) > limit:
             yield f"{spot} +{step['hour']}h {field}: published {was}, frames give {now}"
 
 
-def wave_faults(spot, step, other):
+def wave_faults(spot, step, other, limit=TOLERANCE):
     was, now = step.get("values") or {}, other["values"]
     if set(was) != set(now):
         yield f"{spot} +{step['hour']}h: published variables {sorted(was)} are not {sorted(now)}"
@@ -141,7 +187,7 @@ def wave_faults(spot, step, other):
     for name in now:
         if (was[name] is None) != (now[name] is None):
             yield f"{spot} +{step['hour']}h {name}: published {was[name]}, frames give {now[name]}"
-        elif was[name] is not None and abs(was[name] - now[name]) > TOLERANCE:
+        elif was[name] is not None and abs(was[name] - now[name]) > limit:
             yield f"{spot} +{step['hour']}h {name}: published {was[name]}, frames give {now[name]}"
 
 
@@ -181,7 +227,9 @@ def backfill(public, model, spots=None, check=False, log=print):
     if kind == "wind":
         order = field_order((next(iter(published.values()), None) or [{}])[0], WIND_FIELDS)
         rebuilt = wind_series(manifest, model, public, spots, order)
-        faults = disagreements(published, rebuilt, wind_faults)
+        limit = tolerance(manifest)
+        faults = disagreements(published, rebuilt,
+                               lambda *args: wind_faults(*args, limit=limit))
     else:
         variables = list(manifest.get("variables") or {})
         gridded = manifest.get("frameVariables", variables)

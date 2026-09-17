@@ -133,8 +133,8 @@ timeout_seconds = 900       # which the one-job-at-a-time loop serialises.
 [[jobs]]
 id = "prune"
 command = "prune"
-hours = [5]                 # Daily retention sweep; see FORCE5_RETAIN_HOURS.
-minutes = [10]
+minutes = [10]              # Backstop only: the worker already deletes a superseded
+                            # run when the new one lands. This also ages the raw cache.
 timeout_seconds = 900
 
 [[jobs]]

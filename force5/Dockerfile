@@ -13,5 +13,7 @@ COPY public/spots.json public/riding-locations.json /app/public/
 # Default cadence schedule; the local deployment bind-mounts its own over this one.
 COPY deploy/local/jobs.toml /app/deploy/local/jobs.toml
 USER 10001:10001
-VOLUME ["/data"]
+# No VOLUME: a batch container gets a fresh empty /data each run and uploads to the
+# bucket, and declaring one only makes plain Docker leave an anonymous volume behind
+# per run. The local deployment still mounts its own named volume over /data.
 ENTRYPOINT ["python", "/app/force5/ingest/worker.py"]

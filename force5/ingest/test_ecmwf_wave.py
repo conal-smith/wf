@@ -280,17 +280,17 @@ class WaveBundleTests(unittest.TestCase):
         variables = variables if variables is not None else list(ALL_VARIABLES)
         grid = {"width": 3, "height": 3, "west": -8.0, "east": -7.5, "north": 54.25,
                 "south": 53.75, "dx": 0.25, "dy": 0.25}
-        (self.root / "weather/run").mkdir(parents=True)
+        (self.root / "weather/ecmwf-wave-run").mkdir(parents=True)
         frames, series = [], {"wet": [], "dry": []}
         for hour in hours:
             valid = (self.run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
             fields = {name: [1.5 if index not in LAND else None for index in range(9)]
                       for name in variables}
-            (self.root / f"weather/run/{hour}.json").write_text(json.dumps({
+            (self.root / f"weather/ecmwf-wave-run/{hour}.json").write_text(json.dumps({
                 "model": MODEL, "run": "2026091600", "hour": hour, "validTime": valid,
                 "grid": grid, **fields}))
             frames.append({"hour": hour, "validTime": valid,
-                           "url": f"weather/run/{hour}.json"})
+                           "url": f"weather/ecmwf-wave-run/{hour}.json"})
             series["wet"].append({"hour": hour, "validTime": valid,
                                   "values": {name: 1.5 for name in variables}})
             # A location the model cannot see publishes nulls, not an absent series.

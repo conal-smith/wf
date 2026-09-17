@@ -2,7 +2,8 @@ import { useId } from "react";
 import type { Candle } from "../force5/src/blend";
 import type { NightInterval } from "../force5/src/sun";
 import { convert, unitLabel, type Units } from "../force5/src/units";
-import { windColor, type FrameInfo } from "../force5/src/weather";
+import { windColor } from "../force5/src/weather";
+import type { DockColumn } from "../force5/src/timeline";
 import { axisTicks, timeToX, valueScale } from "./chart";
 
 export interface CandleChartProps {
@@ -10,10 +11,8 @@ export interface CandleChartProps {
   height: number;
   /** Column edges in pixels, one more than the number of columns. */
   edges: readonly number[];
-  frames: readonly FrameInfo[];
+  columns: readonly DockColumn[];
   candles: readonly Candle[];
-  /** Axis columns each candle covers; one for three-hourly sources. */
-  columnsPerCandle: number;
   nights: readonly NightInterval[];
   units: Units;
   max: number;
@@ -26,9 +25,8 @@ export default function CandleChart({
   width,
   height,
   edges,
-  frames,
+  columns,
   candles,
-  columnsPerCandle,
   nights,
   units,
   max,
@@ -37,7 +35,7 @@ export default function CandleChart({
   const y = valueScale(max, height);
   const show = (value: number) => convert(value, units);
   const columnCentres = centres(edges);
-  const nowX = timeToX(frames, Date.now(), columnCentres);
+  const nowX = timeToX(columns, Date.now(), columnCentres);
 
   return (
     <svg
@@ -56,8 +54,8 @@ export default function CandleChart({
       </defs>
       <g clipPath={`url(#${clipId})`}>
         {nights.map((night, index) => {
-          const from = timeToX(frames, night.from.getTime(), columnCentres);
-          const to = timeToX(frames, night.to.getTime(), columnCentres);
+          const from = timeToX(columns, night.from.getTime(), columnCentres);
+          const to = timeToX(columns, night.to.getTime(), columnCentres);
           const left = from ?? 0;
           const right = to ?? width;
           if (right <= left) return null;
@@ -82,10 +80,12 @@ export default function CandleChart({
             y2={y(tick)}
           />
         ))}
-        {candles.map((candle, index) => {
-          const start = index * columnsPerCandle;
-          const left = edges[start];
-          const right = edges[Math.min(start + candle.hours, edges.length - 1)];
+        {candles.map((candle) => {
+          // Each candle knows which columns it covers, so a six-hourly column
+          // past the seam gets the width the header already gave it.
+          const left = edges[candle.columns[0]];
+          const right =
+            edges[Math.min((candle.columns.at(-1) ?? 0) + 1, edges.length - 1)];
           if (left === undefined || right === undefined) return null;
           const span = right - left;
           const bodyWidth = Math.max(6, span * 0.52);

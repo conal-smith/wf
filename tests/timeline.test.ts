@@ -3,8 +3,12 @@ import { framePosition, windTrackBackground } from "../force5/src/timeline";
 import { KNOTS, windColor } from "../force5/src/weather";
 import { forecastUrl } from "../force5/src/urls";
 import { vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { nearestFrame, validateManifest } from "../force5/src/weather";
+import { readBundle } from "./bundles";
+import {
+  nearestFrame,
+  validateManifest,
+  type Manifest,
+} from "../force5/src/weather";
 
 it("positions now between real timestamps, including a mixed-cadence boundary", () => {
   const start = Date.parse("2026-09-13T00:00:00Z");
@@ -20,15 +24,17 @@ it("positions now between real timestamps, including a mixed-cadence boundary", 
   expect(framePosition(frames, NaN)).toBeNull();
 });
 
-it("mixed-step track colours occupy elapsed time, not equal frame slots", () => {
+it("track colours sit on the columns the scrubber counts, evenly spaced", () => {
+  // The range input's value is a column index, so the stops are too: a stop
+  // placed by elapsed time would drift off its own value past the seam.
   const wind = { u: 0, v: 5, gust: null };
-  const result = windTrackBackground([wind, wind, wind], 3, [0, 3, 9]);
+  const result = windTrackBackground([wind, wind, wind, wind], 4);
   expect(result).toContain("33.33333333333333%");
-  expect(result).not.toContain("50%");
+  expect(result).toContain("66.66666666666666%");
 });
 
 it("ECMWF validates its full native cadence and selects only real timestamps", () => {
-  const m = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
+  const m = readBundle<Manifest>("ecmwf");
   expect(validateManifest(m).frames).toHaveLength(85);
   expect(m.frames[49].hour).toBe(150);
   expect(m.frames.at(-1).hour).toBe(360);

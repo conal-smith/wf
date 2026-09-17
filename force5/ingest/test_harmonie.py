@@ -8,6 +8,7 @@ import numpy as np
 from pyproj import Proj, Geod
 import eccodes as ec
 
+import f5bin
 from fetch_harmonie import discover, earth_vectors, resample, messages, validate, GRID
 from fetch_harmonie import extract, has_gust, gust_window, main, GUST_FIELDS, PARAMETERS
 from fetch_forecast import write_json
@@ -200,7 +201,11 @@ class HarmonieTests(unittest.TestCase):
                          [None, [2, 3], [5, 6]])
         self.assertEqual([s["gust"] for s in manifest["spotForecasts"]["brandon"]],
                          [None, 14.5, 14.5])
-        frames = [json.loads((root / "public" / f["url"]).read_text()) for f in manifest["frames"]]
+        self.assertEqual(manifest["encoding"], f5bin.ENCODING)
+        self.assertTrue(all(f["url"].endswith(".bin") for f in manifest["frames"]))
+        frames = [f5bin.decode_frame((root / "public" / f["url"]).read_bytes())
+                  for f in manifest["frames"]]
+        self.assertEqual([frame["run"] for frame in frames], [manifest["run"]] * 3)
         self.assertIsNone(frames[0]["gust"])
         self.assertEqual(len(frames[2]["gust"]), GRID["width"] * GRID["height"])
         validate_bundle(root / "public", "harmonie", max_age_hours=10**6,
@@ -214,7 +219,9 @@ class HarmonieTests(unittest.TestCase):
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [None, None, None])
         self.assertEqual([s["gust"] for s in manifest["spotForecasts"]["brandon"]], [None] * 3)
         for frame in manifest["frames"]:
-            self.assertIsNone(json.loads((root / "public" / frame["url"]).read_text())["gust"])
+            decoded = f5bin.decode_frame((root / "public" / frame["url"]).read_bytes())
+            self.assertIsNone(decoded["gust"])
+            self.assertEqual(decoded["blockCount"], 2)
         validate_bundle(root / "public", "harmonie", max_age_hours=10**6,
                         now=datetime(2026, 9, 13, 13, tzinfo=timezone.utc))
 

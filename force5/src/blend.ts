@@ -78,7 +78,9 @@ export function commonAxis(
   return axis;
 }
 
-function medianStepHours(series: readonly SeriesPoint[]): number {
+function medianStepHours(
+  series: readonly Pick<SeriesPoint, "validTime">[],
+): number {
   const steps: number[] = [];
   for (let i = 1; i < series.length; i++)
     steps.push(
@@ -94,8 +96,9 @@ function medianStepHours(series: readonly SeriesPoint[]): number {
  * How long a gap interpolation may bridge: twice the model's median cadence,
  * which covers ECMWF's 3 → 6 hour tail but never a genuinely missing block.
  */
-export const bridgeableGapHours = (series: readonly SeriesPoint[]) =>
-  2 * medianStepHours(series);
+export const bridgeableGapHours = (
+  series: readonly Pick<SeriesPoint, "validTime">[],
+) => 2 * medianStepHours(series);
 
 export interface SeriesValues {
   speed: (number | null)[];
@@ -279,8 +282,10 @@ export function blendStats(
 
 export interface Candle {
   time: string;
-  /** Number of axis hours the column covers. */
+  /** Number of axis columns the candle covers. */
   hours: number;
+  /** Which axis columns they are, so a chart can measure the candle's width. */
+  columns: readonly number[];
   lo: number;
   hi: number;
   q25: number;
@@ -293,11 +298,33 @@ export interface Candle {
 export function candles(stats: readonly HourStats[], stepHours = 3): Candle[] {
   if (!Number.isInteger(stepHours) || stepHours < 1)
     throw new Error("Candle width must be a whole number of hours.");
+  const groups: number[][] = [];
+  for (let start = 0; start < stats.length; start += stepHours)
+    groups.push(
+      Array.from(
+        { length: Math.min(stepHours, stats.length - start) },
+        (_, offset) => start + offset,
+      ),
+    );
+  return candlesOver(stats, groups);
+}
+
+/**
+ * The same reduction over explicit column groups. The dock's axis changes
+ * cadence at the seam between two runs, so the number of columns a three-hour
+ * candle covers is not the same all the way along it.
+ */
+export function candlesOver(
+  stats: readonly HourStats[],
+  groups: readonly (readonly number[])[],
+): Candle[] {
   const out: Candle[] = [];
-  for (let start = 0; start < stats.length; start += stepHours) {
-    const window = stats
-      .slice(start, start + stepHours)
-      .filter((hour) => hour.n > 0);
+  for (const group of groups) {
+    if (!group.length) continue;
+    const start = group[0];
+    const window = group
+      .map((index) => stats[index])
+      .filter((hour) => hour !== undefined && hour.n > 0);
     if (!window.length) continue;
     const medians = window
       .map((hour) => hour.median as number)
@@ -305,7 +332,8 @@ export function candles(stats: readonly HourStats[], stepHours = 3): Candle[] {
     const gusts = window.filter((hour) => hour.gust.n > 0);
     out.push({
       time: stats[start].time,
-      hours: Math.min(stepHours, stats.length - start),
+      hours: group.length,
+      columns: group,
       lo: Math.min(...window.map((hour) => hour.min as number)),
       hi: Math.max(...window.map((hour) => hour.max as number)),
       q25: Math.min(...window.map((hour) => hour.q25 as number)),

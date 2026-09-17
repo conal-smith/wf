@@ -1,4 +1,5 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
+import { F5_ENCODING, decodeFrame } from "./f5bin";
 import { forecastUrl } from "./urls";
 // Units live in units.ts; re-exported so existing weather imports keep working.
 export {
@@ -105,6 +106,11 @@ export interface Manifest {
   stepHours: number;
   stepRanges?: { throughHour: number; stepHours: number }[];
   grid: Grid;
+  /**
+   * How the frame files are encoded. Absent means the original JSON frames;
+   * "f5-int16-v1" means the binary frames force5/src/f5bin.ts reads.
+   */
+  encoding?: string;
   frames: FrameInfo[];
   /**
    * One precomputed series per riding location. A model whose domain does not
@@ -294,6 +300,8 @@ export function validateManifest(m: Manifest): Manifest {
     throw new Error("Invalid forecast manifest. Run npm run weather:refresh.");
   if (m.kind !== undefined && !KINDS.includes(m.kind))
     throw new Error("Unknown forecast kind.");
+  if (m.encoding !== undefined && m.encoding !== F5_ENCODING)
+    throw new Error("Unknown frame encoding.");
   if (
     m.gustKind !== undefined &&
     m.gustKind !== "interval" &&
@@ -459,7 +467,13 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
     .then(async (r) => {
       if (!r.ok)
         throw new Error("This forecast frame could not be loaded. Try again.");
-      const frame = validateFrame(await r.json(), manifest, info);
+      // `decodeFrame` checks the run and the hour the binary header carries;
+      // `validateFrame` then applies every rule the JSON path has always had.
+      const body =
+        manifest.encoding === F5_ENCODING
+          ? decodeFrame(await r.arrayBuffer(), manifest, info)
+          : await r.json();
+      const frame = validateFrame(body, manifest, info);
       cache.set(url, frame);
       if (cache.size > 8) cache.delete(cache.keys().next().value!);
       return frame;
@@ -468,7 +482,10 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
   pending.set(url, request);
   return request;
 }
-export function nearestFrame(frames: FrameInfo[], now = Date.now()): number {
+export function nearestFrame(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  now = Date.now(),
+): number {
   return frames.reduce(
     (best, f, i) =>
       Math.abs(Date.parse(f.validTime) - now) <

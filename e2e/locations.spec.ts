@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("public riding places are on the map and the Blast alias finds Kilcrea with a grid-backed forecast", async ({
   page,

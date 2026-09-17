@@ -8,8 +8,17 @@
 // Catmull-Rom, which the data layer does not do.
 import { framePosition } from "../force5/src/timeline";
 import { KNOTS, convert, type Units } from "../force5/src/units";
-import { direction, windColor, type FrameInfo } from "../force5/src/weather";
-import { bridgeableGapHours, type Agreement } from "../force5/src/blend";
+import {
+  direction,
+  windColor,
+  type FrameInfo,
+  type Wind,
+} from "../force5/src/weather";
+import {
+  bridgeableGapHours,
+  interpolateSeries,
+  type Agreement,
+} from "../force5/src/blend";
 import type { SeriesPoint } from "../force5/src/series";
 
 export interface Point2 {
@@ -60,21 +69,71 @@ export function axisTicks(max: number, step = 10): number[] {
   return ticks;
 }
 
+/** Hours between two forecast times. */
+const gapHours = (from: string, to: string) =>
+  (Date.parse(to) - Date.parse(from)) / 3600000;
+
 /**
  * Relative width of each forecast column. A six-hourly step keeps twice the
- * room a three-hourly one does — the same rule `ForecastSheet` sizes its header
- * cells with, so the chart and the table cannot drift apart.
+ * room a three-hourly one does — the same rule `ForecastHeader` sizes its
+ * header cells with, so the chart and the table cannot drift apart.
+ *
+ * Measured from the column times rather than from a run's elapsed hours: past
+ * the seam the columns belong to a second run, whose hour numbers count from a
+ * different initialization.
  */
 export function columnWeights(
-  frames: readonly Pick<FrameInfo, "hour">[],
-  stepHours: number,
+  times: readonly string[],
+  baseHours = 3,
 ): number[] {
-  return frames.map((frame, index) => {
-    const next = frames[index + 1];
-    const interval = next
-      ? next.hour - frame.hour
-      : frame.hour - (frames[index - 1]?.hour ?? frame.hour - stepHours);
+  return times.map((time, index) => {
+    const interval = times[index + 1]
+      ? gapHours(time, times[index + 1])
+      : times[index - 1]
+        ? gapHours(times[index - 1], time)
+        : baseHours;
     return Math.max(1, interval / 3);
+  });
+}
+
+/**
+ * Columns grouped into candles of about three hours, by wall-clock time. A
+ * fixed number of columns per candle would draw a three-hour candle beside a
+ * twelve-hour one once the axis changes cadence at the seam.
+ */
+export function candleGroups(times: readonly string[], hours = 3): number[][] {
+  if (!(hours > 0)) throw new Error("Candle width must be positive.");
+  const span = hours * 3600000;
+  const groups: number[][] = [];
+  let bucket: number | null = null;
+  times.forEach((time, index) => {
+    const at = Math.floor(Date.parse(time) / span);
+    if (at === bucket) groups[groups.length - 1].push(index);
+    else {
+      groups.push([index]);
+      bucket = at;
+    }
+  });
+  return groups;
+}
+
+/**
+ * How many distinct models actually put a value on each column. Ensemble
+ * members are one model between them: fifty-one lines from one run say no more
+ * about agreement than one line does.
+ */
+export function modelSupport(
+  lines: readonly { model: string; speed: readonly (number | null)[] }[],
+  length: number,
+): number[] {
+  return Array.from({ length }, (_, column) => {
+    const models = new Set<string>();
+    for (const line of lines) {
+      const value = line.speed[column];
+      if (value !== null && value !== undefined && Number.isFinite(value))
+        models.add(line.model);
+    }
+    return models.size;
   });
 }
 
@@ -270,20 +329,20 @@ export interface DayGroup {
 
 /** Forecast columns grouped by Irish calendar day, for the header's day row. */
 export function dayGroups(
-  frames: readonly Pick<FrameInfo, "validTime">[],
+  times: readonly string[],
   label: (iso: string) => string,
 ): DayGroup[] {
-  return frames.reduce<DayGroup[]>((groups, frame, index) => {
-    const date = dublinDate(frame.validTime);
+  return times.reduce<DayGroup[]>((groups, time, index) => {
+    const date = dublinDate(time);
     const last = groups[groups.length - 1];
     if (last?.date === date) last.count++;
     else
       groups.push({
         date,
-        label: label(frame.validTime),
+        label: label(time),
         start: index,
         count: 1,
-        noon: dublinNoonUtc(frame.validTime),
+        noon: dublinNoonUtc(time),
       });
     return groups;
   }, []);
@@ -313,6 +372,60 @@ export function axisVectors(
     return {
       u: a.u + (b.u - a.u) * fraction,
       v: a.v + (b.v - a.v) * fraction,
+    };
+  });
+}
+
+/** One run's reading for one column, and how it got there. */
+export interface AxisReading {
+  wind: Wind | null;
+  /** True when the value sits between two of that run's published steps. */
+  interpolated: boolean;
+  /** Hours between the two steps it sits between; null on a published one. */
+  stepHours: number | null;
+}
+const NOTHING: AxisReading = {
+  wind: null,
+  interpolated: false,
+  stepHours: null,
+};
+
+/**
+ * One run's precomputed series on the dock's columns.
+ *
+ * A column that is one of the run's own published steps gets that step's value,
+ * unchanged. A column between two of them gets the same u/v interpolation the
+ * blend chart draws — so the table and the chart cannot disagree — and says so,
+ * because a coarse run repeating one value across three columns would read as
+ * three forecasts. Outside the run, and across a gap wider than its own
+ * cadence, there is nothing, never a borrowed neighbour.
+ */
+export function seriesOnAxis(
+  points: readonly SeriesPoint[],
+  axis: readonly string[],
+  maxGapHours = bridgeableGapHours(points),
+): AxisReading[] {
+  if (!points.length) return axis.map(() => NOTHING);
+  const vectors = axisVectors(points, axis, maxGapHours);
+  const values = interpolateSeries(points, axis, { maxGapHours });
+  const published = new Set(points.map((point) => Date.parse(point.validTime)));
+  return axis.map((iso, index) => {
+    const vector = vectors[index];
+    if (!vector) return NOTHING;
+    const wind: Wind = { u: vector.u, v: vector.v, gust: values.gust[index] };
+    const at = Date.parse(iso);
+    if (published.has(at))
+      return { wind, interpolated: false, stepHours: null };
+    const position = framePosition(points, at)!;
+    const left = Math.floor(position);
+    return {
+      wind,
+      interpolated: true,
+      stepHours: Math.round(
+        (Date.parse(points[left + 1].validTime) -
+          Date.parse(points[left].validTime)) /
+          3600000,
+      ),
     };
   });
 }

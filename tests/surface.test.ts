@@ -1,8 +1,10 @@
-// The browser's surface-weather readers against the bundled ICON-EU run, which
-// is the acceptance data. The contract itself is unit-tested with fixtures in
-// force5/src/variables.test.ts; this is the real published bundle.
+// The browser's surface-weather readers against an ICON-EU-shaped sample bundle,
+// which is the acceptance data. The contract itself is unit-tested with
+// hand-built fixtures in force5/src/variables.test.ts; this is a whole published
+// bundle, in the published format, written by scripts/sample-weather.mjs.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { readBundle } from "./bundles";
 import {
   precipIntervalHours,
   presentWeather,
@@ -17,22 +19,23 @@ import {
 } from "../force5/src/surface";
 
 const manifest = validateWeatherManifest(
-  JSON.parse(
-    readFileSync("public/weather/icon-eu-weather.json", "utf8"),
-  ) as WeatherManifest,
+  readBundle<WeatherManifest>("icon-eu-weather"),
 );
 const axis = manifest.frames.map((frame) => frame.validTime);
 
-describe("the bundled ICON-EU surface weather snapshot", () => {
+describe("the sample ICON-EU surface weather bundle", () => {
   it("validates as published", () => {
     expect(manifest.model).toBe("icon-eu-weather");
-    expect(manifest.provider).toBe("DWD");
+    // No sample bundle may claim a real source: the provider and the
+    // attribution both say what this data is.
+    expect(manifest.provider).toBe("Synthetic sample data");
+    expect(manifest.attribution).toMatch(/not a forecast/);
     expect(manifest.kind).toBe("weather");
     expect(manifest.stepHours).toBe(3);
     expect(weatherHours(manifest)).toEqual(
       manifest.frames.map((frame) => frame.hour),
     );
-    // Hours 0 and 3 only: the snapshot is the live 18 UTC run through +3 h.
+    // Hours 0 and 3 only: the sample bundle is an 18 UTC run through +3 h.
     expect(weatherHours(manifest)).toEqual([0, 3]);
     expect(manifest.runTime).toBe("2026-09-16T18:00:00Z");
     expect(manifest.variables.ww.kind).toBe("code");
@@ -62,23 +65,28 @@ describe("the bundled ICON-EU surface weather snapshot", () => {
       cape: "cape",
     });
   });
-  it("reads Brandon Bay as the README's own measured numbers", () => {
+  it("reads Brandon Bay as the values the bundle publishes", () => {
     const series = weatherSeries(manifest, "brandon")!;
     expect(series).toHaveLength(2);
     expect(weatherSeriesHasData(series)).toBe(true);
-    expect(series[0].values.t2m).toBe(15.6);
-    expect(series[0].values.clct).toBe(97);
-    expect(series[0].values.pmsl).toBe(1016.8);
-    // The run hour has no interval to difference, so its rain is null, not zero.
+    expect(series[0].values.t2m).toBe(13.5);
+    expect(series[0].values.clct).toBe(24);
+    expect(series[0].values.pmsl).toBe(1016.9);
+    // The accumulation starts at nothing, and the run hour has no interval to
+    // difference, so its rain is null rather than zero.
+    expect(series[0].values.tp).toBe(0);
     expect(series[0].values.precip).toBeNull();
     expect(precipIntervalHours(series[0])).toBeNull();
-    expect(series[1].values.precip).toBe(0.6);
+    expect(series[1].values.precip).toBe(1.3);
     expect(precipIntervalHours(series[1])).toBe(3);
-    expect(series[1].values.t2m).toBe(16);
-    expect(series[1].values.pmsl).toBe(1014.6);
+    expect(series[1].values.t2m).toBe(11.2);
+    expect(series[1].values.pmsl).toBe(1014.2);
   });
   it("turns the published codes into the shapes the Weather row draws", () => {
-    const series = weatherSeries(manifest, "brandon")!;
+    // A code belongs to the cell containing a location, so which code a place
+    // reads is where it stands, not where it sits in the catalogue: Dollymount
+    // is in the cell the rota puts "cloudy" then "slight rain" in.
+    const series = weatherSeries(manifest, "dollymount")!;
     expect(presentWeather(series[0].values.ww)).toMatchObject({
       code: 3,
       icon: "cloudy",
@@ -91,7 +99,7 @@ describe("the bundled ICON-EU surface weather snapshot", () => {
   });
   it("labels the skin temperature as the proxy the manifest says it is", () => {
     const series = weatherSeries(manifest, "brandon")!;
-    expect(series[0].values.tg).toBe(15.7);
+    expect(series[0].values.tg).toBe(13.1);
     expect(manifest.seaTemperatureNote).toMatch(/proxy/);
     expect(manifest.presentWeatherNote).toMatch(/never interpolated/);
     expect(manifest.precipitationNote).toMatch(/precipIntervalHours/);

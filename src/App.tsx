@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   ChevronRight,
@@ -9,13 +9,21 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { WindMap, Force5Brand } from "../force5/src";
+import { WindMap, Force5Brand, SiteMenu } from "../force5/src";
 import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
-import useRunRefresh from "./useRunRefresh";
+import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { ridingLocations } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
+import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
+import { useModelAvailability } from "./useBlend";
+import {
+  dockColumns,
+  frameForTime,
+  type ColumnModel,
+  type DockColumn,
+} from "../force5/src/timeline";
 import {
   convert,
   dayLabel,
@@ -56,7 +64,10 @@ export default function App() {
   const [manifest, setManifest] = useState<Manifest | null>(null),
     [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null),
-    [requestedIndex, setRequestedIndex] = useState(0);
+    // The reader's place in the forecast is a valid time, never an index. An
+    // index only means something inside one run of one model, and the dock's
+    // columns will outlive both; the map frame and the dock column are derived.
+    [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [point, setPoint] = useState<Point>(initialPoint);
   const [error, setError] = useState(""),
     [frameError, setFrameError] = useState(""),
@@ -81,7 +92,9 @@ export default function App() {
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
-  const [, tick] = useState(0);
+  // A coarse clock. The Now line has its own; this one decides which runs have
+  // expired, so it only has to be right to the minute.
+  const [clock, setClock] = useState(() => Date.now());
   const dialog = useRef<HTMLDialogElement>(null);
   const modelRequest = useRef<AbortController | null>(null);
   const [pendingModel, setPendingModel] = useState<ModelId | null>(null);
@@ -122,7 +135,9 @@ export default function App() {
         const validated = validateManifest(m);
         setManifest(validated);
         setSpots(ridingLocations(s));
-        setRequestedIndex(nearestFrame(validated.frames));
+        setSelectedTime(
+          validated.frames[nearestFrame(validated.frames)].validTime,
+        );
         setPoint(
           s.find((spot: Spot) => spot.id === initialPoint.id) || initialPoint,
         );
@@ -143,10 +158,15 @@ export default function App() {
       if (media.matches) setPlaying(false);
     };
     media.addEventListener("change", change);
-    const interval = window.setInterval(() => tick((v) => v + 1), 60000);
+    const now = () => setClock(Date.now());
+    const interval = window.setInterval(now, 60000);
+    document.addEventListener("visibilitychange", now);
+    window.addEventListener("focus", now);
     return () => {
       media.removeEventListener("change", change);
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", now);
+      window.removeEventListener("focus", now);
     };
   }, []);
 
@@ -159,39 +179,177 @@ export default function App() {
     return () => observer.disconnect();
   }, [error]);
 
+  /** True when the clock has already overtaken the hour on screen. */
+  const selectionIsPast = (now = Date.now()) =>
+    selectedTime !== null && Date.parse(selectedTime) < now;
+  /**
+   * Where "now" lands, on the dock's own axis rather than the map model's
+   * frames: the axis is what the reader is looking at, and it outlives whatever
+   * run the map happens to be drawing. One helper, so a run swap and a tab
+   * coming back cannot land on two different hours.
+   */
+  const columnAtNow = (now = Date.now()): string | null =>
+    columnsRef.current.length
+      ? columnsRef.current[nearestFrame(columnsRef.current, now)].validTime
+      : null;
+
+  // A newer run replaces the one on screen: metadata, map, series and time
+  // commit together, exactly as a model switch does.
+  const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
+    modelEpoch.current++;
+    setManifest(next);
+    setFrame(nextFrame);
+    // The reader's hour is theirs. A new run does not move it — the map simply
+    // loads its own nearest reachable frame for the same time, and a selection
+    // out past this run keeps its columns from whoever owns them. Only an hour
+    // the clock has already overtaken goes back to now: nobody came back to a
+    // tab to read more about this morning.
+    if (selectionIsPast()) {
+      const now = columnAtNow();
+      if (now) setSelectedTime(now);
+    }
+    setFrameError("");
+    setModelError("");
+    setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
+  };
+
+  // The frame the map is painting right now, by its own hour.
+  const paintedIndex =
+    manifest && frame
+      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
+      : -1;
+  /**
+   * The map frame the selected time asks for. Nothing stores this: a run swap
+   * or a model switch changes which frame a time lands on, and deriving it is
+   * what keeps the reader's place through both.
+   *
+   * A time this run cannot reach — the dock's columns run fifteen days and
+   * HARMONIE sixty hours — leaves the map exactly where it is. The dock offers
+   * the run that does reach it; nothing switches on the reader's behalf.
+   */
+  const requestedIndex =
+    manifest && selectedTime
+      ? (frameForTime(manifest.frames, Date.parse(selectedTime)) ??
+        (paintedIndex >= 0
+          ? paintedIndex
+          : nearestFrame(manifest.frames, Date.parse(selectedTime))))
+      : 0;
+
+  // The sweep lives here rather than in the dock because the dock's columns are
+  // built from every model's manifest, not just the one the map is drawing.
+  const { models, resolved: modelsResolved } = useModelAvailability(
+    playing || !!pendingModel,
+  );
+  const columnModels = useMemo<ColumnModel[]>(() => {
+    const list = models
+      .filter((model) => model.wind !== null)
+      .map((model) => ({
+        id: model.id,
+        manifest: model.wind!,
+        ensemble: model.entry.ensemble,
+      }));
+    if (!manifest) return list;
+    // The run on screen is the authority for its own model: a run swap must not
+    // wait for the next five-minute sweep before the columns agree with the map.
+    const mine = { id: manifest.model, manifest, ensemble: false };
+    const at = list.findIndex((model) => model.id === manifest.model);
+    if (at === -1) return [...list, mine];
+    return list.map((model, index) => (index === at ? mine : model));
+  }, [models, manifest]);
+  const columns = useMemo(() => {
+    const built = dockColumns(columnModels, clock);
+    // Until the sweep resolves there is one manifest to go on, and it is the
+    // map's. The selection survives the change because it is a time.
+    return built.length
+      ? built
+      : manifest
+        ? manifest.frames.map((frame) => ({
+            validTime: frame.validTime,
+            model: manifest.model,
+          }))
+        : [];
+  }, [columnModels, manifest, clock]);
+  // Kept by identity so a minute's tick, or a sweep that says the same thing,
+  // does not rebuild every chart and re-run the dock's measurement pass. The
+  // key is what actually changed, and nothing is read or written through a ref
+  // while rendering.
+  const columnsKey = columns
+    .map((column) => `${column.validTime}|${column.model}`)
+    .join(",");
+  const stable = useMemo(() => columns, [columnsKey]);
+  // The handlers that need the columns outside a render read them here.
+  const columnsRef = useRef<DockColumn[]>(stable);
+  useEffect(() => {
+    columnsRef.current = stable;
+  }, [stable]);
+
+  /**
+   * A tab left open all morning comes back to an hour that has already been and
+   * gone. Returning to it lands on now instead — and only then: a time the
+   * reader deliberately chose in the future is what they left the tab on.
+   *
+   * The listener is installed once and reads the current state through a ref,
+   * so returning to the tab never depends on a re-render having happened first.
+   */
+  const backToNow = useRef<() => void>(() => {});
+  backToNow.current = () => {
+    // Never mid-gesture: playback owns the selection while it runs, and a model
+    // switch is about to commit one of its own.
+    if (playing || pendingModel) return;
+    const now = Date.now();
+    if (!selectionIsPast(now)) return;
+    const at = columnAtNow(now);
+    if (at) setSelectedTime(at);
+  };
+  useEffect(() => {
+    const seen = () => {
+      if (document.visibilityState === "visible") backToNow.current();
+    };
+    document.addEventListener("visibilitychange", seen);
+    return () => document.removeEventListener("visibilitychange", seen);
+  }, []);
+
   useEffect(() => {
     if (!manifest || pendingModel) return;
-    let cancelled = false;
+    const controller = new AbortController();
     const epoch = modelEpoch.current;
+    const current = () =>
+      !controller.signal.aborted && epoch === modelEpoch.current;
     setFrameError("");
     loadFrame(manifest, requestedIndex)
       .then((data) => {
-        if (cancelled || epoch !== modelEpoch.current) return;
+        if (!current()) return;
         setFrame(data);
         if (requestedIndex + 1 < manifest.frames.length)
           void loadFrame(manifest, requestedIndex + 1).catch(() => {});
       })
-      .catch((e) => {
-        if (!cancelled && epoch === modelEpoch.current) {
-          setFrameError(e.message);
-          setPlaying(false);
-        }
+      .catch(async (e) => {
+        if (!current()) return;
+        // The server keeps only the newest run, so a frame that has gone usually
+        // means a newer run replaced it: open that run at the same time instead
+        // of reporting an error about a forecast nobody should be reading.
+        const swap = await loadNewerRun(
+          manifest,
+          manifest.frames[requestedIndex].validTime,
+          controller.signal,
+        ).catch(() => null);
+        if (!current()) return;
+        if (swap) return commitRun(swap);
+        setFrameError(e.message);
+        setPlaying(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [manifest, requestedIndex, retry, pendingModel]);
 
-  const activeIndex =
-    manifest && frame
-      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
-      : requestedIndex;
+  const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;
   useEffect(() => {
     if (!playing || !manifest || loading || frameError) return;
     const timeout = window.setTimeout(() => {
-      if (requestedIndex >= manifest.frames.length - 1) setPlaying(false);
-      else setRequestedIndex((v) => v + 1);
+      // Playback steps through the map model's own frames, by time.
+      const next = manifest.frames[requestedIndex + 1];
+      if (!next) setPlaying(false);
+      else setSelectedTime(next.validTime);
     }, 1600);
     return () => clearTimeout(timeout);
   }, [playing, manifest, requestedIndex, loading, frameError]);
@@ -203,11 +361,12 @@ export default function App() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-  const selectTime = (i: number) => {
+  /** The one way the reader's place moves: a valid time, from any control. */
+  const selectTime = (validTime: string) => {
     if (pendingModel) return;
     setModelNotice("");
     setPlaying(false);
-    setRequestedIndex(i);
+    setSelectedTime(validTime);
   };
   const selectSpot = (spot: Point) => {
     setPoint(spot);
@@ -251,26 +410,26 @@ export default function App() {
     return () => window.removeEventListener("keydown", escape);
   }, [searchOpen, showLayers, spotInfoOpen, point.id]);
   const openInfo = () => dialog.current?.showModal();
-  const chooseModel = async (id: ModelId) => {
-    if (!manifest || !frame || id === manifest.model) return;
+  const chooseModel = async (id: ModelId, wanted?: string) => {
+    if (!manifest || !frame || (id === manifest.model && !wanted)) return;
     modelRequest.current?.abort();
     const controller = new AbortController();
     modelRequest.current = controller;
     modelEpoch.current++;
     setPlaying(false);
-    setRequestedIndex(activeIndex);
     setPendingModel(id);
     setModelError("");
     setModelNotice("");
     setFrameError("");
-    const targetTime = frame.validTime;
+    const targetTime = wanted ?? frame.validTime;
+    setSelectedTime(targetTime);
     try {
       const next = await loadModel(id, targetTime, controller.signal);
       if (controller.signal.aborted) return;
       // React batches these together: metadata, map, series and time commit atomically.
       setManifest(next.manifest);
       setFrame(next.frame);
-      setRequestedIndex(next.index);
+      setSelectedTime(next.frame.validTime);
       if (next.frame.validTime !== targetTime)
         setModelNotice(
           `Showing the nearest ${next.manifest.modelName} forecast: ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}. Model forecast times and ranges differ.`,
@@ -289,23 +448,14 @@ export default function App() {
   // switch makes, at the frame nearest the time the reader had selected.
   useRunRefresh({
     manifest,
-    validTime:
-      manifest?.frames[requestedIndex]?.validTime ?? frame?.validTime ?? null,
+    validTime: selectedTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
     playing,
-    onRun: ({ manifest: next, frame: nextFrame, index }, label) => {
-      modelEpoch.current++;
-      setManifest(next);
-      setFrame(nextFrame);
-      setRequestedIndex(index);
-      setFrameError("");
-      setModelError("");
-      setModelNotice(`Updated to the ${label} run.`);
-    },
+    onRun: commitRun,
   });
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
-      setRequestedIndex(0);
+      setSelectedTime(manifest.frames[0].validTime);
     setPlaying((v) => !v);
   };
 
@@ -315,17 +465,25 @@ export default function App() {
       style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
     >
       <header className="site-header">
-        <button
-          ref={searchTrigger}
-          className="search-trigger glass"
-          aria-label="Open spot search"
-          aria-expanded={searchOpen}
-          aria-controls="spot-search-results"
-          hidden={searchOpen}
-          onClick={() => setSearchOpen(true)}
-        >
-          <Search size={20} />
-        </button>
+        {/*
+          The two round controls share a row, and the row stands down entirely
+          while the search panel is open so the panel keeps the header's full
+          width and its usual height below the top inset.
+        */}
+        <div className="site-header-controls" hidden={searchOpen}>
+          <SiteMenu current="map" />
+          <button
+            ref={searchTrigger}
+            className="search-trigger glass"
+            aria-label="Open spot search"
+            aria-expanded={searchOpen}
+            aria-controls="spot-search-results"
+            hidden={searchOpen}
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search size={20} />
+          </button>
+        </div>
         {searchOpen && (
           <div className="search-panel">
             <div className="search-box glass">
@@ -559,13 +717,26 @@ export default function App() {
               {manifest && (
                 <ForecastDock
                   manifest={manifest}
+                  columns={stable}
+                  models={models}
+                  modelsResolved={modelsResolved}
                   point={point}
                   prefs={prefs}
                   onPrefsChange={changePrefs}
-                  index={activeIndex}
-                  requestedIndex={requestedIndex}
-                  scrollIndex={frameError ? activeIndex : requestedIndex}
+                  selectedTime={
+                    selectedTime ?? manifest.frames[requestedIndex].validTime
+                  }
+                  // A frame that failed must not drag the dock to a column the
+                  // map never reached; the last good one keeps the view.
+                  scrollTime={
+                    frameError ? (forecast?.validTime ?? null) : selectedTime
+                  }
                   onSelect={selectTime}
+                  // The chip is the only way a far column changes the map, and
+                  // it is the reader's own decision: nothing switches by itself.
+                  onShowOnMap={(id, validTime) =>
+                    void chooseModel(id, validTime)
+                  }
                   open={sheetOpen}
                   onClose={() => {
                     setSheetOpen(false);

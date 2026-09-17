@@ -1,8 +1,10 @@
-// The browser's wave readers against the bundled GFS-Wave run, which is the
-// acceptance data. The contract itself is unit-tested with fixtures in
-// force5/src/waves.test.ts; this is the real published bundle.
+// The browser's wave readers against a GFS-Wave-shaped sample bundle, which is
+// the acceptance data. The contract itself is unit-tested with hand-built
+// fixtures in force5/src/waves.test.ts; this is a whole published bundle, in the
+// published format, written by scripts/sample-weather.mjs.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { readBundle } from "./bundles";
 import {
   preferredWaveSource,
   validateWaveManifest,
@@ -15,13 +17,9 @@ import {
   type WaveManifest,
 } from "../force5/src/waves";
 
-const manifest = validateWaveManifest(
-  JSON.parse(
-    readFileSync("public/weather/gfs-wave.json", "utf8"),
-  ) as WaveManifest,
-);
+const manifest = validateWaveManifest(readBundle<WaveManifest>("gfs-wave"));
 
-describe("the bundled GFS-Wave snapshot", () => {
+describe("the sample GFS-Wave bundle", () => {
   it("validates as published", () => {
     expect(manifest.model).toBe("gfs-wave");
     expect(manifest.stepHours).toBe(3);
@@ -35,9 +33,9 @@ describe("the bundled GFS-Wave snapshot", () => {
     const series = waveSeries(manifest, "brandon")!;
     expect(series).toHaveLength(manifest.frames.length);
     expect(waveSeriesHasData(series)).toBe(true);
-    expect(series[0].values.swh).toBeCloseTo(0.66, 2);
-    expect(series[0].values.pp1d).toBeCloseTo(9.51, 2);
-    expect(series[0].values.mwd).toBeCloseTo(315.37, 2);
+    expect(series[0].values.swh).toBeCloseTo(2.95, 2);
+    expect(series[0].values.pp1d).toBeCloseTo(7.29, 2);
+    expect(series[0].values.mwd).toBeCloseTo(295.68, 2);
     expect(waveCoverageNote(manifest, "brandon")).toBeNull();
   });
   it("reads a land-masked spot as nulls with the reason stated", () => {
