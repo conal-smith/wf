@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 import prune
+from workspace import workspace_lock
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
 
@@ -245,6 +246,59 @@ class MainTest(unittest.TestCase):
         code, event = run_main(["--root", self.directory.name])
         self.assertEqual((code, event["event"]), (1, "prune_failed"))
         self.assertTrue((self.tree.public / "weather" / "harmonie-previous").exists())
+
+    def test_main_keeps_nothing_superseded_by_default(self):
+        self.tree.run_directory("harmonie-an-hour-ago", age_hours=1)
+        code, event = run_main(["--root", self.directory.name])
+        self.assertEqual(code, 0)
+        self.assertEqual(event["removed"], ["weather/harmonie-an-hour-ago",
+                                            "weather/harmonie-previous"])
+
+    def test_main_skips_the_sweep_while_an_import_holds_the_lock(self):
+        # A run that is still being written is unreferenced too; only the lock protects it.
+        self.tree.run_directory("harmonie-arriving", age_hours=0)
+        with workspace_lock(Path(self.directory.name)):
+            code, event = run_main(["--root", self.directory.name])
+        self.assertEqual((code, event["event"]), (0, "prune_skipped"))
+        self.assertTrue((self.tree.public / "weather" / "harmonie-arriving").exists())
+        self.assertTrue((self.tree.public / "weather" / "harmonie-previous").exists())
+
+
+class WorkerTest(unittest.TestCase):
+    def test_a_published_run_deletes_the_one_it_replaced(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            tree.pointer("weather/harmonie.json",
+                         wind_manifest("harmonie", "2026091600", "harmonie-live"))
+            tree.run_directory("harmonie-live", age_hours=0)
+            tree.run_directory("harmonie-previous", age_hours=0)
+            self.assertEqual(worker.drop_superseded(tree.public), 1)
+            self.assertTrue((tree.public / "weather" / "harmonie-live").exists())
+            self.assertFalse((tree.public / "weather" / "harmonie-previous").exists())
+
+    def test_raw_downloads_go_after_the_job_but_small_state_stays(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            raw = tree.cache_file("ecmwf-ens/2026091600/000.grib2", days=0)
+            state = tree.cache_file("mi-swan/info/shelf.json", days=0)
+            lock = tree.cache_file("worker.lock", days=0)
+            worker.drop_downloads(tree.root, "ecmwf-ens")
+            worker.drop_downloads(tree.root, "mi-swan")
+            self.assertFalse(raw.exists())
+            self.assertTrue(state.exists())
+            self.assertTrue(lock.exists())
+
+    def test_a_failed_sweep_never_fails_the_forecast(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            tree.run_directory("harmonie-previous", age_hours=0)
+            (tree.public / "weather" / "harmonie.json").write_text("nope")
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(worker.drop_superseded(tree.public), 0)
+            self.assertTrue((tree.public / "weather" / "harmonie-previous").exists())
 
 
 if __name__ == "__main__":

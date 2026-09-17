@@ -12,9 +12,10 @@ import {
 import { WindMap, Force5Brand } from "../force5/src";
 import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
-import useRunRefresh from "./useRunRefresh";
+import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { ridingLocations } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
+import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import {
   convert,
@@ -159,27 +160,48 @@ export default function App() {
     return () => observer.disconnect();
   }, [error]);
 
+  // A newer run replaces the one on screen: metadata, map, series and time
+  // commit together, exactly as a model switch does.
+  const commitRun = ({ manifest: next, frame: nextFrame, index }: RunSwap) => {
+    modelEpoch.current++;
+    setManifest(next);
+    setFrame(nextFrame);
+    setRequestedIndex(index);
+    setFrameError("");
+    setModelError("");
+    setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
+  };
+
   useEffect(() => {
     if (!manifest || pendingModel) return;
-    let cancelled = false;
+    const controller = new AbortController();
     const epoch = modelEpoch.current;
+    const current = () =>
+      !controller.signal.aborted && epoch === modelEpoch.current;
     setFrameError("");
     loadFrame(manifest, requestedIndex)
       .then((data) => {
-        if (cancelled || epoch !== modelEpoch.current) return;
+        if (!current()) return;
         setFrame(data);
         if (requestedIndex + 1 < manifest.frames.length)
           void loadFrame(manifest, requestedIndex + 1).catch(() => {});
       })
-      .catch((e) => {
-        if (!cancelled && epoch === modelEpoch.current) {
-          setFrameError(e.message);
-          setPlaying(false);
-        }
+      .catch(async (e) => {
+        if (!current()) return;
+        // The server keeps only the newest run, so a frame that has gone usually
+        // means a newer run replaced it: open that run at the same time instead
+        // of reporting an error about a forecast nobody should be reading.
+        const swap = await loadNewerRun(
+          manifest,
+          manifest.frames[requestedIndex].validTime,
+          controller.signal,
+        ).catch(() => null);
+        if (!current()) return;
+        if (swap) return commitRun(swap);
+        setFrameError(e.message);
+        setPlaying(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [manifest, requestedIndex, retry, pendingModel]);
 
   const activeIndex =
@@ -293,15 +315,7 @@ export default function App() {
       manifest?.frames[requestedIndex]?.validTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
     playing,
-    onRun: ({ manifest: next, frame: nextFrame, index }, label) => {
-      modelEpoch.current++;
-      setManifest(next);
-      setFrame(nextFrame);
-      setRequestedIndex(index);
-      setFrameError("");
-      setModelError("");
-      setModelNotice(`Updated to the ${label} run.`);
-    },
+    onRun: commitRun,
   });
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)

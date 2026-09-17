@@ -16,7 +16,7 @@ import requests
 from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
-from fetch_forecast import ROOT, decode_handle, load_spots, sample, write_json
+from fetch_forecast import ROOT, already_published, decode_handle, load_spots, sample, write_json
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
 
@@ -138,6 +138,11 @@ def main():
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= 24:
         raise ValueError("Refusing a stale/future ECMWF run (maximum age 24 hours)")
+    output = ROOT / "public" / "weather"
+    prefix = f"ecmwf-{run}-360h-v2"
+    if not args.run and already_published(output / "ecmwf.json", run, prefix):
+        print(f"ECMWF IFS {run} is already published; nothing to download.", flush=True)
+        return
     print(f"Fetching ECMWF IFS {run}: 85 frames through +360h", flush=True)
     cache = ROOT / ".cache" / "ecmwf" / run
     cache.mkdir(parents=True, exist_ok=True)
@@ -167,8 +172,6 @@ def main():
         return hour, result
     with ThreadPoolExecutor(max_workers=2) as pool:
         gusts = dict(pool.map(fetch_gust, ECMWF_HOURS))
-    output = ROOT / "public" / "weather"
-    prefix = f"ecmwf-{run}-360h-v2"
     spots = load_spots()
     spot_forecasts = {spot["id"]: [] for spot in spots}
     grid = decoded[0][1][2]

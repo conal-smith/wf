@@ -190,6 +190,21 @@ def sample(grid, values, lon, lat):
                  (values[i+grid["width"]] * (1-tx) + values[i+grid["width"]+1] * tx) * ty, 2)
 
 
+def already_published(manifest, run, prefix):
+    """Whether the pointer manifest already serves this exact run bundle.
+
+    Raw downloads are not kept, so an importer that is scheduled more often than
+    its source publishes asks this first instead of downloading the run again.
+    """
+    try:
+        value = json.loads(manifest.read_text())
+    except (OSError, ValueError):
+        return False
+    frames = value.get("frames") or []
+    return (value.get("run") == run and bool(frames) and (manifest.parent / prefix).is_dir()
+            and all(str(frame.get("url", "")).startswith(f"weather/{prefix}/") for frame in frames))
+
+
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")

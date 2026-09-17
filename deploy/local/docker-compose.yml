@@ -14,8 +14,8 @@ x-ingest: &ingest
     dockerfile: force5/Dockerfile
   environment:
     FORCE5_WORK_DIR: /data
-    FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-48}
-    FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-3}
+    FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-0}
+    FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-1}
     TZ: ${FORCE5_TZ:-Etc/UTC}
   volumes:
     - data:/data
@@ -73,8 +73,8 @@ services:
     command: []
     environment:
       FORCE5_WORK_DIR: /data
-      FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-48}
-      FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-3}
+      FORCE5_RETAIN_HOURS: ${FORCE5_RETAIN_HOURS:-0}
+      FORCE5_CACHE_DAYS: ${FORCE5_CACHE_DAYS:-1}
       FORCE5_JOBS_FILE: /app/deploy/local/jobs.toml
       FORCE5_RUN_AT_START: ${FORCE5_RUN_AT_START:-0}
       TZ: ${FORCE5_TZ:-Etc/UTC}

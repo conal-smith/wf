@@ -4,7 +4,34 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fetch_forecast import discover, sample, validate_metadata, write_json
+from fetch_forecast import already_published, discover, sample, validate_metadata, write_json
+
+
+class AlreadyPublishedTests(unittest.TestCase):
+    """Raw downloads are not kept, so a repeated slot must not download a run twice."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.weather = Path(directory.name) / "weather"
+        self.manifest = self.weather / "ecmwf.json"
+        (self.weather / "ecmwf-2026091700-360h-v2").mkdir(parents=True)
+        write_json(self.manifest, {"run": "2026091700", "frames": [
+            {"url": "weather/ecmwf-2026091700-360h-v2/000-abc.json"}]})
+
+    def test_the_run_on_the_pointer_is_not_downloaded_again(self):
+        self.assertTrue(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
+
+    def test_a_newer_run_or_a_different_bundle_is_downloaded(self):
+        self.assertFalse(already_published(self.manifest, "2026091712", "ecmwf-2026091712-360h-v2"))
+        self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v3"))
+
+    def test_a_missing_or_broken_pointer_or_run_directory_is_downloaded(self):
+        self.assertFalse(already_published(self.weather / "absent.json", "2026091700", "x"))
+        (self.weather / "ecmwf-2026091700-360h-v2").rmdir()
+        self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
+        self.manifest.write_text("nope")
+        self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
 
 
 class ForecastTests(unittest.TestCase):
