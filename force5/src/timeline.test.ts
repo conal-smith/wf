@@ -4,6 +4,7 @@ import {
   dockColumns,
   frameForTime,
   framePosition,
+  loadOrder,
   modelStretches,
   windTrackBackground,
   type ColumnModel,
@@ -219,6 +220,41 @@ describe("frameForTime", () => {
     const one = frames("2026-09-14T00:00:00Z", [0]);
     expect(frameForTime(one, Date.parse("2026-09-14T00:00:00Z"))).toBe(0);
     expect(frameForTime(one, Date.parse("2026-09-14T02:00:00Z"))).toBeNull();
+  });
+});
+
+describe("loadOrder", () => {
+  const hourly = frames("2026-09-14T00:00:00Z", every(8, 1));
+  const threeHourly = frames("2026-09-14T00:00:00Z", every(24, 3));
+  it("starts at the hour on screen and works outwards", () => {
+    expect(loadOrder(threeHourly, Date.parse("2026-09-14T09:00:00Z"))).toEqual([
+      3, 4, 2, 5, 1, 6, 0, 7, 8,
+    ]);
+  });
+  it("takes every third hour of an hourly run first, then fills in", () => {
+    const order = loadOrder(hourly, Date.parse("2026-09-14T03:00:00Z"));
+    // Three-hour strides either side of the start, before anything between.
+    expect(order.slice(0, 3)).toEqual([3, 6, 0]);
+    // Every frame exactly once, and a third of them are useful first.
+    expect([...order].sort((a, b) => a - b)).toEqual(
+      hourly.map((_, index) => index),
+    );
+    expect(order.slice(0, Math.ceil(order.length / 3))).toEqual([3, 6, 0]);
+  });
+  it("makes one pass of a run already at or past the stride", () => {
+    const sixHourly = frames("2026-09-14T00:00:00Z", every(24, 6));
+    expect(loadOrder(sixHourly, Date.parse("2026-09-14T00:00:00Z"))).toEqual([
+      0, 1, 2, 3, 4,
+    ]);
+  });
+  it("clamps to an end when the clock is outside the run, and survives none", () => {
+    expect(loadOrder(threeHourly, Date.parse("2026-09-01T00:00:00Z"))[0]).toBe(
+      0,
+    );
+    expect(loadOrder(threeHourly, Date.parse("2026-10-01T00:00:00Z"))[0]).toBe(
+      threeHourly.length - 1,
+    );
+    expect(loadOrder([], NOW)).toEqual([]);
   });
 });
 
