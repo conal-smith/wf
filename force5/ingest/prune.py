@@ -10,9 +10,20 @@ a while longer; the default is not to. Anything that reads like a pointer
 manifest is never deleted, even for a model the registry does not know yet, and
 an unreadable registry manifest aborts the whole sweep rather than risking
 objects that are still in use.
+
+`--bucket` runs the same sweep against the object store instead of a work
+directory, for the one-shot deployment where the disk is empty at the start of
+every job and the bucket is the only state there is. Two differences follow from
+that: there is no workspace lock to take, because the importers are on other
+machines, and an unreferenced object is therefore only deleted once it is older
+than `--min-age-hours` (default 6, longer than any job timeout) — otherwise this
+would delete the frames of a run whose manifest another machine has not written
+yet. Failed or interrupted uploads are what the bucket sweep is for; the ordinary
+superseded run is deleted by the publisher itself, which needs no listing.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import gzip
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -27,6 +38,12 @@ ARCHIVE_DIRECTORY = "manifests"  # Archived manifests, never a prunable run.
 KEEP_CACHE_NAMES = {"worker.lock"}
 DEFAULT_MAX_AGE_HOURS = 0.0
 DEFAULT_CACHE_DAYS = 3.0
+# The bucket guard. A job may run for 45 minutes and its container may be retried,
+# so six hours is comfortably longer than any upload that could still be in flight
+# for a run whose pointer manifest has not been written yet.
+DEFAULT_BUCKET_MIN_AGE_HOURS = 6.0
+DELETE_BATCH = 1000  # S3 and R2 both cap one DeleteObjects request here.
+LIST_PAGE = 1000
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 # An observation bundle is one small self-contained file: it carries its readings
 # inline and points at nothing, so having no object URLs is correct, not a fault.
@@ -80,16 +97,19 @@ def referenced(manifests):
     return files, directories
 
 
-def looks_like_a_manifest(path):
+def manifest_shaped(value):
     """A pointer for a model the registry has not adopted yet is still a pointer."""
+    return isinstance(value, dict) and isinstance(value.get("model"), str) \
+        and isinstance(value.get("run"), str) and any(key in value for key in MANIFEST_KEYS)
+
+
+def looks_like_a_manifest(path):
     if path.suffix != ".json":
         return False
     try:
-        value = json.loads(path.read_text())
+        return manifest_shaped(json.loads(path.read_text()))
     except (OSError, ValueError):
         return False
-    return isinstance(value, dict) and isinstance(value.get("model"), str) \
-        and isinstance(value.get("run"), str) and any(key in value for key in MANIFEST_KEYS)
 
 
 def newest_mtime(path):
@@ -179,6 +199,139 @@ def prune_cache(cache, cache_days, now=None, dry_run=False):
     return {"removedCacheFiles": files, "freedCacheBytes": freed}
 
 
+def absent(error):
+    """A get/head that means "no such object", rather than a fault worth aborting on."""
+    return getattr(error, "response", {}).get("Error", {}).get("Code", "") in (
+        "NoSuchKey", "NotFound", "404")
+
+
+def delete_keys(s3, bucket, keys):
+    """Delete exactly these keys in batches. The publisher uses this too."""
+    deleted = 0
+    for start in range(0, len(keys), DELETE_BATCH):
+        batch = keys[start:start + DELETE_BATCH]
+        response = s3.delete_objects(
+            Bucket=bucket, Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True})
+        failed = (response or {}).get("Errors")
+        if failed:
+            raise RuntimeError(f"{len(failed)} object(s) not deleted, first: {failed[0]}")
+        deleted += len(batch)
+    return deleted
+
+
+def read_object(s3, bucket, key):
+    """Body bytes, decompressed when the object was stored gzip-encoded."""
+    response = s3.get_object(Bucket=bucket, Key=key)
+    body = response["Body"].read()
+    return gzip.decompress(body) if response.get("ContentEncoding") == "gzip" else body
+
+
+def bucket_manifests(s3, bucket, prefix):
+    """Every registry pointer manifest the bucket holds, by its published path.
+
+    A manifest that is present but unreadable aborts the sweep: everything it
+    references would look unreferenced, and that is precisely the live forecast.
+    A manifest that is simply absent is a model nobody has published yet.
+    """
+    manifests = {}
+    for path in MANIFESTS.values():
+        try:
+            body = read_object(s3, bucket, prefix + path)
+        except Exception as error:
+            if absent(error):
+                continue
+            raise ValueError(f"Cannot read manifest {path}: {error}") from error
+        try:
+            manifests[path] = json.loads(body)
+        except ValueError as error:
+            raise ValueError(f"Unreadable manifest {path}: {error}") from error
+    return manifests
+
+
+def bucket_objects(s3, bucket, prefix):
+    """Every object under each data root, one page at a time."""
+    for root in DATA_ROOTS:
+        token = None
+        while True:
+            page = s3.list_objects_v2(Bucket=bucket, Prefix=f"{prefix}{root}/",
+                                      MaxKeys=LIST_PAGE,
+                                      **({"ContinuationToken": token} if token else {}))
+            for item in page.get("Contents") or []:
+                yield item["Key"], item["LastModified"], item.get("Size", 0)
+            token = page.get("NextContinuationToken")
+            if not token or not page.get("IsTruncated"):
+                break
+
+
+def bucket_manifest_shaped(s3, bucket, key):
+    """Is this unreferenced top-level .json a pointer for a model we do not know?
+
+    Anything that cannot be read is treated as one. A sweep never deletes on a guess.
+    """
+    try:
+        return manifest_shaped(json.loads(read_object(s3, bucket, key)))
+    except Exception:
+        return True
+
+
+def bucket_prune(s3, bucket, prefix="", min_age_hours=DEFAULT_BUCKET_MIN_AGE_HOURS,
+                 now=None, dry_run=False):
+    """Delete bucket objects no pointer manifest references and nothing can still be writing.
+
+    The publisher already deletes the run each publish supersedes, so what is left
+    here is the wreckage of failed or interrupted uploads. Jobs for different models
+    run on different machines at the same time, and a run's frames go up before its
+    manifest does, so age is the only signal that an unreferenced object is not
+    simply a run in progress: nothing younger than the guard is touched.
+    """
+    if prefix and (prefix.startswith("/") or ".." in PurePosixPath(prefix).parts):
+        raise ValueError("S3 prefix must be a relative object prefix")
+    prefix = prefix.rstrip("/") + "/" if prefix else ""
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(hours=min_age_hours)
+    keep_files, keep_directories = referenced(bucket_manifests(s3, bucket, prefix))
+    pointers = set(MANIFESTS.values())
+    removed, kept, waiting, freed = [], 0, 0, 0
+    for key, modified, size in bucket_objects(s3, bucket, prefix):
+        published = key[len(prefix):]
+        parts = PurePosixPath(published).parts
+        if len(parts) < 2 or parts[0] not in DATA_ROOTS or published in pointers \
+                or parts[1] == ARCHIVE_DIRECTORY \
+                or published in keep_files or "/".join(parts[:2]) in keep_directories:
+            kept += 1
+            continue
+        if modified > cutoff:
+            waiting += 1  # Another machine may be mid-upload of a run with no manifest yet.
+            continue
+        if len(parts) == 2 and published.endswith(".json") \
+                and bucket_manifest_shaped(s3, bucket, key):
+            kept += 1  # A pointer for a model this registry has not adopted yet.
+            continue
+        removed.append(published)
+        freed += size
+    if removed and not dry_run:
+        delete_keys(s3, bucket, [prefix + published for published in removed])
+    return {"removed": removed, "kept": kept, "withinGuard": waiting, "freedBytes": freed}
+
+
+def sweep(args):
+    """The --bucket mode of this command: no work directory, no lock, no raw cache."""
+    # Imported here so the local sweep needs neither boto3 nor the publisher.
+    from publish_s3 import make_client
+    try:
+        result = bucket_prune(make_client(args.endpoint_url, args.region), args.bucket,
+                              args.prefix, args.min_age_hours, dry_run=args.dry_run)
+    except Exception as error:
+        print(json.dumps({"event": "sweep_failed", "bucket": args.bucket, "error": str(error)}),
+              file=sys.stderr, flush=True)
+        return 1
+    print(json.dumps({"event": "sweep_complete", "bucket": args.bucket,
+                      "dryRun": args.dry_run, "minAgeHours": args.min_age_hours,
+                      "removed": result["removed"], "kept": result["kept"],
+                      "withinGuard": result["withinGuard"], "freedBytes": result["freedBytes"],
+                      "time": datetime.now(timezone.utc).isoformat()}), flush=True)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -192,9 +345,22 @@ def main(argv=None):
         os.environ.get("FORCE5_CACHE_DAYS") or DEFAULT_CACHE_DAYS),
         help="Keep raw downloads this many days (default 3)")
     parser.add_argument("--dry-run", action="store_true", help="Report without deleting")
+    parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET"),
+                        help="Sweep this bucket instead of the local work directory")
+    parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
+    parser.add_argument("--endpoint-url", default=os.environ.get("S3_ENDPOINT_URL"),
+                        help="S3-compatible endpoint (Cloudflare R2); omit for AWS S3")
+    parser.add_argument("--region", default=os.environ.get("AWS_REGION"),
+                        help="Defaults to 'auto' when an endpoint URL is given, as R2 wants")
+    parser.add_argument("--min-age-hours", type=float, default=float(
+        os.environ.get("FORCE5_SWEEP_MIN_AGE_HOURS") or DEFAULT_BUCKET_MIN_AGE_HOURS),
+        help="Bucket sweep only: keep an unreferenced object this long, because another"
+             " machine may still be uploading the run it belongs to (default 6)")
     args = parser.parse_args(argv)
-    if args.max_age_hours < 0 or args.cache_days < 0:
+    if args.max_age_hours < 0 or args.cache_days < 0 or args.min_age_hours < 0:
         parser.error("Retention windows cannot be negative")
+    if args.bucket:
+        return sweep(args)
     public = Path(args.root) / "public"
     if not any((public / root).is_dir() for root in DATA_ROOTS):
         print(json.dumps({"event": "prune_failed",

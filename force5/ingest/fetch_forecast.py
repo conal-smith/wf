@@ -20,6 +20,8 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
+from registry import PUBLISHED_RUN_ENV
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path(os.environ.get("FORCE5_WORK_DIR", str(PROJECT_ROOT))).resolve()
 RIDING_LOCATIONS_FILE = PROJECT_ROOT / "public" / "riding-locations.json"
@@ -191,11 +193,22 @@ def sample(grid, values, lon, lat):
 
 
 def already_published(manifest, run, prefix):
-    """Whether the pointer manifest already serves this exact run bundle.
+    """Whether this exact run bundle is already published, in the bucket or on disk.
 
     Raw downloads are not kept, so an importer that is scheduled more often than
     its source publishes asks this first instead of downloading the run again.
+    A one-shot container has no previous output on disk, so the worker reads the
+    model's current manifest from the bucket and passes that run in
+    FORCE5_PUBLISHED_RUN; when it is set, it is the answer. Without it the local
+    manifest is consulted as before, which is what the local deployment uses.
+
+    The bucket answer compares the run only, not `prefix`. Bumping an object
+    prefix (a code correction, say) therefore does not force an immediate
+    re-import: the change lands with the source's next run instead, within one
+    cycle. Pass `--run` to re-import the current one at once.
     """
+    if os.environ.get(PUBLISHED_RUN_ENV) == run:
+        return True
     try:
         value = json.loads(manifest.read_text())
     except (OSError, ValueError):
