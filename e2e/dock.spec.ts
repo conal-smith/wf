@@ -878,3 +878,159 @@ test("a spot with no station in range falls back to the model's skin temperature
     "Marine Institute observations",
   );
 });
+
+/**
+ * A newer HARMONIE run: the bundled one is 13 UTC, this is the 16 UTC that
+ * replaces it three hours later. It has frames of its own rather than a
+ * relabelling of the committed ones, because a frame file carries its own run and
+ * hour and is validated against the manifest that referenced it — which is
+ * exactly the check that makes an atomic swap safe. The grid is the real one and
+ * the wind is a flat field: this is a test of the swap, not of the weather.
+ */
+const NEWER_RUN = "2026091316";
+const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
+const NEWER_RUN_DIR = `weather/harmonie-${NEWER_RUN}-24h-test`;
+const newerValidTime = (hour: number) =>
+  new Date(Date.parse(NEWER_RUN_TIME) + hour * 3600000).toISOString();
+const newerFrames = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => ({
+  hour,
+  validTime: newerValidTime(hour),
+  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.json`,
+  gustIntervalHours: null,
+}));
+const newerHarmonie = {
+  ...harmonie,
+  run: NEWER_RUN,
+  runTime: NEWER_RUN_TIME,
+  generatedAt: NEWER_RUN_TIME,
+  frames: newerFrames,
+  spotForecasts: Object.fromEntries(
+    Object.keys(harmonie.spotForecasts as Record<string, unknown>).map(
+      (spot) => [
+        spot,
+        newerFrames.map((frame, column) => ({
+          hour: frame.hour,
+          validTime: frame.validTime,
+          u: 6 + column * 0.2,
+          v: -4,
+          gust: null,
+        })),
+      ],
+    ),
+  ),
+};
+const CELLS = harmonie.grid.width * harmonie.grid.height;
+const newerFrame = (hour: number) => ({
+  model: "harmonie",
+  run: NEWER_RUN,
+  hour,
+  validTime: newerValidTime(hour),
+  grid: harmonie.grid,
+  gustIntervalHours: null,
+  u: Array.from({ length: CELLS }, () => 6),
+  v: Array.from({ length: CELLS }, () => -4),
+  gust: null,
+});
+async function withNewerRunFrames(page: Page) {
+  await page.route(`**/${NEWER_RUN_DIR}/*.json`, (route) => {
+    const hour = Number(
+      /(\d+)\.json$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
+    );
+    return route.fulfill({ json: newerFrame(hour) });
+  });
+}
+
+test("an open tab moves to a newer run and keeps the time it was showing", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  let published = harmonie;
+  await withTides(page);
+  await withNewerRunFrames(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({ json: published }),
+  );
+  // A controlled clock, so five minutes can pass without waiting for them.
+  await page.clock.install({
+    time: new Date(Date.parse(harmonie.runTime) + 8 * 3600000),
+  });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+
+  // Step two columns off the opening hour, with the step buttons rather than the
+  // scrubber: focus in the range input is itself a reason to defer a refresh.
+  const slider = page.getByLabel("Forecast time", { exact: true });
+  await page.getByLabel("Next forecast", { exact: true }).click();
+  await page.getByLabel("Next forecast", { exact: true }).click();
+  published = newerHarmonie;
+
+  // A check that comes due with the scrubber under the reader's hand is put off,
+  // not taken: the forecast must not move while they are reading along it.
+  await slider.focus();
+  await page.clock.fastForward("05:01");
+  await expect(page.locator(".model-status")).toHaveCount(0);
+
+  // Hands off, and a minute later the deferred check goes through.
+  await page.getByLabel("Display options", { exact: true }).focus();
+  const showing = (await slider.getAttribute("aria-valuetext"))!;
+  const column = Number(await slider.inputValue());
+  expect(column).toBeGreaterThan(0);
+  await page.clock.fastForward("01:00");
+
+  // The notice names the new run, unobtrusively, in the model-message strip.
+  const status = page.locator(".model-status");
+  await expect(status).toContainText("Updated to the 16:00 UTC run", {
+    timeout: 20000,
+  });
+  await expect(page.locator(".model-status.is-error")).toHaveCount(0);
+
+  // The reader keeps the valid time they were reading. It is one column further
+  // left, because the newer run starts three hours later than the old one.
+  await expect(slider).toHaveAttribute("aria-valuetext", showing);
+  expect(Number(await slider.inputValue())).toBe(column - 1);
+  await expect(page.locator(".forecast-now")).toHaveCount(1);
+  await expect(page.locator(".blend-chart")).toBeVisible();
+
+  // And it really is the new run that is on screen now.
+  await page.locator(".model-info").click();
+  await expect(page.locator("dialog.info-dialog")).toContainText(
+    "16:00:00 GMT",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("a failed background check leaves the forecast alone and says nothing", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  let broken = false;
+  await withTides(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    broken
+      ? route.fulfill({ status: 503, body: "Gone" })
+      : route.fulfill({ json: harmonie }),
+  );
+  await page.clock.install({
+    time: new Date(Date.parse(harmonie.runTime) + 8 * 3600000),
+  });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const showing = (await page
+    .getByLabel("Forecast time", { exact: true })
+    .getAttribute("aria-valuetext"))!;
+
+  broken = true;
+  await page.clock.fastForward("05:01");
+  await page.clock.fastForward("05:01");
+
+  // Nothing is said and nothing moves: the run already on screen is still it.
+  await expect(page.locator(".model-status")).toHaveCount(0);
+  await expect(page.locator(".frame-status.is-error")).toHaveCount(0);
+  await expect(
+    page.getByLabel("Forecast time", { exact: true }),
+  ).toHaveAttribute("aria-valuetext", showing);
+  await expect(page.locator(".blend-chart")).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
@@ -7,8 +7,10 @@ import {
 } from "../force5/src/blend";
 import {
   availableModels,
+  type AnyManifest,
   type ModelAvailability,
 } from "../force5/src/manifests";
+import { shouldRevalidate } from "../force5/src/revalidate";
 import { spotSeries } from "../force5/src/series";
 import {
   loadSeaTemperature,
@@ -39,28 +41,78 @@ import {
 import type { Manifest } from "../force5/src/weather";
 import { axisVectors, meanDirections } from "./chart";
 
+const runOf = (manifest: AnyManifest | null) => manifest?.runTime ?? null;
+/** Two sweeps that say the same thing, so the chart is not rebuilt for nothing. */
+const sameSweep = (
+  a: readonly ModelAvailability[],
+  b: readonly ModelAvailability[],
+) =>
+  a.length === b.length &&
+  a.every(
+    (model, index) =>
+      model.id === b[index].id &&
+      model.available === b[index].available &&
+      runOf(model.manifest) === runOf(b[index].manifest),
+  );
+
 /**
- * Availability of every live model, resolved once. Missing models are a normal
- * state: `availableModels` never throws, and the map keeps working regardless.
+ * Availability of every live model. Missing models are a normal state:
+ * `availableModels` never throws, and the map keeps working regardless.
+ *
+ * The sweep repeats on the same five-minute cadence the map model's own
+ * revalidation uses, so a tab left open picks up the new runs the chart reads
+ * rather than only the one the map draws. `busy` holds it off while the reader
+ * is scrubbing or playing; an unchanged sweep keeps the previous array, so the
+ * blend is only recomputed when a model has actually published a new run.
  */
-export function useModelAvailability(): {
+export function useModelAvailability(busy = false): {
   models: ModelAvailability[];
   resolved: boolean;
 } {
   const [models, setModels] = useState<ModelAvailability[]>([]);
   const [resolved, setResolved] = useState(false);
+  const lastCheck = useRef(Date.now());
+  const busyNow = useRef(busy);
+  busyNow.current = busy;
   useEffect(() => {
     const controller = new AbortController();
-    availableModels(controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setModels(result);
-        setResolved(true);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setResolved(true);
-      });
-    return () => controller.abort();
+    const sweep = () =>
+      availableModels(controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted) return;
+          setModels((previous) =>
+            sameSweep(previous, result) ? previous : result,
+          );
+          setResolved(true);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setResolved(true);
+        });
+    void sweep();
+    const tick = () => {
+      if (
+        !shouldRevalidate(
+          lastCheck.current,
+          Date.now(),
+          document.visibilityState === "visible",
+          busyNow.current,
+        )
+      )
+        return;
+      lastCheck.current = Date.now();
+      void sweep();
+    };
+    // A minute's heartbeat, so a check that comes due mid-gesture is retried
+    // shortly afterwards instead of waiting out another whole interval.
+    const timer = window.setInterval(tick, 60000);
+    document.addEventListener("visibilitychange", tick);
+    window.addEventListener("focus", tick);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("focus", tick);
+    };
   }, []);
   return { models, resolved };
 }

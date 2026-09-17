@@ -998,6 +998,7 @@ tests and no UI; the dock consumes them through `src/ForecastDock.tsx`. See the
 ```text
 force5/src/units.ts      Units type, conversion, labels, formatted speeds
 force5/src/manifests.ts  Model registry (live and planned) and the manifest cache
+force5/src/revalidate.ts When an open tab should look for a newer run, as a pure decision
 force5/src/series.ts     Precomputed per-spot and per-member series access
 force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles, plot helpers
 force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
@@ -1182,6 +1183,41 @@ weather rows are what grew the dock by 72px and 66px over its previous 367px and
 budget is intact, but the phone dock is now 44 % of an 844px viewport, and which
 rows deserve to be on by default is a design call rather than a code one.
 
+## Open-tab refresh
+
+A run is replaced every few hours, so a tab left open all morning used to show a
+stale forecast until someone reloaded it. It now revalidates itself:
+
+- **Cadence.** Every five minutes while the tab is visible, and on
+  `visibilitychange` or `focus` once five minutes have passed. A hidden tab fetches
+  nothing at all. The decision is a pure function,
+  `revalidateDecision(lastCheck, now, visible, busy)` in
+  `force5/src/revalidate.ts`, which answers `go`, `wait` or `defer`;
+  `shouldRevalidate` is the same question as a boolean. Both are unit-tested, and
+  the hook that drives them is a minute's heartbeat plus those two listeners.
+- **What it fetches.** `clearManifestCache(id)` then `loadManifest(id)` for the
+  **active map model**, which is a `cache: "no-cache"` request past both the
+  five-minute manifest cache and the HTTP cache. If the run is the one already on
+  screen, that is the end of it — one small JSON and no re-render.
+- **The swap.** A newer `run` is loaded whole through the same `loadModel`
+  transaction a model switch uses — manifest, nearest frame to the **selected**
+  valid time, and its index — and committed in one React batch, so the map, the
+  chart and the scrubber never show two runs at once. The selected time is kept;
+  the column number may change, because a newer run starts later.
+- **Never under the reader's hand.** While the forecast is playing, while a model
+  switch is in flight, while a pointer is down or while the scrubber has focus, a
+  due check is deferred and retried a minute later.
+- **The chart's other models** are swept on the same cadence through
+  `useModelAvailability`, so the blend, the waves and the surface rows pick up
+  their own new runs. An unchanged sweep keeps the previous array, so nothing is
+  recomputed for nothing.
+- **Silence on failure.** A background refresh that fails logs to the console and
+  leaves the forecast that is already on screen exactly as it is. The reader is
+  never shown an error for work they did not ask for.
+- **What it says.** One line in the existing model-message strip: "Updated to the
+  16:00 UTC run." — runs are named by their UTC hour, as every source publishes
+  them — which dismisses itself after six seconds.
+
 ## Sources and limitations
 
 - Weather: [DWD ICON-EU GRIB2](https://opendata.dwd.de/weather/nwp/icon-eu/grib/), [access information](https://opendata.dwd.de/README.txt), [DWD terms/attribution](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The same source supplies the `icon-eu-weather` surface variables (`t_2m`, `td_2m`, `relhum_2m`, `tot_prec`, `clct`/`clcl`/`clcm`/`clch`, `pmsl`, `vis`, `cape_ml`, `ww`, `t_g`); `t_g` over sea is a model SST **proxy**, not an observation, and `ww` is DWD's WMO present-weather interpretation, not an observed report.
@@ -1197,7 +1233,7 @@ rows deserve to be on by default is a design call rather than a code one.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed — with one exception: the Sea row, which is a measurement when a Marine Institute station is reporting near the spot. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series, ICON-EU surface weather and observed sea temperature are all shown in the dock. Where no station is in range the Sea row falls back to the **model's own skin temperature**, labelled as an approximation, and is off by default. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed — with one exception: the Sea row, which is a measurement when a Marine Institute station is reporting near the spot. The browser flags runs older than 18 hours and snapshots whose coverage has ended. An open tab now follows the runs: every five minutes while it is visible it revalidates the active model's manifest and, if a newer run has been published, swaps manifest and frame together at the time the reader had selected (see "Open-tab refresh" below). Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series, ICON-EU surface weather and observed sea temperature are all shown in the dock. Where no station is in range the Sea row falls back to the **model's own skin temperature**, labelled as an approximation, and is off by default. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 

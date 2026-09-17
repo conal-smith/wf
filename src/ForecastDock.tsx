@@ -349,7 +349,7 @@ export default function ForecastDock({
 
   const { units, rows } = prefs;
   const series = usePointSeries(manifest, point);
-  const { models, resolved } = useModelAvailability();
+  const { models, resolved } = useModelAvailability(playing || busy);
   const tide = useSpotTide(point.id);
   const sea = useSpotSeaTemperature(point.id);
   const axis = useMemo(
