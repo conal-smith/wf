@@ -12,7 +12,6 @@ import {
   Image as ImageIcon,
   Info,
   LogIn,
-  Map as MapIcon,
   PlusCircle,
   Star,
   StarHalf,
@@ -27,6 +26,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import { SiteMenu } from "../../force5/src/SiteMenu";
 import { useMarketAuth } from "./auth";
 import { Link, paths } from "./router";
 import {
@@ -98,6 +98,7 @@ export function MarketHeader() {
   return (
     <header className="mk-header">
       <div className="f5-surface f5-surface--pill mk-header__bar">
+        <SiteMenu current="market" size="sm" />
         <Link
           to={paths.browse()}
           className="mk-brand"
@@ -109,11 +110,12 @@ export function MarketHeader() {
           </span>
           <span className="f5-chip f5-chip--eyebrow">Market</span>
         </Link>
+        {/*
+          The wind map is reached through the site menu at the start of the bar,
+          not a button of its own here: one control per destination. The footer
+          link stays — it is at the other end of the page, not beside it.
+        */}
         <nav className="mk-header__actions" aria-label="Marketplace">
-          <a className="f5-button f5-button--pill f5-button--sm" href="/">
-            <MapIcon size={15} aria-hidden="true" />
-            <span className="mk-header__label">Map</span>
-          </a>
           <Link
             className="f5-button f5-button--pill f5-button--sm"
             to={paths.sell()}

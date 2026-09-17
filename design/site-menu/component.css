@@ -1,0 +1,88 @@
+.f5-site-menu {
+  position: relative;
+  display: inline-flex;
+  pointer-events: auto;
+}
+
+.f5-site-menu__trigger {
+  position: relative;
+}
+
+/*
+ * A default-height icon button is under the target floor on a finger. The hit
+ * area is padded out to `--sem-control-height-touch` without moving any paint,
+ * so the button still lines up with the chrome beside it.
+ */
+@media (pointer: coarse) {
+  .f5-site-menu__trigger::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--sem-control-height-touch);
+    height: var(--sem-control-height-touch);
+    transform: translate(-50%, -50%);
+  }
+}
+
+.f5-site-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--sem-space-gap));
+  left: 0;
+  z-index: var(--sem-z-panel);
+  min-width: max-content;
+  padding: var(--sem-space-gap-tight);
+  animation: f5-site-menu-in var(--sem-effect-duration-fast) ease both;
+}
+
+@keyframes f5-site-menu-in {
+  from {
+    opacity: 0; /* ds-lint-allow: opacity is unitless and not a tokenised scale */
+    transform: translateY(calc(var(--sem-space-gap-tight) * -1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f5-site-menu__panel {
+    animation: none;
+  }
+}
+
+.f5-site-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-gap-tight);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.f5-site-menu__link {
+  display: flex;
+  width: 100%;
+  height: var(--sem-control-height-touch);
+  justify-content: flex-start;
+  gap: var(--sem-space-gap);
+  color: var(--sem-color-action-quiet);
+  text-decoration: none;
+}
+
+.f5-site-menu__link:hover {
+  background-color: var(--sem-color-action-quiet-hover);
+}
+
+/*
+ * The section you are in is raised and filled, the same way a pressed button
+ * is: elevation and fill, so the state does not rest on colour alone. The
+ * machine-readable half is `aria-current="page"`, which is also the selector.
+ */
+.f5-site-menu__link[aria-current="page"] {
+  background: var(--sem-color-surface-raised);
+  color: var(--sem-color-text-primary);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-site-menu__link > svg {
+  flex-shrink: 0;
+  color: var(--sem-color-text-muted);
+}
