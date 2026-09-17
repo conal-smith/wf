@@ -8,11 +8,18 @@ import type { DayGroup } from "./chart";
 export interface ModelBand {
   model: string;
   label: string;
-  /** The run behind it was initialised more than eighteen hours ago. */
-  older: boolean;
+  /** Whether the run behind it is the latest one, an older one, or has ended. */
+  state: "fresh" | "stale" | "expired";
   start: number;
   count: number;
 }
+
+/** What the band says about a run that is not the newest. */
+const BAND_NOTE: Record<ModelBand["state"], string | null> = {
+  fresh: null,
+  stale: "older run",
+  expired: "run ended",
+};
 
 interface Props {
   /** The dock's time axis. Every view hangs off these columns. */
@@ -143,7 +150,7 @@ export default function ForecastHeader({
             >
               <span style={{ maxWidth: spanWidth(band.start, band.count) }}>
                 {band.label}
-                {band.older && <i> · older run</i>}
+                {BAND_NOTE[band.state] && <i> · {BAND_NOTE[band.state]}</i>}
               </span>
             </th>
           ))}

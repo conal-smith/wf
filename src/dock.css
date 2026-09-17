@@ -159,6 +159,24 @@
   font-style: normal;
 }
 
+/* A value that sits between two of its run's published steps: the same hairline
+   the chart draws it with, so the reader can see at a glance which columns the
+   model actually published and which the dock read between them. */
+.forecast-table td[data-interpolated] {
+  position: relative;
+  font-style: italic;
+  color: #3f6673;
+}
+.forecast-table td[data-interpolated]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 8px;
+  margin-left: -4px;
+  border-bottom: 1px dotted #5c8792;
+}
+
 /* ---------- model band ----------
    A hairline under the day band saying which run answers for each stretch of
    the axis. It is a header row, not decoration, so a screen reader hears the
@@ -191,13 +209,20 @@
 }
 
 /* The reader has selected an hour the map's own run cannot draw. Offer the run
-   that reaches it; never switch on their behalf. */
+   that reaches it; never switch on their behalf.
+
+   It rides in the scrubber's own row, whose height the play button already
+   sets, because it comes and goes as the reader scrubs across the seam: a chip
+   on a line of its own would resize the dock and the map would jump with it. */
+.map-reach {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
 .map-reach-chip {
-  grid-column: 1 / -1;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 4px 0 0;
   padding: 3px 10px;
   border: 1px solid #ffffffa8;
   border-radius: 14px;
@@ -216,6 +241,13 @@
 }
 .map-reach-chip:hover {
   background: #ffffffc4;
+}
+/* No taller than the step buttons beside it, or the row it rides in would grow
+   and the dock with it — which is the whole reason it is in this row. */
+.compact-layout .timeline .map-reach-chip {
+  height: 18px;
+  padding: 0 8px;
+  font-size: 10px;
 }
 
 /* ---------- chart row ---------- */

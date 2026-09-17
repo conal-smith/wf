@@ -78,7 +78,9 @@ export function commonAxis(
   return axis;
 }
 
-function medianStepHours(series: readonly SeriesPoint[]): number {
+function medianStepHours(
+  series: readonly Pick<SeriesPoint, "validTime">[],
+): number {
   const steps: number[] = [];
   for (let i = 1; i < series.length; i++)
     steps.push(
@@ -94,8 +96,9 @@ function medianStepHours(series: readonly SeriesPoint[]): number {
  * How long a gap interpolation may bridge: twice the model's median cadence,
  * which covers ECMWF's 3 → 6 hour tail but never a genuinely missing block.
  */
-export const bridgeableGapHours = (series: readonly SeriesPoint[]) =>
-  2 * medianStepHours(series);
+export const bridgeableGapHours = (
+  series: readonly Pick<SeriesPoint, "validTime">[],
+) => 2 * medianStepHours(series);
 
 export interface SeriesValues {
   speed: (number | null)[];

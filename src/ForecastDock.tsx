@@ -48,6 +48,8 @@ import {
   columnWeights,
   dayGroups,
   modelSupport,
+  seriesOnAxis,
+  type AxisReading,
   niceMax,
   valueScale,
   windGradientStops,
@@ -60,7 +62,7 @@ import {
   useSpotWeather,
 } from "./useBlend";
 import { usePointSeries } from "./usePointSeries";
-import { candlesOver } from "../force5/src/blend";
+import { bridgeableGapHours, candlesOver } from "../force5/src/blend";
 import { dayNights } from "../force5/src/sun";
 import {
   columnSources,
@@ -293,12 +295,21 @@ const SEA_SPARK = { width: 54, height: 13 } as const;
 export interface ColumnCell {
   validTime: string;
   model: string;
-  /** Null where nothing covers the column; undefined while a frame loads. */
-  wind: Wind | null | undefined;
+  /** Null where nothing covers the column, or where it has not loaded yet. */
+  wind: Wind | null;
+  /** True when the value sits between two of that run's published steps. */
+  interpolated: boolean;
+  /** Hours between the two steps it sits between; null on a published one. */
+  stepHours: number | null;
   manifest: Manifest;
   /** That run's own frame at this time, for the gust window it declares. */
   frame: FrameInfo | null;
 }
+const NO_READING_AT_ALL: AxisReading = {
+  wind: null,
+  interpolated: false,
+  stepHours: null,
+};
 
 /** What one cell needs beyond its text: a tint, a muted style and a tooltip. */
 interface WeatherCell {
@@ -381,6 +392,9 @@ export default function ForecastDock({
   const holder = useRef<HTMLDivElement>(null);
   const marine = useRef<HTMLTableSectionElement>(null);
   const filterButton = useRef<HTMLButtonElement>(null);
+  const chipButton = useRef<HTMLButtonElement>(null);
+  const slider = useRef<HTMLInputElement>(null);
+  const returnFocus = useRef(false);
   const initialScroll = useRef(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [now, setNow] = useState(Date.now);
@@ -406,6 +420,14 @@ export default function ForecastDock({
   const blend = useBlend(models, prefs.blendModels, point.id, axis);
   const waves = useSpotWaves(models, point.id, axis);
   const weather = useSpotWeather(models, point.id, axis);
+
+  // Focus never falls to the document because a control the reader activated
+  // went away: the scrubber takes it once the switch the chip asked for lands.
+  useEffect(() => {
+    if (busy || !returnFocus.current) return;
+    returnFocus.current = false;
+    slider.current?.focus({ preventScroll: true });
+  }, [busy]);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -537,9 +559,19 @@ export default function ForecastDock({
    * the column's own owner past that. Everything a cell says — the value, the
    * gust window, the tooltip — follows from this one list.
    */
+  // An expired run still draws the map — the reader chose it, and the footer
+  // calls it an archived snapshot — but it answers no cell in a table of what
+  // is coming.
+  const mapFreshness = freshness(manifest, now);
   const sources = useMemo(
-    () => columnSources(columns, manifest.frames, manifest.model),
-    [columns, manifest],
+    () =>
+      columnSources(
+        columns,
+        manifest.frames,
+        manifest.model,
+        mapFreshness !== "expired",
+      ),
+    [columns, manifest, mapFreshness],
   );
   const windById = useMemo(
     () =>
@@ -551,47 +583,84 @@ export default function ForecastDock({
     [models],
   );
   /**
-   * One cell per column. Inside the map model's range the value is the one the
-   * map itself is drawn from; past it, a named spot falls back to the owning
-   * run's precomputed series, which costs no download. A bare map point has no
-   * precomputed series anywhere, so its far columns stay empty.
+   * What the map model itself says at every column. A named spot reads the
+   * run's precomputed series; a bare point reads the samples taken out of the
+   * frames as they arrive, and bridges no further than the run's own cadence,
+   * so an hour that has not downloaded yet stays a dash rather than being
+   * invented from the two either side of it.
    */
-  const cells = useMemo<ColumnCell[]>(() => {
-    const seriesByModel = new Map<string, Map<string, Wind>>();
-    const owned = (model: string) => {
-      const cached = seriesByModel.get(model);
-      if (cached) return cached;
-      const run = windById.get(model);
+  const mapReadings = useMemo(() => {
+    const points = point.id
+      ? spotSeries(manifest, point.id)
+      : manifest.frames.flatMap((frame, index) => {
+          const wind = series.values[index];
+          return wind
+            ? [{ hour: frame.hour, validTime: frame.validTime, ...wind }]
+            : [];
+        });
+    if (!points?.length) return null;
+    return seriesOnAxis(
+      points,
+      axis,
+      point.id ? undefined : bridgeableGapHours(manifest.frames),
+    );
+  }, [manifest, point.id, series.values, axis]);
+  /** And what each owning run says, for the columns the map model cannot span. */
+  const ownerReadings = useMemo(() => {
+    const readings = new Map<string, AxisReading[]>();
+    for (const source of sources) {
+      if (source.onMap || readings.has(source.model)) continue;
+      const run = windById.get(source.model);
       const points = run && point.id ? spotSeries(run, point.id) : null;
-      const byTime = new Map<string, Wind>(
-        (points ?? []).map((entry) => [entry.validTime, entry]),
+      if (points) readings.set(source.model, seriesOnAxis(points, axis));
+    }
+    return readings;
+  }, [sources, windById, point.id, axis]);
+  /** That run's own frame at a column, for the gust window it declares. */
+  const framesByTime = useMemo(() => {
+    const byModel = new Map<string, Map<string, FrameInfo>>();
+    const put = (run: Manifest) =>
+      byModel.set(
+        run.model,
+        new Map(run.frames.map((frame) => [frame.validTime, frame])),
       );
-      seriesByModel.set(model, byTime);
-      return byTime;
-    };
-    return columns.map((column, at) => {
-      const source = sources[at] ?? { frame: null, model: column.model };
-      const run =
-        source.model === manifest.model
+    put(manifest);
+    for (const run of windById.values()) if (!byModel.has(run.model)) put(run);
+    return byModel;
+  }, [manifest, windById]);
+  const cells = useMemo<ColumnCell[]>(
+    () =>
+      columns.map((column, at) => {
+        const source = sources[at] ?? { onMap: false, model: column.model };
+        const run = source.onMap
           ? manifest
           : (windById.get(source.model) ?? manifest);
-      return {
-        validTime: column.validTime,
-        model: source.model,
-        wind:
-          source.frame === null
-            ? (owned(source.model).get(column.validTime) ?? null)
-            : series.values[source.frame],
-        manifest: run,
-        frame:
-          source.frame === null
-            ? (run.frames.find(
-                (entry) => entry.validTime === column.validTime,
-              ) ?? null)
-            : manifest.frames[source.frame],
-      };
-    });
-  }, [columns, sources, series.values, windById, point.id, manifest]);
+        const reading =
+          (source.onMap ? mapReadings : ownerReadings.get(source.model))?.[
+            at
+          ] ?? NO_READING_AT_ALL;
+        return {
+          validTime: column.validTime,
+          model: source.model,
+          wind: reading.wind,
+          interpolated: reading.interpolated,
+          stepHours: reading.stepHours,
+          manifest: run,
+          frame: reading.interpolated
+            ? null
+            : (framesByTime.get(run.model)?.get(column.validTime) ?? null),
+        };
+      }),
+    [
+      columns,
+      sources,
+      mapReadings,
+      ownerReadings,
+      framesByTime,
+      windById,
+      manifest,
+    ],
+  );
   const columnWind = useMemo(() => cells.map((cell) => cell.wind), [cells]);
   /** One label per stretch of the axis, for the header's model band. */
   const bands = useMemo<ModelBand[]>(
@@ -605,8 +674,9 @@ export default function ForecastDock({
           ...stretch,
           label: run?.modelName ?? stretch.model,
           // An eighteen-hour-old run still owns its columns; the band is where
-          // the reader is told it is not the latest one.
-          older: run ? freshness(run, now) === "stale" : false,
+          // the reader is told it is not the latest one, and an expired run —
+          // which only the map can be here — that it has run out entirely.
+          state: run ? freshness(run, now) : "fresh",
         };
       }),
     [sources, manifest, windById, now],
@@ -616,7 +686,7 @@ export default function ForecastDock({
    * reader is offered the run that does reach it, and nothing switches until
    * they ask.
    */
-  const beyondMap = sources[selected]?.frame === null;
+  const beyondMap = sources[selected]?.onMap === false;
   const reachable =
     beyondMap && columns[selected]
       ? MODELS.find((entry) => entry.id === columns[selected].model)
@@ -1021,9 +1091,21 @@ export default function ForecastDock({
       .map(([hours]) => hours)
       .sort((a, b) => a - b);
   }, [axis]);
+  /**
+   * Runs that answer for some column and publish no gust at all. The caption
+   * names them, rather than speaking for the map's run over a table most of
+   * whose columns another run answered.
+   */
+  const gustless = Array.from(
+    new Set(
+      cells
+        .filter((cell) => cell.manifest.gustAvailable === false)
+        .map((cell) => cell.manifest.modelName),
+    ),
+  );
   const caption = `${point.name}: ${cadences.join("/") || 3}-hour wind forecast, in ${units}. Times are local to Ireland.${
-    manifest.gustAvailable === false
-      ? ` Gust speed unavailable for this ${manifest.modelName} run.`
+    gustless.length
+      ? ` Gust speed unavailable for the ${gustless.join(" and ")} hours.`
       : ""
   }`;
   const toolbarCaption = [
@@ -1052,7 +1134,15 @@ export default function ForecastDock({
         <button
           className="play-button"
           aria-label={playing ? "Pause forecast" : "Play forecast"}
-          disabled={playDisabled}
+          // Playback steps through the map model's own frames, so from an hour
+          // it cannot draw there is nothing to step through: pressing Play
+          // would have thrown the reader back to the start of the run.
+          disabled={playDisabled || (!playing && beyondMap)}
+          title={
+            !playing && beyondMap
+              ? `Playback follows ${manifest.modelName}, which does not reach this hour.`
+              : undefined
+          }
           onClick={onTogglePlay}
         >
           {playing ? (
@@ -1117,6 +1207,7 @@ export default function ForecastDock({
           </button>
           <div className="slider-track">
             <input
+              ref={slider}
               type="range"
               style={{
                 background: windTrackBackground(columnWind, columns.length),
@@ -1141,16 +1232,30 @@ export default function ForecastDock({
           >
             <ChevronRight size={17} />
           </button>
+          {/* In the scrubber's own row, which the play button already gives a
+              height: a chip on a line of its own would grow the dock every time
+              the reader scrubbed across the seam, and the map would jump with
+              it. A live region as well — a control that appears beside the
+              scrubber is no use to someone who cannot see it appear. */}
+          <div className="map-reach" role="status">
+            {reachable && (
+              <button
+                ref={chipButton}
+                className="map-reach-chip"
+                onClick={() => {
+                  // The chip is about to unmount, and the scrubber is disabled
+                  // while the switch is in flight, so focus cannot simply move
+                  // there now: it is claimed back when the switch settles.
+                  returnFocus.current = true;
+                  onShowOnMap(reachable.id, axis[selected]);
+                }}
+              >
+                <Layers3 size={13} aria-hidden="true" />
+                <span>Show {reachable.name} on the map</span>
+              </button>
+            )}
+          </div>
         </div>
-        {reachable && (
-          <button
-            className="map-reach-chip"
-            onClick={() => onShowOnMap(reachable.id, axis[selected])}
-          >
-            <Layers3 size={13} aria-hidden="true" />
-            <span>Show {reachable.name} on the map</span>
-          </button>
-        )}
       </div>
       {open && (
         <section className="forecast-sheet glass" aria-label="Spot forecast">

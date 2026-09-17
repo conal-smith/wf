@@ -93,23 +93,39 @@ const owners = (columns: readonly { model: string }[]) =>
   );
 
 describe("dockColumns", () => {
-  it("joins the finest run to the longest one at a single seam", () => {
+  it("wraps the finest run in the longest one, head and tail", () => {
     const columns = dockColumns([harmonie(), iconEu(), ecmwf(), gfs()], NOW);
-    expect(owners(columns)).toEqual(["harmonie", "ecmwf"]);
+    expect(owners(columns)).toEqual(["ecmwf", "harmonie", "ecmwf"]);
+    // ECMWF runs from 00 UTC, six hours before HARMONIE: those hours are its.
+    expect(columns[0].validTime).toBe(at("2026-09-13T00:00:00Z", 0));
+    const start = columns.findIndex((column) => column.model === "harmonie");
+    expect(columns[start].validTime).toBe(at("2026-09-13T18:00:00Z", 0));
     // Hourly HARMONIE to +60 h, then ECMWF from its first time past that.
-    expect(columns[0].validTime).toBe(at("2026-09-13T18:00:00Z", 0));
-    expect(columns[60].validTime).toBe(at("2026-09-13T18:00:00Z", 60));
-    expect(columns[61].validTime).toBe(at("2026-09-13T00:00:00Z", 81));
+    expect(columns[start + 60].validTime).toBe(at("2026-09-13T18:00:00Z", 60));
+    expect(columns[start + 61].validTime).toBe(at("2026-09-13T00:00:00Z", 81));
     expect(columns.at(-1)!.validTime).toBe(at("2026-09-13T00:00:00Z", 360));
-    // Strictly increasing, with no time published twice at the join.
+    // Strictly increasing, with no time published twice at either join.
     const stamps = columns.map((column) => Date.parse(column.validTime));
     expect(stamps.every((time, i) => i === 0 || time > stamps[i - 1])).toBe(
       true,
     );
   });
+  it("never begins in the future, even when the finest run has just landed", () => {
+    // A run published on the hour covers nothing before it. Without the head
+    // the axis would start at NOW + 1 h and there would be no column for now.
+    const justLanded = model("harmonie", {
+      runTime: "2026-09-14T01:00:00Z",
+      hours: every(60, 1),
+      km: 2,
+    });
+    const columns = dockColumns([justLanded, ecmwf()], NOW);
+    expect(Date.parse(columns[0].validTime)).toBeLessThanOrEqual(NOW);
+    expect(owners(columns)).toEqual(["ecmwf", "harmonie", "ecmwf"]);
+  });
 
   it("mixes one-, three- and six-hour cadences without losing a step", () => {
     const columns = dockColumns([harmonie(), ecmwf()], NOW);
+    const start = columns.findIndex((column) => column.model === "harmonie");
     const gaps = columns.map((column, index) =>
       index === 0
         ? 0
@@ -117,9 +133,10 @@ describe("dockColumns", () => {
             Date.parse(columns[index - 1].validTime)) /
           HOUR,
     );
-    expect(new Set(gaps.slice(1, 61))).toEqual(new Set([1]));
-    expect(gaps[61]).toBe(3);
-    expect(new Set(gaps.slice(62))).toEqual(new Set([3, 6]));
+    expect(new Set(gaps.slice(1, start))).toEqual(new Set([3]));
+    expect(new Set(gaps.slice(start + 1, start + 61))).toEqual(new Set([1]));
+    expect(gaps[start + 61]).toBe(3);
+    expect(new Set(gaps.slice(start + 62))).toEqual(new Set([3, 6]));
   });
 
   it("drops a model whose run has already ended", () => {
@@ -130,7 +147,7 @@ describe("dockColumns", () => {
       km: 2,
     });
     const columns = dockColumns([stale, iconEu(), ecmwf()], NOW);
-    expect(owners(columns)).toEqual(["icon-eu", "ecmwf"]);
+    expect(owners(columns)).toEqual(["ecmwf", "icon-eu", "ecmwf"]);
     expect(dockColumns([stale], NOW)).toEqual([]);
   });
 
@@ -157,15 +174,17 @@ describe("dockColumns", () => {
       ensemble: true,
     });
     const columns = dockColumns([harmonie(), ecmwf(), ens], NOW);
-    expect(owners(columns)).toEqual(["harmonie", "ecmwf"]);
+    expect(owners(columns)).toEqual(["ecmwf", "harmonie", "ecmwf"]);
   });
 
   it("falls back to ICON-EU for the near term when HARMONIE is missing", () => {
     expect(owners(dockColumns([iconEu(), ecmwf()], NOW))).toEqual([
+      "ecmwf",
       "icon-eu",
       "ecmwf",
     ]);
-    // And to GFS for the long range when ECMWF is missing.
+    // And to GFS for the long range when ECMWF is missing. Both were
+    // initialised at the same hour, so GFS adds no head.
     expect(owners(dockColumns([harmonie(), gfs()], NOW))).toEqual([
       "harmonie",
       "gfs",
@@ -193,6 +212,7 @@ describe("dockColumns", () => {
       spotsOnly: true,
     });
     expect(owners(dockColumns([seriesOnly, ecmwf()], NOW))).toEqual([
+      "ecmwf",
       "harmonie-eps",
       "ecmwf",
     ]);
@@ -260,32 +280,62 @@ describe("loadOrder", () => {
 
 describe("columnSources", () => {
   const columns = dockColumns([harmonie(), ecmwf()], NOW);
-  it("gives the map model every column it reaches, and the owner the rest", () => {
+  const head = columns.filter(
+    (column) =>
+      column.model === "ecmwf" && column.validTime < columns[13].validTime,
+  ).length;
+  it("gives the map model every column its run spans, and the owner the rest", () => {
     const sources = columnSources(
       columns,
       harmonie().manifest.frames,
       "harmonie",
     );
-    expect(sources[0]).toEqual({ frame: 0, model: "harmonie" });
-    expect(sources[60]).toEqual({ frame: 60, model: "harmonie" });
-    expect(sources[61]).toEqual({ frame: null, model: "ecmwf" });
-    expect(sources.at(-1)).toEqual({ frame: null, model: "ecmwf" });
+    // The head is ECMWF's, from before HARMONIE was initialised.
+    expect(sources[0]).toEqual({ onMap: false, model: "ecmwf" });
+    expect(sources[head]).toEqual({ onMap: true, model: "harmonie" });
+    expect(sources[head + 60]).toEqual({ onMap: true, model: "harmonie" });
+    expect(sources[head + 61]).toEqual({ onMap: false, model: "ecmwf" });
+    expect(sources.at(-1)).toEqual({ onMap: false, model: "ecmwf" });
   });
-  it("lets a map model that owns no column still answer the ones it covers", () => {
-    // GFS is neither the finest nor the longest, so it owns nothing; it is
-    // still what the map is drawing, and it reaches the first ten days.
-    const sources = columnSources(columns, gfs().manifest.frames, "gfs");
-    expect(sources[0].model).toBe("gfs");
-    expect(sources[0].frame).not.toBeNull();
-    expect(sources.at(-1)).toEqual({ frame: null, model: "ecmwf" });
+  it("spans a column between two of its steps, which is not the same as a frame near it", () => {
+    // AIFS is six-hourly: it covers every hourly column inside its run, and the
+    // cells between its steps are interpolated rather than repeated.
+    const aifs = model("aifs", {
+      runTime: "2026-09-13T12:00:00Z",
+      hours: every(144, 6),
+      km: 28,
+    });
+    const sources = columnSources(columns, aifs.manifest.frames, "aifs");
+    const inside = columns.findIndex(
+      (column) =>
+        Date.parse(column.validTime) > Date.parse("2026-09-13T13:00:00Z"),
+    );
+    expect(sources[inside]).toEqual({ onMap: true, model: "aifs" });
+  });
+  it("lets an expired map run answer nothing at all", () => {
+    const sources = columnSources(
+      columns,
+      harmonie().manifest.frames,
+      "harmonie",
+      false,
+    );
+    expect(sources.every((source) => !source.onMap)).toBe(true);
+    expect(new Set(sources.map((source) => source.model))).toEqual(
+      new Set(["harmonie", "ecmwf"]),
+    );
   });
   it("groups the result into one stretch per run, in order", () => {
     const stretches = modelStretches(
       columnSources(columns, harmonie().manifest.frames, "harmonie"),
     );
     expect(stretches).toEqual([
-      { model: "harmonie", start: 0, count: 61 },
-      { model: "ecmwf", start: 61, count: columns.length - 61 },
+      { model: "ecmwf", start: 0, count: head },
+      { model: "harmonie", start: head, count: 61 },
+      {
+        model: "ecmwf",
+        start: head + 61,
+        count: columns.length - head - 61,
+      },
     ]);
     expect(modelStretches([])).toEqual([]);
   });

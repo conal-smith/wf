@@ -72,6 +72,7 @@ interface Candidate {
   /** Native grid spacing; a run that does not state one is treated as coarsest. */
   km: number;
   stepHours: number;
+  first: number;
   last: number;
 }
 
@@ -79,9 +80,14 @@ interface Candidate {
  * The dock's own time columns, independent of whatever the map is drawing.
  *
  * Two runs make the axis: the finest grid on offer carries the near term at its
- * own cadence, and the run that reaches furthest carries everything past it.
- * There is exactly one seam, because a third source would put two joins in a
- * row where the reader can least tell one model from the next.
+ * own cadence, and the run that reaches furthest carries everything outside it —
+ * the hours before it was initialised as well as the days after it ends. Only
+ * two runs, because a third source would put two joins in a row where the
+ * reader can least tell one model from the next.
+ *
+ * The head matters: a run published on the hour covers nothing before it, so an
+ * axis that began at the finest run's first frame could begin in the future,
+ * with no column for now and no Now line at all.
  *
  * A model counts unless its run has **expired** — its last forecast time is
  * already behind us. The eighteen-hour "stale" mark deliberately does not
@@ -105,6 +111,7 @@ export function dockColumns(
       times,
       km: model.manifest.resolutionKm ?? Infinity,
       stepHours: medianStepHours(times),
+      first: Date.parse(times[0]),
       last: Date.parse(times[times.length - 1]),
     });
   }
@@ -125,15 +132,17 @@ export function dockColumns(
     (a, b) =>
       b.last - a.last || a.km - b.km || a.stepHours - b.stepHours || byId(a, b),
   );
-  const columns = near.times.map((validTime) => ({
-    validTime,
-    model: near.id,
-  }));
-  if (far.id !== near.id)
-    for (const validTime of far.times)
-      if (Date.parse(validTime) > near.last)
-        columns.push({ validTime, model: far.id });
-  return columns;
+  const outside = (keep: (time: number) => boolean) =>
+    far.id === near.id
+      ? []
+      : far.times
+          .filter((validTime) => keep(Date.parse(validTime)))
+          .map((validTime) => ({ validTime, model: far.id }));
+  return [
+    ...outside((time) => time < near.first),
+    ...near.times.map((validTime) => ({ validTime, model: near.id })),
+    ...outside((time) => time > near.last),
+  ];
 }
 
 /**
@@ -208,26 +217,38 @@ export function loadOrder(
 
 /** Where one column's cell values come from. */
 export interface ColumnSource {
-  /** Index into the map model's frames, or null where that run cannot reach. */
-  frame: number | null;
+  /** True when the map model's own run spans this column's time. */
+  onMap: boolean;
   /** The run the cell is read from: the map model, or the column's own owner. */
   model: string;
 }
 
 /**
  * The run behind every column's cells. The map model answers for every column
- * it can reach, so the table and the map agree wherever both have something to
- * say; past its range the column's own owner takes over, from the precomputed
- * spot series that are already in its manifest.
+ * its own run spans, so the table and the map agree wherever both have
+ * something to say; outside that the column's own owner takes over, from the
+ * precomputed spot series already in its manifest.
+ *
+ * "Spans", not "has a frame near": between its published steps the cell is
+ * interpolated from that run's series, the same way the chart draws it. The
+ * half-step rule in `frameForTime` decides which frame the MAP paints, which is
+ * a different question — a raster has to be one frame or another.
+ *
+ * An expired map run answers nothing. It is still on the map, labelled there as
+ * an archived snapshot, but its forecast is already behind us and printing it
+ * in a table of what is coming would be a plain lie.
  */
 export function columnSources(
   columns: readonly DockColumn[],
-  mapFrames: readonly Pick<FrameInfo, "validTime">[],
+  mapTimes: readonly Pick<FrameInfo, "validTime">[],
   mapModel: string,
+  mapUsable = true,
 ): ColumnSource[] {
   return columns.map((column) => {
-    const frame = frameForTime(mapFrames, Date.parse(column.validTime));
-    return { frame, model: frame === null ? column.model : mapModel };
+    const onMap =
+      mapUsable &&
+      framePosition(mapTimes, Date.parse(column.validTime)) !== null;
+    return { onMap, model: onMap ? mapModel : column.model };
   });
 }
 

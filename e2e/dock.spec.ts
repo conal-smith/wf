@@ -189,8 +189,14 @@ test("the blend draws every model that covers the spot, and candles share its ax
   );
 
   // Hovering a column names each model's reading, the spread and the agreement.
+  // The plot is as wide as fifteen days of columns and scrolls with them, so
+  // hover over the middle of whatever part of it is actually on screen.
   const chart = (await page.locator(".chart-holder").boundingBox())!;
-  await page.mouse.move(chart.x + 260, chart.y + chart.height / 2);
+  const view = page.viewportSize()!;
+  await page.mouse.move(
+    (Math.max(chart.x, 0) + Math.min(chart.x + chart.width, view.width)) / 2,
+    chart.y + chart.height / 2,
+  );
   const card = page.locator(".chart-hover-card");
   await expect(card).toBeVisible();
   // The dock is backdrop-filtered, which makes it the containing block for
@@ -233,13 +239,16 @@ test("the dock shows fifteen days with HARMONIE on the map, and says whose", asy
   expect(span).toBeGreaterThan(14);
 
   // The model band names the run behind each stretch, in one thin header row.
+  // ECMWF was initialised before HARMONIE and outlasts it, so it owns both
+  // ends of the axis and HARMONIE the day in the middle.
   const band = page.locator(".forecast-model-band th[scope=colgroup]");
-  await expect(band).toHaveCount(2);
-  await expect(band.nth(0)).toContainText("HARMONIE");
-  await expect(band.nth(1)).toContainText("ECMWF");
+  await expect(band).toHaveCount(3);
+  await expect(band.nth(0)).toContainText("ECMWF");
+  await expect(band.nth(1)).toContainText("HARMONIE");
+  await expect(band.nth(2)).toContainText("ECMWF");
   // ECMWF's sample run is more than eighteen hours old, and still owns its
   // columns: the band says it is an older run rather than dropping it.
-  await expect(band.nth(1)).toContainText("older run");
+  await expect(band.nth(2)).toContainText("older run");
   expect(
     await band.nth(0).evaluate((cell) => cell.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(16);
@@ -267,6 +276,7 @@ test("a column past the map model offers the run that reaches it", async ({
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   const chip = page.getByRole("button", { name: /Show ECMWF on the map/ });
   await expect(chip).toHaveCount(0);
+  const dockHeight = (await page.locator(".map-footer").boundingBox())!.height;
 
   // Day twelve: HARMONIE cannot draw it, so the map keeps its last frame.
   const far = sampleColumn("2026-09-25T12:00:00Z");
@@ -283,6 +293,16 @@ test("a column past the map model offers the run that reaches it", async ({
     "true",
   );
   await expect(chip).toBeVisible();
+  // Playback follows the map model's frames, and from here there are none to
+  // follow: Play is disabled rather than teleporting the reader to the start.
+  const play = page.getByRole("button", { name: "Play forecast", exact: true });
+  await expect(play).toBeDisabled();
+  await expect(play).toHaveAttribute("title", /does not reach this hour/);
+  // The chip comes and goes as the reader scrubs across the seam, and the dock
+  // does not resize under the map when it does.
+  expect((await page.locator(".map-footer").boundingBox())!.height).toBe(
+    dockHeight,
+  );
   // Even at the narrowest supported width the chip stays inside the page.
   await page.setViewportSize({ width: 320, height: 844 });
   await expect(chip).toBeVisible();
@@ -293,6 +313,11 @@ test("a column past the map model offers the run that reaches it", async ({
 
   // Nothing switched by itself; the chip is the reader asking.
   await chip.click();
+  // The chip has gone, and focus went to the control the reader was working
+  // rather than falling to the document.
+  await expect(
+    page.getByRole("slider", { name: "Forecast time" }),
+  ).toBeFocused();
   await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -887,6 +912,7 @@ test("an instantaneous-gust model reads at initialization", async ({
   page,
 }) => {
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator('[data-model="gfs"]')).toBeEnabled({
     timeout: 30000,
@@ -898,9 +924,14 @@ test("an instantaneous-gust model reads at initialization", async ({
     "true",
   );
   await page.locator('[data-view="table"]').click();
-  const first = page.locator(".gust-cell").first();
-  await expect(first).toHaveText(/^\d+$/);
-  await expect(first).toHaveAttribute("title", /^Instantaneous gust at/);
+  // GFS's own initialization hour, which is not the first column on the axis:
+  // the hours before its run belong to whoever else covers them.
+  const gfs = JSON.parse(readFileSync("public/weather/gfs.json", "utf8"));
+  const zero = page
+    .locator(".gust-cell")
+    .nth(sampleColumn(gfs.frames[0].validTime));
+  await expect(zero).toHaveText(/^\d+$/);
+  await expect(zero).toHaveAttribute("title", /^Instantaneous gust at/);
   await page.locator(".model-info").click();
   await expect(page.locator("dialog.info-dialog")).toContainText(
     "publishes instantaneous gusts",
@@ -1117,10 +1148,11 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   });
   await expect(page.locator(".model-status.is-error")).toHaveCount(0);
 
-  // The reader keeps the valid time they were reading. It is three columns
-  // further left, because the newer hourly run starts three hours later.
+  // The reader keeps the valid time they were reading. Its column moves two to
+  // the left: the newer hourly run starts three hours later, and the head of
+  // ECMWF columns before it grows by one to cover them.
   await expect(slider).toHaveAttribute("aria-valuetext", showing);
-  expect(Number(await slider.inputValue())).toBe(column - 3);
+  expect(Number(await slider.inputValue())).toBe(column - 2);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   await expect(page.locator(".blend-chart")).toBeVisible();
 
@@ -1173,6 +1205,144 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
     document.dispatchEvent(new Event("visibilitychange")),
   );
   await expect(slider).toHaveValue(String(later));
+});
+
+test("a newer run leaves a far selection exactly where the reader put it", async ({
+  page,
+}) => {
+  let published = harmonie;
+  await withTides(page);
+  await withNewerRunFrames(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({ json: published }),
+  );
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+
+  // Day twelve, far past anything HARMONIE will ever publish.
+  const slider = page.getByLabel("Forecast time", { exact: true });
+  await slider.fill(String(sampleColumn("2026-09-25T12:00:00Z")));
+  const showing = (await slider.getAttribute("aria-valuetext"))!;
+  published = newerHarmonie;
+
+  await page.getByLabel("Display options", { exact: true }).focus();
+  await page.clock.fastForward("05:01");
+  await expect(page.locator(".model-status")).toContainText(
+    "Updated to the 16:00 UTC run",
+    { timeout: 20000 },
+  );
+
+  // The new run cannot draw that hour and never could: the reader's place is
+  // theirs, and the chip is still the only way the map moves to it.
+  await expect(slider).toHaveAttribute("aria-valuetext", showing);
+  await expect(
+    page.getByRole("button", { name: /Show ECMWF on the map/ }),
+  ).toBeVisible();
+});
+
+test("a coarser model on the map is read between its steps, and says so", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await page.getByLabel("Choose forecast model", { exact: true }).click();
+  await page.locator('[data-model="ecmwf"]').click();
+  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.locator('[data-view="table"]').click();
+
+  // HARMONIE's hourly columns, with three-hourly ECMWF on the map: one column
+  // in three is a published step and the two between it are read across.
+  const owns = sampleColumn(harmonie.frames[0].validTime);
+  const cells = page.locator(".forecast-table .wind-cell");
+  const hourly = await cells.evaluateAll(
+    (tds, [from, count]) =>
+      tds.slice(from, from + count).map((td) => ({
+        text: (td.textContent ?? "").trim(),
+        between: td.hasAttribute("data-interpolated"),
+        title: td.getAttribute("title") ?? "",
+      })),
+    [owns, harmonie.frames.length],
+  );
+  expect(hourly).toHaveLength(harmonie.frames.length);
+  // Never a dash, and never the same number three columns running: a coarse
+  // model repeating one frame across three hours is exactly what this is not.
+  expect(hourly.every((cell) => cell.text !== "\u2014")).toBe(true);
+  expect(
+    hourly.some(
+      (cell, index) =>
+        index > 1 &&
+        cell.text === hourly[index - 1].text &&
+        cell.text === hourly[index - 2].text,
+    ),
+  ).toBe(false);
+  // Two in three sit between ECMWF's steps, and they say which model and how far.
+  const between = hourly.filter((cell) => cell.between);
+  expect(between.length).toBeGreaterThan(hourly.length / 2);
+  expect(between[0].title).toMatch(/Between ECMWF's 3-hourly steps/);
+  // And the ones on its own steps claim nothing of the sort.
+  expect(
+    hourly.filter((cell) => !cell.between).every((cell) => !cell.title),
+  ).toBe(true);
+
+  // Three hourly columns make one candle; the six-hourly tail makes one each.
+  await page.locator('[data-view="candles"]').click();
+  const candles = await page.locator(".candle").count();
+  expect(candles).toBeLessThan(sampleColumns.length);
+  expect(candles).toBeGreaterThan(sampleColumns.length / 3);
+
+  // A hundred columns at the narrowest supported width, and the page still
+  // does not scroll sideways: the dock's own scroller carries them.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(sampleColumns.length).toBeGreaterThan(95);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+});
+
+test("a bare point reads every third hour of an hourly run first", async ({
+  page,
+}) => {
+  const hours: number[] = [];
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.route("**/weather/harmonie-*/*", async (route) => {
+    hours.push(
+      Number(/(\d+)-[0-9a-f]+\.\w+$/.exec(route.request().url())?.[1] ?? -1),
+    );
+    await route.continue();
+  });
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+    timeout: 30000,
+  });
+  await expect(page.locator(".blend-chart")).toBeVisible();
+
+  // Only what the click itself asks for.
+  hours.length = 0;
+  await page
+    .locator(".map-canvas canvas")
+    .click({ position: { x: 600, y: 300 } });
+  await expect(
+    page.getByRole("table", { name: /Selected location/ }),
+  ).toBeVisible();
+  await expect(page.locator(".sheet-loading")).toHaveCount(0, {
+    timeout: 30000,
+  });
+
+  // The first frames asked for are on a three-hour stride out from the hour on
+  // screen — the table is readable long before the last file lands — and the
+  // rest follow. Fewer requests than frames is the frame cache doing its job.
+  expect(hours.length).toBeGreaterThan(15);
+  expect(new Set(hours.slice(0, 7).map((hour) => hour % 3))).toEqual(
+    new Set([8 % 3]),
+  );
+  expect(new Set(hours)).toEqual(new Set(hours.slice().sort((a, b) => a - b)));
 });
 
 test("a failed background check leaves the forecast alone and says nothing", async ({
