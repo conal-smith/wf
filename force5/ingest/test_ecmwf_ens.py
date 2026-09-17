@@ -258,12 +258,16 @@ class ENSTests(unittest.TestCase):
         # series, because the publisher rejects null member values.
         self.assertNotIn("offgrid", manifest["spotMembers"])
         self.assertIsNone(manifest["spotForecasts"]["offgrid"][1]["u"])
-        self.assertEqual(sorted(client.requests[0]["number"]), [1, 2, 3, 4])
-        self.assertEqual(client.requests[0]["stream"], "enfo")
-        self.assertEqual(client.requests[0]["type"], "pf")
+        # Steps are downloaded concurrently, so requests are looked up by the step
+        # they asked for rather than by the order they happened to be recorded in.
+        asked = {request["step"]: request for request in client.requests}
+        self.assertEqual(sorted(asked[0]["number"]), [1, 2, 3, 4])
+        self.assertEqual(asked[0]["stream"], "enfo")
+        self.assertEqual(asked[0]["type"], "pf")
         self.assertNotIn("cf", [request["type"] for request in client.requests])
-        self.assertEqual(client.requests[0]["param"], ["10u", "10v"])
-        self.assertEqual(client.requests[1]["param"], ["10u", "10v", "10fg"])
+        # Initialization has no preceding gust period, so it asks for wind only.
+        self.assertEqual(asked[0]["param"], ["10u", "10v"])
+        self.assertEqual(asked[6]["param"], ["10u", "10v", "10fg"])
 
     def test_cached_step_is_revalidated_and_repaired(self):
         self.refresh()
