@@ -16,7 +16,8 @@ import requests
 from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
-from fetch_forecast import ROOT, already_published, decode_handle, load_spots, sample, write_json
+from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample, write_json
+from registry import UNCHANGED_EXIT
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
 
@@ -140,9 +141,15 @@ def main():
         raise ValueError("Refusing a stale/future ECMWF run (maximum age 24 hours)")
     output = ROOT / "public" / "weather"
     prefix = f"ecmwf-{run}-360h-v2"
-    if not args.run and already_published(output / "ecmwf.json", run, prefix):
+    published = already_published(output / "ecmwf.json", run, prefix) if not args.run else False
+    if published == PUBLISHED_IN_BUCKET:
         print(f"ECMWF IFS {run} is already published; nothing to download.", flush=True)
-        return
+        return UNCHANGED_EXIT
+    if published == PUBLISHED_ON_DISK:
+        # An earlier attempt wrote it but may never have published it. Skip the
+        # download, and let the worker validate and publish what is on disk.
+        print(f"ECMWF IFS {run} is already on disk; publishing it without downloading.", flush=True)
+        return 0
     print(f"Fetching ECMWF IFS {run}: 85 frames through +360h", flush=True)
     cache = ROOT / ".cache" / "ecmwf" / run
     cache.mkdir(parents=True, exist_ok=True)
@@ -214,7 +221,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"ECMWF refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

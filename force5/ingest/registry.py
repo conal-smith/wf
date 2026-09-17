@@ -7,10 +7,25 @@
 forces its 1/3-hour `--step` on a source that does not publish those steps.
 `cache` names the directory under `.cache/` that holds the model's raw downloads;
 the worker empties it after every job, because a published run never needs them
-again and a failed one simply downloads afresh. Models without it keep small
-state there instead (station catalogues, SWAN's last-seen time, lagged members).
-Adding a model means adding one entry here and its fetch script.
+again and a failed one simply downloads afresh. Models without it write small
+state there instead (station catalogues, SWAN's last-seen files, lagged members).
+None of that state survives a one-shot container, which starts on an empty disk:
+it is re-derived or re-downloaded, except for `harmonie-eps`, whose members are
+the controls of earlier cycles and which therefore publishes a smaller ensemble
+there (see docs/LIVE_FORECAST_PIPELINE.md). Adding a model means adding one entry
+here and its fetch script.
 """
+
+# The exit code an adapter that declares `readsPublishedRun` uses to say "the run I
+# resolved is the one the BUCKET already serves, so I downloaded nothing and wrote
+# nothing". There is no local bundle to validate afterwards, which is why the worker
+# only accepts it from such an adapter, and only when it actually passed the run
+# below. From anything else, exit 3 is an ordinary failure.
+UNCHANGED_EXIT = 3
+# How the worker tells an adapter which run the bucket currently serves. On an
+# empty disk that is the only way to know, and it is what stops an hourly job
+# re-downloading a twice-daily run.
+PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 
 MODELS = {
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
@@ -19,10 +34,15 @@ MODELS = {
                 "kind": "wind", "maxAgeHours": 12, "cache": "grib"},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
                         "kind": "weather", "maxAgeHours": 12, "cache": "grib"},
+    # These two are scheduled more often than their source publishes (hourly against a
+    # twice-daily run; twice per ENS run), and keep no downloads, so they implement the
+    # FORCE5_PUBLISHED_RUN contract: `readsPublishedRun` is what makes the worker send
+    # it and what makes UNCHANGED_EXIT mean something from their exit status.
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
-              "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf"},
+              "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf", "readsPublishedRun": True},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
-                  "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf-ens"},
+                  "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf-ens",
+                  "readsPublishedRun": True},
     # AIFS Single runs at all four cycles about six hours behind the clock, so a run
     # is never more than twelve hours old when the next one is due. Its cadence is a
     # uniform six hours and never the worker's 1/3-hour step.
