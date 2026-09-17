@@ -125,8 +125,14 @@ deployment; the bucket stores one encoding per object instead.
 
 The manifest declares it with `"encoding": "f5-int16-v1"`. A manifest without an
 `encoding` field has JSON frames, which the browser still reads. **Wave and
-weather frames are JSON**, and per-spot series everywhere keep their full
-0.01 m/s precision — they are sampled from the source field, not from the frame.
+weather frames are JSON**, and per-spot series keep their full 0.01 m/s
+precision: every adapter samples the source field, not the frame it publishes.
+
+The one exception is `backfill_spots.py`, which adds a series for a newly
+listed spot to a run whose source data is long gone, so it has only the
+published frames to resample. Such a series can sit up to 0.06 m/s — under a
+tenth of a knot — from what a fresh ingest would have produced, and the next
+run replaces it with the exact one.
 
 The format is specified in `force5/ingest/f5bin.py`, read by
 `force5/src/f5bin.ts` in the browser and by `scripts/f5bin.mjs` in Node; all

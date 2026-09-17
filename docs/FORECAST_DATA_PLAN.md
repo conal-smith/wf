@@ -160,22 +160,43 @@ Frames use one encoding, "F5 int16":
 
 - No compression inside the file. The job writes `name.bin` plus precompressed
   `name.bin.br` and `name.bin.gz` sidecars, for the local Caddy deployment. The
-  bucket stores one encoding per object instead (see Phase 1).
-- **Brotli quality 9** (`FORCE5_BROTLI_QUALITY` overrides it). The constraint is
-  ingest time, and it is met with room to spare: encoding a HARMONIE frame and
-  compressing it costs 39.9 ms against the 39.1 ms the JSON path spent hashing
-  and serialising the same frame, so the change is **+2% per frame**, not +10%.
-  Higher qualities are not worth their cost here:
+  bucket stores one encoding per object instead (see Phase 1), and
+  `FORCE5_SIDECARS=0` stops a bucket-only job writing sidecars it will never
+  serve.
+- **Brotli quality 9** (`FORCE5_BROTLI_QUALITY` overrides it; 0–11, and a value
+  outside that range fails the job with a sentence naming the variable rather
+  than a traceback out of every adapter). Higher qualities are not worth their
+  cost here:
 
   | Quality | HARMONIE frame | vs q9 | Encode + compress | vs the JSON it replaces |
   | ------- | -------------- | ----- | ----------------- | ----------------------- |
-  | 9       | 70.7 KB        | —     | 39.9 ms           | +2%                     |
+  | 9       | 70.7 KB        | —     | 37.2 ms           | ×0.99                   |
   | 10      | 64.3 KB        | −9%   | 173 ms            | ×4.4                    |
   | 11      | 62.0 KB        | −12%  | 444 ms            | ×11                     |
 
-  Over a 61-frame hourly HARMONIE run that is 2.4 s at q9, 10.6 s at q10 and
-  27 s at q11, against 2.4 s for the JSON writing it replaces. Larger windows
-  (`lgwin` 24, `lgblock` 24) buy nothing at q9.
+  Larger windows (`lgwin` 24, `lgblock` 24) buy nothing at q9.
+
+- **Each frame is compressed once, for the destination it has.** The first
+  version of this got that wrong: the adapter wrote a `.br` sidecar and the
+  uploader then brotli'd the same bytes again at the same quality, so a job that
+  both served locally and uploaded paid for brotli twice. The uploader now reuses
+  the sidecar — after decompressing it and confirming it is exactly these bytes,
+  because reuse is only safe when it is checked rather than trusted, and a
+  decompress is about half a millisecond against nineteen for a compress. Per
+  HARMONIE frame, against the 37.7 ms the JSON path spent hashing and serialising
+  the same frame:
+
+  | Job                                   | Work per frame                  | Cost    | vs the JSON it replaces |
+  | ------------------------------------- | ------------------------------- | ------- | ----------------------- |
+  | Local serving only                    | encode + br + gz                | 37.2 ms | ×0.99                   |
+  | Local **and** bucket, before this fix | encode + br + gz + **br again** | 53.3 ms | ×1.41                   |
+  | Local **and** bucket, now             | encode + br + gz + verify       | 37.7 ms | ×1.00                   |
+  | Bucket only, `FORCE5_SIDECARS=0`      | encode + br                     | 18.9 ms | ×0.50                   |
+
+  ICON-EU's frames are a little larger and land at ×1.14 for a local-and-bucket
+  job; ECMWF's are small enough to be noise. These are the cost of the
+  frame-publishing step alone, which is a small part of a job otherwise spent
+  downloading a few hundred GRIB files and decoding them.
 
 - File names keep the content hash — now the sha256 of the frame's own bytes,
   which include the header and therefore the run and the hour — so they stay
@@ -215,7 +236,7 @@ A 24-byte header, then one block per variable present:
 10  2  scale          (10)
 12  2  hour           uint16, forecast hour
 14  4  run            uint32, YYYYMMDDHH as a decimal number
-18  6  reserved       (zero)
+18  6  reserved       (zero; every reader refuses a frame that uses them)
 24  …  u, v[, gust] blocks: width × height int16 each
 ```
 
@@ -228,10 +249,32 @@ about it.
 validator have always refused a frame whose model, run, hour, valid time or grid
 did not match its manifest. A header cannot hold all of that, so it holds what
 makes a file from the wrong run or the wrong step recognisable on its own — the
-run, the forecast hour and the grid size — and the model, the valid time, the
-grid geometry and the gust window stay in the manifest, checked there as before.
-A wrong hour, a wrong run and a wrong grid size are each refused with the message
-they always produced.
+run, the forecast hour and the grid size — each refused with the message it
+always produced.
+
+**What is checked how, for a binary frame.** Everything else was in the JSON
+frame and is not in the binary one, so the checks that used to read it out of the
+file have to be made some other way, and it is worth being exact about which:
+
+|                                  | JSON frame  | Binary frame                                                                                                                                                         |
+| -------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| run, hour, grid size             | in the file | **in the header**                                                                                                                                                    |
+| model                            | in the file | **the run directory must be named for this model**, by the same rule `prune.model_owns` applies — plus the file name, which must be the sha256 of the bytes it holds |
+| valid time, grid geometry        | in the file | the manifest's, whose own run/hour/validTime arithmetic is checked                                                                                                   |
+| gust window                      | in the file | the manifest's; what is checked against the frame is whether the gust **block** is present at all                                                                    |
+| the bytes are the published ones | uncheckable | **checkable**: the name is a content hash, so a frame swapped for another of the same shape is caught                                                                |
+
+The directory rule is not a nicety. Every wind model's objects live under
+`weather/`, so without it a HARMONIE manifest could reference a GFS run's frames
+— same run, same hour, same grid — and be accepted; HARMONIE would then upload
+objects into GFS's namespace, and GFS's next publish would delete them out from
+under a live HARMONIE pointer. The rule is the one the superseded delete and the
+bucket sweep already assumed, now enforced where objects are read as well.
+
+**What is still not checked**: that a binary frame's _numbers_ belong to this
+model, if a frame is placed under the right model's directory under its own
+correct content-addressed name. Closing that would mean putting the model in the
+header, which the format deliberately does not do.
 
 ### Manifest additions (backwards compatible)
 
@@ -398,8 +441,12 @@ to orchestrate it later).
   icon-eu (`fetch_forecast.py`), ecmwf, ecmwf-ens, aifs, gfs, gefs,
   harmonie-eps, and arpege/arome through `meteofrance.py`. Ten models, nine
   files, three lines each. Wave and weather adapters are untouched.
-- Spot series are still sampled from the full-precision field, not from the
-  quantised frame, so nothing a reader sees in a table or a chart got coarser.
+- Spot series are still sampled by every adapter from the full-precision field,
+  not from the quantised frame, so nothing a reader sees in a table or a chart
+  got coarser. The exception is `backfill_spots.py`, which adds a series to a run
+  whose source data is gone and so has only the published frames to resample: a
+  backfilled series can sit up to 0.06 m/s from what a fresh ingest would have
+  produced, and the next run replaces it with the exact one.
 - New dependency: pip `brotli`, in `requirements.txt` because the fetch scripts
   need it, not only the worker.
 
@@ -407,14 +454,22 @@ to orchestrate it later).
 
 - `validate_wind_bundle` branches on `manifest.encoding` through `wind_frame()`,
   which decodes a binary body, checks the run, the hour and the grid size from
-  the header and fills the rest from the manifest, so every existing check —
-  cadence, gust rules, value ranges, grid size, horizon — runs unchanged.
+  the header and fills the rest from the manifest. The cadence, value-range,
+  grid-size, gust-availability and horizon checks all run unchanged; the model
+  and the gust window are checked differently, because a binary frame carries
+  neither — see "What is checked how, for a binary frame" above.
+- `referenced()` now requires every object a manifest points at to sit under a
+  run directory **named for that model**, for JSON and binary alike, closing the
+  cross-model hole described above. Every adapter already names its objects that
+  way, and the superseded delete already relied on it.
 - `put_immutable` takes the content type and encoding from the key:
   `.bin` is `application/octet-stream` with a brotli body and
   `Content-Encoding: br`, switchable to gzip by `FORCE5_BUCKET_ENCODING` or the
   `encoding=` argument; everything else stays gzipped JSON. The sha256 in the
   object's metadata is still over the **uncompressed** bytes, so the collision
-  check compares frames rather than compressors.
+  check compares frames rather than compressors. It reuses the `.br`/`.gz`
+  sidecar the adapter already wrote when decompressing it gives back exactly
+  these bytes, so a frame is never compressed twice.
 - Sidecars are never uploaded: the uploader only ever sees the paths a manifest
   references, and no manifest references a sidecar.
 

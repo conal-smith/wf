@@ -114,11 +114,24 @@ def valid_time(run, hour):
     return (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
 
 
-def referenced(public, url, root, depth):
-    """Read an immutable object the manifest points at, refusing unsafe paths."""
+def referenced(public, url, model, depth):
+    """Read an immutable object the manifest points at, refusing unsafe paths.
+
+    The run directory (or station file) must also be **named for this model**,
+    by the same rule `prune.model_owns` applies — the rule the superseded delete
+    and the bucket sweep already assume. Without it a manifest could reference an
+    object under another model's directory: the JSON frames caught that through
+    the `model` field inside the frame, but `object_root` is "weather" for every
+    wind model, so the path itself never said who owned it. Two things then go
+    wrong at once — this model uploads objects into another's namespace, and that
+    other model's next publish deletes them out from under a live pointer.
+    """
     path = PurePosixPath(url)
+    root = object_root(model)
     if path.is_absolute() or ".." in path.parts or len(path.parts) != depth or path.parts[0] != root:
         raise ValueError("Unsafe object path")
+    if not model_owns(model, path.parts[1]):
+        raise ValueError(f"{url} is not named for {model}")
     source = (public / str(path)).resolve()
     if public not in source.parents:
         raise ValueError("Object path escapes output directory")
@@ -168,10 +181,21 @@ def frame_encoding(manifest):
 def wind_frame(data, encoding, model, manifest, grid, info, hour, valid):
     """One wind frame as a dict, from JSON bytes or from an F5 int16 body.
 
-    A binary frame's header carries the run and the forecast hour, so a file from
-    another run or another step is still caught here; the model, the valid time
-    and the grid geometry are the manifest's to declare, exactly as the plan
-    says, and are filled in from it so the checks below read the same either way.
+    What a binary frame proves about itself, and what it cannot:
+
+    - **run, forecast hour, grid size**: in the header, checked here.
+    - **model**: *not* in the file. It is established by the path instead —
+      `referenced()` has already required the run directory to be named for this
+      model — and by the content hash below, which proves the bytes are the ones
+      published under that name. The dict returned therefore carries the model it
+      was asked about, and the `frame.get("model") != model` check downstream is
+      a tautology for a binary frame; the path check is what stands in for it.
+    - **valid time and grid geometry**: not in the file either. The manifest
+      declares them, and `validate_bundle` has already checked the manifest's own
+      run/hour/validTime arithmetic, so they are filled in from it here.
+    - **gust window**: not in the file. Only the *presence* of the gust block is
+      checkable, and it is, immediately below and again downstream: a frame with
+      no window must carry no gust block, and one with a window must carry it.
     """
     if encoding is None:
         return json.loads(data)
@@ -179,9 +203,14 @@ def wind_frame(data, encoding, model, manifest, grid, info, hour, valid):
     if ((decoded["run"], decoded["hour"], decoded["width"], decoded["height"])
             != (manifest["run"], hour, grid["width"], grid["height"])):
         raise ValueError("Mixed model/run/frame metadata")
-    # A binary frame does not repeat the gust window, so the manifest's entry is
-    # echoed here: the frame-against-manifest comparison below then has nothing
-    # to disagree about, and the window itself is still checked against the hour.
+    # A content-addressed name is checkable in a way a JSON frame's never was:
+    # these bytes must be the ones published under this name, at this hour.
+    if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, hour, data):
+        raise ValueError(f"{info['url']} does not hold the frame its name claims")
+    # The window lives only in the manifest, so this is the one thing the two can
+    # still be made to agree about: no window means no gust block, and vice versa.
+    if (info.get("gustIntervalHours") is None) != (decoded["gust"] is None):
+        raise ValueError("Gust block does not match the published gust period")
     return {"model": model, "run": decoded["run"], "hour": decoded["hour"],
             "validTime": valid, "grid": grid,
             "gustIntervalHours": info.get("gustIntervalHours"),
@@ -212,7 +241,7 @@ def validate_wind_bundle(public, model, manifest, run, now):
     count = grid_count(grid)
     objects = []
     for index, info in enumerate(frames):
-        path, data = referenced(public, info["url"], object_root(model), 3)
+        path, data = referenced(public, info["url"], model, 3)
         hour = hours[index]
         valid = valid_time(run, hour)
         if (info["hour"], info["validTime"]) != (hour, valid):
@@ -346,7 +375,7 @@ def validate_variables_bundle(public, model, manifest, run, now):
     count = grid_count(grid)
     objects = []
     for index, info in enumerate(frames):
-        path, data = referenced(public, info["url"], object_root(model), 3)
+        path, data = referenced(public, info["url"], model, 3)
         frame = json.loads(data)
         hour = hours[index]
         valid = valid_time(run, hour)
@@ -407,7 +436,7 @@ def validate_tide_bundle(public, model, manifest, run, now):
             raise ValueError(f"Station {identifier} must state whether it is modelled")
         if not isinstance(station.get("datumNote"), str) or not station["datumNote"].strip():
             raise ValueError(f"Station {identifier} must document its datum")
-        path, data = referenced(public, station["url"], object_root(model), 2)
+        path, data = referenced(public, station["url"], model, 2)
         validate_station_file(json.loads(data), identifier, coverage)
         objects.append((path, data))
     for spot, assignment in spots.items():
@@ -569,22 +598,55 @@ def bucket_encoding(chosen=None):
     return encoding
 
 
-def object_body(key, body, encoding=None):
+def sidecar_body(source, suffix, body):
+    """The `.br`/`.gz` the ingest job already wrote for this frame, if it is sound.
+
+    The adapters compress every frame once for the local Caddy deployment. Doing
+    it again here would double the brotli cost of a run that both serves locally
+    and uploads, so the file on disk is reused — but only after decompressing it
+    and confirming it is exactly these bytes. That costs a brotli *decompress*,
+    about half a millisecond for a HARMONIE frame, instead of a *compress*, about
+    nineteen; and it means a stale, truncated or half-written sidecar can never
+    be uploaded as though it were the frame. Anything unreadable, absent or
+    different falls through to compressing here, which is always correct.
+    """
+    if source is None:
+        return None
+    path = Path(str(source) + suffix)
+    try:
+        stored = path.read_bytes()
+    except OSError:
+        return None
+    try:
+        if suffix == ".gz":
+            plain = gzip.decompress(stored)
+        else:
+            import brotli
+            plain = brotli.decompress(stored)
+    except Exception as error:
+        log_event("sidecar_unusable", key=str(path), error=error)
+        return None
+    return stored if plain == body else None
+
+
+def object_body(key, body, encoding=None, source=None):
     """The bytes to store for one immutable object, with its type and encoding.
 
     A `.bin` frame is stored brotli- or gzip-encoded and served as binary; every
     other object is JSON and stays gzip-encoded exactly as it always has been.
+    One encoding per object either way — the sidecars are never objects.
     """
     if not key.endswith(".bin"):
         return gzip.compress(body, mtime=0), "application/json", "gzip"
-    if bucket_encoding(encoding) == "gzip":
-        return gzip.compress(body, mtime=0), "application/octet-stream", "gzip"
-    import brotli
-    return (brotli.compress(body, quality=f5bin.BROTLI_QUALITY),
-            "application/octet-stream", "br")
+    suffix = ".gz" if bucket_encoding(encoding) == "gzip" else ".br"
+    stored = sidecar_body(source, suffix, body)
+    if stored is None:
+        stored = (gzip.compress(body, mtime=0) if suffix == ".gz"
+                  else f5bin.brotli_body(body))
+    return stored, "application/octet-stream", "br" if suffix == ".br" else "gzip"
 
 
-def put_immutable(s3, bucket, key, body, state=None, encoding=None):
+def put_immutable(s3, bucket, key, body, state=None, encoding=None, source=None):
     """Write bytes that must never change again, refusing to overwrite different ones.
 
     `IfNoneMatch="*"` does this in one request and is the only path on AWS S3. A
@@ -598,7 +660,7 @@ def put_immutable(s3, bucket, key, body, state=None, encoding=None):
     than compressors: change the compression and the same frame still matches.
     """
     digest = hashlib.sha256(body).hexdigest()
-    stored, content_type, content_encoding = object_body(key, body, encoding)
+    stored, content_type, content_encoding = object_body(key, body, encoding, source)
     args = {"Bucket": bucket, "Key": key, "Body": stored,
             "ContentType": content_type, "ContentEncoding": content_encoding,
             "CacheControl": IMMUTABLE_CACHE, "Metadata": {"sha256": digest}}
@@ -722,6 +784,8 @@ def same_manifest(current, incoming):
 def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, encoding=None):
     prefix = object_prefix(prefix)
     bucket_encoding(encoding)  # Refuse an unusable choice before anything is uploaded.
+    f5bin.brotli_quality()  # Likewise an unusable compression level.
+    public = Path(public).resolve()
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
     pointer = prefix + MANIFESTS[model]
     replaced, _ = read_current(s3, bucket, pointer)
@@ -729,7 +793,9 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
         return "unchanged-or-newer"
     state = {}  # Whether this backend honours conditional puts; answered once per publish.
     for path, data in objects:
-        put_immutable(s3, bucket, prefix + path, data, state, encoding)
+        # The local file too, so a frame the adapter already compressed is
+        # uploaded from its sidecar instead of being compressed a second time.
+        put_immutable(s3, bucket, prefix + path, data, state, encoding, public / path)
     archive = (f"{object_root(model)}/manifests/{model}/"
                f"{manifest['run']}-{hashlib.sha256(body).hexdigest()[:16]}.json")
     put_immutable(s3, bucket, prefix + archive, body, state, encoding)

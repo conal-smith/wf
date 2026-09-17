@@ -193,14 +193,14 @@ class GfsTests(unittest.TestCase):
     # --- published contract ---------------------------------------------
     def bundle(self, hours=(0, 3, 6), gust_kind="instantaneous"):
         run_time = datetime.strptime(RUN, "%Y%m%d%H").replace(tzinfo=timezone.utc)
-        directory = self.root / "weather/run"
+        directory = self.root / "weather/gfs-run"
         directory.mkdir(parents=True)
         manifest = {"model": "gfs", "run": RUN, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                     "stepHours": 3, "grid": {"width": 2, "height": 2}, "frames": [],
                     "gustAvailable": True, "gustKind": gust_kind}
         for hour in hours:
             valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-            info = {"hour": hour, "validTime": valid, "url": f"weather/run/{hour}.json",
+            info = {"hour": hour, "validTime": valid, "url": f"weather/gfs-run/{hour}.json",
                     "gustIntervalHours": [hour, hour]}
             manifest["frames"].append(info)
             (self.root / info["url"]).write_text(json.dumps(

@@ -56,8 +56,12 @@ class Bundle:
             interval = None if gust is None else [hour, hour]
             frame = {"model": model, "run": RUN, "hour": hour, "validTime": valid_time(hour),
                      "grid": GRID, "gustIntervalHours": interval, **self.values[hour]}
-            suffix = "bin" if encoding else "json"
-            url = f"weather/{model}-{RUN}-3h-v1/{hour:03d}-frame{index}.{suffix}"
+            # A binary frame is content-addressed, exactly as publish_frame names
+            # it: the reader checks the name against the bytes, so a fixture that
+            # invented a name would be refused.
+            name = (f5bin.basename(hour, f5bin.encode_frame(frame)) if encoding
+                    else f"{hour:03d}-frame{index}.json")
+            url = f"weather/{model}-{RUN}-3h-v1/{name}"
             self.write_frame(self.public / url, frame, encoding)
             frames.append({"hour": hour, "validTime": valid_time(hour), "url": url,
                            "gustIntervalHours": interval})
@@ -370,6 +374,30 @@ class BinaryBackfillTests(unittest.TestCase):
                 with self.assertRaises(ValueError) as caught:
                     self.backfill(bundle)
                 self.assertIn("is not the frame the manifest lists", str(caught.exception))
+
+    def test_a_frame_under_another_models_directory_is_a_fault(self):
+        """A binary frame carries no model, so the run directory has to say who owns it."""
+        bundle = self.bundle()
+        info = bundle.manifest["frames"][1]
+        moved = f"weather/icon-eu-{RUN}-3h-v1/{Path(info['url']).name}"
+        (bundle.public / moved).parent.mkdir(parents=True, exist_ok=True)
+        (bundle.public / moved).write_bytes((bundle.public / info["url"]).read_bytes())
+        info["url"] = moved
+        bundle.write()
+        with self.assertRaises(ValueError) as caught:
+            self.backfill(bundle)
+        self.assertIn(f"is not named for {bundle.model}", str(caught.exception))
+
+    def test_a_frame_whose_bytes_are_not_its_name_is_a_fault(self):
+        """The name is the hash, so a frame swapped for another of the same shape shows."""
+        bundle = self.bundle()
+        info = bundle.manifest["frames"][1]
+        swapped = dict(bundle.values[HOURS[1]], u=[9.0] * (GRID["width"] * GRID["height"]))
+        (bundle.public / info["url"]).write_bytes(f5bin.encode_frame(
+            {"model": bundle.model, "run": RUN, "hour": HOURS[1], "grid": GRID, **swapped}))
+        with self.assertRaises(ValueError) as caught:
+            self.backfill(bundle)
+        self.assertIn("does not hold the frame its name claims", str(caught.exception))
 
     def test_an_unreadable_encoding_is_refused(self):
         bundle = self.bundle()

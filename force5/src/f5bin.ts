@@ -8,11 +8,14 @@
 //
 // `decodeFrame` returns exactly today's `Frame`, so `WindMap`, `sample()` and
 // the particle layer never learn that the wire format changed. What the header
-// cannot carry — the model, the valid time, the grid geometry and the gust
-// window — is taken from the manifest, which is where those have always lived;
-// what it does carry, the run and the forecast hour, is checked against the
-// manifest here, so a frame from another run or another step is refused with
-// the same message a mismatched JSON frame has always produced.
+// carries — the run, the forecast hour and the grid size — is checked against
+// the manifest here, so a frame from another run or another step is refused with
+// the same message a mismatched JSON frame has always produced. What it does not
+// carry — the model, the valid time, the grid geometry and the gust window — is
+// filled in from the manifest, which means `validateFrame`'s comparisons on
+// those four are tautologies here and cannot be leaned on. The model is
+// established at ingest instead, by the run directory's name and the frame's
+// content hash; see `wind_frame` in force5/ingest/publish_s3.py.
 import type { Frame, FrameInfo, Manifest } from "./weather";
 
 /** What a manifest's `encoding` says when its frames are binary. */
@@ -55,6 +58,14 @@ export function readHeader(buffer: ArrayBuffer) {
   const scale = view.getUint16(10, true);
   const hour = view.getUint16(12, true);
   const run = view.getUint32(14, true);
+  // Bytes 18-23 are reserved and must be zero. Refusing a frame that uses them
+  // is what lets them be given a meaning later: a reader that skipped them
+  // would accept a future encoder's file and quietly misread it.
+  for (let at = 18; at < HEADER_BYTES; at++)
+    if (view.getUint8(at) !== 0)
+      throw new Error(
+        "This forecast frame is in a newer format. Refresh the page.",
+      );
   if (blockCount !== 2 && blockCount !== 3)
     throw new Error("This forecast frame could not be read. Try again.");
   if (scale !== SCALE || width < 2 || height < 2)
@@ -102,9 +113,16 @@ function block(
 /**
  * A binary frame as today's `Frame`, checked against the manifest it came from.
  *
- * The caller still runs `validateFrame` afterwards: this function proves the
- * file belongs to this run, this hour and this grid, and `validateFrame` applies
- * every other rule the JSON path has always applied.
+ * What the file proves about itself is the run, the forecast hour, the grid size
+ * and the number of blocks. What it does not carry — the model, the valid time,
+ * the grid geometry and the gust window — comes from the manifest, so the
+ * corresponding comparisons inside `validateFrame` are tautologies for a binary
+ * frame and cannot be relied on. The url establishes the model instead: the
+ * ingest validator refuses a manifest whose frames sit under another model's
+ * run directory, and refuses a frame whose name is not the hash of its bytes.
+ *
+ * The one thing the file and the manifest can still be made to agree about is
+ * whether there is a gust block at all, and that is checked here.
  */
 export function decodeFrame(
   buffer: ArrayBuffer,
@@ -120,6 +138,10 @@ export function decodeFrame(
   const count = header.width * header.height;
   if (buffer.byteLength !== HEADER_BYTES + header.blockCount * count * 2)
     throw new Error("This forecast frame could not be read. Try again.");
+  // A frame with no published gust period must carry no gust block, and one
+  // with a period must carry it. The period itself is only in the manifest.
+  if ((info.gustIntervalHours === null) !== (header.blockCount === 2))
+    throw new Error("Gust period does not match the selected forecast.");
   // The header length is even, so this view is always aligned; an odd offset
   // would throw here rather than give wrong numbers.
   const deltas = new Int16Array(
