@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  columnSources,
   dockColumns,
   frameForTime,
   framePosition,
+  modelStretches,
   windTrackBackground,
   type ColumnModel,
 } from "./timeline";
@@ -217,6 +219,39 @@ describe("frameForTime", () => {
     const one = frames("2026-09-14T00:00:00Z", [0]);
     expect(frameForTime(one, Date.parse("2026-09-14T00:00:00Z"))).toBe(0);
     expect(frameForTime(one, Date.parse("2026-09-14T02:00:00Z"))).toBeNull();
+  });
+});
+
+describe("columnSources", () => {
+  const columns = dockColumns([harmonie(), ecmwf()], NOW);
+  it("gives the map model every column it reaches, and the owner the rest", () => {
+    const sources = columnSources(
+      columns,
+      harmonie().manifest.frames,
+      "harmonie",
+    );
+    expect(sources[0]).toEqual({ frame: 0, model: "harmonie" });
+    expect(sources[60]).toEqual({ frame: 60, model: "harmonie" });
+    expect(sources[61]).toEqual({ frame: null, model: "ecmwf" });
+    expect(sources.at(-1)).toEqual({ frame: null, model: "ecmwf" });
+  });
+  it("lets a map model that owns no column still answer the ones it covers", () => {
+    // GFS is neither the finest nor the longest, so it owns nothing; it is
+    // still what the map is drawing, and it reaches the first ten days.
+    const sources = columnSources(columns, gfs().manifest.frames, "gfs");
+    expect(sources[0].model).toBe("gfs");
+    expect(sources[0].frame).not.toBeNull();
+    expect(sources.at(-1)).toEqual({ frame: null, model: "ecmwf" });
+  });
+  it("groups the result into one stretch per run, in order", () => {
+    const stretches = modelStretches(
+      columnSources(columns, harmonie().manifest.frames, "harmonie"),
+    );
+    expect(stretches).toEqual([
+      { model: "harmonie", start: 0, count: 61 },
+      { model: "ecmwf", start: 61, count: columns.length - 61 },
+    ]);
+    expect(modelStretches([])).toEqual([]);
   });
 });
 

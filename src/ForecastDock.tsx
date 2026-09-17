@@ -17,6 +17,7 @@ import {
   CloudSun,
   Cloudy,
   Gauge,
+  Layers3,
   Navigation,
   Pause,
   Play,
@@ -32,7 +33,7 @@ import {
 import BlendChart from "./BlendChart";
 import CandleChart from "./CandleChart";
 import DisplayFilter, { type RowOffer } from "./DisplayFilter";
-import ForecastHeader from "./ForecastHeader";
+import ForecastHeader, { type ModelBand } from "./ForecastHeader";
 import ForecastSheet from "./ForecastSheet";
 import RowLabel from "./RowLabel";
 import WeatherGlyph from "./WeatherGlyph";
@@ -46,6 +47,7 @@ import {
   columnEdges,
   columnWeights,
   dayGroups,
+  modelSupport,
   niceMax,
   valueScale,
   windGradientStops,
@@ -63,11 +65,13 @@ import { dayNights } from "../force5/src/sun";
 import {
   columnSources,
   framePosition,
+  modelStretches,
   windTrackBackground,
   type DockColumn,
 } from "../force5/src/timeline";
 import type { ModelAvailability } from "../force5/src/manifests";
 import { spotSeries } from "../force5/src/series";
+import { MODELS, type ModelId } from "../force5/src/models";
 import {
   VIEWS,
   rowOn,
@@ -79,6 +83,7 @@ import { convert, unitLabel } from "../force5/src/units";
 import {
   compass,
   dayLabel,
+  freshness,
   nearestFrame,
   timeLabel,
   windColor,
@@ -111,6 +116,8 @@ interface Props {
   onPrefsChange: (prefs: Prefs) => void;
   /** The reader's place, as a valid time. The column is derived from it. */
   selectedTime: string;
+  /** Put a model on the map at a given time, from the long-range chip. */
+  onShowOnMap: (model: ModelId, validTime: string) => void;
   /** The time to keep in view; the map's own while a frame is failing. */
   scrollTime: string | null;
   onSelect: (validTime: string) => void;
@@ -360,6 +367,7 @@ export default function ForecastDock({
   selectedTime,
   scrollTime,
   onSelect,
+  onShowOnMap,
   open,
   onClose,
   playing,
@@ -585,6 +593,34 @@ export default function ForecastDock({
     });
   }, [columns, sources, series.values, windById, point.id, manifest]);
   const columnWind = useMemo(() => cells.map((cell) => cell.wind), [cells]);
+  /** One label per stretch of the axis, for the header's model band. */
+  const bands = useMemo<ModelBand[]>(
+    () =>
+      modelStretches(sources).map((stretch) => {
+        const run =
+          stretch.model === manifest.model
+            ? manifest
+            : windById.get(stretch.model);
+        return {
+          ...stretch,
+          label: run?.modelName ?? stretch.model,
+          // An eighteen-hour-old run still owns its columns; the band is where
+          // the reader is told it is not the latest one.
+          older: run ? freshness(run, now) === "stale" : false,
+        };
+      }),
+    [sources, manifest, windById, now],
+  );
+  /**
+   * A column the map model cannot reach keeps the map on its last frame. The
+   * reader is offered the run that does reach it, and nothing switches until
+   * they ask.
+   */
+  const beyondMap = sources[selected]?.frame === null;
+  const reachable =
+    beyondMap && columns[selected]
+      ? MODELS.find((entry) => entry.id === columns[selected].model)
+      : undefined;
 
   // Value axis: whole ten-unit steps above the highest gust in the blend, so a
   // unit change visibly rescales the chart instead of relabelling it.
@@ -598,6 +634,12 @@ export default function ForecastDock({
   // single column already covers six, and a fixed width would pair a
   // three-hour candle with a twelve-hour one.
   const groups = useMemo(() => candleGroups(axis), [axis]);
+  // How many models are actually behind each column. Later days have fewer, and
+  // the chart says so instead of looking confidently narrow.
+  const support = useMemo(
+    () => modelSupport(blend.lines, axis.length),
+    [blend.lines, axis.length],
+  );
   const candles = useMemo(
     () => (blend.stats.length ? candlesOver(blend.stats, groups) : []),
     [blend.stats, groups],
@@ -1087,6 +1129,15 @@ export default function ForecastDock({
             <ChevronRight size={17} />
           </button>
         </div>
+        {reachable && (
+          <button
+            className="map-reach-chip"
+            onClick={() => onShowOnMap(reachable.id, axis[selected])}
+          >
+            <Layers3 size={13} aria-hidden="true" />
+            Show {reachable.name} on the map
+          </button>
+        )}
       </div>
       {open && (
         <section className="forecast-sheet glass" aria-label="Spot forecast">
@@ -1104,6 +1155,7 @@ export default function ForecastDock({
                   weights={weights}
                   point={point}
                   days={days}
+                  bands={bands}
                   selected={selected}
                   onSelect={onSelect}
                   showSun
@@ -1157,6 +1209,7 @@ export default function ForecastDock({
                                   centres={centres}
                                   columns={columns}
                                   groups={groups}
+                                  support={support}
                                   stats={blend.stats}
                                   lines={blend.lines}
                                   directions={blend.directions}

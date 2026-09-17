@@ -15,6 +15,7 @@ import {
   dublinNoonUtc,
   linePath,
   meanDirections,
+  modelSupport,
   niceMax,
   smoothPath,
   timeToX,
@@ -165,6 +166,21 @@ describe("paths", () => {
     const path = areaPath([0, 10], [1, 2], (value) => 50 - value, 60);
     expect(path).toBe("M0 49 C1.67 48.83 8.33 48.17 10 48 L10 60 L0 60 Z");
     expect(areaPath([0, 10], [null, null], (v) => v, 60)).toBe("");
+  });
+});
+
+describe("model support", () => {
+  it("counts distinct models, not lines, and ignores gaps", () => {
+    const lines = [
+      { model: "harmonie", speed: [5, 5, null] },
+      { model: "ecmwf", speed: [6, null, 7] },
+      { model: "gefs", speed: [7, 8, 9] },
+      // A second member of the same ensemble says nothing new about agreement.
+      { model: "gefs", speed: [7, 8, 9] },
+    ];
+    expect(modelSupport(lines, 3)).toEqual([3, 2, 2]);
+    expect(modelSupport([], 2)).toEqual([0, 0]);
+    expect(modelSupport([{ model: "a", speed: [Number.NaN] }], 1)).toEqual([0]);
   });
 });
 

@@ -108,6 +108,26 @@ export function candleGroups(times: readonly string[], hours = 3): number[][] {
   return groups;
 }
 
+/**
+ * How many distinct models actually put a value on each column. Ensemble
+ * members are one model between them: fifty-one lines from one run say no more
+ * about agreement than one line does.
+ */
+export function modelSupport(
+  lines: readonly { model: string; speed: readonly (number | null)[] }[],
+  length: number,
+): number[] {
+  return Array.from({ length }, (_, column) => {
+    const models = new Set<string>();
+    for (const line of lines) {
+      const value = line.speed[column];
+      if (value !== null && value !== undefined && Number.isFinite(value))
+        models.add(line.model);
+    }
+    return models.size;
+  });
+}
+
 /** Left edge of every column plus the right edge of the last, in pixels. */
 export function columnEdges(
   weights: readonly number[],
