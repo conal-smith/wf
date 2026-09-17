@@ -320,6 +320,95 @@ station file validates.
 
 These are astronomical predictions, not observations, and carry no surge or wind effect.
 
+### Sea temperature refresh
+
+```sh
+npm run sea:refresh
+.venv/bin/python force5/ingest/fetch_sea_temperature.py --max-distance-km 120 --days 3
+```
+
+**Observations, not a forecast.** Marine Institute ERDDAP in-situ water
+temperature, CC BY 4.0, no account. Every riding location takes the nearest
+station that has actually reported inside the freshness window; the manifest's
+`run` is the **newest observation hour**, so the registry's 48-hour limit measures
+how stale the reading is rather than how long ago the job ran. Nothing is
+modelled, gridded or extrapolated forward: the newest reading is as recent as the
+water gets.
+
+Three networks are read, preferred in this order, because water at a beach is not
+water on the open shelf — in summer an offshore buoy reads colder than a bay, in
+winter warmer:
+
+```text
+coastal   ICTempNetwork       shore loggers in the aquaculture bays, 1-20 m
+sentinel  compass_mace_head   Mace Head met-ocean buoy, SBE sensor at the surface
+          sentinel_lehanagh   Lehanagh Pool met-ocean buoy, 10-minute cadence
+buoy      IWBNetwork          the offshore weather buoys M2, M3, M5, M6, hourly
+```
+
+A row survives only if the network's own quality flag calls it usable and the
+value is inside −2…35 °C. `ICTempNetwork` publishes `QFlag` 1 (good) and 40
+(failed); `IWBNetwork` publishes SeaDataNet `QC_Flag` 0 (unknown), 1 (good) and 9
+(missing) and delivers **real-time rows unflagged as 0**, so for that network the
+range check is what actually filters. The sentinel buoys have no quality column at
+all, which the manifest says outright.
+
+The series thins readings to one per aligned three-hour slot over seven days,
+keeping each reading's **own** time and value — no averaging, no interpolation and
+no relabelling a measurement onto a slot it was not taken at. A slot with no
+reading within 90 minutes contributes nothing, so a source coarser than the step
+is simply sparser, and no slot reaches past the newest reading. Spots with nothing
+in range, or nothing reporting, are published with a stated reason.
+
+**Station coverage is genuinely thin: 9 of the 25 riding locations at the default
+60 km.** The Marine Institute runs no live inshore temperature station on the
+north, north-west, south or east coast. `ICTempNetwork` is the densest coastal
+network Ireland has and is read first, but it is a **delayed-mode logger archive**
+— sites are downloaded in batches, and at the time of writing its newest reading
+anywhere was eight months old, so it contributes no station on a normal day. M4
+off north-west Donegal has been off station since March 2026; because stations are
+discovered from the data rather than hard-coded, Donegal gains coverage the day it
+returns. Raising `--max-distance-km` to 120 reaches 17 of 25, at the cost of
+calling a buoy 120 km offshore "the sea temperature here".
+
+A live run took **3.3 seconds** for 6 stations across the 25 riding locations and
+published **29,755 bytes** in a single file; the adapter refuses to publish above
+300 KB rather than silently growing the pointer, at which point the series would
+move to per-station files as the tides do. `public/marine/sea-temperature.json` is
+replaced only after the whole manifest is built.
+
+| Riding location                | County    | Station       | Network  | Distance | Reading                                |
+| ------------------------------ | --------- | ------------- | -------- | -------- | -------------------------------------- |
+| Dollymount                     | Dublin    | M2            | buoy     | 48.5 km  | 15.47 °C                               |
+| Kilcrea — Malahide Estuary     | Dublin    | M2            | buoy     | 49.4 km  | 15.47 °C                               |
+| Rusheen Bay                    | Galway    | Lehanagh Pool | sentinel | 49.3 km  | 16.29 °C                               |
+| Seanchéibh an Spidéil          | Galway    | Lehanagh Pool | sentinel | 38.4 km  | 16.29 °C                               |
+| Fanore Beach                   | Clare     | Lehanagh Pool | sentinel | 47.3 km  | 16.29 °C                               |
+| Mulranny / Murrivaugh Beach    | Mayo      | Lehanagh Pool | sentinel | 55.7 km  | 16.29 °C                               |
+| Lahinch Beach                  | Clare     | Mace Head     | sentinel | 58.9 km  | 16.20 °C                               |
+| Tramore                        | Waterford | M5            | buoy     | 59.4 km  | 16.73 °C                               |
+| Grange Beach                   | Wexford   | M5            | buoy     | 57.1 km  | 16.73 °C                               |
+| Keel Beach                     | Mayo      | —             | —        | 65.5 km  | Nearest reporting station beyond 60 km |
+| White Strand Doonbeg           | Clare     | —             | —        | 69.6 km  | Nearest reporting station beyond 60 km |
+| Blackrock Beach                | Louth     | —             | —        | 81.3 km  | Nearest reporting station beyond 60 km |
+| Drum Beach                     | Mayo      | —             | —        | 89.7 km  | Nearest reporting station beyond 60 km |
+| Cross Beach — Belmullet        | Mayo      | —             | —        | 91.4 km  | Nearest reporting station beyond 60 km |
+| Mountshannon, Lough Derg       | Clare     | —             | —        | 106.3 km | Inland lake; no sea station            |
+| Maharees Beach                 | Kerry     | —             | —        | 116.0 km | Nearest reporting station beyond 60 km |
+| Brandon Bay                    | Kerry     | —             | —        | 117.4 km | Nearest reporting station beyond 60 km |
+| Newtownards — Strangford Lough | Down      | —             | —        | 120.4 km | Nearest reporting station beyond 60 km |
+| Inchydoney                     | Cork      | —             | —        | 124.0 km | Nearest reporting station beyond 60 km |
+| Ballyholme                     | Down      | —             | —        | 132.7 km | Nearest reporting station beyond 60 km |
+| Tullan Strand                  | Donegal   | —             | —        | 158.3 km | Nearest reporting station beyond 60 km |
+| Rossnowlagh                    | Donegal   | —             | —        | 166.4 km | Nearest reporting station beyond 60 km |
+| Benone Strand                  | Derry     | —             | —        | 208.4 km | Nearest reporting station beyond 60 km |
+| Magheraroarty                  | Donegal   | —             | —        | 222.8 km | Nearest reporting station beyond 60 km |
+| Pollan Bay                     | Donegal   | —             | —        | 238.1 km | Nearest reporting station beyond 60 km |
+
+Measured 17 September 2026 at 00:17 UTC, newest observation 2026-09-16 23:00 UTC.
+A station 50 km offshore is not the water at the launch: show the distance with
+every reading.
+
 ### ECMWF ENS refresh
 
 ```sh
@@ -751,6 +840,7 @@ force5/ingest/fetch_gefs.py NOAA GEFS 0.25° ensemble members, mean frames and p
 force5/ingest/fetch_gfswave.py NOAA GFS-Wave 9 km polar-stereo decode and resampling
 force5/ingest/fetch_icon_weather.py DWD ICON-EU surface weather variables (temperature to CAPE)
 force5/ingest/fetch_tides.py Marine Institute tidal predictions per riding location
+force5/ingest/fetch_sea_temperature.py Marine Institute in-situ sea temperature observations
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
 force5/ingest/fetch_mi_swan.py Marine Institute Irish Shelf SWAN wave series per riding location
@@ -777,8 +867,10 @@ public/weather/icon-eu-weather.json ICON-EU surface variables, frame subset and 
 public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
+public/marine/sea-temperature.json Observed sea temperature: stations, per-spot reading and series
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/waves.ts        Wave manifest contract and the dock's wave readers
+force5/src/seaTemperature.ts Observed sea temperature: manifest contract and per-spot readings
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
 src/App.tsx                Full-screen forecast explorer and floating controls
@@ -811,7 +903,7 @@ models that do not use it. `force5/ingest/registry.py` holds one line per model 
 `validate_bundle` dispatches on `kind`.
 
 ```text
-kind          "wind" (default when absent) | "wave" | "weather" | "tide"
+kind          "wind" (default when absent) | "wave" | "weather" | "tide" | "observation"
 gustKind      "interval" (default) | "instantaneous"
 ensemble      {members, control | null, description}
 spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
@@ -864,6 +956,20 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
   into the curve. Spots with no station in range are published with a `reason`.
+- **observation** bundles hold **measurements, not a forecast**, and are the only
+  kind with no forecast hour, no frames and no immutable objects at all: the whole
+  bundle is one small self-contained file. They carry `stations` (each with a
+  `network` of `coastal`, `sentinel` or `buoy`, a sensor `depth` that is `null`
+  when the network publishes none, and its `latest` reading) and `spots` (the
+  nearest station, `distanceKm`, `latest` and a recent `series`), plus `variable`
+  and `stepMinutes`. `run` is the **newest observation hour**, so the freshness
+  limit measures the age of the data rather than the age of the job, and
+  `validate_observation_bundle` refuses a value outside −2…35 °C, a time it cannot
+  parse or that lies in the future, a series that is not strictly increasing, and
+  a `run` that is not the newest hour the manifest publishes. `status.py` reports
+  the newest observation age and never calls a past reading expired; `prune.py`
+  accepts a manifest that points at nothing. Sea temperature (`sea-temperature`)
+  is the first adapter of this kind.
   All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies dimensions, spacing and bounds. `runTime` is the forecast initialization; each frame has its own `validTime`. Gust `startStep`/`endStep` are retained as hours since initialization. Gust at forecast hour zero has no accumulation window and is hidden in the main readout. For explicitly unavailable gusts (`gustAvailable: false`), the frame's `gust` array, spot `gust` values and `gustIntervalHours` are `null`, never zero. ECMWF declares `gustMissingHours: [0]` with gusts enabled: only that frame is null; a missing later gust fails publication. The `ecmwf-ens` manifest adds `ensemble` (member count, `control: null`) and `spotMembers` (per-spot arrays indexed by member); its `frames` and `spotForecasts` are ensemble means, and `stepHours`/`stepRanges` describe its chosen cadence exactly. The `gefs` manifest is the same shape with `control: 0`, `gustKind: "instantaneous"` and no `gustMissingHours`.
   An ensemble manifest adds `ensemble` and `spotMembers`. `ensemble.members` is the member count, `ensemble.control` the index of the control member or `null`, and `ensemble.memberRuns` each member's own initialization when members come from different cycles. `spotMembers[spotId]` is the same valid-time axis as `spotForecasts`, but each entry's `u`, `v` and `gust` are arrays indexed by member; `spotForecasts` carries the ensemble mean. `frames` may be empty only when `ensemble` is present.
 
@@ -883,6 +989,7 @@ force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles,
 force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
 force5/src/prefs.ts      Row/unit/view/model preferences, persisted best effort
 force5/src/tides.ts      Tide manifest, station curves, heights and high/low events
+force5/src/seaTemperature.ts Observed sea temperature: stations, latest reading, recent series
 force5/src/waves.ts      Wave contract, per-spot series, partitions, coverage notes
 ```
 
@@ -923,6 +1030,15 @@ inside the adapter's distance limit: those are published as `station: null` with
 stated reason, `tideForSpot` returns no curve for them without fetching anything,
 and `tideSpotNote` gives the UI the manifest's own words. Heights are metres above
 the station's datum, which the dock prints in its credits line with every reading.
+
+`force5/src/seaTemperature.ts` is the same shape for the observation bundle, and
+is **data layer only**: `validateSeaTemperatureManifest`, `loadSeaTemperature`,
+`seaTemperatureForSpot` and `seaTemperatureNote`, with no dock UI yet. Because the
+whole bundle is one file, a spot's latest reading and its series need no second
+request, and `seaTemperatureForSpot` also returns `ageHours` so the UI can say how
+old the reading is. These are observations: nothing in the module interpolates
+forward from the newest one, and a station's distance travels with every value
+because a buoy 50 km offshore is not the water at the launch.
 
 ## Forecast dock
 
@@ -997,12 +1113,13 @@ tide row's.
 - GEFS: [NOAA NCEP ensemble product documentation](https://www.nco.ncep.noaa.gov/pmb/products/gens/), [NOMADS GEFS 0.25° GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl), [NOAA Open Data registry](https://registry.opendata.aws/noaa-gefs-pds/), [NWS disclaimer](https://www.weather.gov/disclaimer). Same public-domain terms as GFS: Force5 publishes modified output, which is not official government material, and NOAA/NWS does not endorse this site. Ensemble spread describes model uncertainty, not a measured probability of rideable conditions.
 - GFS-Wave: [NOAA/NCEP WAVEWATCH III](https://polar.ncep.noaa.gov/waves/), [NOMADS wave GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl), same [Open Data bucket](https://registry.opendata.aws/noaa-gfs-bdp-pds/) and [NWS disclaimer](https://www.weather.gov/disclaimer). Public-domain US Government work; Force5 publishes resampled output, not official government material, and NOAA/NWS does not endorse this site. The `arctic.9km` product is the only GFS-Wave grid that covers all Irish waters.
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
+- Sea temperature: Marine Institute ERDDAP in-situ observations, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — the [Irish Coastal Temperature Network](https://erddap.marine.ie/erddap/info/ICTempNetwork/index.html) (`ICTempNetwork`, delayed-mode logger archive), the [Mace Head](https://erddap.marine.ie/erddap/info/compass_mace_head/index.html) and [Lehanagh Pool](https://erddap.marine.ie/erddap/info/sentinel_lehanagh/index.html) sentinel met-ocean buoys, and the [Irish Weather Buoy Network](https://erddap.marine.ie/erddap/info/IWBNetwork/index.html) (`IWBNetwork`, M2/M3/M5/M6). Measurements, not a forecast. Only 9 of the 25 riding locations have a station within 60 km: there is no live Marine Institute inshore station on the north, north-west, south or east coast, and Northern Ireland has none at all. The offshore weather buoys publish no sensor depth, and their real-time rows arrive with an "unknown" quality flag. An offshore reading is not the water at a beach — in summer the open shelf is colder than a bay, in winter warmer.
 - Waves: Marine Institute [Irish Shelf SWAN](https://erddap.marine.ie/erddap/info/IMI_IRISH_SHELF_SWAN_WAVE/index.html) and the 200 m [Connemara nest](https://erddap.marine.ie/erddap/info/IMI_CONNEMARA_SWAN_WAVE/index.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wave forecast © Marine Institute; best endeavours, not for safety-critical use. One run a day, and a beach series is the nearest open-water cell, not the shorebreak.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and wave series are shown in the dock; ICON-EU surface weather is ingested but not yet shown, sea and air temperature rows have no source yet, and there are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and wave series are shown in the dock; ICON-EU surface weather and observed sea temperature are ingested but not yet shown, air temperature has no dedicated row yet, and there are no marine warning feeds and no rideability scores. Observed sea temperature covers 9 of the 25 riding locations, and the rest carry a stated reason instead of a number. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
