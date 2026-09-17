@@ -9,6 +9,11 @@
  * field instead of a forecast. Every manifest says so in its provider and
  * attribution, so a bundle can never be mistaken for model output.
  *
+ * Wind frames are written in the published binary encoding ("f5-int16-v1",
+ * scripts/f5bin.mjs) for every model but ARPEGE, which stays on JSON frames so
+ * that the readers' legacy path keeps a fixture of its own. Wave and weather
+ * frames are JSON, as they are in production.
+ *
  *   npm run weather:fixtures     the committed fixtures the unit tests read
  *   npm run weather:sample       the same bundles in public/weather, for e2e
  *
@@ -51,6 +56,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { F5_ENCODING, encodeFrame } from "./f5bin.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HOUR = 3600000;
@@ -167,7 +173,7 @@ function bounded(values, limit, minimum, what) {
 
 const digestOf = (payload) =>
   createHash("sha256")
-    .update(JSON.stringify(payload))
+    .update(Buffer.isBuffer(payload) ? payload : JSON.stringify(payload))
     .digest("hex")
     .slice(0, 12);
 
@@ -474,8 +480,13 @@ function windBundle(model, spots, runMs, grid) {
         ? null
         : bounded(field(grid, planes.gust), 150, 0, `${model.id} gust`),
     };
-    const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(payload)}.json`;
-    files.push([url, payload]);
+    // A binary bundle hashes the bytes it publishes, exactly as the adapters do;
+    // a JSON one keeps hashing its payload, so the legacy path stays covered.
+    const body =
+      model.encoding === F5_ENCODING ? encodeFrame(payload) : payload;
+    const suffix = model.encoding === F5_ENCODING ? "bin" : "json";
+    const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(body)}.${suffix}`;
+    files.push([url, body]);
     frames.push({ hour, validTime: valid, url, gustIntervalHours: interval });
     for (const spot of spots) {
       const x = spotX(grid, spot.lon);
@@ -503,6 +514,7 @@ function windBundle(model, spots, runMs, grid) {
     stepHours: model.stepHours,
     ...(model.stepRanges ? { stepRanges: model.stepRanges } : {}),
     grid,
+    ...(model.encoding ? { encoding: model.encoding } : {}),
     frames,
     spotForecasts: series,
     ...(model.gust === "none" ? { gustAvailable: false } : {}),
@@ -800,6 +812,7 @@ const FIXTURE_RUNS = {
 const CATALOGUE = [
   {
     id: "harmonie",
+    encoding: F5_ENCODING,
     file: "harmonie.json",
     kind: "wind",
     name: "HARMONIE",
@@ -812,6 +825,7 @@ const CATALOGUE = [
   },
   {
     id: "icon-eu",
+    encoding: F5_ENCODING,
     file: "latest.json",
     kind: "wind",
     name: "ICON-EU",
@@ -824,6 +838,7 @@ const CATALOGUE = [
   },
   {
     id: "ecmwf",
+    encoding: F5_ENCODING,
     file: "ecmwf.json",
     kind: "wind",
     name: "ECMWF",
@@ -841,6 +856,7 @@ const CATALOGUE = [
   },
   {
     id: "gfs",
+    encoding: F5_ENCODING,
     file: "gfs.json",
     kind: "wind",
     name: "GFS",
@@ -852,6 +868,9 @@ const CATALOGUE = [
     spacing: { fixtures: 0.5, live: 0.25 },
     live: { horizonHours: 120 },
   },
+  // ARPEGE deliberately stays on JSON frames while both encodings are supported,
+  // so the readers' legacy path is exercised by a real fixture rather than only
+  // by a unit test. Move it to F5_ENCODING when JSON frame support is dropped.
   {
     id: "arpege",
     file: "arpege.json",
@@ -868,6 +887,7 @@ const CATALOGUE = [
   },
   {
     id: "arome",
+    encoding: F5_ENCODING,
     file: "arome.json",
     kind: "wind",
     name: "AROME",
@@ -882,6 +902,7 @@ const CATALOGUE = [
   },
   {
     id: "aifs",
+    encoding: F5_ENCODING,
     file: "aifs.json",
     kind: "wind",
     name: "AIFS",
@@ -968,7 +989,7 @@ function write(bundles, out, { force }) {
     );
   let bytes = 0;
   const save = (path, value) => {
-    const body = JSON.stringify(value);
+    const body = Buffer.isBuffer(value) ? value : JSON.stringify(value);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, body);
     bytes += Buffer.byteLength(body);

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import eccodes as ec
 
 from cadence import expected_hours, ladder_hours
+import f5bin
 import fetch_ecmwf_ens as ens
 from fetch_ecmwf_ens import average, decode_step, load_spots, main, parameter_sets, run_datetime
 from publish_s3 import publish, validate_ensemble
@@ -239,11 +240,13 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(manifest["gustMissingHours"], [0])
         self.assertEqual(expected_hours(manifest), (0, 6, 12))
         # Members 1..4 hold u = member, v = -member, gust = 10 + member.
-        frame = json.loads((self.root / "public" / manifest["frames"][1]["url"]).read_text())
+        frame = f5bin.decode_frame(
+            (self.root / "public" / manifest["frames"][1]["url"]).read_bytes())
         self.assertEqual(frame["u"], [2.5] * 4)
         self.assertEqual(frame["v"], [-2.5] * 4)
         self.assertEqual(frame["gust"], [12.5] * 4)
-        self.assertEqual(frame["gustIntervalHours"], [0, 6])
+        self.assertEqual((frame["run"], frame["hour"]), (manifest["run"], 6))
+        self.assertEqual(manifest["frames"][1]["gustIntervalHours"], [0, 6])
         self.assertEqual(manifest["frames"][0]["gustIntervalHours"], None)
         mean = manifest["spotForecasts"]["brandon"][1]
         self.assertEqual((mean["u"], mean["v"], mean["gust"]), (2.5, -2.5, 12.5))

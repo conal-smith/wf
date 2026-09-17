@@ -6,8 +6,6 @@ manifest is written only after all 85 frames have passed GRIB validation.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import sys
 
@@ -16,6 +14,7 @@ import requests
 from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample, write_json
 from registry import UNCHANGED_EXIT
 
@@ -192,9 +191,7 @@ def main():
         gust, interval = gusts[hour]
         payload = {"model": "ecmwf", "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": gust, "gustIntervalHours": interval, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": interval})
         for spot in spots:
             point = {field: sample(grid, values, spot["lon"], spot["lat"]) for field, values in fields.items()}
@@ -206,7 +203,8 @@ def main():
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": 3,
-        "stepRanges": ECMWF_RANGES, "grid": grid, "frames": frames, "spotForecasts": spot_forecasts,
+        "stepRanges": ECMWF_RANGES, "grid": grid, "encoding": FRAME_ENCODING, "frames": frames,
+        "spotForecasts": spot_forecasts,
         "gustAvailable": True, "gustMissingHours": [0],
         "gustDescription": "Scalar maximum 10 m gust over the source GRIB interval ending at each forecast time. Intervals may be 1, 3 or 6 hours and need not equal the spacing between displayed columns. Initialization (+0h) has no preceding forecast gust period and is shown as unavailable, not zero.",
         "processing": "Cropped from the public 0.25° regular grid, without downscaling. Source steps are 3-hourly to +144h, then 6-hourly to +360h; no hourly forecasts are invented. Week two is a planning outlook, not a precise local wind prediction.",

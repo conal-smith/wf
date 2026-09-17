@@ -26,7 +26,14 @@
 	@data path /weather/* /marine/*
 	handle @data {
 		root * /data/public
-		header Content-Type "application/json; charset=utf-8"
+		# Manifests and the JSON frames are typed explicitly because they have no
+		# extension the MIME table would help with in every image; wind frames are
+		# binary (force5/ingest/f5bin.py) and must not be mislabelled as JSON, which
+		# is why the content type is matched rather than set for everything here.
+		@json path *.json
+		@bin path *.bin
+		header @json Content-Type "application/json; charset=utf-8"
+		header @bin Content-Type "application/octet-stream"
 		# Everything the importers publish immutably is content-addressed: a frame
 		# inside a run directory, or a file whose name ends in its content hash
 		# (marine/tides-DUBLIN-20260914-20260923-<hash>.json). The first matching
@@ -34,7 +41,14 @@
 		@immutable path_regexp ^/(?:weather|marine)/(?:[^/]+/.+|[^/]*-[0-9a-f]{8,}\.json)$
 		handle @immutable {
 			header Cache-Control "public, max-age=31536000, immutable"
-			file_server
+			# The ingest worker writes `name.bin.br` and `name.bin.gz` beside every
+			# binary frame, so the browser is served the encoding it asked for
+			# without Caddy compressing anything on the fly. `encode` above only
+			# covers its default content types and would leave a frame as it found
+			# it. An absent sidecar simply serves the plain file.
+			file_server {
+				precompressed br gzip
+			}
 		}
 		# Pointer manifests are replaced in place whenever a new run publishes.
 		handle {

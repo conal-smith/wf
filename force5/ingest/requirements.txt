@@ -3,3 +3,6 @@ numpy>=1.24,<3
 pyproj>=3.6,<4
 ecmwf-opendata>=0.3.34,<0.4
 requests>=2.31,<3
+# Every wind adapter writes a brotli sidecar beside each binary frame, so this is
+# needed by the fetch scripts themselves and not only by the worker's uploader.
+brotli>=1.1,<2

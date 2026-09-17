@@ -32,10 +32,12 @@ import gzip
 import hashlib
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
 import re
 import sys
 from cadence import expected_hours
+import f5bin
 from prune import ARCHIVE_DIRECTORY, delete_keys, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 
@@ -147,14 +149,48 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Run time does not match run identity")
     # Wave and weather bundles are the same shape: declared variables, optional
     # frames of one array each, and a precomputed series per riding location.
+    if kind != "wind" and manifest.get("encoding") is not None:
+        raise ValueError("Only wind frames may declare a binary encoding")
     validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
                  "weather": validate_variables_bundle, "tide": validate_tide_bundle,
                  "observation": validate_observation_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
+def frame_encoding(manifest):
+    """Which frame encoding a manifest declares. Absent is the original JSON."""
+    encoding = manifest.get("encoding")
+    if encoding is not None and encoding != f5bin.ENCODING:
+        raise ValueError(f"Unknown frame encoding {encoding!r}")
+    return encoding
+
+
+def wind_frame(data, encoding, model, manifest, grid, info, hour, valid):
+    """One wind frame as a dict, from JSON bytes or from an F5 int16 body.
+
+    A binary frame's header carries the run and the forecast hour, so a file from
+    another run or another step is still caught here; the model, the valid time
+    and the grid geometry are the manifest's to declare, exactly as the plan
+    says, and are filled in from it so the checks below read the same either way.
+    """
+    if encoding is None:
+        return json.loads(data)
+    decoded = f5bin.decode_frame(data)
+    if ((decoded["run"], decoded["hour"], decoded["width"], decoded["height"])
+            != (manifest["run"], hour, grid["width"], grid["height"])):
+        raise ValueError("Mixed model/run/frame metadata")
+    # A binary frame does not repeat the gust window, so the manifest's entry is
+    # echoed here: the frame-against-manifest comparison below then has nothing
+    # to disagree about, and the window itself is still checked against the hour.
+    return {"model": model, "run": decoded["run"], "hour": decoded["hour"],
+            "validTime": valid, "grid": grid,
+            "gustIntervalHours": info.get("gustIntervalHours"),
+            "u": decoded["u"], "v": decoded["v"], "gust": decoded["gust"]}
+
+
 def validate_wind_bundle(public, model, manifest, run, now):
     frames, grid = manifest["frames"], manifest.get("grid")
+    encoding = frame_encoding(manifest)
     ensemble = manifest.get("ensemble")
     last = validate_ensemble(manifest, ensemble, run) if ensemble is not None else None
     gust_kind = manifest.get("gustKind", "interval")
@@ -177,11 +213,11 @@ def validate_wind_bundle(public, model, manifest, run, now):
     objects = []
     for index, info in enumerate(frames):
         path, data = referenced(public, info["url"], object_root(model), 3)
-        frame = json.loads(data)
         hour = hours[index]
         valid = valid_time(run, hour)
         if (info["hour"], info["validTime"]) != (hour, valid):
             raise ValueError("Incomplete or misordered forecast")
+        frame = wind_frame(data, encoding, model, manifest, grid, info, hour, valid)
         if any(frame.get(k) != v for k, v in {"model": model, "run": manifest["run"],
                "grid": grid, "hour": hour, "validTime": valid}.items()):
             raise ValueError("Mixed model/run/frame metadata")
@@ -519,7 +555,36 @@ def no_collision(s3, bucket, key, digest, error=None):
         raise ValueError(f"Immutable object collision: {key}") from error
 
 
-def put_immutable(s3, bucket, key, body, state=None):
+def bucket_encoding(chosen=None):
+    """Which compression a binary frame is stored under: brotli unless asked otherwise.
+
+    One encoding per object, so there are never `.br`/`.gz` sidecars in the
+    bucket — those exist only on the local Caddy deployment's disk. Brotli is the
+    default because every browser that reaches the data domain over HTTPS accepts
+    it; `FORCE5_BUCKET_ENCODING=gzip` is the way back if a CDN ever mangles it.
+    """
+    encoding = chosen or os.environ.get("FORCE5_BUCKET_ENCODING") or "br"
+    if encoding not in ("br", "gzip"):
+        raise ValueError(f"Unsupported bucket content encoding {encoding!r}")
+    return encoding
+
+
+def object_body(key, body, encoding=None):
+    """The bytes to store for one immutable object, with its type and encoding.
+
+    A `.bin` frame is stored brotli- or gzip-encoded and served as binary; every
+    other object is JSON and stays gzip-encoded exactly as it always has been.
+    """
+    if not key.endswith(".bin"):
+        return gzip.compress(body, mtime=0), "application/json", "gzip"
+    if bucket_encoding(encoding) == "gzip":
+        return gzip.compress(body, mtime=0), "application/octet-stream", "gzip"
+    import brotli
+    return (brotli.compress(body, quality=f5bin.BROTLI_QUALITY),
+            "application/octet-stream", "br")
+
+
+def put_immutable(s3, bucket, key, body, state=None, encoding=None):
     """Write bytes that must never change again, refusing to overwrite different ones.
 
     `IfNoneMatch="*"` does this in one request and is the only path on AWS S3. A
@@ -527,10 +592,15 @@ def put_immutable(s3, bucket, key, body, state=None):
     head + sha256 compare + plain put gives the same guarantee in two requests.
     `state` remembers that answer for the rest of a publish, so a 250-frame ECMWF
     run does not pay the extra round trip 250 times over.
+
+    The sha256 recorded in the object's metadata is always taken over the
+    **uncompressed** bytes, so the collision check above compares frames rather
+    than compressors: change the compression and the same frame still matches.
     """
     digest = hashlib.sha256(body).hexdigest()
-    args = {"Bucket": bucket, "Key": key, "Body": gzip.compress(body, mtime=0),
-            "ContentType": "application/json", "ContentEncoding": "gzip",
+    stored, content_type, content_encoding = object_body(key, body, encoding)
+    args = {"Bucket": bucket, "Key": key, "Body": stored,
+            "ContentType": content_type, "ContentEncoding": content_encoding,
             "CacheControl": IMMUTABLE_CACHE, "Metadata": {"sha256": digest}}
     state = {} if state is None else state
     if state.get("conditional", True):
@@ -649,8 +719,9 @@ def same_manifest(current, incoming):
         k: v for k, v in incoming.items() if k != "generatedAt"}
 
 
-def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
+def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, encoding=None):
     prefix = object_prefix(prefix)
+    bucket_encoding(encoding)  # Refuse an unusable choice before anything is uploaded.
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
     pointer = prefix + MANIFESTS[model]
     replaced, _ = read_current(s3, bucket, pointer)
@@ -658,10 +729,10 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
         return "unchanged-or-newer"
     state = {}  # Whether this backend honours conditional puts; answered once per publish.
     for path, data in objects:
-        put_immutable(s3, bucket, prefix + path, data, state)
+        put_immutable(s3, bucket, prefix + path, data, state, encoding)
     archive = (f"{object_root(model)}/manifests/{model}/"
                f"{manifest['run']}-{hashlib.sha256(body).hexdigest()[:16]}.json")
-    put_immutable(s3, bucket, prefix + archive, body, state)
+    put_immutable(s3, bucket, prefix + archive, body, state, encoding)
     for _ in range(4):
         current, etag = read_current(s3, bucket, pointer)
         if already_current(current, manifest):
