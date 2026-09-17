@@ -245,6 +245,69 @@ the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
 (`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
 so the two never share the worker lock), and alarm on the same 12-hour threshold.
 
+### AIFS Single (ECMWF's AI model)
+
+`--models aifs` runs `fetch_aifs.py`, which imports ECMWF's operational machine-learned
+deterministic forecast (`model="aifs-single"`, MARS class `ai`) from the same public
+0.25° open data as the IFS control, with no API key. It publishes
+`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the same
+81 × 45 Ireland/Atlantic crop as `ecmwf`. The registry marks it `workerStep: False`, so
+the worker never forces its 1/3-hour `--step` on a source whose only cadence is six
+hours; it does pass `--ecmwf-source`, like the other three ECMWF adapters.
+
+Three facts drive its deployment:
+
+- **All four cycles reach the full horizon**, unlike the IFS control's 00/12-only 15-day
+  product, so there are four slots a day rather than two. Each is published about six
+  hours after run time; `deploy/local/jobs.toml` runs it at 00/06/12/18 UTC + 25 minutes
+  and the registry age limit is **12 hours**, which is exactly one cycle of slack.
+- **There is no gust.** The `aifs-single` inventory has no `10fg`/`10fg3` at any step, so
+  the bundle declares `gustAvailable: false` with null gust arrays and null
+  `gustIntervalHours` on every frame. `publish_s3.already_current` will refuse to let a
+  gustless manifest replace one that had gusts, which is the right protection for the
+  wind control and a no-op here because every AIFS run declares the same absence. Do not
+  alarm on missing AIFS gusts; alarm on a missing AIFS _run_.
+- **Bandwidth is modest.** A verified run of the live 18 UTC cycle on 16 September 2026
+  transferred **86.1 MB** in 61 ranged reads (1.39–1.45 MB a step for `10u` + `10v`) and
+  completed download, validation, cropping and publication in **21 seconds** with three
+  readers against `--source ecmwf`. It wrote 61 frames of 38.8–39.4 KB (2.4 MB) and a
+  130 KB manifest, into a scratch work directory; no AWS resources were created.
+
+AIFS is a _different_ model, not a correction of IFS: where the two disagree, neither is
+the other's error term. Present it as its own row, and do not fold it into an IFS
+average.
+
+### ECMWF wave stream
+
+`--models ecmwf-wave` runs `fetch_ecmwf_wave.py`, which imports the `wave` stream of the
+same open data — the WAM ocean wave model coupled to IFS — and publishes the
+`kind: "wave"` bundle `weather/ecmwf-wave.json`. The 00 and 12 UTC cycles run to +360 h
+on exactly the wind control's ladder (3-hourly to +144 h, then 6-hourly), 85 frames of
+ten variables at native 0.25° on the same crop as `ecmwf`. `cadence.expected_hours` now
+holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
+resampled, so a truncated or interpolated cadence cannot publish under either id.
+
+- **Bandwidth is the operational constraint.** There is no server-side subsetting, so a
+  full run transfers **700.3 MB** in 85 ranged reads (8.32–8.41 MB a step for ten
+  messages). A verified run of the live 12 UTC cycle on 16 September 2026 completed in
+  **61 seconds** with three readers against `--source ecmwf`, writing 85 frames of
+  182 KB (15 MB) and a 407 KB manifest. `--no-bands` drops the six period-band heights
+  for about 315 MB a run; the bands are the only swell information the stream has, so
+  drop them only under real bandwidth pressure.
+- **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45
+  minutes, about eight hours after each cycle, with a 24-hour registry age limit — the
+  same shape as the wind control. Both new jobs pass `--ecmwf-source ecmwf` explicitly:
+  the worker still defaults to the AWS mirror, which returned sustained `503 SlowDown`
+  during development.
+- **Coverage is the thing to communicate, not a fault to fix.** A 0.25° cell is about
+  28 km across. Of the 25 riding locations, 3 are read from their own four cells
+  (Brandon Bay, Maharees, Keel), 21 from the nearest cell the model solved (1.5 km at
+  Tullan Strand, median 13.4 km, 37.7 km at Rusheen Bay) and 1 has none within 40 km
+  (Mountshannon on Lough Derg). Every offset is published as
+  `spotCoverage[spot].nearestOffsetKm` with a sentence the UI shows. That is why the
+  dock's preference is `mi-swan`, then `gfs-wave`, then `ecmwf-wave`: this source earns
+  its place by reaching 15 days, not by resolving a beach.
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
