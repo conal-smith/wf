@@ -164,6 +164,30 @@ export const GFS_WAVE_VARIABLES: Record<string, WaveVariable> =
       { units, label, description: `${label}, synthetic` },
     ]),
   );
+/**
+ * ECMWF's 0.25° wave stream: the whole sea, and period-band heights instead of a
+ * swell partition, so `waveFields` finds a total row and nothing else.
+ */
+export const ECMWF_WAVE_VARIABLES: Record<string, WaveVariable> =
+  Object.fromEntries(
+    (
+      [
+        ["swh", "m", "Wave height"],
+        ["mwd", "degrees true", "Mean wave direction"],
+        ["pp1d", "s", "Peak period"],
+        ["mwp", "s", "Mean wave period"],
+        ["h1012", "m", "10–12 s wave height"],
+        ["h1214", "m", "12–14 s wave height"],
+        ["h1417", "m", "14–17 s wave height"],
+        ["h1721", "m", "17–21 s wave height"],
+        ["h2125", "m", "21–25 s wave height"],
+        ["h2530", "m", "25–30 s wave height"],
+      ] as const
+    ).map(([name, units, label]) => [
+      name,
+      { units, label, description: `${label}, synthetic` },
+    ]),
+  );
 /** Irish Shelf SWAN: a swell height but no swell period, and a derived wind sea. */
 export const SWAN_VARIABLES: Record<string, WaveVariable> = Object.fromEntries(
   (

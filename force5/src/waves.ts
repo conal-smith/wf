@@ -22,10 +22,17 @@ export const MAX_WAVE_VALUE = 1000;
  */
 export const WAVE_MATCH_HOURS = 1.5;
 
-/** Sources in the order the dock prefers them: Ireland's own model first. */
+/**
+ * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
+ * shelf model wins; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
+ * (~28 km) wave stream is last, because at that resolution a bay is a cell or
+ * two wide and many spots are read from open water nearby. It is still worth
+ * having: it is the only source of the three that reaches 15 days.
+ */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",
   "gfs-wave",
+  "ecmwf-wave",
 ];
 
 export interface WaveVariable {
@@ -47,6 +54,14 @@ export interface WaveStep {
 export interface WaveCoverage {
   landMasked?: boolean;
   resolved?: boolean;
+  /**
+   * How far the cell the values came from is from the location, in kilometres:
+   * `0` when the location's own cells were read, and a real distance when the
+   * adapter had to reach for the nearest cell the model solved. ECMWF Wave
+   * publishes it at 0.25°, where many Irish spots sit in a cell the model treats
+   * as land.
+   */
+  nearestOffsetKm?: number | null;
   note?: string;
 }
 /**
