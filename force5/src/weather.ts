@@ -106,6 +106,11 @@ export interface Manifest {
   stepRanges?: { throughHour: number; stepHours: number }[];
   grid: Grid;
   frames: FrameInfo[];
+  /**
+   * One precomputed series per riding location. A model whose domain does not
+   * reach a location still lists it, with null values and a `coverageNote`
+   * naming it, so the catalogue never looks as though it changed.
+   */
   spotForecasts: Record<string, (Wind & { hour: number; validTime: string })[]>;
   sourceUrl: string;
   attribution: string;
@@ -120,6 +125,8 @@ export interface Manifest {
   gustKind?: GustKind;
   /** Present only for ensembles; `spotForecasts` then holds the member mean. */
   ensemble?: Ensemble;
+  /** Why a spot may carry a null series: a crop edge or a model domain edge. */
+  coverageNote?: string;
   spotForecastsDescription?: string;
   spotMembers?: Record<string, MemberFrame[]>;
 }

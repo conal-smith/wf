@@ -29,6 +29,13 @@ public/weather/*/
 # Wave frames carry nine variables over 121 × 101 cells, so a longer bundled run
 # would be tens of megabytes; generate one locally for real use.
 !public/weather/gfs-wave-2026091618-9h-v1/
+# Small real ARPEGE acceptance snapshot (2026-09-16 18 UTC, 12 h at 3-hour steps).
+# An ARPEGE frame is three arrays over 22,311 cells, about 360 KB, so the default
+# 102-hour run is 12 MB and is generated locally.
+!public/weather/arpege-2026091618-12h-v1/
+# Generated AROME output. A 0.025° frame is 600 KB over 35,787 cells and three of
+# the 25 riding locations fall outside the model, so no snapshot is bundled.
+public/weather/arome.json
 # Generated tide predictions; nothing marine is bundled yet.
 public/marine/
 # Generated wave forecast; no wave snapshot is bundled with the site.
