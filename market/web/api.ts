@@ -68,7 +68,24 @@ export class MarketApi {
     }
     if (res.status === 204) return undefined as T;
     const text = await res.text();
-    const payload = text ? JSON.parse(text) : null;
+    // This API only ever writes JSON. A body that is not JSON did not come
+    // from it: a proxy, a captive portal, a login wall, or the site's own SPA
+    // fallback answering for a path the API never saw. That is a failed
+    // request with a status worth reporting, not a SyntaxError from inside a
+    // parser three layers down.
+    let payload: unknown = null;
+    if (text)
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        throw new ApiRequestError(
+          res.status,
+          "bad-response",
+          res.ok
+            ? "The marketplace sent a reply this page could not read. Try again in a moment."
+            : `Request failed (${res.status})`,
+        );
+      }
     if (!res.ok) {
       const err = (payload ?? {}) as Partial<ApiError>;
       throw new ApiRequestError(

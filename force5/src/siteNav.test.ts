@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SITE_SECTIONS, currentSection, isMarketPath } from "./siteNav";
+import { SITE_SECTIONS, isMarketPath } from "./siteNav";
 
 describe("isMarketPath", () => {
   it("claims /market and everything under it", () => {
@@ -26,27 +26,21 @@ describe("isMarketPath", () => {
   });
 });
 
-describe("currentSection", () => {
-  it("names the section a URL belongs to", () => {
-    expect(currentSection("/")).toBe("map");
-    expect(currentSection("/market/me")).toBe("market");
-  });
-
-  it("always names a section the menu actually offers", () => {
-    const ids = SITE_SECTIONS.map((section) => section.id);
-    for (const path of ["/", "/market", "/anything-else"])
-      expect(ids).toContain(currentSection(path));
-  });
-});
-
 describe("SITE_SECTIONS", () => {
   it("links with absolute paths, because crossing sections is a page load", () => {
     for (const section of SITE_SECTIONS)
       expect(section.href.startsWith("/")).toBe(true);
   });
 
-  it("puts every section's own href in that section", () => {
+  it("offers exactly the two sections the entry point branches on", () => {
+    expect(SITE_SECTIONS.map((section) => section.id)).toEqual([
+      "map",
+      "market",
+    ]);
+  });
+
+  it("gives each section an href the entry point routes to that section", () => {
     for (const section of SITE_SECTIONS)
-      expect(currentSection(section.href)).toBe(section.id);
+      expect(isMarketPath(section.href)).toBe(section.id === "market");
   });
 });

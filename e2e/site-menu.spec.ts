@@ -23,9 +23,14 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
 
   await trigger(page).focus();
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
+  // A disclosure: no `aria-haspopup` promising menu semantics, and nothing
+  // controlled until there is something to control.
+  await expect(trigger(page)).not.toHaveAttribute("aria-haspopup", /.*/);
+  await expect(trigger(page)).not.toHaveAttribute("aria-controls", /.*/);
   await page.keyboard.press("Enter");
 
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(trigger(page)).toHaveAttribute("aria-controls", /.+/);
   await expect(panel(page)).toBeVisible();
   await expect(row(page, "Wind map")).toBeFocused();
   await expect(row(page, "Wind map")).toHaveAttribute("aria-current", "page");
@@ -57,6 +62,25 @@ test("on the map the menu opens by click and closes on a click outside", async (
   await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(panel(page)).toHaveCount(0);
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
+});
+
+test("closing through the trigger returns focus to it, even unfocused", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await trigger(page).click();
+  await expect(panel(page)).toBeVisible();
+
+  // Safari does not focus a button it was clicked on, so the handler has to put
+  // focus back itself or it lands on the body. Dispatching the click without
+  // the focus that usually comes with it is what that looks like from here.
+  await trigger(page).evaluate((el) => {
+    (el as HTMLElement).blur();
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  await expect(panel(page)).toHaveCount(0);
+  await expect(trigger(page)).toBeFocused();
 });
 
 test("the menu carries the reader between the map and the marketplace", async ({
@@ -213,4 +237,80 @@ test("at 390px the marketplace header takes the menu without squeezing a label",
   const open = (await panel(page).boundingBox())!;
   expect(open.x).toBeGreaterThanOrEqual(0);
   expect(open.x + open.width).toBeLessThanOrEqual(390);
+});
+
+/**
+ * On a finger the trigger's hit area grows to the 44px floor — down the block
+ * axis only. A header row has no room along the inline axis, and an overhanging
+ * target there silently swallows taps meant for whatever sits beside it. The
+ * pseudo-element that does the growing hit-tests as the button, so
+ * `elementFromPoint` is the honest way to ask who would receive a tap.
+ */
+test.describe("on a coarse pointer", () => {
+  test.use({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+
+  const ownerAt = (page: Page, x: number, y: number) =>
+    page.evaluate(
+      ([px, py]) => {
+        const el = document.elementFromPoint(px as number, py as number);
+        return {
+          onTrigger: !!el?.closest(".f5-site-menu"),
+          tag: el?.tagName ?? null,
+        };
+      },
+      [x, y],
+    );
+
+  test("the map's trigger does not reach over the search button", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    expect(
+      await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches),
+    ).toBe(true);
+
+    const search = page.getByRole("button", { name: "Open spot search" });
+    const box = (await search.boundingBox())!;
+    // One pixel inside the search trigger's leading edge, at its middle.
+    const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
+    expect(owner.onTrigger).toBe(false);
+
+    // And the menu's own middle still belongs to the menu.
+    const menu = (await trigger(page).boundingBox())!;
+    expect(
+      (await ownerAt(page, menu.x + menu.width / 2, menu.y + menu.height / 2))
+        .onTrigger,
+    ).toBe(true);
+  });
+
+  test("the marketplace's trigger does not reach over the brand link", async ({
+    page,
+  }) => {
+    await page.goto("/market");
+    const brand = page.getByRole("link", { name: "wingfoil.ie Market, home" });
+    const box = (await brand.boundingBox())!;
+    const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
+    expect(owner.onTrigger).toBe(false);
+
+    // The grown area also stays inside the header pill it sits in.
+    const bar = (await page.locator(".mk-header__bar").boundingBox())!;
+    const menu = (await trigger(page).boundingBox())!;
+    const grown = await trigger(page).evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const after = getComputedStyle(el, "::after");
+      return {
+        height: parseFloat(after.height) || rect.height,
+        width: parseFloat(after.width) || rect.width,
+      };
+    });
+    expect(grown.height).toBeGreaterThanOrEqual(44);
+    expect(grown.width).toBeLessThanOrEqual(menu.width + 0.5);
+    const top = menu.y + menu.height / 2 - grown.height / 2;
+    expect(top).toBeGreaterThanOrEqual(bar.y - 0.5);
+    expect(top + grown.height).toBeLessThanOrEqual(bar.y + bar.height + 0.5);
+  });
 });

@@ -120,11 +120,17 @@ domain>`. The static host must rewrite `/market/*` to `index.html` (the same
    all three are already handled:
    - `vite preview` has the fallback built in; nothing to configure.
    - `deploy/local/Caddyfile` does it with `try_files {path} /index.html`.
-   - Cloudflare Pages (and Netlify) read `public/_redirects`, which ships one
-     rule — `/*  /index.html  200`. Static files that exist are served before
-     the rule is consulted, so it cannot shadow `/assets/*`. A host that reads
-     neither that file nor a Caddyfile needs the same rewrite configured by
-     hand, or every direct load and refresh under `/market` 404s.
+   - Cloudflare Pages (and Netlify) read `public/_redirects`, which ships two
+     rules — `/market` and `/market/*` to `/index.html 200`, and nothing
+     broader. A blanket `/*` rule would be wrong: the origin may also serve the
+     ingest output under `/weather` and `/marine`, and every loader in the
+     product gates on `!response.ok` and then parses the body. A missing
+     snapshot, a pruned frame, a model that has not published yet and a failed
+     API call all have actionable messages that a 200 HTML body would turn into
+     a parse error. `deploy/local/Caddyfile` keeps `/weather/*` and `/marine/*`
+     out of its `try_files` for the same reason. A host that reads neither
+     file needs the same two rewrites configured by hand, or every direct load
+     and refresh under `/market` 404s.
 
 5. **Clerk**: create an application, enable the sign-in methods you want, add
    `wingfoil.ie` as an allowed origin. Nothing else: the API only ever reads

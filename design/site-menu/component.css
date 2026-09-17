@@ -9,19 +9,22 @@
 }
 
 /*
- * A default-height icon button is under the target floor on a finger. The hit
- * area is padded out to `--sem-control-height-touch` without moving any paint,
- * so the button still lines up with the chrome beside it.
+ * An icon button is under the target floor on a finger, so on a coarse pointer
+ * the hit area is grown to `--sem-control-height-touch` without moving any
+ * paint. It grows DOWN THE BLOCK AXIS ONLY. A header row is tight along the
+ * inline axis and the control's neighbours are inches away there: a hit area
+ * that overhung it would quietly swallow taps meant for the brand link beside
+ * it. Padding the inline side out to the floor is the parent's job, which is
+ * the same rule the system already states for `--sem-control-height-sm`.
  */
 @media (pointer: coarse) {
   .f5-site-menu__trigger::after {
     content: "";
     position: absolute;
+    inset-inline: 0;
     top: 50%;
-    left: 50%;
-    width: var(--sem-control-height-touch);
     height: var(--sem-control-height-touch);
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
   }
 }
 
