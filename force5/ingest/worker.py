@@ -1,29 +1,36 @@
 """One-shot forecast job: ingest, validate, optionally publish to S3, then exit."""
 import argparse
-from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
-import fcntl
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
 
+from prune import prune_published
 from publish_s3 import publish, validate_bundle
 from registry import MODELS
+from workspace import workspace_lock
 
 # Adapters that read ECMWF's open data and so take a mirror rather than a step.
 ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
 
 
-@contextmanager
-def workspace_lock(root):
-    directory = root / ".cache"
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / "worker.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        yield
+def drop_superseded(public):
+    """Delete every run no manifest points at, now that the new one is published.
+
+    Only the newest run of a model is ever served, so the one it replaced is
+    junk the moment the new manifest is in place. This runs under the workspace
+    lock, so no other import can be half-way through writing a run directory.
+    A failure here is logged and never fails the forecast that just landed.
+    """
+    try:
+        return len(prune_published(public, 0)["removed"])
+    except (OSError, ValueError) as error:
+        print(json.dumps({"event": "prune_failed", "error": str(error)}), file=sys.stderr, flush=True)
+        return 0
 
 
 def main():
@@ -59,6 +66,17 @@ def main():
         return 1
 
 
+def drop_downloads(root, model):
+    """Delete the model's raw downloads: a published run never reads them again.
+
+    They are whole-domain source files, gigabytes for an ensemble, and keeping
+    them only saved a re-download after a failure. A failed job downloads afresh.
+    """
+    cache = MODELS[model].get("cache")
+    if cache:
+        shutil.rmtree(root / ".cache" / cache, ignore_errors=True)
+
+
 def run_models(args, root, s3):
     failures = 0
     for model in dict.fromkeys(args.models):
@@ -76,15 +94,18 @@ def run_models(args, root, s3):
             max_age = args.max_age_hours if args.max_age_hours is not None else MODELS[model]["maxAgeHours"]
             manifest, _, objects = validate_bundle(root / "public", model, max_age)
             status = publish(s3, root / "public", model, args.bucket, args.prefix, max_age) if s3 else "local-only"
+            pruned = drop_superseded(root / "public")
             print(json.dumps({"event": "forecast_complete", "model": model,
                               "kind": MODELS[model]["kind"], "run": manifest["run"],
                               "objects": len(objects), "frames": len(manifest.get("frames", [])),
-                              "status": status,
+                              "status": status, "pruned": pruned,
                               "seconds": round(time.monotonic() - started),
                               "time": datetime.now(timezone.utc).isoformat()}), flush=True)
         except Exception as error:
             failures += 1
             print(json.dumps({"event": "forecast_failed", "model": model, "error": str(error)}), file=sys.stderr, flush=True)
+        finally:
+            drop_downloads(root, model)
     return 1 if failures else 0
 
 

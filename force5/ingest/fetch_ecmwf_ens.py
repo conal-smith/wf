@@ -22,7 +22,7 @@ import eccodes as ec
 
 from cadence import ladder_hours
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
-from fetch_forecast import PROJECT_ROOT, ROOT, decode_handle, sample, write_json
+from fetch_forecast import PROJECT_ROOT, ROOT, already_published, decode_handle, sample, write_json
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
 # 0.84 MB (10u), 0.83 MB (10v) and 1.39 MB (10fg), plus a 2.0 MB step index.
@@ -227,6 +227,11 @@ def main():
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= 24:
         raise ValueError("Refusing a stale/future ECMWF ENS run (maximum age 24 hours)")
+    output = ROOT / "public" / "weather"
+    prefix = f"ecmwf-ens-{run}-{args.hours}h-{len(members)}m-v1"
+    if not args.run and already_published(output / "ecmwf-ens.json", run, prefix):
+        print(f"ECMWF ENS {run} is already published; nothing to download.", flush=True)
+        return
     print(f"Fetching ECMWF ENS {run}: {len(members)} members × {len(hours)} steps "
           f"to +{args.hours}h (about {len(members) * (3 * len(hours) - 1)} member messages)", flush=True)
     cache = ROOT / ".cache" / "ecmwf-ens" / run
@@ -234,8 +239,6 @@ def main():
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         paths = list(pool.map(lambda hour: fetch(cache, args.source, run, hour, members), hours))
     print("Downloads complete. Validating every member and cropping to Ireland…", flush=True)
-    output = ROOT / "public" / "weather"
-    prefix = f"ecmwf-ens-{run}-{args.hours}h-{len(members)}m-v1"
     spots = load_spots(spots_file())
     spot_forecasts = {spot["id"]: [] for spot in spots}
     spot_members = {spot["id"]: [] for spot in spots}

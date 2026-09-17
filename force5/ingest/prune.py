@@ -1,12 +1,15 @@
 """Delete published objects no current manifest references, and aged raw cache.
 
-Retention is deliberately conservative: a run directory or station file is
-removed only when no pointer manifest references it AND nothing in it was
-written inside the retention window, so a browser session that is already
-reading a superseded run keeps working while it finishes. Anything that reads
-like a pointer manifest is never deleted, even for a model the registry does not
-know yet, and an unreadable registry manifest aborts the whole sweep rather than
-risking objects that are still in use.
+Only the newest run of a model is ever served, so a run directory or station
+file is junk as soon as no pointer manifest references it. The worker calls
+`prune_published` itself the moment a new run is published; this script is the
+scheduled backstop that also ages out the raw cache. It takes the workspace lock
+and skips the sweep while an import holds it, because a run that is still being
+written is unreferenced too. `--max-age-hours` can keep unreferenced objects for
+a while longer; the default is not to. Anything that reads like a pointer
+manifest is never deleted, even for a model the registry does not know yet, and
+an unreadable registry manifest aborts the whole sweep rather than risking
+objects that are still in use.
 """
 import argparse
 from datetime import datetime, timezone
@@ -17,11 +20,12 @@ import shutil
 import sys
 
 from registry import MANIFESTS
+from workspace import workspace_lock
 
 DATA_ROOTS = sorted({PurePosixPath(path).parts[0] for path in MANIFESTS.values()})
 ARCHIVE_DIRECTORY = "manifests"  # Archived manifests, never a prunable run.
 KEEP_CACHE_NAMES = {"worker.lock"}
-DEFAULT_MAX_AGE_HOURS = 48.0
+DEFAULT_MAX_AGE_HOURS = 0.0
 DEFAULT_CACHE_DAYS = 3.0
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 # An observation bundle is one small self-contained file: it carries its readings
@@ -183,7 +187,7 @@ def main(argv=None):
         help="Work directory holding public/ and .cache")
     parser.add_argument("--max-age-hours", type=float, default=float(
         os.environ.get("FORCE5_RETAIN_HOURS") or DEFAULT_MAX_AGE_HOURS),
-        help="Keep unreferenced objects this long (default 48)")
+        help="Keep unreferenced objects this long (default 0: delete at once)")
     parser.add_argument("--cache-days", type=float, default=float(
         os.environ.get("FORCE5_CACHE_DAYS") or DEFAULT_CACHE_DAYS),
         help="Keep raw downloads this many days (default 3)")
@@ -198,9 +202,15 @@ def main(argv=None):
               file=sys.stderr, flush=True)
         return 1
     try:
-        result = prune_published(public, args.max_age_hours, dry_run=args.dry_run)
-        result.update(prune_cache(Path(args.root) / ".cache", args.cache_days,
-                                  dry_run=args.dry_run))
+        with workspace_lock(Path(args.root)):
+            result = prune_published(public, args.max_age_hours, dry_run=args.dry_run)
+            result.update(prune_cache(Path(args.root) / ".cache", args.cache_days,
+                                      dry_run=args.dry_run))
+    except BlockingIOError:
+        # An import is writing a run no manifest points at yet; it prunes when it is done.
+        print(json.dumps({"event": "prune_skipped", "reason": "An import is running",
+                          "time": datetime.now(timezone.utc).isoformat()}), flush=True)
+        return 0
     except (OSError, ValueError) as error:
         print(json.dumps({"event": "prune_failed", "error": str(error)}),
               file=sys.stderr, flush=True)
