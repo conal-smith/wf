@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 for (const width of [390, 1440]) {
   test(`spot popout opens, follows selection, and closes independently at ${width}px`, async ({
@@ -38,6 +38,42 @@ for (const width of [390, 1440]) {
         );
       })
       .toBe(true);
+    // The reader can pan away from the spot: the popout is fitted once, when
+    // the camera that opened it lands, and never re-clamped afterwards.
+    const pin = page.locator('[data-spot-id="kilcrea"]');
+    /** Where the marker comes to rest: two readings a quarter-second apart. */
+    const restingX = async () => {
+      let last = Number.NaN;
+      await expect
+        .poll(
+          async () => {
+            const x = (await pin.boundingBox())!.x;
+            const same = Math.abs(x - last) < 0.5;
+            last = x;
+            return same;
+          },
+          { intervals: [250, 250, 250, 250, 250, 250, 250, 250] },
+        )
+        .toBe(true);
+      return last;
+    };
+    // Wait for the camera that opened the popout to land first: the fit happens
+    // when it does, and a pan begun before that would be undone by it — which
+    // would make this test pass for the wrong reason, or fail for one.
+    const pinBefore = await restingX();
+    // The keyboard pan is a reader's gesture like any other, and it lands
+    // wherever the markers happen to be.
+    await page.locator(".maplibregl-canvas").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    // The map really moved — and stays moved. Nothing pans it back to put the
+    // card where it was, which is what a refit after every move used to do.
+    await expect
+      .poll(async () => Math.abs((await pin.boundingBox())!.x - pinBefore))
+      .toBeGreaterThan(80);
+    const resting = await restingX();
+    expect(Math.abs(resting - pinBefore)).toBeGreaterThan(80);
+    await expect(popup).toBeVisible();
     await page.getByRole("slider", { name: "Forecast time" }).fill("10");
     await expect(popup).toBeVisible();
     await page.screenshot({ path: `test-results/spot-popup-${width}.png` });

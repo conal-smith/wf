@@ -1,8 +1,10 @@
-// The blend against the real bundled snapshots: HARMONIE (3-hourly, 60 h, no
-// gusts), ICON-EU (3-hourly, 72 h) and ECMWF (3-hourly then 6-hourly, 360 h),
-// all at Brandon Bay.
+// The blend against the sample bundles: HARMONIE (hourly, 24 h, no gusts),
+// ICON-EU (3-hourly, 72 h) and ECMWF (3-hourly then 6-hourly, 360 h), all at
+// Brandon Bay. The values are synthetic (tests/fixtures/weather), but the run
+// times, cadences and gust availability are the ones the adapters publish, which
+// is what the axis, the gap bridging and the per-hour statistics are about.
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readBundle } from "./bundles";
 import {
   blendInputs,
   blendStats,
@@ -15,9 +17,7 @@ import { memberSeries, spotSeries } from "../force5/src/series";
 import { validateManifest, type Manifest } from "../force5/src/weather";
 
 const bundled = (name: string): Manifest =>
-  validateManifest(
-    JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8")),
-  );
+  validateManifest(readBundle<Manifest>(name));
 const harmonie = bundled("harmonie");
 const iconEu = bundled("latest");
 const ecmwf = bundled("ecmwf");
@@ -39,7 +39,7 @@ describe("bundled spot series", () => {
   });
 });
 
-describe("axis across the real models", () => {
+describe("axis across the three models", () => {
   it("spans the union of their valid ranges, hourly", () => {
     const axis = commonAxis(all);
     expect(axis[0]).toBe("2026-09-13T00:00:00.000Z");
@@ -47,28 +47,42 @@ describe("axis across the real models", () => {
     expect(axis).toHaveLength(15 * 24 + 1);
   });
   it("can restrict itself to the hours all three cover", () => {
+    // HARMONIE is the short one at both ends: it starts last and stops first.
     const axis = commonAxis(all, { coverage: "intersection" });
     expect(axis[0]).toBe("2026-09-13T13:00:00.000Z");
-    expect(axis.at(-1)).toBe("2026-09-16T01:00:00.000Z");
-    expect(axis).toHaveLength(61);
+    expect(axis.at(-1)).toBe("2026-09-14T13:00:00.000Z");
+    expect(axis).toHaveLength(25);
   });
 });
 
-describe("interpolating the real series", () => {
-  it("puts HARMONIE's three-hourly series on whole hours", () => {
+describe("interpolating the published series", () => {
+  it("leaves an hourly series alone on an hourly axis", () => {
     const points = spotSeries(harmonie, "brandon")!;
     const axis = commonAxis([harmonie]);
     const values = interpolateSeries(points, axis);
     expect(values.speed.every((value) => value !== null)).toBe(true);
     expect(values.gust.every((value) => value === null)).toBe(true);
-    // 13 September 16:00 is a real frame: u 4.47, v 2.44.
-    expect(values.speed[axis.indexOf("2026-09-13T16:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(4.47, 2.44),
+    // HARMONIE publishes every hour, so every axis hour is a published one:
+    // 13 September 14:00 is u 4.28, v -6.00 and nothing is interpolated.
+    expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(4.28, -6.0),
       10,
     );
-    // 14:00 sits a third of the way from 13:00 (0.61, -0.51) to 16:00.
-    expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(0.61 + (4.47 - 0.61) / 3, -0.51 + (2.44 + 0.51) / 3),
+  });
+  it("puts ICON-EU's three-hourly series on whole hours", () => {
+    const points = spotSeries(iconEu, "brandon")!;
+    const axis = commonAxis([iconEu]);
+    const values = interpolateSeries(points, axis);
+    expect(values.speed.every((value) => value !== null)).toBe(true);
+    // 13 September 06:00 is a published frame: u 6.32, v -0.48.
+    expect(values.speed[axis.indexOf("2026-09-13T06:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(6.32, -0.48),
+      10,
+    );
+    // 04:00 sits a third of the way from 03:00 (6.30, -4.58) to 06:00, and the
+    // interpolation runs in u/v, never between speeds or bearings.
+    expect(values.speed[axis.indexOf("2026-09-13T04:00:00.000Z")]).toBeCloseTo(
+      Math.hypot(6.3 + (6.32 - 6.3) / 3, -4.58 + (-0.48 + 4.58) / 3),
       10,
     );
   });
@@ -87,7 +101,7 @@ describe("interpolating the real series", () => {
   });
 });
 
-describe("blending the three real models", () => {
+describe("blending the three models", () => {
   const axis = commonAxis(all);
   const inputs = blendInputs(
     all,
@@ -132,7 +146,8 @@ describe("blending the three real models", () => {
       expect(hour.spread!).toBeCloseTo(hour.max! - hour.min!, 10);
       expect(hour.max!).toBeLessThan(60);
     }
-    expect(stats.filter((hour) => hour.n === 3).length).toBeGreaterThan(48);
+    // All three cover the day HARMONIE runs for, and only that day.
+    expect(stats.filter((hour) => hour.n === 3).length).toBe(25);
   });
   it("condenses the hourly statistics into three-hour candles", () => {
     const columns = candles(stats, 3);

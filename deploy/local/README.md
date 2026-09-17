@@ -147,14 +147,24 @@ code.
 
 ## 5. Retention
 
-`prune` deletes published objects that **no current manifest references** and that
-have not been written to for `FORCE5_RETAIN_HOURS` (default 48): run directories under
-`weather/` and superseded station files under `marine/`. It also removes raw downloads
-under `.cache` older than `FORCE5_CACHE_DAYS` (default 3). Pointer manifests are never
-deleted — including one for a model the registry has not adopted yet — nor is the
-archived-manifest directory, and an unreadable manifest aborts the whole sweep rather
-than risking objects that are still in use. The window exists so a browser tab that is
-already reading a superseded run keeps working.
+Only the newest run of each model is kept. As soon as a new run has fully arrived and
+passed validation, the worker deletes every published object that **no current manifest
+references**: the run directory it just replaced under `weather/`, and superseded
+station files under `marine/`. Nothing old is held "just in case"; a browser tab that
+asks for a frame of a deleted run moves itself to the newest run instead of showing an
+error.
+
+`prune` is the scheduled backstop (hourly in `jobs.toml`). It does the same sweep, and
+also removes anything left under `.cache` older than `FORCE5_CACHE_DAYS` (default 1). Raw
+downloads are not kept: the worker deletes a model's downloads as soon as its job ends,
+and a failed job downloads afresh. Only small state stays there (station catalogues,
+SWAN's last-seen time).
+It takes the worker's lock and skips its turn while an import is running, because a
+run that is still being written is not referenced by any manifest yet. Pointer
+manifests are never deleted — including one for a model the registry has not adopted
+yet — nor is the archived-manifest directory, and an unreadable manifest aborts the
+whole sweep rather than risking objects that are still in use. `FORCE5_RETAIN_HOURS`
+(default 0) keeps superseded runs for that many hours if you ever want them.
 
 ```sh
 npm run deploy:prune -- --dry-run          # report only

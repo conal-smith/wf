@@ -7,6 +7,7 @@ import {
   bandPath,
   columnCentres,
   columnEdges,
+  candleGroups,
   columnWeights,
   dayGroups,
   displayToKnots,
@@ -14,6 +15,7 @@ import {
   dublinNoonUtc,
   linePath,
   meanDirections,
+  modelSupport,
   niceMax,
   smoothPath,
   timeToX,
@@ -32,6 +34,9 @@ const frames = (hours: readonly number[], from = "2026-09-14T00:00:00Z") =>
     url: `weather/run/${hour}.json`,
     gustIntervalHours: null,
   }));
+/** Column times, which is what the geometry helpers actually take. */
+const times = (hours: readonly number[], from = "2026-09-14T00:00:00Z") =>
+  frames(hours, from).map((frame) => frame.validTime);
 
 describe("value axis", () => {
   it("rounds up to whole steps and never collapses", () => {
@@ -73,11 +78,13 @@ describe("value axis", () => {
 
 describe("column geometry", () => {
   it("gives a six-hour step twice the room of a three-hour one", () => {
-    expect(columnWeights(frames([0, 3, 6, 9]), 3)).toEqual([1, 1, 1, 1]);
-    expect(columnWeights(frames([0, 3, 6, 12, 18]), 3)).toEqual([
-      1, 1, 2, 2, 2,
+    expect(columnWeights(times([0, 3, 6, 9]))).toEqual([1, 1, 1, 1]);
+    expect(columnWeights(times([0, 3, 6, 12, 18]))).toEqual([1, 1, 2, 2, 2]);
+    expect(columnWeights(times([0]))).toEqual([1]);
+    // A seam two hours wide is still one column wide, never a narrower one.
+    expect(columnWeights([...times([0, 3]), ...times([5, 8])])).toEqual([
+      1, 1, 1, 1,
     ]);
-    expect(columnWeights(frames([0]), 3)).toEqual([1]);
   });
   it("lays edges and centres out across the measured width", () => {
     const weights = [1, 1, 2];
@@ -85,9 +92,50 @@ describe("column geometry", () => {
     expect(columnCentres(weights, 400)).toEqual([50, 150, 300]);
     expect(columnEdges([], 400)).toEqual([0]);
   });
+  it("lays out a real mixed 1/3/6-hour axis without losing a column", () => {
+    // What a live dock looks like: hourly HARMONIE to +60 h, then ECMWF's
+    // three-hourly half and its six-hourly tail.
+    const axis = [
+      ...times(Array.from({ length: 61 }, (_, i) => i)),
+      ...times(
+        Array.from({ length: 28 }, (_, i) => 63 + i * 3),
+        "2026-09-14T00:00:00Z",
+      ),
+      ...times(
+        Array.from({ length: 36 }, (_, i) => 150 + i * 6),
+        "2026-09-14T00:00:00Z",
+      ),
+    ];
+    const weights = columnWeights(axis);
+    expect(weights).toHaveLength(axis.length);
+    // An hourly column keeps a readable minimum; a six-hourly one keeps double.
+    expect(new Set(weights)).toEqual(new Set([1, 2]));
+    expect(columnCentres(weights, 1000)).toHaveLength(axis.length);
+    // Every column lands in exactly one candle and one day.
+    const groups = candleGroups(axis);
+    expect(groups.flat()).toEqual(axis.map((_, index) => index));
+    expect(
+      dayGroups(axis, dayLabel).reduce((sum, day) => sum + day.count, 0),
+    ).toBe(axis.length);
+  });
+  it("groups columns into three-hour candles across a change of cadence", () => {
+    // Three hourly columns make one candle; a six-hourly column makes its own.
+    expect(candleGroups(times([0, 1, 2, 3, 4, 5, 6, 12]))).toEqual([
+      [0, 1, 2],
+      [3, 4, 5],
+      [6],
+      [7],
+    ]);
+    expect(candleGroups(times([0, 3, 6]))).toEqual([[0], [1], [2]]);
+    expect(candleGroups([])).toEqual([]);
+    expect(() => candleGroups(times([0]), 0)).toThrow(/positive/);
+  });
   it("interpolates a wall-clock time between column centres", () => {
     const list = frames([0, 3, 6]);
-    const centres = columnCentres(columnWeights(list, 3), 300);
+    const centres = columnCentres(
+      columnWeights(list.map((frame) => frame.validTime)),
+      300,
+    );
     expect(timeToX(list, Date.parse("2026-09-14T00:00:00Z"), centres)).toBe(50);
     expect(timeToX(list, Date.parse("2026-09-14T01:30:00Z"), centres)).toBe(
       100,
@@ -147,6 +195,21 @@ describe("paths", () => {
   });
 });
 
+describe("model support", () => {
+  it("counts distinct models, not lines, and ignores gaps", () => {
+    const lines = [
+      { model: "harmonie", speed: [5, 5, null] },
+      { model: "ecmwf", speed: [6, null, 7] },
+      { model: "gefs", speed: [7, 8, 9] },
+      // A second member of the same ensemble says nothing new about agreement.
+      { model: "gefs", speed: [7, 8, 9] },
+    ];
+    expect(modelSupport(lines, 3)).toEqual([3, 2, 2]);
+    expect(modelSupport([], 2)).toEqual([0, 0]);
+    expect(modelSupport([{ model: "a", speed: [Number.NaN] }], 1)).toEqual([0]);
+  });
+});
+
 describe("Irish days", () => {
   it("uses the Irish calendar day, not the UTC one", () => {
     // 23:30 UTC in September is 00:30 the next day in Dublin.
@@ -158,7 +221,7 @@ describe("Irish days", () => {
   });
   it("groups columns by Irish day with a midday anchor for the sun", () => {
     const groups = dayGroups(
-      frames([0, 3, 6, 21, 24, 27], "2026-09-14T00:00:00Z"),
+      times([0, 3, 6, 21, 24, 27], "2026-09-14T00:00:00Z"),
       dayLabel,
     );
     // +21 h is 22:00 Irish on the 14th; +24 h is 01:00 Irish on the 15th.

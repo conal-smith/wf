@@ -11,6 +11,7 @@ from unittest.mock import patch
 import eccodes as ec
 
 from cadence import expected_hours
+import f5bin
 import fetch_gefs as gefs
 from fetch_gefs import (average, decode_member, decode_step, discover, file_name, filter_url,
                         inventory, main, member_name, object_key, run_datetime)
@@ -329,11 +330,11 @@ class GefsTests(unittest.TestCase):
         self.assertNotIn("gustMissingHours", manifest)
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [[0, 0], [6, 6]])
         # Members 0..2 hold u = member, v = -member, gust = 10 + member.
-        frame = json.loads((self.root / "public" / manifest["frames"][1]["url"]).read_text())
+        frame = f5bin.decode_frame(
+            (self.root / "public" / manifest["frames"][1]["url"]).read_bytes())
         self.assertEqual((frame["u"], frame["v"], frame["gust"]),
                          ([1.0] * 4, [-1.0] * 4, [11.0] * 4))
-        self.assertEqual(frame["gustIntervalHours"], [6, 6])
-        self.assertEqual(frame["run"], run)
+        self.assertEqual((frame["run"], frame["hour"]), (run, 6))
         mean = manifest["spotForecasts"]["brandon"][1]
         self.assertEqual((mean["u"], mean["v"], mean["gust"]), (1.0, -1.0, 11.0))
         series = manifest["spotMembers"]["brandon"]
@@ -366,7 +367,7 @@ class GefsTests(unittest.TestCase):
         manifest, run = self.refresh()
         self.assertTrue(all(f["url"].startswith(f"weather/gefs-{run}-6h-v1/")
                             for f in manifest["frames"]))
-        self.assertRegex(manifest["frames"][1]["url"], r"/006-[0-9a-f]{12}\.json$")
+        self.assertRegex(manifest["frames"][1]["url"], r"/006-[0-9a-f]{12}\.bin$")
 
     def test_a_broken_member_preserves_the_previous_manifest(self):
         published = self.root / "public/weather/gefs.json"

@@ -5,11 +5,12 @@ adapter that publishes one can rely on a settled contract.
 """
 from datetime import datetime, timedelta, timezone
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import tempfile
 import unittest
 from unittest.mock import patch
 
+import f5bin
 import publish_s3
 from publish_s3 import publish, validate_bundle
 from registry import MANIFESTS, MODELS
@@ -28,15 +29,23 @@ class ContractTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root / "weather/run").mkdir(parents=True)
 
     def register(self, model, manifest_path, kind):
-        """A later agent adds one registry line; the tests add the same line temporarily."""
+        """A later agent adds one registry line; the tests add the same line temporarily.
+
+        Registering also makes the run directory, named for the model: the
+        publisher requires every referenced object to sit under a directory its
+        own model owns, exactly as every real adapter names them, so a shared
+        `weather/run/` would now be refused as belonging to nobody.
+        """
         entry = {"script": "unused.py", "manifest": manifest_path, "kind": kind, "maxAgeHours": 12}
         for target, value in [(MODELS, entry), (MANIFESTS, manifest_path)]:
             patcher = patch.dict(target, {model: value})
             patcher.start()
             self.addCleanup(patcher.stop)
+        self.run_directory = f"weather/{model}-run"
+        (self.root / self.run_directory).mkdir(parents=True, exist_ok=True)
+        return self.run_directory
 
     def save(self, model, manifest):
         (self.root / MANIFESTS[model]).write_text(json.dumps(manifest))
@@ -55,7 +64,7 @@ class ContractTests(unittest.TestCase):
                      "mwp": {"units": "s", "label": "Wave period", "description": "Mean wave period"}}
         frames, series = [], {"brandon": []}
         for hour in hours:
-            url = f"weather/run/{hour}.json"
+            url = f"{self.run_directory}/{hour}.json"
             frames.append({"hour": hour, "validTime": valid(hour), "url": url})
             # Null is land or an unresolved cell; it is never filled with zero.
             (self.root / url).write_text(json.dumps({"model": "fake-wave", "run": "2026091312",
@@ -80,7 +89,7 @@ class ContractTests(unittest.TestCase):
 
     def test_wave_rejects_undescribed_variables_and_bad_fields(self):
         manifest = self.wave_bundle()
-        frame = self.root / "weather/run/1.json"
+        frame = self.root / f"{self.run_directory}/1.json"
         original = json.loads(frame.read_text())
         cases = [
             ({"variables": {"swh": {"units": "m", "label": "Wave height"}}}, None),
@@ -124,7 +133,7 @@ class ContractTests(unittest.TestCase):
 
     def test_frames_may_carry_a_declared_subset_of_the_wave_variables(self):
         manifest = self.wave_bundle()
-        for path in sorted((self.root / "weather/run").glob("*.json")):
+        for path in sorted((self.root / self.run_directory).glob("*.json")):
             frame = json.loads(path.read_text())
             path.write_text(json.dumps({k: v for k, v in frame.items() if k != "mwp"}))
         with self.assertRaises(ValueError):  # Every declared variable is gridded by default.
@@ -156,7 +165,7 @@ class ContractTests(unittest.TestCase):
         }
         frames, series = [], {"brandon": []}
         for hour in (0, 1, 2):
-            url = f"weather/run/{hour}.json"
+            url = f"{self.run_directory}/{hour}.json"
             frames.append({"hour": hour, "validTime": valid(hour), "url": url})
             (self.root / url).write_text(json.dumps({"model": "fake-weather", "run": "2026091312",
                 "hour": hour, "validTime": valid(hour), "grid": grid,
@@ -180,7 +189,7 @@ class ContractTests(unittest.TestCase):
 
     def test_weather_rejects_fractional_codes_and_unknown_variable_kinds(self):
         manifest = self.weather_bundle()
-        frame = self.root / "weather/run/1.json"
+        frame = self.root / f"{self.run_directory}/1.json"
         original = json.loads(frame.read_text())
         cases = [
             # A code table has no half-codes and no out-of-table entries.
@@ -214,7 +223,7 @@ class ContractTests(unittest.TestCase):
         grid = {"width": 2, "height": 2}
         frames = []
         for hour in (0, 1, 2):
-            url = f"weather/run/{hour}.json"
+            url = f"{self.run_directory}/{hour}.json"
             window = interval(hour)
             frames.append({"hour": hour, "validTime": valid(hour), "url": url,
                            "gustIntervalHours": window})
@@ -303,6 +312,172 @@ class ContractTests(unittest.TestCase):
         self.ensemble_bundle()
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "fake-eps", max_age_hours=48, now=RUN + timedelta(hours=6))
+
+    # --- binary wind frames ------------------------------------------------
+    GRID = {"width": 2, "height": 2}
+
+    def binary_frame(self, hour, **changes):
+        """The bytes one published frame holds, with room to spoil them."""
+        payload = {"model": "fake-bin", "run": "2026091312", "hour": hour,
+                   "grid": self.GRID, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": [9.0] * 4}
+        payload.update(changes)
+        return f5bin.encode_frame(payload)
+
+    def binary_bundle(self, gusts=True, **changes):
+        """A wind bundle whose frames are F5 int16 rather than JSON.
+
+        Frames are content-addressed, exactly as `publish_frame` writes them, so
+        that the validator's name check is exercised by the ordinary case as well
+        as by the test that attacks it.
+        """
+        self.register("fake-bin", "weather/fake-bin.json", "wind")
+        frames = []
+        for hour in (0, 1, 2):
+            data = self.binary_frame(hour, **({} if gusts else {"gust": None}))
+            url = f"{self.run_directory}/{f5bin.basename(hour, data)}"
+            frames.append({"hour": hour, "validTime": valid(hour), "url": url,
+                           "gustIntervalHours": [max(hour - 1, 0), hour] if gusts else None})
+            (self.root / url).write_bytes(data)
+        manifest = {**self.identity("fake-bin", "wind"), "grid": self.GRID,
+                    "encoding": f5bin.ENCODING, "frames": frames,
+                    "gustAvailable": gusts, "spotForecasts": {}}
+        self.manifest = self.save("fake-bin", {**manifest, **changes})
+        return self.manifest
+
+    def rewrite(self, index, data):
+        """Replace one published frame, keeping the name content-addressed.
+
+        The manifest is updated to the new name, so the validator's name check is
+        satisfied and whatever the test is really attacking is what fails. A test
+        that wants the name check itself keeps the old name instead.
+        """
+        info = self.manifest["frames"][index]
+        (self.root / info["url"]).unlink()
+        info["url"] = f"{self.run_directory}/{f5bin.basename(info['hour'], data)}"
+        (self.root / info["url"]).write_bytes(data)
+        self.save("fake-bin", self.manifest)
+        return self.root / info["url"]
+
+    def test_a_binary_wind_bundle_validates_and_publishes_its_frames(self):
+        manifest = self.binary_bundle()
+        published, _, objects = validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertEqual(published["encoding"], f5bin.ENCODING)
+        self.assertEqual([path for path, _ in objects],
+                         [frame["url"] for frame in manifest["frames"]])
+        # The bytes uploaded are the frame's own, uncompressed: compression is the
+        # uploader's business and the sidecars are never objects of their own.
+        self.assertEqual(objects[0][1], (self.root / manifest["frames"][0]["url"]).read_bytes())
+        s3 = FakeS3()
+        self.assertEqual(publish(s3, self.root, "fake-bin", "test", now=NOW), "published")
+        self.assertEqual(s3.writes[-1], "weather/fake-bin.json")
+        self.assertEqual(len(s3.writes), 5)  # three frames, the archive, the pointer
+
+    def test_a_binary_frame_from_the_wrong_run_or_hour_is_refused(self):
+        """The header is what makes this catchable; the file name alone is not."""
+        for change in ({"hour": 9}, {"hour": 0}, {"run": "2026091300"},
+                       {"run": "2026091313"}):
+            with self.subTest(**change):
+                self.binary_bundle()
+                self.rewrite(1, self.binary_frame(**{"hour": 1, **change}))
+                with self.assertRaises(ValueError) as caught:
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+                self.assertIn("Mixed model/run/frame metadata", str(caught.exception))
+
+    def test_a_frame_under_another_models_run_directory_is_refused(self):
+        """The model is not in the file, so the path is what has to carry it.
+
+        Every wind model's objects live under `weather/`, so without this a
+        HARMONIE manifest could reference a GFS run's frames with the same run,
+        hour and grid and be accepted — and GFS's next publish would then delete
+        objects a live HARMONIE pointer still pointed at.
+        """
+        manifest = self.binary_bundle()
+        foreign = self.root / "weather/fake-other-run"
+        foreign.mkdir(parents=True)
+        for frame in manifest["frames"]:
+            moved = f"weather/fake-other-run/{PurePosixPath(frame['url']).name}"
+            (self.root / moved).write_bytes((self.root / frame["url"]).read_bytes())
+            frame["url"] = moved
+        self.save("fake-bin", manifest)
+        with self.assertRaises(ValueError) as caught:
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertIn("is not named for fake-bin", str(caught.exception))
+
+    def test_a_frame_whose_name_is_not_its_content_hash_is_refused(self):
+        """A content-addressed name is checkable; a JSON frame's never was.
+
+        The substituted frame carries the right run, hour and grid, so every
+        header check passes and only the name is left to catch it — which is the
+        case that matters, because a frame silently swapped for another of the
+        same shape is exactly what a hash is supposed to notice.
+        """
+        manifest = self.binary_bundle()
+        published = self.root / manifest["frames"][1]["url"]
+        published.write_bytes(self.binary_frame(1, u=[7.5] * 4))
+        with self.assertRaises(ValueError) as caught:
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertIn("does not hold the frame its name claims", str(caught.exception))
+
+    def test_a_binary_frame_of_the_wrong_size_or_shape_is_refused(self):
+        whole = self.binary_frame(1)
+        cases = {
+            "wider grid": self.binary_frame(1, grid={"width": 4, "height": 2},
+                                            u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
+            "taller grid": self.binary_frame(1, grid={"width": 2, "height": 4},
+                                             u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
+            "truncated": whole[:-2],
+            "oversized": whole + b"\0\0",
+            "header only": whole[:f5bin.HEADER_BYTES],
+            "not a frame": b"{\"model\": \"fake-bin\"}",
+            "reserved bytes used": whole[:18] + b"\1" + whole[19:],
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                self.binary_bundle()
+                self.rewrite(1, body)
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_a_binary_bundle_keeps_every_gust_rule(self):
+        # A gust block where the manifest declares none.
+        self.binary_bundle(gusts=False)
+        for index in (0, 1, 2):
+            self.rewrite(index, self.binary_frame(index))
+        with self.assertRaises(ValueError) as caught:
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertIn("Gust block does not match", str(caught.exception))
+        # The same bundle with the gust block actually absent is fine.
+        self.binary_bundle(gusts=False)
+        self.assertEqual(len(validate_bundle(self.root, "fake-bin", now=NOW)[2]), 3)
+        # And a missing gust block where the manifest promises one is refused.
+        self.binary_bundle()
+        self.rewrite(1, self.binary_frame(1, gust=None))
+        with self.assertRaises(ValueError) as caught:
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertIn("Gust block does not match", str(caught.exception))
+
+    def test_an_implausible_value_inside_a_binary_frame_is_refused(self):
+        """Hand-built bytes, because the encoder refuses to write these at all."""
+        for offset, value in [(0, 1501), (4 * 2, -1501), (8 * 2, -1)]:
+            with self.subTest(offset=offset):
+                self.binary_bundle()
+                body = bytearray(self.binary_frame(1))
+                body[f5bin.HEADER_BYTES + offset:f5bin.HEADER_BYTES + offset + 2] = (
+                    int(value).to_bytes(2, "little", signed=True))
+                self.rewrite(1, bytes(body))
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_an_unknown_encoding_is_refused_rather_than_read_as_json(self):
+        self.binary_bundle(encoding="f5-int16-v2")
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_only_wind_frames_may_declare_a_binary_encoding(self):
+        manifest = self.wave_bundle()
+        self.save("fake-wave", {**manifest, "encoding": f5bin.ENCODING})
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-wave", now=NOW)
 
     def test_registry_kind_must_match_the_manifest(self):
         self.wave_bundle()

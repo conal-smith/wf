@@ -4,7 +4,6 @@ import { MAP_MODEL_IDS, loadModel, type ModelId } from "../force5/src/models";
 import {
   REVALIDATE_RETRY_MS,
   revalidateDecision,
-  runLabel,
 } from "../force5/src/revalidate";
 import type { Frame, Manifest } from "../force5/src/weather";
 
@@ -25,13 +24,31 @@ interface Options {
   /**
    * A newer run, already loaded whole: manifest, frame and index together, for
    * the caller to commit in one React batch exactly as a model switch does.
-   * `label` names the new run by its UTC hour.
    */
-  onRun: (swap: RunSwap, label: string) => void;
+  onRun: (swap: RunSwap) => void;
 }
 
 const isMapModel = (id: string): id is ModelId =>
   (MAP_MODEL_IDS as readonly string[]).includes(id);
+
+/**
+ * The newest run of the model on screen, loaded whole at the frame nearest
+ * `time`, or null when the run on screen is still the newest. Refetches the
+ * manifest past the five-minute manifest cache, and past the HTTP cache with it.
+ */
+export async function loadNewerRun(
+  current: Manifest,
+  time: string,
+  signal: AbortSignal,
+): Promise<RunSwap | null> {
+  const id = current.model;
+  // Only a model the map can reopen; anything else has no frames to swap.
+  if (!isMapModel(id)) return null;
+  clearManifestCache(id);
+  const fresh = await loadManifest(id, signal);
+  if (signal.aborted || fresh.runTime === current.runTime) return null;
+  return loadModel(id, time, signal);
+}
 
 /** Whether the reader is holding the time controls right now. */
 function scrubbing(): boolean {
@@ -88,19 +105,12 @@ export default function useRunRefresh({
       signal: AbortSignal,
     ) => {
       try {
-        const id = current.model;
-        // Only a model the map can reopen; anything else has no frames to swap.
-        if (!isMapModel(id)) return;
-        // Past the five-minute manifest cache, and past the HTTP cache with it.
-        clearManifestCache(id);
-        const fresh = await loadManifest(id, signal);
-        if (signal.aborted || fresh.runTime === current.runTime) return;
-        const swap = await loadModel(id, time, signal);
-        if (signal.aborted) return;
+        const swap = await loadNewerRun(current, time, signal);
+        if (!swap || signal.aborted) return;
         // The model may have been switched by hand while this was in flight; the
         // run we loaded is then not the run on screen, so it is dropped.
-        if (latest.current.manifest?.model !== id) return;
-        latest.current.onRun(swap, runLabel(swap.manifest.runTime));
+        if (latest.current.manifest?.model !== current.model) return;
+        latest.current.onRun(swap);
       } catch (error) {
         // A background refresh is never the reader's problem: the forecast they
         // already have stays on screen and nothing is said about it.

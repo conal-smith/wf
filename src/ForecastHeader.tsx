@@ -1,20 +1,38 @@
 import { Sunrise, Sunset } from "lucide-react";
 import { formatLocal, sunTimes } from "../force5/src/sun";
-import {
-  dayLabel,
-  timeLabel,
-  type Manifest,
-  type Point,
-} from "../force5/src/weather";
-import { columnWeights, type DayGroup } from "./chart";
+import { dayLabel, timeLabel, type Point } from "../force5/src/weather";
+import type { DockColumn } from "../force5/src/timeline";
+import type { DayGroup } from "./chart";
+
+/** One stretch of the axis and the run that answers for it. */
+export interface ModelBand {
+  model: string;
+  label: string;
+  /** Whether the run behind it is the latest one, an older one, or has ended. */
+  state: "fresh" | "stale" | "expired";
+  start: number;
+  count: number;
+}
+
+/** What the band says about a run that is not the newest. */
+const BAND_NOTE: Record<ModelBand["state"], string | null> = {
+  fresh: null,
+  stale: "older run",
+  expired: "run ended",
+};
 
 interface Props {
-  manifest: Manifest;
+  /** The dock's time axis. Every view hangs off these columns. */
+  columns: readonly DockColumn[];
+  /** Relative column widths, measured once by the dock and shared here. */
+  weights: readonly number[];
   point: Point;
   days: readonly DayGroup[];
+  /** Which run answers for each stretch of columns; empty hides the band. */
+  bands: readonly ModelBand[];
   /** The selected forecast column. */
-  index: number;
-  onSelect: (index: number) => void;
+  selected: number;
+  onSelect: (validTime: string) => void;
   /** Sunrise and sunset in the day row; off when there is no room for them. */
   showSun: boolean;
   /** The day's highest air temperature, by date, where a weather run reaches it. */
@@ -28,35 +46,46 @@ interface Props {
  * auto-scroll and the chart geometry from drifting apart.
  */
 export default function ForecastHeader({
-  manifest,
+  columns,
+  weights,
   point,
   days,
-  index,
+  bands,
+  selected,
   onSelect,
   showSun,
   dayMax,
 }: Props) {
-  const columnWidth = (column: number) => {
-    const frames = manifest.frames;
-    const interval = frames[column + 1]
-      ? frames[column + 1].hour - frames[column].hour
-      : frames[column].hour -
-        (frames[column - 1]?.hour ?? frames[column].hour - manifest.stepHours);
-    // Shared sizing for every model; six-hour intervals retain twice the space.
-    return `calc(var(--forecast-column-width) * ${Math.max(1, interval / 3)})`;
+  // Shared sizing for every model; six-hour intervals retain twice the space.
+  const columnWidth = (column: number) =>
+    `calc(var(--forecast-column-width) * ${weights[column] ?? 1})`;
+  /** This column's own cadence, in hours, from the columns either side of it. */
+  const stepHours = (at: number) => {
+    const gap = (from: number, to: number) =>
+      (Date.parse(columns[to].validTime) -
+        Date.parse(columns[from].validTime)) /
+      3600000;
+    return columns[at + 1]
+      ? gap(at, at + 1)
+      : columns[at - 1]
+        ? gap(at - 1, at)
+        : 3;
   };
   // Hourly sources would label every column; three-hourly ticks stay readable.
-  const labelled = (hour: number) => manifest.stepHours >= 3 || hour % 3 === 0;
+  // A three-hourly run labels them all, wherever its initialization falls.
+  const labelled = (at: number) =>
+    stepHours(at) >= 3 ||
+    new Date(columns[at].validTime).getUTCHours() % 3 === 0;
   // A day group's label is pinned and would otherwise set the group's width.
   // Capping it at the group's own width keeps the columns even and keeps one
   // day's label out of the next day's, while a label that fits stays as narrow
   // as its text so it slides out of view later. The group cell carries a
   // hairline divider, and separated table borders sit outside the cell's width.
-  const weights = columnWeights(manifest.frames, manifest.stepHours);
-  const groupWidth = (day: DayGroup) =>
+  const spanWidth = (start: number, count: number) =>
     `calc(var(--forecast-column-width) * ${weights
-      .slice(day.start, day.start + day.count)
+      .slice(start, start + count)
       .reduce((sum, weight) => sum + weight, 0)} - 1px)`;
+  const groupWidth = (day: DayGroup) => spanWidth(day.start, day.count);
   // A day group is as wide as its own content, so sun times on a one-column
   // group at the edge of a run would stretch that column. A partial day shows
   // its label only.
@@ -106,22 +135,43 @@ export default function ForecastHeader({
           );
         })}
       </tr>
-      <tr>
+      {/* Which run each stretch of the axis comes from. The dock's columns
+          outlive any one model, and the seam between two of them can show a
+          jump: the band makes it visible rather than hiding it. */}
+      {bands.length > 0 && (
+        <tr className="forecast-model-band">
+          <th scope="col" aria-label="Forecast model" />
+          {bands.map((band) => (
+            <th
+              key={`${band.model}-${band.start}`}
+              scope="colgroup"
+              colSpan={band.count}
+              data-band-model={band.model}
+            >
+              <span style={{ maxWidth: spanWidth(band.start, band.count) }}>
+                {band.label}
+                {BAND_NOTE[band.state] && <i> · {BAND_NOTE[band.state]}</i>}
+              </span>
+            </th>
+          ))}
+        </tr>
+      )}
+      <tr className="forecast-hours">
         <th scope="col">Hours</th>
-        {manifest.frames.map((frame, column) => (
+        {columns.map((column, at) => (
           <th
-            key={frame.hour}
+            key={column.validTime}
             scope="col"
-            className={index === column ? "selected-hour" : ""}
-            style={{ minWidth: columnWidth(column) }}
+            className={selected === at ? "selected-hour" : ""}
+            style={{ minWidth: columnWidth(at) }}
           >
             <button
-              data-forecast-index={column}
-              aria-label={`Show forecast ${dayLabel(frame.validTime)} ${timeLabel(frame.validTime)}`}
-              aria-pressed={index === column}
-              onClick={() => onSelect(column)}
+              data-forecast-index={at}
+              aria-label={`Show forecast ${dayLabel(column.validTime)} ${timeLabel(column.validTime)}`}
+              aria-pressed={selected === at}
+              onClick={() => onSelect(column.validTime)}
             >
-              {labelled(frame.hour) ? timeLabel(frame.validTime) : ""}
+              {labelled(at) ? timeLabel(column.validTime) : ""}
             </button>
           </th>
         ))}

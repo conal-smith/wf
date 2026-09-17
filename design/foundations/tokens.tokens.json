@@ -386,10 +386,7 @@
           "$description": "Everything that is read."
         },
         "display": {
-          "$value": [
-            "Manrope",
-            "sans-serif"
-          ],
+          "$value": ["Manrope", "sans-serif"],
           "$description": "The wordmark, and nothing else."
         }
       },
@@ -616,6 +613,10 @@
       "lg": {
         "$value": "46px",
         "$description": "Search, and the primary chrome pills."
+      },
+      "touch": {
+        "$value": "44px",
+        "$description": "The comfortable target on a finger. Not a paint size: it is the floor a hit area is padded out to on a coarse pointer."
       }
     }
   },
@@ -1344,6 +1345,23 @@
           }
         }
       },
+      "prose": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.lg}",
+          "fontWeight": "{ref.font.weight.regular}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.normal}"
+        },
+        "$description": "Body copy read at length, away from the map.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "Listing descriptions, form inputs, long-form paragraphs on content pages."
+          }
+        }
+      },
       "label": {
         "$type": "typography",
         "$value": {
@@ -1358,6 +1376,23 @@
           "com.multicode": {
             "role": "typography",
             "use": "Buttons, chips, segments."
+          }
+        }
+      },
+      "lead": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.sans}",
+          "fontSize": "{ref.font.size.xl}",
+          "fontWeight": "{ref.font.weight.semibold}",
+          "letterSpacing": "{ref.font.tracking.normal}",
+          "lineHeight": "{ref.font.leading.tight}"
+        },
+        "$description": "Louder than body, quieter than title: the one thing a card leads with.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "typography",
+            "use": "A listing price, a card title, a section heading. Several per view, one per card."
           }
         }
       },
@@ -1515,6 +1550,16 @@
           "com.multicode": {
             "role": "sizing",
             "use": "Search and the primary chrome pills."
+          }
+        }
+      },
+      "heightTouch": {
+        "$value": "{ref.control.touch}",
+        "$description": "The minimum target on a coarse pointer.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "sizing",
+            "use": "Menu rows, and the padded hit area of a 40px icon button on touch. The rule the system already states in prose, as a value a component can read."
           }
         }
       }

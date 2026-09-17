@@ -129,7 +129,7 @@ class AIFSBundleTests(unittest.TestCase):
         self.root = Path(self.temp.name)
 
     def bundle(self, hours=None):
-        directory = self.root / "weather/run"
+        directory = self.root / "weather/aifs-run"
         directory.mkdir(parents=True)
         run = datetime(2026, 9, 16, tzinfo=timezone.utc)
         hours = hours if hours is not None else list(range(0, 361, STEP))
@@ -141,11 +141,11 @@ class AIFSBundleTests(unittest.TestCase):
         for hour in hours:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
             manifest["frames"].append({"hour": hour, "validTime": valid,
-                                       "url": f"weather/run/{hour}.json",
+                                       "url": f"weather/aifs-run/{hour}.json",
                                        "gustIntervalHours": None})
             manifest["spotForecasts"]["brandon"].append(
                 {"hour": hour, "validTime": valid, "u": 1, "v": 2, "gust": None})
-            (self.root / f"weather/run/{hour}.json").write_text(json.dumps({
+            (self.root / f"weather/aifs-run/{hour}.json").write_text(json.dumps({
                 "model": MODEL, "run": "2026091600", "hour": hour, "validTime": valid,
                 "grid": manifest["grid"], "u": [1] * 4, "v": [2] * 4, "gust": None,
                 "gustIntervalHours": None}))
@@ -183,7 +183,7 @@ class AIFSBundleTests(unittest.TestCase):
     def test_a_gust_value_cannot_slip_into_a_gustless_product(self):
         manifest, now = self.bundle(hours=[0, 6])
         for change in ({"gust": [1] * 4}, {"gustIntervalHours": [0, 6]}):
-            path = self.root / "weather/run/6.json"
+            path = self.root / "weather/aifs-run/6.json"
             path.write_text(json.dumps({**json.loads(path.read_text()), **change}))
             with self.assertRaises(ValueError):
                 validate_bundle(self.root, MODEL, 12, now)

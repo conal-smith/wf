@@ -23,7 +23,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
 import io
-import json
 import os
 import re
 import sys
@@ -35,6 +34,7 @@ import zipfile
 import eccodes as ec
 import numpy as np
 
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import ROOT, get, sample, write_json
 from fetch_forecast import load_spots, spots_file
 from fetch_harmonie import (GEOMETRY, GRID, PORTAL, earth_vectors, inventory,
@@ -245,7 +245,7 @@ def main():
     run_time = cycle_time(run)
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     spots = load_spots()
-    print(f"Sampling {len(spots)} spots from {spots_file}", flush=True)
+    print(f"Sampling {len(spots)} spots from {spots_file()}", flush=True)
     mean_series = {spot["id"]: [] for spot in spots}
     member_series = {spot["id"]: [] for spot in spots}
     absent = [None] * len(members)
@@ -260,8 +260,7 @@ def main():
                 for field in ("u", "v")}
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid, "grid": GRID,
                    "gustIntervalHours": None, **mean, "gust": None}
-        name = f"{prefix}/{hour:03d}-{hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "gustIntervalHours": None})
         for spot in spots:
@@ -277,7 +276,8 @@ def main():
                 "provider": "Met Éireann", "modelDetail": "HARMONIE-AROME DINI ensemble members",
                 "resolutionKm": 2, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": GRID, "frames": frames, "spotForecasts": mean_series,
+                "grid": GRID, "encoding": FRAME_ENCODING, "frames": frames,
+                "spotForecasts": mean_series,
                 "spotMembers": member_series,
                 "ensemble": {"members": len(members), "control": 0,
                              "memberRuns": [cycle_time(member["run"]).isoformat().replace("+00:00", "Z")

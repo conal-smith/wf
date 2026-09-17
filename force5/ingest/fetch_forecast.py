@@ -7,7 +7,6 @@ import argparse
 import bz2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-import hashlib
 import json
 import math
 import os
@@ -19,6 +18,14 @@ from urllib.request import Request, urlopen
 
 import eccodes as ec
 import numpy as np
+
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from registry import PUBLISHED_RUN_ENV
+
+# The two answers `already_published` can give, which mean different things: the
+# first ends the job, the second only skips the download. Both are truthy.
+PUBLISHED_IN_BUCKET = "bucket"
+PUBLISHED_ON_DISK = "local"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path(os.environ.get("FORCE5_WORK_DIR", str(PROJECT_ROOT))).resolve()
@@ -190,6 +197,40 @@ def sample(grid, values, lon, lat):
                  (values[i+grid["width"]] * (1-tx) + values[i+grid["width"]+1] * tx) * ty, 2)
 
 
+def already_published(manifest, run, prefix):
+    """Where this exact run bundle already exists: PUBLISHED_IN_BUCKET, ON_DISK or False.
+
+    Raw downloads are not kept, so an importer that is scheduled more often than
+    its source publishes asks this first instead of downloading the run again.
+    A one-shot container has no previous output on disk, so the worker reads the
+    model's current manifest from the bucket and passes that run in
+    FORCE5_PUBLISHED_RUN.
+
+    The two answers are **not** interchangeable, and the caller must not collapse
+    them. Only the bucket's answer means "the public site already serves this run,
+    so there is nothing to do". Finding the run on disk means only that a previous
+    attempt got as far as writing it — the publish may have failed, and on a
+    persistent work directory (the local deployment, or `-v force5-work:/data`) the
+    bucket can still be serving an older run. That case must fall through to the
+    worker's validate-and-publish, exactly as it did before the bucket existed.
+
+    The bucket answer compares the run only, not `prefix`. A change to the object
+    prefix, member count or horizon therefore does not force an immediate
+    re-import: it lands with the source's next run, within one cycle. Pass `--run`
+    to re-import the current one at once.
+    """
+    if os.environ.get(PUBLISHED_RUN_ENV) == run:
+        return PUBLISHED_IN_BUCKET
+    try:
+        value = json.loads(manifest.read_text())
+    except (OSError, ValueError):
+        return False
+    frames = value.get("frames") or []
+    on_disk = (value.get("run") == run and bool(frames) and (manifest.parent / prefix).is_dir()
+               and all(str(frame.get("url", "")).startswith(f"weather/{prefix}/") for frame in frames))
+    return PUBLISHED_ON_DISK if on_disk else False
+
+
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
@@ -248,9 +289,7 @@ def main():
         payload = {"model": "icon-eu", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": gust_interval, **fields}
         # Hash makes every published frame immutable, including after a code correction.
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": gust_interval})
         for spot in spots:
             point = {field: sample(grid, fields[field], spot["lon"], spot["lat"]) for field in PARAMS}
@@ -259,7 +298,8 @@ def main():
     manifest = {"schemaVersion": 1, "model": "icon-eu", "modelName": "ICON-EU", "provider": "DWD",
                 "resolutionKm": 6.5, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": layout[2], "frames": frames, "spotForecasts": spot_forecasts,
+                "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+                "spotForecasts": spot_forecasts,
                 "sourceUrl": BASE + "/", "attribution": "Weather data: Deutscher Wetterdienst (DWD), modified and cropped by wingfoil.ie",
                 "licenseUrl": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"}
     # Only this final operation advances the published snapshot.

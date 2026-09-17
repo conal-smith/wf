@@ -1,0 +1,236 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Site menu - Force5</title>
+<link rel="stylesheet" href="../foundations/tokens.css" />
+<link rel="stylesheet" href="../surface/component.css" />
+<link rel="stylesheet" href="../button/component.css" />
+<link rel="stylesheet" href="component.css" />
+<style>
+  /* Demo scaffolding only. Nothing here is part of the component. */
+  body { margin: 0; font: 400 12px/1.5 "DM Sans", system-ui, sans-serif; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 700px) { .modes { grid-template-columns: 1fr; } }
+  .mode {
+    padding: 24px; min-height: 100vh;
+    background:
+      linear-gradient(135deg, #0000 0 49%, #ffffff14 50% 51%, #0000 52%),
+      var(--sem-color-bg-page);
+  }
+  .mode > h3 {
+    margin: 0 0 16px; text-transform: uppercase;
+    font: var(--sem-text-eyebrow-font-weight) var(--sem-text-eyebrow-font-size) /
+      var(--sem-text-eyebrow-line-height) var(--sem-text-eyebrow-font-family);
+    letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+    color: var(--sem-color-text-muted);
+  }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  .row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .cap {
+    font-size: var(--sem-text-caption-font-size);
+    color: var(--sem-color-text-muted); margin: 0 0 6px;
+  }
+  /* The panel is absolute; the demo reserves the room it would cover. */
+  .well { min-height: 150px; }
+  .is-hover.f5-button { background-color: var(--sem-color-action-quiet-hover); }
+  .is-focus.f5-button {
+    outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+    outline-offset: var(--sem-stroke-focus-offset);
+  }
+  .static .f5-site-menu__panel { position: static; animation: none; }
+</style>
+
+<div class="modes">
+  <section class="mode" data-mode="light">
+    <h3>Light</h3>
+    <div class="stack">
+      <div>
+        <p class="cap">Trigger &mdash; closed, open, hover, :focus-visible (last two forced)</p>
+        <div class="row">
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger is-hover"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger is-focus"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="well">
+        <p class="cap">Open, hanging from the trigger &mdash; the map row is current</p>
+        <div class="f5-site-menu">
+          <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                  type="button" aria-label="Site menu"
+                  aria-expanded="true" aria-controls="demo-panel-5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <nav class="f5-surface f5-site-menu__panel" id="demo-panel-5" aria-label="Site">
+            <ul class="f5-site-menu__list">
+              <li>
+                <a class="f5-button f5-site-menu__link" href="#" aria-current="page">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.8 4.4A2 2 0 1 1 11 8H2" />
+                  </svg>
+                  <span>Wind map</span>
+                </a>
+              </li>
+              <li>
+                <a class="f5-button f5-site-menu__link" href="#">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M4 9v10h16V9M2 7l2-4h16l2 4a3 3 0 0 1-5 2 3 3 0 0 1-5 0 3 3 0 0 1-5 0 3 3 0 0 1-5-2Z" />
+                  </svg>
+                  <span>Marketplace</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+      <div class="static">
+        <p class="cap">Rows &mdash; rest, hover, :focus-visible, aria-current (last three forced)</p>
+        <nav class="f5-surface f5-site-menu__panel" aria-label="Site rows">
+          <ul class="f5-site-menu__list">
+            <li><a class="f5-button f5-site-menu__link" href="#"><span>Wind map</span></a></li>
+            <li><a class="f5-button f5-site-menu__link is-hover" href="#"><span>Marketplace</span></a></li>
+            <li><a class="f5-button f5-site-menu__link is-focus" href="#"><span>Wind map</span></a></li>
+            <li><a class="f5-button f5-site-menu__link" href="#" aria-current="page"><span>Marketplace</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </section>
+
+  <section class="mode" data-mode="dark">
+    <h3>Dark</h3>
+    <div class="stack">
+      <div>
+        <p class="cap">Trigger &mdash; closed, open, hover, :focus-visible (last two forced)</p>
+        <div class="row">
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger is-hover"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+          <div class="f5-site-menu">
+            <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger is-focus"
+                    type="button" aria-label="Site menu"
+                    aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="well">
+        <p class="cap">Open, hanging from the trigger &mdash; the map row is current</p>
+        <div class="f5-site-menu">
+          <button class="f5-button f5-button--pill f5-button--icon f5-site-menu__trigger"
+                  type="button" aria-label="Site menu"
+                  aria-expanded="true" aria-controls="demo-panel-11">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <nav class="f5-surface f5-site-menu__panel" id="demo-panel-11" aria-label="Site">
+            <ul class="f5-site-menu__list">
+              <li>
+                <a class="f5-button f5-site-menu__link" href="#" aria-current="page">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.8 4.4A2 2 0 1 1 11 8H2" />
+                  </svg>
+                  <span>Wind map</span>
+                </a>
+              </li>
+              <li>
+                <a class="f5-button f5-site-menu__link" href="#">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M4 9v10h16V9M2 7l2-4h16l2 4a3 3 0 0 1-5 2 3 3 0 0 1-5 0 3 3 0 0 1-5 0 3 3 0 0 1-5-2Z" />
+                  </svg>
+                  <span>Marketplace</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+      <div class="static">
+        <p class="cap">Rows &mdash; rest, hover, :focus-visible, aria-current (last three forced)</p>
+        <nav class="f5-surface f5-site-menu__panel" aria-label="Site rows">
+          <ul class="f5-site-menu__list">
+            <li><a class="f5-button f5-site-menu__link" href="#"><span>Wind map</span></a></li>
+            <li><a class="f5-button f5-site-menu__link is-hover" href="#"><span>Marketplace</span></a></li>
+            <li><a class="f5-button f5-site-menu__link is-focus" href="#"><span>Wind map</span></a></li>
+            <li><a class="f5-button f5-site-menu__link" href="#" aria-current="page"><span>Marketplace</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </section>
+</div>

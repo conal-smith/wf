@@ -18,6 +18,9 @@
 !public/weather/**
 !package.json
 !package-lock.json
+# Marketplace API image (market/Dockerfile) builds from this same root context.
+!market/**
+market/api/dist
 !tsconfig.json
 !vite.config.ts
 !index.html
@@ -26,6 +29,10 @@
 !src/**
 !force5/src/**
 !force5/assets/**
+# The marketplace stylesheet imports the design system's tokens and component CSS.
+!design/
+!design/*/
+!design/*/*.css
 # Never build from a local install, build output, cache or credential file.
 **/node_modules
 dist

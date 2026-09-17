@@ -11,7 +11,17 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6. Real sample snapshots are included in `public/weather`: the regional forecasts cover 13–16 September 2026 and ECMWF extends to 28 September. Later generated run directories are git-ignored. Refresh to obtain a newer available run.
+Open **http://127.0.0.1:5173/** (or the port printed by Vite). Use the numeric address if another local application occupies `localhost` on IPv6.
+
+No forecast data is committed: `public/weather/` is generated and git-ignored. A clean clone therefore starts with no weather at all, and the site says so. Either refresh a real run (see [Refresh the forecast](#refresh-the-forecast)) or write the synthetic sample bundles:
+
+```sh
+npm run weather:sample
+```
+
+That writes nine bundles in exactly the published format — HARMONIE, ICON-EU, ECMWF, GFS, ARPEGE, AROME, AIFS, GFS-Wave and ICON-EU surface weather — carrying a smooth analytic field rather than a forecast, on a fixed sample calendar covering 13–28 September 2026. Every manifest says what it is in its provider and attribution ("Synthetic sample data for tests — not a forecast"), so it can never be mistaken for model output. The grids are rectangular (dx ≠ dy, as the real HARMONIE grid is), so a sampler that confused the two axes could not pass.
+
+The generator refuses to write into a `public/weather` that holds **anything** that looks like forecast data — any `*.json` manifest, or any run directory. A run directory with no manifest beside it is exactly what an interrupted import leaves, and dropping synthetic manifests next to it would both corrupt the site and make the ingest's prune treat the real runs as junk. Pass `--force` to replace what is there; even then it will not delete a run directory unless a manifest in the same directory claims it and says `provider: "Synthetic sample data"`. `--profile live` anchors the run times to the wall clock instead, and `--out <dir>` writes somewhere else entirely.
 
 Features:
 
@@ -36,6 +46,17 @@ Features:
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged). The public map and search show only 25 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
+
+## Marketplace
+
+`/market` is a free second-hand gear marketplace (listings with photos, seller
+profiles, contact reveal, star ratings and seller history) built as a separate
+package in [`market/`](market/README.md): a Hono API on Postgres with Clerk
+sign-in and S3-compatible photo storage, and React pages that consume the Force5
+design bundle. `src/main.tsx` lazy-loads it for `/market` URLs; the map bundle
+is otherwise untouched. Run it locally with `npm run market:api` and
+`VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
+`market/Dockerfile`. See the package README for the full runbook.
 
 ## Run it yourself on one machine
 
@@ -69,7 +90,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. The bucket is AWS S3 by default; add `--endpoint-url`/`S3_ENDPOINT_URL` (and the standard `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) to publish to **Cloudflare R2** instead, which is the intended deployment — the region defaults to `auto` when an endpoint is given. A publish deletes the objects the run it supersedes referenced, and `python force5/ingest/prune.py --bucket NAME --dry-run` sweeps what failed uploads left behind. See [the live pipeline document](docs/LIVE_FORECAST_PIPELINE.md#cloudflare-r2-and-one-shot-batch-containers); no R2 bucket has been created or verified yet. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -98,10 +119,38 @@ The importer:
 3. Downloads at most four files concurrently with timeouts/retries into `.cache/grib`.
 4. Uses ecCodes to decode GRIB2. Checks parameter, level, units, initialization, valid time, projection, vector orientation, scanning geometry and value ranges. Normalises ecCodes time units to hours.
 5. Crops an Ireland/Atlantic buffer (18° W–2° E, 48°–59° N), retaining the source 0.0625° grid. Rows are north-to-south, columns west-to-east.
-6. Publishes content-hashed JSON frames and precomputed spot time series.
+6. Publishes content-hashed binary frames and precomputed spot time series.
 7. Atomically replaces `public/weather/latest.json` only after all requested frames pass validation.
 
-Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the current cropped JSON snapshot is roughly 22 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the cropped snapshot is roughly 8 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+
+#### The frame file
+
+A **wind** map frame is `HHH-<hash>.bin` in the "F5 int16" encoding: a 24-byte
+header (magic, version, block count, width, height, scale, forecast hour and the
+run as `YYYYMMDDHH`) followed by one little-endian int16 block per variable —
+`u`, `v` and, where the model has it, `gust` — holding tenths of a metre per
+second, delta-encoded along each row with wrapping arithmetic. A HARMONIE step is
+about 71 KB brotli-compressed against the 225 KB its gzipped JSON cost, and the
+display rounds to whole knots, so nothing visible is lost. The job writes
+`name.bin.br` and `name.bin.gz` beside each frame for the local Caddy
+deployment; the bucket stores one encoding per object instead.
+
+The manifest declares it with `"encoding": "f5-int16-v1"`. A manifest without an
+`encoding` field has JSON frames, which the browser still reads. **Wave and
+weather frames are JSON**, and per-spot series keep their full 0.01 m/s
+precision: every adapter samples the source field, not the frame it publishes.
+
+The one exception is `backfill_spots.py`, which adds a series for a newly
+listed spot to a run whose source data is long gone, so it has only the
+published frames to resample. Such a series can sit up to 0.06 m/s — under a
+tenth of a knot — from what a fresh ingest would have produced, and the next
+run replaces it with the exact one.
+
+The format is specified in `force5/ingest/f5bin.py`, read by
+`force5/src/f5bin.ts` in the browser and by `scripts/f5bin.mjs` in Node; all
+three are pinned to one golden file (`tests/fixtures/f5bin/`) that the Python and
+the Vitest suites each decode.
 
 ### ICON-EU surface weather refresh
 
@@ -167,9 +216,10 @@ about 1.2 MB a frame — while `spotSeries` carries every variable at every hour
 
 A measured live run (18 UTC on 16 September 2026, cold cache, default 0–72 h): **67
 seconds**, 301 MB of bz2 GRIB in 325 files, 25 frames totalling 30.3 MB (1.19–1.27 MB
-each) and a 156 KB manifest. The bundled acceptance snapshot is the same run through
-+3 h: 2 frames, 2.4 MB, with a 17 KB manifest. Brandon Bay from that run: 15.6 °C with
-97 % cloud and 1016.8 hPa at 18 UTC, then 0.6 mm of rain in 18–21 UTC (`ww` 61, rain)
+each) and a 156 KB manifest. No snapshot is committed; the acceptance bundle the
+tests read is the synthetic one in `tests/fixtures/weather`, the same run hours
+(18 UTC through +3 h) with sample values. Brandon Bay from the measured live run:
+15.6 °C with 97 % cloud and 1016.8 hPa at 18 UTC, then 0.6 mm of rain in 18–21 UTC (`ww` 61, rain)
 at 16.0 °C and 1014.6 hPa, 0.5 mm more by midnight with `ww` 80 (showers), and a drier
 14.2 °C at 03 UTC with 63 % cloud and 1012.9 hPa.
 
@@ -230,8 +280,8 @@ time and value ranges for every message.
 `gustKind: "instantaneous"` with `gustIntervalHours: [hour, hour]` on every
 frame, initialization included, and no `gustMissingHours`. Instantaneous gusts
 read lower than an interval maximum covering the same time; do not compare them
-with ICON-EU or ECMWF gusts. The bundled acceptance snapshot is 16 September
-2026 at 12 UTC through +120 h: 41 frames, approximately 2.4 MB.
+with ICON-EU or ECMWF gusts. No snapshot is committed; the sample bundle the
+tests read is 16 September 2026 at 06 UTC through +24 h.
 
 ### GFS-Wave refresh
 
@@ -300,9 +350,9 @@ more are land-masked but take values from the resolved water beside them, which
 describes the nearby open sea rather than the shoreline. This is a 9 km global wave
 model: no breaking waves, no refraction round a headland, no idea a bay is sheltered.
 
-The bundled acceptance snapshot is 16 September 2026 at 18 UTC through +9 h: 4 frames,
-approximately 2.2 MB. Wave frames carry nine arrays over 12,221 cells, about 560 KB
-each, so a full 240-hour run is roughly 45 MB and is generated locally, not committed.
+No snapshot is committed; the sample bundle the tests read is 16 September 2026 at
+18 UTC through +9 h, 4 frames on a coarse grid. Wave frames carry nine arrays over
+12,221 cells, about 560 KB each, so a full 240-hour run is roughly 45 MB.
 
 ### Tide refresh
 
@@ -706,8 +756,8 @@ Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
 transferred in 1,236 requests (1,130 of them 1 KB header reads), 32 seconds** wall
 time with three concurrent package walks, publishing 35 frames (12 MB of JSON) and a
 76 kB manifest for 25 locations. Brandon Bay read 18.2 kn at initialization, 20.1 kn
-gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. The bundled acceptance
-snapshot is the same run through +12 h: 5 frames, 1.72 MB.
+gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. No snapshot is
+committed; the sample bundle the tests read is a 12 UTC run through +12 h, 5 frames.
 
 ### AROME refresh
 
@@ -1054,7 +1104,9 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests start the production preview on port 4173. They use the real map/data, so they require internet for OpenFreeMap. Tests cover time/units/point inspection, particles, mobile search, failed-frame recovery, missing and expired snapshots, reduced motion, and unavailable basemaps. Screenshots and failure traces go into ignored `test-results/`.
+`npm test` and `npm run test:weather` need nothing downloaded: the bundles they read are the small synthetic ones committed under `tests/fixtures/weather/`, written by `npm run weather:fixtures` (`scripts/sample-weather.mjs`). Regenerate them after changing the generator and re-run both suites; they are deterministic, so an unchanged generator rewrites the same bytes.
+
+Browser tests start a preview on port 4173 (`PREVIEW_PORT` overrides it, so several worktrees can run at once) — but not of `dist`. The suite never reads or writes `public/weather`, which in a working checkout holds real ingest output. `scripts/e2e-site.mjs` stages a site of its own under the git-ignored `.e2e/`: the committed files from `public/`, plus freshly generated synthetic sample bundles as `.e2e/public/weather`. `vite.config.ts` then points `publicDir` and `build.outDir` at that tree whenever `E2E_SITE` is set, so `public/weather` is not opened anywhere in the build, and the specs read their expectations from the same staged manifests (`e2e/sample.ts`). Every test also runs at a fixed clock inside the sample calendar (`e2e/fixtures.ts`), so the suite gives the same answers whatever day it is run; a test that needs another moment sets one itself. The tests use the real map, so they require internet for OpenFreeMap. They cover time/units/point inspection, particles, mobile search, failed-frame recovery, missing and expired snapshots, reduced motion, and unavailable basemaps. Screenshots and failure traces go into ignored `test-results/`.
 
 ```sh
 npm run preview
@@ -1132,10 +1184,10 @@ All numeric U/V/gust arrays are in m/s and rounded to 0.01 m/s. `grid` specifies
 `FORCE5_SPOTS_FILE`, defaulting to that file and falling back to `spots.json` with a
 printed warning when it is absent. Regenerate it with `npm run spots:export` after
 changing `src/locations.ts` or `data/locations/`; the original eight ids and
-coordinates are asserted unchanged, because bundled snapshots refer to those points.
-The bundled snapshots predate the change and were published with only the original
-eight; their remaining series were recomputed from their own frames by
-`force5/ingest/backfill_spots.py`, so every bundled manifest now carries all 25.
+coordinates are asserted unchanged, because published manifests refer to those points.
+Runs published before the change carried only the original eight; their remaining
+series were recomputed from their own frames by `force5/ingest/backfill_spots.py`, so
+every manifest now carries all 25, and the sample bundles do too.
 
 ### Optional manifest fields
 

@@ -1,20 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { readBundle, readFrame, readWindFrame } from "./bundles";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
-import type { Spot } from "../force5/src/weather";
+import type { Manifest, Spot } from "../force5/src/weather";
+import { F5_ENCODING } from "../force5/src/f5bin";
 import {
   validateWaveManifest,
   waveCoverageNote,
   waveHours,
   type WaveManifest,
 } from "../force5/src/waves";
+import {
+  validateWeatherManifest,
+  weatherFields,
+  weatherHours,
+  type WeatherManifest,
+} from "../force5/src/surface";
 
 /**
- * Every bundled manifest carries a series for every riding place. Runs published
- * before `riding-locations.json` existed held only the original eight; their
- * series were recomputed from their own frames by
- * `force5/ingest/backfill_spots.py`, so there is no longer a partial snapshot and
- * the blend is available everywhere the map offers a spot.
+ * A whole published bundle, end to end: every frame file agrees with its
+ * manifest, and every precomputed spot summary agrees with the grid it came
+ * from. The data is synthetic (tests/fixtures/weather, written by
+ * scripts/sample-weather.mjs) because no forecast output is committed, but it is
+ * in exactly the published format, so this is the check that the format hangs
+ * together — a series that drifted from its frames would fail here.
+ *
+ * Every manifest carries a series for every riding place. Runs published before
+ * `riding-locations.json` existed held only the original eight; their series
+ * were recomputed from their own frames by `force5/ingest/backfill_spots.py`, so
+ * there is no longer a partial snapshot and the blend is available everywhere
+ * the map offers a spot.
  */
 const places: Spot[] = JSON.parse(
   readFileSync("public/riding-locations.json", "utf8"),
@@ -25,21 +40,20 @@ const originalIds: string[] = JSON.parse(
 ).map((spot: Spot) => spot.id);
 
 describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
-  "downloaded real %s forecast snapshot",
+  "published %s wind bundle",
   (name) => {
     it("all files match the manifest and all spot summaries match their wind grid", () => {
-      const m = validateManifest(
-        JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8")),
-      );
+      const m = validateManifest(readBundle<Manifest>(name));
+      // A binary frame stores tenths of a metre per second while the spot series
+      // beside it is the full-precision value rounded to hundredths, so the two
+      // may differ by the quantisation (0.05) plus both roundings. See
+      // force5/ingest/f5bin.py and backfill_spots.py, which allows the same.
+      const limit = m.encoding === F5_ENCODING ? 0.06 : 0.00501;
       // Exactly the published catalogue: no riding place missing, none invented.
       expect(Object.keys(m.spotForecasts).sort()).toEqual([...placeIds].sort());
       for (const id of originalIds) expect(m.spotForecasts[id]).toBeTruthy();
       m.frames.forEach((info, i) => {
-        const frame = validateFrame(
-          JSON.parse(readFileSync(`public/${info.url}`, "utf8")),
-          m,
-          info,
-        );
+        const frame = validateFrame(readWindFrame(m, info), m, info);
         for (const spot of places) {
           const wind = sample(frame, spot.lon, spot.lat)!;
           const summary = m.spotForecasts[spot.id][i];
@@ -50,7 +64,7 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
             expect(typeof summary[field]).toBe("number");
             expect(
               Math.abs(wind[field]! - summary[field]!),
-            ).toBeLessThanOrEqual(0.00501);
+            ).toBeLessThanOrEqual(limit);
           }
           // A null gust is only ever a declared absence, never a quiet gap.
           if (wind.gust === null || summary.gust === null) {
@@ -62,9 +76,7 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
             ).toBeTruthy();
             continue;
           }
-          expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(
-            0.00501,
-          );
+          expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(limit);
         }
       });
     });
@@ -76,8 +88,8 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
  * not `u`/`v`/`gust` with gust intervals, so they have their own contract and
  * their own validator: `validateWaveManifest`, which the browser now runs on
  * every wave bundle it loads. That covers the manifest; this block adds what
- * only a bundled snapshot can check, which is that the committed frame files
- * agree with the manifest and that every spot series matches its own grid.
+ * only a whole bundle can check, which is that the frame files agree with the
+ * manifest and that every spot series matches its own grid.
  */
 type WaveGrid = NonNullable<WaveManifest["grid"]>;
 type WaveValues = (number | null)[];
@@ -108,15 +120,11 @@ function sampleWave(
   return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
 }
 
-describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
+describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
   it("every frame matches the manifest and every spot series matches the frames", () => {
     // The shared validator owns the contract: version, kind, the variable map,
     // the frame list, the declared horizon and the shape of every spot series.
-    const m = validateWaveManifest(
-      JSON.parse(
-        readFileSync(`public/weather/${name}.json`, "utf8"),
-      ) as WaveManifest,
-    );
+    const m = validateWaveManifest(readBundle<WaveManifest>(name));
     expect(m.model).toBe(name);
     expect([1, 3]).toContain(m.stepHours);
     expect(m.stepRanges).toBeUndefined();
@@ -164,7 +172,7 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
         expect(
           info.url.startsWith("weather/") && !info.url.includes(".."),
         ).toBe(true);
-        const frame = JSON.parse(readFileSync(`public/${info.url}`, "utf8"));
+        const frame = readFrame<Record<string, WaveValues>>(info.url);
         expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
           m.model,
           m.run,
@@ -203,5 +211,119 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
         }
       },
     );
+  });
+});
+
+/**
+ * The surface-weather bundle, the same way round: every gridded variable's spot
+ * series has to agree with the frames it was taken from.
+ *
+ * Two kinds of variable, and they are read differently on purpose. A measurement
+ * is interpolated bilinearly, like wind and waves. A present-weather code is a
+ * code-table entry — a mean of "fog" and "rain" is nothing at all — so it is
+ * read from the cell containing the location and compared for equality, which is
+ * what the manifest's own `presentWeatherNote` promises and what
+ * `sample_variable` in force5/ingest/fetch_icon_weather.py does.
+ *
+ * The tolerance for a measurement is wider than the wind bundle's 0.005 because
+ * a surface variable is published at its own precision: cloud in whole per cent,
+ * temperature in tenths. The frame nodes are rounded to that precision and so is
+ * the series, and bilinear interpolation carries the nodes' rounding through
+ * unchanged, so the two can differ by one published step and no more.
+ */
+const decimalsOf = (value: number) =>
+  (String(value).split(".")[1] ?? "").length;
+
+describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
+  it("every frame matches the manifest and every spot series matches the frames", () => {
+    const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
+    expect(m.model).toBe(name);
+    expect(m.provider).toBe("Synthetic sample data");
+    expect(weatherHours(m)).toEqual(m.frames.map((frame) => frame.hour));
+    expect(Object.keys(m.spotSeries).sort()).toEqual([...placeIds].sort());
+
+    const g = m.grid!;
+    expect(Math.abs(g.east - g.west - (g.width - 1) * g.dx)).toBeLessThan(1e-5);
+    expect(Math.abs(g.north - g.south - (g.height - 1) * g.dy)).toBeLessThan(
+      1e-5,
+    );
+    // A square grid would let a sampler divide longitude by dy and still pass.
+    expect(g.dx).not.toBe(g.dy);
+    const cells = g.width * g.height;
+
+    const gridded = m.frameVariables!;
+    expect(gridded.length).toBeGreaterThan(0);
+    const codes = new Set(
+      Object.entries(m.variables)
+        .filter(([, meta]) => meta.kind === "code")
+        .map(([key]) => key),
+    );
+    expect(gridded.some((key) => codes.has(key))).toBe(true);
+
+    expect(m.frames.length).toBeGreaterThan(0);
+    m.frames.forEach((info, i) => {
+      const frame = readFrame<Record<string, (number | null)[]>>(info.url);
+      expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
+        m.model,
+        m.run,
+        info.hour,
+        info.validTime,
+      ]);
+      expect(frame.grid).toEqual(g);
+      for (const key of gridded) expect(frame[key]).toHaveLength(cells);
+      for (const place of places) {
+        const step = m.spotSeries[place.id][i];
+        expect(step.validTime).toBe(info.validTime);
+        for (const key of gridded) {
+          const values = frame[key];
+          const summary = step.values[key];
+          if (codes.has(key)) {
+            // The containing cell: the nearest node on each axis, no blending.
+            const x = Math.round((place.lon - g.west) / g.dx);
+            const y = Math.round((g.north - place.lat) / g.dy);
+            expect(summary).toBe(values[y * g.width + x]);
+            continue;
+          }
+          const point = sampleWave(g, values, place.lon, place.lat);
+          if (point === null || summary === null) {
+            expect(point).toBeNull();
+            expect(summary).toBeNull();
+            continue;
+          }
+          const step10 =
+            10 **
+            -Math.max(
+              ...values.map((value) =>
+                value === null ? 0 : decimalsOf(value),
+              ),
+              decimalsOf(summary),
+            );
+          expect(Math.abs(point - summary)).toBeLessThanOrEqual(
+            step10 + 0.00501,
+          );
+        }
+      }
+    });
+  });
+
+  it("publishes a real zero, and rain that is not one flat sheet", () => {
+    const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
+    const cloud = weatherFields(m).cloud!;
+    const rain = weatherFields(m).rain!;
+    const frames = m.frames.map((info) =>
+      readFrame<Record<string, (number | null)[]>>(info.url),
+    );
+    // Zero cloud is a value, not a gap: somewhere in the field the sky is clear.
+    expect(frames.some((frame) => frame[cloud].includes(0))).toBe(true);
+    // And rain varies across the map rather than being one scalar per frame.
+    const spread = frames
+      .map((frame) => frame[rain].filter((value) => value !== null))
+      .filter((values) => values.length)
+      .map(
+        (values) =>
+          Math.max(...(values as number[])) - Math.min(...(values as number[])),
+      );
+    expect(spread.length).toBeGreaterThan(0);
+    expect(spread.every((range) => range > 0)).toBe(true);
   });
 });

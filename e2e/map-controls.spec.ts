@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("glyph rows and map dropdown replace the bottom toolbar, with keyboard dismissal and linked credits", async ({
   page,

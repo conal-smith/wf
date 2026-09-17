@@ -1,0 +1,21 @@
+# SPA fallback, for static hosts that read this file (Cloudflare Pages, Netlify).
+#
+# `src/main.tsx` reads the pathname and mounts the wind map or the marketplace,
+# so /market, /market/sell and /market/listing/:id are real URLs with no file
+# behind them. A host that 404s them breaks every direct load, refresh and
+# shared link into the marketplace.
+#
+# These two rules are exactly what that entry point branches on, and nothing
+# else. A blanket /* rule would be wrong here: this origin also serves the
+# ingest output under /weather and /marine, and every loader in the product
+# gates on `!response.ok` and then parses what it got — a missing snapshot
+# (src/App.tsx), a pruned frame (force5/src/weather.ts), a model that has not
+# published yet (force5/src/manifests.ts, where 404 is a normal state) and an
+# API call (market/web/api.ts). Answering 200 with an HTML body turns each of
+# those actionable messages into a parse error. deploy/local/Caddyfile keeps
+# /weather/* and /marine/* out of its `try_files` for the same reason.
+#
+# Hosts that do not read this file ignore it: `vite preview` has the fallback
+# built in, and the Caddyfile does it with `try_files {path} /index.html`.
+/market      /index.html  200
+/market/*    /index.html  200

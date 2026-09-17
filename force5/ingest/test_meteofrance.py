@@ -506,21 +506,39 @@ class PublisherAcceptanceTest(unittest.TestCase):
 
 
 class BundledSnapshotTest(unittest.TestCase):
-    """The committed ARPEGE acceptance snapshot must stay self-consistent."""
+    """The committed ARPEGE-shaped sample bundle must stay self-consistent.
+
+    No forecast output is committed (.gitignore: public/weather/), so the bundle
+    read here is the synthetic one in tests/fixtures/weather, written by
+    scripts/sample-weather.mjs and shared with the browser test suite. It is in
+    exactly the published format, which is the point: an ARPEGE bundle that the
+    publisher would refuse — a misordered frame, a gust interval that does not
+    match its frame file, a spot missing from the catalogue — fails here.
+    """
 
     def test_the_repository_snapshot_validates(self):
-        public = Path(meteofrance.__file__).resolve().parents[2] / "public"
+        root = Path(meteofrance.__file__).resolve().parents[2]
+        bundles = root / "tests" / "fixtures"
         manifest, _, objects = validate_bundle(
-            public, "arpege", 12, now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
+            bundles, "arpege", 12, now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
         self.assertEqual(manifest["stepHours"], 3)
         self.assertEqual(len(objects), len(manifest["frames"]))
-        self.assertEqual(manifest["grid"]["width"], 201)
-        self.assertEqual(manifest["grid"]["height"], 111)
+        # The real crop is 201 x 111 cells of 0.05°; the sample bundle is coarse
+        # on purpose and rectangular on purpose (dx != dy, as the real HARMONIE
+        # grid is), so the shape is stated outright. Re-deriving it from the
+        # bundle's own bounds and spacing would assert only that arithmetic is
+        # arithmetic, and would pass whatever grid the generator wrote.
+        self.assertEqual(manifest["grid"], {
+            "width": 13, "height": 14, "west": -11.0, "east": -5.0, "north": 56.0,
+            "south": 50.8, "dx": 0.5, "dy": 0.4,
+            "order": "north-to-south, west-to-east"})
         self.assertEqual(manifest["gustMissingHours"], [0])
         self.assertIsNone(manifest["frames"][0]["gustIntervalHours"])
         self.assertEqual(manifest["frames"][1]["gustIntervalHours"], [2, 3])
-        self.assertIn("Etalab", manifest["attribution"])
-        spots = json.loads((public / "riding-locations.json").read_text())
+        # The real bundle credits Météo-France under Etalab; a sample bundle must
+        # never claim a source, and says so where the attribution would be.
+        self.assertIn("not a forecast", manifest["attribution"])
+        spots = json.loads((root / "public" / "riding-locations.json").read_text())
         self.assertEqual(sorted(manifest["spotForecasts"]), sorted(s["id"] for s in spots))
 
 

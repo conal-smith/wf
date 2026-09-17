@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import backfill_spots
 from backfill_spots import backfill, main
+import f5bin
 from fetch_forecast import sample, write_json
 
 RUN = "2026091612"
@@ -43,7 +44,7 @@ class Bundle:
     """A published wind snapshot on disk: a manifest and the frames it references."""
 
     def __init__(self, root, model="gfs", gust_available=True, missing_gust_hours=(),
-                 published=("kept",), **extra):
+                 published=("kept",), encoding=None, **extra):
         self.public = Path(root) / "public"
         self.model = model
         self.path = self.public / "weather" / f"{model}.json"
@@ -55,10 +56,17 @@ class Bundle:
             interval = None if gust is None else [hour, hour]
             frame = {"model": model, "run": RUN, "hour": hour, "validTime": valid_time(hour),
                      "grid": GRID, "gustIntervalHours": interval, **self.values[hour]}
-            url = f"weather/{model}-{RUN}-3h-v1/{hour:03d}-frame{index}.json"
-            write_json(self.public / url, frame)
+            # A binary frame is content-addressed, exactly as publish_frame names
+            # it: the reader checks the name against the bytes, so a fixture that
+            # invented a name would be refused.
+            name = (f5bin.basename(hour, f5bin.encode_frame(frame)) if encoding
+                    else f"{hour:03d}-frame{index}.json")
+            url = f"weather/{model}-{RUN}-3h-v1/{name}"
+            self.write_frame(self.public / url, frame, encoding)
             frames.append({"hour": hour, "validTime": valid_time(hour), "url": url,
                            "gustIntervalHours": interval})
+        if encoding:
+            extra = {"encoding": encoding, **extra}
         self.manifest = {
             "schemaVersion": 1, "model": model, "modelName": model.upper(), "provider": "Test",
             "run": RUN, "runTime": RUN_TIME.isoformat().replace("+00:00", "Z"),
@@ -71,6 +79,13 @@ class Bundle:
         if missing_gust_hours:
             self.manifest["gustMissingHours"] = list(missing_gust_hours)
         self.write()
+
+    @staticmethod
+    def write_frame(path, frame, encoding):
+        if not encoding:
+            return write_json(path, frame)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(f5bin.encode_frame(frame))
 
     def write(self):
         write_json(self.path, self.manifest)
@@ -292,6 +307,110 @@ class BackfillTests(unittest.TestCase):
         self.assertEqual(self.backfill(bundle), [])
         self.assertEqual(bundle.bytes(), before)
         self.assertIn("no frames are bundled", " ".join(self.log))
+
+
+class BinaryBackfillTests(unittest.TestCase):
+    """The same job over F5 int16 frames, which are lossier than the series they check."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.log = []
+
+    def bundle(self, **kwargs):
+        return Bundle(self.root, encoding=f5bin.ENCODING, **kwargs)
+
+    def backfill(self, bundle, **kwargs):
+        return backfill(bundle.public, bundle.model, SPOTS, log=self.log.append, **kwargs)
+
+    def test_missing_spots_are_added_from_the_decoded_frames(self):
+        bundle = self.bundle()
+        self.assertEqual(self.backfill(bundle), ["added", "offgrid"])
+        series = bundle.read()["spotForecasts"]
+        for spot in SPOTS[:2]:
+            for index, hour in enumerate(HOURS):
+                entry = series[spot["id"]][index]
+                self.assertEqual((entry["hour"], entry["validTime"]), (hour, valid_time(hour)))
+                for name in ("u", "v", "gust"):
+                    exact = sample(GRID, bundle.values[hour][name], spot["lon"], spot["lat"])
+                    # Recomputed from tenths, so near the exact value but not on it.
+                    self.assertLessEqual(abs(entry[name] - exact),
+                                         backfill_spots.BINARY_TOLERANCE,
+                                         f"{spot['id']} {name} +{hour}h")
+
+    def test_the_quantisation_alone_is_not_a_disagreement(self):
+        """The published series is full precision; the frames are tenths. That is fine.
+
+        The fixture's fields are multiples of 0.25, so every other value is exactly
+        0.05 from its stored tenth: the worst case the tolerance is sized for.
+        """
+        bundle = self.bundle(published=("kept", "added", "offgrid"))
+        self.assertEqual(self.backfill(bundle), [])
+        self.assertIn("3 published series verified", " ".join(self.log))
+        # The JSON tolerance would have called the same bundle corrupt.
+        with patch.object(backfill_spots, "BINARY_TOLERANCE", backfill_spots.TOLERANCE):
+            with self.assertRaises(ValueError) as caught:
+                self.backfill(bundle)
+        self.assertIn("disagree with the published spotForecasts", str(caught.exception))
+
+    def test_a_real_disagreement_is_still_caught(self):
+        bundle = self.bundle()
+        published = bundle.manifest["spotForecasts"]["kept"]
+        published[1]["u"] = published[1]["u"] + 1.0
+        bundle.write()
+        with self.assertRaises(ValueError) as caught:
+            self.backfill(bundle)
+        self.assertIn("kept +3h u", str(caught.exception))
+
+    def test_a_frame_from_another_run_or_hour_is_a_fault(self):
+        for change in ({"run": "2026091600"}, {"hour": 9}):
+            with self.subTest(**change):
+                bundle = self.bundle()
+                url = bundle.manifest["frames"][1]["url"]
+                frame = {"model": bundle.model, "run": RUN, "hour": HOURS[1],
+                         "grid": GRID, **bundle.values[HOURS[1]], **change}
+                (bundle.public / url).write_bytes(f5bin.encode_frame(frame))
+                with self.assertRaises(ValueError) as caught:
+                    self.backfill(bundle)
+                self.assertIn("is not the frame the manifest lists", str(caught.exception))
+
+    def test_a_frame_under_another_models_directory_is_a_fault(self):
+        """A binary frame carries no model, so the run directory has to say who owns it."""
+        bundle = self.bundle()
+        info = bundle.manifest["frames"][1]
+        moved = f"weather/icon-eu-{RUN}-3h-v1/{Path(info['url']).name}"
+        (bundle.public / moved).parent.mkdir(parents=True, exist_ok=True)
+        (bundle.public / moved).write_bytes((bundle.public / info["url"]).read_bytes())
+        info["url"] = moved
+        bundle.write()
+        with self.assertRaises(ValueError) as caught:
+            self.backfill(bundle)
+        self.assertIn(f"is not named for {bundle.model}", str(caught.exception))
+
+    def test_a_frame_whose_bytes_are_not_its_name_is_a_fault(self):
+        """The name is the hash, so a frame swapped for another of the same shape shows."""
+        bundle = self.bundle()
+        info = bundle.manifest["frames"][1]
+        swapped = dict(bundle.values[HOURS[1]], u=[9.0] * (GRID["width"] * GRID["height"]))
+        (bundle.public / info["url"]).write_bytes(f5bin.encode_frame(
+            {"model": bundle.model, "run": RUN, "hour": HOURS[1], "grid": GRID, **swapped}))
+        with self.assertRaises(ValueError) as caught:
+            self.backfill(bundle)
+        self.assertIn("does not hold the frame its name claims", str(caught.exception))
+
+    def test_an_unreadable_encoding_is_refused(self):
+        bundle = self.bundle()
+        bundle.manifest["encoding"] = "f5-int16-v2"
+        bundle.write()
+        with self.assertRaises(ValueError):
+            self.backfill(bundle)
+
+    def test_unavailable_gusts_stay_null_over_binary_frames_too(self):
+        bundle = self.bundle(gust_available=False)
+        self.assertEqual(self.backfill(bundle), ["added", "offgrid"])
+        for series in bundle.read()["spotForecasts"].values():
+            self.assertEqual([entry["gust"] for entry in series], [None] * len(HOURS))
 
 
 class WaveBackfillTests(unittest.TestCase):
