@@ -1,10 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test, type Page } from "./fixtures";
+import { readSample } from "./sample";
 
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
-const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
+const harmonie = readSample("harmonie");
+const ecmwf = readSample("ecmwf");
 
 /** Where the Now line sits relative to the centres of two named columns. */
 async function relativePosition(page: Page, columns: [number, number]) {
@@ -36,12 +34,12 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   const line = page.getByRole("img", { name: /^Now:/ });
   await expect(line).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  // HARMONIE is hourly and ECMWF's five earlier columns come first, so +7 h is
-  // column twelve, and that is where the opening selection lands.
-  await expect(slider).toHaveValue("12");
+  // HARMONIE already covers now, so the axis opens on its own first hour and
+  // +7 h is column seven, which is where the opening selection lands.
+  await expect(slider).toHaveValue("7");
   await expect
     .poll(async () => {
-      const p = await relativePosition(page, [12, 13]);
+      const p = await relativePosition(page, [7, 8]);
       return Math.abs(p.line - (p.a + p.b) / 2);
     })
     .toBeLessThan(1);
@@ -85,7 +83,7 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   // that column's centre however the dock is resized around it.
   await expect
     .poll(async () => {
-      const p = await relativePosition(page, [13, 14]);
+      const p = await relativePosition(page, [8, 9]);
       return Math.abs(p.line - p.a);
     })
     .toBeLessThan(1);

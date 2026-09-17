@@ -85,9 +85,15 @@ interface Candidate {
  * two runs, because a third source would put two joins in a row where the
  * reader can least tell one model from the next.
  *
- * The head matters: a run published on the hour covers nothing before it, so an
- * axis that began at the finest run's first frame could begin in the future,
- * with no column for now and no Now line at all.
+ * There is a head only when the near run does not yet cover now. A run is
+ * published on the hour and covers nothing before it, so a finest run that has
+ * only just landed would give an axis beginning in the future, with no column
+ * for now and no Now line at all; in that case the long-range run fills the gap,
+ * from the last time it publishes at or before now up to the near run's first.
+ * Every other time — which in production is nearly always, HARMONIE's run having
+ * started a couple of hours ago while ECMWF's started at 00 or 12 UTC — the axis
+ * starts at the near run's first time, so the reader crosses one seam and not
+ * two.
  *
  * A model counts unless its run has **expired** — its last forecast time is
  * already behind us. The eighteen-hour "stale" mark deliberately does not
@@ -138,8 +144,18 @@ export function dockColumns(
       : far.times
           .filter((validTime) => keep(Date.parse(validTime)))
           .map((validTime) => ({ validTime, model: far.id }));
+  // The head starts at the last long-range time the clock has already passed,
+  // which is the column the Now line needs; everything earlier is yesterday.
+  const headStart =
+    near.first > now
+      ? far.times.reduce(
+          (start, validTime) =>
+            Date.parse(validTime) <= now ? Date.parse(validTime) : start,
+          -Infinity,
+        )
+      : Infinity;
   return [
-    ...outside((time) => time < near.first),
+    ...outside((time) => time >= headStart && time < near.first),
     ...near.times.map((validTime) => ({ validTime, model: near.id })),
     ...outside((time) => time > near.last),
   ];

@@ -63,9 +63,9 @@ describe("interpolating the published series", () => {
     expect(values.speed.every((value) => value !== null)).toBe(true);
     expect(values.gust.every((value) => value === null)).toBe(true);
     // HARMONIE publishes every hour, so every axis hour is a published one:
-    // 13 September 14:00 is u 4.24, v -6.03 and nothing is interpolated.
+    // 13 September 14:00 is u 4.28, v -6.00 and nothing is interpolated.
     expect(values.speed[axis.indexOf("2026-09-13T14:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(4.24, -6.03),
+      Math.hypot(4.28, -6.0),
       10,
     );
   });
@@ -74,15 +74,15 @@ describe("interpolating the published series", () => {
     const axis = commonAxis([iconEu]);
     const values = interpolateSeries(points, axis);
     expect(values.speed.every((value) => value !== null)).toBe(true);
-    // 13 September 06:00 is a published frame: u 6.34, v -0.48.
+    // 13 September 06:00 is a published frame: u 6.32, v -0.48.
     expect(values.speed[axis.indexOf("2026-09-13T06:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(6.34, -0.48),
+      Math.hypot(6.32, -0.48),
       10,
     );
-    // 04:00 sits a third of the way from 03:00 (6.36, -4.52) to 06:00, and the
+    // 04:00 sits a third of the way from 03:00 (6.30, -4.58) to 06:00, and the
     // interpolation runs in u/v, never between speeds or bearings.
     expect(values.speed[axis.indexOf("2026-09-13T04:00:00.000Z")]).toBeCloseTo(
-      Math.hypot(6.36 + (6.34 - 6.36) / 3, -4.52 + (-0.48 + 4.52) / 3),
+      Math.hypot(6.3 + (6.32 - 6.3) / 3, -4.58 + (-0.48 + 4.58) / 3),
       10,
     );
   });

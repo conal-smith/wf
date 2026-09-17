@@ -1,11 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test, type Page } from "./fixtures";
+import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
 import { encodeFrame } from "../scripts/f5bin.mjs";
 
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
+const harmonie = readSample("harmonie");
 
 /**
  * A tide fixture, so the marine row is tested the same way whether or not
@@ -239,16 +237,15 @@ test("the dock shows fifteen days with HARMONIE on the map, and says whose", asy
   expect(span).toBeGreaterThan(14);
 
   // The model band names the run behind each stretch, in one thin header row.
-  // ECMWF was initialised before HARMONIE and outlasts it, so it owns both
-  // ends of the axis and HARMONIE the day in the middle.
+  // HARMONIE already covers now, so the axis opens on it and there is exactly
+  // one seam: the hour HARMONIE stops and ECMWF carries on to day fifteen.
   const band = page.locator(".forecast-model-band th[scope=colgroup]");
-  await expect(band).toHaveCount(3);
-  await expect(band.nth(0)).toContainText("ECMWF");
-  await expect(band.nth(1)).toContainText("HARMONIE");
-  await expect(band.nth(2)).toContainText("ECMWF");
+  await expect(band).toHaveCount(2);
+  await expect(band.nth(0)).toContainText("HARMONIE");
+  await expect(band.nth(1)).toContainText("ECMWF");
   // ECMWF's sample run is more than eighteen hours old, and still owns its
   // columns: the band says it is an older run rather than dropping it.
-  await expect(band.nth(2)).toContainText("older run");
+  await expect(band.nth(1)).toContainText("older run");
   expect(
     await band.nth(0).evaluate((cell) => cell.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(16);
@@ -784,13 +781,13 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   expect(air).not.toContain("0");
 
   // The run hour has no interval to difference, so its rain is a dash with the
-  // reason in the cell; the 18–21 UTC interval carries 1.2 mm.
+  // reason in the cell; the 18–21 UTC interval carries 1.3 mm.
   const rain = page.locator('.weather-row[data-row="rain"]');
-  expect(await weatherReadings(page, "rain")).toContain("1.2");
+  expect(await weatherReadings(page, "rain")).toContain("1.3");
   await expect(rain.locator("td.rain-cell")).toHaveCount(1);
   await expect(rain.locator("td.rain-cell")).toHaveAttribute(
     "title",
-    /1\.2 mm in the 3 hours to/,
+    /1\.3 mm in the 3 hours to/,
   );
   // The unit is stated once on each glyph, not in every cell.
   await expect(rain.locator("th .row-label small")).toHaveText("mm");
@@ -804,21 +801,23 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   ).toHaveAttribute("title", /dew point .* humidity \d+ %/);
 
   // Present weather is an inline stroke glyph per code, with the code's words.
+  // The code belongs to the cell containing the location, so Brandon Bay reads
+  // the codes of its own cell — fog, then cloudy — whatever the catalogue order.
   const glyphs = page.locator(".weather-cell");
   await expect(glyphs).toHaveCount(2);
-  await expect(glyphs.nth(0)).toHaveAttribute("data-weather", "cloudy");
-  await expect(glyphs.nth(0)).toHaveAttribute("data-code", "3");
-  await expect(glyphs.nth(1)).toHaveAttribute("data-weather", "rain");
-  await expect(glyphs.nth(1)).toHaveAttribute("data-code", "61");
+  await expect(glyphs.nth(0)).toHaveAttribute("data-weather", "fog");
+  await expect(glyphs.nth(0)).toHaveAttribute("data-code", "10");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-weather", "cloudy");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-code", "3");
   await expect(glyphs.first().locator("svg")).toHaveAttribute(
     "stroke",
     "currentColor",
   );
   await expect(
     page.locator('.weather-row[data-row="weather"] td[title]').first(),
-  ).toHaveAttribute("title", /WMO present-weather code 3/);
+  ).toHaveAttribute("title", /WMO present-weather code 10/);
   await expect(page.locator(".weather-cell .sr-only").nth(1)).toHaveText(
-    "Slight rain",
+    "Cloudy or overcast, clouds developing",
   );
 
   // The glyph explains the row, and the credits name DWD for it.
@@ -851,7 +850,7 @@ test("the cloud, pressure and sea rows are off until the filter turns them on", 
 
   // Cloud is a number plus a three-level bar for high, medium and low.
   const cloud = page.locator('.weather-row[data-row="cloud"]');
-  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("68");
+  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("24");
   await expect(
     cloud.locator(".cloud-cell").first().locator(".cloud-bars s"),
   ).toHaveCount(3);
@@ -926,7 +925,7 @@ test("an instantaneous-gust model reads at initialization", async ({
   await page.locator('[data-view="table"]').click();
   // GFS's own initialization hour, which is not the first column on the axis:
   // the hours before its run belong to whoever else covers them.
-  const gfs = JSON.parse(readFileSync("public/weather/gfs.json", "utf8"));
+  const gfs = readSample("gfs");
   const zero = page
     .locator(".gust-cell")
     .nth(sampleColumn(gfs.frames[0].validTime));
@@ -1148,11 +1147,11 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   });
   await expect(page.locator(".model-status.is-error")).toHaveCount(0);
 
-  // The reader keeps the valid time they were reading. Its column moves two to
-  // the left: the newer hourly run starts three hours later, and the head of
-  // ECMWF columns before it grows by one to cover them.
+  // The reader keeps the valid time they were reading. Its column moves three
+  // to the left: the axis begins at the near run's first hour, and the newer
+  // hourly run was initialised three hours later than the one it replaces.
   await expect(slider).toHaveAttribute("aria-valuetext", showing);
-  expect(Number(await slider.inputValue())).toBe(column - 2);
+  expect(Number(await slider.inputValue())).toBe(column - 3);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   await expect(page.locator(".blend-chart")).toBeVisible();
 

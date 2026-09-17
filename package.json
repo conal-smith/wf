@@ -12,7 +12,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "preview:e2e": "npm run weather:sample -- --if-missing && npm run build && npm run preview --",
+    "preview:e2e": "node scripts/e2e-site.mjs && E2E_SITE=1 npm run build && E2E_SITE=1 npm run preview --",
     "format": "prettier --write src tests e2e scripts *.ts *.md index.html package.json",
     "design:build": "node design/scripts/build-tokens.mjs && node design/scripts/build-catalog.mjs",
     "design:lint": "npm run design:build && node design/scripts/lint.mjs",
