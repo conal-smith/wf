@@ -3,10 +3,12 @@
 The bucket is AWS S3 or any S3-compatible store; `--endpoint-url` points it at
 Cloudflare R2 instead. Credentials come from the standard environment chain and
 are never read or logged here. Run as a batch container with an empty disk, the
-bucket is also the only record of what has already been imported, so each model's
-current manifest is read before its adapter runs: an adapter whose source has
-published nothing new exits UNCHANGED_EXIT and this job logs `forecast_unchanged`
-and stops there, having downloaded nothing.
+bucket is also the only record of what has already been imported, so for each
+adapter that declares `readsPublishedRun` the current manifest is read first and
+its run passed on: if that is the run the adapter resolves, it exits
+UNCHANGED_EXIT, this job logs `forecast_unchanged` and stops there having
+downloaded nothing. That exit code is only read as success for an adapter we
+actually told, so it can never launder an ordinary failure into a clean run.
 """
 import argparse
 from datetime import datetime, timezone
@@ -119,14 +121,17 @@ def run_models(args, root, s3):
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
                 environment = dict(os.environ)
-                current = published_run(s3, args.bucket, args.prefix, model)
+                environment.pop(PUBLISHED_RUN_ENV, None)  # Never inherited; we set it or nobody does.
+                current = (published_run(s3, args.bucket, args.prefix, model)
+                           if MODELS[model].get("readsPublishedRun") else None)
                 if current:
                     environment[PUBLISHED_RUN_ENV] = current
                 code = subprocess.run(command, timeout=args.timeout_seconds, check=False,
                                       env=environment).returncode
-                if code == UNCHANGED_EXIT:
-                    # The adapter resolved the run the bucket already serves and wrote
-                    # nothing, so there is no bundle to validate. This is success.
+                # UNCHANGED_EXIT only means "nothing new" if we actually told this
+                # adapter what the bucket serves. From any other adapter, or when the
+                # pointer could not be read, exit 3 is just a nonzero exit status.
+                if code == UNCHANGED_EXIT and current:
                     print(json.dumps({"event": "forecast_unchanged", "model": model,
                                       "run": current, "seconds": round(time.monotonic() - started),
                                       "time": datetime.now(timezone.utc).isoformat()}), flush=True)
