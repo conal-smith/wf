@@ -13,6 +13,25 @@ describe("precomputed spot series", () => {
       spotSeries({ ...manifest, spotForecasts: { brandon: [] } }, "brandon"),
     ).toBeNull();
   });
+  it("treats an all-null series as no coverage, not as calm wind", () => {
+    // AROME lists every riding place but can only forecast inside its own
+    // domain; a series of nulls means "not covered", so the blend must not see
+    // it as a model reporting zero wind.
+    const manifest = windManifest({ hours: [0, 3, 6] });
+    const uncovered: Manifest = {
+      ...manifest,
+      spotForecasts: {
+        brandon: manifest.spotForecasts.brandon.map((point) => ({
+          ...point,
+          u: null as unknown as number,
+          v: null as unknown as number,
+          gust: null,
+        })),
+      },
+    };
+    expect(spotSeries(uncovered, "brandon")).toBeNull();
+    expect(modelSeries(uncovered, "brandon")).toEqual([]);
+  });
   it("never downloads frames for an arbitrary point", () => {
     expect(sampledSeries(windManifest(), -10.024, 52.276)).toBeNull();
   });

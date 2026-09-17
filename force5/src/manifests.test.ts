@@ -62,6 +62,8 @@ describe("model registry", () => {
       "gfs",
       "ecmwf-ens",
       "gefs",
+      "arpege",
+      "arome",
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
@@ -78,6 +80,12 @@ describe("model registry", () => {
     expect(requireModel("icon-eu-weather").mapCapable).toBe(false);
     expect(requireModel("icon-eu-weather").planned).toBeUndefined();
     expect(requireModel("harmonie-eps").planned).toBe(true);
+    // Both Météo-France models publish now, and the map draws their frames.
+    for (const id of ["arpege", "arome"]) {
+      expect(requireModel(id).planned).toBeUndefined();
+      expect(requireModel(id).mapCapable).toBe(true);
+      expect(requireModel(id).ensemble).toBeUndefined();
+    }
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("ecmwf-ens").mapCapable).toBe(false);
     // GEFS is the ensemble whose mean the map can draw.
@@ -88,7 +96,7 @@ describe("model registry", () => {
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
     expect(modelHue("nope").wind).toMatch(/^#/);
   });
-  it("keeps the five map models the picker shows", () => {
+  it("keeps the map models the picker shows, in order", () => {
     expect(MODELS.map((model) => [model.id, model.name, model.detail])).toEqual(
       [
         ["harmonie", "HARMONIE", "2 km"],
@@ -96,6 +104,8 @@ describe("model registry", () => {
         ["ecmwf", "ECMWF", "15 days"],
         ["gfs", "GFS", "0.25° · 16 days"],
         ["gefs", "GEFS", "31 members"],
+        ["arpege", "ARPEGE", "0.1°"],
+        ["arome", "AROME", "2.5 km"],
       ],
     );
   });
@@ -189,7 +199,7 @@ describe("availability sweep", () => {
     );
     expect(
       availability.filter((model) => model.available).map((model) => model.id),
-    ).toEqual(["harmonie", "icon-eu", "ecmwf", "gefs"]);
+    ).toEqual(["harmonie", "icon-eu", "ecmwf", "gefs", "arpege", "arome"]);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();
     expect(absent.error).toContain("unavailable");

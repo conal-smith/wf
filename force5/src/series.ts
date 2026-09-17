@@ -13,8 +13,17 @@ export interface MemberSeries {
   points: SeriesPoint[];
 }
 
+const covered = (point: SeriesPoint) =>
+  Number.isFinite(point.u) && Number.isFinite(point.v);
+/**
+ * A series of nulls is a model saying it has no coverage at this place — AROME
+ * stops at 55.4°N — and not a forecast of calm. Treat it as absent, so the blend
+ * never draws a flat zero line for a place the model cannot see.
+ */
 const usable = (series: SeriesPoint[] | undefined) =>
-  Array.isArray(series) && series.length ? series : null;
+  Array.isArray(series) && series.length && series.some(covered)
+    ? series
+    : null;
 
 /** Precomputed series for a named spot, or null when this model omits it. */
 export function spotSeries(

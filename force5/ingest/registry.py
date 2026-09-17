@@ -25,6 +25,13 @@ MODELS = {
     # The newest GEFS cycle is often still publishing at its slot; accept the previous one.
     "gefs": {"script": "fetch_gefs.py", "manifest": "weather/gefs.json",
              "kind": "wind", "maxAgeHours": 18, "workerStep": False},
+    # Météo-France publishes whole-domain packages with no subsetting; both adapters
+    # read only the messages they publish, over byte ranges. ARPEGE runs four times a
+    # day and AROME every three hours, both about 4.5 hours behind their cycle.
+    "arpege": {"script": "fetch_arpege.py", "manifest": "weather/arpege.json",
+               "kind": "wind", "maxAgeHours": 12},
+    "arome": {"script": "fetch_arome.py", "manifest": "weather/arome.json",
+              "kind": "wind", "maxAgeHours": 12},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
                      "kind": "wind", "maxAgeHours": 12},
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
