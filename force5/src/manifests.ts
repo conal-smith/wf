@@ -142,7 +142,6 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     hue: { wind: "#a05fd6", gust: "#d4653f" },
     mapCapable: true,
-    planned: true,
   },
   {
     id: "gfs-wave",
@@ -174,6 +173,15 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "weather",
     hue: { wind: "#4c86c6", gust: "#dd8b46" },
     mapCapable: false,
+  },
+  {
+    id: "ecmwf-wave",
+    name: "ECMWF Wave",
+    detail: "0.25° · 15 days",
+    manifestUrl: "weather/ecmwf-wave.json",
+    kind: "wave",
+    hue: { wind: "#4a5bc0", gust: "#c96f33" },
+    mapCapable: true,
   },
 ];
 

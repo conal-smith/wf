@@ -44,4 +44,8 @@ public/weather/mi-swan.json
 # to bundle, so no snapshot of either is committed.
 public/weather/gefs.json
 public/weather/ecmwf-ens.json
+# Generated AIFS wind (61 frames, 2.4 MB) and ECMWF wave (85 frames, 15 MB) bundles.
+# Neither is bundled with the site; run the refresh scripts to produce them.
+public/weather/aifs.json
+public/weather/ecmwf-wave.json
 *.tsbuildinfo

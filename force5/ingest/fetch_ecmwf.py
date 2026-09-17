@@ -29,8 +29,9 @@ class ForecastSession(requests.Session):
         return super().request(*args, **kwargs)
 
 
-def client(source):
-    value = Client(source=source, model="ifs", resol="0p25",
+def client(source, model="ifs"):
+    """A timeout-bounded open-data client. `model` selects IFS or AIFS Single."""
+    value = Client(source=source, model=model, resol="0p25",
                    infer_stream_keyword=False, maximum_retries=2, retry_after=2)
     value.session.close()
     value.session = ForecastSession()

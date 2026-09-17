@@ -19,6 +19,14 @@ MODELS = {
               "kind": "wind", "maxAgeHours": 24},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
                   "kind": "wind", "maxAgeHours": 24},
+    # AIFS Single runs at all four cycles about six hours behind the clock, so a run
+    # is never more than twelve hours old when the next one is due. Its cadence is a
+    # uniform six hours and never the worker's 1/3-hour step.
+    "aifs": {"script": "fetch_aifs.py", "manifest": "weather/aifs.json",
+             "kind": "wind", "maxAgeHours": 12, "workerStep": False},
+    # The wave stream is twice daily on the wind control's own ladder.
+    "ecmwf-wave": {"script": "fetch_ecmwf_wave.py", "manifest": "weather/ecmwf-wave.json",
+                   "kind": "wave", "maxAgeHours": 24},
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
             "kind": "wind", "maxAgeHours": 12},
     # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.

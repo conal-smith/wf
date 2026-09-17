@@ -44,6 +44,7 @@ describe("model registry", () => {
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
+      "ecmwf-wave",
     ])
       expect(ids).toContain(id);
     const hues = MODEL_CATALOG.map((model) => model.hue.wind);
@@ -64,14 +65,17 @@ describe("model registry", () => {
       "gefs",
       "arpege",
       "arome",
+      "aifs",
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
+      "ecmwf-wave",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
       "mi-swan",
+      "ecmwf-wave",
     ]);
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
@@ -92,6 +96,11 @@ describe("model registry", () => {
     expect(requireModel("gefs").ensemble).toBe(true);
     expect(requireModel("gefs").mapCapable).toBe(true);
     expect(requireModel("gefs").planned).toBeUndefined();
+    // AIFS shipped: its adapter publishes frames, so it is live and map-capable.
+    expect(requireModel("aifs").planned).toBeUndefined();
+    expect(requireModel("aifs").mapCapable).toBe(true);
+    expect(requireModel("ecmwf-wave").kind).toBe("wave");
+    expect(requireModel("ecmwf-wave").planned).toBeUndefined();
     expect(modelEntry("nope")).toBeUndefined();
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
     expect(modelHue("nope").wind).toMatch(/^#/);
@@ -106,6 +115,7 @@ describe("model registry", () => {
         ["gefs", "GEFS", "31 members"],
         ["arpege", "ARPEGE", "0.1°"],
         ["arome", "AROME", "2.5 km"],
+        ["aifs", "AIFS", "0.25° · 15 days"],
       ],
     );
   });
@@ -199,7 +209,17 @@ describe("availability sweep", () => {
     );
     expect(
       availability.filter((model) => model.available).map((model) => model.id),
-    ).toEqual(["harmonie", "icon-eu", "ecmwf", "gefs", "arpege", "arome"]);
+      // The wave ids answer with a wind bundle here, which is a fault, not a
+      // conversion: the registry decides the contract, so they come back unavailable.
+    ).toEqual([
+      "harmonie",
+      "icon-eu",
+      "ecmwf",
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+    ]);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();
     expect(absent.error).toContain("unavailable");
