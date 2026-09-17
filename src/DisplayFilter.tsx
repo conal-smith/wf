@@ -4,13 +4,25 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import { ROW_KEYS, type Prefs, type RowKey } from "../force5/src/prefs";
+import {
+  ROW_KEYS,
+  rowOn,
+  setRow as setRowPref,
+  type Prefs,
+  type RowKey,
+} from "../force5/src/prefs";
 import { UNITS, type Units } from "../force5/src/units";
 
 export interface RowOffer {
   label: string;
   /** Why the row cannot be shown yet; the toggle is then disabled. */
   unavailable?: string;
+  /**
+   * Whether the row is on until the reader says otherwise, for the rows whose
+   * default depends on whether this spot has the data at all. Undefined for a
+   * row whose default is simply its stored boolean.
+   */
+  defaultOn?: boolean;
 }
 
 interface Props {
@@ -46,8 +58,10 @@ export default function DisplayFilter({
     return () => element?.close();
   }, []);
 
+  // Switching a row by hand also takes it out of availability's hands: from
+  // here on this row is the reader's choice at every spot.
   const setRow = (key: RowKey, value: boolean) =>
-    onChange({ ...prefs, rows: { ...prefs.rows, [key]: value } });
+    onChange(setRowPref(prefs, key, value));
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
     onChange({
@@ -95,7 +109,7 @@ export default function DisplayFilter({
                 type="checkbox"
                 role="switch"
                 data-row={key}
-                checked={prefs.rows[key] && !row.unavailable}
+                checked={rowOn(prefs, key, row.defaultOn) && !row.unavailable}
                 disabled={!!row.unavailable}
                 onChange={(event) => setRow(key, event.target.checked)}
               />

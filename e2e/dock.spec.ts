@@ -48,6 +48,64 @@ const tideManifest = {
   attribution: "Tidal predictions © Marine Institute, CC BY 4.0",
 };
 
+/**
+ * A sea-temperature fixture, for the same reason as the tide one: the
+ * observations are produced by `npm run sea:refresh` and are git-ignored, so the
+ * Sea row has to be testable without them. The station is fake but the shape is
+ * the adapter's own: a buoy with no published sensor depth, a latest reading two
+ * hours before the clock below, and a seven-day series thinned to three hours.
+ */
+const SEA_CLOCK = "2026-09-13T21:00:00Z";
+const SEA_LATEST = "2026-09-13T19:00:00Z";
+const seaSeries = Array.from({ length: 8 }, (_, index) => ({
+  time: new Date(
+    Date.parse(SEA_LATEST) - (7 - index) * 3 * 3600000,
+  ).toISOString(),
+  value: Number((15.8 - index * 0.08).toFixed(2)),
+}));
+const seaManifest = (brandonCovered: boolean) => ({
+  schemaVersion: 1,
+  kind: "observation",
+  model: "sea-temperature",
+  run: "2026091319",
+  generatedAt: SEA_LATEST,
+  variable: { name: "seaTemperature", units: "°C" },
+  stepMinutes: 180,
+  maxDistanceKm: 60,
+  maxObservationAgeHours: 48,
+  stations: {
+    IWB_M3: {
+      id: "IWB_M3",
+      name: "M3",
+      lat: 51.216,
+      lon: -10.551,
+      network: "buoy",
+      depth: null,
+    },
+  },
+  spots: {
+    brandon: brandonCovered
+      ? {
+          station: "IWB_M3",
+          distanceKm: 60.8,
+          latest: { time: SEA_LATEST, value: 15.24 },
+          series: seaSeries,
+        }
+      : {
+          station: null,
+          distanceKm: 133.4,
+          reason:
+            "The nearest reporting station (M3) is 133 km away, beyond the 60 km limit.",
+        },
+  },
+  attribution: "Sea temperature © Marine Institute, CC BY 4.0",
+});
+async function withSeaTemperature(page: Page, brandonCovered = true) {
+  await page.route("**/marine/sea-temperature.json", (route) =>
+    route.fulfill({ json: seaManifest(brandonCovered) }),
+  );
+}
+
 async function withTides(page: Page) {
   await page.route("**/marine/tides.json", (route) =>
     route.fulfill({ json: tideManifest }),
@@ -722,5 +780,101 @@ test("an instantaneous-gust model reads at initialization", async ({
   );
   await expect(page.locator("dialog.info-dialog")).toContainText(
     "accumulation window",
+  );
+});
+
+test("the Sea row shows the observed water temperature, once, and by default", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withTides(page);
+  await withSeaTemperature(page);
+  await page.clock.setFixedTime(new Date(SEA_CLOCK));
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay");
+
+  // Nobody switched it on: an observation exists for this spot, so the row is.
+  const sea = page.locator('.weather-row[data-row="sea"]');
+  await expect(sea).toHaveCount(1);
+  await expect(sea).toHaveClass(/observed-row/);
+  await page.getByLabel("Display options", { exact: true }).click();
+  await expect(page.locator('input[data-row="sea"]')).toBeChecked();
+  await page.getByLabel("Close display options").click();
+
+  // One reading spanning the row, at the left: a measurement is not a forecast
+  // per column, so there is exactly one cell and it is not a per-hour value.
+  const cell = sea.locator("td.observed-cell");
+  await expect(cell).toHaveCount(1);
+  await expect(sea.locator("td")).toHaveCount(1);
+  await expect(sea.locator("td.proxy-cell")).toHaveCount(0);
+  await expect(cell.locator("b")).toHaveText("15.2 °C");
+  await expect(cell.locator("small")).toHaveText("· M3 buoy, 61 km, 2 h ago");
+
+  // The tooltip names the station, the network, the distance, the unpublished
+  // depth, when it was measured and who measured it.
+  const title = (await cell.getAttribute("title"))!;
+  expect(title).toContain("15.2 °C measured at M3");
+  expect(title).toContain("weather buoy");
+  expect(title).toContain("60.8 km from Brandon Bay");
+  expect(title).toContain("sensor depth not published");
+  expect(title).toContain("2 h ago");
+  expect(title).toContain("Marine Institute");
+
+  // Seven days of readings as a sparkline, inside the row's own height.
+  const spark = cell.locator(".observed-spark polyline");
+  await expect(spark).toHaveCount(1);
+  expect((await spark.getAttribute("points"))!.split(" ").length).toBe(8);
+  const box = (await cell.boundingBox())!;
+  expect(Math.round(box.height)).toBeLessThanOrEqual(24);
+
+  // The glyph says it is a measurement, and the credits name the source.
+  await page.getByRole("button", { name: "Sea temp", exact: true }).focus();
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toContainText("Measured water temperature from M3");
+  await expect(tip).toContainText("A measurement, not a forecast");
+  await expect(page.locator(".forecast-credits")).toContainText(
+    "Sea temperature: Marine Institute observations",
+  );
+  await page.locator(".map-footer").screenshot({
+    path: "test-results/dock-sea-observed-1440.png",
+  });
+  expect(errors).toEqual([]);
+});
+
+test("a spot with no station in range falls back to the model's skin temperature", async ({
+  page,
+}) => {
+  await withSeaTemperature(page, false);
+  await withWaveColumns(page);
+
+  // No observation, so the row is off: the model's skin temperature is an
+  // approximation and does not earn a row on its own.
+  await expect(page.locator('.weather-row[data-row="sea"]')).toHaveCount(0);
+  await page.getByLabel("Display options", { exact: true }).click();
+  const entry = page.locator('.filter-switch:has(input[data-row="sea"])');
+  await expect(entry.locator("input")).toBeEnabled();
+  await expect(entry.locator("input")).not.toBeChecked();
+  await entry.locator("input").check();
+  await page.getByLabel("Close display options").click();
+
+  // Switched on, it is the weather model's own field again: one muted value per
+  // column, and the row says which of the two sources it is showing.
+  const sea = page.locator('.weather-row[data-row="sea"]');
+  await expect(sea).toHaveClass(/weather-row/);
+  await expect(sea).not.toHaveClass(/observed-row/);
+  await expect(sea.locator("td.observed-cell")).toHaveCount(0);
+  await expect(sea.locator("td.proxy-cell")).toHaveCount(2);
+  await expect(sea.locator("td.proxy-cell").first()).toHaveAttribute(
+    "title",
+    /Model skin temperature .* No observation is in range/,
+  );
+  await page.getByRole("button", { name: "Sea temp", exact: true }).focus();
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toContainText("Model skin temperature, approximate");
+  await expect(tip).toContainText("beyond the 60 km limit");
+  await expect(page.locator(".forecast-credits")).not.toContainText(
+    "Marine Institute observations",
   );
 });

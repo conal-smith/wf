@@ -11,6 +11,13 @@ import {
 } from "../force5/src/manifests";
 import { spotSeries } from "../force5/src/series";
 import {
+  loadSeaTemperature,
+  seaTemperatureForSpot,
+  seaTemperatureNote,
+  type SeaTemperatureManifest,
+  type SpotSeaTemperature,
+} from "../force5/src/seaTemperature";
+import {
   loadTides,
   tideForSpot,
   tideSpotNote,
@@ -56,6 +63,69 @@ export function useModelAvailability(): {
     return () => controller.abort();
   }, []);
   return { models, resolved };
+}
+
+export interface SeaTemperatureState {
+  /** What the nearest reporting station measured, or null when none covers it. */
+  observed: SpotSeaTemperature | null;
+  manifest: SeaTemperatureManifest | null;
+  /** Why there is no observation; a missing manifest is expected, not a fault. */
+  note: string | null;
+  loading: boolean;
+}
+
+const NO_SEA_TEMPERATURE: SeaTemperatureState = {
+  observed: null,
+  manifest: null,
+  note: null,
+  loading: false,
+};
+
+/**
+ * The nearest station's water temperature for a named spot, on the same fetch
+ * discipline as the tides: one manifest, aborted with the spot, and a 404 is an
+ * absence with a reason rather than an error anybody is shown. The Sea row falls
+ * back to the model's skin temperature when this says no.
+ */
+export function useSpotSeaTemperature(
+  spotId: string | undefined,
+): SeaTemperatureState {
+  const [state, setState] = useState<SeaTemperatureState>(() =>
+    spotId ? { ...NO_SEA_TEMPERATURE, loading: true } : NO_SEA_TEMPERATURE,
+  );
+  useEffect(() => {
+    if (!spotId) {
+      setState(NO_SEA_TEMPERATURE);
+      return;
+    }
+    const controller = new AbortController();
+    setState((previous) => ({ ...previous, loading: true }));
+    loadSeaTemperature(controller.signal)
+      .then((manifest) => {
+        if (controller.signal.aborted) return;
+        const observed = seaTemperatureForSpot(manifest, spotId);
+        setState({
+          observed,
+          manifest,
+          note: observed ? null : seaTemperatureNote(manifest, spotId),
+          loading: false,
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({
+          observed: null,
+          manifest: null,
+          note:
+            error instanceof Error
+              ? "Sea temperature observations are not published yet. Run npm run sea:refresh."
+              : "Sea temperature observations are unavailable.",
+          loading: false,
+        });
+      });
+    return () => controller.abort();
+  }, [spotId]);
+  return state;
 }
 
 export interface TideState {

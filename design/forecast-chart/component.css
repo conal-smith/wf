@@ -257,6 +257,44 @@
   color: var(--sem-color-text-secondary);
 }
 
+/* An observation is one measurement, not a forecast per column: one cell at the
+   left of the row, with its provenance beside it and nothing coloured like a
+   forecast. */
+.f5-forecast-chart__observed-cell {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.f5-forecast-chart__observed-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-text-primary);
+}
+
+.f5-forecast-chart__observed-reading small {
+  font-size: var(--sem-text-eyebrow-font-size);
+  color: var(--sem-color-text-muted);
+}
+
+/* The recent readings drawn to their own range: the shape is the point, so it
+   carries no axis and no numbers of its own. */
+.f5-forecast-chart__observed-spark {
+  flex: none;
+  overflow: visible;
+}
+
+.f5-forecast-chart__observed-spark polyline {
+  fill: none;
+  stroke: var(--sem-color-wind-k05);
+  stroke-opacity: 0.75;
+  stroke-width: var(--sem-stroke-hairline);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* A model approximation rather than a measurement, drawn back on purpose. */
 .f5-forecast-chart__proxy-cell {
   color: var(--sem-color-text-disabled);

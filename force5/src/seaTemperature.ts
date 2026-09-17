@@ -211,6 +211,109 @@ export function seaTemperatureForSpot(
   };
 }
 
+/** What each network is, in the words the row and its tooltip use. */
+export const NETWORK_LABEL: Record<SeaTemperatureNetwork, string> = {
+  coastal: "coastal logger",
+  sentinel: "sentinel buoy",
+  buoy: "weather buoy",
+};
+/** The one word that follows a station's name in the row's own reading. */
+export const NETWORK_WORD: Record<SeaTemperatureNetwork, string> = {
+  coastal: "logger",
+  sentinel: "buoy",
+  buoy: "buoy",
+};
+
+/**
+ * How long ago a reading was taken, in words. The age is half of what an
+ * observation says: forty minutes is the water now, thirty hours is yesterday's
+ * water, and the row has to be honest about which it is showing.
+ */
+export function observationAge(ageHours: number): string {
+  if (!Number.isFinite(ageHours)) return "age unknown";
+  const minutes = Math.round(ageHours * 60);
+  // A reading timestamped slightly ahead of the clock is skew, not the future.
+  if (minutes < 5) return "just now";
+  if (minutes < 90) return `${minutes} min ago`;
+  const hours = Math.round(ageHours);
+  if (hours < 36) return `${hours} h ago`;
+  const days = Math.round(ageHours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+export interface SeaTemperatureText {
+  /** The measurement itself, with its unit. */
+  value: string;
+  /** Where it was measured, how far away that is, and how old it is. */
+  detail: string;
+}
+
+/**
+ * The reading the Sea row prints, in two parts so the row can weight the
+ * measurement above its provenance. One line either way, because an observation
+ * is one value and not a column per forecast hour.
+ */
+export function seaTemperatureText(
+  observed: SpotSeaTemperature,
+  ageHours: number = observed.ageHours,
+): SeaTemperatureText {
+  const distance =
+    observed.distanceKm < 10
+      ? observed.distanceKm.toFixed(1)
+      : String(Math.round(observed.distanceKm));
+  return {
+    value: `${observed.latest.value.toFixed(1)} °C`,
+    detail: `${observed.station.name} ${
+      NETWORK_WORD[observed.station.network]
+    }, ${distance} km, ${observationAge(ageHours)}`,
+  };
+}
+
+/** The same reading as one line, for a label or an accessible name. */
+export function seaTemperatureLabel(
+  observed: SpotSeaTemperature,
+  ageHours: number = observed.ageHours,
+): string {
+  const text = seaTemperatureText(observed, ageHours);
+  return `${text.value} · ${text.detail}`;
+}
+
+/**
+ * Polyline points for a sparkline of a reading series, scaled to its own range
+ * and spaced by real time so a gap in the readings reads as a gap. Empty for a
+ * series too short to draw a line through, which the caller shows nothing for.
+ */
+export function sparklinePoints(
+  series: readonly SeaTemperatureReading[],
+  width: number,
+  height: number,
+): string {
+  if (!Array.isArray(series) || series.length < 2 || width <= 0 || height <= 0)
+    return "";
+  const times = series.map((entry) => Date.parse(entry.time));
+  const span = times[times.length - 1] - times[0];
+  const values = series.map((entry) => entry.value);
+  const low = Math.min(...values);
+  const range = Math.max(...values) - low;
+  // Half a pixel of room top and bottom, so a 1px stroke is not clipped.
+  const top = 0.5;
+  const bottom = height - 0.5;
+  return series
+    .map((entry, index) => {
+      const x =
+        span > 0
+          ? ((times[index] - times[0]) / span) * width
+          : (index / (series.length - 1)) * width;
+      // A flat series is a flat line down the middle, not a divide by zero.
+      const y =
+        range > 0
+          ? bottom - ((entry.value - low) / range) * (bottom - top)
+          : (top + bottom) / 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
 /**
  * Why a spot has no sea temperature, or null when it has one. The manifest
  * states the reason for a spot it deliberately left unmapped; the UI shows that
