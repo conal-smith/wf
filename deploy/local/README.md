@@ -67,11 +67,13 @@ npm run deploy:run -- --models harmonie --step 1
 npm run deploy:run -- --models icon-eu --step 1
 npm run deploy:run -- --models ecmwf
 npm run deploy:run -- --models ecmwf-ens
+npm run deploy:run -- --models aifs
 npm run deploy:run -- --models harmonie-eps
 npm run deploy:run -- --models arpege --step 3
 npm run deploy:run -- --models arome --step 3
 npm run deploy:run -- --models gfs-wave
 npm run deploy:run -- --models mi-swan
+npm run deploy:run -- --models ecmwf-wave
 npm run deploy:run -- --models tides
 ```
 
@@ -83,21 +85,26 @@ leaves the other models exactly as they were.
 Cadences live in [`jobs.toml`](jobs.toml), in UTC, because model cycles are published
 in UTC. The shipped schedule is:
 
-| Job            | When (UTC)         | Why                                                   |
-| -------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`     | every hour at :45  | Met Éireann publishes an hourly DINI cycle            |
-| `icon-eu`      | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag      |
-| `ecmwf`        | every hour at :20  | hourly check; the importer picks the newest full run  |
-| `harmonie-eps` | every hour at :50  | lagged control members; one new cycle each hour       |
-| `ecmwf-ens`    | every hour at :35  | hourly check for the newest complete 00/12 ENS run    |
-| `gfs`          | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
-| `arpege`       | 04/10/16/22 at :50 | 6-hourly cycles plus ~4 h 50 m; ~37 MB per run        |
-| `arome`        | every 3 h at :55   | eight cycles a day plus ~4 h 55 m; ~37 MB per run     |
-| `gfs-wave`     | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
-| `mi-swan`      | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
-| `tides`        | 01:05 daily        | predictions, not a forecast cycle                     |
-| `prune`        | 05:10 daily        | retention (see below)                                 |
-| `status`       | every hour at :55  | a freshness line in the log                           |
+| Job               | When (UTC)         | Why                                                   |
+| ----------------- | ------------------ | ----------------------------------------------------- |
+| `harmonie`        | every hour at :45  | Met Éireann publishes an hourly DINI cycle            |
+| `icon-eu`         | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag      |
+| `icon-eu-weather` | 03/09/15/21 at :40 | the same cycles, after the ICON-EU wind job's slot    |
+| `ecmwf`           | every hour at :20  | hourly check; the importer picks the newest full run  |
+| `harmonie-eps`    | every hour at :50  | lagged control members; one new cycle each hour       |
+| `ecmwf-ens`       | 08/10/20/22 at :35 | 00/12 ENS publishes ~7–9 h after the run; ~2 GB each  |
+| `aifs`            | 00/06/12/18 at :25 | all four AIFS cycles, each ~6 h after its run time    |
+| `gfs`             | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
+| `gefs`            | 05/11/17/23 at :10 | the 0.25° members finish 4.5–6 h after run time       |
+| `arpege`          | 04/10/16/22 at :50 | 6-hourly cycles plus ~4 h 50 m; ~37 MB per run        |
+| `arome`           | every 3 h at :55   | eight cycles a day plus ~4 h 55 m; ~37 MB per run     |
+| `gfs-wave`        | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
+| `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
+| `ecmwf-wave`      | 08/20 at :45       | the 00/12 wave stream, published ~8 h after the run   |
+| `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
+| `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
+| `prune`           | 05:10 daily        | retention (see below)                                 |
+| `status`          | every hour at :55  | a freshness line in the log                           |
 
 Edit the file, then check and apply it:
 

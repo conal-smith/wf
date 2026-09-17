@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearManifestCache, loadWaveManifest } from "./manifests";
-import { GFS_WAVE_VARIABLES, SWAN_VARIABLES, waveManifest } from "./testing";
+import {
+  ECMWF_WAVE_VARIABLES,
+  GFS_WAVE_VARIABLES,
+  SWAN_VARIABLES,
+  waveManifest,
+} from "./testing";
 import {
   MAX_WAVE_HORIZON_HOURS,
   WAVE_MATCH_HOURS,
+  WAVE_SOURCE_PREFERENCE,
   preferredWaveSource,
   validateWaveManifest,
   waveAtAxis,
@@ -292,6 +298,69 @@ describe("choosing a source per spot", () => {
     values: (hour) => ({ swh: 2 + hour / 10, pp1d: 11, mwd: 280 }),
   });
   const gfs = waveManifest();
+  const ecmwf = waveManifest({
+    model: "ecmwf-wave",
+    variables: ECMWF_WAVE_VARIABLES,
+    values: (hour) => ({ swh: 3 + hour / 10, pp1d: 13, mwd: 290, h1417: 1.4 }),
+  });
+  it("ranks the shelf model, then GFS-Wave, then ECMWF's coarse stream", () => {
+    expect(WAVE_SOURCE_PREFERENCE).toEqual([
+      "mi-swan",
+      "gfs-wave",
+      "ecmwf-wave",
+    ]);
+  });
+  it("takes ECMWF Wave last, whatever order the manifests arrive in", () => {
+    // 0.25° is the coarsest of the three, so it only wins when nothing finer can
+    // see the spot — not because it happened to load first.
+    expect(
+      preferredWaveSource([ecmwf, gfs, swan], "brandon")?.manifest.model,
+    ).toBe("mi-swan");
+    expect(preferredWaveSource([ecmwf, gfs], "brandon")?.manifest.model).toBe(
+      "gfs-wave",
+    );
+  });
+  it("falls back to ECMWF Wave when both finer models are blind here", () => {
+    const blind = (model: string, variables: typeof SWAN_VARIABLES) =>
+      waveManifest({ model, variables, values: () => null });
+    const source = preferredWaveSource(
+      [
+        blind("mi-swan", SWAN_VARIABLES),
+        blind("gfs-wave", GFS_WAVE_VARIABLES),
+        ecmwf,
+      ],
+      "brandon",
+    );
+    expect(source?.manifest.model).toBe("ecmwf-wave");
+    // Its band heights are not a partition, so only the total row is offered.
+    expect(source?.fields.total).toEqual({
+      height: "swh",
+      period: "pp1d",
+      direction: "mwd",
+    });
+    expect(source?.fields.swell).toBeNull();
+    expect(source?.fields.windsea).toBeNull();
+  });
+  it("explains a spot ECMWF Wave read from the nearest cell it solved", () => {
+    const offset = waveManifest({
+      model: "ecmwf-wave",
+      variables: ECMWF_WAVE_VARIABLES,
+      values: () => ({ swh: 2.1, pp1d: 12, mwd: 275 }),
+      extra: {
+        spotCoverage: {
+          brandon: {
+            landMasked: true,
+            resolved: true,
+            nearestOffsetKm: 18.3,
+            note: "read 18.3 km offshore",
+          },
+        },
+      },
+    });
+    expect(preferredWaveSource([offset], "brandon")?.note).toBe(
+      "read 18.3 km offshore",
+    );
+  });
   it("prefers the Irish shelf model when it resolves the spot", () => {
     expect(preferredWaveSource([gfs, swan], "brandon")?.manifest.model).toBe(
       "mi-swan",

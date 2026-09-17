@@ -13,6 +13,9 @@ import time
 from publish_s3 import publish, validate_bundle
 from registry import MODELS
 
+# Adapters that read ECMWF's open data and so take a mirror rather than a step.
+ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
+
 
 @contextmanager
 def workspace_lock(root):
@@ -62,7 +65,7 @@ def run_models(args, root, s3):
         try:
             if not args.publish_only:
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
-                if model in ("ecmwf", "ecmwf-ens"):
+                if model in ECMWF_MODELS:
                     command += ["--source", args.ecmwf_source]
                 elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
