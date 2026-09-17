@@ -8,6 +8,8 @@ export const MAP_MODEL_IDS = [
   "ecmwf",
   "gfs",
   "gefs",
+  "arpege",
+  "arome",
 ] as const;
 export type ModelId = (typeof MAP_MODEL_IDS)[number];
 const mapModel = <T extends ModelId>(id: T) => ({ ...requireModel(id), id });

@@ -68,6 +68,8 @@ npm run deploy:run -- --models icon-eu --step 1
 npm run deploy:run -- --models ecmwf
 npm run deploy:run -- --models ecmwf-ens
 npm run deploy:run -- --models harmonie-eps
+npm run deploy:run -- --models arpege --step 3
+npm run deploy:run -- --models arome --step 3
 npm run deploy:run -- --models gfs-wave
 npm run deploy:run -- --models mi-swan
 npm run deploy:run -- --models tides
@@ -89,6 +91,8 @@ in UTC. The shipped schedule is:
 | `harmonie-eps` | every hour at :50  | lagged control members; one new cycle each hour       |
 | `ecmwf-ens`    | every hour at :35  | hourly check for the newest complete 00/12 ENS run    |
 | `gfs`          | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
+| `arpege`       | 04/10/16/22 at :50 | 6-hourly cycles plus ~4 h 50 m; ~37 MB per run        |
+| `arome`        | every 3 h at :55   | eight cycles a day plus ~4 h 55 m; ~37 MB per run     |
 | `gfs-wave`     | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
 | `mi-swan`      | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
 | `tides`        | 01:05 daily        | predictions, not a forecast cycle                     |

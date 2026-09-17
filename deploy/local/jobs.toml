@@ -71,6 +71,22 @@ minutes = [10]              # finish 4.5-6 h after run time. ~19 MB, ~13 min per
 timeout_seconds = 3300
 
 [[jobs]]
+id = "arpege"
+models = ["arpege"]
+args = ["--step", "3"]
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h 50 m: the 0.1° surface
+minutes = [50]              # package completes 3–4.5 h after run time. ~35 MB per run.
+timeout_seconds = 3300
+
+[[jobs]]
+id = "arome"
+models = ["arome"]
+args = ["--step", "3"]
+hours = [1, 4, 7, 10, 13, 16, 19, 22]   # Eight cycles a day, three-hourly, plus
+minutes = [55]                          # ~4 h 55 m. ~37 MB per run.
+timeout_seconds = 3300
+
+[[jobs]]
 id = "gfs-wave"
 models = ["gfs-wave"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag.
