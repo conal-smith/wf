@@ -16,8 +16,6 @@ period maxima: `gustKind: "instantaneous"` with `[hour, hour]` on every frame.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import re
 import sys
@@ -29,6 +27,7 @@ import eccodes as ec
 import fetch_gfs
 from cadence import ladder_hours
 from fetch_gfs import FIELDS, index_ranges, validate_metadata
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import BBOX, ROOT, decode_handle, load_spots, sample, spots_file, write_json
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
@@ -292,9 +291,7 @@ def main():
                 for field in ("u", "v", "gust")}
         payload = {"model": "gefs", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": interval, **mean}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "gustIntervalHours": interval})
         if member_spots is None:
@@ -327,7 +324,7 @@ def main():
         "resolutionKm": None, "resolutionLabel": "0.25° global grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "stepRanges": ranges, "grid": layout[2], "frames": frames,
+        "stepRanges": ranges, "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
         "spotForecasts": spot_forecasts, "spotMembers": spot_members,
         "ensemble": {"members": len(members), "control": 0,
                      "description": f"NOAA GEFS members 0–{len(members) - 1}: index 0 is the "

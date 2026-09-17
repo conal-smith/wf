@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { readBundle, readFrame } from "./bundles";
+import { readBundle, readFrame, readWindFrame } from "./bundles";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
-import type { Spot } from "../force5/src/weather";
+import type { Manifest, Spot } from "../force5/src/weather";
+import { F5_ENCODING } from "../force5/src/f5bin";
 import {
   validateWaveManifest,
   waveCoverageNote,
@@ -36,12 +37,17 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
   "published %s wind bundle",
   (name) => {
     it("all files match the manifest and all spot summaries match their wind grid", () => {
-      const m = validateManifest(readBundle(name));
+      const m = validateManifest(readBundle<Manifest>(name));
+      // A binary frame stores tenths of a metre per second while the spot series
+      // beside it is the full-precision value rounded to hundredths, so the two
+      // may differ by the quantisation (0.05) plus both roundings. See
+      // force5/ingest/f5bin.py and backfill_spots.py, which allows the same.
+      const limit = m.encoding === F5_ENCODING ? 0.06 : 0.00501;
       // Exactly the published catalogue: no riding place missing, none invented.
       expect(Object.keys(m.spotForecasts).sort()).toEqual([...placeIds].sort());
       for (const id of originalIds) expect(m.spotForecasts[id]).toBeTruthy();
       m.frames.forEach((info, i) => {
-        const frame = validateFrame(readFrame(info.url), m, info);
+        const frame = validateFrame(readWindFrame(m, info), m, info);
         for (const spot of places) {
           const wind = sample(frame, spot.lon, spot.lat)!;
           const summary = m.spotForecasts[spot.id][i];
@@ -52,7 +58,7 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
             expect(typeof summary[field]).toBe("number");
             expect(
               Math.abs(wind[field]! - summary[field]!),
-            ).toBeLessThanOrEqual(0.00501);
+            ).toBeLessThanOrEqual(limit);
           }
           // A null gust is only ever a declared absence, never a quiet gap.
           if (wind.gust === null || summary.gust === null) {
@@ -64,9 +70,7 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
             ).toBeTruthy();
             continue;
           }
-          expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(
-            0.00501,
-          );
+          expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(limit);
         }
       });
     });

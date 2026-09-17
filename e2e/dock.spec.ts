@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
+import { encodeFrame } from "../scripts/f5bin.mjs";
 
 const harmonie = JSON.parse(
   readFileSync("public/weather/harmonie.json", "utf8"),
@@ -1021,7 +1022,9 @@ const newerValidTime = (hour: number) =>
 const newerFrames = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => ({
   hour,
   validTime: newerValidTime(hour),
-  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.json`,
+  // The fixture bundle publishes binary frames, and this synthetic newer run
+  // inherits its `encoding`, so its frames must be binary too.
+  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.bin`,
   gustIntervalHours: null,
 }));
 const newerHarmonie = {
@@ -1058,11 +1061,14 @@ const newerFrame = (hour: number) => ({
   gust: null,
 });
 async function withNewerRunFrames(page: Page) {
-  await page.route(`**/${NEWER_RUN_DIR}/*.json`, (route) => {
+  await page.route(`**/${NEWER_RUN_DIR}/*`, (route) => {
     const hour = Number(
-      /(\d+)\.json$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
+      /(\d+)\.bin$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
     );
-    return route.fulfill({ json: newerFrame(hour) });
+    return route.fulfill({
+      body: encodeFrame(newerFrame(hour)),
+      contentType: "application/octet-stream",
+    });
   });
 }
 

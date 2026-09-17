@@ -20,7 +20,6 @@ Both adapters publish the ordinary Force5 wind contract through `refresh()`.
 from concurrent.futures import ThreadPoolExecutor
 import http.client
 from datetime import datetime, timedelta, timezone
-import hashlib
 import json
 import os
 import re
@@ -34,6 +33,7 @@ from urllib.parse import quote
 import eccodes as ec
 import numpy as np
 
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import ROOT, get, load_spots, messages, sample, spots_file, write_json
 
 HOST = "meteofrance-pnt.s3.rbx.io.cloud.ovh.net"
@@ -641,9 +641,7 @@ def refresh(spec, args, prose):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": model, "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": interval, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "gustIntervalHours": interval})
         if inside is None:
@@ -671,7 +669,8 @@ def refresh(spec, args, prose):
         "resolutionKm": spec["resolutionKm"], "resolutionLabel": spec["resolutionLabel"],
         "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "grid": layout["grid"], "frames": frames, "spotForecasts": series,
+        "grid": layout["grid"], "encoding": FRAME_ENCODING, "frames": frames,
+        "spotForecasts": series,
         "gustAvailable": True, "gustMissingHours": [0], "coverageNote": note,
         "gustDescription": prose["gustDescription"], "processing": prose["processing"],
         "sourceUrl": SOURCE_URL, "attribution": ATTRIBUTION, "licenseUrl": LICENCE_URL,

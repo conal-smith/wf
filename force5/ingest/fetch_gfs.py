@@ -9,8 +9,6 @@ values, not period maxima: see the published gustDescription.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import re
 import sys
@@ -22,6 +20,7 @@ from urllib.request import Request, urlopen
 
 import eccodes as ec
 
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import BBOX, ROOT, decode_handle, load_spots, sample, spots_file, write_json
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
@@ -287,9 +286,7 @@ def main():
         interval = [hour, hour]
         payload = {"model": "gfs", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": interval, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "gustIntervalHours": interval})
         for spot in spots:
@@ -301,7 +298,7 @@ def main():
         "resolutionLabel": "0.25° global grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "grid": grid, "frames": frames, "spotForecasts": spot_forecasts,
+        "grid": grid, "encoding": FRAME_ENCODING, "frames": frames, "spotForecasts": spot_forecasts,
         "gustAvailable": True, "gustKind": "instantaneous",
         "gustDescription": "GFS publishes an instantaneous surface wind gust valid at the forecast time itself, not a maximum over a preceding period. Every frame therefore declares a zero-length interval, including initialization, and no forecast time is missing a gust. These values are generally lower than the interval maxima published for ICON-EU and ECMWF, so do not compare them directly across models.",
         "processing": "Cropped from NOAA's 0.25° global regular latitude/longitude grid without downscaling; source 0–360° longitudes are normalised to −180…180° before cropping to 18°W–2°E, 48–59°N. Rows run north-to-south and columns west-to-east. Values are model output in m/s rounded to 0.01. Only native GFS steps are published: no hours are interpolated or invented.",
