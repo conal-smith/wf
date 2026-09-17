@@ -40,9 +40,10 @@ test("glyph rows and map dropdown replace the bottom toolbar, with keyboard dism
   const dock = (await page.locator(".map-footer").boundingBox())!;
   const picker = (await trigger.boundingBox())!;
   expect(picker.y + picker.height).toBeLessThan(dock.y);
-  // The Table view of the new dock: toolbar, scrubber, day and hour header,
-  // three rows and the credits line. Measured 244px, or 220px with no tides.
-  expect(dock.height).toBeLessThan(260);
+  // The Table view of the new dock: toolbar, scrubber, day and hour header, the
+  // three wind rows, the marine block and the credits line. Measured 334px, or
+  // 310px with no tides; the three default-on surface-weather rows added 66px.
+  expect(dock.height).toBeLessThan(340);
   await trigger.focus();
   await trigger.press("Enter");
   await expect(options).toBeVisible();

@@ -13,6 +13,10 @@ import {
   ChartArea,
   ChevronLeft,
   ChevronRight,
+  CloudRain,
+  CloudSun,
+  Cloudy,
+  Gauge,
   Navigation,
   Pause,
   Play,
@@ -31,6 +35,7 @@ import DisplayFilter, { type RowOffer } from "./DisplayFilter";
 import ForecastHeader from "./ForecastHeader";
 import ForecastSheet from "./ForecastSheet";
 import RowLabel from "./RowLabel";
+import WeatherGlyph from "./WeatherGlyph";
 import {
   PLOT_PAD_BOTTOM,
   PLOT_PAD_TOP,
@@ -49,6 +54,7 @@ import {
   useModelAvailability,
   useSpotTide,
   useSpotWaves,
+  useSpotWeather,
 } from "./useBlend";
 import { usePointSeries } from "./usePointSeries";
 import { candles as candleColumns } from "../force5/src/blend";
@@ -71,6 +77,8 @@ import {
   type Point,
 } from "../force5/src/weather";
 import { tideAt } from "../force5/src/tides";
+import { precipIntervalHours, presentWeather } from "../force5/src/surface";
+import { variableValue } from "../force5/src/variables";
 import type { WaveFieldSet } from "../force5/src/waves";
 
 interface Props {
@@ -171,8 +179,15 @@ const ROW_HELP: Record<RowKey, string> = {
     "The swell part of the sea on its own: waves that were raised elsewhere and travelled here. Heights add in energy, not in metres, so swell and wind sea do not sum to the total.",
   windsea:
     "The sea the local wind is raising right now, separately from the swell.",
-  sea: "Sea surface temperature at the nearest available source.",
-  air: "Air temperature two metres above the ground.",
+  weather:
+    "The model's own present-weather code for the cell this spot sits in: clear, cloud, fog, drizzle, rain, showers, thunder or snow. A code is read, never averaged or blended between models, and each cell says which code it is and what it means.",
+  air: "Air temperature two metres above the ground, in whole degrees. Each cell adds the dew point and the relative humidity at that hour.",
+  rain: "Rain forecast for the interval ending at each column, in millimetres — an amount, not a rate, and not a total for the day. Each cell says which hours it covers.",
+  cloud:
+    "Total cloud cover through the whole column, as a percentage, with a three-level bar beside it for high, medium and low cloud.",
+  pressure:
+    "Pressure reduced to mean sea level, in whole hectopascals. Off by default: it is a synoptic reading rather than a launch decision.",
+  sea: "Model skin temperature, approximate. Over sea this is the model's own surface field and a proxy for a sea temperature, not a measurement; over land it is the temperature of the ground, which on a sunny afternoon runs far above the air. No in-situ source is wired up yet.",
   tide: "Predicted tide height at the nearest station. Astronomical prediction only: no surge and no wind effect.",
 };
 
@@ -189,6 +204,62 @@ const WAVE_ROW_GLYPH: Record<WaveRowKey, ReactNode> = {
   swell: <SwellGlyph />,
   windsea: <WindSeaGlyph />,
 };
+
+/**
+ * The surface-weather rows, in the order the marine block stacks them under the
+ * sea: what the sky is doing, then how warm, wet and cloudy it is, then the two
+ * readings that are a synoptic detail or an approximation.
+ */
+const WEATHER_ROWS = [
+  "weather",
+  "air",
+  "rain",
+  "cloud",
+  "pressure",
+  "sea",
+] as const;
+type WeatherRowKey = (typeof WEATHER_ROWS)[number];
+const WEATHER_ROW_LABEL: Record<WeatherRowKey, string> = {
+  weather: "Weather",
+  air: "Air temp",
+  rain: "Rain",
+  cloud: "Cloud",
+  pressure: "Pressure",
+  sea: "Sea temp",
+};
+const WEATHER_ROW_GLYPH: Record<WeatherRowKey, ReactNode> = {
+  weather: <CloudSun size={18} aria-hidden="true" />,
+  air: <ThermometerSun size={18} aria-hidden="true" />,
+  rain: <CloudRain size={18} aria-hidden="true" />,
+  cloud: <Cloudy size={18} aria-hidden="true" />,
+  pressure: <Gauge size={18} aria-hidden="true" />,
+  sea: <Thermometer size={18} aria-hidden="true" />,
+};
+/** The unit each row states once, on its glyph, rather than in every cell. */
+const WEATHER_ROW_UNIT: Record<WeatherRowKey, string | undefined> = {
+  weather: undefined,
+  air: "°C",
+  rain: "mm",
+  cloud: "%",
+  pressure: "hPa",
+  sea: "°C",
+};
+/**
+ * How much rain, in millimetres over one interval, saturates the cell's tint.
+ * Four millimetres in three hours is properly wet; past that the tint stops
+ * deepening, because the number is the reading and the tint is only a shape the
+ * eye can scan.
+ */
+const RAIN_TINT_FULL_MM = 4;
+
+/** What one cell needs beyond its text: a tint, a muted style and a tooltip. */
+interface WeatherCell {
+  content: ReactNode;
+  title?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}
+const NO_READING: WeatherCell = { content: "—" };
 
 /** Interpolate between actual timestamp centres, including mixed 3/6-hour columns. */
 function timeX(content: HTMLElement, manifest: Manifest, time: number) {
@@ -271,6 +342,7 @@ export default function ForecastDock({
   );
   const blend = useBlend(models, prefs.blendModels, point.id, axis);
   const waves = useSpotWaves(models, point.id, axis);
+  const weather = useSpotWeather(models, point.id, axis);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -434,6 +506,29 @@ export default function ForecastDock({
       : key === "swell"
         ? "no swell partition here"
         : "no wind-sea partition here");
+  // The same three states for the weather rows: no adapter published anything,
+  // one did but cannot see this spot, or a row whose variable this source does
+  // not declare. Each says which, rather than the row quietly disappearing.
+  const weatherOffer = !named
+    ? "named spots only"
+    : !weather.published
+      ? "no source yet"
+      : weather.source
+        ? undefined
+        : "no weather data at this spot";
+  const WEATHER_ROW_FIELD = {
+    weather: "present",
+    air: "air",
+    rain: "rain",
+    cloud: "cloud",
+    pressure: "pressure",
+    sea: "skin",
+  } as const;
+  const weatherRowOffer = (key: WeatherRowKey) =>
+    weatherOffer ??
+    (weather.source?.fields[WEATHER_ROW_FIELD[key]]
+      ? undefined
+      : "not in this model");
   const rowOffers: Record<RowKey, RowOffer> = {
     blend: { label: "Model blend" },
     waveOverlay: { label: "Wave band on the chart", unavailable: waveOffer },
@@ -450,8 +545,15 @@ export default function ForecastDock({
       label: WAVE_ROW_LABEL.windsea,
       unavailable: partitionOffer("windsea"),
     },
-    sea: { label: "Sea temp", unavailable: "no source yet" },
-    air: { label: "Air temp", unavailable: "no source yet" },
+    ...(Object.fromEntries(
+      WEATHER_ROWS.map((key) => [
+        key,
+        {
+          label: WEATHER_ROW_LABEL[key],
+          unavailable: weatherRowOffer(key),
+        },
+      ]),
+    ) as Record<WeatherRowKey, RowOffer>),
     tide: { label: "Tide", unavailable: tideOffer },
   };
 
@@ -459,12 +561,10 @@ export default function ForecastDock({
   const waveRows = WAVE_ROWS.filter(
     (key) => rows[key] && !rowOffers[key].unavailable,
   );
-  const marineRows: RowKey[] = [
-    ...waveRows,
-    ...(["sea", "air"] as const).filter(
-      (key) => rows[key] && !rowOffers[key].unavailable,
-    ),
-  ];
+  const weatherRows = WEATHER_ROWS.filter(
+    (key) => rows[key] && !rowOffers[key].unavailable,
+  );
+  const marineRows: RowKey[] = [...waveRows, ...weatherRows];
   const showMarine = showTide || marineRows.length > 0;
   /** The field set each wave row reads, from the source's own variable map. */
   const waveFieldSet = (key: WaveRowKey): WaveFieldSet | null =>
@@ -498,6 +598,148 @@ export default function ForecastDock({
   };
   const waveHelp = (key: WaveRowKey) =>
     [ROW_HELP[key], waves.source?.note].filter(Boolean).join(" ");
+
+  /**
+   * One surface-weather cell. Every row reads the same native step, so a column
+   * the weather run does not reach is a dash on all of them at once rather than
+   * a borrowed neighbouring hour, and a null is an absence the model published,
+   * never a zero.
+   */
+  const weatherCell = (key: WeatherRowKey, column: number): WeatherCell => {
+    const fields = weather.source?.fields;
+    const step = weather.columns[column];
+    if (!fields || !step) return NO_READING;
+    const at = (name: string | null) => variableValue(step, name);
+    const degrees = (value: number) => `${value.toFixed(1)} °C`;
+    switch (key) {
+      case "weather": {
+        const code = at(fields.present);
+        const reading = presentWeather(code);
+        return reading
+          ? {
+              content: <WeatherGlyph weather={reading} />,
+              title: `${reading.description} (WMO present-weather code ${reading.code}).`,
+            }
+          : NO_READING;
+      }
+      case "air": {
+        const value = at(fields.air);
+        if (value === null) return NO_READING;
+        const dew = at(fields.dewPoint);
+        const humidity = at(fields.humidity);
+        return {
+          content: Math.round(value),
+          title: [
+            `Air ${degrees(value)}`,
+            dew === null ? null : `dew point ${degrees(dew)}`,
+            humidity === null ? null : `humidity ${Math.round(humidity)} %`,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        };
+      }
+      case "rain": {
+        const value = at(fields.rain);
+        const hours = precipIntervalHours(step);
+        if (value === null)
+          return {
+            content: "—",
+            title:
+              hours === null
+                ? "The run hour has no interval to accumulate rain over."
+                : "No rain amount is published for this interval.",
+          };
+        return {
+          // Zero is a dry interval the model actually forecast, so it reads as a
+          // zero; the dash above is the absence of any interval at all.
+          content: value < 0.05 ? "0" : value.toFixed(1),
+          className: "rain-cell",
+          style: {
+            "--rain-tint": Math.min(1, value / RAIN_TINT_FULL_MM).toFixed(2),
+          } as React.CSSProperties,
+          title: `${value.toFixed(1)} mm${
+            hours === null
+              ? ""
+              : ` in the ${hours} hour${hours === 1 ? "" : "s"} to ${timeLabel(
+                  step.validTime,
+                )}`
+          }.`,
+        };
+      }
+      case "cloud": {
+        const total = at(fields.cloud);
+        if (total === null) return NO_READING;
+        const levels = (
+          [
+            ["high", fields.cloudHigh],
+            ["medium", fields.cloudMid],
+            ["low", fields.cloudLow],
+          ] as const
+        ).map(([name, field]) => ({ name, value: at(field) }));
+        const stacked = levels.every((level) => level.value !== null);
+        return {
+          content: (
+            <span className="cloud-cell">
+              <b>{Math.round(total)}</b>
+              {stacked && (
+                <i className="cloud-bars" aria-hidden="true">
+                  {levels.map((level) => (
+                    <s
+                      key={level.name}
+                      style={
+                        {
+                          "--cover": `${Math.round(level.value!)}%`,
+                        } as React.CSSProperties
+                      }
+                    />
+                  ))}
+                </i>
+              )}
+            </span>
+          ),
+          title: `Total cloud ${Math.round(total)} %${
+            stacked
+              ? `, of which ${levels
+                  .map((level) => `${level.name} ${Math.round(level.value!)} %`)
+                  .join(", ")}`
+              : ""
+          }.`,
+        };
+      }
+      case "pressure": {
+        const value = at(fields.pressure);
+        return value === null
+          ? NO_READING
+          : {
+              content: Math.round(value),
+              title: `${value.toFixed(1)} hPa at mean sea level.`,
+            };
+      }
+      case "sea": {
+        const value = at(fields.skin);
+        return value === null
+          ? NO_READING
+          : {
+              content: Math.round(value),
+              className: "proxy-cell",
+              title: `Model skin temperature ${degrees(value)}, approximate — not a measured sea temperature.`,
+            };
+      }
+    }
+  };
+  /** The day's highest air temperature, per day group, where the run reaches it. */
+  const dayMax = useMemo(() => {
+    const field = weather.source?.fields.air;
+    if (!field) return {} as Record<string, number>;
+    const highest: Record<string, number> = {};
+    for (const day of days)
+      for (let column = day.start; column < day.start + day.count; column++) {
+        const value = variableValue(weather.columns[column], field);
+        if (value !== null)
+          highest[day.date] = Math.max(highest[day.date] ?? value, value);
+      }
+    return highest;
+  }, [days, weather]);
   const waveOverlayValues = useMemo(
     () =>
       rows.waveOverlay && waves.source
@@ -721,6 +963,7 @@ export default function ForecastDock({
                   index={index}
                   onSelect={onSelect}
                   showSun
+                  dayMax={dayMax}
                 />
                 {view === "table" ? (
                   <ForecastSheet
@@ -918,41 +1161,47 @@ export default function ForecastDock({
                       )
                         ? (key as WaveRowKey)
                         : null;
+                      const surface = wave ? null : (key as WeatherRowKey);
                       return (
                         <tr
                           key={key}
-                          className={`marine-row${wave ? " wave-row" : ""}`}
+                          className={`marine-row${wave ? " wave-row" : " weather-row"}`}
                           data-row={key}
                         >
                           <th scope="row">
                             <RowLabel
                               glyph={
-                                wave ? (
-                                  WAVE_ROW_GLYPH[wave]
-                                ) : key === "sea" ? (
-                                  <Thermometer size={18} aria-hidden="true" />
-                                ) : (
-                                  <ThermometerSun
-                                    size={18}
-                                    aria-hidden="true"
-                                  />
-                                )
+                                wave
+                                  ? WAVE_ROW_GLYPH[wave]
+                                  : WEATHER_ROW_GLYPH[surface!]
                               }
                               label={rowOffers[key].label}
                               help={wave ? waveHelp(wave) : ROW_HELP[key]}
-                              unit={wave ? "m" : undefined}
+                              unit={wave ? "m" : WEATHER_ROW_UNIT[surface!]}
                             />
                           </th>
-                          {frames.map((frame, column) => (
-                            <td
-                              key={frame.hour}
-                              className={
-                                index === column ? "selected-hour" : ""
-                              }
-                            >
-                              {wave ? waveCell(wave, column) : "—"}
-                            </td>
-                          ))}
+                          {frames.map((frame, column) => {
+                            const cell: WeatherCell = wave
+                              ? { content: waveCell(wave, column) }
+                              : weatherCell(surface!, column);
+                            return (
+                              <td
+                                key={frame.hour}
+                                className={
+                                  [
+                                    index === column ? "selected-hour" : "",
+                                    cell.className ?? "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ") || undefined
+                                }
+                                style={cell.style}
+                                title={cell.title}
+                              >
+                                {cell.content}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}
@@ -1029,6 +1278,13 @@ export default function ForecastDock({
                 {" · "}
                 {waves.source.manifest.modelName} waves,{" "}
                 {waves.source.manifest.provider}
+              </>
+            )}
+            {weather.source && weatherRows.length > 0 && (
+              <>
+                {" · "}
+                {weather.source.manifest.modelName},{" "}
+                {weather.source.manifest.provider}
               </>
             )}
             {tide.tide && (

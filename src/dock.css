@@ -144,6 +144,20 @@
   font-style: normal;
   margin-right: 4px;
 }
+/* The day's warmest hour, beside the sun times and deliberately quieter than
+   them: the times are fixed facts, this is a forecast. */
+.day-max {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  color: #6a8b94;
+  font-variant-numeric: tabular-nums;
+}
+.day-max i {
+  font-style: normal;
+}
 
 /* ---------- chart row ---------- */
 .forecast-table th.chart-gutter {
@@ -313,6 +327,60 @@
   flex: none;
   color: #2a76b8; /* --sem-color-wind-k05, the chart's low-wind blue */
   opacity: 0.85;
+}
+
+/* ---------- surface weather cells ---------- */
+/* Rain is tinted by how much of it there is, so a wet band is a shape the eye
+   finds before it reads a number. The tint carries no reading of its own: the
+   millimetres are printed in the cell and the interval is in its tooltip. */
+.forecast-table .marine-row td.rain-cell {
+  background: rgb(42 118 184 / calc(0.22 * var(--rain-tint, 0)));
+  color: #1e4a57;
+  font-weight: 600;
+}
+/* The whole column's cover as a number, with high, medium and low beside it. */
+.cloud-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.cloud-cell b {
+  font-weight: 600;
+  color: #1e4a57;
+}
+.cloud-bars {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  gap: 1px;
+  width: 9px;
+}
+.cloud-bars s {
+  display: block;
+  height: 2px;
+  background: #cfe0e4;
+  text-decoration: none;
+}
+/* Each level fills its own bar from the left, so the stack reads as a tiny
+   sounding: high cloud on top, low cloud at the bottom. */
+.cloud-bars s::before {
+  content: "";
+  display: block;
+  width: var(--cover, 0%);
+  height: 100%;
+  background: #5b8794;
+}
+.weather-cell {
+  display: inline-flex;
+  align-items: center;
+  color: #35636e;
+}
+/* A reading that is a model approximation rather than a measurement is drawn
+   back, and the row's own explanation says why. */
+.forecast-table .marine-row td.proxy-cell {
+  color: #7d98a0;
+  font-style: italic;
 }
 .row-label {
   /* Block-level: an inline-flex button in a table cell drags a line box,

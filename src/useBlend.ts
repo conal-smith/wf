@@ -18,6 +18,12 @@ import {
   type TideManifest,
 } from "../force5/src/tides";
 import {
+  preferredWeatherSource,
+  weatherAtAxis,
+  type WeatherSource,
+  type WeatherStep,
+} from "../force5/src/surface";
+import {
   preferredWaveSource,
   waveAtAxis,
   type WaveSource,
@@ -143,6 +149,53 @@ export function useSpotWaves(
     };
     // axisKey stands in for the axis array, which is rebuilt every render.
   }, [waves, spotId, axisKey]);
+}
+
+export interface SpotWeather {
+  /** The source actually read for this spot, or null when none covers it. */
+  source: WeatherSource | null;
+  /** Whether any weather manifest answered at all, however it covers this spot. */
+  published: boolean;
+  /** The nearest native step per dock column; null where none is close. */
+  columns: (WeatherStep | null)[];
+}
+
+const NO_WEATHER: SpotWeather = {
+  source: null,
+  published: false,
+  columns: [],
+};
+
+/**
+ * Surface weather for one spot on the dock's own columns, from the same
+ * availability sweep the blend and the waves use, so no extra request is made.
+ * The columns hold native forecast steps: a present-weather code is an index
+ * into a table and a rain total belongs to an interval, so neither survives
+ * being interpolated onto a column the model did not publish.
+ */
+export function useSpotWeather(
+  models: readonly ModelAvailability[],
+  spotId: string | undefined,
+  axis: readonly string[],
+): SpotWeather {
+  const axisKey = axis.length ? `${axis[0]}/${axis.at(-1)}/${axis.length}` : "";
+  const published = useMemo(
+    () =>
+      models
+        .filter((model) => model.weather !== null)
+        .map((model) => model.weather!),
+    [models],
+  );
+  return useMemo(() => {
+    if (!published.length) return NO_WEATHER;
+    const source = preferredWeatherSource(published, spotId);
+    return {
+      source,
+      published: true,
+      columns: source ? weatherAtAxis(source.series, axis) : [],
+    };
+    // axisKey stands in for the axis array, which is rebuilt every render.
+  }, [published, spotId, axisKey]);
 }
 
 export interface Blend {
