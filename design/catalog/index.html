@@ -152,7 +152,7 @@
     <dt>Variants</dt><dd>2</dd>
     <dt>States</dt><dd>7</dd>
   </dl>
-  <ul><li><code>.f5-site-menu</code> — the only one of its own. Two sections is not a shape that needs variants: the menu always hangs from the left edge of its trigger, and the trigger always sits at the start of the chrome it belongs to, on both apps. A right-hung panel is the obvious next variant and is deliberately not here until something needs it.</li><li>The trigger takes the button's own sizes — <code>.f5-button--sm</code> beside a row of small pills, the default beside 40px chrome — because the menu has to sit in scale with whatever header it is in. The hit area does not shrink with it.</li></ul>
+  <ul><li><code>.f5-site-menu</code> — the only one of its own. Two sections is not a shape that needs variants: the menu always hangs from the left edge of its trigger, and the trigger always sits at the start of the chrome it belongs to, on both apps. A right-hung panel is the obvious next variant and is deliberately not here until something needs it.</li><li>The trigger takes the button's own sizes — <code>.f5-button--sm</code> beside a row of small pills, the default beside 40px chrome — because the menu has to sit in scale with whatever header it is in. Its height on a finger does not shrink with it; its width does, and padding that out is the parent's job, exactly as the system already requires of <code>--sem-control-height-sm</code>.</li></ul>
   <p class="open"><a href="../site-menu/component.html">Open the demo &rarr;</a></p>
 </article>
   </div>

@@ -13,25 +13,36 @@
 import { Menu, Store, Wind, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import "./siteMenu.css";
-import { SITE_SECTIONS, currentSection, type SiteSectionId } from "./siteNav";
+import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
 
 const ICONS: Record<SiteSectionId, LucideIcon> = { map: Wind, market: Store };
 
 export function SiteMenu({
-  /** Which row is marked `aria-current`; read from the URL when not given. */
+  /**
+   * The section this app is. Named by the caller rather than read from the URL
+   * during render: each app already knows which one it is, and deriving it here
+   * would make the menu depend on the location twice over.
+   */
   current,
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
 }: {
-  current?: SiteSectionId;
+  current: SiteSectionId;
   size?: "sm" | "md";
 }) {
   const [open, setOpen] = useState(false);
-  const here = current ?? currentSection(window.location.pathname);
   const panelId = useId();
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstLink = useRef<HTMLAnchorElement>(null);
+
+  // Dismissing puts focus back where it came from. Safari does not focus a
+  // button on click, so closing through the trigger would otherwise drop focus
+  // onto the body and leave a keyboard reader at the top of the document.
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
 
   // Opening is a keyboard event as often as a pointer one, so the panel takes
   // focus rather than waiting to be tabbed into.
@@ -50,8 +61,7 @@ export function SiteMenu({
       // before every bubble-phase listener, including one on `window`.
       event.preventDefault();
       event.stopPropagation();
-      setOpen(false);
-      trigger.current?.focus();
+      close();
     };
     const onPointerDown = (event: Event) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
@@ -86,9 +96,11 @@ export function SiteMenu({
         // The label stays put; `aria-expanded` is what says open or closed.
         aria-label="Site menu"
         aria-expanded={open}
-        aria-controls={panelId}
-        aria-haspopup="true"
-        onClick={() => setOpen((v) => !v)}
+        // A disclosure, not a menubar. The panel is a nav of links: arrow keys
+        // stay the reader's own, and `aria-haspopup` would promise otherwise.
+        // The controlled element only exists while the panel does.
+        aria-controls={open ? panelId : undefined}
+        onClick={() => (open ? close() : setOpen(true))}
       >
         {open ? (
           <X size={size === "sm" ? 15 : 18} aria-hidden="true" />
@@ -111,7 +123,7 @@ export function SiteMenu({
                     ref={index === 0 ? firstLink : undefined}
                     className="f5-button f5-site-menu__link"
                     href={section.href}
-                    aria-current={section.id === here ? "page" : undefined}
+                    aria-current={section.id === current ? "page" : undefined}
                   >
                     <Icon size={16} aria-hidden="true" />
                     <span>{section.label}</span>

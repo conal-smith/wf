@@ -13,7 +13,10 @@ bundles chosen at load time and crossing between them is a page load.
 
 - `.f5-site-menu` — the positioning context. Nothing else.
 - `.f5-site-menu__trigger` — a `.f5-button--icon` with the three lines, and on a
-  coarse pointer a hit area padded out to `--sem-control-height-touch`.
+  coarse pointer a hit area grown DOWN THE BLOCK AXIS to
+  `--sem-control-height-touch`. Never wider than the control: a header row has
+  no room to spare along the inline axis, and an overhanging target there
+  swallows taps meant for whatever sits beside it.
 - `.f5-site-menu__panel` — a `.f5-surface` hung below the trigger at
   `--sem-z-panel`, padded `--sem-space-gap-tight` so the rows carry the padding.
 - `.f5-site-menu__list` — an unstyled list, one row per section.
@@ -29,7 +32,9 @@ bundles chosen at load time and crossing between them is a page load.
   here until something needs it.
 - The trigger takes the button's own sizes — `.f5-button--sm` beside a row of
   small pills, the default beside 40px chrome — because the menu has to sit in
-  scale with whatever header it is in. The hit area does not shrink with it.
+  scale with whatever header it is in. Its height on a finger does not shrink
+  with it; its width does, and padding that out is the parent's job, exactly as
+  the system already requires of `--sem-control-height-sm`.
 
 ## States
 
@@ -64,17 +69,23 @@ a panel that hangs out of a glass pill is otherwise two blurs deep.
 
 ## Accessibility
 
-The trigger is a real `<button>` carrying `aria-expanded`, `aria-controls` and
-`aria-haspopup`, and an `aria-label` because it has no text. The panel is a
-`<nav aria-label="Site">` holding a list of links, which is what it is.
+The trigger is a real `<button>` carrying `aria-expanded` and an `aria-label`,
+because it has no text. It carries `aria-controls` only while the panel exists,
+and it carries no `aria-haspopup`: this is a disclosure, and `haspopup` promises
+menu semantics — arrow-key roving, typeahead — that a `<nav>` of links neither
+has nor should have. The panel is a `<nav aria-label="Site">` holding a list of
+links, which is what it is.
 
-Opening moves focus to the first row; Escape closes and returns focus to the
-trigger; moving focus out of the menu closes it, so there is no trap. The
-product must make sure Escape with the menu open closes only the menu — on the
-map that means capturing the key before the app's own global handler sees it.
+Opening moves focus to the first row. Every dismissal that came from the
+keyboard or from the trigger puts focus back on the trigger — including the
+click that closes it, because Safari does not focus a clicked button and focus
+would otherwise fall to the body. A dismissal that came from pressing somewhere
+else leaves focus where the reader put it. Moving focus out of the menu closes
+it, so there is no trap. The product must make sure Escape with the menu open
+closes only the menu — on the map that means capturing the key before the app's
+own global handler sees it.
 
 The current section is in the tree as `aria-current="page"` and in the paint as
-elevation plus fill, never as colour alone. On a coarse pointer the trigger's
-hit area is `--sem-control-height-touch` and every row is that tall, so nothing
-here is under the target floor. The panel's entry animation is dropped under
+elevation plus fill, never as colour alone. Every row is
+`--sem-control-height-touch` tall. The panel's entry animation is dropped under
 `prefers-reduced-motion: reduce`.

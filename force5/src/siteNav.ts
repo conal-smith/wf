@@ -10,6 +10,10 @@
  * It is also why `href` is an absolute path rather than a router target.
  * Crossing sections swaps the bundle, which is a page load, not a push.
  *
+ * There is deliberately no path-to-section helper here. Each app already knows
+ * which section it is and tells the menu; a second way of answering the same
+ * question is a second answer waiting to disagree with the entry point.
+ *
  * Deliberately free of React, the DOM and both apps: the map imports it, the
  * marketplace imports it, and neither drags the other along.
  */
@@ -34,8 +38,4 @@ const MARKET_PATH = /^\/market(\/|$)/;
 
 export function isMarketPath(pathname: string): boolean {
   return MARKET_PATH.test(pathname);
-}
-
-export function currentSection(pathname: string): SiteSectionId {
-  return isMarketPath(pathname) ? "market" : "map";
 }
