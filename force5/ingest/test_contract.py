@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import f5bin
 import publish_s3
 from publish_s3 import publish, validate_bundle
 from registry import MANIFESTS, MODELS
@@ -303,6 +304,118 @@ class ContractTests(unittest.TestCase):
         self.ensemble_bundle()
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "fake-eps", max_age_hours=48, now=RUN + timedelta(hours=6))
+
+    # --- binary wind frames ------------------------------------------------
+    GRID = {"width": 2, "height": 2}
+
+    def binary_frame(self, hour, **changes):
+        """The bytes one `weather/run/H.bin` holds, with room to spoil them."""
+        payload = {"model": "fake-bin", "run": "2026091312", "hour": hour,
+                   "grid": self.GRID, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": [9.0] * 4}
+        payload.update(changes)
+        return f5bin.encode_frame(payload)
+
+    def binary_bundle(self, **changes):
+        """A wind bundle whose frames are F5 int16 rather than JSON."""
+        self.register("fake-bin", "weather/fake-bin.json", "wind")
+        frames = []
+        for hour in (0, 1, 2):
+            url = f"weather/run/{hour}.bin"
+            frames.append({"hour": hour, "validTime": valid(hour), "url": url,
+                           "gustIntervalHours": [max(hour - 1, 0), hour]})
+            (self.root / url).write_bytes(self.binary_frame(hour))
+        manifest = {**self.identity("fake-bin", "wind"), "grid": self.GRID,
+                    "encoding": f5bin.ENCODING, "frames": frames,
+                    "gustAvailable": True, "spotForecasts": {}}
+        return self.save("fake-bin", {**manifest, **changes})
+
+    def test_a_binary_wind_bundle_validates_and_publishes_its_frames(self):
+        self.binary_bundle()
+        manifest, _, objects = validate_bundle(self.root, "fake-bin", now=NOW)
+        self.assertEqual(manifest["encoding"], f5bin.ENCODING)
+        self.assertEqual([path for path, _ in objects],
+                         ["weather/run/0.bin", "weather/run/1.bin", "weather/run/2.bin"])
+        # The bytes uploaded are the frame's own, uncompressed: compression is the
+        # uploader's business and the sidecars are never objects of their own.
+        self.assertEqual(objects[0][1], (self.root / "weather/run/0.bin").read_bytes())
+        s3 = FakeS3()
+        self.assertEqual(publish(s3, self.root, "fake-bin", "test", now=NOW), "published")
+        self.assertEqual(s3.writes[-1], "weather/fake-bin.json")
+        self.assertEqual(len(s3.writes), 5)  # three frames, the archive, the pointer
+
+    def test_a_binary_frame_from_the_wrong_run_or_hour_is_refused(self):
+        """The header is what makes this catchable; the file name alone is not."""
+        self.binary_bundle()
+        frame = self.root / "weather/run/1.bin"
+        for change in ({"hour": 9}, {"hour": 0}, {"run": "2026091300"},
+                       {"run": "2026091313"}):
+            with self.subTest(**change):
+                frame.write_bytes(self.binary_frame(**{"hour": 1, **change}))
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_a_binary_frame_of_the_wrong_size_or_shape_is_refused(self):
+        self.binary_bundle()
+        frame = self.root / "weather/run/1.bin"
+        whole = self.binary_frame(1)
+        cases = {
+            "wider grid": self.binary_frame(1, grid={"width": 4, "height": 2},
+                                            u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
+            "taller grid": self.binary_frame(1, grid={"width": 2, "height": 4},
+                                             u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
+            "truncated": whole[:-2],
+            "oversized": whole + b"\0\0",
+            "header only": whole[:f5bin.HEADER_BYTES],
+            "not a frame": b"{\"model\": \"fake-bin\"}",
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                frame.write_bytes(body)
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_a_binary_bundle_keeps_every_gust_rule(self):
+        # A gust block where the manifest declares none.
+        self.binary_bundle(gustAvailable=False,
+                           frames=[{"hour": hour, "validTime": valid(hour),
+                                    "url": f"weather/run/{hour}.bin",
+                                    "gustIntervalHours": None} for hour in (0, 1, 2)])
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        # The same bundle with the gust block actually absent is fine.
+        for hour in (0, 1, 2):
+            (self.root / f"weather/run/{hour}.bin").write_bytes(
+                self.binary_frame(hour, gust=None))
+        self.assertEqual(len(validate_bundle(self.root, "fake-bin", now=NOW)[2]), 3)
+        # And a missing gust block where the manifest promises one is refused.
+        self.binary_bundle()
+        (self.root / "weather/run/1.bin").write_bytes(self.binary_frame(1, gust=None))
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_an_implausible_value_inside_a_binary_frame_is_refused(self):
+        """Hand-built bytes, because the encoder refuses to write these at all."""
+        self.binary_bundle()
+        frame = self.root / "weather/run/1.bin"
+        for offset, value in [(0, 1501), (4 * 2, -1501), (8 * 2, -1)]:
+            with self.subTest(offset=offset):
+                body = bytearray(self.binary_frame(1))
+                body[f5bin.HEADER_BYTES + offset:f5bin.HEADER_BYTES + offset + 2] = (
+                    int(value).to_bytes(2, "little", signed=True))
+                frame.write_bytes(bytes(body))
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_an_unknown_encoding_is_refused_rather_than_read_as_json(self):
+        self.binary_bundle(encoding="f5-int16-v2")
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_only_wind_frames_may_declare_a_binary_encoding(self):
+        manifest = self.wave_bundle()
+        self.save("fake-wave", {**manifest, "encoding": f5bin.ENCODING})
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "fake-wave", now=NOW)
 
     def test_registry_kind_must_match_the_manifest(self):
         self.wave_bundle()

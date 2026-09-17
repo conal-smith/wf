@@ -16,13 +16,12 @@ wind by a gust factor, which would be a guess dressed as a forecast.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import sys
 
 import eccodes as ec
 
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_ecmwf import SOURCE_URL, client
 from fetch_forecast import ROOT, decode_handle, load_spots, sample, spots_file, write_json
 
@@ -115,7 +114,7 @@ def manifest_for(run, run_time, hours, grid, frames, spot_forecasts):
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": STEP,
-        "stepRanges": ranges, "grid": grid, "frames": frames,
+        "stepRanges": ranges, "grid": grid, "encoding": FRAME_ENCODING, "frames": frames,
         "spotForecasts": spot_forecasts,
         "gustAvailable": False, "gustDescription": GUST_DESCRIPTION,
         "processing": (
@@ -191,9 +190,7 @@ def main(argv=None):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": None, "gustIntervalHours": None, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         # The browser reads a null interval as a declared absence; leaving the key
         # out would read as an undeclared one and fail its contract check.
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",

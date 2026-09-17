@@ -1,5 +1,7 @@
 import contextlib
 from datetime import datetime, timezone
+import gzip
+import hashlib
 from io import BytesIO, StringIO
 import json
 import os
@@ -10,6 +12,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
+import f5bin
+import publish_s3
 from publish_s3 import publish, superseded_objects, validate_bundle, already_current
 from registry import UNCHANGED_EXIT
 
@@ -473,6 +477,119 @@ class WorkerUnchangedRunTest(unittest.TestCase):
             status, event = self.run_models(UNCHANGED_EXIT)
         self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
         self.assertEqual((status, event["event"]), (1, "forecast_failed"))
+
+
+class BinaryUploadTests(unittest.TestCase):
+    """One encoding per object: a frame is stored compressed once, typed as binary.
+
+    The `.br`/`.gz` sidecars the ingest worker writes beside a frame exist only on
+    the local Caddy deployment's disk. Nothing here ever uploads them, because the
+    uploader only ever sees the paths a manifest references.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        (self.root / "weather/harmonie-bin").mkdir(parents=True)
+        self.now = datetime(2026, 9, 13, 12, 30, tzinfo=timezone.utc)
+        grid = {"width": 2, "height": 2}
+        frames = []
+        self.bodies = {}
+        for hour in range(3):
+            valid = f"2026-09-13T{12 + hour}:00:00Z"
+            payload = {"model": "harmonie", "run": "2026091312", "hour": hour,
+                       "grid": grid, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": None}
+            data = f5bin.encode_frame(payload)
+            name = f5bin.frame_name("harmonie-bin", hour, data)
+            # Written exactly as an adapter writes it, sidecars and all.
+            f5bin.write_with_sidecars(self.root / "weather" / name, data)
+            self.bodies[f"weather/{name}"] = data
+            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
+        self.manifest = {"model": "harmonie", "run": "2026091312",
+                         "runTime": "2026-09-13T12:00:00Z", "stepHours": 1,
+                         "gustAvailable": False, "grid": grid,
+                         "encoding": f5bin.ENCODING, "frames": frames}
+        (self.root / "weather/harmonie.json").write_text(json.dumps(self.manifest))
+        self.s3 = FakeS3()
+
+    def stored(self, key):
+        return self.s3.objects[key]
+
+    def test_a_frame_is_uploaded_brotli_encoded_as_binary_by_default(self):
+        import brotli
+        self.assertEqual(publish(self.s3, self.root, "harmonie", "test", now=self.now),
+                         "published")
+        for key, body in self.bodies.items():
+            with self.subTest(key):
+                stored = self.stored(key)
+                self.assertEqual(stored["ContentType"], "application/octet-stream")
+                self.assertEqual(stored["ContentEncoding"], "br")
+                self.assertEqual(brotli.decompress(stored["Body"]), body)
+                # The digest is over the frame, not over the compressed body, so
+                # the collision check keeps working if the compression changes.
+                self.assertEqual(stored["Metadata"]["sha256"],
+                                 hashlib.sha256(body).hexdigest())
+        # No sidecar ever becomes an object of its own.
+        self.assertFalse([key for key in self.s3.objects
+                          if key.endswith(".br") or key.endswith(".gz")])
+
+    def test_gzip_is_available_as_a_fallback_by_option_and_by_environment(self):
+        self.assertEqual(publish(self.s3, self.root, "harmonie", "test",
+                                 now=self.now, encoding="gzip"), "published")
+        key = next(iter(self.bodies))
+        self.assertEqual(self.stored(key)["ContentEncoding"], "gzip")
+        self.assertEqual(gzip.decompress(self.stored(key)["Body"]), self.bodies[key])
+        self.s3 = FakeS3()
+        with patch.dict(os.environ, {"FORCE5_BUCKET_ENCODING": "gzip"}):
+            self.assertEqual(publish(self.s3, self.root, "harmonie", "test",
+                                     now=self.now), "published")
+        self.assertEqual(self.stored(key)["ContentEncoding"], "gzip")
+
+    def test_an_unusable_encoding_is_refused_before_anything_is_uploaded(self):
+        with self.assertRaises(ValueError):
+            publish(self.s3, self.root, "harmonie", "test", now=self.now, encoding="zstd")
+        self.assertEqual(self.s3.writes, [])
+
+    def test_the_manifest_and_its_archive_stay_gzipped_json(self):
+        publish(self.s3, self.root, "harmonie", "test", now=self.now)
+        archive = next(key for key in self.s3.writes if "/manifests/" in key)
+        self.assertEqual(self.stored(archive)["ContentType"], "application/json")
+        self.assertEqual(self.stored(archive)["ContentEncoding"], "gzip")
+        pointer = self.stored("weather/harmonie.json")
+        self.assertEqual(pointer["ContentType"], "application/json")
+        self.assertNotIn("ContentEncoding", pointer)
+
+    def test_the_superseded_delete_can_never_name_a_sidecar(self):
+        """It works from the replaced manifest's urls, and no manifest lists a sidecar.
+
+        The bucket has no sidecars to delete, and the local sweep removes a run
+        directory whole, so neither path can be confused by one. This pins the
+        reason: the only names that reach `delete_keys` are frame urls.
+        """
+        previous = json.loads(json.dumps(self.manifest))
+        newer = {**self.manifest, "run": "2026091313",
+                 "frames": [{**frame, "url": frame["url"].replace("harmonie-bin",
+                                                                  "harmonie-bin2")}
+                            for frame in self.manifest["frames"]]}
+        stale = superseded_objects("harmonie", previous, newer)
+        self.assertEqual(sorted(stale), sorted(self.bodies))
+        self.assertTrue(all(url.endswith(".bin") for url in stale))
+        # The sidecars are on disk beside the frames and still are not named.
+        written = sorted(p.name for p in (self.root / "weather/harmonie-bin").iterdir())
+        self.assertEqual(len(written), 9)
+        self.assertTrue(any(name.endswith(".br") for name in written))
+
+    def test_republishing_the_same_frame_bytes_is_not_a_collision(self):
+        publish(self.s3, self.root, "harmonie", "test", now=self.now)
+        before = len(self.s3.writes)
+        # Re-upload the frames directly: the digest matches, so nothing is raised.
+        for key, body in self.bodies.items():
+            publish_s3.put_immutable(self.s3, "test", key, body)
+        self.assertEqual(len(self.s3.writes), before)
+        # A different frame under the same key is what the check is there for.
+        with self.assertRaises(ValueError):
+            publish_s3.put_immutable(self.s3, "test", next(iter(self.bodies)), b"other")
 
 
 if __name__ == "__main__":

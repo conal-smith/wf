@@ -7,7 +7,6 @@ import argparse
 import bz2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-import hashlib
 import json
 import math
 import os
@@ -20,6 +19,7 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from registry import PUBLISHED_RUN_ENV
 
 # The two answers `already_published` can give, which mean different things: the
@@ -289,9 +289,7 @@ def main():
         payload = {"model": "icon-eu", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": gust_interval, **fields}
         # Hash makes every published frame immutable, including after a code correction.
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": gust_interval})
         for spot in spots:
             point = {field: sample(grid, fields[field], spot["lon"], spot["lat"]) for field in PARAMS}
@@ -300,7 +298,8 @@ def main():
     manifest = {"schemaVersion": 1, "model": "icon-eu", "modelName": "ICON-EU", "provider": "DWD",
                 "resolutionKm": 6.5, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": layout[2], "frames": frames, "spotForecasts": spot_forecasts,
+                "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+                "spotForecasts": spot_forecasts,
                 "sourceUrl": BASE + "/", "attribution": "Weather data: Deutscher Wetterdienst (DWD), modified and cropped by wingfoil.ie",
                 "licenseUrl": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"}
     # Only this final operation advances the published snapshot.

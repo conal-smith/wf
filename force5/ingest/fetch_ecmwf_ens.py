@@ -11,7 +11,6 @@ importer never requests `type=cf`. The unperturbed control remains the separate
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -21,6 +20,7 @@ import threading
 import eccodes as ec
 
 from cadence import ladder_hours
+from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
 from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample, write_json
 from registry import UNCHANGED_EXIT
@@ -264,9 +264,7 @@ def main():
         gust = average([fields["gust"][m] for m in members]) if hour else None
         payload = {"model": "ecmwf-ens", "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": gust, "gustIntervalHours": interval, **mean}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        name = publish_frame(output, prefix, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
                        "gustIntervalHours": interval})
         for spot in spots:
@@ -293,7 +291,7 @@ def main():
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "stepRanges": ranges, "grid": layout[2], "frames": frames,
+        "stepRanges": ranges, "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
         "spotForecasts": spot_forecasts, "spotMembers": spot_members,
         "ensemble": {"members": len(members), "control": None,
                      "description": f"Perturbed members 1–{len(members)} of ECMWF's open-data "

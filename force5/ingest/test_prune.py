@@ -121,6 +121,26 @@ class PrunePublishedTest(unittest.TestCase):
             self.assertTrue(kept.exists(), kept)
         self.assertGreater(result["freedBytes"], 0)
 
+    def test_a_binary_frames_sidecars_live_and_die_with_their_run(self):
+        """`.bin.br`/`.bin.gz` are never referenced, so only whole-run retention saves them.
+
+        The sweep works on top-level entries under `weather/`, keeping or removing
+        a run directory entire, which is exactly what the sidecars need: nothing
+        points at them, so a file-by-file sweep would collect them the moment they
+        were written.
+        """
+        for directory in (self.referenced_old, self.orphan_old):
+            for suffix in (".bin", ".bin.br", ".bin.gz"):
+                (directory / f"000-abc{suffix}").write_bytes(b"F5F1")
+        self.tree.age(self.referenced_old, 100)
+        self.tree.age(self.orphan_old, 100)
+        result = self.prune()
+        self.assertIn("weather/harmonie-previous", result["removed"])
+        for suffix in (".bin", ".bin.br", ".bin.gz"):
+            self.assertTrue((self.referenced_old / f"000-abc{suffix}").is_file(), suffix)
+            self.assertFalse((self.orphan_old / f"000-abc{suffix}").exists(), suffix)
+        self.assertNotIn("weather/harmonie-live", result["removed"])
+
     def test_keeps_pointer_manifests_and_the_archive(self):
         self.prune()
         for pointer in ("weather/harmonie.json", "weather/gfs.json", "marine/tides.json"):
