@@ -69,19 +69,24 @@ describe("the sample ICON-EU surface weather bundle", () => {
     const series = weatherSeries(manifest, "brandon")!;
     expect(series).toHaveLength(2);
     expect(weatherSeriesHasData(series)).toBe(true);
-    expect(series[0].values.t2m).toBe(13.6);
-    expect(series[0].values.clct).toBe(68);
-    expect(series[0].values.pmsl).toBe(1017);
-    // The run hour has no interval to difference, so its rain is null, not zero.
+    expect(series[0].values.t2m).toBe(13.5);
+    expect(series[0].values.clct).toBe(24);
+    expect(series[0].values.pmsl).toBe(1016.9);
+    // The accumulation starts at nothing, and the run hour has no interval to
+    // difference, so its rain is null rather than zero.
+    expect(series[0].values.tp).toBe(0);
     expect(series[0].values.precip).toBeNull();
     expect(precipIntervalHours(series[0])).toBeNull();
-    expect(series[1].values.precip).toBe(1.2);
+    expect(series[1].values.precip).toBe(1.3);
     expect(precipIntervalHours(series[1])).toBe(3);
     expect(series[1].values.t2m).toBe(11.2);
-    expect(series[1].values.pmsl).toBe(1014.1);
+    expect(series[1].values.pmsl).toBe(1014.2);
   });
   it("turns the published codes into the shapes the Weather row draws", () => {
-    const series = weatherSeries(manifest, "brandon")!;
+    // A code belongs to the cell containing a location, so which code a place
+    // reads is where it stands, not where it sits in the catalogue: Dollymount
+    // is in the cell the rota puts "cloudy" then "slight rain" in.
+    const series = weatherSeries(manifest, "dollymount")!;
     expect(presentWeather(series[0].values.ww)).toMatchObject({
       code: 3,
       icon: "cloudy",
@@ -94,7 +99,7 @@ describe("the sample ICON-EU surface weather bundle", () => {
   });
   it("labels the skin temperature as the proxy the manifest says it is", () => {
     const series = weatherSeries(manifest, "brandon")!;
-    expect(series[0].values.tg).toBe(13);
+    expect(series[0].values.tg).toBe(13.1);
     expect(manifest.seaTemperatureNote).toMatch(/proxy/);
     expect(manifest.presentWeatherNote).toMatch(/never interpolated/);
     expect(manifest.precipitationNote).toMatch(/precipIntervalHours/);

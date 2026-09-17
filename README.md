@@ -19,7 +19,9 @@ No forecast data is committed: `public/weather/` is generated and git-ignored. A
 npm run weather:sample
 ```
 
-That writes nine bundles in exactly the published format — HARMONIE, ICON-EU, ECMWF, GFS, ARPEGE, AROME, AIFS, GFS-Wave and ICON-EU surface weather — carrying a smooth analytic field rather than a forecast, on a fixed sample calendar covering 13–28 September 2026. Every manifest says what it is in its provider and attribution ("Synthetic sample data for tests — not a forecast"), so it can never be mistaken for model output. The generator refuses to overwrite manifests that are already in `public/weather`; pass `--force` to replace them, or `--profile live` for run times anchored to the wall clock.
+That writes nine bundles in exactly the published format — HARMONIE, ICON-EU, ECMWF, GFS, ARPEGE, AROME, AIFS, GFS-Wave and ICON-EU surface weather — carrying a smooth analytic field rather than a forecast, on a fixed sample calendar covering 13–28 September 2026. Every manifest says what it is in its provider and attribution ("Synthetic sample data for tests — not a forecast"), so it can never be mistaken for model output. The grids are rectangular (dx ≠ dy, as the real HARMONIE grid is), so a sampler that confused the two axes could not pass.
+
+The generator refuses to write into a `public/weather` that holds **anything** that looks like forecast data — any `*.json` manifest, or any run directory. A run directory with no manifest beside it is exactly what an interrupted import leaves, and dropping synthetic manifests next to it would both corrupt the site and make the ingest's prune treat the real runs as junk. Pass `--force` to replace what is there; even then it will not delete a run directory unless a manifest in the same directory claims it and says `provider: "Synthetic sample data"`. `--profile live` anchors the run times to the wall clock instead, and `--out <dir>` writes somewhere else entirely.
 
 Features:
 
