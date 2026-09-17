@@ -67,7 +67,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -506,6 +506,107 @@ The spread widens with lead time as it should: a 3 kt range at initialization, a
 That is model uncertainty, not a rideability probability, and it says nothing about
 shelter, headlands or launch-site turbulence.
 
+### ARPEGE refresh
+
+```sh
+npm run weather:refresh:arpege
+# Shorter, hourly, or discovery through the data.gouv.fr catalogue:
+.venv/bin/python force5/ingest/fetch_arpege.py --hours 48 --step 3
+.venv/bin/python force5/ingest/fetch_arpege.py --hours 24 --step 1
+.venv/bin/python force5/ingest/fetch_arpege.py --source datagouv
+```
+
+Météo-France's 0.1° ARPEGE, Etalab Open Licence 2.0, no API key. Default: 0–102 h
+at three-hour steps (35 frames), which is the model's whole horizon. The 0.1°
+**surface** package is hourly all the way to +102 h — the 48-hour hourly limit
+applies to the upper-air packages, not to this one — so `--step 1` also reaches
++102 h, at 103 frames.
+
+Météo-France publishes whole packages with no server-side subsetting and no `.idx`
+sidecar: the nine time-group files of one ARPEGE `SP1` run are **646 MB** together.
+Downloading that for three fields is not defensible, so `meteofrance.py` walks each
+package's GRIB2 message headers over HTTP byte ranges — one 1 KB read per message —
+and then fetches only the 10 m u, 10 m v and FF_RAF gust messages it will publish.
+The byte offsets are cached per run under `.cache/meteofrance/<model>/<run>/`, so a
+retried job re-reads no headers at all. The bucket answers a **multi-range** request
+with 200 and the entire object, so the client sends one range at a time and refuses
+any response that is not a 206 of exactly the requested length.
+
+Runs are discovered from the OVH bucket listing, newest cycle first, and a cycle is
+used only when every requested hour's package is already published; runs older than
+12 hours or dated in the future are refused. `--source datagouv` discovers the same
+files through the `data.gouv.fr` resource catalogue instead — the officially
+documented route, which rewrites one resource per time group in place and therefore
+shows a mixture while a run is publishing. Both paths download from the same bucket.
+
+The crop is the shared Ireland/Atlantic box, 18°W–2°E and 48–59°N, at the native
+0.1°: **201 × 111 cells**. It is taken on integer lattice indices rather than on
+ecCodes' coordinate arrays, because 0.1° is not a binary fraction and a plain
+`longitude <= east` comparison silently drops the eastern column; the arithmetic
+lattice is checked against every coordinate ecCodes reports before it is used. The
+packages are **CCSDS/AEC packed** (data representation template 42), which needs an
+ecCodes built with libaec; the `eccodes` wheels in `requirements-worker.txt` have it,
+and a build without it fails with one sentence naming libaec rather than a C error.
+
+**ARPEGE gusts are FF_RAF: the maximum over the hour ending at each forecast time.**
+The window is read from the GRIB2 statistical keys (maximum, one-hour time range),
+never from the parameter number, and is published as `gustIntervalHours: [h-1, h]`.
+It stays one hour at three-hourly cadence, so a frame describes the hour before it
+and not the whole gap. Initialization has no preceding hour, so the manifest declares
+`gustMissingHours: [0]` and that frame's gust is null, not zero. FF_RAF turned out to
+be plain WMO 0/2/22 under product template 8, not a Météo-France local table code.
+
+Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
+transferred in 1,236 requests (1,130 of them 1 KB header reads), 32 seconds** wall
+time with three concurrent package walks, publishing 35 frames (12 MB of JSON) and a
+76 kB manifest for 25 locations. Brandon Bay read 18.2 kn at initialization, 20.1 kn
+gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. The bundled acceptance
+snapshot is the same run through +12 h: 5 frames, 1.72 MB.
+
+### AROME refresh
+
+```sh
+npm run weather:refresh:arome
+# Shorter, hourly, or discovery through the data.gouv.fr catalogue:
+.venv/bin/python force5/ingest/fetch_arome.py --hours 24 --step 3
+.venv/bin/python force5/ingest/fetch_arome.py --hours 12 --step 1
+.venv/bin/python force5/ingest/fetch_arome.py --source datagouv
+```
+
+Météo-France's 0.025° AROME, the same licence, key and package client as ARPEGE.
+Default: 0–51 h at three-hour steps (18 frames), the model's whole horizon; `--step 1`
+gives 52 frames. Eight cycles a day, three hours apart. The `SP1` package set is
+461 MB a run and is read the same way, by walking headers over byte ranges.
+
+**AROME's published grid is larger than the model.** The 0.025° `EURW1S40` product is
+a latitude/longitude box, 12°W–16°E and 37.5–55.4°N, but the model runs on a rotated
+domain inside it and a GRIB2 bitmap masks the rest — about 17% of the box, including
+a corner that cuts diagonally across Donegal. On the 55°N row valid data begins only
+at **8.45°W**, and the 55.4°N row is masked outright. The model's edge over Ireland is
+nothing like a line of latitude, and a naive 55.4°N crop publishes 9999 m/s.
+
+The crop is therefore the largest rectangle wholly inside the unmasked area:
+**10.9°W–5°W, 51–54.75°N, 237 × 151 cells** at the native 0.025°, with no resampling.
+That covers the west, south and east coasts and Belfast Lough, and stops short of the
+north coast. Masked points are decoded as NaN rather than 9999 and any masked cell
+inside the crop fails the run, so a future change to the model domain is a loud error
+and never a published number.
+
+**Three riding locations are outside AROME:** Pollan Bay, Benone Strand and
+Magheraroarty. They keep their place in `spotForecasts` with null `u`, `v` and `gust`
+and are named in the manifest's `coverageNote`; `force5/src/series.ts` treats an
+all-null series as absent, so the blend shows AROME no line there rather than a flat
+zero. Use ARPEGE or HARMONIE for the north coast. Gust semantics are FF_RAF, exactly
+as for ARPEGE: a one-hour maximum ending at the frame, with `gustMissingHours: [0]`.
+
+Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
+transferred in 366 requests (310 of them header reads), 13.6 seconds** wall time,
+publishing 18 frames (9.8 MB of JSON) and a 41 kB manifest. Brandon Bay read 21.0 kn
+at initialization, 16.2 kn gusting 23.6 kn at +3 h and 26.1 kn gusting 32.9 kn at
++15 h — a little stronger than ARPEGE at the same hours, which is what a 2.5 km model
+resolving Brandon Bay against an 11 km one should look like. A 0.025° frame is 600 kB,
+so no AROME snapshot is bundled; `public/weather/arome.json` is git-ignored.
+
 ### Irish Shelf SWAN refresh
 
 ```sh
@@ -817,6 +918,7 @@ ensemble      {members, control | null, description}
 spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
 variables     {shortName: {units, label, description, kind?}}   wave/weather bundles
 spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
+coverageNote  why some spotForecasts series are null           wind bundles
 horizonHours  last published hour                               frameless wave bundles
 frameVariables[shortName]  the subset of variables frames carry  wave/weather bundles
 ```
@@ -836,6 +938,13 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   be empty **only** when `ensemble` is present, for models shown on the chart but not
   the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
   chart-only model needs that frontend check relaxed first.
+- **coverageNote** is one sentence explaining why a wind model publishes null
+  values for some riding locations: its domain does not reach them. The locations
+  stay in `spotForecasts` so the catalogue never looks as though it changed, and
+  `force5/src/series.ts` treats an all-null series as absent rather than as calm.
+  Météo-France AROME is the first model to need it — three north-coast locations sit
+  outside its native domain — and the frame arrays themselves never contain nulls,
+  because the crop is chosen to stay inside the model.
 - **wave** bundles declare `variables` and publish `spotSeries` for every riding
   location, with `null` for land, unresolved cells and locations with no usable grid
   cell, never zero. Frames are **optional**: `frames` may be empty when `spotSeries`
@@ -998,6 +1107,7 @@ tide row's.
 - GFS-Wave: [NOAA/NCEP WAVEWATCH III](https://polar.ncep.noaa.gov/waves/), [NOMADS wave GRIB filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl), same [Open Data bucket](https://registry.opendata.aws/noaa-gfs-bdp-pds/) and [NWS disclaimer](https://www.weather.gov/disclaimer). Public-domain US Government work; Force5 publishes resampled output, not official government material, and NOAA/NWS does not endorse this site. The `arctic.9km` product is the only GFS-Wave grid that covers all Irish waters.
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
 - Waves: Marine Institute [Irish Shelf SWAN](https://erddap.marine.ie/erddap/info/IMI_IRISH_SHELF_SWAN_WAVE/index.html) and the 200 m [Connemara nest](https://erddap.marine.ie/erddap/info/IMI_CONNEMARA_SWAN_WAVE/index.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wave forecast © Marine Institute; best endeavours, not for safety-critical use. One run a day, and a beach series is the nearest open-water cell, not the shorebreak.
+- ARPEGE and AROME: [Météo-France public numerical prediction data](https://meteo.data.gouv.fr/), packages [ARPEGE 0.1°](https://www.data.gouv.fr/datasets/paquets-arpege-resolution-0-1deg/) and [AROME 0.025°](https://www.data.gouv.fr/datasets/paquets-arome-resolution-0-025deg/), [Etalab Open Licence 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/), no key. Attribution as published: "Weather data: Météo-France, ARPEGE and AROME public numerical prediction packages from meteo.data.gouv.fr, Etalab Open Licence 2.0. Cropped, validated and processed by Force5 (wingfoil.ie); this is modified Météo-France output, not official Météo-France material." AROME's 0.025° domain does not reach Ireland's north coast: Pollan Bay, Benone Strand and Magheraroarty have no AROME series at all.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
