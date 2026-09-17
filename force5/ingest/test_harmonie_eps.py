@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import f5bin
 from fetch_forecast import write_json
 from fetch_harmonie import GRID
 from fetch_harmonie_eps import assemble, cache_path, catalogue, main, source_name, validate
@@ -144,9 +145,11 @@ class PublicationTests(unittest.TestCase):
         # spotForecasts is the ensemble mean, sampled from the published mean grid.
         self.assertEqual([(e["u"], e["v"], e["gust"]) for e in manifest["spotForecasts"]["brandon"]],
                          [(6.0, -3.0, None), (9.0, -3.0, None), (12.0, -3.0, None)])
-        frame = json.loads((self.root / "public" / manifest["frames"][2]["url"]).read_text())
+        frame = f5bin.decode_frame(
+            (self.root / "public" / manifest["frames"][2]["url"]).read_bytes())
         self.assertEqual((frame["u"][0], frame["v"][0], frame["gust"]), (12.0, -3.0, None))
-        self.assertEqual(frame["grid"], GRID)
+        self.assertEqual((frame["width"], frame["height"]), (GRID["width"], GRID["height"]))
+        self.assertEqual(manifest["grid"], GRID)
         self.assertEqual(manifest["sourceFiles"][2]["files"],
                          ["fc2026091617+002CONTROL_grib2_ieIoI", "fc2026091617+005CONTROL_grib2_ieIoI",
                           "fc2026091617+008CONTROL_grib2_ieIoI"])

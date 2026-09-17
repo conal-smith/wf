@@ -77,7 +77,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. The bucket is AWS S3 by default; add `--endpoint-url`/`S3_ENDPOINT_URL` (and the standard `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) to publish to **Cloudflare R2** instead, which is the intended deployment — the region defaults to `auto` when an endpoint is given. A publish deletes the objects the run it supersedes referenced, and `python force5/ingest/prune.py --bucket NAME --dry-run` sweeps what failed uploads left behind. See [the live pipeline document](docs/LIVE_FORECAST_PIPELINE.md#cloudflare-r2-and-one-shot-batch-containers); no R2 bucket has been created or verified yet. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -106,10 +106,38 @@ The importer:
 3. Downloads at most four files concurrently with timeouts/retries into `.cache/grib`.
 4. Uses ecCodes to decode GRIB2. Checks parameter, level, units, initialization, valid time, projection, vector orientation, scanning geometry and value ranges. Normalises ecCodes time units to hours.
 5. Crops an Ireland/Atlantic buffer (18° W–2° E, 48°–59° N), retaining the source 0.0625° grid. Rows are north-to-south, columns west-to-east.
-6. Publishes content-hashed JSON frames and precomputed spot time series.
+6. Publishes content-hashed binary frames and precomputed spot time series.
 7. Atomically replaces `public/weather/latest.json` only after all requested frames pass validation.
 
-Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the current cropped JSON snapshot is roughly 22 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+Existing published data remains intact on failure. Partial run files may remain unreferenced. Run one refresh process at a time; raw cache and old processed files are retained without automatic pruning in this MVP. The initial download is roughly 90 MB compressed for 75 full-Europe GRIB fields; the cropped snapshot is roughly 8 MB, with only requested/adjacent frames fetched by the browser and an eight-frame cache.
+
+#### The frame file
+
+A **wind** map frame is `HHH-<hash>.bin` in the "F5 int16" encoding: a 24-byte
+header (magic, version, block count, width, height, scale, forecast hour and the
+run as `YYYYMMDDHH`) followed by one little-endian int16 block per variable —
+`u`, `v` and, where the model has it, `gust` — holding tenths of a metre per
+second, delta-encoded along each row with wrapping arithmetic. A HARMONIE step is
+about 71 KB brotli-compressed against the 225 KB its gzipped JSON cost, and the
+display rounds to whole knots, so nothing visible is lost. The job writes
+`name.bin.br` and `name.bin.gz` beside each frame for the local Caddy
+deployment; the bucket stores one encoding per object instead.
+
+The manifest declares it with `"encoding": "f5-int16-v1"`. A manifest without an
+`encoding` field has JSON frames, which the browser still reads. **Wave and
+weather frames are JSON**, and per-spot series keep their full 0.01 m/s
+precision: every adapter samples the source field, not the frame it publishes.
+
+The one exception is `backfill_spots.py`, which adds a series for a newly
+listed spot to a run whose source data is long gone, so it has only the
+published frames to resample. Such a series can sit up to 0.06 m/s — under a
+tenth of a knot — from what a fresh ingest would have produced, and the next
+run replaces it with the exact one.
+
+The format is specified in `force5/ingest/f5bin.py`, read by
+`force5/src/f5bin.ts` in the browser and by `scripts/f5bin.mjs` in Node; all
+three are pinned to one golden file (`tests/fixtures/f5bin/`) that the Python and
+the Vitest suites each decode.
 
 ### ICON-EU surface weather refresh
 

@@ -1,10 +1,12 @@
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
-from fetch_forecast import already_published, discover, sample, validate_metadata, write_json
+from fetch_forecast import (PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published,
+                            discover, sample, validate_metadata, write_json)
 
 
 class AlreadyPublishedTests(unittest.TestCase):
@@ -20,11 +22,31 @@ class AlreadyPublishedTests(unittest.TestCase):
             {"url": "weather/ecmwf-2026091700-360h-v2/000-abc.json"}]})
 
     def test_the_run_on_the_pointer_is_not_downloaded_again(self):
-        self.assertTrue(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
+        self.assertEqual(already_published(self.manifest, "2026091700",
+                                           "ecmwf-2026091700-360h-v2"), PUBLISHED_ON_DISK)
 
     def test_a_newer_run_or_a_different_bundle_is_downloaded(self):
         self.assertFalse(already_published(self.manifest, "2026091712", "ecmwf-2026091712-360h-v2"))
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v3"))
+
+    def test_the_run_the_bucket_serves_wins_over_an_empty_disk(self):
+        # A one-shot container has no previous output, so the worker's answer is the
+        # only one there is; a different run is still downloaded.
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091712"}):
+            self.assertEqual(already_published(self.weather / "absent.json", "2026091712", "x"),
+                             PUBLISHED_IN_BUCKET)
+            self.assertFalse(already_published(self.weather / "absent.json", "2026091800", "x"))
+
+    def test_a_run_only_on_disk_is_never_reported_as_published(self):
+        """The publish failed last time and /data persisted: republish, don't skip.
+
+        The bucket still serves an older run while the newer one sits on disk. Only
+        the bucket's answer may end the job; confusing the two would leave the site
+        stale for a whole source cycle while the worker logged success.
+        """
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091612"}):
+            self.assertEqual(already_published(self.manifest, "2026091700",
+                                               "ecmwf-2026091700-360h-v2"), PUBLISHED_ON_DISK)
 
     def test_a_missing_or_broken_pointer_or_run_directory_is_downloaded(self):
         self.assertFalse(already_published(self.weather / "absent.json", "2026091700", "x"))
