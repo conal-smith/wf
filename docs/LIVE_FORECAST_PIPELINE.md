@@ -442,6 +442,10 @@ explicit endpoint URL; nothing else differs from S3.
 | `S3_PREFIX` | Optional object prefix, before `weather/`. The frontend's `VITE_FORECAST_BASE_URL` must include it. |
 | `FORCE5_WORK_DIR` | Scratch directory, `/data` in the image. Discarded when the container exits. |
 | `FORCE5_SPOTS_FILE` | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image. |
+| `FORCE5_SWEEP_MIN_AGE_HOURS` | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason. |
+
+`FORCE5_PUBLISHED_RUN` is set **by** the worker for the adapters that read it and must
+not be set in a job's environment; the worker clears any inherited value.
 
 Unlike the AWS design, the token **does** need `DeleteObject`: the publisher removes
 the run it supersedes, and the sweep removes failed uploads.
@@ -499,16 +503,30 @@ explicit `--run`, writes nothing and exits `UNCHANGED_EXIT` (3). The worker logs
 ```
 
 and exits **0**, without validating anything, because there is no bundle to validate.
-The mechanism is generic — it lives in `fetch_forecast.already_published`, which every
-adapter can call — but only `ecmwf` and `ecmwf-ens` call it today, because they are the
-only two scheduled more often than their source publishes. Without a bucket (the local
-deployment) the previous manifest on disk is consulted exactly as before.
 
-The bucket answer compares the **run** only, not the object prefix. So bumping an
-adapter's prefix (`ecmwf-RUN-360h-v2` → `v3`, after a code correction) does not force an
-immediate re-import of the run already published; the new objects land with the source's
-next cycle, within 12 hours. Pass `--run YYYYMMDDHH` to re-import the current one at
-once — an explicit `--run` always skips the check.
+**Only the bucket's answer ends a job.** `already_published` returns `"bucket"`,
+`"local"` or `False`, and the two truthy answers are not interchangeable. Finding the
+run on disk means only that an earlier attempt wrote it — its publish may have failed,
+and on a persistent work directory (`deploy/local`, or `-v force5-work:/data`) the
+bucket can still be serving an older run. That case returns **0**, skipping only the
+download, so the worker validates and publishes what is on disk exactly as it did
+before any of this existed. Collapsing the two would leave the site stale for a whole
+source cycle while the worker logged success.
+
+Symmetrically, the worker accepts exit 3 as "nothing new" **only from an adapter that
+declares `readsPublishedRun` in the registry and that it actually gave
+`FORCE5_PUBLISHED_RUN` to**. If the pointer could not be read, or the adapter is not
+part of the contract, exit 3 is an ordinary failure. The variable is also stripped from
+the inherited environment before each job, so a stray value cannot make a job claim
+success. `ecmwf` and `ecmwf-ens` are the only two adapters in the contract today,
+because they are the only two scheduled more often than their source publishes; the
+mechanism itself is generic and lives in `fetch_forecast.already_published`.
+
+The bucket answer compares the **run id** only. So a change to an adapter's object
+prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an immediate
+re-import of the run already published: the new objects land with the source's next
+cycle, within 12 hours. Pass `--run YYYYMMDDHH` to re-import the current one at once —
+an explicit `--run` always skips the check.
 
 ### Deleting what is superseded
 
@@ -534,7 +552,12 @@ the rules are deliberately narrow:
   the data is live, the leftovers are only cost, and the sweep collects them.
 
 **Archived manifests (`<root>/manifests/<model>/RUN-HASH.json`) are kept.** They are a
-few kilobytes each, they are the rollback path, and R2's free tier stores 10 GB.
+few kilobytes each and R2's free tier stores 10 GB. They are a **record of what was
+published, not a rollback path**: the owner's policy is to keep only the newest run, so
+by the time an archived manifest is old its frames have already been deleted and
+restoring it would point the site at objects that no longer exist. Real rollback would
+need bucket object versioning, which this design deliberately does not use. Treat them
+as an audit trail — which run, which frames, which hashes — and nothing more.
 
 ### The bucket sweep
 
@@ -542,23 +565,44 @@ A failed or interrupted upload leaves objects nothing references. `prune.py --bu
 is the bucket-side equivalent of the local `prune_published`, sharing its
 `manifest_urls`/`referenced` logic:
 
-1. Read **every** registry pointer manifest from the bucket. A manifest that is absent
-   is a model nobody has published; a manifest that is present but unreadable
-   **aborts the sweep without deleting anything**, because everything it references
-   would otherwise look unreferenced.
+1. Read **every** registry pointer manifest from the bucket. A manifest that is present
+   but unreadable **aborts the sweep without deleting anything**, because everything it
+   references would otherwise look unreferenced. A manifest that is **absent** is just
+   as dangerous the other way — every object that model has ever written would look
+   unreferenced — so the sweep keeps everything named for such a model and reports it
+   under `noPointer`/`protectedModels`. That covers a first run, a model being
+   onboarded and a pointer deleted by hand.
 2. List every object under each data root, **paginated**.
 3. Delete an object only when it is unreferenced, is not a pointer or an archived
-   manifest, and its `LastModified` is **older than `--min-age-hours` (default 6)**.
-   That guard is the important one: jobs run on different machines, a run's frames go
-   up before its manifest does, and six hours is longer than any job timeout, so a run
-   another machine is still uploading is never mistaken for wreckage.
+   manifest, and its `LastModified` is **older than `--min-age-hours` (default 6, or
+   `FORCE5_SWEEP_MIN_AGE_HOURS`)**. That guard is the important one: jobs run on
+   different machines, a run's frames go up before its manifest does, and six hours is
+   longer than any job timeout, so a run another machine is still uploading is never
+   mistaken for wreckage.
 4. A two-segment `.json` object that reads like a pointer manifest is kept even for a
-   model the registry has not adopted yet, exactly as on disk.
+   model the registry has not adopted yet, exactly as on disk. So is anything that
+   cannot be read: the sweep never deletes on a guess.
+5. **Read the pointer manifests again, after the listing**, and delete only what is
+   unreferenced in both reads. The listing is slow and paginated, and the age guard
+   cannot cover everything: `put_immutable` leaves an object that is already there
+   untouched, so a stable key a new run re-references — a tide station file, whose name
+   only changes with the day — keeps its old `LastModified` and would look both
+   unreferenced and long past the guard. Both reads abort on an unreadable manifest and
+   both contribute to `noPointer`.
+
+`--bucket` must be given **explicitly**; it is deliberately not defaulted from
+`S3_BUCKET`, because the scheduler's environment carries that for the worker and
+picking it up here would silently turn the hourly local retention job into a bucket
+sweep. Combining `--bucket` with `--root`, `--max-age-hours` or `--cache-days` is an
+error rather than a silent no-op, for the same reason.
 
 `--dry-run` reports without deleting and is worth running first. The command logs
-`sweep_complete` (or `sweep_failed`, exit 1) with `removed`, `kept`, `withinGuard` and
-`freedBytes`. `prune` is already in the scheduler's `KNOWN_COMMANDS`, so the local
-deployment can schedule it with `args = ["--bucket", "..."]` and no scheduler change.
+`sweep_complete` (or `sweep_failed`, exit 1) with `removed`, `keptObjects`,
+`withinGuard`, `protectedObjects`, `protectedModels`, `noPointer` and `freedBytes` —
+note that the **local** sweep's `kept` is a list of reasons while the bucket sweep's
+`keptObjects` is a count, hence the different key. `prune` is already in the
+scheduler's `KNOWN_COMMANDS`, so the local deployment can schedule it with
+`args = ["--bucket", "..."]` and no scheduler change.
 
 ### CORS and cache headers
 
@@ -584,16 +628,24 @@ for the browser's five-minute revalidation to see a new run.
 `put_immutable` writes each immutable object with `If-None-Match: *`, which is what
 makes a re-run cost one request per object and makes an overwrite impossible. **R2's
 support for it is unverified** — no credentials exist yet. So the publisher asks, and
-distinguishes two answers: `PreconditionFailed`/`412` means the object is already
-there (check its `sha256` metadata, as before), while `NotImplemented`,
-`InvalidArgument` or `InvalidRequest` means the backend rejected the *header*. On the
-second it logs `conditional_put_unsupported` **once**, then falls back to
-`head_object` + sha256 compare + plain put for the rest of that publish, so a
-250-frame ECMWF run does not pay the extra round trip 250 times. Collision detection
-is identical on both paths; only the atomicity of the check-and-write is lost, and
-only on a backend that offers none. The pointer's compare-and-swap degrades the same
-way, which is safe here because only one job per model runs at a time and the pointer
-is re-read immediately before the write.
+distinguishes two answers: `PreconditionFailed`/`412` means the object is already there
+(check its `sha256` metadata, as before), while **`NotImplemented`/`501` only** means
+the backend does not have the feature. On the second it logs
+`conditional_put_unsupported` **once**, then falls back to `head_object` + sha256
+compare + plain put for the rest of that publish, so a 250-frame ECMWF run does not pay
+the extra round trip 250 times. Collision detection is identical on both paths; only
+the atomicity of the check-and-write is lost.
+
+The trigger is deliberately narrow. `InvalidArgument` and `InvalidRequest` are **not**
+treated as "no conditional writes": they also mean "your request was malformed", and on
+the pointer path the fallback gives up the compare-and-swap entirely, so a bug must not
+be able to buy that. Anything outside the narrow list fails the job loudly instead.
+**The code R2 actually returns has to be confirmed against a live bucket** before this
+list is trusted — and if R2 turns out to support `If-None-Match`, the fallback should be
+deleted rather than left in. When the pointer write does degrade it logs a second,
+distinct `pointer_put_unconditional` event, because losing compare-and-swap on the one
+mutable object is worth seeing in the logs; it is safe here only because one job per
+model runs at a time and the pointer is re-read immediately before the write.
 
 ### What an empty disk changes, per adapter
 
@@ -767,7 +819,7 @@ The browser fetches the manifest on page load and model changes, then reads its 
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
-- Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback.
+- Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: there, an archived manifest is a record of what was published, not something that can be restored, because its frames are deleted as soon as the run is superseded.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 

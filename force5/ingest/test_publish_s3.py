@@ -2,6 +2,7 @@ import contextlib
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -39,6 +40,8 @@ class FakeS3:
         self.fail_key = "/harmonie-a/"
         self.fail_delete = False
         self.reject_conditional = False
+        self.reject_code = "NotImplemented"
+        self.lost_ack = False
         self.deny = set()
         self.race = None
         self.page_size = 1000
@@ -68,7 +71,14 @@ class FakeS3:
         if self.fail_frame and self.fail_key in key:
             raise S3Error("ServiceUnavailable")
         if self.reject_conditional and ("IfNoneMatch" in args or "IfMatch" in args):
-            raise S3Error("NotImplemented")
+            raise S3Error(self.reject_code)
+        if self.lost_ack and key == "weather/harmonie.json":
+            # The write lands but its answer never arrives; the retry sees the object.
+            self.lost_ack = False
+            self.objects[key] = {**args, "ETag": f'"{len(self.writes)}"',
+                                 "LastModified": self.clock}
+            self.writes.append(key)
+            raise S3Error("PreconditionFailed")
         if key == "weather/harmonie.json" and self.race:
             newer = self.race
             self.race = None
@@ -278,6 +288,32 @@ class SupersededDeleteTest(BundleFixture, unittest.TestCase):
         self.assertEqual(json.loads(self.s3.objects["weather/harmonie.json"]["Body"])["run"],
                          "2026091313")
 
+    def test_a_pointer_put_whose_answer_was_lost_still_deletes_the_previous_run(self):
+        # The PUT succeeded server-side; only its response went missing. The retry
+        # finds our own manifest already published, which is success, not a reason
+        # to leak the run it replaced until the next sweep.
+        self.assertEqual(self.run_publish(), "published")
+        replaced = [info["url"] for info in self.manifest["frames"]]
+        frames = self.rerun("2026091313", "harmonie-b")
+        self.s3.lost_ack = True
+        status, log = self.quietly(self.run_publish)
+        self.assertEqual(status, "unchanged-or-newer")
+        self.assertIn("superseded_deleted", log)
+        for url in replaced:
+            self.assertNotIn(url, self.s3.objects)
+        for info in frames:
+            self.assertIn(info["url"], self.s3.objects)
+
+    def test_a_newer_run_arriving_mid_publish_deletes_nothing_of_ours(self):
+        # already_current for a reason other than "this is our manifest": another
+        # machine won, so we published nothing and must delete nothing.
+        self.assertEqual(self.run_publish(), "published")
+        self.rerun("2026091313", "harmonie-b")
+        self.s3.race = {**self.manifest, "run": "2026091314"}
+        status, _ = self.quietly(self.run_publish)
+        self.assertEqual(status, "unchanged-or-newer")
+        self.assertEqual(self.s3.deleted, [])
+
     def test_an_unreadable_previous_pointer_publishes_and_deletes_nothing(self):
         self.s3.seed("weather/harmonie.json", b"{not json")
         status, log = self.quietly(self.run_publish)
@@ -350,6 +386,20 @@ class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
 
+    def test_a_malformed_request_does_not_pass_for_a_missing_feature(self):
+        # InvalidArgument also means "your request was wrong". Treating it as "this
+        # backend has no conditional writes" would throw the compare-and-swap away
+        # on a bug, so it must fail the job instead.
+        self.s3.reject_conditional, self.s3.reject_code = True, "InvalidArgument"
+        with self.assertRaises(S3Error):
+            self.run_publish()
+        self.assertNotIn("weather/harmonie.json", self.s3.objects)
+
+    def test_giving_up_the_pointers_compare_and_swap_is_logged_as_a_downgrade(self):
+        self.s3.reject_conditional = True
+        _, log = self.quietly(self.run_publish)
+        self.assertIn("pointer_put_unconditional", log)
+
 
 class WorkerUnchangedRunTest(unittest.TestCase):
     """An empty disk makes the bucket the only record of what has been imported."""
@@ -395,18 +445,34 @@ class WorkerUnchangedRunTest(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(event["event"], "forecast_failed")
 
-    def test_without_a_bucket_the_adapter_is_told_nothing(self):
+    def test_without_a_bucket_the_adapter_is_told_nothing_and_cannot_claim_success(self):
         self.args.bucket = None
         status, event = self.run_models(UNCHANGED_EXIT, s3=None)
-        self.assertEqual(status, 0)
         self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
-        self.assertIsNone(event["run"])
+        self.assertEqual((status, event["event"]), (1, "forecast_failed"))
 
-    def test_an_unreadable_pointer_does_not_stop_the_import(self):
+    def test_an_unreadable_pointer_makes_exit_three_an_ordinary_failure(self):
+        # We never told the adapter what the bucket serves, so its "nothing new"
+        # cannot be about the bucket and must not be laundered into success.
         self.s3.deny.add("weather/ecmwf.json")
-        status, _ = self.run_models(UNCHANGED_EXIT)
-        self.assertEqual(status, 0)
+        status, event = self.run_models(UNCHANGED_EXIT)
         self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
+        self.assertEqual((status, event["event"]), (1, "forecast_failed"))
+
+    def test_an_adapter_outside_the_contract_is_never_asked_and_never_skips(self):
+        self.args.models = ["harmonie"]
+        self.s3.seed("weather/harmonie.json", json.dumps(
+            {"model": "harmonie", "run": "2026091300", "frames": []}).encode())
+        status, event = self.run_models(UNCHANGED_EXIT)
+        self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
+        self.assertEqual((status, event["event"]), (1, "forecast_failed"))
+
+    def test_a_stray_published_run_in_the_environment_is_not_inherited(self):
+        self.args.models = ["harmonie"]
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091300"}):
+            status, event = self.run_models(UNCHANGED_EXIT)
+        self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
+        self.assertEqual((status, event["event"]), (1, "forecast_failed"))
 
 
 if __name__ == "__main__":

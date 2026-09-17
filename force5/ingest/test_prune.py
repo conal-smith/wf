@@ -273,8 +273,15 @@ class BucketPruneTest(unittest.TestCase):
         self.s3 = FakeS3()
         self.pointer = self.s3.seed("weather/harmonie.json", json.dumps(
             wind_manifest("harmonie", "2026091600", "harmonie-live")).encode(), NOW)
+        # Both models need a pointer: with none, the sweep protects everything of
+        # theirs rather than treating it as unreferenced.
+        self.tide_pointer = self.s3.seed("marine/tides.json", json.dumps(
+            tide_manifest("2026091600", "tides-DUBLIN-live.json")).encode(), NOW)
         self.live = [self.s3.seed(f"weather/harmonie-live/{hour:03d}-abc.json", b'{"u":[0]}',
                                   NOW - timedelta(hours=100)) for hour in (0, 3)]
+        self.station_live = self.s3.seed("marine/tides-DUBLIN-live.json",
+                                         b'{"station":"DUBLIN","curve":[1,2]}',
+                                         NOW - timedelta(hours=99))
         self.orphan = self.s3.seed("weather/harmonie-previous/000-abc.json", b'{"u":[0,0]}',
                                    NOW - timedelta(hours=100))
         self.arriving = self.s3.seed("weather/harmonie-arriving/000-abc.json", b'{"u":[0]}',
@@ -292,8 +299,49 @@ class BucketPruneTest(unittest.TestCase):
         self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
                                              "weather/harmonie-previous/000-abc.json"])
         self.assertGreater(result["freedBytes"], 0)
-        for key in [*self.live, self.arriving, self.archive, self.pointer]:
+        for key in [*self.live, self.arriving, self.archive, self.pointer,
+                    self.tide_pointer, self.station_live]:
             self.assertIn(key, self.s3.objects, key)
+
+    def test_a_model_with_no_pointer_keeps_everything_it_owns(self):
+        # An absent pointer says nothing about what that model still needs, so
+        # "unreferenced" is meaningless for it. Only tides may be swept here.
+        del self.s3.objects["weather/harmonie.json"]
+        result = self.sweep()
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json"])
+        self.assertIn("harmonie", result["noPointer"])
+        self.assertIn("harmonie", result["protectedModels"])
+        # The two live frames and the previous run; the arriving one is already
+        # held back by the age guard and never reaches this stage.
+        self.assertEqual((result["protectedObjects"], result["withinGuard"]), (3, 1))
+        self.assertIn(self.orphan, self.s3.objects)
+        for key in self.live:
+            self.assertIn(key, self.s3.objects, key)
+
+    def test_a_sibling_models_missing_pointer_does_not_protect_this_one(self):
+        # harmonie-eps has published no pointer, but "harmonie-previous" is harmonie's
+        # and harmonie has one, so the nesting must not hand it a free pass.
+        self.assertFalse(prune.model_owns("harmonie-eps", "harmonie-previous"))
+        result = self.sweep()
+        self.assertIn("harmonie-eps", result["noPointer"])
+        self.assertIn("weather/harmonie-previous/000-abc.json", result["removed"])
+        self.assertNotIn(self.orphan, self.s3.objects)
+
+    def test_an_object_referenced_while_the_listing_ran_is_not_deleted(self):
+        # The keep-set is read before a slow paginated listing, and put_immutable
+        # leaves an already-present object alone, so a re-referenced stable key keeps
+        # its old LastModified and the age guard cannot protect it. The second read can.
+        listing = prune.bucket_objects
+
+        def publish_midway(s3, bucket, prefix):
+            yield from list(listing(s3, bucket, prefix))
+            self.s3.seed("marine/tides.json", json.dumps(tide_manifest(
+                "2026091612", "tides-DUBLIN-previous.json")).encode(), NOW)
+
+        with patch.object(prune, "bucket_objects", publish_midway):
+            result = self.sweep()
+        self.assertNotIn("marine/tides-DUBLIN-previous.json", result["removed"])
+        self.assertIn(self.station, self.s3.objects)
 
     def test_a_young_orphan_is_a_run_another_machine_may_still_be_uploading(self):
         self.assertEqual(self.sweep()["withinGuard"], 1)
@@ -368,6 +416,29 @@ class SweepCommandTest(unittest.TestCase):
         self.assertEqual((code, event["event"]), (0, "sweep_complete"))
         self.assertEqual(event["removed"], ["weather/harmonie-previous/000-abc.json"])
         self.assertNotIn(orphan, s3.objects)
+
+    def test_s3_bucket_in_the_environment_does_not_hijack_the_local_sweep(self):
+        # The scheduler's environment carries S3_BUCKET for the worker. If this
+        # command picked it up, the hourly retention job would quietly become a
+        # bucket sweep and the disk would fill.
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        tree = Tree(directory.name)
+        tree.pointer("weather/harmonie.json",
+                     wind_manifest("harmonie", "2026091600", "harmonie-live"))
+        tree.run_directory("harmonie-live", age_hours=1)
+        tree.run_directory("harmonie-previous", age_hours=200)
+        with patch.dict(os.environ, {"S3_BUCKET": "wingfoil-forecast"}):
+            code, event = run_main(["--root", directory.name])
+        self.assertEqual((code, event["event"]), (0, "prune_complete"))
+        self.assertEqual(event["removed"], ["weather/harmonie-previous"])
+
+    def test_local_only_options_cannot_be_combined_with_a_bucket(self):
+        for extra in (["--max-age-hours", "48"], ["--cache-days", "1"], ["--root", "/tmp"]):
+            with self.subTest(extra=extra[0]), contextlib.redirect_stderr(io.StringIO()) as err:
+                with self.assertRaises(SystemExit):
+                    prune.main(["--bucket", "test", *extra])
+            self.assertIn(extra[0], err.getvalue())
 
     def test_a_broken_manifest_fails_the_command_without_deleting(self):
         from test_publish_s3 import FakeS3

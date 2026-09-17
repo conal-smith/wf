@@ -36,7 +36,7 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 from cadence import expected_hours
-from prune import ARCHIVE_DIRECTORY, delete_keys, manifest_urls
+from prune import ARCHIVE_DIRECTORY, delete_keys, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
@@ -54,10 +54,13 @@ IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 POINTER_CACHE = "public, max-age=0, s-maxage=60, must-revalidate"
 # The condition held but the object was already there. This is the normal answer.
 PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict", "409")
-# A different answer entirely: the backend rejected the *header*, so it does not
-# implement conditional writes at all. R2's support for them is unverified here
-# (no credentials exist yet), so we ask first and fall back rather than assume.
-UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501", "InvalidArgument", "InvalidRequest")
+# A different answer entirely: the backend says it does not implement the feature.
+# Deliberately narrow. `InvalidArgument`/`InvalidRequest` are *not* here: they also
+# cover a malformed request, and treating one as "no conditional writes" would throw
+# away the compare-and-swap on a bug. R2's real answer is unverified (no credentials
+# exist yet) and must be confirmed against a live bucket before this list is trusted;
+# anything else still fails the job loudly, which is the right way round.
+UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
 MISSING_CODES = ("NoSuchKey", "NotFound", "404")
 
 
@@ -594,16 +597,12 @@ def superseded_objects(model, previous, manifest):
         return []
     keep, root = manifest_urls(manifest), object_root(model)
     pointers = set(MANIFESTS.values())
-    # Model ids that would also match this one's prefix, and so are not ours to delete.
-    rivals = tuple(f"{other}-" for other in MODELS if other.startswith(f"{model}-"))
     stale = []
     for url in sorted(manifest_urls(previous) - keep):
         parts = PurePosixPath(url).parts
         if not 2 <= len(parts) <= 3 or parts[0] != root or ".." in parts:
             continue  # Not one of ours to delete; an absolute or foreign URL is left alone.
-        if url in pointers or parts[1] == ARCHIVE_DIRECTORY:
-            continue
-        if not parts[1].startswith(f"{model}-") or parts[1].startswith(rivals):
+        if url in pointers or parts[1] == ARCHIVE_DIRECTORY or not model_owns(model, parts[1]):
             continue
         stale.append(url)
     return stale
@@ -640,17 +639,22 @@ def already_current(current, incoming):
         # A diagnostic run with fewer members must not replace a fuller ensemble.
         if (current.get("ensemble") or {}).get("members", 0) > (incoming.get("ensemble") or {}).get("members", 0):
             return True
-        return {k: v for k, v in current.items() if k != "generatedAt"} == {
-            k: v for k, v in incoming.items() if k != "generatedAt"}
+        return same_manifest(current, incoming)
     return False
+
+
+def same_manifest(current, incoming):
+    """The published pointer is byte-for-byte this bundle, give or take when it was made."""
+    return bool(current) and {k: v for k, v in current.items() if k != "generatedAt"} == {
+        k: v for k, v in incoming.items() if k != "generatedAt"}
 
 
 def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
     prefix = object_prefix(prefix)
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
     pointer = prefix + MANIFESTS[model]
-    current, _ = read_current(s3, bucket, pointer)
-    if already_current(current, manifest):
+    replaced, _ = read_current(s3, bucket, pointer)
+    if already_current(replaced, manifest):
         return "unchanged-or-newer"
     state = {}  # Whether this backend honours conditional puts; answered once per publish.
     for path, data in objects:
@@ -661,7 +665,14 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
     for _ in range(4):
         current, etag = read_current(s3, bucket, pointer)
         if already_current(current, manifest):
+            if same_manifest(current, manifest):
+                # Our own bundle is up there although we never saw the answer: a PUT
+                # that succeeded server-side and then reported PreconditionFailed on a
+                # retry. The pointer is in place, so the run it replaced is still ours
+                # to delete; without this it would leak until the next bucket sweep.
+                drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
             return "unchanged-or-newer"
+        replaced = current  # The newest manifest we have seen that this publish replaces.
         condition = {"IfMatch": etag} if etag else {"IfNoneMatch": "*"}
         try:
             # The only mutable object. Publish LAST using compare-and-swap.
@@ -673,14 +684,16 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None):
                 continue
             if code not in UNSUPPORTED_CONDITION_CODES:
                 raise
-            # The backend has no conditional writes at all. We re-read the pointer
-            # immediately above and only one job per model runs at a time, so an
-            # unconditional write is the remaining option, not a silent downgrade.
+            # The backend has no conditional writes at all, so this write gives up the
+            # compare-and-swap. We re-read the pointer immediately above and only one
+            # job per model runs at a time, but it is a real downgrade: log it as one.
             log_event("conditional_put_unsupported", key=pointer, code=code)
+            log_event("pointer_put_unconditional", model=model, key=pointer,
+                      note="Compare-and-swap unavailable on this backend")
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
                           ContentType="application/json", CacheControl=POINTER_CACHE)
         # The new pointer is in place. Only now is the one it replaced junk, and only
         # now can deleting what it referenced not break a manifest anybody can read.
-        drop_superseded_objects(s3, bucket, prefix, model, current, manifest)
+        drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
         return "published"
     raise RuntimeError("Manifest changed repeatedly during publish; retry the job")
