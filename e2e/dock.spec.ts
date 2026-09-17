@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { SAMPLE_CLOCK, sampleColumns } from "./columns";
 
 const harmonie = JSON.parse(
   readFileSync("public/weather/harmonie.json", "utf8"),
@@ -162,7 +163,8 @@ test("the blend draws every model that covers the spot, and candles share its ax
   ).toBe(true);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   // Every three-hourly column is the same width, including the ones whose day
-  // group holds only them: the charts read the columns as evenly spaced.
+  // group holds only them: the charts read the columns as evenly spaced. Past
+  // day six the axis turns six-hourly and those columns keep twice the room.
   const widths = await page
     .locator(".forecast-table thead tr:nth-child(2) th")
     .evaluateAll((cells) =>
@@ -170,7 +172,13 @@ test("the blend draws every model that covers the spot, and candles share its ax
         .slice(1)
         .map((cell) => Math.round(cell.getBoundingClientRect().width)),
     );
-  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
+  expect(widths).toHaveLength(sampleColumns.length);
+  const sizes = [...new Set(widths)].sort((a, b) => a - b);
+  expect(sizes).toHaveLength(2);
+  expect(sizes[1] / sizes[0]).toBeCloseTo(2, 1);
+  expect(widths.filter((width) => width === sizes[0]).length).toBeGreaterThan(
+    40,
+  );
   await expect(page.locator(".tide-row")).toHaveCount(1);
   await expect(page.locator(".tide-underlay")).toHaveCount(1);
   await expect(page.locator(".forecast-credits")).toContainText("Fenit tide");
@@ -288,6 +296,7 @@ test("an arbitrary map point falls back to the table and says why", async ({
   page,
 }) => {
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   // The markers are the signal that the map has finished its opening move; a
@@ -313,8 +322,16 @@ test("an arbitrary map point falls back to the table and says why", async ({
     "true",
   );
   await expect(page.locator(".blend-chart")).toHaveCount(0);
+  // The dock keeps all fifteen days whatever the map is drawing; a bare point
+  // is read from the map model alone, so only its own hours carry a value.
   await expect(page.locator(".forecast-table .wind-cell")).toHaveCount(
-    harmonie.frames.length,
+    sampleColumns.length,
+  );
+  await expect(
+    page.locator(".forecast-table .wind-cell").nth(harmonie.frames.length - 1),
+  ).not.toHaveText("—", { timeout: 30000 });
+  await expect(page.locator(".forecast-table .wind-cell").last()).toHaveText(
+    "—",
   );
   // Returning to a named spot restores the chart the reader chose.
   await page.getByRole("button", { name: "Open spot search" }).click();
@@ -743,20 +760,25 @@ test("the cloud, pressure and sea rows are off until the filter turns them on", 
     await expect(page.locator(`input[data-row="${row}"]`)).toBeChecked();
 });
 
-test("a wind model whose hours miss the weather run reads as dashes", async ({
+test("columns the weather run cannot reach read as dashes", async ({
   page,
 }) => {
-  // HARMONIE's bundled run ends on 16 September at 01 UTC, hours the ICON-EU
-  // surface run does not reach. The rows stay, and say nothing, rather than
-  // borrowing a step from three days away.
+  // The ICON-EU surface run is two steps on 16 September. The dock spans
+  // fifteen days, so almost every column has nothing from it — and says
+  // nothing, rather than borrowing a step from three days away.
   await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   await expect(page.locator('.weather-row[data-row="air"]')).toHaveCount(1);
   const air = await weatherReadings(page, "air");
-  expect(air.length).toBeGreaterThan(0);
-  expect(new Set(air)).toEqual(new Set(["—"]));
-  await expect(page.locator(".weather-cell")).toHaveCount(0);
+  expect(air).toHaveLength(sampleColumns.length);
+  // Both readings sit on the two columns the surface run actually publishes.
+  const readings = air.flatMap((text, column) =>
+    text === "—" ? [] : [sampleColumns[column]],
+  );
+  expect(readings).toEqual(["2026-09-16T18:00:00Z", "2026-09-16T21:00:00Z"]);
+  await expect(page.locator(".weather-cell")).toHaveCount(2);
 });
 
 test("an instantaneous-gust model reads at initialization", async ({

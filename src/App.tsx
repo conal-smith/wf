@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   ChevronRight,
@@ -17,6 +17,12 @@ import { ridingLocations } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
+import { useModelAvailability } from "./useBlend";
+import {
+  dockColumns,
+  type ColumnModel,
+  type DockColumn,
+} from "../force5/src/timeline";
 import {
   convert,
   dayLabel,
@@ -85,7 +91,9 @@ export default function App() {
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
-  const [, tick] = useState(0);
+  // A coarse clock. The Now line has its own; this one decides which runs have
+  // expired, so it only has to be right to the minute.
+  const [clock, setClock] = useState(() => Date.now());
   const dialog = useRef<HTMLDialogElement>(null);
   const modelRequest = useRef<AbortController | null>(null);
   const [pendingModel, setPendingModel] = useState<ModelId | null>(null);
@@ -149,10 +157,15 @@ export default function App() {
       if (media.matches) setPlaying(false);
     };
     media.addEventListener("change", change);
-    const interval = window.setInterval(() => tick((v) => v + 1), 60000);
+    const now = () => setClock(Date.now());
+    const interval = window.setInterval(now, 60000);
+    document.addEventListener("visibilitychange", now);
+    window.addEventListener("focus", now);
     return () => {
       media.removeEventListener("change", change);
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", now);
+      window.removeEventListener("focus", now);
     };
   }, []);
 
@@ -184,6 +197,56 @@ export default function App() {
     manifest && selectedTime
       ? nearestFrame(manifest.frames, Date.parse(selectedTime))
       : 0;
+
+  // The sweep lives here rather than in the dock because the dock's columns are
+  // built from every model's manifest, not just the one the map is drawing.
+  const { models, resolved: modelsResolved } = useModelAvailability(
+    playing || !!pendingModel,
+  );
+  const columnModels = useMemo<ColumnModel[]>(() => {
+    const list = models
+      .filter((model) => model.wind !== null)
+      .map((model) => ({
+        id: model.id,
+        manifest: model.wind!,
+        ensemble: model.entry.ensemble,
+      }));
+    if (!manifest) return list;
+    // The run on screen is the authority for its own model: a run swap must not
+    // wait for the next five-minute sweep before the columns agree with the map.
+    const mine = { id: manifest.model, manifest, ensemble: false };
+    const at = list.findIndex((model) => model.id === manifest.model);
+    if (at === -1) return [...list, mine];
+    return list.map((model, index) => (index === at ? mine : model));
+  }, [models, manifest]);
+  // Kept by identity so a minute's tick, or a sweep that says the same thing,
+  // does not rebuild every chart and re-run the dock's measurement pass.
+  const lastColumns = useRef<DockColumn[]>([]);
+  const columns = useMemo(() => {
+    const built = dockColumns(columnModels, clock);
+    // Until the sweep resolves there is one manifest to go on, and it is the
+    // map's. The selection survives the change because it is a time.
+    const next = built.length
+      ? built
+      : manifest
+        ? manifest.frames.map((frame) => ({
+            validTime: frame.validTime,
+            model: manifest.model,
+          }))
+        : [];
+    const previous = lastColumns.current;
+    if (
+      previous.length === next.length &&
+      previous.every(
+        (column, index) =>
+          column.validTime === next[index].validTime &&
+          column.model === next[index].model,
+      )
+    )
+      return previous;
+    lastColumns.current = next;
+    return next;
+  }, [columnModels, manifest, clock]);
 
   useEffect(() => {
     if (!manifest || pendingModel) return;
@@ -588,15 +651,21 @@ export default function App() {
               {manifest && (
                 <ForecastDock
                   manifest={manifest}
+                  columns={columns}
+                  models={models}
+                  modelsResolved={modelsResolved}
                   point={point}
                   prefs={prefs}
                   onPrefsChange={changePrefs}
-                  index={activeIndex}
-                  requestedIndex={requestedIndex}
-                  scrollIndex={frameError ? activeIndex : requestedIndex}
-                  onSelect={(column) =>
-                    selectTime(manifest.frames[column].validTime)
+                  selectedTime={
+                    selectedTime ?? manifest.frames[requestedIndex].validTime
                   }
+                  // A frame that failed must not drag the dock to a column the
+                  // map never reached; the last good one keeps the view.
+                  scrollTime={
+                    frameError ? (forecast?.validTime ?? null) : selectedTime
+                  }
+                  onSelect={selectTime}
                   open={sheetOpen}
                   onClose={() => {
                     setSheetOpen(false);

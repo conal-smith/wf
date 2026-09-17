@@ -60,22 +60,52 @@ export function axisTicks(max: number, step = 10): number[] {
   return ticks;
 }
 
+/** Hours between two forecast times. */
+const gapHours = (from: string, to: string) =>
+  (Date.parse(to) - Date.parse(from)) / 3600000;
+
 /**
  * Relative width of each forecast column. A six-hourly step keeps twice the
- * room a three-hourly one does — the same rule `ForecastSheet` sizes its header
- * cells with, so the chart and the table cannot drift apart.
+ * room a three-hourly one does — the same rule `ForecastHeader` sizes its
+ * header cells with, so the chart and the table cannot drift apart.
+ *
+ * Measured from the column times rather than from a run's elapsed hours: past
+ * the seam the columns belong to a second run, whose hour numbers count from a
+ * different initialization.
  */
 export function columnWeights(
-  frames: readonly Pick<FrameInfo, "hour">[],
-  stepHours: number,
+  times: readonly string[],
+  baseHours = 3,
 ): number[] {
-  return frames.map((frame, index) => {
-    const next = frames[index + 1];
-    const interval = next
-      ? next.hour - frame.hour
-      : frame.hour - (frames[index - 1]?.hour ?? frame.hour - stepHours);
+  return times.map((time, index) => {
+    const interval = times[index + 1]
+      ? gapHours(time, times[index + 1])
+      : times[index - 1]
+        ? gapHours(times[index - 1], time)
+        : baseHours;
     return Math.max(1, interval / 3);
   });
+}
+
+/**
+ * Columns grouped into candles of about three hours, by wall-clock time. A
+ * fixed number of columns per candle would draw a three-hour candle beside a
+ * twelve-hour one once the axis changes cadence at the seam.
+ */
+export function candleGroups(times: readonly string[], hours = 3): number[][] {
+  if (!(hours > 0)) throw new Error("Candle width must be positive.");
+  const span = hours * 3600000;
+  const groups: number[][] = [];
+  let bucket: number | null = null;
+  times.forEach((time, index) => {
+    const at = Math.floor(Date.parse(time) / span);
+    if (at === bucket) groups[groups.length - 1].push(index);
+    else {
+      groups.push([index]);
+      bucket = at;
+    }
+  });
+  return groups;
 }
 
 /** Left edge of every column plus the right edge of the last, in pixels. */
@@ -270,20 +300,20 @@ export interface DayGroup {
 
 /** Forecast columns grouped by Irish calendar day, for the header's day row. */
 export function dayGroups(
-  frames: readonly Pick<FrameInfo, "validTime">[],
+  times: readonly string[],
   label: (iso: string) => string,
 ): DayGroup[] {
-  return frames.reduce<DayGroup[]>((groups, frame, index) => {
-    const date = dublinDate(frame.validTime);
+  return times.reduce<DayGroup[]>((groups, time, index) => {
+    const date = dublinDate(time);
     const last = groups[groups.length - 1];
     if (last?.date === date) last.count++;
     else
       groups.push({
         date,
-        label: label(frame.validTime),
+        label: label(time),
         start: index,
         count: 1,
-        noon: dublinNoonUtc(frame.validTime),
+        noon: dublinNoonUtc(time),
       });
     return groups;
   }, []);

@@ -1,4 +1,14 @@
-import { KNOTS, speed, windColor, type Wind, type FrameInfo } from "./weather";
+import {
+  KNOTS,
+  freshness,
+  speed,
+  windColor,
+  type Manifest,
+  type Wind,
+  type FrameInfo,
+} from "./weather";
+
+const HOUR = 3600000;
 
 /** Fractional column index at a real time, never clamped into an expired run. */
 export function framePosition(
@@ -20,24 +30,210 @@ export function framePosition(
   );
 }
 
+/** One dock column: a forecast time, and the run whose timeline publishes it. */
+export interface DockColumn {
+  validTime: string;
+  /** Model id, for the header's model band and for filling the cells. */
+  model: string;
+}
+
+/** A wind model offered to the column builder, with the run it has published. */
+export interface ColumnModel {
+  id: string;
+  manifest: Manifest;
+  /** An ensemble mean is a summary of a spread, not a timeline of its own. */
+  ensemble?: boolean;
+}
+
+/** The times a run publishes: its map frames, or its longest spot series. */
+function modelTimes(manifest: Manifest): string[] {
+  if (manifest.frames?.length)
+    return manifest.frames.map((frame) => frame.validTime);
+  let longest: readonly { validTime: string }[] = [];
+  for (const series of Object.values(manifest.spotForecasts ?? {}))
+    if (series.length > longest.length) longest = series;
+  return longest.map((point) => point.validTime);
+}
+
+/** Median gap between consecutive times, in hours; zero for a single time. */
+function medianStepHours(times: readonly string[]): number {
+  const steps: number[] = [];
+  for (let i = 1; i < times.length; i++)
+    steps.push((Date.parse(times[i]) - Date.parse(times[i - 1])) / HOUR);
+  if (!steps.length) return 0;
+  steps.sort((a, b) => a - b);
+  return steps[Math.floor((steps.length - 1) / 2)];
+}
+
+interface Candidate {
+  id: string;
+  times: string[];
+  /** Native grid spacing; a run that does not state one is treated as coarsest. */
+  km: number;
+  stepHours: number;
+  last: number;
+}
+
+/**
+ * The dock's own time columns, independent of whatever the map is drawing.
+ *
+ * Two runs make the axis: the finest grid on offer carries the near term at its
+ * own cadence, and the run that reaches furthest carries everything past it.
+ * There is exactly one seam, because a third source would put two joins in a
+ * row where the reader can least tell one model from the next.
+ *
+ * A model counts unless its run has **expired** — its last forecast time is
+ * already behind us. The eighteen-hour "stale" mark deliberately does not
+ * disqualify one: ECMWF runs at 00 and 12 UTC and lands eight or nine hours
+ * late, so it reads as stale for about three hours twice a day, and gating on
+ * that would collapse the dock from fifteen days to ten every time. An older
+ * run keeps its columns; the header's model band is what says it is older.
+ */
+export function dockColumns(
+  models: readonly ColumnModel[],
+  now = Date.now(),
+): DockColumn[] {
+  const usable: Candidate[] = [];
+  for (const model of models) {
+    if (model.ensemble) continue;
+    if (freshness(model.manifest, now) === "expired") continue;
+    const times = modelTimes(model.manifest);
+    if (!times.length) continue;
+    usable.push({
+      id: model.id,
+      times,
+      km: model.manifest.resolutionKm ?? Infinity,
+      stepHours: medianStepHours(times),
+      last: Date.parse(times[times.length - 1]),
+    });
+  }
+  if (!usable.length) return [];
+  const byId = (a: Candidate, b: Candidate) => (a.id < b.id ? -1 : 1);
+  const best = (rank: (a: Candidate, b: Candidate) => number) =>
+    usable.reduce((winner, model) =>
+      rank(model, winner) < 0 ? model : winner,
+    );
+  // The near term goes to the sharpest picture of it: the finest grid, then the
+  // finest cadence, then the one that lasts longest, so the choice is stable.
+  const near = best(
+    (a, b) =>
+      a.km - b.km || a.stepHours - b.stepHours || b.last - a.last || byId(a, b),
+  );
+  // The long range goes to whichever run reaches furthest out.
+  const far = best(
+    (a, b) =>
+      b.last - a.last || a.km - b.km || a.stepHours - b.stepHours || byId(a, b),
+  );
+  const columns = near.times.map((validTime) => ({
+    validTime,
+    model: near.id,
+  }));
+  if (far.id !== near.id)
+    for (const validTime of far.times)
+      if (Date.parse(validTime) > near.last)
+        columns.push({ validTime, model: far.id });
+  return columns;
+}
+
+/**
+ * The map frame that stands for a column, or null where the run does not reach
+ * it. "Nearest" alone would let a run that ended two days ago own every column
+ * to the end of the dock, so the frame has to be inside half that model's own
+ * step — near enough that it really is the forecast for this column.
+ */
+export function frameForTime(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  time: number,
+): number | null {
+  if (!frames.length || !Number.isFinite(time)) return null;
+  let nearest = 0;
+  let distance = Infinity;
+  frames.forEach((frame, index) => {
+    const gap = Math.abs(Date.parse(frame.validTime) - time);
+    if (gap < distance) {
+      distance = gap;
+      nearest = index;
+    }
+  });
+  if (distance === 0) return nearest;
+  const at = (index: number) =>
+    frames[index] === undefined ? null : Date.parse(frames[index].validTime);
+  const here = at(nearest)!;
+  // The step on the side the column lies, falling back to the other side at an
+  // end of the run, so a single-frame run reaches nobody but its own hour.
+  const neighbour = time > here ? at(nearest + 1) : at(nearest - 1);
+  const other = time > here ? at(nearest - 1) : at(nearest + 1);
+  const step =
+    neighbour !== null
+      ? Math.abs(neighbour - here)
+      : other !== null
+        ? Math.abs(other - here)
+        : 0;
+  return distance <= step / 2 + 1 ? nearest : null;
+}
+
+/** Where one column's cell values come from. */
+export interface ColumnSource {
+  /** Index into the map model's frames, or null where that run cannot reach. */
+  frame: number | null;
+  /** The run the cell is read from: the map model, or the column's own owner. */
+  model: string;
+}
+
+/**
+ * The run behind every column's cells. The map model answers for every column
+ * it can reach, so the table and the map agree wherever both have something to
+ * say; past its range the column's own owner takes over, from the precomputed
+ * spot series that are already in its manifest.
+ */
+export function columnSources(
+  columns: readonly DockColumn[],
+  mapFrames: readonly Pick<FrameInfo, "validTime">[],
+  mapModel: string,
+): ColumnSource[] {
+  return columns.map((column) => {
+    const frame = frameForTime(mapFrames, Date.parse(column.validTime));
+    return { frame, model: frame === null ? column.model : mapModel };
+  });
+}
+
+/** Consecutive columns one run owns, for the header's model band. */
+export interface ModelStretch {
+  model: string;
+  start: number;
+  count: number;
+}
+export function modelStretches(
+  sources: readonly ColumnSource[],
+): ModelStretch[] {
+  return sources.reduce<ModelStretch[]>((stretches, source, index) => {
+    const last = stretches[stretches.length - 1];
+    if (last?.model === source.model) last.count++;
+    else stretches.push({ model: source.model, start: index, count: 1 });
+    return stretches;
+  }, []);
+}
+
 /** Forecast strength for the selected location; grey means not loaded/available. */
 export function windTrackBackground(
   values: readonly (Wind | null | undefined)[],
-  count: number,
-  hours?: readonly number[],
+  times: readonly string[],
 ) {
+  const count = times.length;
   if (count < 1) return "#b8cbd0";
+  const start = Date.parse(times[0]);
+  const end = Date.parse(times[count - 1]);
   const stops = Array.from({ length: Math.max(2, count) }, (_, i) => {
-    const value = values[Math.min(i, count - 1)];
+    const at = Math.min(i, count - 1);
+    const value = values[at];
     const colour = value
       ? `rgb(${windColor(speed(value) * KNOTS).join(",")})`
       : "#b8cbd0";
-    const start = hours?.[0] || 0;
-    const end = hours?.[count - 1] || 0;
+    // Positioned by time, so the uneven columns past the seam keep their share.
     const fraction =
-      hours && end > start
-        ? (hours[Math.min(i, count - 1)] - start) / (end - start)
-        : i / Math.max(1, count - 1);
+      end > start
+        ? (Date.parse(times[at]) - start) / (end - start)
+        : at / Math.max(1, count - 1);
     return `${colour} ${fraction * 100}%`;
   });
   return `linear-gradient(to right, ${stops.join(", ")})`;

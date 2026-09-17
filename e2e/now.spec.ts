@@ -91,7 +91,7 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   await page.screenshot({ path: "test-results/forecast-now-mobile.png" });
 });
 
-test("Now uses actual model times and disappears for expired forecasts", async ({
+test("Now uses the dock's own column times and disappears past them", async ({
   page,
 }) => {
   const now = new Date(Date.parse(ecmwf.runTime) + 147 * 3600000);
@@ -100,7 +100,10 @@ test("Now uses actual model times and disappears for expired forecasts", async (
   await expect(page.locator('[data-model="ecmwf"]')).toBeEnabled({
     timeout: 30000,
   });
-  await expect(page.locator(".forecast-now")).toHaveCount(0); // HARMONIE already expired.
+  // HARMONIE's run expired two days ago, so it owns no column any more and the
+  // dock's axis is ECMWF's. The Now line follows the columns, not the map, so
+  // it is there before the reader switches the map to ECMWF as well.
+  await expect(page.locator(".forecast-now")).toHaveCount(1);
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await page.locator('[data-model="ecmwf"]').click();
   await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
