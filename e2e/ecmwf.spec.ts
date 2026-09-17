@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
+import {
+  SAMPLE_CLOCK,
+  sampleColumn,
+  sampleColumns,
+  sampleColumnsWithoutEcmwf,
+} from "./columns";
 
 const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
 const harmonie = JSON.parse(
@@ -147,10 +152,10 @@ test("unavailable or mislabelled ECMWF snapshot preserves the current model", as
       "true",
     );
     await expect(page.locator(".model-status.is-error")).toBeVisible();
-    // ECMWF is missing, so the long range falls to the next run that reaches
-    // furthest; the columns stay put through both failed switches.
-    expect(await page.locator(".wind-cell").count()).toBeGreaterThan(
-      harmonie.frames.length,
+    // ECMWF is missing, so the long range falls to AIFS, the next run that
+    // reaches furthest; the columns stay put through both failed switches.
+    await expect(page.locator(".wind-cell")).toHaveCount(
+      sampleColumnsWithoutEcmwf.length,
     );
     await page.unroute("**/weather/unused-ecmwf.json");
   }

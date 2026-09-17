@@ -1019,7 +1019,7 @@ const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
 const NEWER_RUN_DIR = `weather/harmonie-${NEWER_RUN}-24h-test`;
 const newerValidTime = (hour: number) =>
   new Date(Date.parse(NEWER_RUN_TIME) + hour * 3600000).toISOString();
-const newerFrames = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => ({
+const newerFrames = Array.from({ length: 25 }, (_, hour) => ({
   hour,
   validTime: newerValidTime(hour),
   // The fixture bundle publishes binary frames, and this synthetic newer run
@@ -1117,10 +1117,10 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   });
   await expect(page.locator(".model-status.is-error")).toHaveCount(0);
 
-  // The reader keeps the valid time they were reading. It is one column further
-  // left, because the newer run starts three hours later than the old one.
+  // The reader keeps the valid time they were reading. It is three columns
+  // further left, because the newer hourly run starts three hours later.
   await expect(slider).toHaveAttribute("aria-valuetext", showing);
-  expect(Number(await slider.inputValue())).toBe(column - 1);
+  expect(Number(await slider.inputValue())).toBe(column - 3);
   await expect(page.locator(".forecast-now")).toHaveCount(1);
   await expect(page.locator(".blend-chart")).toBeVisible();
 
@@ -1156,7 +1156,7 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   );
 
   // Coming back, the hour they were reading is already gone: it lands on now.
-  const atNow = sampleColumn("2026-09-14T04:00:00Z");
+  const atNow = sampleColumn("2026-09-14T03:00:00Z");
   expect(atNow).toBeGreaterThan(behind);
   await expect(slider).toHaveValue(String(atNow));
   await expect(

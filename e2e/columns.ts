@@ -1,10 +1,15 @@
 import { readFileSync } from "node:fs";
 
-const read = (model: string) =>
+interface Bundle {
+  runTime: string;
+  frames: { validTime: string }[];
+}
+const read = (model: string): Bundle =>
   JSON.parse(readFileSync(`public/weather/${model}.json`, "utf8"));
 
 const harmonie = read("harmonie");
 const ecmwf = read("ecmwf");
+const aifs = read("aifs");
 
 /**
  * A clock inside HARMONIE's sample run, eight hours after it was initialised.
@@ -16,33 +21,40 @@ export const SAMPLE_CLOCK = new Date(
 );
 
 /**
- * The dock's columns for the sample set at `SAMPLE_CLOCK`: HARMONIE's own
- * times — the finest grid published — then ECMWF's from the first one past
- * them, because it reaches furthest. Built here the way `dockColumns` builds
- * it, from the manifests rather than from whichever model the map is drawing.
+ * The axis `dockColumns` builds from two runs: the near one's own times, then
+ * the far one's from the first that is past them. Written out here rather than
+ * imported, so a spec states the expectation instead of re-deriving it.
  */
-export const sampleColumns: string[] = (() => {
-  const last = Date.parse(harmonie.frames.at(-1).validTime);
+const join = (near: Bundle, far: Bundle): string[] => {
+  const last = Date.parse(near.frames.at(-1)!.validTime);
   return [
-    ...harmonie.frames.map((frame: { validTime: string }) => frame.validTime),
-    ...ecmwf.frames
-      .filter(
-        (frame: { validTime: string }) => Date.parse(frame.validTime) > last,
-      )
-      .map((frame: { validTime: string }) => frame.validTime),
+    ...near.frames.map((frame) => frame.validTime),
+    ...far.frames
+      .filter((frame) => Date.parse(frame.validTime) > last)
+      .map((frame) => frame.validTime),
   ];
-})();
+};
 
 /**
- * Index of the column nearest a valid time, which is how the dock resolves a
- * selection: a model's own hour need not land exactly on a column.
+ * The dock's columns for the sample set at `SAMPLE_CLOCK`: HARMONIE's own
+ * hourly times — the finest grid published — then ECMWF's from the first one
+ * past them, because it reaches furthest.
  */
-export const sampleColumn = (validTime: string) => {
+export const sampleColumns = join(harmonie, ecmwf);
+
+/**
+ * And when ECMWF is unavailable: HARMONIE still owns the near term, and the
+ * long range falls to AIFS, the next run that reaches furthest.
+ */
+export const sampleColumnsWithoutEcmwf = join(harmonie, aifs);
+
+/** Index of the column nearest a valid time, as the dock resolves a selection. */
+export const sampleColumn = (validTime: string, columns = sampleColumns) => {
   const target = Date.parse(validTime);
-  return sampleColumns.reduce(
+  return columns.reduce(
     (best, time, index) =>
       Math.abs(Date.parse(time) - target) <
-      Math.abs(Date.parse(sampleColumns[best]) - target)
+      Math.abs(Date.parse(columns[best]) - target)
         ? index
         : best,
     0,
