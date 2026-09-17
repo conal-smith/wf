@@ -1,18 +1,20 @@
-import { Search, X } from "lucide-react";
+import { Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../api";
 import {
   Empty,
   GridSkeleton,
   ListingGrid,
-  Notice,
+  LoadError,
   Pager,
   Select,
   TextInput,
+  categoryLabel,
+  conditionLabel,
   useAsync,
   usePageTitle,
 } from "../components";
-import { navigate, paths, useLocation } from "../router";
+import { Link, navigate, paths, useLocation } from "../router";
 import {
   CATEGORIES,
   CONDITIONS,
@@ -67,6 +69,8 @@ export default function BrowsePage() {
     });
   };
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const active = Boolean(
     query.q ||
     query.category ||
@@ -76,31 +80,83 @@ export default function BrowsePage() {
     query.maxPriceCents != null,
   );
 
+  const clearAll = () => {
+    setMinText("");
+    setMaxText("");
+    setText("");
+    navigate(paths.browse(), { replace: true });
+  };
+
+  // Every narrowing of the results, as something that can be taken back off.
+  const priceLabel = () => {
+    const min = query.minPriceCents != null ? query.minPriceCents / 100 : null;
+    const max = query.maxPriceCents != null ? query.maxPriceCents / 100 : null;
+    if (min != null && max != null) return `€${min} to €${max}`;
+    return min != null ? `From €${min}` : `Up to €${max}`;
+  };
+  const tokens: { key: string; label: string; remove: () => void }[] = [];
+  if (query.q)
+    tokens.push({
+      key: "q",
+      label: `“${query.q}”`,
+      remove: () => {
+        setText("");
+        update({ q: undefined });
+      },
+    });
+  if (query.category)
+    tokens.push({
+      key: "category",
+      label: categoryLabel(query.category),
+      remove: () => update({ category: undefined }),
+    });
+  if (query.county)
+    tokens.push({
+      key: "county",
+      label: `Co. ${query.county}`,
+      remove: () => update({ county: undefined }),
+    });
+  if (query.condition)
+    tokens.push({
+      key: "condition",
+      label: conditionLabel(query.condition),
+      remove: () => update({ condition: undefined }),
+    });
+  if (query.minPriceCents != null || query.maxPriceCents != null)
+    tokens.push({
+      key: "price",
+      label: priceLabel(),
+      remove: () => {
+        setMinText("");
+        setMaxText("");
+        update({ minPriceCents: undefined, maxPriceCents: undefined });
+      },
+    });
+  // Behind the phone's Filters button: everything but the search and category.
+  const folded = tokens.filter(
+    (t) => t.key !== "q" && t.key !== "category",
+  ).length;
+
+  const total = result.data?.total;
+
   return (
     <>
       <section className="mk-hero" aria-labelledby="mk-browse-title">
-        <div className="mk-hero__intro mk-stack--tight">
-          <p className="mk-eyebrow">Free to list, free to browse</p>
-          <h1 className="mk-title" id="mk-browse-title">
-            Second-hand wingfoil gear, across Ireland
-          </h1>
-          <p className="mk-muted">
-            Wings, boards, foils and the rest, sold by the people who ride the
-            same spots. No fees, no middlemen: find it here, then deal directly
-            with the seller.
-          </p>
-        </div>
+        <h1 className="mk-title" id="mk-browse-title">
+          Second-hand wingfoil gear, across Ireland
+        </h1>
         <form
-          className="f5-search"
+          className="f5-search mk-search"
           role="search"
           onSubmit={(e) => {
             e.preventDefault();
             update({ q: text || undefined });
           }}
         >
-          <Search size={18} aria-hidden="true" />
+          <Search size={20} aria-hidden="true" />
           <input
             type="search"
+            enterKeyHint="search"
             aria-label="Search listings"
             placeholder="Search by brand, model or size"
             value={text}
@@ -109,7 +165,7 @@ export default function BrowsePage() {
           {text && (
             <button
               type="button"
-              className="f5-button f5-button--icon f5-button--sm"
+              className="f5-button f5-button--icon"
               aria-label="Clear search"
               onClick={() => setText("")}
             >
@@ -119,10 +175,10 @@ export default function BrowsePage() {
         </form>
       </section>
 
-      <div className="mk-chips" role="group" aria-label="Category">
+      <div className="mk-rail" role="group" aria-label="Category">
         <button
           type="button"
-          className="f5-button f5-button--pill f5-button--sm"
+          className="f5-button f5-button--pill"
           aria-pressed={!query.category}
           onClick={() => update({ category: undefined })}
         >
@@ -132,7 +188,7 @@ export default function BrowsePage() {
           <button
             key={c.id}
             type="button"
-            className="f5-button f5-button--pill f5-button--sm"
+            className="f5-button f5-button--pill"
             aria-pressed={query.category === c.id}
             title={c.hint}
             onClick={() =>
@@ -144,13 +200,26 @@ export default function BrowsePage() {
         ))}
       </div>
 
-      <div className="mk-filters">
-        <div className="mk-field">
-          <label className="mk-field__label" htmlFor="mk-f-county">
-            County
-          </label>
+      <div className="mk-filters" data-open={filtersOpen}>
+        <button
+          type="button"
+          className="f5-button f5-button--pill mk-filters__toggle"
+          aria-expanded={filtersOpen}
+          aria-controls="mk-filters-panel"
+          onClick={() => setFiltersOpen((o) => !o)}
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          Filters{folded ? ` (${folded})` : ""}
+        </button>
+        <div
+          className="mk-filters__panel"
+          id="mk-filters-panel"
+          role="group"
+          aria-label="Filters"
+        >
           <Select
-            id="mk-f-county"
+            aria-label="County"
+            active={Boolean(query.county)}
             value={query.county ?? ""}
             onChange={(e) =>
               update({
@@ -158,20 +227,16 @@ export default function BrowsePage() {
               })
             }
           >
-            <option value="">Anywhere</option>
+            <option value="">All counties</option>
             {COUNTIES.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
           </Select>
-        </div>
-        <div className="mk-field">
-          <label className="mk-field__label" htmlFor="mk-f-condition">
-            Condition
-          </label>
           <Select
-            id="mk-f-condition"
+            aria-label="Condition"
+            active={Boolean(query.condition)}
             value={query.condition ?? ""}
             onChange={(e) =>
               update({
@@ -180,50 +245,42 @@ export default function BrowsePage() {
               })
             }
           >
-            <option value="">Any</option>
+            <option value="">Any condition</option>
             {CONDITIONS.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
               </option>
             ))}
           </Select>
+          <div className="mk-price-range" role="group" aria-label="Price">
+            <TextInput
+              aria-label="Minimum price in euro"
+              prefix="€"
+              inputMode="numeric"
+              placeholder="Min"
+              active={query.minPriceCents != null}
+              value={minText}
+              onChange={(e) => setMinText(e.target.value)}
+              onBlur={applyPrice}
+              onKeyDown={(e) => e.key === "Enter" && applyPrice()}
+            />
+            <span aria-hidden="true">–</span>
+            <TextInput
+              aria-label="Maximum price in euro"
+              prefix="€"
+              inputMode="numeric"
+              placeholder="Max"
+              active={query.maxPriceCents != null}
+              value={maxText}
+              onChange={(e) => setMaxText(e.target.value)}
+              onBlur={applyPrice}
+              onKeyDown={(e) => e.key === "Enter" && applyPrice()}
+            />
+          </div>
         </div>
-        <div className="mk-field">
-          <label className="mk-field__label" htmlFor="mk-f-min">
-            Min price
-          </label>
-          <TextInput
-            id="mk-f-min"
-            prefix="€"
-            inputMode="numeric"
-            placeholder="0"
-            value={minText}
-            onChange={(e) => setMinText(e.target.value)}
-            onBlur={applyPrice}
-            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
-          />
-        </div>
-        <div className="mk-field">
-          <label className="mk-field__label" htmlFor="mk-f-max">
-            Max price
-          </label>
-          <TextInput
-            id="mk-f-max"
-            prefix="€"
-            inputMode="numeric"
-            placeholder="Any"
-            value={maxText}
-            onChange={(e) => setMaxText(e.target.value)}
-            onBlur={applyPrice}
-            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
-          />
-        </div>
-        <div className="mk-field">
-          <label className="mk-field__label" htmlFor="mk-f-sort">
-            Sort
-          </label>
+        <div className="mk-sort">
           <Select
-            id="mk-f-sort"
+            aria-label="Sort by"
             value={query.sort}
             onChange={(e) =>
               update({ sort: e.target.value as ListingQuery["sort"] })
@@ -234,63 +291,91 @@ export default function BrowsePage() {
             <option value="price-desc">Price: high to low</option>
           </Select>
         </div>
-        <p className="mk-caption mk-filters__count" aria-live="polite">
-          {result.data
-            ? `${result.data.total} listing${result.data.total === 1 ? "" : "s"}`
-            : ""}
-          {active && (
-            <>
-              {" · "}
-              <button
-                type="button"
-                className="f5-button f5-button--link"
-                onClick={() => {
-                  setMinText("");
-                  setMaxText("");
-                  navigate(paths.browse(), { replace: true });
-                }}
-              >
-                Clear filters
-              </button>
-            </>
-          )}
-        </p>
       </div>
 
+      {!result.error && (
+        <div className="mk-results-head">
+          <h2 className="mk-results-head__count" aria-live="polite">
+            {total == null
+              ? "Loading listings…"
+              : `${total.toLocaleString("en-IE")} listing${total === 1 ? "" : "s"}`}
+          </h2>
+          {tokens.length > 0 && (
+            <div className="mk-results-head__active">
+              {tokens.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className="mk-token"
+                  aria-label={`Remove filter: ${t.label}`}
+                  onClick={t.remove}
+                >
+                  {t.label}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ))}
+              {tokens.length > 1 && (
+                <button
+                  type="button"
+                  className="f5-button f5-button--link"
+                  onClick={clearAll}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {result.error ? (
-        <Notice kind="warn">
-          {result.error}{" "}
-          <button
-            type="button"
-            className="f5-button f5-button--link"
-            onClick={result.reload}
-          >
-            Try again
-          </button>
-        </Notice>
-      ) : result.loading && !result.data ? (
+        <LoadError
+          title="The listings could not be loaded"
+          message={result.error}
+          onRetry={result.reload}
+        />
+      ) : !result.data ? (
         <GridSkeleton />
-      ) : result.data && result.data.items.length === 0 ? (
+      ) : result.data.items.length === 0 ? (
         <Empty
-          title={active ? "Nothing matches those filters" : "No listings yet"}
+          title={active ? "Nothing matches that search" : "No listings yet"}
+          icon={<SearchX size={24} aria-hidden="true" />}
         >
-          <p className="mk-caption">
+          <p>
             {active
-              ? "Widen the search or clear a filter."
-              : "Be the first: list something you no longer ride."}
+              ? "Try a broader search, or take a filter off."
+              : "Be the first to list something you no longer ride."}
           </p>
+          <div className="mk-empty__actions">
+            {active ? (
+              <button
+                type="button"
+                className="f5-button f5-button--pill"
+                onClick={clearAll}
+              >
+                Clear all filters
+              </button>
+            ) : (
+              <Link to={paths.sell()} className="f5-button f5-button--pill">
+                List your gear
+              </Link>
+            )}
+          </div>
         </Empty>
-      ) : result.data ? (
+      ) : (
         <>
-          <ListingGrid listings={result.data.items} />
+          <ListingGrid listings={result.data.items} busy={result.loading} />
           <Pager
             page={result.data.page}
             pageSize={result.data.pageSize}
             total={result.data.total}
-            onPage={(p) => update({ page: p })}
+            onPage={(p) => {
+              update({ page: p });
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
         </>
-      ) : null}
+      )}
     </>
   );
 }

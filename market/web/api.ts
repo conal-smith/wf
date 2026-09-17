@@ -40,6 +40,12 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** What a reader is told when the API answers with nothing of its own to say. */
+const unavailable = (status: number) =>
+  status >= 500
+    ? "The marketplace is not responding right now. Try again in a moment."
+    : `That did not work (error ${status}). Try again in a moment.`;
+
 export class MarketApi {
   constructor(private getToken: () => Promise<string | null>) {}
 
@@ -83,7 +89,7 @@ export class MarketApi {
           "bad-response",
           res.ok
             ? "The marketplace sent a reply this page could not read. Try again in a moment."
-            : `Request failed (${res.status})`,
+            : unavailable(res.status),
         );
       }
     if (!res.ok) {
@@ -91,7 +97,7 @@ export class MarketApi {
       throw new ApiRequestError(
         res.status,
         err.error ?? "error",
-        err.message ?? `Request failed (${res.status})`,
+        err.message ?? unavailable(res.status),
         err.details as Record<string, string> | undefined,
       );
     }
