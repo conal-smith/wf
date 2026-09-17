@@ -3,8 +3,12 @@ import { framePosition, windTrackBackground } from "../force5/src/timeline";
 import { KNOTS, windColor } from "../force5/src/weather";
 import { forecastUrl } from "../force5/src/urls";
 import { vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { nearestFrame, validateManifest } from "../force5/src/weather";
+import { readBundle } from "./bundles";
+import {
+  nearestFrame,
+  validateManifest,
+  type Manifest,
+} from "../force5/src/weather";
 
 it("positions now between real timestamps, including a mixed-cadence boundary", () => {
   const start = Date.parse("2026-09-13T00:00:00Z");
@@ -28,7 +32,7 @@ it("mixed-step track colours occupy elapsed time, not equal frame slots", () => 
 });
 
 it("ECMWF validates its full native cadence and selects only real timestamps", () => {
-  const m = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
+  const m = readBundle<Manifest>("ecmwf");
   expect(validateManifest(m).frames).toHaveLength(85);
   expect(m.frames[49].hour).toBe(150);
   expect(m.frames.at(-1).hour).toBe(360);

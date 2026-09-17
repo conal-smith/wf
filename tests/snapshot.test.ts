@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { readBundle, readFrame } from "./bundles";
 import { sample, validateFrame, validateManifest } from "../force5/src/weather";
 import type { Spot } from "../force5/src/weather";
 import {
@@ -10,11 +11,18 @@ import {
 } from "../force5/src/waves";
 
 /**
- * Every bundled manifest carries a series for every riding place. Runs published
- * before `riding-locations.json` existed held only the original eight; their
- * series were recomputed from their own frames by
- * `force5/ingest/backfill_spots.py`, so there is no longer a partial snapshot and
- * the blend is available everywhere the map offers a spot.
+ * A whole published bundle, end to end: every frame file agrees with its
+ * manifest, and every precomputed spot summary agrees with the grid it came
+ * from. The data is synthetic (tests/fixtures/weather, written by
+ * scripts/sample-weather.mjs) because no forecast output is committed, but it is
+ * in exactly the published format, so this is the check that the format hangs
+ * together — a series that drifted from its frames would fail here.
+ *
+ * Every manifest carries a series for every riding place. Runs published before
+ * `riding-locations.json` existed held only the original eight; their series
+ * were recomputed from their own frames by `force5/ingest/backfill_spots.py`, so
+ * there is no longer a partial snapshot and the blend is available everywhere
+ * the map offers a spot.
  */
 const places: Spot[] = JSON.parse(
   readFileSync("public/riding-locations.json", "utf8"),
@@ -25,21 +33,15 @@ const originalIds: string[] = JSON.parse(
 ).map((spot: Spot) => spot.id);
 
 describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
-  "downloaded real %s forecast snapshot",
+  "published %s wind bundle",
   (name) => {
     it("all files match the manifest and all spot summaries match their wind grid", () => {
-      const m = validateManifest(
-        JSON.parse(readFileSync(`public/weather/${name}.json`, "utf8")),
-      );
+      const m = validateManifest(readBundle(name));
       // Exactly the published catalogue: no riding place missing, none invented.
       expect(Object.keys(m.spotForecasts).sort()).toEqual([...placeIds].sort());
       for (const id of originalIds) expect(m.spotForecasts[id]).toBeTruthy();
       m.frames.forEach((info, i) => {
-        const frame = validateFrame(
-          JSON.parse(readFileSync(`public/${info.url}`, "utf8")),
-          m,
-          info,
-        );
+        const frame = validateFrame(readFrame(info.url), m, info);
         for (const spot of places) {
           const wind = sample(frame, spot.lon, spot.lat)!;
           const summary = m.spotForecasts[spot.id][i];
@@ -76,8 +78,8 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
  * not `u`/`v`/`gust` with gust intervals, so they have their own contract and
  * their own validator: `validateWaveManifest`, which the browser now runs on
  * every wave bundle it loads. That covers the manifest; this block adds what
- * only a bundled snapshot can check, which is that the committed frame files
- * agree with the manifest and that every spot series matches its own grid.
+ * only a whole bundle can check, which is that the frame files agree with the
+ * manifest and that every spot series matches its own grid.
  */
 type WaveGrid = NonNullable<WaveManifest["grid"]>;
 type WaveValues = (number | null)[];
@@ -108,15 +110,11 @@ function sampleWave(
   return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
 }
 
-describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
+describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
   it("every frame matches the manifest and every spot series matches the frames", () => {
     // The shared validator owns the contract: version, kind, the variable map,
     // the frame list, the declared horizon and the shape of every spot series.
-    const m = validateWaveManifest(
-      JSON.parse(
-        readFileSync(`public/weather/${name}.json`, "utf8"),
-      ) as WaveManifest,
-    );
+    const m = validateWaveManifest(readBundle<WaveManifest>(name));
     expect(m.model).toBe(name);
     expect([1, 3]).toContain(m.stepHours);
     expect(m.stepRanges).toBeUndefined();
@@ -164,7 +162,7 @@ describe.each(["gfs-wave"])("downloaded real %s wave snapshot", (name) => {
         expect(
           info.url.startsWith("weather/") && !info.url.includes(".."),
         ).toBe(true);
-        const frame = JSON.parse(readFileSync(`public/${info.url}`, "utf8"));
+        const frame = readFrame<Record<string, WaveValues>>(info.url);
         expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
           m.model,
           m.run,

@@ -92,7 +92,9 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
     "Older run · long-range outlook",
   );
   await page.getByRole("button", { name: "Forecast data and sources" }).click();
-  await expect(page.locator("dialog")).toContainText("0.25° open-data grid");
+  await expect(page.locator("dialog")).toContainText(
+    "ECMWF shaped sample bundle",
+  );
   await expect(page.locator("dialog")).toContainText("6-hourly through day 15");
   await page.getByLabel("Close forecast information").click();
   await page.getByLabel("Choose forecast model", { exact: true }).click();

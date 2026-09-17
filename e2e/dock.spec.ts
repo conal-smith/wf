@@ -457,10 +457,12 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
 });
 
 /**
- * The bundled GFS-Wave run is 2026-09-16 18 UTC, +0 to +9 h. HARMONIE's bundled
+ * The sample GFS-Wave run is 2026-09-16 18 UTC, +0 to +9 h. HARMONIE's sample
  * run ends on 16 September at 01 UTC, so the dock's columns — which are the
  * selected wind model's own forecast times — have to come from a model that
- * reaches the wave hours. GFS runs from 16 September 12 UTC to 21 September.
+ * reaches the wave hours. GFS runs from 16 September 06 UTC to +24 h. The
+ * numbers below are the ones scripts/sample-weather.mjs publishes; the run
+ * times, cadences and coverage are the ones the real adapters publish.
  */
 const WAVE_CLOCK = "2026-09-16T20:00:00Z";
 async function withWaveColumns(page: Page) {
@@ -496,9 +498,9 @@ test("the Waves row reads the bundled GFS-Wave run for Brandon Bay", async ({
   await expect(row).toHaveCount(1);
   // Four native wave steps land on four of GFS's three-hourly columns.
   expect(await waveReadings(page, "waves")).toHaveLength(4);
-  // Height in metres to one decimal; the run hour reads 0.66 m at 9.51 s.
-  await expect(row.locator(".wave-cell b").first()).toHaveText("0.7");
-  await expect(row.locator(".wave-cell small").first()).toHaveText("10s");
+  // Height in metres to one decimal; the run hour reads 2.95 m at 7.29 s.
+  await expect(row.locator(".wave-cell b").first()).toHaveText("3.0");
+  await expect(row.locator(".wave-cell small").first()).toHaveText("7s");
   for (const part of ["b", "small"] as const)
     for (const text of await row
       .locator(`.wave-cell ${part}`)
@@ -630,21 +632,21 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   await page.getByLabel("Close display options").click();
   await expect(page.locator('.weather-row[data-row="rain"]')).toHaveCount(1);
 
-  // Two native steps land on two of GFS's three-hourly columns: 15.6 °C then
-  // 16.0 °C, as whole degrees. Every other column is a dash, never a zero.
+  // Two native steps land on two of GFS's three-hourly columns: 13.6 °C then
+  // 11.2 °C, as whole degrees. Every other column is a dash, never a zero.
   const air = await weatherReadings(page, "air");
-  expect(air.filter((text) => text !== "—")).toEqual(["16", "16"]);
+  expect(air.filter((text) => text !== "—")).toEqual(["14", "11"]);
   expect(air.filter((text) => text === "—").length).toBe(air.length - 2);
   expect(air).not.toContain("0");
 
   // The run hour has no interval to difference, so its rain is a dash with the
-  // reason in the cell; the 18–21 UTC interval carries 0.6 mm.
+  // reason in the cell; the 18–21 UTC interval carries 1.2 mm.
   const rain = page.locator('.weather-row[data-row="rain"]');
-  expect(await weatherReadings(page, "rain")).toContain("0.6");
+  expect(await weatherReadings(page, "rain")).toContain("1.2");
   await expect(rain.locator("td.rain-cell")).toHaveCount(1);
   await expect(rain.locator("td.rain-cell")).toHaveAttribute(
     "title",
-    /0\.6 mm in the 3 hours to/,
+    /1\.2 mm in the 3 hours to/,
   );
   // The unit is stated once on each glyph, not in every cell.
   await expect(rain.locator("th .row-label small")).toHaveText("mm");
@@ -680,8 +682,9 @@ test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async
   await expect(page.getByRole("tooltip")).toContainText(
     "an amount, not a rate",
   );
+  // The credits name the source the row used; a sample bundle names itself.
   await expect(page.locator(".forecast-credits")).toContainText(
-    "ICON-EU surface weather, DWD",
+    "ICON-EU surface weather, Synthetic sample data",
   );
   await page.locator(".map-footer").screenshot({
     path: "test-results/dock-weather-1440.png",
@@ -704,18 +707,18 @@ test("the cloud, pressure and sea rows are off until the filter turns them on", 
 
   // Cloud is a number plus a three-level bar for high, medium and low.
   const cloud = page.locator('.weather-row[data-row="cloud"]');
-  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("97");
+  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("68");
   await expect(
     cloud.locator(".cloud-cell").first().locator(".cloud-bars s"),
   ).toHaveCount(3);
   await expect(cloud.locator("td[title]").first()).toHaveAttribute(
     "title",
-    /high 0 %, medium 73 %, low 89 %/,
+    /high 35 %, medium 23 %, low 66 %/,
   );
   // Pressure is whole hectopascals.
   expect(
     (await weatherReadings(page, "pressure")).filter((text) => text !== "—"),
-  ).toEqual(["1017", "1015"]);
+  ).toEqual(["1017", "1014"]);
   // The sea row is the model's skin temperature, drawn back and labelled as an
   // approximation in both the cell and the row's explanation.
   const sea = page.locator('.weather-row[data-row="sea"]');
