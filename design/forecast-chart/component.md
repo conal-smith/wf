@@ -39,6 +39,22 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
   period in whole seconds as muted small text. The unit is stated once on the
   row's glyph, never in the cells, and a step the model did not resolve is an em
   dash. Swell and wind sea are the same row with a different glyph.
+- **Weather row** (`__weather-row`) — one marine row per surface reading, 24px tall
+  and 22px compact: the standard row height, not the wave row's 28px, because these
+  cells hold a number or a glyph and no second line. Five cell shapes:
+  - a plain integer for air temperature, mean-sea-level pressure and the skin
+    temperature, with the unit on the row's glyph;
+  - `__rain-cell`, the same integer plus a background tinted by amount
+    (`--rain-tint`, 0 to 1, saturating at 4mm in one interval). The tint is a
+    shape for scanning and carries no reading of its own;
+  - `__cloud-cell`, the total cover as a number beside `__cloud-bars`: three 2px
+    bars, high over medium over low, each filled from the left by `--cover`;
+  - `__weather-cell`, one of nine inline stroke glyphs for the present-weather
+    code, drawn in the row's own text colour;
+  - `__proxy-cell`, any reading that is a model approximation rather than a
+    measurement — today the sea row's skin temperature — drawn back and italic.
+- **Day maximum** (`__day-max`) — the day's highest air temperature after the sun
+  times in a day group, quieter than them, and only on a group wide enough for it.
 - **Filter** (`.f5-forecast-filter`) — a dialog holding the row switches, the
   units control and the models in the blend.
 
@@ -62,6 +78,13 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
   no forecast step close enough carries no cell at all: it reads as an em dash in
   the row's own muted colour, never as a zero, because zero metres would be a
   measured flat calm and this is an absence.
+- `.f5-forecast-chart__rain-cell` — a column with a rain amount, tinted by how
+  much. Zero millimetres is a dry interval the model forecast and reads as `0`; an
+  em dash is the absence of an interval to forecast over.
+- `.f5-forecast-chart__weather-cell` — a column with a present-weather code, as a
+  glyph; `[data-weather]` names the group and `[data-code]` the code itself.
+- `.f5-forecast-chart__proxy-cell` — a reading that is a model approximation and
+  not a measurement, drawn back with the caveat in the row's explanation.
 - `.f5-forecast-chart[data-state="empty"]` — no model publishes a series for
   this spot yet. The chart says so rather than drawing an empty box.
 - `.f5-forecast-chart--candles` — the candle variant.
@@ -97,6 +120,22 @@ Don't make a partition look like a total. Swell and wind sea are separate wave
 trains whose heights add in energy, not in metres, so they never sum to the
 combined height on screen and the row's explanation says so.
 
+Do keep a code a code. A present-weather glyph stands for one entry in a code
+table, so it is read from the cell the place sits in and never averaged, blended
+between models or interpolated between two hours — the mean of "fog" and "rain" is
+not a forecast. Nine shapes stand in for a hundred codes, and the code's own words
+and number are in the cell's tooltip for anyone who wants the rest.
+
+Do say when a reading is an approximation, in the row and in the cell. The sea row
+shows a model skin temperature until a real in-situ source exists; it is drawn back,
+its explanation says "model skin temperature, approximate", and it is off by default
+rather than sitting on and looking like a measurement.
+
+Don't let a tint be the reading. The rain cells are tinted by amount because a wet
+band should be findable before it is read, but the millimetres are printed in the
+cell and the interval they cover is in its tooltip. The tint deepens only to a
+ceiling, so it never becomes a scale someone might try to measure off.
+
 Don't add a second filled action inside the dock. The toolbar's Play button is
 the view's one accent; the filter trigger and the view switch stay quiet.
 
@@ -126,6 +165,13 @@ The wave band carries no reading of its own: the chart's `aria-label` says it is
 there and what its scale is, and the wave row beside it prints every value as
 text. A wave arrow is `aria-hidden`, because the row's numbers and its glyph
 explanation already carry the direction convention in words.
+
+A present-weather glyph is never the only reading: the cell carries the code's own
+words as visually hidden text, so a screen reader hears "Slight rain" rather than
+an unlabelled icon, and the same words with the code number are in the cell's
+tooltip. The cloud row's three-level bar is `aria-hidden` and its levels are named
+in the cell's tooltip, because the number beside it already carries the cover. The
+day maximum is an `img` with a spoken label, not a bare degree sign.
 
 The filter is a modal dialog: focus is trapped while it is open, Escape closes
 it, and the trigger takes focus back afterwards. Its switches are real

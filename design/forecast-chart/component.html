@@ -540,6 +540,152 @@
   </table>
 </template>
 
+<template id="weather">
+  <!-- One row per surface reading, at the standard 24px. -->
+  <table style="width: 100%; border-collapse: collapse">
+    <tr class="f5-forecast-chart__weather-row">
+      <th
+        scope="row"
+        style="width: 56px; text-align: left; font-weight: 400"
+        aria-label="Weather"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          style="color: var(--sem-color-text-muted)"
+        >
+          <path d="M7 6.5a4.5 4.5 0 0 1 8.2 2" />
+          <path d="M4 9.5 2.5 8M6 5 4.8 3.6M10.5 3V1.4" />
+          <path d="M16 19H8a4 4 0 0 1 0-8 5 5 0 0 1 9.6 1.3A3.4 3.4 0 0 1 16 19Z" />
+        </svg>
+      </th>
+      <!-- A code-table entry as one of nine shapes, in the row's own colour. -->
+      <td style="text-align: center" title="Overcast (WMO present-weather code 3).">
+        <span
+          class="f5-forecast-chart__weather-cell"
+          data-weather="cloudy"
+          data-code="3"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path
+              d="M17.5 19H7a4.5 4.5 0 0 1 0-9 6 6 0 0 1 11.3 1.7A3.8 3.8 0 0 1 17.5 19Z"
+            />
+          </svg>
+        </span>
+      </td>
+      <td style="text-align: center" title="Slight rain (WMO present-weather code 61).">
+        <span
+          class="f5-forecast-chart__weather-cell"
+          data-weather="rain"
+          data-code="61"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 15.5A4.5 4.5 0 0 1 6.1 7a6 6 0 0 1 11.3 1.7A3.8 3.8 0 0 1 19 15.5" />
+            <path d="M8 18.5 7 21M12 18.5 11 21M16 18.5 15 21" />
+          </svg>
+        </span>
+      </td>
+      <td style="text-align: center; color: var(--sem-color-text-muted)">
+        &mdash;
+      </td>
+    </tr>
+    <tr class="f5-forecast-chart__weather-row">
+      <th
+        scope="row"
+        style="width: 56px; text-align: left; font-weight: 400"
+        aria-label="Rain"
+      >
+        <small
+          style="
+            font-size: var(--sem-text-eyebrow-font-size);
+            color: var(--sem-color-text-muted);
+          "
+          >mm</small
+        >
+      </th>
+      <!-- No interval at the run hour: a dash, never a zero. -->
+      <td style="text-align: center; color: var(--sem-color-text-muted)">
+        &mdash;
+      </td>
+      <td
+        class="f5-forecast-chart__rain-cell"
+        style="--rain-tint: 0.15; text-align: center"
+        title="0.6 mm in the 3 hours to 21:00."
+      >
+        0.6
+      </td>
+      <!-- A dry interval the model did forecast reads as a zero. -->
+      <td style="text-align: center">0</td>
+    </tr>
+    <tr class="f5-forecast-chart__weather-row">
+      <th
+        scope="row"
+        style="width: 56px; text-align: left; font-weight: 400"
+        aria-label="Cloud"
+      >
+        <small
+          style="
+            font-size: var(--sem-text-eyebrow-font-size);
+            color: var(--sem-color-text-muted);
+          "
+          >%</small
+        >
+      </th>
+      <td
+        style="text-align: center"
+        title="Total cloud 97 %, of which high 0 %, medium 73 %, low 89 %."
+      >
+        <span class="f5-forecast-chart__cloud-cell">
+          <b>97</b>
+          <i class="f5-forecast-chart__cloud-bars" aria-hidden="true">
+            <s style="--cover: 0%"></s>
+            <s style="--cover: 73%"></s>
+            <s style="--cover: 89%"></s>
+          </i>
+        </span>
+      </td>
+      <!-- A reading that is a model approximation, not a measurement. -->
+      <td
+        class="f5-forecast-chart__proxy-cell"
+        style="text-align: center"
+        title="Model skin temperature 15.7 °C, approximate — not a measured sea temperature."
+      >
+        16
+      </td>
+      <td style="text-align: center; color: var(--sem-color-text-muted)">
+        &mdash;
+      </td>
+    </tr>
+  </table>
+</template>
+
 <template id="card">
   <div class="f5-forecast-chart__card" role="status">
     <strong>Tue, 15 Sept 14:00</strong>
@@ -683,6 +829,10 @@
     [
       "__wave-band with __wave-row &mdash; waves on their own 0&ndash;6 m scale",
       "waves",
+    ],
+    [
+      "__weather-row &mdash; present weather, tinted rain, cloud levels, a proxy",
+      "weather",
     ],
     ['[data-state="empty"] &mdash; no series for this spot', "empty"],
     ["__card &mdash; a column under the pointer", "card"],

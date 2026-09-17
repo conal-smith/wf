@@ -13,8 +13,12 @@ export type RowKey =
   | "waves"
   | "swell"
   | "windsea"
-  | "sea"
+  | "weather"
   | "air"
+  | "rain"
+  | "cloud"
+  | "pressure"
+  | "sea"
   | "tide";
 export type ForecastView = "table" | "blend" | "candles";
 
@@ -36,8 +40,12 @@ export const ROW_KEYS: readonly RowKey[] = [
   "waves",
   "swell",
   "windsea",
-  "sea",
+  "weather",
   "air",
+  "rain",
+  "cloud",
+  "pressure",
+  "sea",
   "tide",
 ];
 export const VIEWS: readonly ForecastView[] = ["table", "blend", "candles"];
@@ -47,6 +55,12 @@ export const PREFS_KEY = "force5.prefs.v1";
  * Per-model wind and gust rows start off: the blend replaces them by default.
  * So do the wave partitions and the chart's wave band: the total sea is the
  * reading a rider wants, and the partitions are for the days it matters.
+ *
+ * Of the surface-weather rows, the three a rider decides with are on — is it
+ * warm, is it raining, and what is the sky doing. Cloud cover is the detail
+ * behind the present weather and pressure is a synoptic reading, so both start
+ * off. So does the sea row: its only source today is the model's own skin
+ * temperature, which is an approximation and not an in-situ measurement.
  */
 export const defaultPrefs = (): Prefs => ({
   rows: {
@@ -59,8 +73,12 @@ export const defaultPrefs = (): Prefs => ({
     waves: true,
     swell: false,
     windsea: false,
-    sea: true,
+    weather: true,
     air: true,
+    rain: false,
+    cloud: false,
+    pressure: false,
+    sea: false,
     tide: true,
   },
   units: "kn",

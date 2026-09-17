@@ -2,6 +2,7 @@
 // product knows about, including ones whose ingest adapter is still planned, so
 // the dock can list them greyed out instead of hiding future work.
 import { forecastUrl } from "./urls";
+import { validateWeatherManifest, type WeatherManifest } from "./surface";
 import { validateWaveManifest, type WaveManifest } from "./waves";
 import { validateManifest, type Manifest } from "./weather";
 
@@ -16,7 +17,7 @@ export interface ModelEntry {
   name: string;
   detail: string;
   manifestUrl: string;
-  kind: "wind" | "wave";
+  kind: "wind" | "wave" | "weather";
   /** Publishes per-member spot series. */
   ensemble?: boolean;
   hue: ModelHues;
@@ -163,6 +164,19 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     hue: { wind: "#2a7f62", gust: "#cf8a2f" },
     mapCapable: true,
   },
+  {
+    // The surface-weather half of the same DWD run the `icon-eu` wind model
+    // reads, as its own bundle with its own cadence. Not map-capable: its frames
+    // carry five gridded variables, but nothing draws a temperature raster yet,
+    // and the dock reads the precomputed spot series.
+    id: "icon-eu-weather",
+    name: "ICON-EU weather",
+    detail: "6.5 km surface",
+    manifestUrl: "weather/icon-eu-weather.json",
+    kind: "weather",
+    hue: { wind: "#4c86c6", gust: "#dd8b46" },
+    mapCapable: false,
+  },
 ];
 
 export const modelEntry = (id: string): ModelEntry | undefined =>
@@ -177,6 +191,8 @@ export const windModels = () =>
   MODEL_CATALOG.filter((m) => m.kind === "wind" && !m.planned);
 export const waveModels = () =>
   MODEL_CATALOG.filter((m) => m.kind === "wave" && !m.planned);
+export const weatherModels = () =>
+  MODEL_CATALOG.filter((m) => m.kind === "weather" && !m.planned);
 export const modelHue = (id: string) =>
   modelEntry(id)?.hue ?? { wind: "#7d8b91", gust: "#b9a06a" };
 
@@ -193,14 +209,17 @@ export class ManifestUnavailableError extends Error {
 }
 
 /**
- * Either contract. The catalogue entry's `kind` says which one a URL holds, so
- * the cache is shared and only the validator differs; `loadManifest` and
- * `loadWaveManifest` are the two typed doors onto it.
+ * Any contract. The catalogue entry's `kind` says which one a URL holds, so the
+ * cache is shared and only the validator differs; `loadManifest`,
+ * `loadWaveManifest` and `loadWeatherManifest` are the typed doors onto it.
  */
-export type AnyManifest = Manifest | WaveManifest;
+export type AnyManifest = Manifest | WaveManifest | WeatherManifest;
 export const isWaveManifest = (
   manifest: AnyManifest,
 ): manifest is WaveManifest => manifest.kind === "wave";
+export const isWeatherManifest = (
+  manifest: AnyManifest,
+): manifest is WeatherManifest => manifest.kind === "weather";
 
 export const MANIFEST_REVALIDATE_MS = 5 * 60 * 1000;
 const cached = new Map<
@@ -242,7 +261,9 @@ async function fetchManifest(
   const manifest =
     entry.kind === "wave"
       ? validateWaveManifest(body as WaveManifest)
-      : validateManifest(body);
+      : entry.kind === "weather"
+        ? validateWeatherManifest(body as WeatherManifest)
+        : validateManifest(body);
   if (manifest.model !== entry.id)
     throw new Error("The forecast source does not match the requested model.");
   cached.set(entry.id, { url, at: Date.now(), manifest });
@@ -271,10 +292,18 @@ export function loadAnyManifest(
   return abortable(shared, signal);
 }
 
+/** Asking for the wrong contract is a programming error, named as such. */
+const wrongKind = (id: string, wanted: ModelEntry["kind"]): never => {
+  const entry = requireModel(id);
+  throw new Error(
+    `${entry.name} is a ${entry.kind} model, not a ${wanted} model.`,
+  );
+};
+
 /**
- * The wind manifest for one model. Asking a wave model for one is a programming
- * error, not a data error, so it rejects rather than widening every wind call
- * site's type.
+ * The wind manifest for one model. Asking a wave or weather model for one is a
+ * programming error, not a data error, so it rejects rather than widening every
+ * wind call site's type.
  */
 export async function loadManifest(
   id: string,
@@ -282,10 +311,8 @@ export async function loadManifest(
   now = Date.now(),
 ): Promise<Manifest> {
   const manifest = await loadAnyManifest(id, signal, now);
-  if (isWaveManifest(manifest))
-    throw new Error(
-      `${requireModel(id).name} is a wave model, not a wind model.`,
-    );
+  if (isWaveManifest(manifest) || isWeatherManifest(manifest))
+    return wrongKind(id, "wind");
   return manifest;
 }
 
@@ -296,10 +323,18 @@ export async function loadWaveManifest(
   now = Date.now(),
 ): Promise<WaveManifest> {
   const manifest = await loadAnyManifest(id, signal, now);
-  if (!isWaveManifest(manifest))
-    throw new Error(
-      `${requireModel(id).name} is a wind model, not a wave model.`,
-    );
+  if (!isWaveManifest(manifest)) return wrongKind(id, "wave");
+  return manifest;
+}
+
+/** The surface-weather manifest for one model, through the same cache. */
+export async function loadWeatherManifest(
+  id: string,
+  signal?: AbortSignal,
+  now = Date.now(),
+): Promise<WeatherManifest> {
+  const manifest = await loadAnyManifest(id, signal, now);
+  if (!isWeatherManifest(manifest)) return wrongKind(id, "weather");
   return manifest;
 }
 
@@ -315,15 +350,16 @@ export interface ModelAvailability {
   /** The same manifest narrowed by contract, so callers need no cast. */
   wind: Manifest | null;
   wave: WaveManifest | null;
+  weather: WeatherManifest | null;
   available: boolean;
   /** Why it is unavailable, for a tooltip; never thrown at the caller. */
   error: string | null;
 }
 
 /**
- * Try every non-planned manifest at once, wind and wave alike. A missing model
- * is not an error: `mi-swan.json` is git-ignored, so a fresh checkout simply
- * has one wave source instead of two.
+ * Try every non-planned manifest at once, wind, wave and weather alike. A
+ * missing model is not an error: `mi-swan.json` is git-ignored, so a fresh
+ * checkout simply has one wave source instead of two.
  */
 export function availableModels(
   signal?: AbortSignal,
@@ -334,12 +370,14 @@ export function availableModels(
       try {
         const manifest = await loadAnyManifest(entry.id, signal);
         const wave = isWaveManifest(manifest);
+        const weather = isWeatherManifest(manifest);
         return {
           id: entry.id,
           entry,
           manifest,
-          wind: wave ? null : manifest,
+          wind: wave || weather ? null : manifest,
           wave: wave ? manifest : null,
+          weather: weather ? manifest : null,
           available: true,
           error: null,
         };
@@ -350,6 +388,7 @@ export function availableModels(
           manifest: null,
           wind: null,
           wave: null,
+          weather: null,
           available: false,
           error: error instanceof Error ? error.message : String(error),
         };

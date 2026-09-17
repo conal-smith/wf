@@ -10,6 +10,7 @@ import {
   modelHue,
   requireModel,
   waveModels,
+  weatherModels,
   windModels,
 } from "./manifests";
 import { loadManifest } from "./manifests";
@@ -42,6 +43,7 @@ describe("model registry", () => {
       "aifs",
       "gfs-wave",
       "mi-swan",
+      "icon-eu-weather",
     ])
       expect(ids).toContain(id);
     const hues = MODEL_CATALOG.map((model) => model.hue.wind);
@@ -62,12 +64,19 @@ describe("model registry", () => {
       "gefs",
       "gfs-wave",
       "mi-swan",
+      "icon-eu-weather",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
       "mi-swan",
     ]);
+    expect(weatherModels().map((model) => model.id)).toEqual([
+      "icon-eu-weather",
+    ]);
+    // The surface bundle is a live model, and not one the map can draw.
+    expect(requireModel("icon-eu-weather").mapCapable).toBe(false);
+    expect(requireModel("icon-eu-weather").planned).toBeUndefined();
     expect(requireModel("harmonie-eps").planned).toBe(true);
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
     expect(requireModel("ecmwf-ens").mapCapable).toBe(false);

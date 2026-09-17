@@ -72,7 +72,7 @@ export interface Point {
   }[];
 }
 /** What a manifest describes. Absent means wind, the original contract. */
-export type ManifestKind = "wind" | "wave" | "tide";
+export type ManifestKind = "wind" | "wave" | "weather" | "tide";
 /**
  * `interval` gusts are a maximum over the source accumulation window ending at
  * the frame; `instantaneous` gusts are a point value, so their window collapses
@@ -223,7 +223,7 @@ export function validateGrid(g: Grid): void {
   )
     throw new Error("Invalid forecast grid. Refresh the weather snapshot.");
 }
-const KINDS: ManifestKind[] = ["wind", "wave", "tide"];
+const KINDS: ManifestKind[] = ["wind", "wave", "weather", "tide"];
 function validateEnsemble(e: Ensemble): void {
   if (
     !e ||

@@ -119,8 +119,12 @@ riding locations. Model id `icon-eu-weather`, manifest `public/weather/icon-eu-w
 Default: 0–72 hours at three-hour steps (25 frames); `--step 1` works to +72 h, and
 `--hours` takes 3–72 divisible by the step. Discovery, the four-cycle inventory check,
 the 12-hour freshness limit, at most four concurrent downloads into `.cache/grib/<run>/`
-and the bz2/GRIB checks are the wind importer's, reused unchanged. **Nothing in the
-website reads this manifest yet**; it is an ingest deliverable.
+and the bz2/GRIB checks are the wind importer's, reused unchanged. **The browser now
+reads this manifest**: `icon-eu-weather` is a live `kind: "weather"` model in
+`MODEL_CATALOG`, `availableModels()` fetches it alongside the wind and wave models,
+and the dock's Air, Rain, Weather, Cloud, Pressure and Sea rows read its spot series
+through `force5/src/surface.ts`. It is not map-capable — nothing draws a temperature
+raster yet — so its frames are still unread by the website.
 
 Fourteen published variables, converted and rounded once so nothing downstream guesses:
 
@@ -869,7 +873,9 @@ public/marine/tides.json   Tide stations, spot assignments, coverage and datum n
 public/marine/tides-*.json Immutable per-station curves and high/low events
 public/marine/sea-temperature.json Observed sea temperature: stations, per-spot reading and series
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
-force5/src/waves.ts        Wave manifest contract and the dock's wave readers
+force5/src/variables.ts    The shared wave/weather bundle contract, validator and axis matching
+force5/src/waves.ts        The wave-shaped door onto it: coverage notes, sea-state fields, source order
+force5/src/surface.ts      The weather-shaped door: surface fields, source order, WMO present weather
 force5/src/seaTemperature.ts Observed sea temperature: manifest contract and per-spot readings
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
@@ -879,6 +885,7 @@ src/ForecastHeader.tsx     Day groups with sun times and the hour columns every 
 src/ForecastSheet.tsx      Table view rows for named and arbitrary points
 src/BlendChart.tsx         Probability blend: gradient bands, model lines, median, arrows
 src/CandleChart.tsx        One candle per three-hour column
+src/WeatherGlyph.tsx       One inline stroke glyph per WMO present-weather group
 src/DisplayFilter.tsx      Rows, units and blend models, persisted in preferences
 src/chart.ts               Chart geometry, scales and path builders (pure, unit-tested)
 src/dock.css               Dock, chart and filter styles
@@ -952,6 +959,13 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   code-table entries (WMO present weather) that are checked for being small integers
   instead of range-checked, and that no sampler, chart or blend may interpolate.
   ICON-EU surface weather (`icon-eu-weather`) is the first adapter of this kind.
+  The browser reads both kinds through one shared reader, `force5/src/variables.ts`,
+  whose `validateVariablesManifest(kind)` mirrors these manifest-level rules and is
+  what `validateWaveManifest` and `validateWeatherManifest` are: the same function,
+  told which kind it is holding. `waves.ts` and `surface.ts` hold only what is
+  actually kind-specific — the coverage notes an adapter publishes for a beach it
+  cannot resolve, which variables carry a sea state or a surface reading, and the
+  order the dock prefers its sources in.
 - **tide** bundles carry `stations`, `spots`, `coverage` and an immutable file per
   station. Heights are metres above Chart Datum (LAT); each station publishes its
   `odMalinOffsetMetres` and a `datumNote`, and the OD Malin value is never mixed
@@ -989,31 +1003,45 @@ force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles,
 force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
 force5/src/prefs.ts      Row/unit/view/model preferences, persisted best effort
 force5/src/tides.ts      Tide manifest, station curves, heights and high/low events
+force5/src/variables.ts  The shared wave/weather bundle contract, validator and axis matching
+force5/src/waves.ts      Sea-state fields, partitions, coverage notes, wave source order
+force5/src/surface.ts    Surface fields, weather source order, WMO present-weather mapping
 force5/src/seaTemperature.ts Observed sea temperature: stations, latest reading, recent series
-force5/src/waves.ts      Wave contract, per-spot series, partitions, coverage notes
 ```
 
 `validateManifest` now also accepts the optional keys the new adapters publish, at
-`schemaVersion` 1: `kind` (`wind`, `wave` or `tide`; absent means wind), `gustKind`
+`schemaVersion` 1: `kind` (`wind`, `wave`, `weather` or `tide`; absent means wind), `gustKind`
 (`instantaneous` gusts declare `[hour, hour]` at every frame including hour 0 and
 have no `gustMissingHours`), and `ensemble` plus `spotMembers` for per-member spot
 series. Only an ensemble manifest may publish an empty `frames` list, because the
 chart reads precomputed series and never downloads frames.
 
-A **wave** manifest is a separate contract with its own validator, because it
-declares its own variables instead of publishing u/v/gust and its frames are
-optional. `MODEL_CATALOG` says which contract a manifest URL holds, so one cache
-serves both: `loadAnyManifest` fetches and validates by `kind`, and `loadManifest`
-and `loadWaveManifest` are the two typed doors onto it. `availableModels()` sweeps
-wind and wave models together and hands each result back already narrowed, as
-`wind` or `wave`. `validateWaveManifest` mirrors the manifest-level rules of
-`validate_wave_bundle`: the variable map, the optional frame list, the declared
-`horizonHours` for a frameless bundle, `frameVariables` as a distinct subset, and
-every `spotSeries` entry covering every step with every variable present and
-bounded. Frame _contents_ are not checked, because the dock never downloads a wave
-frame. `waveSeries`, `waveFields`, `waveCoverageNote` and `preferredWaveSource`
-are what the dock reads; `waveAtAxis` matches native steps onto the dock's columns
-and never interpolates between two sea states.
+A **variables bundle** — `kind: "wave"` or `kind: "weather"` — is a separate
+contract with its own validator, because it declares its own variables instead of
+publishing u/v/gust and its frames are optional. Both kinds are the same shape, so
+`force5/src/variables.ts` is one reader and `validateVariablesManifest(kind)` is one
+validator: `validateWaveManifest` and `validateWeatherManifest` are that function
+told which kind it is holding, mirroring the single `validate_variables_bundle` in
+the importer. It checks the variable map and its `kind: "code"` declarations, the
+optional frame list, the declared `horizonHours` for a frameless bundle,
+`frameVariables` as a distinct subset, and every `spotSeries` entry covering every
+step with every variable present and either null, a code-table entry under 1000 or a
+measurement inside the kind's bound (1,000 for waves, 100,000 for weather). Frame
+_contents_ are not checked, because the dock never downloads a variables frame.
+`variableSeries`, `variableValue` and `variableAtAxis` are the shared readers, and
+`variableAtAxis` matches native steps onto the dock's columns within 1.5 hours and
+never interpolates — not between two sea states, and not between two present-weather
+codes, where the mean of "fog" and "rain" means nothing.
+
+`MODEL_CATALOG` says which contract a manifest URL holds, so one cache serves all
+three: `loadAnyManifest` fetches and validates by `kind`, and `loadManifest`,
+`loadWaveManifest` and `loadWeatherManifest` are the typed doors onto it.
+`availableModels()` sweeps wind, wave and weather models together and hands each
+result back already narrowed, as `wind`, `wave` or `weather`. On top of the shared
+reader, `waves.ts` adds `waveFields`, `waveCoverageNote` and `preferredWaveSource`,
+and `surface.ts` adds `weatherFields`, `preferredWeatherSource`,
+`precipIntervalHours` and `presentWeather`, which turns a WMO 4677 code into one of
+nine glyph groups and the code table's own words for it.
 
 Blend statistics are per hour: count, min, max, quartiles, median, mean, spread and
 an agreement label. Spread is the full range in metres per second; agreement is
@@ -1052,7 +1080,9 @@ auto-scroll and the column hooks are shared:
 - **Time header**: day groups carrying sunrise and sunset in Irish time, then the
   hour ticks. A day group too narrow to hold its sun times shows only its label,
   because a group is as wide as its own content and would otherwise stretch the
-  columns beneath it.
+  columns beneath it. A group of at least six columns also carries that day's
+  highest air temperature after the sun times, when a weather run reaches it;
+  a narrower group skips it rather than truncating it.
 - **Blend**: the models filled between, coloured by speed from the wind ramp read
   off the value axis — full range, quartiles and an inner core, multiplied so the
   core darkens where the models agree — plus the gust continuation above the wind
@@ -1066,6 +1096,8 @@ auto-scroll and the column hooks are shared:
 - **Rows** below the chart, each optional: spread, direction, the median wind and
   the gust maximum, then a marine block where the tide curve is drawn as a faint
   underlay. Each row is a glyph with an explanation on hover, focus or long press.
+  The block stacks the sea first — waves, swell, wind sea — then surface weather:
+  weather, air, rain, cloud, pressure, sea, and the tide last.
 - **Waves** in that marine block, read from a wave manifest: per column, a small
   arrow rotated to where the waves are going, the significant height in metres to
   one decimal, and the peak period in whole seconds beside it, muted. `mi-swan` is
@@ -1079,6 +1111,25 @@ auto-scroll and the column hooks are shared:
   values are never interpolated: a column takes the nearest native forecast step
   within 1.5 hours and is otherwise empty. A spot no wave model resolves hides the
   rows and the filter says "no wave data at this spot".
+- **Surface weather** in the same block, read from a `kind: "weather"` manifest
+  (`icon-eu-weather` today). **Air** is the two-metre temperature in whole degrees,
+  with the hour's dew point and relative humidity in the cell's own tooltip.
+  **Rain** is the amount in the interval ending at that column, in millimetres,
+  with the cell tinted by how much and the interval named in its tooltip; the run
+  hour has no interval to difference and reads as a dash, and a dry interval the
+  model did forecast reads as `0`. **Weather** is the WMO present-weather code
+  drawn as one of nine inline stroke glyphs — clear, partly, cloudy, fog, drizzle,
+  rain, showers, thunder, snow — with the code and its own words in the tooltip;
+  a code is read from the cell the spot sits in and is never averaged, blended or
+  interpolated. **Cloud** (off by default) is total cover as a percentage with a
+  three-level bar beside it for high, medium and low. **Pressure** (off) is mean
+  sea level pressure in whole hectopascals. **Sea** (off) shows the model's own
+  ground/skin temperature, drawn back and labelled "model skin temperature,
+  approximate" in both the cell and the row's explanation: over sea it is ICON's
+  SST field and a proxy, not an in-situ measurement, and the row stays off until a
+  real coastal source arrives. Air and Weather are on by default; Rain is opt-in because the weather glyph already shows it. Like the
+  waves, these steps are matched to the wind model's columns within 1.5 hours and
+  are otherwise dashes, and the credits line names DWD for them.
 - **Display options**: row switches, units and the models in the blend, persisted
   to local storage. Units drive the charts, the table and the map readouts
   together. Planned models are listed greyed; rows with no adapter yet say "no
@@ -1093,16 +1144,21 @@ view, which samples the grids as it always has. Tide predictions are not committ
 without `npm run tides:refresh` the tide row is hidden and the filter says why.
 
 The dock's columns are the **selected wind model's** own forecast times, which the
-wave rows are matched onto. A wave run that does not overlap the wind model on
-screen therefore reads as dashes rather than as a shorter row: with the bundled
-snapshots that means HARMONIE (13–16 September) shows no wave numbers and GFS
-(16–21 September) or ECMWF (to 28 September) shows them, because the bundled
-GFS-Wave run starts on 16 September at 18 UTC.
+wave and weather rows are matched onto. A run that does not overlap the wind model
+on screen therefore reads as dashes rather than as a shorter row: with the bundled
+snapshots that means HARMONIE (13–16 September) shows no wave or weather numbers
+and GFS (16–21 September) or ECMWF (to 28 September) shows them, because the
+bundled GFS-Wave run starts on 16 September at 18 UTC and the bundled ICON-EU
+surface run is that same hour plus one three-hour step.
 
-Default dock height, measured with the bundled snapshots: **367px at 1440** and
-**307px at 390** (339px and 283px with no tide predictions published). The Table
-view is 268px and 244px. The waves row is 28px, 24px compact, the same as the
-tide row's.
+Default dock height, measured with the bundled snapshots: **439px at 1440** and
+**373px at 390** (411px and 349px with no tide predictions published). The Table
+view is 368px and 334px. The waves and tide rows are 28px, 24px compact; every
+surface-weather row takes the standard 24px, 22px compact. The three default-on
+weather rows are what grew the dock by 72px and 66px over its previous 367px and
+307px, which is the largest thing outstanding about this feature: the per-row
+budget is intact, but the phone dock is now 44 % of an 844px viewport, and which
+rows deserve to be on by default is a design call rather than a code one.
 
 ## Sources and limitations
 
@@ -1119,7 +1175,7 @@ tide row's.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions and wave series are shown in the dock; ICON-EU surface weather and observed sea temperature are ingested but not yet shown, air temperature has no dedicated row yet, and there are no marine warning feeds and no rideability scores. Observed sea temperature covers 9 of the 25 riding locations, and the rest carry a stated reason instead of a number. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series and ICON-EU surface weather are all shown in the dock. The Sea row is the **model's own skin temperature** and is off by default: over sea it is ICON's SST field and a proxy, not an in-situ measurement, and no coastal temperature source is wired up yet. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 
