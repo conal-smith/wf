@@ -24,6 +24,8 @@ Features:
 - **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
 - **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
 - **GEFS · 31 members** adds NOAA's public-domain global ensemble over the same box at 0.25°, 6-hourly to +240 h. The map draws the ensemble **mean**, and the manifest also carries every member's own series for each riding place, so a probability view never downloads member grids. A mean is not the most likely outcome, its gusts are instantaneous like GFS's, and averaging 31 of them reads lower than any single member's gust.
+- **AIFS · 0.25°** adds ECMWF's machine-learned deterministic model over the same box, 6-hourly to +360 h at all four cycles. It is a different kind of forecast from IFS rather than a correction of it, and it publishes **no gust at all** — the source has none, so the gust rows read as unavailable instead of being estimated from the mean wind.
+- **ECMWF Wave · 0.25°** adds the 15-day wave outlook: significant height, mean and peak period, mean direction, and six period-band heights that stand in for a swell partition the open-data stream does not publish. At 0.25° most Irish beaches are read from the nearest cell the model solved, with the offset stated, so it sits last behind the Irish shelf model and GFS-Wave.
 - Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts are hourly maxima from the control's gust components; the bundled snapshot predates this and still shows `—`.
 - The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
 - Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
@@ -67,7 +69,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -180,7 +182,8 @@ npm run weather:refresh:ecmwf
 ```
 
 Downloads the latest available full-length 00/12 UTC IFS control forecast from
-the public AWS mirror using ECMWF's client, with no API key. Publishes 85 validated
+ECMWF's own open-data host using ECMWF's client, with no API key (the AWS and
+Google mirrors are selectable with `--source`; the AWS mirror throttles). Publishes 85 validated
 frames through +360h, preserving source 3/6-hour sampling. The worker supports
 `--models harmonie icon-eu ecmwf`; its `--step` option does not override ECMWF's
 source cadence. See [ECMWF's catalogue](https://www.ecmwf.int/en/forecasts/datasets/open-data)
@@ -474,6 +477,56 @@ A verified default run of the live 12 UTC cycle on 16 September 2026 transferred
 of JSON) plus a 114 kB manifest for eight spots in 172 seconds. No ENS snapshot
 is committed to the repository.
 
+### ECMWF AIFS refresh
+
+```sh
+.venv/bin/pip install -r force5/ingest/requirements-worker.txt
+npm run weather:refresh:aifs
+.venv/bin/python force5/ingest/worker.py --models aifs --ecmwf-source ecmwf --publish-only
+# A shorter horizon, or another mirror:
+.venv/bin/python force5/ingest/fetch_aifs.py --hours 72
+.venv/bin/python force5/ingest/fetch_aifs.py --source google
+```
+
+ECMWF **AIFS Single**, the centre's operational machine-learned deterministic model
+(`model="aifs-single"`, MARS class `ai`), on the same public 0.25° open-data grid as
+the IFS control and with no API key. Model id `aifs`, manifest
+`public/weather/aifs.json`. All four cycles reach **+360 h in uniform 6-hour steps**
+— 61 frames; the source publishes no 3-hourly file, and `--hours` therefore takes
+multiples of 6 only. The crop (18°W–2°E / 48°–59°N, 81 × 45 = 3,645 cells), frame
+contract, atomic publication and `decode_handle` validation are the IFS control's,
+reused unchanged.
+
+**Identity.** AIFS and IFS share `centre=ecmf` and `dataType=fc`, so those alone
+cannot tell them apart. The importer checks `marsClass` (`ai` against the control's
+`od`), `marsStream` and `dataType`, all read from the live product on 17 September 2026. `generatingProcessIdentifier` also differs (5 against 161) and is deliberately
+not used: it is a process number ECMWF may renumber. `centre` is checked first, so a
+file from another centre — which has no MARS section at all — fails with a clear
+message rather than a missing-key error.
+
+**There is no gust.** The open-data inventory for `aifs-single` lists 21 surface
+parameters — 10 m and 100 m wind, 2 m temperature and dewpoint, pressure, cloud,
+precipitation, radiation, skin and soil fields — and no `10fg`/`10fg3` maximum gust
+at any step. The manifest therefore declares `gustAvailable: false` with null gust
+arrays, null spot gusts and an explicit null `gustIntervalHours` on every frame, and
+`gustDescription` says why. No gust is derived from wind speed: a gust factor applied
+to a forecast mean is an assumption, not model output.
+
+The manifest declares `stepHours: 6` **and** a one-entry `stepRanges` ladder
+(`[{throughHour: 360, stepHours: 6}]`). A uniform step on its own lets the frame count
+imply the horizon, so a run that stopped early would publish a shorter timeline without
+complaint; the explicit ladder makes the publisher and the browser reject a missing
+tail frame instead.
+
+A live run of the 18 UTC cycle on 16 September 2026, cold cache, three readers against
+`--source ecmwf`: **21 seconds**, 86.1 MB of ranged GRIB in 61 files (1.39–1.45 MB a
+step for the two wind messages), 61 frames totalling 2.4 MB (38.8–39.4 KB each — smaller
+than an ECMWF control frame, which carries a gust array too) and a 130 KB manifest.
+Brandon Bay from that run: 8.9 m/s (17.2 kt) from 247° at the run hour, 6.9 m/s from
+284° at midnight, 8.9 m/s from 286° at 12 UTC on the 17th, easing to 4.8 m/s at midnight
+on the 18th, and 4.3 m/s from 187° at the +360 h edge. No AIFS snapshot is committed:
+a 61-frame bundle is generated locally.
+
 ### GEFS refresh
 
 ```sh
@@ -599,6 +652,107 @@ The spread widens with lead time as it should: a 3 kt range at initialization, a
 That is model uncertainty, not a rideability probability, and it says nothing about
 shelter, headlands or launch-site turbulence.
 
+### ARPEGE refresh
+
+```sh
+npm run weather:refresh:arpege
+# Shorter, hourly, or discovery through the data.gouv.fr catalogue:
+.venv/bin/python force5/ingest/fetch_arpege.py --hours 48 --step 3
+.venv/bin/python force5/ingest/fetch_arpege.py --hours 24 --step 1
+.venv/bin/python force5/ingest/fetch_arpege.py --source datagouv
+```
+
+Météo-France's 0.1° ARPEGE, Etalab Open Licence 2.0, no API key. Default: 0–102 h
+at three-hour steps (35 frames), which is the model's whole horizon. The 0.1°
+**surface** package is hourly all the way to +102 h — the 48-hour hourly limit
+applies to the upper-air packages, not to this one — so `--step 1` also reaches
++102 h, at 103 frames.
+
+Météo-France publishes whole packages with no server-side subsetting and no `.idx`
+sidecar: the nine time-group files of one ARPEGE `SP1` run are **646 MB** together.
+Downloading that for three fields is not defensible, so `meteofrance.py` walks each
+package's GRIB2 message headers over HTTP byte ranges — one 1 KB read per message —
+and then fetches only the 10 m u, 10 m v and FF_RAF gust messages it will publish.
+The byte offsets are cached per run under `.cache/meteofrance/<model>/<run>/`, so a
+retried job re-reads no headers at all. The bucket answers a **multi-range** request
+with 200 and the entire object, so the client sends one range at a time and refuses
+any response that is not a 206 of exactly the requested length.
+
+Runs are discovered from the OVH bucket listing, newest cycle first, and a cycle is
+used only when every requested hour's package is already published; runs older than
+12 hours or dated in the future are refused. `--source datagouv` discovers the same
+files through the `data.gouv.fr` resource catalogue instead — the officially
+documented route, which rewrites one resource per time group in place and therefore
+shows a mixture while a run is publishing. Both paths download from the same bucket.
+
+The crop is the shared Ireland/Atlantic box, 18°W–2°E and 48–59°N, at the native
+0.1°: **201 × 111 cells**. It is taken on integer lattice indices rather than on
+ecCodes' coordinate arrays, because 0.1° is not a binary fraction and a plain
+`longitude <= east` comparison silently drops the eastern column; the arithmetic
+lattice is checked against every coordinate ecCodes reports before it is used. The
+packages are **CCSDS/AEC packed** (data representation template 42), which needs an
+ecCodes built with libaec; the `eccodes` wheels in `requirements-worker.txt` have it,
+and a build without it fails with one sentence naming libaec rather than a C error.
+
+**ARPEGE gusts are FF_RAF: the maximum over the hour ending at each forecast time.**
+The window is read from the GRIB2 statistical keys (maximum, one-hour time range),
+never from the parameter number, and is published as `gustIntervalHours: [h-1, h]`.
+It stays one hour at three-hourly cadence, so a frame describes the hour before it
+and not the whole gap. Initialization has no preceding hour, so the manifest declares
+`gustMissingHours: [0]` and that frame's gust is null, not zero. FF_RAF turned out to
+be plain WMO 0/2/22 under product template 8, not a Météo-France local table code.
+
+Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
+transferred in 1,236 requests (1,130 of them 1 KB header reads), 32 seconds** wall
+time with three concurrent package walks, publishing 35 frames (12 MB of JSON) and a
+76 kB manifest for 25 locations. Brandon Bay read 18.2 kn at initialization, 20.1 kn
+gusting 29.3 kn at +3 h and 22.6 kn gusting 36.9 kn at +42 h. The bundled acceptance
+snapshot is the same run through +12 h: 5 frames, 1.72 MB.
+
+### AROME refresh
+
+```sh
+npm run weather:refresh:arome
+# Shorter, hourly, or discovery through the data.gouv.fr catalogue:
+.venv/bin/python force5/ingest/fetch_arome.py --hours 24 --step 3
+.venv/bin/python force5/ingest/fetch_arome.py --hours 12 --step 1
+.venv/bin/python force5/ingest/fetch_arome.py --source datagouv
+```
+
+Météo-France's 0.025° AROME, the same licence, key and package client as ARPEGE.
+Default: 0–51 h at three-hour steps (18 frames), the model's whole horizon; `--step 1`
+gives 52 frames. Eight cycles a day, three hours apart. The `SP1` package set is
+461 MB a run and is read the same way, by walking headers over byte ranges.
+
+**AROME's published grid is larger than the model.** The 0.025° `EURW1S40` product is
+a latitude/longitude box, 12°W–16°E and 37.5–55.4°N, but the model runs on a rotated
+domain inside it and a GRIB2 bitmap masks the rest — about 17% of the box, including
+a corner that cuts diagonally across Donegal. On the 55°N row valid data begins only
+at **8.45°W**, and the 55.4°N row is masked outright. The model's edge over Ireland is
+nothing like a line of latitude, and a naive 55.4°N crop publishes 9999 m/s.
+
+The crop is therefore the largest rectangle wholly inside the unmasked area:
+**10.9°W–5°W, 51–54.75°N, 237 × 151 cells** at the native 0.025°, with no resampling.
+That covers the west, south and east coasts and Belfast Lough, and stops short of the
+north coast. Masked points are decoded as NaN rather than 9999 and any masked cell
+inside the crop fails the run, so a future change to the model domain is a loud error
+and never a published number.
+
+**Three riding locations are outside AROME:** Pollan Bay, Benone Strand and
+Magheraroarty. They keep their place in `spotForecasts` with null `u`, `v` and `gust`
+and are named in the manifest's `coverageNote`; `force5/src/series.ts` treats an
+all-null series as absent, so the blend shows AROME no line there rather than a flat
+zero. Use ARPEGE or HARMONIE for the north coast. Gust semantics are FF_RAF, exactly
+as for ARPEGE: a one-hour maximum ending at the frame, with `gustMissingHours: [0]`.
+
+Measured on the live 18 UTC run of 16 September 2026, cold cache: **37.1 MB
+transferred in 366 requests (310 of them header reads), 13.6 seconds** wall time,
+publishing 18 frames (9.8 MB of JSON) and a 41 kB manifest. Brandon Bay read 21.0 kn
+at initialization, 16.2 kn gusting 23.6 kn at +3 h and 26.1 kn gusting 32.9 kn at
++15 h — a little stronger than ARPEGE at the same hours, which is what a 2.5 km model
+resolving Brandon Bay against an 11 km one should look like. A 0.025° frame is 600 kB,
+so no AROME snapshot is bundled; `public/weather/arome.json` is git-ignored.
+
 ### Irish Shelf SWAN refresh
 
 ```sh
@@ -663,6 +817,82 @@ published wave forecast. That file is git-ignored: no wave snapshot is bundled w
 
 Best endeavours, not for safety-critical use. A 2.8 km wave model does not resolve a
 shorebreak, and an offset cell is open water near the spot, not the spot itself.
+
+### ECMWF wave refresh
+
+```sh
+.venv/bin/pip install -r force5/ingest/requirements-worker.txt
+npm run weather:refresh:ecmwf-wave
+.venv/bin/python force5/ingest/worker.py --models ecmwf-wave --ecmwf-source ecmwf --publish-only
+# A shorter horizon, or the whole sea without the period bands (half the bytes):
+.venv/bin/python force5/ingest/fetch_ecmwf_wave.py --hours 24
+.venv/bin/python force5/ingest/fetch_ecmwf_wave.py --no-bands
+```
+
+The `wave` stream of ECMWF's open data — the WAM ocean wave model coupled to IFS — at
+0.25° with no API key. Model id `ecmwf-wave`, kind `wave`, manifest
+`public/weather/ecmwf-wave.json`. The 00 and 12 UTC cycles run to **+360 h on exactly
+the ladder the wind control uses**: 3-hourly to +144 h, then 6-hourly to +360 h, 85
+frames. The client handles `stream="wave"` unchanged — confirmed against the live index
+on 17 September 2026 — so the adapter is the wind importer's crop, `decode_handle`
+validation and atomic publication plus a land mask. `--hours` must land on one of the
+source's own steps; a 4-hourly or interpolated ladder is refused, in the importer and
+again in `cadence.expected_hours`, which now holds `ecmwf` **and** `ecmwf-wave` to that
+ladder (whole, or stopped early, but never resampled).
+
+**Ten variables**, all SI. `swh` (significant height of the combined sea), `mwp` (mean
+period), `pp1d` (peak period) and `mwd` (mean direction) describe the whole spectrum.
+The six band heights `h1012`, `h1214`, `h1417`, `h1721`, `h2125`, `h2530` are the
+significant height carried by waves of 10–12, 12–14, 14–17, 17–21, 21–25 and 25–30
+seconds. **They are the only swell information this stream publishes** — its inventory
+(`cdww`, `h1012`…`h2530`, `mp2`, `mwd`, `mwp`, `pp1d`, `swh`, `wmb`) has no swell
+partition at all, so a long-period band height is the nearest thing to "how much
+groundswell is arriving, and how long". They are not a partition: the bands add in
+energy rather than in metres, they carry no direction, and nothing below 10 s exists,
+so a short local wind sea is invisible in them. Read a rising `h1417` as long swell
+filling in. `force5/src/waves.ts` therefore finds a total row and no swell or wind-sea
+row for this source, which is correct rather than a gap. Identity is the `paramId`: the
+band heights share discipline 10, category 0 and parameter number 3 with `swh` and
+differ only in the local parameter number, so a category/number check alone cannot tell
+a 25–30 s band from the total sea. `marsStream=wave` and `marsClass=od` separate the
+stream from AIFS and from the wind control.
+
+**Land is null, never zero.** Unlike the wind fields, a wave field is undefined where
+the model did not solve: the messages carry a bitmap and those cells arrive as the
+file's own missing value (9999). A field with no bitmap fails the run rather than being
+guessed at, a field that is all land fails too, and every published land cell is `null`
+— a zero would read as a measured flat calm. The crop is the wind product's exact box:
+18°W–2°E / 48°–59°N, 81 × 45 = 3,645 native cells, rows north-to-south, nothing
+resampled or downscaled.
+
+**Reading a riding location at 0.25°.** A cell is about 28 km across, so most Irish
+beaches sit in one the model calls land. Each location is read bilinearly when all four
+cells around it were solved, and otherwise from the nearest solved cell within 40 km,
+taken **unchanged** with the distance recorded as `spotCoverage[spot].nearestOffsetKm`;
+nothing is extrapolated toward the shore. Beyond 40 km the whole series is null with a
+stated reason. Masks are re-read every hour and every variable — `pp1d` has a few more
+unsolved cells than `swh`, and ice moves — so a bilinear stencil that loses a cell falls
+to null instead of quietly renormalising onto what is left. Directions are interpolated
+as unit vectors, never as degrees, so the mean of 350° and 10° is 0° rather than 180°.
+
+**Of the 25 riding locations, 3 are read directly** (Brandon Bay, Maharees, Keel), **21
+from the nearest solved cell** (1.5 km at Tullan Strand, median 13.4 km, 37.7 km at
+Rusheen Bay) **and 1 has no waves at all** (Mountshannon on Lough Derg, as expected for
+an inland lake). Those offsets are the honest cost of the resolution: a 37.7 km reading
+describes the open Atlantic off Galway Bay, not Rusheen. This is why the dock prefers
+`mi-swan` then `gfs-wave` and takes `ecmwf-wave` last — it is worth having because it is
+the only one of the three that reaches 15 days.
+
+A live run of the 12 UTC cycle on 16 September 2026, cold cache, three readers against
+`--source ecmwf`: **61 seconds**, 700.3 MB of ranged GRIB in 85 files (8.32–8.41 MB a
+step for ten messages), 85 frames totalling 15 MB (182 KB each: ten arrays over 3,645
+cells) and a 407 KB manifest. `--no-bands` drops the four whole-sea fields to 3.70 MB a
+step, about 315 MB a run. A 24-hour verification run took 7.9 seconds for 9 frames.
+Brandon Bay from that run: 1.05 m at 9.8 s from 305° at the run hour, easing to 1.09 m
+at 8.7 s from 290° overnight, then building through 1.74 m at 10.6 s to 2.35 m at 13.2 s
+from 310° at +27 h and 2.73 m at 14.6 s at +33 h — with `h1417` rising from 0.06 m to
+1.50 m over the same window, which is the band heights doing their job. No ECMWF wave
+snapshot is committed: a full bundle is 15 MB and is generated locally.
 
 ### HARMONIE refresh
 
@@ -839,6 +1069,7 @@ force5/ingest/registry.py  The model table: script, manifest, kind, freshness li
 force5/ingest/fetch_forecast.py DWD discovery, download, validation and publication
 force5/ingest/fetch_harmonie.py Met Éireann control download, rotation and regridding
 force5/ingest/fetch_ecmwf.py ECMWF IFS 15-day open-data download and crop
+force5/ingest/fetch_aifs.py  ECMWF AIFS Single (AI model) wind, 6-hourly to +360h, no gust
 force5/ingest/fetch_gfs.py  NOAA GFS 0.25° filtered/ranged download and crop
 force5/ingest/fetch_gefs.py NOAA GEFS 0.25° ensemble members, mean frames and per-spot series
 force5/ingest/fetch_gfswave.py NOAA GFS-Wave 9 km polar-stereo decode and resampling
@@ -848,6 +1079,7 @@ force5/ingest/fetch_sea_temperature.py Marine Institute in-situ sea temperature 
 force5/ingest/fetch_ecmwf_ens.py ECMWF ENS members, mean frames and per-spot member series
 force5/ingest/fetch_harmonie_eps.py Met Éireann lag-assembled ensemble member series
 force5/ingest/fetch_mi_swan.py Marine Institute Irish Shelf SWAN wave series per riding location
+force5/ingest/fetch_ecmwf_wave.py ECMWF IFS wave stream: land-masked frames and offset spot series
 force5/ingest/backfill_spots.py Recomputes a published manifest's spot series from its own frames
 force5/ingest/scheduler.py  Per-model cadences for the local deployment, one job at a time
 force5/ingest/prune.py      Retention: unreferenced aged objects and raw cache
@@ -867,6 +1099,8 @@ public/weather/gefs.json   NOAA GEFS mean frames, ensemble metadata and per-spot
 public/weather/harmonie-eps.json HARMONIE ensemble: member spot series, mean frames
 public/weather/mi-swan.json Irish Shelf SWAN wave series per riding location (git-ignored)
 public/weather/gfs-wave.json GFS-Wave variables, display grid, spot series and coverage
+public/weather/aifs.json   AIFS Single's 61-frame 6-hourly timeline, gusts declared unavailable (not committed)
+public/weather/ecmwf-wave.json ECMWF wave variables, native 0.25° frames, spot series and cell offsets (not committed)
 public/weather/icon-eu-weather.json ICON-EU surface variables, frame subset and 25 spot series
 public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
@@ -916,6 +1150,7 @@ ensemble      {members, control | null, description}
 spotMembers   {spotId: [{hour, validTime, u[], v[], gust[]}]}   indexed by member
 variables     {shortName: {units, label, description, kind?}}   wave/weather bundles
 spotSeries    {spotId: [{hour, validTime, values: {var: number|null}}]}
+coverageNote  why some spotForecasts series are null           wind bundles
 horizonHours  last published hour                               frameless wave bundles
 frameVariables[shortName]  the subset of variables frames carry  wave/weather bundles
 ```
@@ -924,7 +1159,12 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   that publish a surface gust at the valid time rather than a period maximum (NOAA
   GFS and GEFS): every frame, hour 0 included, then carries
   `gustIntervalHours: [hour, hour]`, which the validator accepts only under that
-  declaration, and such a model has no `gustMissingHours`.
+  declaration, and such a model has no `gustMissingHours`. A model whose source has no
+  gust field of any kind declares `gustAvailable: false`, and then every frame's `gust`
+  array, every spot `gust` and every frame's `gustIntervalHours` is explicitly `null` —
+  the key is present and null, because an absent key would read as an undeclared gap.
+  ECMWF AIFS Single (`aifs`) is the first model of that sort: no gust is invented from
+  wind speed, and `gustDescription` says so.
 - **ensemble** manifests hold the ensemble **mean** in `spotForecasts` and every
   member in `spotMembers`; member arrays must all have length `members`, with finite
   values, |u| and |v| at most 150 m/s and gusts at or above zero. Because a member
@@ -935,6 +1175,13 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   be empty **only** when `ensemble` is present, for models shown on the chart but not
   the map. The browser's `validateManifest` still requires a non-empty `frames`, so a
   chart-only model needs that frontend check relaxed first.
+- **coverageNote** is one sentence explaining why a wind model publishes null
+  values for some riding locations: its domain does not reach them. The locations
+  stay in `spotForecasts` so the catalogue never looks as though it changed, and
+  `force5/src/series.ts` treats an all-null series as absent rather than as calm.
+  Météo-France AROME is the first model to need it — three north-coast locations sit
+  outside its native domain — and the frame arrays themselves never contain nulls,
+  because the crop is chosen to stay inside the model.
 - **wave** bundles declare `variables` and publish `spotSeries` for every riding
   location, with `null` for land, unresolved cells and locations with no usable grid
   cell, never zero. Frames are **optional**: `frames` may be empty when `spotSeries`
@@ -947,6 +1194,14 @@ frameVariables[shortName]  the subset of variables frames carry  wave/weather bu
   GFS-Wave (`gfs-wave`) publishes frames and adds `spotCoverage` so the UI can say why
   a location has no waves, plus `directionConvention`/`partitionNote` for what the
   numbers mean. Wave directions are the bearing waves come **from**, like the wind.
+  ECMWF's wave stream (`ecmwf-wave`) publishes native 0.25° frames on the same box as
+  the ECMWF wind product, and adds `spotCoverage[spot].nearestOffsetKm`: `0` when a
+  location's own four cells were read and a real distance when the adapter had to take
+  the nearest cell the model solved, which at 0.25° is most Irish beaches. The offset is
+  recorded, never smoothed away, and a location with no solved cell within 40 km gets a
+  series of nulls and a stated reason. The dock's preference order is `mi-swan`, then
+  `gfs-wave`, then `ecmwf-wave`, finest first; a source whose series for a spot is all
+  nulls is skipped rather than shown as dashes.
   The browser reads wave manifests through `force5/src/waves.ts`, whose
   `validateWaveManifest` mirrors these manifest-level rules; `tests/snapshot.test.ts`
   adds what only a committed snapshot can check, which is that the frame files on
@@ -1229,6 +1484,7 @@ stale forecast until someone reloaded it. It now revalidates itself:
 - Tides: [Marine Institute ERDDAP](https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.html), `imiTidePrediction` and `IMI_TidePrediction_HighLow`, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Predictions only; Northern Ireland has no Marine Institute station.
 - Sea temperature: Marine Institute ERDDAP in-situ observations, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — the [Irish Coastal Temperature Network](https://erddap.marine.ie/erddap/info/ICTempNetwork/index.html) (`ICTempNetwork`, delayed-mode logger archive), the [Mace Head](https://erddap.marine.ie/erddap/info/compass_mace_head/index.html) and [Lehanagh Pool](https://erddap.marine.ie/erddap/info/sentinel_lehanagh/index.html) sentinel met-ocean buoys, and the [Irish Weather Buoy Network](https://erddap.marine.ie/erddap/info/IWBNetwork/index.html) (`IWBNetwork`, M2/M3/M5/M6). Measurements, not a forecast. Only 9 of the 25 riding locations have a station within 60 km: there is no live Marine Institute inshore station on the north, north-west, south or east coast, and Northern Ireland has none at all. The offshore weather buoys publish no sensor depth, and their real-time rows arrive with an "unknown" quality flag. An offshore reading is not the water at a beach — in summer the open shelf is colder than a bay, in winter warmer.
 - Waves: Marine Institute [Irish Shelf SWAN](https://erddap.marine.ie/erddap/info/IMI_IRISH_SHELF_SWAN_WAVE/index.html) and the 200 m [Connemara nest](https://erddap.marine.ie/erddap/info/IMI_CONNEMARA_SWAN_WAVE/index.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wave forecast © Marine Institute; best endeavours, not for safety-critical use. One run a day, and a beach series is the nearest open-water cell, not the shorebreak.
+- ARPEGE and AROME: [Météo-France public numerical prediction data](https://meteo.data.gouv.fr/), packages [ARPEGE 0.1°](https://www.data.gouv.fr/datasets/paquets-arpege-resolution-0-1deg/) and [AROME 0.025°](https://www.data.gouv.fr/datasets/paquets-arome-resolution-0-025deg/), [Etalab Open Licence 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/), no key. Attribution as published: "Weather data: Météo-France, ARPEGE and AROME public numerical prediction packages from meteo.data.gouv.fr, Etalab Open Licence 2.0. Cropped, validated and processed by Force5 (wingfoil.ie); this is modified Météo-France output, not official Météo-France material." AROME's 0.025° domain does not reach Ireland's north coast: Pollan Bay, Benone Strand and Magheraroarty have no AROME series at all.
 - HARMONIE: [Met Éireann open-data listing](https://data.gov.ie/dataset/numerical-weather-prediction-data/resource/1fefad43-8aa9-46cb-88f6-053e712cdafa), [near-real-time downloads](https://opendata.met.ie/nwp/near-realtime), [model documentation](https://opendata.met.ie/documentation), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The older empty Apache index is not used.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.

@@ -245,6 +245,122 @@ the same four cycles as ICON-EU wind with a publication lag of about 3.5 hours
 (`deploy/local/jobs.toml` runs it at 03/09/15/21 UTC, ten minutes after the wind job
 so the two never share the worker lock), and alarm on the same 12-hour threshold.
 
+### ARPEGE and AROME (Météo-France)
+
+`--models arpege arome` runs `fetch_arpege.py` and `fetch_arome.py`, which share
+`meteofrance.py` and publish `weather/arpege.json` and `weather/arome.json`. Both are
+ordinary deterministic wind bundles: map frames, a series for all 25 riding locations,
+Etalab Open Licence 2.0 and no key. The worker passes only `--step`; the schedule
+sends `--step 3`, and `--step 1` reaches the same horizon for both models.
+
+The interesting part is transfer. Météo-France publishes whole packages with **no
+server-side subsetting and no `.idx` sidecar**: one ARPEGE `SP1` run is 646 MB across
+nine time-group files and one AROME `SP1` run is 461 MB. The client therefore walks
+each package's GRIB2 message headers over HTTP byte ranges, 1 KB at a time, and
+downloads only the 10 m u, 10 m v and FF_RAF messages. Three package files are walked
+at once, one socket per thread; the resulting byte offsets are cached per run, so a
+retry re-reads nothing. **The bucket ignores a multi-range request and answers 200
+with the whole object**, so the client sends one range per request and treats anything
+but a 206 of the requested length as a fault, closing the connection without reading
+the body. Packages are CCSDS/AEC packed (template 42) and need an ecCodes with libaec.
+
+Measured cold against the live 18 UTC run of 16 September 2026, three workers:
+
+| Model  | Requests           | Transferred | Wall time | Published                         |
+| ------ | ------------------ | ----------- | --------- | --------------------------------- |
+| ARPEGE | 1,236 (1,130 head) | 37.1 MB     | 32 s      | 35 frames, 12 MB, 76 kB manifest  |
+| AROME  | 366 (310 head)     | 37.1 MB     | 13.6 s    | 18 frames, 9.8 MB, 41 kB manifest |
+
+That is 1.7% of the ARPEGE package set and 8% of the AROME one. Header reads dominate
+ARPEGE's request count because the packages are laid out parameter-major and the gust
+block sits about 130 messages into each file; the walk stops there rather than reading
+to end of file.
+
+Schedule **ARPEGE four times a day at cycle + 4 h 50 m** (00/06/12/18 UTC) and **AROME
+eight times a day at cycle + 4 h 55 m** (every three hours). Measured completion of the
+`SP1` package set: ARPEGE 3 h 07 m to 4 h 21 m after run time, AROME 3 h 57 m to
+5 h 05 m. Both use `maxAgeHours: 12`, so a slot that finds the newest cycle incomplete
+falls back to the previous one and still publishes.
+
+**AROME's published grid is larger than the model.** Its 0.025° `EURW1S40` box spans
+12°W–16°E and 37.5–55.4°N, but the model runs on a rotated domain inside it and a GRIB2
+bitmap masks about 17% of the box — a corner that cuts diagonally across Donegal. Valid
+data on the 55°N row starts only at 8.45°W and the 55.4°N row is masked outright, so the
+crop is the largest rectangle wholly inside the unmasked area: 10.9°W–5°W, 51–54.75°N at
+237 × 151 native cells. Pollan Bay, Benone Strand and Magheraroarty fall outside it and
+are published with null series plus a manifest `coverageNote`; ARPEGE (18°W–2°E,
+48–59°N at 201 × 111) is the fallback there. A masked cell inside either crop fails the
+run, so a change to the model domain is a loud error, never a published 9999.
+
+Gusts are FF_RAF for both: the maximum over the **hour ending at each forecast time**,
+read from the GRIB2 statistical keys and published as `gustIntervalHours: [h-1, h]`
+with `gustMissingHours: [0]`. The window stays one hour at three-hourly cadence, so a
+frame describes the hour before it and not the whole gap; these are interval maxima and
+must not be compared with the instantaneous gusts GFS and GEFS publish.
+
+### AIFS Single (ECMWF's AI model)
+
+`--models aifs` runs `fetch_aifs.py`, which imports ECMWF's operational machine-learned
+deterministic forecast (`model="aifs-single"`, MARS class `ai`) from the same public
+0.25° open data as the IFS control, with no API key. It publishes
+`weather/aifs.json`: 61 frames in uniform 6-hour steps to +360 h, on the same
+81 × 45 Ireland/Atlantic crop as `ecmwf`. The registry marks it `workerStep: False`, so
+the worker never forces its 1/3-hour `--step` on a source whose only cadence is six
+hours; it does pass `--ecmwf-source`, like the other three ECMWF adapters.
+
+Three facts drive its deployment:
+
+- **All four cycles reach the full horizon**, unlike the IFS control's 00/12-only 15-day
+  product, so there are four slots a day rather than two. Each is published about six
+  hours after run time; `deploy/local/jobs.toml` runs it at 00/06/12/18 UTC + 25 minutes
+  and the registry age limit is **12 hours**, which is exactly one cycle of slack.
+- **There is no gust.** The `aifs-single` inventory has no `10fg`/`10fg3` at any step, so
+  the bundle declares `gustAvailable: false` with null gust arrays and null
+  `gustIntervalHours` on every frame. `publish_s3.already_current` will refuse to let a
+  gustless manifest replace one that had gusts, which is the right protection for the
+  wind control and a no-op here because every AIFS run declares the same absence. Do not
+  alarm on missing AIFS gusts; alarm on a missing AIFS _run_.
+- **Bandwidth is modest.** A verified run of the live 18 UTC cycle on 16 September 2026
+  transferred **86.1 MB** in 61 ranged reads (1.39–1.45 MB a step for `10u` + `10v`) and
+  completed download, validation, cropping and publication in **21 seconds** with three
+  readers against `--source ecmwf`. It wrote 61 frames of 38.8–39.4 KB (2.4 MB) and a
+  130 KB manifest, into a scratch work directory; no AWS resources were created.
+
+AIFS is a _different_ model, not a correction of IFS: where the two disagree, neither is
+the other's error term. Present it as its own row, and do not fold it into an IFS
+average.
+
+### ECMWF wave stream
+
+`--models ecmwf-wave` runs `fetch_ecmwf_wave.py`, which imports the `wave` stream of the
+same open data — the WAM ocean wave model coupled to IFS — and publishes the
+`kind: "wave"` bundle `weather/ecmwf-wave.json`. The 00 and 12 UTC cycles run to +360 h
+on exactly the wind control's ladder (3-hourly to +144 h, then 6-hourly), 85 frames of
+ten variables at native 0.25° on the same crop as `ecmwf`. `cadence.expected_hours` now
+holds both `ecmwf` and `ecmwf-wave` to that ladder, whole or stopped early but never
+resampled, so a truncated or interpolated cadence cannot publish under either id.
+
+- **Bandwidth is the operational constraint.** There is no server-side subsetting, so a
+  full run transfers **700.3 MB** in 85 ranged reads (8.32–8.41 MB a step for ten
+  messages). A verified run of the live 12 UTC cycle on 16 September 2026 completed in
+  **61 seconds** with three readers against `--source ecmwf`, writing 85 frames of
+  182 KB (15 MB) and a 407 KB manifest. `--no-bands` drops the six period-band heights
+  for about 315 MB a run; the bands are the only swell information the stream has, so
+  drop them only under real bandwidth pressure.
+- **Schedule it twice daily.** `deploy/local/jobs.toml` runs it at 08 and 20 UTC + 45
+  minutes, about eight hours after each cycle, with a 24-hour registry age limit — the
+  same shape as the wind control. Every ECMWF adapter and the worker now default to
+  the ECMWF-hosted source; the AWS mirror returned sustained `503 SlowDown` during
+  development and remains available as `--ecmwf-source aws`.
+- **Coverage is the thing to communicate, not a fault to fix.** A 0.25° cell is about
+  28 km across. Of the 25 riding locations, 3 are read from their own four cells
+  (Brandon Bay, Maharees, Keel), 21 from the nearest cell the model solved (1.5 km at
+  Tullan Strand, median 13.4 km, 37.7 km at Rusheen Bay) and 1 has none within 40 km
+  (Mountshannon on Lough Derg). Every offset is published as
+  `spotCoverage[spot].nearestOffsetKm` with a sentence the UI shows. That is why the
+  dock's preference is `mi-swan`, then `gfs-wave`, then `ecmwf-wave`: this source earns
+  its place by reaching 15 days, not by resolving a beach.
+
 ## AWS setup checklist
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
@@ -266,6 +382,8 @@ ECMWF:    --models ecmwf --bucket YOUR_FORECAST_BUCKET
 GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
 GEFS:     --models gefs --bucket YOUR_FORECAST_BUCKET
+ARPEGE:   --models arpege --step 3 --bucket YOUR_FORECAST_BUCKET
+AROME:    --models arome --step 3 --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
 SEA TEMPERATURE: --models sea-temperature --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
