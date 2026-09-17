@@ -24,7 +24,7 @@ const originalIds: string[] = JSON.parse(
   readFileSync("public/spots.json", "utf8"),
 ).map((spot: Spot) => spot.id);
 
-describe.each(["latest", "harmonie", "ecmwf", "gfs"])(
+describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
   "downloaded real %s forecast snapshot",
   (name) => {
     it("all files match the manifest and all spot summaries match their wind grid", () => {

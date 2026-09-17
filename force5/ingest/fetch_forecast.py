@@ -70,6 +70,19 @@ def get(url):
             time.sleep(2 ** attempt)
 
 
+def messages(data):
+    """Split a concatenated GRIB2 stream, refusing a truncated or foreign message."""
+    offset = 0
+    while offset < len(data):
+        if data[offset:offset+4] != b"GRIB" or data[offset+7:offset+8] != b"\x02":
+            raise ValueError("Invalid GRIB2 stream")
+        length = int.from_bytes(data[offset+8:offset+16], "big")
+        if length < 20 or offset + length > len(data) or data[offset+length-4:offset+length] != b"7777":
+            raise ValueError("Truncated GRIB2 message")
+        yield data[offset:offset+length]
+        offset += length
+
+
 def listing(cycle, parameter):
     html = get(f"{BASE}/{cycle}/{parameter}/").decode()
     names = re.findall(r'href="(icon-eu_europe_regular-lat-lon_single-level_(\d{10})_(\d{3})_[A-Z0-9_]+\.grib2\.bz2)"', html)

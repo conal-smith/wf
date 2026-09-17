@@ -26,7 +26,7 @@ import eccodes as ec
 import numpy as np
 from pyproj import Proj
 
-from fetch_forecast import ROOT, get, load_spots, sample, write_json
+from fetch_forecast import ROOT, get, load_spots, messages, sample, write_json
 
 PORTAL = "https://opendata.met.ie"
 MODEL = "harmonie"
@@ -66,18 +66,6 @@ def discover(items, hours, requested_run=None):
         if (not requested_run or run == requested_run) and all((run, h) in files for h in hours):
             return run, {h: files[(run, h)] for h in hours}
     raise RuntimeError("No complete HARMONIE control run in the public three-hour inventory. Try again later; existing snapshots are unchanged.")
-
-
-def messages(data):
-    offset = 0
-    while offset < len(data):
-        if data[offset:offset+4] != b"GRIB" or data[offset+7:offset+8] != b"\x02":
-            raise ValueError("Invalid GRIB2 stream")
-        length = int.from_bytes(data[offset+8:offset+16], "big")
-        if length < 20 or offset + length > len(data) or data[offset+length-4:offset+length] != b"7777":
-            raise ValueError("Truncated GRIB2 message")
-        yield data[offset:offset+length]
-        offset += length
 
 
 def extract(data):

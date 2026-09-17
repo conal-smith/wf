@@ -3,6 +3,10 @@
 ECMWF_HOURS = tuple(range(0, 145, 3)) + tuple(range(150, 361, 6))
 ECMWF_RANGES = [{"throughHour": 144, "stepHours": 3},
                 {"throughHour": 360, "stepHours": 6}]
+# Products published on the IFS open-data ladder above. The wind control and the
+# wave stream share it exactly, so both are held to it rather than to the looser
+# general rule: a resampled or invented hour cannot publish under these ids.
+ECMWF_LADDER_MODELS = ("ecmwf", "ecmwf-wave")
 
 
 def ladder_hours(ranges):
@@ -22,11 +26,27 @@ def ladder_hours(ranges):
     return tuple(hours)
 
 
-def expected_hours(manifest):
-    if manifest["model"] == "ecmwf":
-        if manifest.get("stepHours") != 3 or manifest.get("stepRanges") != ECMWF_RANGES:
-            raise ValueError("Invalid ECMWF source cadence")
+def ecmwf_ladder(ranges):
+    """The IFS open-data ladder, whole or stopped early but never resampled.
+
+    The full product is 3-hourly to +144h then 6-hourly to +360h. A shorter run —
+    an acceptance snapshot, or a horizon an operator asked for — may declare a
+    prefix of that ladder, but every hour it declares must be one the source
+    actually publishes, so a 4-hourly or an interpolated hour is still refused.
+    """
+    if ranges == ECMWF_RANGES:
         return ECMWF_HOURS
+    hours = ladder_hours(ranges)
+    if hours != ECMWF_HOURS[:len(hours)]:
+        raise ValueError("Invalid ECMWF source cadence")
+    return hours
+
+
+def expected_hours(manifest):
+    if manifest["model"] in ECMWF_LADDER_MODELS:
+        if manifest.get("stepHours") != 3:
+            raise ValueError("Invalid ECMWF source cadence")
+        return ecmwf_ladder(manifest.get("stepRanges"))
     step = manifest.get("stepHours")
     if manifest.get("stepRanges") is not None:
         hours = ladder_hours(manifest["stepRanges"])
