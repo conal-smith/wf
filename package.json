@@ -28,6 +28,7 @@
     "weather:refresh:gfs-wave": ".venv/bin/python force5/ingest/fetch_gfswave.py",
     "weather:refresh:icon-weather": ".venv/bin/python force5/ingest/fetch_icon_weather.py",
     "tides:refresh": ".venv/bin/python force5/ingest/fetch_tides.py",
+    "sea:refresh": ".venv/bin/python force5/ingest/fetch_sea_temperature.py",
     "deploy:build": "docker compose -f deploy/local/docker-compose.yml build",
     "deploy:up": "docker compose -f deploy/local/docker-compose.yml up -d",
     "deploy:down": "docker compose -f deploy/local/docker-compose.yml down",

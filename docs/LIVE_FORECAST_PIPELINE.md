@@ -267,6 +267,7 @@ GFS:      --models gfs --step 3 --bucket YOUR_FORECAST_BUCKET
 GFS-WAVE: --models gfs-wave --bucket YOUR_FORECAST_BUCKET
 GEFS:     --models gefs --bucket YOUR_FORECAST_BUCKET
 TIDES:    --models tides --bucket YOUR_FORECAST_BUCKET
+SEA TEMPERATURE: --models sea-temperature --bucket YOUR_FORECAST_BUCKET
 ECMWF ENS: --models ecmwf-ens --bucket YOUR_FORECAST_BUCKET
 HARMONIE EPS: --models harmonie-eps --step 3 --bucket YOUR_FORECAST_BUCKET
 MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
@@ -276,6 +277,16 @@ Tides need one nightly run: predictions extend to 2029, so the schedule only ref
 published nine-day window. The manifest's `run` is the ingest hour, which keeps the
 existing staleness and compare-and-swap rules working unchanged; its default age limit is
 30 hours.
+
+Sea temperature is an **observation** feed, not a cycle: run it every three hours
+(`deploy/local/jobs.toml` uses 00/03/…/21 UTC at :15, sharing that minute with the SWAN
+job, which the one-job-at-a-time loop serialises). A run takes about 3 seconds, transfers
+a few hundred kilobytes of CSV and publishes a single ~30 KB file with no immutable
+objects, so its only S3 writes are the archived manifest and the pointer. Its `run` is
+the **newest observation hour**, so the 48-hour registry limit is the age of the data:
+alarm when it is exceeded, and expect it to trip when a buoy goes off station rather
+than when the job fails. A station that stops reporting does not fail the run — the spots
+it served fall back to a stated reason, and the run keeps publishing for the rest.
 
 These are deployment instructions, not provisioned infrastructure. No bucket, registry, schedule or cloud task has been created by this change.
 
@@ -308,6 +319,8 @@ weather/manifests/gfs-wave/RUN-HASH.json   archived complete GFS-Wave manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
+marine/sea-temperature.json                current sea temperature pointer, readings inline
+marine/manifests/sea-temperature/RUN-HASH.json  archived observation manifests
 weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
 weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
 weather/manifests/harmonie-eps/RUN-HASH.json    archived complete ensemble manifests
@@ -339,6 +352,12 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
 - `tide` validates the station manifest and every referenced station file: monotonic
   times, heights within −1 to 8 m above LAT, and event heights agreeing with the curve
   extremes to within 0.15 m.
+- `observation` validates a self-contained measurement bundle and returns **no** objects
+  to upload: stations with a known network and an optional sensor depth, values within
+  −2 to 35 °C, times that parse and do not lie in the future, a strictly increasing
+  per-spot series, a stated reason for every spot with no station, and a `run` equal to
+  the newest observation hour the manifest publishes. Sea temperature
+  (`sea-temperature`) is the first observation adapter.
 
 All adapters precompute `spotForecasts` for the 25 ids in `public/riding-locations.json`,
 so a browser chart never has to download grid frames. Regenerate that file with
