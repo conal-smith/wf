@@ -57,7 +57,10 @@ export default function App() {
   const [manifest, setManifest] = useState<Manifest | null>(null),
     [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null),
-    [requestedIndex, setRequestedIndex] = useState(0);
+    // The reader's place in the forecast is a valid time, never an index. An
+    // index only means something inside one run of one model, and the dock's
+    // columns will outlive both; the map frame and the dock column are derived.
+    [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [point, setPoint] = useState<Point>(initialPoint);
   const [error, setError] = useState(""),
     [frameError, setFrameError] = useState(""),
@@ -123,7 +126,9 @@ export default function App() {
         const validated = validateManifest(m);
         setManifest(validated);
         setSpots(ridingLocations(s));
-        setRequestedIndex(nearestFrame(validated.frames));
+        setSelectedTime(
+          validated.frames[nearestFrame(validated.frames)].validTime,
+        );
         setPoint(
           s.find((spot: Spot) => spot.id === initialPoint.id) || initialPoint,
         );
@@ -166,11 +171,19 @@ export default function App() {
     modelEpoch.current++;
     setManifest(next);
     setFrame(nextFrame);
-    setRequestedIndex(index);
+    setSelectedTime(next.frames[index].validTime);
     setFrameError("");
     setModelError("");
     setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
   };
+
+  // The map frame the selected time asks for. Nothing stores this: a run swap
+  // or a model switch changes which frame a time lands on, and deriving it is
+  // what keeps the reader's place through both.
+  const requestedIndex =
+    manifest && selectedTime
+      ? nearestFrame(manifest.frames, Date.parse(selectedTime))
+      : 0;
 
   useEffect(() => {
     if (!manifest || pendingModel) return;
@@ -212,8 +225,10 @@ export default function App() {
   useEffect(() => {
     if (!playing || !manifest || loading || frameError) return;
     const timeout = window.setTimeout(() => {
-      if (requestedIndex >= manifest.frames.length - 1) setPlaying(false);
-      else setRequestedIndex((v) => v + 1);
+      // Playback steps through the map model's own frames, by time.
+      const next = manifest.frames[requestedIndex + 1];
+      if (!next) setPlaying(false);
+      else setSelectedTime(next.validTime);
     }, 1600);
     return () => clearTimeout(timeout);
   }, [playing, manifest, requestedIndex, loading, frameError]);
@@ -225,11 +240,12 @@ export default function App() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-  const selectTime = (i: number) => {
+  /** The one way the reader's place moves: a valid time, from any control. */
+  const selectTime = (validTime: string) => {
     if (pendingModel) return;
     setModelNotice("");
     setPlaying(false);
-    setRequestedIndex(i);
+    setSelectedTime(validTime);
   };
   const selectSpot = (spot: Point) => {
     setPoint(spot);
@@ -273,26 +289,26 @@ export default function App() {
     return () => window.removeEventListener("keydown", escape);
   }, [searchOpen, showLayers, spotInfoOpen, point.id]);
   const openInfo = () => dialog.current?.showModal();
-  const chooseModel = async (id: ModelId) => {
-    if (!manifest || !frame || id === manifest.model) return;
+  const chooseModel = async (id: ModelId, wanted?: string) => {
+    if (!manifest || !frame || (id === manifest.model && !wanted)) return;
     modelRequest.current?.abort();
     const controller = new AbortController();
     modelRequest.current = controller;
     modelEpoch.current++;
     setPlaying(false);
-    setRequestedIndex(activeIndex);
     setPendingModel(id);
     setModelError("");
     setModelNotice("");
     setFrameError("");
-    const targetTime = frame.validTime;
+    const targetTime = wanted ?? frame.validTime;
+    setSelectedTime(targetTime);
     try {
       const next = await loadModel(id, targetTime, controller.signal);
       if (controller.signal.aborted) return;
       // React batches these together: metadata, map, series and time commit atomically.
       setManifest(next.manifest);
       setFrame(next.frame);
-      setRequestedIndex(next.index);
+      setSelectedTime(next.frame.validTime);
       if (next.frame.validTime !== targetTime)
         setModelNotice(
           `Showing the nearest ${next.manifest.modelName} forecast: ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}. Model forecast times and ranges differ.`,
@@ -311,15 +327,14 @@ export default function App() {
   // switch makes, at the frame nearest the time the reader had selected.
   useRunRefresh({
     manifest,
-    validTime:
-      manifest?.frames[requestedIndex]?.validTime ?? frame?.validTime ?? null,
+    validTime: selectedTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
     playing,
     onRun: commitRun,
   });
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
-      setRequestedIndex(0);
+      setSelectedTime(manifest.frames[0].validTime);
     setPlaying((v) => !v);
   };
 
@@ -579,7 +594,9 @@ export default function App() {
                   index={activeIndex}
                   requestedIndex={requestedIndex}
                   scrollIndex={frameError ? activeIndex : requestedIndex}
-                  onSelect={selectTime}
+                  onSelect={(column) =>
+                    selectTime(manifest.frames[column].validTime)
+                  }
                   open={sheetOpen}
                   onClose={() => {
                     setSheetOpen(false);
