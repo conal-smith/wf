@@ -33,7 +33,8 @@ def main():
                         help="HARMONIE/ICON cadence; ECMWF always uses native 3/6-hour steps")
     parser.add_argument("--run", help="Optional available run; normally discover automatically")
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
-                        default=os.environ.get("ECMWF_SOURCE", "aws"), help="Official ECMWF public mirror")
+                        default=os.environ.get("ECMWF_SOURCE", "ecmwf"),
+                        help="ECMWF-hosted by default; the AWS mirror throttles with 503 SlowDown")
     parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET"), help="Omit for local-only output")
     parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")

@@ -182,7 +182,8 @@ npm run weather:refresh:ecmwf
 ```
 
 Downloads the latest available full-length 00/12 UTC IFS control forecast from
-the public AWS mirror using ECMWF's client, with no API key. Publishes 85 validated
+ECMWF's own open-data host using ECMWF's client, with no API key (the AWS and
+Google mirrors are selectable with `--source`; the AWS mirror throttles). Publishes 85 validated
 frames through +360h, preserving source 3/6-hour sampling. The worker supports
 `--models harmonie icon-eu ecmwf`; its `--step` option does not override ECMWF's
 source cadence. See [ECMWF's catalogue](https://www.ecmwf.int/en/forecasts/datasets/open-data)

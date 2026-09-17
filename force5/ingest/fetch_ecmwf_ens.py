@@ -202,7 +202,7 @@ def average(series):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", help="Optional YYYYMMDDHH; 06/18 reach only +144h")
-    parser.add_argument("--source", choices=["aws", "ecmwf", "google"], default="aws")
+    parser.add_argument("--source", choices=["ecmwf", "aws", "google"], default="ecmwf")
     parser.add_argument("--members", type=int, default=MEMBERS,
                         help=f"Perturbed members 1..N of {MEMBER_LIMIT} (default {MEMBERS})")
     parser.add_argument("--step", type=int, choices=[3, 6, 12], default=STEP,
