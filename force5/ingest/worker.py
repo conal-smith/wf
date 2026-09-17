@@ -35,7 +35,7 @@ def main():
     parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
     parser.add_argument("--max-age-hours", type=float,
-                        help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides)")
+                        help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides, 48 observations)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:

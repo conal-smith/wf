@@ -92,6 +92,13 @@ minutes = [5]
 timeout_seconds = 1800
 
 [[jobs]]
+id = "sea-temperature"
+models = ["sea-temperature"]
+hours = [0, 3, 6, 9, 12, 15, 18, 21]   # Observations, not a cycle: every 3 h is
+minutes = [15]              # plenty for hourly buoys. Shares :15 with mi-swan,
+timeout_seconds = 900       # which the one-job-at-a-time loop serialises.
+
+[[jobs]]
 id = "prune"
 command = "prune"
 hours = [5]                 # Daily retention sweep; see FORCE5_RETAIN_HOURS.

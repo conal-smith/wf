@@ -24,6 +24,10 @@ KEEP_CACHE_NAMES = {"worker.lock"}
 DEFAULT_MAX_AGE_HOURS = 48.0
 DEFAULT_CACHE_DAYS = 3.0
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
+# An observation bundle is one small self-contained file: it carries its readings
+# inline and points at nothing, so having no object URLs is correct, not a fault.
+# Its manifest is protected from deletion by being a registered pointer path.
+SELF_CONTAINED_KINDS = {"observation"}
 
 
 def read_manifests(public):
@@ -60,7 +64,7 @@ def referenced(manifests):
     files, directories = set(), set()
     for path, manifest in manifests.items():
         urls = manifest_urls(manifest)
-        if not urls:
+        if not urls and manifest.get("kind") not in SELF_CONTAINED_KINDS:
             raise ValueError(f"Manifest {path} references no published objects")
         for url in urls:
             parts = PurePosixPath(url).parts

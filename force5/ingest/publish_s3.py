@@ -15,6 +15,11 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
         may declare `"kind": "code"`, making its values whole code-table entries
         rather than measurements, so no range check applies to them.
 - tide  a station manifest plus immutable per-station prediction files.
+- observation  in-situ measurements rather than a forecast: stations, a per-spot
+        nearest-station assignment with its latest reading and a recent series, and
+        no immutable objects at all, because the whole bundle is one small file.
+        `run` is the newest observation hour, so the freshness limit measures the
+        age of the data.
 """
 from datetime import datetime, timedelta, timezone
 import gzip
@@ -32,6 +37,10 @@ MIN_HEIGHT_METRES = -1.0
 # waves, but a weather bundle carries hectopascals, millimetres and J/kg as well.
 VARIABLE_LIMITS = {"wave": 1000, "weather": 100_000}
 MAX_CODE = 1000  # A code-table entry is a small whole number, never a measurement.
+# Sea water: below freezing point at salinity, above anything Irish waters reach.
+OBSERVATION_MIN_CELSIUS, OBSERVATION_MAX_CELSIUS = -2.0, 35.0
+OBSERVATION_SKEW_SECONDS = 300  # Clock skew allowance; no observation is from the future.
+OBSERVATION_NETWORKS = ("coastal", "sentinel", "buoy")
 
 
 def error_code(error):
@@ -88,7 +97,8 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
     # Wave and weather bundles are the same shape: declared variables, optional
     # frames of one array each, and a precomputed series per riding location.
     validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
-                 "weather": validate_variables_bundle, "tide": validate_tide_bundle}[kind]
+                 "weather": validate_variables_bundle, "tide": validate_tide_bundle,
+                 "observation": validate_observation_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
@@ -356,6 +366,99 @@ def validate_station_file(station, identifier, coverage):
         near = curve[max(0, index - 1):index + 2]
         if abs(event["height"] - min(near, key=lambda h: abs(h - event["height"]))) > 0.15:
             raise ValueError(f"Event height disagrees with the curve for {identifier}")
+
+
+def observation_time(value, now, label):
+    """A parseable instant that is not in the future; observations only look back."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} has no observation time")
+    try:
+        at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{label} has an unparseable time {value!r}") from error
+    if at.tzinfo is None:
+        raise ValueError(f"{label} time {value!r} has no time zone")
+    if (at - now).total_seconds() > OBSERVATION_SKEW_SECONDS:
+        raise ValueError(f"{label} is dated in the future")
+    return at
+
+
+def observation_value(value, label):
+    if not (number(value, 100)
+            and OBSERVATION_MIN_CELSIUS <= value <= OBSERVATION_MAX_CELSIUS):
+        raise ValueError(f"{label} is not a plausible sea temperature")
+    return value
+
+
+def validate_observation_bundle(public, model, manifest, run, now):
+    """Measurements, not predictions: one self-contained file, no immutable objects.
+
+    `run` is the newest observation hour the manifest publishes, which is what makes
+    the registry's freshness limit mean "how old is the newest reading".
+    """
+    stations, spots = manifest.get("stations"), manifest.get("spots")
+    variable = manifest.get("variable")
+    if not isinstance(stations, dict) or not stations or not isinstance(spots, dict) or not spots:
+        raise ValueError("Observation manifests need stations and spot assignments")
+    if not isinstance(variable, dict) or not isinstance(variable.get("units"), str) \
+            or not variable["units"].strip() or not isinstance(variable.get("label"), str):
+        raise ValueError("An observation manifest must declare its variable and units")
+    step = manifest.get("stepMinutes")
+    if not whole(step) or not 1 <= step <= 1440:
+        raise ValueError("An observation manifest must declare a usable series step")
+    newest = None
+    for identifier, station in stations.items():
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", identifier):
+            raise ValueError(f"Invalid station id {identifier!r}")
+        if not isinstance(station, dict) or not isinstance(station.get("name"), str) \
+                or not station["name"].strip():
+            raise ValueError(f"Station {identifier} needs a name")
+        if not (number(station.get("lat"), 90) and number(station.get("lon"), 180)):
+            raise ValueError(f"Station {identifier} has no valid position")
+        if station.get("network") not in OBSERVATION_NETWORKS:
+            raise ValueError(f"Station {identifier} declares an unknown network")
+        depth = station.get("depth")
+        if depth is not None and not number(depth, 12_000, 0):
+            raise ValueError(f"Station {identifier} has an implausible sensor depth")
+        latest = station.get("latest")
+        if not isinstance(latest, dict):
+            raise ValueError(f"Station {identifier} publishes no latest reading")
+        at = observation_time(latest.get("time"), now, f"Station {identifier}")
+        observation_value(latest.get("value"), f"Station {identifier} latest value")
+        newest = at if newest is None else max(newest, at)
+    if newest.replace(minute=0, second=0, microsecond=0) != run:
+        raise ValueError("Run is not the newest published observation hour")
+    for spot, assignment in spots.items():
+        if not isinstance(assignment, dict):
+            raise ValueError(f"Spot {spot} has no assignment")
+        station = assignment.get("station")
+        if station is None:
+            if not isinstance(assignment.get("reason"), str) or not assignment["reason"].strip():
+                raise ValueError(f"Spot {spot} needs a reason for having no sea temperature")
+            continue
+        if station not in stations or not number(assignment.get("distanceKm"), 1000, 0):
+            raise ValueError(f"Spot {spot} refers to an unknown station or distance")
+        latest = assignment.get("latest")
+        if not isinstance(latest, dict):
+            raise ValueError(f"Spot {spot} publishes no latest reading")
+        at = observation_time(latest.get("time"), now, f"Spot {spot}")
+        observation_value(latest.get("value"), f"Spot {spot} latest value")
+        series = assignment.get("series")
+        if not isinstance(series, list) or not series:
+            raise ValueError(f"Spot {spot} publishes no recent series")
+        previous = None
+        for entry in series:
+            if not isinstance(entry, dict):
+                raise ValueError(f"Spot {spot} has an unusable series entry")
+            when = observation_time(entry.get("time"), now, f"Spot {spot} series")
+            if previous is not None and when <= previous:
+                raise ValueError(f"Spot {spot} series is not in increasing time order")
+            previous = when
+            observation_value(entry.get("value"), f"Spot {spot} series value")
+        if previous > at:
+            raise ValueError(f"Spot {spot} series runs past its own latest reading")
+    # The whole bundle is the pointer manifest; there is nothing immutable to upload.
+    return []
 
 
 def put_immutable(s3, bucket, key, body):
