@@ -20,6 +20,7 @@ EventBridge Scheduler
   → ECS Fargate task (Force5 container from ECR)
     → discover/download Met Éireann or DWD model output
     → decode + validate + prepare wind frames and spot time series
+    → encode wind frames as F5 int16 (.bin) with .br/.gz sidecars
     → upload immutable frames + archived manifest to private S3
     → conditionally update latest manifest LAST
       → CloudFront HTTPS endpoint → website / future map clients
@@ -32,8 +33,11 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
-- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything; uploads gzip-compressed immutable frames and an archived manifest, then updates the public pointer with an ETag conditional write.
+- `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file after the sha256 of its own bytes, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
+- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything — decoding the binary ones and applying every check the JSON frames always got. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. Then an archived manifest, then the public pointer with an ETag conditional write. The `.br`/`.gz` sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
+
+**Published sizes recorded per model below predate the binary frames** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for the file on disk plus its sidecars, or by three against what a browser was actually sent; wave and weather figures are unchanged, because those frames are still JSON.
 
 The worker defaults to **hourly HARMONIE**, with the importer's full 60-hour horizon: 61 frames including hour zero. ICON-EU uses its full 72-hour horizon when selected. The existing bundled website snapshots remain three-hourly until a new snapshot is generated and served. Hourly output is genuine source data, not temporal interpolation. On 13 September 2026 the live Met Éireann inventory was checked and contained all control files from +000 through +060 at one-hour intervals.
 
@@ -433,16 +437,16 @@ explicit endpoint URL; nothing else differs from S3.
 
 ### Environment
 
-| Variable | Meaning |
-| --- | --- |
-| `S3_BUCKET` | The R2 bucket name. Without it the worker only writes locally. |
-| `S3_ENDPOINT_URL` | `https://<account-id>.r2.cloudflarestorage.com`. Unset for AWS S3. |
-| `AWS_REGION` | Optional. Defaults to `auto` whenever an endpoint URL is given, which is what R2 wants; boto3 insists on having some region. |
+| Variable                                      | Meaning                                                                                                                                                        |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `S3_BUCKET`                                   | The R2 bucket name. Without it the worker only writes locally.                                                                                                 |
+| `S3_ENDPOINT_URL`                             | `https://<account-id>.r2.cloudflarestorage.com`. Unset for AWS S3.                                                                                             |
+| `AWS_REGION`                                  | Optional. Defaults to `auto` whenever an endpoint URL is given, which is what R2 wants; boto3 insists on having some region.                                   |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | An R2 API token with object read/write **and delete** on this bucket. The standard chain; never baked into the image, never logged, never sent to the browser. |
-| `S3_PREFIX` | Optional object prefix, before `weather/`. The frontend's `VITE_FORECAST_BASE_URL` must include it. |
-| `FORCE5_WORK_DIR` | Scratch directory, `/data` in the image. Discarded when the container exits. |
-| `FORCE5_SPOTS_FILE` | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image. |
-| `FORCE5_SWEEP_MIN_AGE_HOURS` | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason. |
+| `S3_PREFIX`                                   | Optional object prefix, before `weather/`. The frontend's `VITE_FORECAST_BASE_URL` must include it.                                                            |
+| `FORCE5_WORK_DIR`                             | Scratch directory, `/data` in the image. Discarded when the container exits.                                                                                   |
+| `FORCE5_SPOTS_FILE`                           | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image.                                                           |
+| `FORCE5_SWEEP_MIN_AGE_HOURS`                  | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason.                                                                                  |
 
 `FORCE5_PUBLISHED_RUN` is set **by** the worker for the adapters that read it and must
 not be set in a job's environment; the worker clears any inherited value.
@@ -499,7 +503,12 @@ worker reads the model's current pointer manifest and passes its run to the adap
 explicit `--run`, writes nothing and exits `UNCHANGED_EXIT` (3). The worker logs
 
 ```json
-{"event":"forecast_unchanged","model":"ecmwf","run":"2026091700","seconds":4}
+{
+  "event": "forecast_unchanged",
+  "model": "ecmwf",
+  "run": "2026091700",
+  "seconds": 4
+}
 ```
 
 and exits **0**, without validating anything, because there is no bundle to validate.
@@ -614,9 +623,9 @@ form is `force5/deploy/r2-cors.example.json`. Allow `GET`/`HEAD` only and expose
 
 Cache headers are set by the uploader and unchanged from the AWS design:
 
-| Objects | Header |
-| --- | --- |
-| Hashed frames, station files, archived manifests | `public, max-age=31536000, immutable` |
+| Objects                                               | Header                                            |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| Hashed frames, station files, archived manifests      | `public, max-age=31536000, immutable`             |
 | Pointer manifests (`weather/*.json`, `marine/*.json`) | `public, max-age=0, s-maxage=60, must-revalidate` |
 
 Cloudflare cache rules can override origin headers, so verify the served response, not

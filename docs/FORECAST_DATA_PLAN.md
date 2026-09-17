@@ -42,16 +42,21 @@ Revision 2 folds in an independent review. That review found:
 
 ## Measured sizes (real files, 17 September runs)
 
-| File | JSON | JSON gzip (sent today) | int16 + delta, brotli |
-|---|---|---|---|
-| HARMONIE frame, 54,988 points | 926 KB | 225 KB | **62 KB** |
-| ECMWF frame, 3,645 points | 62 KB | 20 KB | **7 KB** |
+| File                          | JSON   | JSON gzip (sent before) | int16 + row delta, brotli       |
+| ----------------------------- | ------ | ----------------------- | ------------------------------- |
+| HARMONIE frame, 54,988 points | 926 KB | 225 KB                  | **71 KB** (62 KB at quality 11) |
+| ECMWF frame, 3,645 points     | 62 KB  | 20 KB                   | **8 KB**                        |
 
-| What the visitor does | Today | After this plan |
-|---|---|---|
-| Open a named spot (table, Blend, Candles) | 0 extra (series are in the manifests) | 0 extra |
+The brotli column is what Phase 3 actually shipped, at quality 9; quality 11
+reaches the 62 KB this table first promised but costs eleven times the encode
+time, which the ingest budget does not have. See "The new file format" for the
+full comparison.
+
+| What the visitor does                             | Today                                                     | After this plan                                                  |
+| ------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
+| Open a named spot (table, Blend, Candles)         | 0 extra (series are in the manifests)                     | 0 extra                                                          |
 | Click a bare map point (table from the map model) | ~10 MB (3-hourly HARMONIE); ~14 MB (hourly, as scheduled) | **~3.8 MB** hourly HARMONIE, useful after ~1.3 MB; ~0.6 MB ECMWF |
-| Scrub one HARMONIE time step | 225 KB | **~62–80 KB** |
+| Scrub one HARMONIE time step                      | 225 KB                                                    | **71 KB** (measured)                                             |
 
 ### Disk space on the server
 
@@ -68,10 +73,10 @@ holds, so a run that is still being written is never touched. The hourly
 for a frame of a deleted run loads the newest run at the same time instead of
 showing an error (`App.tsx`, `loadNewerRun`). One run per model is on disk:
 
-| HARMONIE on disk | One run (now) | 48 h kept (before) |
-|---|---|---|
-| Today, JSON | 61 × 926 KB ≈ 56 MB | ≈ 2.7 GB |
-| This plan: `.bin` + `.br` + `.gz` | 61 × ~480 KB ≈ 29 MB | ≈ 1.4 GB |
+| HARMONIE on disk                  | One run (now)        | 48 h kept (before) |
+| --------------------------------- | -------------------- | ------------------ |
+| Today, JSON                       | 61 × 926 KB ≈ 56 MB  | ≈ 2.7 GB           |
+| This plan: `.bin` + `.br` + `.gz` | 61 × ~480 KB ≈ 29 MB | ≈ 1.4 GB           |
 
 Raw downloads (the whole-domain source files, about 2 GB for one ECMWF-ENS
 run) are **not kept either**. The worker deletes a model's downloads as soon as
@@ -113,43 +118,120 @@ Revisit OM files if we go beyond Ireland or add many variables per frame.
 
 ## The new file format
 
+**Built, September 2026.** Wind frames only: wave and weather frames stay JSON.
+The encoder and the layout are documented in `force5/ingest/f5bin.py`; the
+readers are `force5/src/f5bin.ts` (browser) and `scripts/f5bin.mjs` (Node, for
+the sample generator).
+
 Frames use one encoding, "F5 int16":
 
 - Little-endian `Int16Array`. Value = round(x × 10), i.e. 0.1 m/s. Measured
   better than ×100, and the display rounds to whole knots.
+- **Rounding is half away from zero**, written out as
+  `floor(abs(x × 10) + 0.5) × sign(x × 10)` on every side. It is not numpy's
+  `round` (half to even, so 2.5 → 2) and not JavaScript's `Math.round`
+  (half towards +∞, so -0.5 → -0). 0.05 m/s encodes to 1 and -0.05 m/s to -1
+  everywhere.
 - Missing value = `-32768`.
 - **Delta encoding uses wrapping int16 arithmetic**, so a missing value can
   never overflow:
-  - numpy: `np.diff(...).astype(np.int16)`;
+  - Python: `((current - previous + 32768) & 0xFFFF) - 32768`;
   - TypeScript: `((prev + d) << 16) >> 16`.
-- The decoder still range-checks values (±150 m/s), as `validateFrame` does
-  today (`force5/src/weather.ts:425-455`).
-- Delta axis: row or column, whichever measures smaller (the review measured
-  column delta about 3% smaller on HARMONIE).
+    A delta of exactly -32768 is an ordinary delta, not a second marker: only a
+    _reconstructed_ value of -32768 is missing.
+- The decoder still range-checks values (±150 m/s, gust ≥ 0), as `validateFrame`
+  does today. A wind frame has never been allowed a hole, so a missing value
+  decodes to `NaN`/`None` and `validateFrame` refuses it exactly as it refused a
+  JSON `null`. The marker exists so the format can carry a field that does have
+  holes later.
+- **Delta axis: row** (west to east, stride 1), fixed, not per frame. Measured on
+  the real runs of 17 September 2026, brotli 11, eight frames per model:
+
+  | Model                 | row Δ + br | column Δ + br | column vs row |
+  | --------------------- | ---------- | ------------- | ------------- |
+  | HARMONIE (54,988 pts) | 62,025 B   | 60,229 B      | −2.9%         |
+  | ICON-EU (56,817 pts)  | 76,965 B   | 79,971 B      | +3.9%         |
+  | ECMWF (3,645 pts)     | 6,912 B    | 7,412 B       | +7.2%         |
+  | GFS (3,645 pts)       | 6,962 B    | 7,176 B       | +3.1%         |
+
+  Column delta wins only on HARMONIE, and loses on the other three; over all
+  four it is 1.6% larger. Revision 3 guessed the other way from a partial
+  measurement. Delta encoding itself is worth 19% against no delta at all.
+
 - No compression inside the file. The job writes `name.bin` plus precompressed
-  `name.bin.br` and `name.bin.gz` sidecars.
-- File names keep the content hash, so they stay immutable.
-- Precision note: `spotForecasts` stay at 0.01 m/s. Frames at 0.1 m/s can
-  differ from them by up to 0.05 m/s. That is invisible in knots,
-  but any byte-for-byte comparison must use a tolerance (see
-  `backfill_spots.py`).
+  `name.bin.br` and `name.bin.gz` sidecars, for the local Caddy deployment. The
+  bucket stores one encoding per object instead (see Phase 1).
+- **Brotli quality 9** (`FORCE5_BROTLI_QUALITY` overrides it). The constraint is
+  ingest time, and it is met with room to spare: encoding a HARMONIE frame and
+  compressing it costs 39.9 ms against the 39.1 ms the JSON path spent hashing
+  and serialising the same frame, so the change is **+2% per frame**, not +10%.
+  Higher qualities are not worth their cost here:
+
+  | Quality | HARMONIE frame | vs q9 | Encode + compress | vs the JSON it replaces |
+  | ------- | -------------- | ----- | ----------------- | ----------------------- |
+  | 9       | 70.7 KB        | —     | 39.9 ms           | +2%                     |
+  | 10      | 64.3 KB        | −9%   | 173 ms            | ×4.4                    |
+  | 11      | 62.0 KB        | −12%  | 444 ms            | ×11                     |
+
+  Over a 61-frame hourly HARMONIE run that is 2.4 s at q9, 10.6 s at q10 and
+  27 s at q11, against 2.4 s for the JSON writing it replaces. Larger windows
+  (`lgwin` 24, `lgblock` 24) buy nothing at q9.
+
+- File names keep the content hash — now the sha256 of the frame's own bytes,
+  which include the header and therefore the run and the hour — so they stay
+  immutable.
+- Precision note: `spotForecasts` stay at 0.01 m/s, sampled from the
+  full-precision field. Frames at 0.1 m/s can differ from them by up to 0.05 m/s
+  after a bilinear sample, plus 0.005 for each rounding to hundredths. That is
+  invisible in knots, but every frame-against-series comparison needs a
+  tolerance of 0.06 **when the manifest is binary and only then**:
+  `backfill_spots.BINARY_TOLERANCE` and `tests/snapshot.test.ts`.
+
+### What it actually saved
+
+Per frame, measured over eight frames of each model's 17 September run:
+
+| Model    | JSON   | JSON gzip (sent before) | bin    | bin + brotli q9 | bin + gzip |
+| -------- | ------ | ----------------------- | ------ | --------------- | ---------- |
+| HARMONIE | 851 KB | 235 KB                  | 316 KB | **70.7 KB**     | 74.9 KB    |
+| ICON-EU  | 921 KB | 268 KB                  | 341 KB | **88.6 KB**     | 93.4 KB    |
+| ECMWF    | 55 KB  | 18.4 KB                 | 21 KB  | **8.0 KB**      | 8.5 KB     |
+| GFS      | 58 KB  | 17.9 KB                 | 22 KB  | **7.8 KB**      | 8.4 KB     |
+
+A HARMONIE scrub step is 3.3× smaller than the gzipped JSON it replaces, inside
+the ≤ 80 KB budget under "Done when". A whole hourly HARMONIE run is about
+4.3 MB over the wire instead of 14 MB.
 
 ### Frame file (`HHH-hash.bin`)
 
-A 16-byte header, then one block per variable present:
+A 24-byte header, then one block per variable present:
 
 ```
 0   4  magic "F5F1"
-4   2  width          6   2  height
-8   1  blockCount     (2 = u,v; 3 = u,v,gust)
-9   1  deltaAxis      (0 = row, 1 = column)
-10  2  scale (10)
-12  2  hour           (forecast hour; keeps today's "file matches run" check)
-14  2  reserved
-16  …  u, v[, gust] blocks: width × height int16 each
+4   1  version        (1)
+5   1  blockCount     (2 = u,v; 3 = u,v,gust)
+6   2  width          uint16
+8   2  height         uint16
+10  2  scale          (10)
+12  2  hour           uint16, forecast hour
+14  4  run            uint32, YYYYMMDDHH as a decimal number
+18  6  reserved       (zero)
+24  …  u, v[, gust] blocks: width × height int16 each
 ```
 
-Everything else (grid, valid time, gust window) stays in the manifest.
+The header length is even because the browser views the payload as an
+`Int16Array` at that offset, and an odd offset throws. There is no `deltaAxis`
+field: the axis is fixed at row, so a file cannot disagree with its readers
+about it.
+
+**The header carries the run identity.** `validateFrame` and the Python
+validator have always refused a frame whose model, run, hour, valid time or grid
+did not match its manifest. A header cannot hold all of that, so it holds what
+makes a file from the wrong run or the wrong step recognisable on its own — the
+run, the forecast hour and the grid size — and the model, the valid time, the
+grid geometry and the gust window stay in the manifest, checked there as before.
+A wrong hour, a wrong run and a wrong grid size are each refused with the message
+they always produced.
 
 ### Manifest additions (backwards compatible)
 
@@ -157,6 +239,10 @@ Everything else (grid, valid time, gust window) stays in the manifest.
 "encoding": "f5-int16-v1",          // absent = today's JSON frames
 "frames": [{ "url": "…/000-ab12.bin", … }]
 ```
+
+Only a wind manifest may declare it; the validator refuses `encoding` on a wave,
+weather, tide or observation bundle, and refuses any value it does not know
+rather than falling back to reading the file as JSON.
 
 ## Implementation phases
 
@@ -205,9 +291,12 @@ to orchestrate it later).
   - hashed files: `immutable, max-age=31536000` (served from Cloudflare's edge
     after the first request);
   - manifests: `max-age=0, must-revalidate`.
-- **Compression**: the uploader stores each object gzip-encoded today. With
-  binary frames, measure a brotli-encoded upload against gzip through
-  Cloudflare; one encoding per object, so no `.br`/`.gz` sidecars in the bucket.
+- **Compression** (built in Phase 3): `put_immutable` stores a `.bin` frame
+  brotli-encoded with `Content-Encoding: br` and JSON gzipped as before, one
+  encoding per object, so there are no `.br`/`.gz` sidecars in the bucket.
+  `FORCE5_BUCKET_ENCODING=gzip` is the way back. **Still to measure against a
+  live bucket**: whether Cloudflare passes a stored `br` body through untouched
+  to a browser that asked for it, and what it does for one that did not.
 - **Monitoring**: `status.py` already writes freshness; upload
   `weather/status.json` too, so an outside uptime check can alert when the
   importer has stopped. The site itself stays up and keeps showing the last
@@ -296,61 +385,88 @@ to orchestrate it later).
 - New e2e: a 404 on a frame swaps to the newest run with no error shown; a tab
   returning with a past selection lands on now.
 
-### Phase 3 — Binary frames (ingest, serving, frontend)
+### Phase 3 — Binary frames (ingest, serving, frontend) — **done**
 
 **Ingest**
 
-- `force5/ingest/f5bin.py` provides:
-  - `encode_frame`, `decode_frame`;
-  - `write_with_sidecars`, which writes `.bin`, `.br` (pip `brotli`) and `.gz`.
-- A shared `publish_frame()` so each wind fetch script changes by a line or two.
+- `force5/ingest/f5bin.py` provides `encode_frame`, `decode_frame`,
+  `read_header`, `write_with_sidecars` (`.bin`, `.bin.br`, `.bin.gz`, each
+  replaced atomically) and `publish_frame`, which encodes, names and writes one
+  frame and returns the manifest's url.
+- Every wind adapter calls `publish_frame` where it used to hash a JSON payload
+  and call `write_json`, and adds `"encoding"` to its manifest: harmonie,
+  icon-eu (`fetch_forecast.py`), ecmwf, ecmwf-ens, aifs, gfs, gefs,
+  harmonie-eps, and arpege/arome through `meteofrance.py`. Ten models, nine
+  files, three lines each. Wave and weather adapters are untouched.
+- Spot series are still sampled from the full-precision field, not from the
+  quantised frame, so nothing a reader sees in a table or a chart got coarser.
+- New dependency: pip `brotli`, in `requirements.txt` because the fetch scripts
+  need it, not only the worker.
 
 **Validator** (`publish_s3.py`)
 
-- `validate_wind_bundle` (`:105-165`) `json.loads` every frame. Branch on
-  `manifest.encoding` and use `decode_frame`.
-- `put_immutable` (`:464-469`) hard-codes `application/json` + gzip. Pass the
-  content type, and upload the sidecar bytes with the matching
-  `Content-Encoding`.
+- `validate_wind_bundle` branches on `manifest.encoding` through `wind_frame()`,
+  which decodes a binary body, checks the run, the hour and the grid size from
+  the header and fills the rest from the manifest, so every existing check —
+  cadence, gust rules, value ranges, grid size, horizon — runs unchanged.
+- `put_immutable` takes the content type and encoding from the key:
+  `.bin` is `application/octet-stream` with a brotli body and
+  `Content-Encoding: br`, switchable to gzip by `FORCE5_BUCKET_ENCODING` or the
+  `encoding=` argument; everything else stays gzipped JSON. The sha256 in the
+  object's metadata is still over the **uncompressed** bytes, so the collision
+  check compares frames rather than compressors.
+- Sidecars are never uploaded: the uploader only ever sees the paths a manifest
+  references, and no manifest references a sidecar.
 
 **Other ingest scripts**
 
-- `backfill_spots.py` (`:39-48`) reads JSON frames and compares with
-  `TOLERANCE = 0.005`. It must decode binary and use a tolerance ≥ 0.05. It stays:
-  it is how a newly added spot gets a series in runs already published.
-- `prune.py` already keeps whole referenced run directories (`:63-77`), so
-  sidecars survive with their run. It needs no change, only a
-  test.
-- `test_contract.py`: binary bundle cases.
+- `backfill_spots.py` decodes binary frames and compares with
+  `BINARY_TOLERANCE = 0.06` when, and only when, the manifest is binary.
+- `prune.py` needed no change: the sweep keeps or removes a whole run directory,
+  so sidecars live and die with their run. There is now a test that says so.
+- `test_contract.py` has binary bundle cases: wrong run, wrong hour, wrong grid,
+  truncated, oversized, foreign bytes, out-of-range values, the gust rules, an
+  unknown encoding, and `encoding` on a non-wind bundle.
 
 **Caddy** (`deploy/local/Caddyfile`)
 
-- Today `/weather/*` is forced to `application/json` (`:26`), and `encode`
-  (`:14`) only compresses its default content types.
-- Add an `@bin path *.bin` rule setting `Content-Type application/octet-stream`.
-- Put `file_server { precompressed br gzip }` inside the `@immutable` handle
-  only.
-- Check the headers with `curl -H 'Accept-Encoding: br'`.
+- `/weather/*` no longer forces `application/json` on everything: `@json` and
+  `@bin` matchers type them separately, and `@bin` is
+  `application/octet-stream`.
+- `file_server { precompressed br gzip }` sits inside the `@immutable` handle.
+- Verified, not reasoned about: `caddy validate` passes, and a `caddy:2-alpine`
+  container serving a real frame answers `Content-Encoding: br` (131 B) to
+  `Accept-Encoding: br, gzip`, `gzip` (151 B) to gzip alone, and the plain
+  596-byte file to `identity`, all as `application/octet-stream` with the
+  immutable cache header, while manifests still answer as JSON with
+  `must-revalidate`.
 
 **Frontend**
 
 - `force5/src/f5bin.ts`: `decodeFrame(buffer, manifest, info)` returns today's
-  `Frame` shape, so `WindMap`, `sample()` and the particles stay unchanged.
-- `loadFrame` picks the JSON or binary path from `manifest.encoding`.
-- Validation matches today's, including the `hour` check.
+  `Frame`, so `WindMap`, `sample()` and the particle layer are unchanged.
+- `loadFrame` picks the JSON or binary path from `manifest.encoding`;
+  `validateManifest` refuses an encoding it does not know.
+- `decodeFrame` checks the run and the hour the header carries and then hands
+  the frame to `validateFrame`, which applies every rule it always did.
 
 **Migration**
 
-- The bundled snapshots are 99 MB, 275 files in git, copied by the compose
-  `seed` step. Regenerate them in binary in the same change, then drop JSON
-  frame writing.
+- `scripts/sample-weather.mjs` writes binary wind frames through
+  `scripts/f5bin.mjs`. ARPEGE stays JSON so the readers' legacy path keeps a
+  fixture; move it over when JSON frame support is dropped.
+- The committed fixtures fell from 151 JSON frames to 827 KiB in total.
 - The frontend keeps reading JSON manifests without `encoding` for one release.
 
 **Tests**
 
-- A shared golden file decoded by Python and TypeScript.
-- A missing value inside a delta run.
-- A wrong `hour` is rejected.
+- `tests/fixtures/f5bin/golden.bin` and its `golden.json`, decoded by
+  `force5/ingest/test_f5bin.py` and `tests/f5bin.test.ts` and re-encoded through
+  `scripts/f5bin.mjs`, so all three implementations are pinned to one another.
+  The golden carries a missing value inside a delta run, both wrap-around
+  directions, halves in both signs, both ends of the range and a zero gust.
+- A wrong hour, a wrong run, a wrong grid, truncated and oversized buffers and a
+  newer format version are each refused, in both languages.
 
 ### Phase 4 — Map points stay, one model at a time; more named spots
 
@@ -425,9 +541,12 @@ to orchestrate it later).
 
 ## Risks and open questions
 
-- **Compression through Cloudflare**: brotli-encoded objects against gzip, to
-  be measured in Phase 1. The local Caddy deployment keeps the `.br`/`.gz`
-  sidecars; the bucket gets one encoding per object.
+- **Compression through Cloudflare**: the uploader stores binary frames
+  brotli-encoded and the local Caddy deployment serves `.br`/`.gz` sidecars —
+  the Caddy half is verified against a real container, the R2 half is not, for
+  want of a bucket. A CDN that re-encoded or stripped `Content-Encoding: br`
+  would be caught by the first browser that loaded a frame; the fallback is one
+  environment variable.
 - **Our machine is the only importer.** If it is down the site stays up but the
   forecast ages. The mesh of machines is the later answer. It needs its own design: the
   worker lock is a file lock on one machine, so two importers must be told
