@@ -23,7 +23,8 @@ Revision 2 folds in an independent review. That review found:
 2. Blend and Candles stay on **named spots**, and it is cheap to **add more
    spots** so the places people actually ride are covered.
 3. The browser downloads **far less data**, on a phone as well as a desktop.
-   Clicking a bare map point costs nothing unless the reader asks for more.
+   Clicking a bare map point still shows its forecast, from one model, at about
+   a quarter of today's download.
 4. It still runs as plain files. No database, no API server, and **no paid
    compute**: the importer runs on our own always-on machine, and the files are
    served from Cloudflare (R2 storage behind the CDN).
@@ -49,7 +50,7 @@ Revision 2 folds in an independent review. That review found:
 | What the visitor does | Today | After this plan |
 |---|---|---|
 | Open a named spot (table, Blend, Candles) | 0 extra (series are in the manifests) | 0 extra |
-| Click a bare map point | ~10 MB (3-hourly HARMONIE); ~14 MB (hourly, as scheduled) | **0** (reads the frame already on screen); ~3.8 MB only if the reader asks for the full series |
+| Click a bare map point (table from the map model) | ~10 MB (3-hourly HARMONIE); ~14 MB (hourly, as scheduled) | **~3.8 MB** hourly HARMONIE, useful after ~1.3 MB; ~0.6 MB ECMWF |
 | Scrub one HARMONIE time step | 225 KB | **~62–80 KB** |
 
 ### Disk space on the server
@@ -264,7 +265,7 @@ to orchestrate it later).
 - For a **named spot**, every table cell has a value. Cells past the map model
   are filled from the owning model's `spotForecasts`, which are already in the
   manifests, so this costs no download.
-- A **bare map point** has no long-range series. See Phase 4 for what it shows.
+- A **bare map point** has no precomputed series. See Phase 4 for what it shows.
 - A thin model band in the header, like the day band, shows who owns each
   stretch.
 - The chart shows the number of models per stretch. The band is drawn dashed
@@ -351,19 +352,30 @@ to orchestrate it later).
 - A missing value inside a delta run.
 - A wrong `hour` is rejected.
 
-### Phase 4 — Map points cost nothing, and more named spots
+### Phase 4 — Map points stay, one model at a time; more named spots
 
 **A click on a bare map point**
 
-- Today it downloads every frame of the map model (`src/usePointSeries.ts`).
-  That stops being automatic.
-- The click reads the wind at that point from the **frame already on screen**
-  (`sample()`), which is 0 bytes, and the dock offers the **nearest named
-  spot** with its distance: "Dollymount, 3 km — open".
-- A button, "Load this point's forecast", runs today's every-frame sampling for
-  readers who really want it (about 3.8 MB for hourly HARMONIE in binary). It
-  covers the map model's range only. Blend, Candles, waves, weather and tide
-  stay named-spot-only.
+- Any point on the map still gets its forecast table, automatically, as today.
+  It comes from **the model the map is showing**, one model at a time; pick
+  another model and the table reloads from that one.
+- Why not the blend: a named spot's series for every model is precomputed and
+  sits in the manifests, so its blend costs nothing. A bare point has no
+  precomputed series. The app has to read the value at that point out of each
+  map file, one file per time step, so one model is 61 files for hourly
+  HARMONIE, and a blend would be that for every model at once. Blend, Candles,
+  waves, weather and tide therefore stay named-spot-only.
+- Make the one-model load cheap instead of removing it:
+  - binary frames (Phase 3) take hourly HARMONIE from about 14 MB to about
+    3.8 MB, ECMWF's 85 frames to about 0.6 MB, and the files are immutable, so
+    scrubbing afterwards reads them from the browser cache;
+  - load **from now outwards** rather than from the first frame, and for an
+    hourly model load every third hour first, then fill in the rest, so the
+    table is useful after about a third of the download;
+  - stop at once when the reader picks another point or model (already done).
+- Past the map model's range (HARMONIE ends at +60 h) a bare point's cells are
+  empty, and the "Show ECMWF on the map" chip from Phase 2 is how the reader
+  gets the long range for that point.
 
 **Adding spots**
 
@@ -400,7 +412,8 @@ to orchestrate it later).
 - A named spot shows all 15 days, Blend and Candles with no download beyond
   the manifests. Adding a spot is one JSON entry plus a backfill.
 - Budgets (Phase 0 script, **brotli over HTTPS**; gzip allowances in brackets):
-  - click a bare map point: 0 bytes of forecast data;
+  - click a bare map point with hourly HARMONIE on the map ≤ 4.5 MB in total,
+    first useful table (every third hour) ≤ 1.5 MB;
   - one HARMONIE scrub step ≤ 80 KB (≤ 100 KB);
   - first page load of forecast data ≤ 150 KB (≤ 200 KB), excluding the
     basemap.
