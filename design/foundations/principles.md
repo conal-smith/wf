@@ -175,6 +175,15 @@ keeps them where the model list is. Decide before the third ensemble lands.
 
 **2026-09-14 — Dark mode is authored, not yet adopted.** See the gap below.
 
+**2026-09-16 — Two type steps for content pages: `lead` and `prose`.**
+The marketplace is the first surface that is a page rather than chrome over the
+map, and the scale had nothing between `body` (12px) and `title` (25px). Cards
+were about to lead with a 12px price and descriptions were about to be read at
+length at 12px. `sem.text.prose` (14px regular) is body copy read at length away
+from the map; `sem.text.lead` (17px semibold) is the one thing a card leads with,
+or a section heading. Neither is display type: `title` is still one per surface
+and `reading` is still the wind number alone.
+
 ---
 
 ## Gaps
@@ -209,5 +218,8 @@ one should update this list.
 - **No spec for the map's own controls.** MapLibre's attribution and control
   container are restyled in product CSS with `!important`; whether those become
   components or stay an explicit exception has not been decided.
+- **No text field, select or textarea component.** The marketplace's forms
+  carry `.mk-field` in product CSS (`market/web/market.css`), consuming `--sem-*`
+  only, pending promotion into the bundle as a proper trio.
 - **No icon set.** `glyphs/` is empty; the product uses `lucide-react` directly.
   Whether Force5 wraps it or adopts it wholesale is undecided.
