@@ -1,6 +1,7 @@
 import {
   KNOTS,
   freshness,
+  nearestFrame,
   speed,
   windColor,
   type Manifest,
@@ -170,6 +171,39 @@ export function frameForTime(
         ? Math.abs(other - here)
         : 0;
   return distance <= step / 2 + 1 ? nearest : null;
+}
+
+/**
+ * The order to read a run's frames in for a bare map point, which has no
+ * precomputed series and has to be sampled out of the frames one file at a time.
+ *
+ * Two rules, both about being useful before the download finishes. It starts at
+ * the hour the reader is looking at and works outwards, rather than at the first
+ * frame, which for an afternoon click is already behind them. And where the run
+ * is finer than three-hourly it takes every third hour first and fills the rest
+ * in afterwards, so the table is readable after about a third of the bytes.
+ */
+export function loadOrder(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  now = Date.now(),
+  coarseHours = 3,
+): number[] {
+  if (!frames.length) return [];
+  const start = nearestFrame(frames, now);
+  const outward = [start];
+  for (let step = 1; step < frames.length; step++) {
+    if (start + step < frames.length) outward.push(start + step);
+    if (start - step >= 0) outward.push(start - step);
+  }
+  const anchor = Date.parse(frames[start].validTime);
+  const span = coarseHours * HOUR;
+  const onStride = (index: number) =>
+    (Date.parse(frames[index].validTime) - anchor) % span === 0;
+  const first = outward.filter(onStride);
+  // A run already at or beyond the stride gains nothing from a second pass.
+  return first.length === outward.length
+    ? outward
+    : [...first, ...outward.filter((index) => !onStride(index))];
 }
 
 /** Where one column's cell values come from. */
