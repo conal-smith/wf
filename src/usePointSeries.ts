@@ -53,6 +53,18 @@ export function usePointSeries(manifest: Manifest, point: Point): PointSeries {
     const result: (Wind | null)[] = manifest.frames.map(() => null);
     let failures = 0;
     setSamples({ key, values: result, failures: 0, pending: true });
+    // One repaint a frame, not one per file. Every sample used to publish a new
+    // array, and the dock rebuilt a hundred and more columns eighty-five times
+    // over for a single click; the reader cannot see eighty-five paints anyway.
+    let queued = 0;
+    const publish = () => {
+      if (cancelled || queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        if (!cancelled)
+          setSamples({ key, values: [...result], failures, pending: true });
+      });
+    };
     const worker = async () => {
       while (!cancelled && next < order.length) {
         const i = order[next++];
@@ -65,17 +77,19 @@ export function usePointSeries(manifest: Manifest, point: Point): PointSeries {
         } catch {
           failures++;
         }
-        if (!cancelled)
-          setSamples({ key, values: [...result], failures, pending: true });
+        publish();
       }
     };
     // Bound downloads, stop queueing on selection changes, and never reuse old point readings.
     void Promise.all([worker(), worker()]).then(() => {
-      if (!cancelled)
-        setSamples({ key, values: [...result], failures, pending: false });
+      if (cancelled) return;
+      cancelAnimationFrame(queued);
+      queued = 0;
+      setSamples({ key, values: [...result], failures, pending: false });
     });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(queued);
     };
   }, [manifest, named, key, point.lon, point.lat, retry]);
 
