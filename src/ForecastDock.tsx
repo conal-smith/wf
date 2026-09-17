@@ -41,6 +41,7 @@ import {
   PLOT_PAD_TOP,
   areaPath,
   axisTicks,
+  candleGroups,
   columnCentres,
   columnEdges,
   columnWeights,
@@ -51,16 +52,22 @@ import {
 } from "./chart";
 import {
   useBlend,
-  useModelAvailability,
   useSpotSeaTemperature,
   useSpotTide,
   useSpotWaves,
   useSpotWeather,
 } from "./useBlend";
 import { usePointSeries } from "./usePointSeries";
-import { candles as candleColumns } from "../force5/src/blend";
+import { candlesOver } from "../force5/src/blend";
 import { dayNights } from "../force5/src/sun";
-import { framePosition, windTrackBackground } from "../force5/src/timeline";
+import {
+  columnSources,
+  framePosition,
+  windTrackBackground,
+  type DockColumn,
+} from "../force5/src/timeline";
+import type { ModelAvailability } from "../force5/src/manifests";
+import { spotSeries } from "../force5/src/series";
 import {
   VIEWS,
   rowOn,
@@ -75,8 +82,10 @@ import {
   nearestFrame,
   timeLabel,
   windColor,
+  type FrameInfo,
   type Manifest,
   type Point,
+  type Wind,
 } from "../force5/src/weather";
 import { tideAt } from "../force5/src/tides";
 import {
@@ -90,15 +99,21 @@ import { variableValue } from "../force5/src/variables";
 import type { WaveFieldSet } from "../force5/src/waves";
 
 interface Props {
+  /** The run the map is drawing. It decides which columns have a map frame. */
   manifest: Manifest;
+  /** The dock's own time axis, built from every model rather than from the map. */
+  columns: readonly DockColumn[];
+  /** The page's one availability sweep, shared with the blend and the columns. */
+  models: readonly ModelAvailability[];
+  modelsResolved: boolean;
   point: Point;
   prefs: Prefs;
   onPrefsChange: (prefs: Prefs) => void;
-  /** The displayed forecast column. */
-  index: number;
-  requestedIndex: number;
-  scrollIndex: number;
-  onSelect: (index: number) => void;
+  /** The reader's place, as a valid time. The column is derived from it. */
+  selectedTime: string;
+  /** The time to keep in view; the map's own while a frame is failing. */
+  scrollTime: string | null;
+  onSelect: (validTime: string) => void;
   open: boolean;
   onClose: () => void;
   playing: boolean;
@@ -267,6 +282,17 @@ const RAIN_TINT_FULL_MM = 4;
  */
 const SEA_SPARK = { width: 54, height: 13 } as const;
 
+/** One column's wind reading and the run it was read from. */
+export interface ColumnCell {
+  validTime: string;
+  model: string;
+  /** Null where nothing covers the column; undefined while a frame loads. */
+  wind: Wind | null | undefined;
+  manifest: Manifest;
+  /** That run's own frame at this time, for the gust window it declares. */
+  frame: FrameInfo | null;
+}
+
 /** What one cell needs beyond its text: a tint, a muted style and a tooltip. */
 interface WeatherCell {
   content: ReactNode;
@@ -277,8 +303,12 @@ interface WeatherCell {
 const NO_READING: WeatherCell = { content: "—" };
 
 /** Interpolate between actual timestamp centres, including mixed 3/6-hour columns. */
-function timeX(content: HTMLElement, manifest: Manifest, time: number) {
-  const position = framePosition(manifest.frames, time);
+function timeX(
+  content: HTMLElement,
+  columns: readonly DockColumn[],
+  time: number,
+) {
+  const position = framePosition(columns, time);
   if (position === null) return null;
   const centre = (index: number) => {
     const cell = content
@@ -321,12 +351,14 @@ const sameGeometry = (a: Geometry, b: Geometry) =>
 
 export default function ForecastDock({
   manifest,
+  columns,
+  models,
+  modelsResolved,
   point,
   prefs,
   onPrefsChange,
-  index,
-  requestedIndex,
-  scrollIndex,
+  selectedTime,
+  scrollTime,
   onSelect,
   open,
   onClose,
@@ -349,12 +381,19 @@ export default function ForecastDock({
 
   const { units, rows } = prefs;
   const series = usePointSeries(manifest, point);
-  const { models, resolved } = useModelAvailability(playing || busy);
+  const resolved = modelsResolved;
   const tide = useSpotTide(point.id);
   const sea = useSpotSeaTemperature(point.id);
+  // Everything that reads a time axis reads the dock's columns, not the map
+  // model's frames: the columns outlive whichever run is on the map.
   const axis = useMemo(
-    () => manifest.frames.map((frame) => frame.validTime),
-    [manifest],
+    () => columns.map((column) => column.validTime),
+    [columns],
+  );
+  const selected = useMemo(
+    () =>
+      columns.length ? nearestFrame(columns, Date.parse(selectedTime)) : 0,
+    [columns, selectedTime],
   );
   const blend = useBlend(models, prefs.blendModels, point.id, axis);
   const waves = useSpotWaves(models, point.id, axis);
@@ -378,7 +417,7 @@ export default function ForecastDock({
     const element = content.current;
     if (!element) return;
     const update = () => {
-      setNowX(timeX(element, manifest, now));
+      setNowX(timeX(element, columns, now));
       const box = element.getBoundingClientRect();
       const label =
         element.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
@@ -402,7 +441,7 @@ export default function ForecastDock({
     if (marine.current) observer.observe(marine.current);
     return () => observer.disconnect();
   }, [
-    manifest,
+    columns,
     now,
     open,
     prefs.view,
@@ -415,12 +454,14 @@ export default function ForecastDock({
   useLayoutEffect(() => {
     const container = scroll.current;
     if (!container) return;
+    if (!columns.length || scrollTime === null) return;
+    const scrollColumn = nearestFrame(columns, Date.parse(scrollTime));
     const centreNow =
-      initialScroll.current && scrollIndex === nearestFrame(manifest.frames);
+      initialScroll.current && scrollColumn === nearestFrame(columns);
     initialScroll.current = false;
     const followTime = () => {
       const cell = container
-        .querySelector<HTMLElement>(`[data-forecast-index="${scrollIndex}"]`)
+        .querySelector<HTMLElement>(`[data-forecast-index="${scrollColumn}"]`)
         ?.closest("th");
       const labels = container.querySelector("thead th");
       if (!cell || !labels) return;
@@ -432,7 +473,7 @@ export default function ForecastDock({
       const available = container.clientWidth - labelWidth;
       const currentX =
         centreNow && content.current
-          ? timeX(content.current, manifest, Date.now())
+          ? timeX(content.current, columns, Date.now())
           : null;
       const targetCentre =
         currentX !== null && content.current
@@ -455,13 +496,12 @@ export default function ForecastDock({
     const table = container.querySelector("table");
     if (table) observer.observe(table);
     return () => observer.disconnect();
-  }, [scrollIndex, series.key, manifest]);
+  }, [scrollTime, series.key, columns]);
 
-  const frames = manifest.frames;
-  const days = useMemo(() => dayGroups(frames, dayLabel), [frames]);
+  const days = useMemo(() => dayGroups(axis, dayLabel), [axis]);
   const weights = useMemo(
-    () => columnWeights(frames, manifest.stepHours),
-    [frames, manifest.stepHours],
+    () => columnWeights(axis, manifest.stepHours),
+    [axis, manifest.stepHours],
   );
   const centres = useMemo(
     () => columnCentres(weights, geometry.chartWidth),
@@ -473,16 +513,78 @@ export default function ForecastDock({
   );
   const nights = useMemo(
     () =>
-      frames.length
+      axis.length
         ? dayNights(
             point.lat,
             point.lon,
-            new Date(frames[0].validTime),
-            new Date(frames[frames.length - 1].validTime),
+            new Date(axis[0]),
+            new Date(axis[axis.length - 1]),
           )
         : [],
-    [frames, point.lat, point.lon],
+    [axis, point.lat, point.lon],
   );
+
+  /**
+   * Which run answers for each column: the map model wherever it has a frame,
+   * the column's own owner past that. Everything a cell says — the value, the
+   * gust window, the tooltip — follows from this one list.
+   */
+  const sources = useMemo(
+    () => columnSources(columns, manifest.frames, manifest.model),
+    [columns, manifest],
+  );
+  const windById = useMemo(
+    () =>
+      new Map(
+        models
+          .filter((model) => model.wind !== null)
+          .map((model) => [model.id, model.wind!] as const),
+      ),
+    [models],
+  );
+  /**
+   * One cell per column. Inside the map model's range the value is the one the
+   * map itself is drawn from; past it, a named spot falls back to the owning
+   * run's precomputed series, which costs no download. A bare map point has no
+   * precomputed series anywhere, so its far columns stay empty.
+   */
+  const cells = useMemo<ColumnCell[]>(() => {
+    const seriesByModel = new Map<string, Map<string, Wind>>();
+    const owned = (model: string) => {
+      const cached = seriesByModel.get(model);
+      if (cached) return cached;
+      const run = windById.get(model);
+      const points = run && point.id ? spotSeries(run, point.id) : null;
+      const byTime = new Map<string, Wind>(
+        (points ?? []).map((entry) => [entry.validTime, entry]),
+      );
+      seriesByModel.set(model, byTime);
+      return byTime;
+    };
+    return columns.map((column, at) => {
+      const source = sources[at] ?? { frame: null, model: column.model };
+      const run =
+        source.model === manifest.model
+          ? manifest
+          : (windById.get(source.model) ?? manifest);
+      return {
+        validTime: column.validTime,
+        model: source.model,
+        wind:
+          source.frame === null
+            ? (owned(source.model).get(column.validTime) ?? null)
+            : series.values[source.frame],
+        manifest: run,
+        frame:
+          source.frame === null
+            ? (run.frames.find(
+                (entry) => entry.validTime === column.validTime,
+              ) ?? null)
+            : manifest.frames[source.frame],
+      };
+    });
+  }, [columns, sources, series.values, windById, point.id, manifest]);
+  const columnWind = useMemo(() => cells.map((cell) => cell.wind), [cells]);
 
   // Value axis: whole ten-unit steps above the highest gust in the blend, so a
   // unit change visibly rescales the chart instead of relabelling it.
@@ -492,11 +594,13 @@ export default function ForecastDock({
   );
   const max = niceMax(convert(peak, units));
   const y = valueScale(max, geometry.chartHeight);
-  const columnsPerCandle = Math.max(1, Math.round(3 / manifest.stepHours));
+  // Three hours of wall clock, not a fixed number of columns: past the seam a
+  // single column already covers six, and a fixed width would pair a
+  // three-hour candle with a twelve-hour one.
+  const groups = useMemo(() => candleGroups(axis), [axis]);
   const candles = useMemo(
-    () =>
-      blend.stats.length ? candleColumns(blend.stats, columnsPerCandle) : [],
-    [blend.stats, columnsPerCandle],
+    () => (blend.stats.length ? candlesOver(blend.stats, groups) : []),
+    [blend.stats, groups],
   );
 
   const named = !!point.id;
@@ -841,12 +945,12 @@ export default function ForecastDock({
   );
 
   const blendCells = (pick: (column: number) => ReactNode, key: string) =>
-    frames.map((frame, column) => (
+    columns.map((column, at) => (
       <td
-        key={`${key}-${frame.hour}`}
-        className={index === column ? "selected-hour" : ""}
+        key={`${key}-${column.validTime}`}
+        className={selected === at ? "selected-hour" : ""}
       >
-        {pick(column)}
+        {pick(at)}
       </td>
     ));
   const spread = (column: number) => {
@@ -856,9 +960,13 @@ export default function ForecastDock({
     return `±${units === "m/s" ? half.toFixed(1) : Math.round(half)}`;
   };
 
-  const caption = `${point.name}: ${
-    manifest.stepRanges ? "3/6" : manifest.stepHours
-  }-hour wind forecast, in ${units}. Times are local to Ireland.${
+  /** The distinct cadences the columns actually use, for the caption. */
+  const cadences = Array.from(
+    new Set(
+      weights.map((weight) => Math.round(weight * 3)).filter((hours) => hours),
+    ),
+  ).sort((a, b) => a - b);
+  const caption = `${point.name}: ${cadences.join("/") || 3}-hour wind forecast, in ${units}. Times are local to Ireland.${
     manifest.gustAvailable === false
       ? ` Gust speed unavailable for this ${manifest.modelName} run.`
       : ""
@@ -875,12 +983,13 @@ export default function ForecastDock({
     .filter(Boolean)
     .join(" · ");
 
-  const sliderMax = manifest.stepRanges
-    ? frames.at(-1)!.hour
-    : Math.max(1, frames.length - 1);
-  const sliderValue = manifest.stepRanges
-    ? frames[requestedIndex].hour
-    : requestedIndex;
+  // The scrubber indexes the dock's columns. Elapsed run hours meant nothing
+  // once the axis spans two runs initialised at different times.
+  const sliderMax = Math.max(1, columns.length - 1);
+  const selectColumn = (at: number) => {
+    const column = columns[Math.max(0, Math.min(columns.length - 1, at))];
+    if (column) onSelect(column.validTime);
+  };
 
   return (
     <>
@@ -946,8 +1055,8 @@ export default function ForecastDock({
           <button
             className="step-button"
             aria-label="Previous forecast"
-            disabled={requestedIndex === 0}
-            onClick={() => onSelect(requestedIndex - 1)}
+            disabled={selected === 0}
+            onClick={() => selectColumn(selected - 1)}
           >
             <ChevronLeft size={17} />
           </button>
@@ -955,59 +1064,25 @@ export default function ForecastDock({
             <input
               type="range"
               style={{
-                background: windTrackBackground(
-                  series.values,
-                  frames.length,
-                  frames.map((frame) => frame.hour),
-                ),
+                background: windTrackBackground(columnWind, axis),
               }}
               title="Track colours show forecast wind speed at the selected location"
               min="0"
               max={sliderMax}
-              value={sliderValue}
+              value={selected}
               disabled={busy}
               aria-label="Forecast time"
-              aria-valuetext={`${dayLabel(frames[requestedIndex].validTime)} ${timeLabel(
-                frames[requestedIndex].validTime,
+              aria-valuetext={`${dayLabel(axis[selected])} ${timeLabel(
+                axis[selected],
               )}`}
-              onChange={(event) =>
-                onSelect(
-                  manifest.stepRanges
-                    ? nearestFrame(
-                        frames,
-                        Date.parse(manifest.runTime) +
-                          Number(event.target.value) * 3600000,
-                      )
-                    : Number(event.target.value),
-                )
-              }
-              onKeyDown={(event) => {
-                if (!manifest.stepRanges) return;
-                const delta = {
-                  ArrowRight: 1,
-                  ArrowUp: 1,
-                  ArrowLeft: -1,
-                  ArrowDown: -1,
-                  PageUp: 4,
-                  PageDown: -4,
-                }[event.key];
-                if (delta !== undefined) {
-                  event.preventDefault();
-                  onSelect(
-                    Math.max(
-                      0,
-                      Math.min(frames.length - 1, requestedIndex + delta),
-                    ),
-                  );
-                }
-              }}
+              onChange={(event) => selectColumn(Number(event.target.value))}
             />
           </div>
           <button
             className="step-button"
             aria-label="Next forecast"
-            disabled={requestedIndex === frames.length - 1}
-            onClick={() => onSelect(requestedIndex + 1)}
+            disabled={selected === columns.length - 1}
+            onClick={() => selectColumn(selected + 1)}
           >
             <ChevronRight size={17} />
           </button>
@@ -1025,20 +1100,20 @@ export default function ForecastDock({
               <table className="forecast-table">
                 <caption className="sr-only">{caption}</caption>
                 <ForecastHeader
-                  manifest={manifest}
+                  columns={columns}
+                  weights={weights}
                   point={point}
                   days={days}
-                  index={index}
+                  selected={selected}
                   onSelect={onSelect}
                   showSun
                   dayMax={dayMax}
                 />
                 {view === "table" ? (
                   <ForecastSheet
-                    manifest={manifest}
+                    cells={cells}
                     units={units}
-                    index={index}
-                    values={series.values}
+                    selected={selected}
                   />
                 ) : (
                   <tbody className="chart-body">
@@ -1071,7 +1146,7 @@ export default function ForecastDock({
                             ))}
                           </span>
                         </th>
-                        <td className="chart-cell" colSpan={frames.length}>
+                        <td className="chart-cell" colSpan={columns.length}>
                           <div className="chart-holder" ref={holder}>
                             {geometry.chartWidth > 0 &&
                               chartReady &&
@@ -1080,7 +1155,8 @@ export default function ForecastDock({
                                   width={geometry.chartWidth}
                                   height={geometry.chartHeight}
                                   centres={centres}
-                                  frames={frames}
+                                  columns={columns}
+                                  groups={groups}
                                   stats={blend.stats}
                                   lines={blend.lines}
                                   directions={blend.directions}
@@ -1095,9 +1171,8 @@ export default function ForecastDock({
                                   width={geometry.chartWidth}
                                   height={geometry.chartHeight}
                                   edges={edges}
-                                  frames={frames}
+                                  columns={columns}
                                   candles={candles}
-                                  columnsPerCandle={columnsPerCandle}
                                   nights={nights}
                                   units={units}
                                   max={max}
@@ -1161,12 +1236,12 @@ export default function ForecastDock({
                             unit={units}
                           />
                         </th>
-                        {frames.map((frame, column) => {
+                        {columns.map((entry, column) => {
                           const value = blend.stats[column]?.median ?? null;
                           return (
                             <td
-                              key={frame.hour}
-                              className={`wind-cell ${index === column ? "selected-hour" : ""}`}
+                              key={entry.validTime}
+                              className={`wind-cell ${selected === column ? "selected-hour" : ""}`}
                               style={
                                 {
                                   "--wind-colour":
@@ -1196,12 +1271,12 @@ export default function ForecastDock({
                             unit={units}
                           />
                         </th>
-                        {frames.map((frame, column) => {
+                        {columns.map((entry, column) => {
                           const value = blend.stats[column]?.gust.max ?? null;
                           return (
                             <td
-                              key={frame.hour}
-                              className={`gust-cell ${index === column ? "selected-hour" : ""}`}
+                              key={entry.validTime}
+                              className={`gust-cell ${selected === column ? "selected-hour" : ""}`}
                               style={
                                 {
                                   "--wind-colour":
@@ -1250,7 +1325,7 @@ export default function ForecastDock({
                             </th>
                             <td
                               className="observed-cell"
-                              colSpan={frames.length}
+                              colSpan={columns.length}
                               title={seaTitle}
                             >
                               <span className="observed-reading">
@@ -1301,16 +1376,16 @@ export default function ForecastDock({
                               unit={wave ? "m" : WEATHER_ROW_UNIT[surface!]}
                             />
                           </th>
-                          {frames.map((frame, column) => {
+                          {columns.map((entry, column) => {
                             const cell: WeatherCell = wave
                               ? { content: waveCell(wave, column) }
                               : weatherCell(surface!, column);
                             return (
                               <td
-                                key={frame.hour}
+                                key={entry.validTime}
                                 className={
                                   [
-                                    index === column ? "selected-hour" : "",
+                                    selected === column ? "selected-hour" : "",
                                     cell.className ?? "",
                                   ]
                                     .filter(Boolean)
@@ -1338,8 +1413,8 @@ export default function ForecastDock({
                             help={`${ROW_HELP.tide} ${tide.tide!.curve.datum}.`}
                           />
                         </th>
-                        {frames.map((frame, column) => (
-                          <td key={frame.hour}>
+                        {columns.map((entry, column) => (
+                          <td key={entry.validTime}>
                             <span className="sr-only">
                               {tideValues[column] === null
                                 ? "—"

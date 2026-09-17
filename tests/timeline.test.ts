@@ -24,9 +24,11 @@ it("positions now between real timestamps, including a mixed-cadence boundary", 
   expect(framePosition(frames, NaN)).toBeNull();
 });
 
-it("mixed-step track colours occupy elapsed time, not equal frame slots", () => {
+it("mixed-step track colours occupy elapsed time, not equal column slots", () => {
   const wind = { u: 0, v: 5, gust: null };
-  const result = windTrackBackground([wind, wind, wind], 3, [0, 3, 9]);
+  const at = (hour: number) =>
+    new Date(Date.parse("2026-09-13T00:00:00Z") + hour * 3600000).toISOString();
+  const result = windTrackBackground([wind, wind, wind], [at(0), at(3), at(9)]);
   expect(result).toContain("33.33333333333333%");
   expect(result).not.toContain("50%");
 });
@@ -50,16 +52,17 @@ it("ECMWF validates its full native cadence and selects only real timestamps", (
 });
 
 it("scrubber uses the map's wind-speed palette, not the calendar", () => {
+  const times = ["2026-09-13T00:00:00Z", "2026-09-13T03:00:00Z"];
   const result = windTrackBackground(
     [
       { u: 0, v: 5, gust: null },
       { u: 0, v: 20, gust: null },
     ],
-    2,
+    times,
   );
   expect(result).toContain(`rgb(${windColor(5 * KNOTS).join(",")}) 0%`);
   expect(result).toContain(`rgb(${windColor(20 * KNOTS).join(",")}) 100%`);
-  expect(windTrackBackground([null, undefined], 2)).toContain("#b8cbd0");
+  expect(windTrackBackground([null, undefined], times)).toContain("#b8cbd0");
 });
 
 it("all forecast URLs can use a separate CDN without redirecting spot metadata", () => {

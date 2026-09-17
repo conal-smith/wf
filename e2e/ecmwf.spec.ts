@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
 
 const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
 const harmonie = JSON.parse(
@@ -23,36 +24,40 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await model.click();
   await expect(model).toHaveAttribute("aria-pressed", "true");
-  // The gust semantics this test is about are the table view's cells.
+  // The gust semantics this test is about are the table view's cells. The
+  // dock's columns come from every manifest, not from the map, so putting
+  // ECMWF on the map does not change how many of them there are.
   await page.locator('[data-view="table"]').click();
-  await expect(page.locator(".wind-cell")).toHaveCount(85);
-  await expect(page.locator(".gust-cell").nth(1)).toHaveAttribute(
-    "title",
-    /Maximum gust over 1 hour:/,
-  );
-  await expect(page.locator(".gust-cell").nth(31)).toHaveAttribute(
-    "title",
-    /Maximum gust over 3 hours:/,
-  );
+  await expect(page.locator(".wind-cell")).toHaveCount(sampleColumns.length);
+  // A gust window is the answering run's own: ECMWF is on the map and reaches
+  // every column, and its short window runs an hour, widening to three past
+  // +90 h.
+  await expect(
+    page.locator(".gust-cell").nth(sampleColumn("2026-09-16T06:00:00Z")),
+  ).toHaveAttribute("title", /Maximum gust over 1 hour:/);
+  await expect(
+    page.locator(".gust-cell").nth(sampleColumn("2026-09-17T00:00:00Z")),
+  ).toHaveAttribute("title", /Maximum gust over 3 hours:/);
+  const last = sampleColumns.length - 1;
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await expect(slider).toHaveAttribute("max", "360");
-  await slider.fill("144");
-  await expect(page.locator('[data-forecast-index="48"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(slider).toHaveAttribute("max", String(last));
+  // The column where the axis turns from three-hourly to six-hourly.
+  const widens = sampleColumn("2026-09-19T00:00:00Z");
+  await slider.fill(String(widens));
+  await expect(
+    page.locator(`[data-forecast-index="${widens}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
   await slider.focus();
   await slider.press("ArrowRight");
-  await expect(slider).toHaveValue("150");
-  await expect(page.locator('[data-forecast-index="49"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(slider).toHaveValue(String(widens + 1));
+  await expect(
+    page.locator(`[data-forecast-index="${widens + 1}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
   await slider.press("ArrowLeft");
-  await expect(slider).toHaveValue("144");
+  await expect(slider).toHaveValue(String(widens));
   await slider.press("End");
-  await expect(slider).toHaveValue("360");
-  const selected = page.locator('[data-forecast-index="84"]');
+  await expect(slider).toHaveValue(String(last));
+  const selected = page.locator(`[data-forecast-index="${last}"]`);
   await expect(selected).toHaveAttribute("aria-pressed", "true");
   const rect = await selected.boundingBox();
   expect(rect!.x).toBeGreaterThan(75);
@@ -68,7 +73,6 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
     "title",
     /Maximum gust over 6 hours/,
   );
-  await expect(page.locator(".gust-cell").first()).toHaveText("—");
   await expect(
     page.getByRole("button", {
       name: `Brandon Bay, ${Math.round(Math.hypot(expected.u, expected.v) * 1.94384449)} kn`,
@@ -103,8 +107,14 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
     "aria-pressed",
     "true",
   );
+  // The columns do not move with the map; only the selection does, back to the
+  // last hour HARMONIE reaches.
   await expect(slider).toHaveValue(String(harmonie.frames.length - 1));
-  await expect(page.locator(".wind-cell")).toHaveCount(harmonie.frames.length);
+  await expect(page.locator(".wind-cell")).toHaveCount(sampleColumns.length);
+  // HARMONIE answers the columns it reaches, and its sample run has no gust.
+  await expect(page.locator(".gust-cell").first()).toHaveText("—");
+  // Past its range the columns are still filled, from the run that owns them.
+  await expect(page.locator(".wind-cell").last()).not.toHaveText("—");
 });
 
 test("unavailable or mislabelled ECMWF snapshot preserves the current model", async ({
@@ -118,6 +128,7 @@ test("unavailable or mislabelled ECMWF snapshot preserves the current model", as
       ? route.fulfill({ json: body })
       : route.fulfill({ status: 503, body: "Unavailable" }),
   );
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
   await page.goto("/");
   const model = page.locator('[data-model="ecmwf"]');
   await expect(model).toBeEnabled({ timeout: 30000 });
@@ -136,7 +147,9 @@ test("unavailable or mislabelled ECMWF snapshot preserves the current model", as
       "true",
     );
     await expect(page.locator(".model-status.is-error")).toBeVisible();
-    await expect(page.locator(".wind-cell")).toHaveCount(
+    // ECMWF is missing, so the long range falls to the next run that reaches
+    // furthest; the columns stay put through both failed switches.
+    expect(await page.locator(".wind-cell").count()).toBeGreaterThan(
       harmonie.frames.length,
     );
     await page.unroute("**/weather/unused-ecmwf.json");

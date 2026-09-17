@@ -468,7 +468,10 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
   pending.set(url, request);
   return request;
 }
-export function nearestFrame(frames: FrameInfo[], now = Date.now()): number {
+export function nearestFrame(
+  frames: readonly Pick<FrameInfo, "validTime">[],
+  now = Date.now(),
+): number {
   return frames.reduce(
     (best, f, i) =>
       Math.abs(Date.parse(f.validTime) - now) <
