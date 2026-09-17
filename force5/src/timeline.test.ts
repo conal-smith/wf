@@ -293,20 +293,15 @@ describe("columnSources", () => {
 
 describe("windTrackBackground", () => {
   const wind = (u: number): Wind => ({ u, v: 0, gust: null });
-  it("places each stop by time, so a wider column keeps its share", () => {
-    const track = windTrackBackground(
-      [wind(5), wind(5), wind(5)],
-      ["2026-09-14T00:00:00Z", "2026-09-14T03:00:00Z", "2026-09-14T09:00:00Z"],
-    );
+  it("puts one evenly spaced stop per column, where the thumb sits", () => {
+    const track = windTrackBackground([wind(5), wind(5), wind(5)], 3);
     expect(track).toContain("0%");
-    expect(track).toMatch(/33\.3/);
+    expect(track).toContain("50%");
     expect(track).toContain("100%");
   });
   it("greys out what has not loaded, and survives an empty axis", () => {
-    expect(windTrackBackground([], [])).toBe("#b8cbd0");
-    expect(
-      windTrackBackground([null, null], ["2026-09-14T00:00:00Z"]),
-    ).toContain("#b8cbd0");
+    expect(windTrackBackground([], 0)).toBe("#b8cbd0");
+    expect(windTrackBackground([null, null], 2)).toContain("#b8cbd0");
   });
 });
 

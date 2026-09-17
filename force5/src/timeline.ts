@@ -248,27 +248,24 @@ export function modelStretches(
   }, []);
 }
 
-/** Forecast strength for the selected location; grey means not loaded/available. */
+/**
+ * Forecast strength for the selected location; grey means not loaded/available.
+ *
+ * One stop per column, evenly spaced, because that is where the scrubber's own
+ * thumb sits: the range input counts columns, so a stop placed by elapsed time
+ * would drift away from the value under it as soon as the cadence changed.
+ */
 export function windTrackBackground(
   values: readonly (Wind | null | undefined)[],
-  times: readonly string[],
+  count: number,
 ) {
-  const count = times.length;
   if (count < 1) return "#b8cbd0";
-  const start = Date.parse(times[0]);
-  const end = Date.parse(times[count - 1]);
   const stops = Array.from({ length: Math.max(2, count) }, (_, i) => {
-    const at = Math.min(i, count - 1);
-    const value = values[at];
+    const value = values[Math.min(i, count - 1)];
     const colour = value
       ? `rgb(${windColor(speed(value) * KNOTS).join(",")})`
       : "#b8cbd0";
-    // Positioned by time, so the uneven columns past the seam keep their share.
-    const fraction =
-      end > start
-        ? (Date.parse(times[at]) - start) / (end - start)
-        : at / Math.max(1, count - 1);
-    return `${colour} ${fraction * 100}%`;
+    return `${colour} ${(i / (Math.max(2, count) - 1)) * 100}%`;
   });
   return `linear-gradient(to right, ${stops.join(", ")})`;
 }

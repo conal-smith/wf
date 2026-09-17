@@ -1002,12 +1002,25 @@ export default function ForecastDock({
     return `±${units === "m/s" ? half.toFixed(1) : Math.round(half)}`;
   };
 
-  /** The distinct cadences the columns actually use, for the caption. */
-  const cadences = Array.from(
-    new Set(
-      weights.map((weight) => Math.round(weight * 3)).filter((hours) => hours),
-    ),
-  ).sort((a, b) => a - b);
+  /**
+   * The distinct cadences the columns actually use, for the caption: "3/6" for
+   * the sample axis, "1/3/6" once HARMONIE is hourly. Read from the times
+   * themselves, because no one run's `stepHours` describes the whole axis.
+   */
+  const cadences = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (let i = 1; i < axis.length; i++) {
+      const hours = Math.round(
+        (Date.parse(axis[i]) - Date.parse(axis[i - 1])) / 3600000,
+      );
+      if (hours > 0) counts.set(hours, (counts.get(hours) ?? 0) + 1);
+    }
+    // A gap that happens once is the seam between two runs, not a cadence.
+    return [...counts]
+      .filter(([, seen]) => seen > 1)
+      .map(([hours]) => hours)
+      .sort((a, b) => a - b);
+  }, [axis]);
   const caption = `${point.name}: ${cadences.join("/") || 3}-hour wind forecast, in ${units}. Times are local to Ireland.${
     manifest.gustAvailable === false
       ? ` Gust speed unavailable for this ${manifest.modelName} run.`
@@ -1106,7 +1119,7 @@ export default function ForecastDock({
             <input
               type="range"
               style={{
-                background: windTrackBackground(columnWind, axis),
+                background: windTrackBackground(columnWind, columns.length),
               }}
               title="Track colours show forecast wind speed at the selected location"
               min="0"
@@ -1135,7 +1148,7 @@ export default function ForecastDock({
             onClick={() => onShowOnMap(reachable.id, axis[selected])}
           >
             <Layers3 size={13} aria-hidden="true" />
-            Show {reachable.name} on the map
+            <span>Show {reachable.name} on the map</span>
           </button>
         )}
       </div>
@@ -1145,7 +1158,7 @@ export default function ForecastDock({
             ref={scroll}
             className="forecast-scroll"
             tabIndex={0}
-            aria-label="Hourly wind forecast; scroll horizontally for more times"
+            aria-label="Forecast times; scroll horizontally for more"
           >
             <div className="forecast-content" ref={content}>
               <table className="forecast-table">
