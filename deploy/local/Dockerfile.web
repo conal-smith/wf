@@ -9,6 +9,11 @@ COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
 COPY data ./data
 COPY force5 ./force5
+# src/main.tsx lazy-loads the marketplace bundle; only its browser half is built here.
+COPY market/web ./market/web
+COPY market/shared ./market/shared
+# ...and its stylesheet imports the design system's tokens and component CSS.
+COPY design ./design
 COPY public ./public
 RUN npm run build
 

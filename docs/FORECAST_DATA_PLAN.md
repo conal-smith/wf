@@ -4,6 +4,39 @@ Status: reviewed draft, revision 3, 17 September 2026. Architecture diagram
 (drawn for revision 2, so it still shows the dropped point squares):
 https://claude.ai/artifact/XxZuDqdwucvdchQ2pDK9Sc
 
+## Build status (17 September 2026, branch `forecast-data-plan`)
+
+Each piece was built by one agent, reviewed by a second, fixed, then merged.
+
+| Piece | State |
+|---|---|
+| Keep only the newest run; no raw download cache | built, tested |
+| Synthetic sample data; e2e runs from its own `.e2e/` site with a pinned clock and never touches `public/weather` | built, tested |
+| R2 publishing: endpoint, delete what a publish supersedes, orphan sweep, "already published" read from the bucket | built against a fake S3; **live R2 test pending** ([setup checklist](CLOUDFLARE_R2_SETUP.md)) |
+| Phase 3, binary wind frames (all nine wind adapters, validator, uploader, Caddy, browser) | built, tested; a real GFS import in the worker image produced valid binary frames |
+| Phase 2, 15-day dock keyed on time, model band, "Show … on the map" chip, back to now | built, tested |
+| Phase 4, bare map point: one model, loaded from now outwards | built, tested |
+| Phase 4, more named spots; per-spot files past ~50 spots | not started |
+| Phase 0 payload script; Phase 5 smaller wins | not started |
+
+Decisions made while building, where they differ from the text below:
+
+- **Table cells between a coarse map model's steps are interpolated**, by the
+  same rule the blend uses, and marked as such ("Between ECMWF's 3-hourly
+  steps"). Without this a 6-hourly model on the map printed one value in three
+  columns and the table disagreed with the chart.
+- **The axis gets a long-range "head" only when the finest run starts after
+  now**, so there is a column for now. Otherwise it opens on the finest run and
+  there is one seam, as planned.
+- **An expired map run answers no cells**, and the band marks expired as well
+  as older-than-18 h runs.
+- **A binary frame proves its model by where it is filed and what it is
+  named**: it must sit under a run directory named for the model, and its file
+  name must be the sha256 of its bytes. The header carries run and hour, not
+  the model.
+- **The delta axis is row**, and brotli quality is 9; both were measured (see
+  the format section).
+
 Revision 3 **drops the any-point blend and its "point square" files**. Blend
 and Candles stay on named spots, and we add more named spots instead. See
 "Decided against" below for the reasons.
