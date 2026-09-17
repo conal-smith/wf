@@ -15,11 +15,22 @@
  * frames are JSON, as they are in production.
  *
  *   npm run weather:fixtures     the committed fixtures the unit tests read
- *   npm run weather:sample       the same bundles in public/weather, for e2e
+ *   npm run weather:sample       the same bundles in public/weather, for local
+ *                                development against a checkout with no ingest
+ *   scripts/e2e-site.mjs         the same bundles in .e2e/public/weather, which
+ *                                is the only weather the e2e site is built from
  *
- * Options: --profile fixtures|live, --out <dir>, --spacing <degrees>, --now
- * <iso>, --all (include the models no test needs), --if-missing (do nothing if
- * the manifests are already there), --force (replace them).
+ * Options: --profile fixtures|live, --out <dir>, --spacing <degrees of
+ * longitude; latitude follows at DY_RATIO of it>, --now <iso>, --all (include
+ * the models no test needs), --force.
+ *
+ * The output directory is never written over anything that could be a forecast.
+ * A `*.json` manifest OR a run directory is enough to stop the write, because a
+ * real import that was interrupted leaves run directories with no manifest at
+ * all, and dropping synthetic manifests beside them would both corrupt the site
+ * and make the ingest's prune treat the real runs as junk. `--force` lifts that,
+ * but still refuses to delete a run directory unless a manifest in the same
+ * directory claims it and says `provider: "Synthetic sample data"`.
  *
  * Two profiles differ in their run times:
  *   fixtures  a fixed sample calendar, so both suites are reproducible. The e2e
@@ -44,12 +55,18 @@
  * here is which four cells a location falls between, which decides whether a
  * land-masked wave cell makes a spot read null; that mirrors the same four
  * lines in `sample()`.
+ *
+ * Every grid is rectangular — dx ≠ dy, in the proportion the real HARMONIE grid
+ * has — because a square one cannot catch a sampler that divides longitude by
+ * dy. Present weather is the exception to the affine rule: it is a code table,
+ * read from the cell containing a location and never interpolated.
  */
 import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -81,6 +98,7 @@ const round = (value, decimals) => {
   return Math.round(value * factor) / factor;
 };
 const q2 = (value) => round(value, 2);
+const q3 = (value) => round(value, 3);
 const iso = (ms) => new Date(ms).toISOString().replace(".000Z", "Z");
 const pad = (value, width) => String(value).padStart(width, "0");
 const runId = (ms) => {
@@ -91,16 +109,36 @@ const runId = (ms) => {
   );
 };
 
-/** A regular grid over the display box at the given spacing. */
-function gridAt(spacing) {
-  const width = Math.round((BOX.east - BOX.west) / spacing) + 1;
-  const height = Math.round((BOX.north - BOX.south) / spacing) + 1;
+/**
+ * How much shorter a grid's rows are than its columns.
+ *
+ * The real HARMONIE grid is 0.025° × 0.02°, and a square sample grid is a test
+ * that cannot fail: with dx === dy a sampler that divided longitude by dy would
+ * agree with every fixture. So every sample grid is rectangular in the same
+ * proportion the production one is.
+ */
+const DY_RATIO = 0.8;
+
+/**
+ * A regular grid covering the display box at the given longitude spacing.
+ *
+ * The cell counts are rounded up and the east and south edges then restated from
+ * them, so the grid describes itself exactly — `east - west === (width - 1) · dx`
+ * to the browser's tolerance — for any spacing, without dx and dy having to
+ * divide the box.
+ */
+function gridAt(dx, dy = q3(dx * DY_RATIO)) {
+  const width = Math.ceil((BOX.east - BOX.west) / dx) + 1;
+  const height = Math.ceil((BOX.north - BOX.south) / dy) + 1;
   return {
     width,
     height,
-    ...BOX,
-    dx: spacing,
-    dy: spacing,
+    west: BOX.west,
+    east: q3(BOX.west + (width - 1) * dx),
+    north: BOX.north,
+    south: q3(BOX.north - (height - 1) * dy),
+    dx,
+    dy,
     order: "north-to-south, west-to-east",
   };
 }
@@ -115,7 +153,7 @@ const osc = (hour, period, phase) =>
  * plane that was written.
  */
 function plane(grid, spec, hour, seed) {
-  return {
+  const p = {
     a: q2(spec.base + spec.amp * osc(hour, spec.period, seed + spec.phase)),
     bx: q2(
       spec.gx *
@@ -128,6 +166,21 @@ function plane(grid, spec, hour, seed) {
         grid.dy,
     ),
   };
+  // `floor` slides the whole plane so its lowest grid node is exactly that
+  // value. An affine field takes its minimum at a corner, so this is a shift of
+  // `a` by a multiple of a hundredth: the plane stays affine and every node
+  // stays exactly published, and one cell of the field reads the floor exactly.
+  // Cloud uses it, so a published zero is a real zero rather than a rounding
+  // artefact — the readers have to keep telling "none" apart from "no data".
+  if (spec.floor !== undefined)
+    p.a = q2(
+      p.a -
+        (p.a +
+          Math.min(0, p.bx * (grid.width - 1)) +
+          Math.min(0, p.by * (grid.height - 1))) +
+        spec.floor,
+    );
+  return p;
 }
 
 const planeAt = (p, x, y) => p.a + p.bx * x + p.by * y;
@@ -308,7 +361,7 @@ const WEATHER_VARIABLES = {
     description:
       "Precipitation accumulated from initialization to this hour (synthetic)",
     decimals: 1,
-    accumulation: true,
+    minimum: 0,
   },
   precip: {
     units: "mm",
@@ -316,6 +369,7 @@ const WEATHER_VARIABLES = {
     description:
       "Precipitation in the interval ending at this hour, differenced from the accumulation; null at initialization, which has no interval (synthetic)",
     decimals: 1,
+    minimum: 0,
     differenced: true,
   },
   clct: {
@@ -323,7 +377,11 @@ const WEATHER_VARIABLES = {
     label: "Total cloud",
     description: "Total cloud cover through the whole column (synthetic)",
     decimals: 0,
-    spec: { base: 78, amp: 18, gx: 0.8, gy: 0.9, period: 21, phase: 0.05 },
+    // Floored at zero — which makes `base` and `amp` moot, so they are stated as
+    // nothing — with a gradient steep enough to cross most of the scale. One
+    // corner of every frame is genuinely clear sky, which is the case a reader
+    // that treats 0 as "nothing loaded" rather than "none" gets wrong.
+    spec: { base: 0, amp: 0, gx: 7, gy: 6, period: 21, phase: 0.05, floor: 0 },
   },
   clcl: {
     units: "%",
@@ -398,6 +456,39 @@ const WEATHER_VARIABLES = {
  * keeps every shape the dock draws in play across the catalogue.
  */
 const WEATHER_CODES = [3, 61, 0, 2, 80, 45, 95, 10];
+
+/**
+ * The cell a location sits in, which is what a code table is read from. The
+ * nearest node in each axis, exactly as `sample_variable` does in
+ * force5/ingest/fetch_icon_weather.py — no interpolation, no blending.
+ */
+function cellIndex(grid, lon, lat) {
+  const i = Math.round(spotX(grid, lon));
+  const j = Math.round(spotY(grid, lat));
+  if (i < 0 || j < 0 || i >= grid.width || j >= grid.height) return null;
+  return j * grid.width + i;
+}
+
+/**
+ * Rain as an affine plane, so it varies across the map instead of falling in one
+ * flat sheet over the whole country.
+ *
+ * The accumulation since initialization is strictly increasing in lead time and
+ * is zero at hour 0, and the spatial gradients are proportional to it, so the
+ * field is zero everywhere at initialization, never negative, and never
+ * decreases at any cell — which is what makes differencing it for the interval
+ * amount safe.
+ */
+function rainPlane(grid, hour) {
+  // Linear plus a bounded wave whose slope (1.2 · 2π/17 ≈ 0.44 mm/h at most)
+  // can never cancel the linear one, and which is zero at hour 0.
+  const total = 0.45 * hour + 1.2 * (osc(hour, 17, 0.2) - osc(0, 17, 0.2));
+  return {
+    a: round(total, 1),
+    bx: q2(0.06 * total * grid.dx),
+    by: q2(0.05 * total * grid.dy),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Bundle builders
@@ -506,7 +597,7 @@ function windBundle(model, spots, runMs, grid) {
     modelName: model.name,
     provider: SYNTHETIC.provider,
     resolutionKm: model.resolutionKm,
-    resolutionLabel: `${grid.dx}° sample grid`,
+    resolutionLabel: `${grid.dx}° × ${grid.dy}° sample grid`,
     modelDetail: `${model.name} shaped sample bundle`,
     run,
     runTime: iso(runMs),
@@ -636,7 +727,7 @@ function waveBundle(model, spots, runMs, grid) {
     provider: SYNTHETIC.provider,
     modelDetail: `${model.name} shaped sample bundle`,
     resolutionKm: model.resolutionKm,
-    resolutionLabel: `${grid.dx}° sample grid`,
+    resolutionLabel: `${grid.dx}° × ${grid.dy}° sample grid`,
     run,
     runTime: iso(runMs),
     generatedAt: iso(runMs),
@@ -687,17 +778,24 @@ function weatherBundle(model, spots, runMs, grid) {
           model.seed + order * 0.09,
         );
     });
-    // The accumulation is monotone in lead time; the interval amount differences it.
-    const accumulated = (h) =>
-      round(1.4 * (h / 3) * (0.6 + 0.4 * Math.abs(osc(h, 17, 0.2))), 1);
+    planes.tp = rainPlane(grid, hour);
+    // The interval amount is the accumulation's own increase, coefficient by
+    // coefficient: the difference of two affine planes is an affine plane, so
+    // rain interpolates exactly like everything else and, because the
+    // accumulation only ever grows, the amount is never negative.
+    const previous = index === 0 ? null : rainPlane(grid, hours[index - 1]);
+    planes.precip =
+      previous === null
+        ? null
+        : {
+            a: q2(planes.tp.a - previous.a),
+            bx: q2(planes.tp.bx - previous.bx),
+            by: q2(planes.tp.by - previous.by),
+          };
     const value = (name, x, y, code) => {
       const variable = WEATHER_VARIABLES[name];
       if (name === "ww") return code;
-      if (variable.accumulation) return accumulated(hour);
-      if (variable.differenced)
-        return index === 0
-          ? null
-          : round(accumulated(hour) - accumulated(hours[index - 1]), 1);
+      if (variable.differenced && index === 0) return null;
       return round(planeAt(planes[name], x, y), variable.decimals);
     };
     const fields = {};
@@ -707,12 +805,16 @@ function weatherBundle(model, spots, runMs, grid) {
         fields[name] = new Array(grid.width * grid.height)
           .fill(0)
           .map((_, i) => WEATHER_CODES[(i + index) % WEATHER_CODES.length]);
-      else if (variable.accumulation || variable.differenced)
-        fields[name] = new Array(grid.width * grid.height).fill(
-          value(name, 0, 0, 0),
-        );
+      else if (variable.differenced && index === 0)
+        // The step that has no interval has no amount either, everywhere.
+        fields[name] = new Array(grid.width * grid.height).fill(null);
       else fields[name] = field(grid, planes[name], variable.decimals);
-      bounded(fields[name], 100000, null, `${model.id} ${name}`);
+      bounded(
+        fields[name],
+        100000,
+        variable.minimum ?? null,
+        `${model.id} ${name}`,
+      );
     }
     const payload = {
       model: model.id,
@@ -726,10 +828,18 @@ function weatherBundle(model, spots, runMs, grid) {
     const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(payload)}.json`;
     files.push([url, payload]);
     frames.push({ hour, validTime: valid, url, precipIntervalHours: interval });
-    spots.forEach((spot, order) => {
+    for (const spot of spots) {
       const x = spotX(grid, spot.lon);
       const y = spotY(grid, spot.lat);
-      const code = WEATHER_CODES[(order + index) % WEATHER_CODES.length];
+      // The manifest says a present-weather code belongs to the cell containing
+      // the location, so the series says the same thing the frame does at that
+      // cell — not a code picked from where the spot happens to sit in the
+      // catalogue, which was a different rota and contradicted both.
+      const cell = cellIndex(grid, spot.lon, spot.lat);
+      const code =
+        cell === null
+          ? null
+          : WEATHER_CODES[(cell + index) % WEATHER_CODES.length];
       series[spot.id].push({
         hour,
         validTime: valid,
@@ -738,7 +848,7 @@ function weatherBundle(model, spots, runMs, grid) {
           names.map((name) => [name, value(name, x, y, code)]),
         ),
       });
-    });
+    }
   });
   const manifest = {
     schemaVersion: 1,
@@ -748,7 +858,7 @@ function weatherBundle(model, spots, runMs, grid) {
     provider: SYNTHETIC.provider,
     modelDetail: `${model.name} shaped sample bundle`,
     resolutionKm: model.resolutionKm,
-    resolutionLabel: `${grid.dx}° sample grid`,
+    resolutionLabel: `${grid.dx}° × ${grid.dy}° sample grid`,
     run,
     runTime: iso(runMs),
     generatedAt: iso(runMs),
@@ -983,15 +1093,80 @@ function build({ profile, now, spacing, all }) {
   return bundles;
 }
 
-function write(bundles, out, { force }) {
-  const existing = bundles.filter(({ model }) =>
-    existsSync(join(out, model.file)),
-  );
-  if (existing.length && !force)
-    throw new Error(
-      `${out} already holds ${existing.map(({ model }) => model.file).join(", ")}. ` +
-        "Refusing to overwrite forecast data; pass --force to replace it.",
+/**
+ * Anything in the output directory that looks like forecast data.
+ *
+ * Not "one of our nine manifest names": a real `weather:refresh` writes one
+ * manifest and one run directory at a time, and an import interrupted before it
+ * replaced the pointer manifests leaves run directories with no manifest at all.
+ * Either way the directory holds a real run, and writing synthetic bundles
+ * beside it would both corrupt the site and hand the ingest's prune a set of
+ * directories no manifest claims — which it would then delete as junk.
+ */
+function forecastData(out) {
+  if (!existsSync(out)) return [];
+  return readdirSync(out, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        (entry.isFile() && entry.name.endsWith(".json")) || entry.isDirectory(),
+    )
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/** Whether a run directory's own manifest says this script wrote it. */
+function syntheticRun(out, name) {
+  // A run directory is named `<model>-<run>-<horizon>h-v1`; its manifest is the
+  // bundle file for that model, which says in plain words what the data is.
+  const model = /^(.+)-\d{10}-\d+h-v\d+$/.exec(name)?.[1];
+  if (!model) return false;
+  for (const file of readdirSync(out)) {
+    if (!file.endsWith(".json")) continue;
+    let manifest;
+    try {
+      manifest = JSON.parse(readFileSync(join(out, file), "utf8"));
+    } catch {
+      continue;
+    }
+    if (manifest?.model !== model) continue;
+    return (
+      manifest.provider === SYNTHETIC.provider &&
+      Boolean(
+        manifest.frames?.some((frame) => frame.url?.includes(`/${name}/`)),
+      )
     );
+  }
+  return false;
+}
+
+function write(bundles, out, { force }) {
+  const found = forecastData(out);
+  if (found.length && !force)
+    throw new Error(
+      `${out} already holds ${found.join(", ")}. Refusing to touch forecast ` +
+        "data; pass --force to replace it, or --out <dir> to write elsewhere.",
+    );
+  // `weather/<prefix>/…` in a frame url is relative to the directory above the
+  // manifest, which is how the site and the publisher both resolve it.
+  const root = resolve(out, "..");
+  const runDirectory = ({ files }) =>
+    files.length ? join(root, "weather", files[0][0].split("/")[1]) : null;
+  // A run directory is replaced whole, never merged — but only when the bundle
+  // beside it says this script wrote it. A real run whose name happens to match
+  // (the `live` profile anchors its runs to the wall clock, so one will) is data
+  // somebody fetched, and --force is not a licence to delete it. Every directory
+  // is checked before anything at all is written: a refusal half way through
+  // would leave exactly the mixture of real and synthetic this is here to stop.
+  const replacing = bundles.map(runDirectory).filter(Boolean);
+  for (const prefix of replacing) {
+    if (!existsSync(prefix)) continue;
+    if (!syntheticRun(out, prefix.split("/").pop()))
+      throw new Error(
+        `${prefix} exists and no manifest in ${out} claims it as ` +
+          `"${SYNTHETIC.provider}". Refusing to delete it.`,
+      );
+  }
+
   let bytes = 0;
   const save = (path, value) => {
     const body = Buffer.isBuffer(value) ? value : JSON.stringify(value);
@@ -999,14 +1174,11 @@ function write(bundles, out, { force }) {
     writeFileSync(path, body);
     bytes += Buffer.byteLength(body);
   };
-  for (const { model, manifest, files } of bundles) {
-    // `weather/<prefix>/…` in a frame url is relative to the directory above the
-    // manifest, which is how the site and the publisher both resolve it.
-    const root = resolve(out, "..");
-    const prefix = files.length ? dirname(join(root, files[0][0])) : null;
+  for (const bundle of bundles) {
+    const prefix = runDirectory(bundle);
     if (prefix && existsSync(prefix)) rmSync(prefix, { recursive: true });
-    for (const [url, payload] of files) save(join(root, url), payload);
-    save(join(out, model.file), manifest);
+    for (const [url, payload] of bundle.files) save(join(root, url), payload);
+    save(join(out, bundle.model.file), bundle.manifest);
   }
   return bytes;
 }
@@ -1030,17 +1202,6 @@ function main() {
     throw new Error("--spacing must be positive");
   const all = args.includes("--all");
   const bundles = build({ profile, now, spacing, all });
-  // `--if-missing` is for an automated step (the e2e web server) that wants the
-  // sample data in place but must never touch data that is already there.
-  if (
-    args.includes("--if-missing") &&
-    bundles.every(({ model }) => existsSync(join(out, model.file)))
-  ) {
-    console.log(
-      `${out} already holds every sample manifest; leaving it alone.`,
-    );
-    return;
-  }
   const bytes = write(bundles, out, { force: args.includes("--force") });
   const frames = bundles.reduce(
     (total, bundle) => total + bundle.files.length,

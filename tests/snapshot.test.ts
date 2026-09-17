@@ -10,6 +10,12 @@ import {
   waveHours,
   type WaveManifest,
 } from "../force5/src/waves";
+import {
+  validateWeatherManifest,
+  weatherFields,
+  weatherHours,
+  type WeatherManifest,
+} from "../force5/src/surface";
 
 /**
  * A whole published bundle, end to end: every frame file agrees with its
@@ -205,5 +211,119 @@ describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
         }
       },
     );
+  });
+});
+
+/**
+ * The surface-weather bundle, the same way round: every gridded variable's spot
+ * series has to agree with the frames it was taken from.
+ *
+ * Two kinds of variable, and they are read differently on purpose. A measurement
+ * is interpolated bilinearly, like wind and waves. A present-weather code is a
+ * code-table entry — a mean of "fog" and "rain" is nothing at all — so it is
+ * read from the cell containing the location and compared for equality, which is
+ * what the manifest's own `presentWeatherNote` promises and what
+ * `sample_variable` in force5/ingest/fetch_icon_weather.py does.
+ *
+ * The tolerance for a measurement is wider than the wind bundle's 0.005 because
+ * a surface variable is published at its own precision: cloud in whole per cent,
+ * temperature in tenths. The frame nodes are rounded to that precision and so is
+ * the series, and bilinear interpolation carries the nodes' rounding through
+ * unchanged, so the two can differ by one published step and no more.
+ */
+const decimalsOf = (value: number) =>
+  (String(value).split(".")[1] ?? "").length;
+
+describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
+  it("every frame matches the manifest and every spot series matches the frames", () => {
+    const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
+    expect(m.model).toBe(name);
+    expect(m.provider).toBe("Synthetic sample data");
+    expect(weatherHours(m)).toEqual(m.frames.map((frame) => frame.hour));
+    expect(Object.keys(m.spotSeries).sort()).toEqual([...placeIds].sort());
+
+    const g = m.grid!;
+    expect(Math.abs(g.east - g.west - (g.width - 1) * g.dx)).toBeLessThan(1e-5);
+    expect(Math.abs(g.north - g.south - (g.height - 1) * g.dy)).toBeLessThan(
+      1e-5,
+    );
+    // A square grid would let a sampler divide longitude by dy and still pass.
+    expect(g.dx).not.toBe(g.dy);
+    const cells = g.width * g.height;
+
+    const gridded = m.frameVariables!;
+    expect(gridded.length).toBeGreaterThan(0);
+    const codes = new Set(
+      Object.entries(m.variables)
+        .filter(([, meta]) => meta.kind === "code")
+        .map(([key]) => key),
+    );
+    expect(gridded.some((key) => codes.has(key))).toBe(true);
+
+    expect(m.frames.length).toBeGreaterThan(0);
+    m.frames.forEach((info, i) => {
+      const frame = readFrame<Record<string, (number | null)[]>>(info.url);
+      expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
+        m.model,
+        m.run,
+        info.hour,
+        info.validTime,
+      ]);
+      expect(frame.grid).toEqual(g);
+      for (const key of gridded) expect(frame[key]).toHaveLength(cells);
+      for (const place of places) {
+        const step = m.spotSeries[place.id][i];
+        expect(step.validTime).toBe(info.validTime);
+        for (const key of gridded) {
+          const values = frame[key];
+          const summary = step.values[key];
+          if (codes.has(key)) {
+            // The containing cell: the nearest node on each axis, no blending.
+            const x = Math.round((place.lon - g.west) / g.dx);
+            const y = Math.round((g.north - place.lat) / g.dy);
+            expect(summary).toBe(values[y * g.width + x]);
+            continue;
+          }
+          const point = sampleWave(g, values, place.lon, place.lat);
+          if (point === null || summary === null) {
+            expect(point).toBeNull();
+            expect(summary).toBeNull();
+            continue;
+          }
+          const step10 =
+            10 **
+            -Math.max(
+              ...values.map((value) =>
+                value === null ? 0 : decimalsOf(value),
+              ),
+              decimalsOf(summary),
+            );
+          expect(Math.abs(point - summary)).toBeLessThanOrEqual(
+            step10 + 0.00501,
+          );
+        }
+      }
+    });
+  });
+
+  it("publishes a real zero, and rain that is not one flat sheet", () => {
+    const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
+    const cloud = weatherFields(m).cloud!;
+    const rain = weatherFields(m).rain!;
+    const frames = m.frames.map((info) =>
+      readFrame<Record<string, (number | null)[]>>(info.url),
+    );
+    // Zero cloud is a value, not a gap: somewhere in the field the sky is clear.
+    expect(frames.some((frame) => frame[cloud].includes(0))).toBe(true);
+    // And rain varies across the map rather than being one scalar per frame.
+    const spread = frames
+      .map((frame) => frame[rain].filter((value) => value !== null))
+      .filter((values) => values.length)
+      .map(
+        (values) =>
+          Math.max(...(values as number[])) - Math.min(...(values as number[])),
+      );
+    expect(spread.length).toBeGreaterThan(0);
+    expect(spread.every((range) => range > 0)).toBe(true);
   });
 });
