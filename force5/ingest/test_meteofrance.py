@@ -523,12 +523,15 @@ class BundledSnapshotTest(unittest.TestCase):
             bundles, "arpege", 12, now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
         self.assertEqual(manifest["stepHours"], 3)
         self.assertEqual(len(objects), len(manifest["frames"]))
-        # The real crop is 201 x 111 cells of 0.05°; a sample bundle is coarse on
-        # purpose, so what is checked is that the grid describes itself
-        # consistently — the dimensions, the bounds and the spacing agree.
-        grid = manifest["grid"]
-        self.assertEqual(grid["width"], round((grid["east"] - grid["west"]) / grid["dx"]) + 1)
-        self.assertEqual(grid["height"], round((grid["north"] - grid["south"]) / grid["dy"]) + 1)
+        # The real crop is 201 x 111 cells of 0.05°; the sample bundle is coarse
+        # on purpose and rectangular on purpose (dx != dy, as the real HARMONIE
+        # grid is), so the shape is stated outright. Re-deriving it from the
+        # bundle's own bounds and spacing would assert only that arithmetic is
+        # arithmetic, and would pass whatever grid the generator wrote.
+        self.assertEqual(manifest["grid"], {
+            "width": 13, "height": 14, "west": -11.0, "east": -5.0, "north": 56.0,
+            "south": 50.8, "dx": 0.5, "dy": 0.4,
+            "order": "north-to-south, west-to-east"})
         self.assertEqual(manifest["gustMissingHours"], [0])
         self.assertIsNone(manifest["frames"][0]["gustIntervalHours"])
         self.assertEqual(manifest["frames"][1]["gustIntervalHours"], [2, 3])

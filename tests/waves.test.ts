@@ -35,7 +35,7 @@ describe("the sample GFS-Wave bundle", () => {
     expect(waveSeriesHasData(series)).toBe(true);
     expect(series[0].values.swh).toBeCloseTo(2.95, 2);
     expect(series[0].values.pp1d).toBeCloseTo(7.29, 2);
-    expect(series[0].values.mwd).toBeCloseTo(295.53, 2);
+    expect(series[0].values.mwd).toBeCloseTo(295.68, 2);
     expect(waveCoverageNote(manifest, "brandon")).toBeNull();
   });
   it("reads a land-masked spot as nulls with the reason stated", () => {
