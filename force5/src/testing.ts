@@ -1,6 +1,8 @@
 // Synthetic manifests for unit tests. Not exported from index.ts and never
 // bundled into the app; the bundled snapshots in public/weather remain the
 // acceptance data.
+import type { WeatherManifest, WeatherStep } from "./surface";
+import type { BundleVariable } from "./variables";
 import type { WaveManifest, WaveStep, WaveVariable } from "./waves";
 import type { Manifest, MemberFrame, Wind } from "./weather";
 
@@ -248,6 +250,131 @@ export function waveManifest(options: WaveFixture = {}): WaveManifest {
     spotSeries: { [spotId]: series },
     sourceUrl: "https://example.test/waves",
     attribution: "Test wave data",
+    licenseUrl: "https://example.test/licence",
+    ...extra,
+  };
+}
+
+/** ICON-EU's own surface variables, including the present-weather code table. */
+export const ICON_WEATHER_VARIABLES: Record<string, BundleVariable> = {
+  ...Object.fromEntries(
+    (
+      [
+        ["t2m", "°C", "Air temperature"],
+        ["td2m", "°C", "Dew point"],
+        ["rh2m", "%", "Relative humidity"],
+        ["tp", "mm", "Precipitation since run"],
+        ["precip", "mm", "Precipitation"],
+        ["clct", "%", "Total cloud"],
+        ["clcl", "%", "Low cloud"],
+        ["clcm", "%", "Medium cloud"],
+        ["clch", "%", "High cloud"],
+        ["pmsl", "hPa", "Pressure (MSL)"],
+        ["vis", "km", "Visibility"],
+        ["cape", "J/kg", "CAPE (mean layer)"],
+        ["tg", "°C", "Surface temperature"],
+      ] as const
+    ).map(([name, units, label]): [string, BundleVariable] => [
+      name,
+      { units, label, description: `${label}, synthetic` },
+    ]),
+  ),
+  // The one code-table variable: whole codes, never a measurement.
+  ww: {
+    units: "WMO code",
+    label: "Present weather",
+    description: "Present-weather code, synthetic",
+    kind: "code",
+  },
+};
+
+export interface WeatherFixture {
+  model?: string;
+  runTime?: string;
+  hours?: number[];
+  spotId?: string;
+  variables?: Record<string, BundleVariable>;
+  /** Value generator; omitted variables are published as null. */
+  values?: (
+    hour: number,
+    index: number,
+  ) => Record<string, number | null> | null;
+  withFrames?: boolean;
+  extra?: Partial<WeatherManifest>;
+}
+
+/**
+ * A surface-weather manifest with one precomputed spot series. `precip` and its
+ * interval are null at hour zero, as the importer publishes them.
+ */
+export function weatherManifest(options: WeatherFixture = {}): WeatherManifest {
+  const {
+    model = "icon-eu-weather",
+    runTime = "2026-09-16T18:00:00Z",
+    hours = [0, 3, 6],
+    spotId = "brandon",
+    variables = ICON_WEATHER_VARIABLES,
+    values = (hour: number): Record<string, number | null> => ({
+      t2m: 15 + hour / 10,
+      td2m: 12.8,
+      rh2m: 83,
+      tp: hour / 10,
+      precip: hour === 0 ? null : 0.3,
+      clct: 97,
+      clcl: 89,
+      clcm: 73,
+      clch: 0,
+      pmsl: 1016.8,
+      vis: 28.1,
+      cape: 7,
+      ww: hour === 0 ? 3 : 61,
+      tg: 15.7,
+    }),
+    withFrames = false,
+    extra = {},
+  } = options;
+  const step = hours.length > 1 ? hours[1] - hours[0] : 3;
+  const interval = (hour: number): [number, number] | null =>
+    hour === hours[0] ? null : [hour - step, hour];
+  const series: WeatherStep[] = hours.map((hour, index) => ({
+    hour,
+    validTime: validTime(runTime, hour),
+    precipIntervalHours: interval(hour),
+    values: Object.fromEntries(
+      Object.keys(variables).map((name) => [
+        name,
+        values(hour, index)?.[name] ?? null,
+      ]),
+    ),
+  }));
+  return {
+    schemaVersion: 1,
+    kind: "weather",
+    model,
+    modelName: model,
+    provider: "DWD",
+    run: runTime.replace(/\D/g, "").slice(0, 10),
+    runTime,
+    generatedAt: runTime,
+    stepHours: step,
+    ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
+    resolutionKm: 6.5,
+    variables,
+    frames: withFrames
+      ? hours.map((hour) => ({
+          hour,
+          validTime: validTime(runTime, hour),
+          url: `weather/${model}-${hour}.json`,
+          precipIntervalHours: interval(hour),
+        }))
+      : [],
+    ...(withFrames ? { grid: testGrid } : {}),
+    frameVariables: withFrames
+      ? ["t2m", "precip", "clct", "pmsl", "ww"]
+      : undefined,
+    spotSeries: { [spotId]: series },
+    sourceUrl: "https://example.test/weather",
+    attribution: "Test surface weather",
     licenseUrl: "https://example.test/licence",
     ...extra,
   };
