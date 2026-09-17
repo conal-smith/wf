@@ -39,9 +39,13 @@ services:
         mkdir -p /data/public/weather /data/public/marine
         if ls /data/public/weather/*.json >/dev/null 2>&1; then
           echo "seed: volume already holds manifests, leaving it untouched"
-        else
-          echo "seed: copying the bundled acceptance snapshots into the volume"
+        elif [ -d /srv/weather ]; then
+          echo "seed: copying the forecast data built into the image into the volume"
           cp -R /srv/weather/. /data/public/weather/
+        else
+          # Forecast data is no longer committed, so an image built from a clean
+          # clone has none: the site starts empty and fills as the first jobs land.
+          echo "seed: the image carries no forecast data; waiting for the first ingest job"
         fi
         ls -1 /data/public/weather
     volumes:
