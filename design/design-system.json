@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "Force5",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The design system behind wingfoil.ie's Force5 forecast map: a glass-on-sea surface language over one teal ramp and one canonical wind scale.",
   "modes": ["light", "dark"],
   "namingGrammar": {

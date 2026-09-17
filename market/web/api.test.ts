@@ -41,7 +41,9 @@ describe("a reply that is not JSON", () => {
     expect(error).toBeInstanceOf(ApiRequestError);
     expect(error.status).toBe(502);
     expect(error.code).toBe("bad-response");
-    expect(error.message).toBe("Request failed (502)");
+    // The status rides on the error for whoever needs it; the reader is told
+    // what happened and what to do, not handed a number.
+    expect(error.message).toMatch(/not responding right now/);
   });
 });
 
