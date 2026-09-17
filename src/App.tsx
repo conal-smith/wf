@@ -179,13 +179,24 @@ export default function App() {
     return () => observer.disconnect();
   }, [error]);
 
+  /** True when the clock has already overtaken the hour on screen. */
+  const selectionIsPast = (now = Date.now()) =>
+    selectedTime !== null && Date.parse(selectedTime) < now;
+
   // A newer run replaces the one on screen: metadata, map, series and time
   // commit together, exactly as a model switch does.
   const commitRun = ({ manifest: next, frame: nextFrame, index }: RunSwap) => {
     modelEpoch.current++;
     setManifest(next);
     setFrame(nextFrame);
-    setSelectedTime(next.frames[index].validTime);
+    // A new run is a new forecast. An hour the clock has already passed is not
+    // what the reader wants to see more of, so the selection returns to now; a
+    // time they chose in the future is theirs and is kept.
+    setSelectedTime(
+      selectionIsPast()
+        ? next.frames[nearestFrame(next.frames)].validTime
+        : next.frames[index].validTime,
+    );
     setFrameError("");
     setModelError("");
     setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
@@ -262,6 +273,28 @@ export default function App() {
     lastColumns.current = next;
     return next;
   }, [columnModels, manifest, clock]);
+
+  /**
+   * A tab left open all morning comes back to an hour that has already been and
+   * gone. Returning to it lands on now instead — and only then: a time the
+   * reader deliberately chose in the future is what they left the tab on.
+   *
+   * The listener is installed once and reads the current state through a ref,
+   * so returning to the tab never depends on a re-render having happened first.
+   */
+  const backToNow = useRef<() => void>(() => {});
+  backToNow.current = () => {
+    const now = Date.now();
+    if (!columns.length || !selectionIsPast(now)) return;
+    setSelectedTime(columns[nearestFrame(columns, now)].validTime);
+  };
+  useEffect(() => {
+    const seen = () => {
+      if (document.visibilityState === "visible") backToNow.current();
+    };
+    document.addEventListener("visibilitychange", seen);
+    return () => document.removeEventListener("visibilitychange", seen);
+  }, []);
 
   useEffect(() => {
     if (!manifest || pendingModel) return;
