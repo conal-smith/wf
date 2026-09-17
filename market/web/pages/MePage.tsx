@@ -1,10 +1,20 @@
-import { Pencil, PlusCircle } from "lucide-react";
+import {
+  Heart,
+  Image as ImageIcon,
+  Pencil,
+  PlusCircle,
+  Star,
+  Tag,
+  UserRound,
+} from "lucide-react";
 import { useState } from "react";
 import { useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
+  ConfirmDialog,
   Empty,
   ListingGrid,
+  LoadError,
   Notice,
   Stars,
   errorMessage,
@@ -33,23 +43,19 @@ export default function MePage({ tab }: { tab: string }) {
   );
   const current = TABS.some((t) => t.id === tab) ? tab : "listings";
 
-  if (!auth.loaded || me.loading)
+  if (!auth.loaded || (me.loading && !me.data))
     return (
-      <div
-        className="mk-skeleton"
-        style={{ aspectRatio: "16 / 6" }}
-        aria-busy="true"
-      />
+      <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
     );
   if (!auth.signedIn) {
     return (
-      <section className="mk-pane mk-stack">
-        <h1 className="mk-title">Your marketplace</h1>
-        <p className="mk-muted">
-          Sign in to see your listings, saved gear and reviews.
-        </p>
+      <Empty
+        title="Sign in to see your account"
+        icon={<UserRound size={24} aria-hidden="true" />}
+      >
+        <p>Your listings, saved gear and reviews all live here.</p>
         {auth.provider !== "none" && (
-          <div className="mk-form__actions">
+          <div className="mk-empty__actions">
             <button
               type="button"
               className="f5-button f5-button--primary f5-button--lg"
@@ -59,12 +65,16 @@ export default function MePage({ tab }: { tab: string }) {
             </button>
           </div>
         )}
-      </section>
+      </Empty>
     );
   }
   if (me.error || !me.data)
     return (
-      <Notice kind="warn">{me.error ?? "Could not load your account."}</Notice>
+      <LoadError
+        title="Your account could not be loaded"
+        message={me.error ?? "Try again in a moment."}
+        onRetry={me.reload}
+      />
     );
   const data = me.data;
 
@@ -84,7 +94,7 @@ export default function MePage({ tab }: { tab: string }) {
         )}
       </div>
       <div
-        className="f5-segmented"
+        className="f5-segmented mk-tabs"
         role="tablist"
         aria-label="Account sections"
       >
@@ -111,10 +121,16 @@ export default function MePage({ tab }: { tab: string }) {
         (data.saved.length ? (
           <ListingGrid listings={data.saved} showStatus />
         ) : (
-          <Empty title="Nothing saved yet">
-            <p className="mk-caption">
-              Tap Save on a listing to keep an eye on it here.
-            </p>
+          <Empty
+            title="Nothing saved yet"
+            icon={<Heart size={24} aria-hidden="true" />}
+          >
+            <p>Tap Save on a listing to keep an eye on it here.</p>
+            <div className="mk-empty__actions">
+              <Link to={paths.browse()} className="f5-button f5-button--pill">
+                Browse gear
+              </Link>
+            </div>
           </Empty>
         ))}
       {current === "reviews" && <ReviewsGiven data={data} />}
@@ -143,12 +159,9 @@ function MyListings({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  const [removing, setRemoving] = useState<Listing | null>(null);
+
   const setStatus = async (listing: Listing, status: Listing["status"]) => {
-    if (
-      status === "removed" &&
-      !window.confirm(`Remove "${listing.title}"? Its photos will be deleted.`)
-    )
-      return;
     setBusy(listing.id);
     setError("");
     try {
@@ -168,28 +181,41 @@ function MyListings({
       setError(errorMessage(e));
     } finally {
       setBusy(null);
+      setRemoving(null);
     }
   };
 
   if (!data.profile) {
     return (
-      <Empty title="Set up your seller profile to start listing">
-        <button
-          type="button"
-          className="f5-button f5-button--primary"
-          onClick={() => navigate(paths.me("profile"))}
-        >
-          Create profile
-        </button>
+      <Empty
+        title="Set up your seller profile to start listing"
+        icon={<UserRound size={24} aria-hidden="true" />}
+      >
+        <p>Buyers see your name and county on everything you list.</p>
+        <div className="mk-empty__actions">
+          <button
+            type="button"
+            className="f5-button f5-button--primary"
+            onClick={() => navigate(paths.me("profile"))}
+          >
+            Create profile
+          </button>
+        </div>
       </Empty>
     );
   }
   if (!data.listings.length) {
     return (
-      <Empty title="You have nothing listed">
-        <Link to={paths.sell()} className="f5-button f5-button--primary">
-          <PlusCircle size={16} aria-hidden="true" /> List something
-        </Link>
+      <Empty
+        title="You have nothing listed"
+        icon={<Tag size={24} aria-hidden="true" />}
+      >
+        <p>Gear you no longer ride is gear someone else is looking for.</p>
+        <div className="mk-empty__actions">
+          <Link to={paths.sell()} className="f5-button f5-button--primary">
+            <PlusCircle size={16} aria-hidden="true" /> List something
+          </Link>
+        </div>
       </Empty>
     );
   }
@@ -200,29 +226,28 @@ function MyListings({
   const Row = ({ listing }: { listing: Listing }) => {
     const enquiries = data.enquiries[listing.id] ?? 0;
     return (
-      <li className="mk-pane mk-row mk-row--between">
-        <Link
-          to={paths.listing(listing.id)}
-          className="mk-row mk-link"
-          style={{ textDecoration: "none", minWidth: 0, flex: "1 1 240px" }}
-        >
-          <span
-            className="mk-photo"
-            style={{ width: "var(--sem-control-height-lg)", flex: "0 0 auto" }}
-          >
-            {listing.photos[0] && <img src={listing.photos[0].url} alt="" />}
+      <li className="mk-pane mk-item">
+        <Link to={paths.listing(listing.id)} className="mk-item__main">
+          <span className="mk-item__thumb">
+            {listing.photos[0] ? (
+              <img src={listing.photos[0].url} alt="" loading="lazy" />
+            ) : (
+              <ImageIcon size={20} aria-hidden="true" />
+            )}
           </span>
-          <span className="mk-stack--tight" style={{ minWidth: 0 }}>
-            <span className="mk-lead" style={{ display: "block" }}>
-              {listing.title}
-            </span>
-            <span className="mk-caption" style={{ display: "block" }}>
-              {formatPrice(listing.priceCents, listing.currency)} · listed{" "}
-              {relativeAge(listing.createdAt)} · {enquiries} enquir
-              {enquiries === 1 ? "y" : "ies"}
+          <span className="mk-stack--tight">
+            <span className="mk-item__title">{listing.title}</span>
+            <span className="mk-meta">
+              <strong className="mk-muted">
+                {formatPrice(listing.priceCents, listing.currency)}
+              </strong>{" "}
+              · Listed {relativeAge(listing.createdAt)}
               {listing.status === "sold" && listing.soldAt
-                ? ` · sold ${relativeAge(listing.soldAt)}`
+                ? ` · Sold ${relativeAge(listing.soldAt)}`
                 : ""}
+            </span>
+            <span className="mk-meta">
+              {enquiries} enquir{enquiries === 1 ? "y" : "ies"}
             </span>
           </span>
         </Link>
@@ -256,7 +281,7 @@ function MyListings({
             type="button"
             className="f5-button f5-button--link"
             disabled={busy === listing.id}
-            onClick={() => setStatus(listing, "removed")}
+            onClick={() => setRemoving(listing)}
           >
             Remove
           </button>
@@ -267,6 +292,17 @@ function MyListings({
 
   return (
     <div className="mk-stack">
+      <ConfirmDialog
+        open={removing != null}
+        title="Remove this listing?"
+        confirmLabel="Remove listing"
+        busy={busy != null}
+        onConfirm={() => removing && setStatus(removing, "removed")}
+        onCancel={() => setRemoving(null)}
+      >
+        “{removing?.title}” will disappear from the marketplace and its photos
+        will be deleted. This cannot be undone.
+      </ConfirmDialog>
       {error && <Notice kind="warn">{error}</Notice>}
       <div className="mk-section-head">
         <h2 className="mk-lead">Live ({active.length})</h2>
@@ -278,10 +314,7 @@ function MyListings({
         </Link>
       </div>
       {active.length ? (
-        <ul
-          className="mk-stack--tight"
-          style={{ listStyle: "none", padding: 0, margin: 0 }}
-        >
+        <ul className="mk-list">
           {active.map((l) => (
             <Row key={l.id} listing={l} />
           ))}
@@ -292,10 +325,7 @@ function MyListings({
       {sold.length > 0 && (
         <>
           <h2 className="mk-lead">Sold ({sold.length})</h2>
-          <ul
-            className="mk-stack--tight"
-            style={{ listStyle: "none", padding: 0, margin: 0 }}
-          >
+          <ul className="mk-list">
             {sold.map((l) => (
               <Row key={l.id} listing={l} />
             ))}
@@ -309,8 +339,11 @@ function MyListings({
 function ReviewsGiven({ data }: { data: MePayload }) {
   if (!data.reviewsGiven.length) {
     return (
-      <Empty title="You have not reviewed anyone yet">
-        <p className="mk-caption">
+      <Empty
+        title="You have not reviewed anyone yet"
+        icon={<Star size={24} aria-hidden="true" />}
+      >
+        <p>
           After you contact a seller you can rate how the sale went, from their
           listing page.
         </p>
@@ -320,18 +353,18 @@ function ReviewsGiven({ data }: { data: MePayload }) {
   return (
     <section className="mk-pane">
       {data.reviewsGiven.map((r) => (
-        <div key={r.id} className="mk-review mk-stack--tight">
+        <div key={r.id} className="mk-review">
           <div className="mk-row mk-row--between">
             <Stars value={r.rating} />
-            <span className="mk-caption">{relativeAge(r.createdAt)}</span>
+            <span className="mk-meta">{relativeAge(r.createdAt)}</span>
           </div>
-          <p className="mk-caption">
+          <p className="mk-meta">
             On{" "}
             <Link to={paths.listing(r.listingId)} className="mk-link">
               {r.listingTitle}
             </Link>
           </p>
-          {r.comment && <p className="mk-prose mk-body">{r.comment}</p>}
+          {r.comment && <p className="mk-prose">{r.comment}</p>}
         </div>
       ))}
     </section>

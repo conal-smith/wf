@@ -9,10 +9,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Heart,
+  Camera,
   Image as ImageIcon,
   Info,
   LogIn,
+  MapPin,
   PlusCircle,
+  RotateCw,
   Star,
   StarHalf,
   UserRound,
@@ -20,6 +23,7 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useRef,
   useState,
   type InputHTMLAttributes,
   type ReactNode,
@@ -93,7 +97,11 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 // ---- header ----------------------------------------------------------------
 
-export function MarketHeader() {
+/**
+ * `accentSell` fills the Sell button. A view gets one filled action, so the
+ * shell passes it only on pages that have no primary of their own.
+ */
+export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   const auth = useMarketAuth();
   return (
     <header className="mk-header">
@@ -117,7 +125,7 @@ export function MarketHeader() {
         */}
         <nav className="mk-header__actions" aria-label="Marketplace">
           <Link
-            className="f5-button f5-button--pill f5-button--sm"
+            className={`f5-button f5-button--sm ${accentSell ? "f5-button--primary mk-header__sell" : "f5-button--pill"}`}
             to={paths.sell()}
           >
             <PlusCircle size={15} aria-hidden="true" />
@@ -137,7 +145,7 @@ export function MarketHeader() {
                   <UserButton />
                 </span>
               ) : (
-                <span className="mk-header__user mk-caption mk-header__label">
+                <span className="mk-header__user mk-meta mk-header__label">
                   {auth.identity.name}
                 </span>
               )}
@@ -255,11 +263,11 @@ export function SellerRating({
   size?: number;
 }) {
   if (!seller.ratingCount)
-    return <span className="mk-caption">No ratings yet</span>;
+    return <span className="mk-meta">No ratings yet</span>;
   return (
     <span className="mk-row" style={{ gap: "var(--sem-space-gap-tight)" }}>
       <Stars value={seller.ratingAvg} size={size} />
-      <span className="mk-caption">
+      <span className="mk-meta">
         {seller.ratingAvg?.toFixed(1)} ({seller.ratingCount})
       </span>
     </span>
@@ -309,20 +317,29 @@ export function ListingCard({
             src={cover.url}
             alt=""
             loading="lazy"
+            decoding="async"
             width={cover.width ?? undefined}
             height={cover.height ?? undefined}
           />
         ) : (
-          <ImageIcon size={28} aria-hidden="true" />
+          <span className="mk-stack--tight" style={{ alignItems: "center" }}>
+            <ImageIcon size={28} aria-hidden="true" />
+            <span className="mk-meta">No photo</span>
+          </span>
         )}
-        {showStatus && listing.status !== "active" && (
+        {showStatus && listing.status !== "active" ? (
           <span className="f5-chip f5-chip--glass mk-card__badge">
             {listing.status === "sold" ? "Sold" : "Removed"}
           </span>
-        )}
-        {listing.saved && !showStatus && (
+        ) : listing.saved ? (
           <span className="f5-chip f5-chip--glass mk-card__badge">
             <Heart size={10} fill="currentColor" aria-hidden="true" /> Saved
+          </span>
+        ) : null}
+        {listing.photos.length > 1 && (
+          <span className="f5-chip f5-chip--glass mk-card__count">
+            <Camera size={10} aria-hidden="true" />
+            <span className="mk-sr-only">Photos:</span> {listing.photos.length}
           </span>
         )}
       </div>
@@ -331,21 +348,25 @@ export function ListingCard({
           {formatPrice(listing.priceCents, listing.currency)}
         </p>
         <h3 className="mk-card__title">{listing.title}</h3>
-        <p className="mk-caption">
-          {where} · {conditionLabel(listing.condition)}
-        </p>
-        <div className="mk-card__meta">
-          <span className="mk-caption">{relativeAge(listing.createdAt)}</span>
+        <div className="mk-card__meta mk-meta">
+          <span className="mk-card__where">
+            <MapPin size={12} aria-hidden="true" />
+            <span>{where}</span>
+          </span>
           {listing.seller.ratingCount > 0 && (
             <span
-              className="mk-caption mk-row"
-              style={{ gap: "var(--sem-space-gap-tight)" }}
+              className="mk-card__rating"
+              title={`Seller rated ${listing.seller.ratingAvg?.toFixed(1)} from ${listing.seller.ratingCount} review${listing.seller.ratingCount === 1 ? "" : "s"}`}
             >
-              <Star size={10} fill="currentColor" aria-hidden="true" />
+              <Star size={11} fill="currentColor" aria-hidden="true" />
+              <span className="mk-sr-only">Seller rating</span>
               {listing.seller.ratingAvg?.toFixed(1)}
             </span>
           )}
         </div>
+        <p className="mk-meta">
+          {conditionLabel(listing.condition)} · {relativeAge(listing.createdAt)}
+        </p>
       </div>
     </Link>
   );
@@ -354,12 +375,15 @@ export function ListingCard({
 export function ListingGrid({
   listings,
   showStatus,
+  busy = false,
 }: {
   listings: Listing[];
   showStatus?: boolean;
+  /** A newer result is on its way; what is shown is about to be replaced. */
+  busy?: boolean;
 }) {
   return (
-    <div className="mk-grid">
+    <div className="mk-grid" aria-busy={busy}>
       {listings.map((l) => (
         <ListingCard key={l.id} listing={l} showStatus={showStatus} />
       ))}
@@ -371,7 +395,14 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="mk-grid" aria-busy="true" aria-label="Loading listings">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="mk-skeleton" />
+        <div key={i} className="mk-card mk-card--skeleton" aria-hidden="true">
+          <div className="mk-card__media" />
+          <div className="mk-card__body">
+            <span className="mk-skeleton__line" style={{ width: "40%" }} />
+            <span className="mk-skeleton__line" style={{ width: "85%" }} />
+            <span className="mk-skeleton__line" style={{ width: "60%" }} />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -403,16 +434,57 @@ export function Notice({
 
 export function Empty({
   title,
+  icon,
+  kind = "info",
   children,
 }: {
   title: string;
+  icon?: ReactNode;
+  kind?: "info" | "warn";
   children?: ReactNode;
 }) {
   return (
-    <div className="mk-empty mk-pane">
-      <ImageIcon size={28} aria-hidden="true" />
+    <div
+      className={`mk-empty mk-pane ${kind === "warn" ? "mk-empty--warn" : ""}`}
+    >
+      <span className="mk-empty__icon" aria-hidden="true">
+        {icon ?? <ImageIcon size={24} />}
+      </span>
       <p className="mk-lead">{title}</p>
       {children}
+    </div>
+  );
+}
+
+/** A page or a list that could not be fetched: say so plainly and offer the retry. */
+export function LoadError({
+  title = "This could not be loaded",
+  message,
+  onRetry,
+  children,
+}: {
+  title?: string;
+  message: string;
+  onRetry?: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div role="alert">
+      <Empty kind="warn" title={title} icon={<AlertTriangle size={24} />}>
+        <p>{message}</p>
+        <div className="mk-empty__actions">
+          {onRetry && (
+            <button
+              type="button"
+              className="f5-button f5-button--pill"
+              onClick={onRetry}
+            >
+              <RotateCw size={15} aria-hidden="true" /> Try again
+            </button>
+          )}
+          {children}
+        </div>
+      </Empty>
     </div>
   );
 }
@@ -440,7 +512,7 @@ export function Pager({
       >
         <ChevronLeft size={16} aria-hidden="true" /> Previous
       </button>
-      <span className="mk-caption">
+      <span className="mk-meta" aria-current="page">
         Page {page} of {pages}
       </span>
       <button
@@ -473,7 +545,7 @@ export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
       </label>
       {children}
       {error && (
-        <span className="mk-caption mk-field__error" role="alert">
+        <span className="mk-meta mk-field__error" role="alert">
           {error}
         </span>
       )}
@@ -483,10 +555,14 @@ export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
 
 export function TextInput({
   prefix,
+  active,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { prefix?: ReactNode }) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+  prefix?: ReactNode;
+  active?: boolean;
+}) {
   return (
-    <div className="mk-field__control">
+    <div className="mk-field__control" data-active={active || undefined}>
       {prefix && <span className="mk-field__prefix">{prefix}</span>}
       <input {...props} />
     </div>
@@ -501,12 +577,113 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   );
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({
+  active,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  /** A filter that is narrowing the results, as opposed to sitting at "any". */
+  active?: boolean;
+}) {
   return (
-    <div className="mk-field__control mk-field__control--select">
+    <div
+      className="mk-field__control mk-field__control--select"
+      data-active={active || undefined}
+    >
       <select {...props} />
       <ChevronDown size={16} aria-hidden="true" />
     </div>
+  );
+}
+
+// ---- confirm dialog ----------------------------------------------------------
+
+/**
+ * A modal question with one destructive answer. Native <dialog>, so focus is
+ * trapped, Escape cancels and the page behind is inert without any of that
+ * being written here.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  children,
+  confirmLabel,
+  busy = false,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  children?: ReactNode;
+  confirmLabel: string;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open && !el.open) el.showModal();
+    if (!open && el.open) el.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      className="f5-surface f5-surface--dialog mk-dialog"
+      aria-labelledby="mk-dialog-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onCancel();
+      }}
+      onClick={(e) => {
+        if (e.target === ref.current && !busy) onCancel();
+      }}
+    >
+      <h2 className="mk-lead" id="mk-dialog-title">
+        {title}
+      </h2>
+      {children && <div className="mk-muted">{children}</div>}
+      <div className="mk-dialog__actions">
+        <button
+          type="button"
+          className="f5-button f5-button--pill"
+          disabled={busy}
+          onClick={onCancel}
+          autoFocus
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="f5-button f5-button--primary f5-button--danger"
+          disabled={busy}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
+// ---- footer ------------------------------------------------------------------
+
+export function MarketFooter() {
+  return (
+    <footer className="mk-footer">
+      <p className="mk-meta">© {new Date().getFullYear()} wingfoil.ie</p>
+      <nav className="mk-footer__links mk-meta" aria-label="Footer">
+        <Link className="mk-link mk-link--plain" to={paths.browse()}>
+          Browse gear
+        </Link>
+        <Link className="mk-link mk-link--plain" to={paths.sell()}>
+          Sell your gear
+        </Link>
+        <a className="mk-link mk-link--plain" href="/">
+          Back to the wind map
+        </a>
+      </nav>
+    </footer>
   );
 }
 
@@ -524,7 +701,7 @@ export function SaveButton({
   return (
     <button
       type="button"
-      className="f5-button f5-button--pill"
+      className="f5-button f5-button--pill f5-button--lg"
       aria-pressed={saved}
       disabled={busy}
       onClick={onToggle}

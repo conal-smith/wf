@@ -4,6 +4,7 @@ import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
   Field,
+  LoadError,
   Notice,
   Select,
   TextArea,
@@ -105,22 +106,20 @@ export default function SellPage({ editId }: { editId?: string }) {
 
   if (!auth.loaded || me.loading || (editId && existing.loading)) {
     return (
-      <div
-        className="mk-skeleton"
-        style={{ aspectRatio: "16 / 6" }}
-        aria-busy="true"
-      />
+      <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
     );
   }
 
   if (!auth.signedIn) {
     return (
       <section className="mk-pane mk-stack">
-        <h1 className="mk-title">Sell your gear</h1>
-        <p className="mk-muted">
-          Listing is free. Sign in so buyers can reach you and so you can manage
-          your listings later.
-        </p>
+        <div className="mk-page-head">
+          <h1 className="mk-title">Sell your gear</h1>
+          <p className="mk-muted">
+            Sign in so buyers can reach you and so you can manage your listings
+            later.
+          </p>
+        </div>
         {auth.provider === "none" ? (
           <Notice kind="warn">
             Sign-in is not configured on this build (VITE_CLERK_PUBLISHABLE_KEY
@@ -142,7 +141,15 @@ export default function SellPage({ editId }: { editId?: string }) {
   }
 
   if (me.error || existing.error)
-    return <Notice kind="warn">{me.error ?? existing.error}</Notice>;
+    return (
+      <LoadError
+        message={me.error ?? existing.error ?? ""}
+        onRetry={() => {
+          me.reload();
+          existing.reload();
+        }}
+      />
+    );
 
   if (editId && existing.data && !existing.data.isOwner) {
     return <Notice kind="warn">Only the seller can edit this listing.</Notice>;
@@ -150,13 +157,15 @@ export default function SellPage({ editId }: { editId?: string }) {
 
   if (!me.data?.profile) {
     return (
-      <section className="mk-pane mk-stack">
-        <p className="mk-eyebrow">Step 1 of 2</p>
-        <h1 className="mk-title">First, your seller profile</h1>
-        <p className="mk-muted">
-          Buyers see your name and county on every listing, and your contact
-          details when they ask for them.
-        </p>
+      <section className="mk-pane mk-stack mk-stack--loose">
+        <div className="mk-page-head">
+          <p className="mk-eyebrow">Step 1 of 2</p>
+          <h1 className="mk-title">First, your seller profile</h1>
+          <p className="mk-muted">
+            Buyers see your name and county on every listing, and your contact
+            details when they ask for them.
+          </p>
+        </div>
         <ProfileForm
           profile={null}
           submitLabel="Save and continue"
@@ -247,33 +256,34 @@ function ListingForm({
 
   return (
     <form
-      className="mk-stack"
+      className="mk-stack mk-stack--loose"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <div className="mk-section-head">
-        <div className="mk-stack--tight">
-          {!existing && <p className="mk-eyebrow">Step 2 of 2</p>}
-          <h1 className="mk-title">
-            {existing ? "Edit listing" : "What are you selling?"}
-          </h1>
-        </div>
-        {existing && (
+      {existing && (
+        <div>
           <Link
             to={paths.listing(existing.id)}
-            className="f5-button f5-button--pill f5-button--sm"
+            className="f5-button f5-button--sm"
           >
             <ArrowLeft size={15} aria-hidden="true" /> Back to listing
           </Link>
-        )}
+        </div>
+      )}
+      <div className="mk-page-head">
+        {!existing && <p className="mk-eyebrow">Step 2 of 2</p>}
+        <h1 className="mk-title">
+          {existing ? "Edit listing" : "What are you selling?"}
+        </h1>
       </div>
 
       <section className="mk-pane mk-form" aria-label="Photos">
-        <div className="mk-stack--tight">
+        <div className="mk-page-head">
           <h2 className="mk-lead">Photos</h2>
-          <p className="mk-caption">
+          <p className="mk-meta">
             Up to {LIMITS.photosPerListing}. The first is the cover. Show the
             whole item, any damage, and the size label.
           </p>
@@ -283,13 +293,14 @@ function ListingForm({
           onChange={(photos) => set({ photos })}
         />
         {errors.photos && (
-          <p className="mk-caption mk-field__error" role="alert">
+          <p className="mk-meta mk-field__error" role="alert">
             {errors.photos}
           </p>
         )}
       </section>
 
       <section className="mk-pane mk-form" aria-label="Details">
+        <h2 className="mk-lead">Details</h2>
         <Field label="Title" error={errors.title} htmlFor="mk-l-title">
           <TextInput
             id="mk-l-title"
@@ -382,6 +393,8 @@ function ListingForm({
             />
           </Field>
         </div>
+        <hr className="mk-divider" />
+        <h2 className="mk-lead">Price and location</h2>
         <div className="mk-form__row">
           <Field
             label="Price"
@@ -446,6 +459,7 @@ function ListingForm({
             />
           </Field>
         </div>
+        <hr className="mk-divider" />
         <Field
           label="Description"
           hint={`${form.description.length}/${LIMITS.descriptionMax}`}
@@ -470,12 +484,10 @@ function ListingForm({
           className="f5-button f5-button--primary f5-button--lg"
           disabled={busy}
         >
-          {existing ? "Save changes" : "Publish listing"}{" "}
-          <ArrowRight size={16} aria-hidden="true" />
+          {busy ? "Saving…" : existing ? "Save changes" : "Publish listing"}
+          {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </button>
-        <span className="mk-caption">
-          Listing as {profile.displayName}. Free, always.
-        </span>
+        <span className="mk-meta">Listing as {profile.displayName}</span>
       </div>
     </form>
   );
@@ -627,9 +639,7 @@ function PhotoUploader({
           />
           <span className="mk-stack--tight">
             <Camera size={22} aria-hidden="true" />
-            <span className="mk-caption" style={{ display: "block" }}>
-              Add photos
-            </span>
+            <span className="mk-meta">Add photos</span>
           </span>
         </label>
       )}
