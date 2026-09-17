@@ -5,8 +5,9 @@ reads the pointer manifests the website actually serves, reports each run's age
 and how far its coverage still reaches, counts objects that are missing from
 disk, and exits nonzero when a model is absent, unreadable, incomplete, stale or
 already expired. Every registered kind is understood, including a tide manifest
-that publishes coverage instead of frames and an ensemble that publishes spot
-series without map frames.
+that publishes coverage instead of frames, an ensemble that publishes spot series
+without map frames, and an observation bundle, which has no future coverage at all:
+for that kind the report is the age of the newest observation.
 """
 import argparse
 from datetime import datetime, timezone
@@ -21,6 +22,18 @@ from registry import MANIFESTS, MODELS
 
 def moment(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def newest_observation(manifest):
+    """The newest reading an observation bundle publishes, from its own stations."""
+    stations = manifest.get("stations")
+    if not isinstance(stations, dict) or not stations:
+        raise ValueError("Observation manifest declares no stations")
+    times = [station["latest"]["time"] for station in stations.values()
+             if isinstance(station, dict) and isinstance(station.get("latest"), dict)]
+    if not times:
+        raise ValueError("Observation manifest declares no readings")
+    return max(moment(value) for value in times)
 
 
 def horizon(manifest):
@@ -47,10 +60,12 @@ def describe(public, model, now, override=None):
     path = public / published
     if not path.is_file():
         return {**row, "state": "absent"}
+    observed = MODELS[model]["kind"] == "observation"
     try:
         manifest = json.loads(path.read_text())
         run = datetime.strptime(manifest["run"], "%Y%m%d%H").replace(tzinfo=timezone.utc)
-        last = horizon(manifest)
+        # An observation bundle covers nothing ahead; its newest reading is the news.
+        last = newest_observation(manifest) if observed else horizon(manifest)
         urls = manifest_urls(manifest)
     except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError) as error:
         return {**row, "state": "unreadable", "error": str(error)}
@@ -60,6 +75,15 @@ def describe(public, model, now, override=None):
                 "objects": len(urls), "frames": len(manifest.get("frames") or []),
                 "missing": missing, "coverageEnds": last.isoformat().replace("+00:00", "Z"),
                 "coverageHoursLeft": round((last - now).total_seconds() / 3600, 2)})
+    if observed:
+        # Report the observation age, and never call a past reading "expired".
+        row.update({"observedAt": row.pop("coverageEnds"),
+                    "observationAgeHours": -row.pop("coverageHoursLeft"),
+                    "spots": len(manifest.get("spots") or {}),
+                    "stations": len(manifest.get("stations") or {})})
+        if row["observationAgeHours"] > limit:
+            return {**row, "state": "stale"}
+        return {**row, "state": "fresh", "ok": True}
     if missing:
         return {**row, "state": "incomplete"}
     if last <= now:
@@ -72,13 +96,15 @@ def describe(public, model, now, override=None):
 def render(rows):
     # Wide enough for the longest model id in the report, so columns stay aligned.
     width = max((len(row["model"]) for row in rows), default=5) + 1
-    lines = [f"{'model':<{width}} {'kind':<5} {'state':<11} {'run':<11} {'age':>8} "
-             f"{'objects':>8} {'missing':>8}  coverage ends"]
+    # "kind" is wide enough for the longest registered kind, "observation".
+    lines = [f"{'model':<{width}} {'kind':<11} {'state':<11} {'run':<11} {'age':>8} "
+             f"{'objects':>8} {'missing':>8}  coverage ends / observed at"]
     for row in rows:
         age = f"{row['ageHours']:.1f} h" if "ageHours" in row else "-"
-        lines.append(f"{row['model']:<{width}} {row['kind']:<5} {row['state']:<11} "
+        reach = row.get("coverageEnds") or row.get("observedAt") or "-"
+        lines.append(f"{row['model']:<{width}} {row['kind']:<11} {row['state']:<11} "
                      f"{row.get('run', '-'):<11} {age:>8} {row.get('objects', '-'):>8} "
-                     f"{row.get('missing', '-'):>8}  {row.get('coverageEnds', '-')}")
+                     f"{row.get('missing', '-'):>8}  {reach}")
     return "\n".join(lines)
 
 
