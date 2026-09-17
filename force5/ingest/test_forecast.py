@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -25,6 +26,13 @@ class AlreadyPublishedTests(unittest.TestCase):
     def test_a_newer_run_or_a_different_bundle_is_downloaded(self):
         self.assertFalse(already_published(self.manifest, "2026091712", "ecmwf-2026091712-360h-v2"))
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v3"))
+
+    def test_the_run_the_bucket_serves_wins_over_an_empty_disk(self):
+        # A one-shot container has no previous output, so the worker's answer is the
+        # only one there is; a different run is still downloaded.
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091712"}):
+            self.assertTrue(already_published(self.weather / "absent.json", "2026091712", "x"))
+            self.assertFalse(already_published(self.weather / "absent.json", "2026091800", "x"))
 
     def test_a_missing_or_broken_pointer_or_run_directory_is_downloaded(self):
         self.assertFalse(already_published(self.weather / "absent.json", "2026091700", "x"))

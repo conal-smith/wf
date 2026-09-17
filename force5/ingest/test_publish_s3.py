@@ -1,11 +1,19 @@
+import contextlib
 from datetime import datetime, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
 from pathlib import Path
+import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
-from publish_s3 import publish, validate_bundle, already_current
+from publish_s3 import publish, superseded_objects, validate_bundle, already_current
+from registry import UNCHANGED_EXIT
+
+
+FIXTURE = object()  # "use the test's own fake bucket", which None cannot mean here.
 
 
 class S3Error(Exception):
@@ -14,25 +22,53 @@ class S3Error(Exception):
 
 
 class FakeS3:
+    """Enough S3 to test publication order, immutability, deletion and listing.
+
+    `reject_conditional` is the case the R2 fallback exists for: a backend that
+    refuses the conditional *header* rather than reporting that the condition
+    failed. The two answers mean opposite things and must not be confused.
+    """
+
     def __init__(self):
         self.objects = {}
         self.writes = []
+        self.deleted = []
+        self.delete_calls = 0
+        self.list_calls = 0
         self.fail_frame = False
+        self.fail_key = "/harmonie-a/"
+        self.fail_delete = False
+        self.reject_conditional = False
+        self.deny = set()
         self.race = None
+        self.page_size = 1000
+        self.clock = datetime(2026, 9, 13, 12, tzinfo=timezone.utc)
+
+    def seed(self, key, body, modified=None, metadata=None):
+        """Put an object there without going through the publisher."""
+        self.objects[key] = {"Body": body, "ETag": f'"seed{len(self.objects)}"',
+                             "Metadata": metadata or {}, "LastModified": modified or self.clock}
+        return key
 
     def get_object(self, Bucket, Key):
+        if Key in self.deny:
+            raise S3Error("AccessDenied")
         if Key not in self.objects:
             raise S3Error("NoSuchKey")
         value = self.objects[Key]
         return {**value, "Body": BytesIO(value["Body"])}
 
     def head_object(self, Bucket, Key):
+        if Key not in self.objects:
+            raise S3Error("404")
         return self.objects[Key]
 
     def put_object(self, **args):
         key = args["Key"]
-        if self.fail_frame and "/run/" in key:
+        if self.fail_frame and self.fail_key in key:
             raise S3Error("ServiceUnavailable")
+        if self.reject_conditional and ("IfNoneMatch" in args or "IfMatch" in args):
+            raise S3Error("NotImplemented")
         if key == "weather/harmonie.json" and self.race:
             newer = self.race
             self.race = None
@@ -42,23 +78,49 @@ class FakeS3:
             raise S3Error("PreconditionFailed")
         if "IfMatch" in args and (not old or old["ETag"] != args["IfMatch"]):
             raise S3Error("PreconditionFailed")
-        self.objects[key] = {**args, "ETag": f'"{len(self.writes)}"'}
+        self.objects[key] = {**args, "ETag": f'"{len(self.writes)}"', "LastModified": self.clock}
         self.writes.append(key)
 
+    def delete_objects(self, Bucket, Delete):
+        self.delete_calls += 1
+        if self.fail_delete:
+            raise S3Error("AccessDenied")
+        keys = [item["Key"] for item in Delete["Objects"]]
+        if len(keys) > 1000:
+            raise S3Error("MalformedXML")
+        for key in keys:
+            self.objects.pop(key, None)
+            self.deleted.append(key)
+        return {"Deleted": [{"Key": key} for key in keys]}
 
-class PublishTests(unittest.TestCase):
+    def list_objects_v2(self, Bucket, Prefix="", MaxKeys=1000, ContinuationToken=None):
+        self.list_calls += 1
+        keys = sorted(key for key in self.objects if key.startswith(Prefix))
+        start = keys.index(ContinuationToken) if ContinuationToken else 0
+        page = keys[start:start + min(MaxKeys, self.page_size)]
+        following = keys[start + len(page):]
+        return {"Contents": [{"Key": key,
+                              "LastModified": self.objects[key].get("LastModified", self.clock),
+                              "Size": len(self.objects[key].get("Body") or b"")} for key in page],
+                "IsTruncated": bool(following),
+                **({"NextContinuationToken": following[0]} if following else {})}
+
+
+class BundleFixture:
+    """A validated three-frame HARMONIE bundle on disk and an empty fake bucket."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root / "weather/run").mkdir(parents=True)
+        (self.root / "weather/harmonie-a").mkdir(parents=True)
         self.now = datetime(2026, 9, 13, 12, 30, tzinfo=timezone.utc)
         grid = {"width": 2, "height": 2}
         self.manifest = {"model": "harmonie", "run": "2026091312", "runTime": "2026-09-13T12:00:00Z",
                          "stepHours": 1, "gustAvailable": False, "grid": grid, "frames": []}
         for i in range(3):
             valid = f"2026-09-13T{12+i}:00:00Z"
-            path = f"weather/run/{i}.json"
+            path = f"weather/harmonie-a/{i}.json"
             self.manifest["frames"].append({"hour": i, "validTime": valid, "url": path})
             (self.root / path).write_text(json.dumps({"model": "harmonie", "run": "2026091312",
                 "hour": i, "validTime": valid, "grid": grid, "u": [1]*4, "v": [2]*4, "gust": None}))
@@ -68,14 +130,37 @@ class PublishTests(unittest.TestCase):
     def save(self):
         (self.root / "weather/harmonie.json").write_text(json.dumps(self.manifest))
 
+    def rerun(self, run, directory):
+        """Replace the bundle on disk with a newer run in its own object directory."""
+        grid, frames = self.manifest["grid"], []
+        (self.root / "weather" / directory).mkdir(parents=True, exist_ok=True)
+        for i in range(3):
+            valid = f"2026-09-13T{int(run[-2:]) + i}:00:00Z"
+            path = f"weather/{directory}/{i}.json"
+            frames.append({"hour": i, "validTime": valid, "url": path})
+            (self.root / path).write_text(json.dumps({"model": "harmonie", "run": run, "hour": i,
+                "validTime": valid, "grid": grid, "u": [1]*4, "v": [2]*4, "gust": None}))
+        self.manifest.update(run=run, runTime=f"2026-09-13T{run[-2:]}:00:00Z", frames=frames)
+        self.save()
+        return frames
+
     def run_publish(self):
         return publish(self.s3, self.root, "harmonie", "test", now=self.now)
 
+    def quietly(self, call):
+        """Run a publish with its JSON events captured rather than printed."""
+        out, err = StringIO(), StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            result = call()
+        return result, out.getvalue() + err.getvalue()
+
+
+class PublishTests(BundleFixture, unittest.TestCase):
     def test_pointer_last_and_retry_is_idempotent(self):
         self.assertEqual(self.run_publish(), "published")
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
         self.assertIn("/manifests/harmonie/", self.s3.writes[-2])
-        self.assertEqual(self.s3.objects["weather/run/0.json"]["ContentEncoding"], "gzip")
+        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["ContentEncoding"], "gzip")
         before = list(self.s3.writes)
         self.assertEqual(self.run_publish(), "unchanged-or-newer")
         self.assertEqual(before, self.s3.writes)
@@ -107,13 +192,13 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(self.s3.writes, [])
 
     def test_missing_frame_rejected_before_any_upload(self):
-        (self.root / "weather/run/1.json").unlink()
+        (self.root / "weather/harmonie-a/1.json").unlink()
         with self.assertRaises(FileNotFoundError):
             self.run_publish()
         self.assertEqual(self.s3.writes, [])
 
     def test_bad_vectors_and_mixed_run_rejected(self):
-        target = self.root / "weather/run/1.json"
+        target = self.root / "weather/harmonie-a/1.json"
         original = json.loads(target.read_text())
         for change in [{"u": [float("nan")]*4}, {"run": "2026091311"}, {"gust": [1]*4}]:
             target.write_text(json.dumps({**original, **change}))
@@ -152,10 +237,176 @@ class PublishTests(unittest.TestCase):
             self.run_publish()
 
     def test_immutable_collision_cannot_publish(self):
-        self.s3.objects["weather/run/0.json"] = {"Body": b"wrong", "Metadata": {"sha256": "wrong"}, "ETag": '"old"'}
+        self.s3.objects["weather/harmonie-a/0.json"] = {"Body": b"wrong", "Metadata": {"sha256": "wrong"}, "ETag": '"old"'}
         with self.assertRaises(ValueError):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
+
+
+class SupersededDeleteTest(BundleFixture, unittest.TestCase):
+    """The bucket must not grow for ever, and must never lose a live object."""
+
+    def test_a_publish_deletes_exactly_what_the_manifest_it_replaced_referenced(self):
+        self.assertEqual(self.run_publish(), "published")
+        replaced = [info["url"] for info in self.manifest["frames"]]
+        frames = self.rerun("2026091313", "harmonie-b")
+        self.assertEqual(self.quietly(self.run_publish)[0], "published")
+        for url in replaced:
+            self.assertNotIn(url, self.s3.objects)
+        for info in frames:
+            self.assertIn(info["url"], self.s3.objects)
+        self.assertIn("weather/harmonie.json", self.s3.objects)
+        # Archived manifests are a few kilobytes each and are the rollback path.
+        self.assertTrue(any("/manifests/harmonie/" in key for key in self.s3.objects))
+
+    def test_deletes_happen_only_after_the_new_pointer_is_in_place(self):
+        self.assertEqual(self.run_publish(), "published")
+        self.rerun("2026091313", "harmonie-b")
+        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-b/"
+        with self.assertRaises(S3Error):
+            publish(self.s3, self.root, "harmonie", "test", now=self.now)
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_delete_failure_never_fails_the_forecast_that_just_published(self):
+        self.assertEqual(self.run_publish(), "published")
+        self.rerun("2026091313", "harmonie-b")
+        self.s3.fail_delete = True
+        status, log = self.quietly(self.run_publish)
+        self.assertEqual(status, "published")
+        self.assertIn("superseded_delete_failed", log)
+        self.assertIn("weather/harmonie-a/0.json", self.s3.objects)
+        self.assertEqual(json.loads(self.s3.objects["weather/harmonie.json"]["Body"])["run"],
+                         "2026091313")
+
+    def test_an_unreadable_previous_pointer_publishes_and_deletes_nothing(self):
+        self.s3.seed("weather/harmonie.json", b"{not json")
+        status, log = self.quietly(self.run_publish)
+        self.assertEqual(status, "published")
+        self.assertIn("unreadable_pointer", log)
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_nothing_the_new_manifest_still_references_is_ever_deleted(self):
+        previous = {"model": "harmonie", "frames": [{"url": "weather/harmonie-a/0.json"},
+                                                    {"url": "weather/harmonie-a/1.json"}]}
+        incoming = {"model": "harmonie", "frames": [{"url": "weather/harmonie-a/1.json"}]}
+        self.assertEqual(superseded_objects("harmonie", previous, incoming), ["weather/harmonie-a/0.json"])
+
+    def test_pointers_archives_and_foreign_paths_are_never_deleted(self):
+        previous = {"model": "harmonie", "frames": [
+            {"url": "weather/harmonie.json"}, {"url": "weather/manifests/harmonie/x.json"},
+            {"url": "marine/tides-DUBLIN.json"}, {"url": "https://example.invalid/x.json"},
+            {"url": "/etc/passwd"}, {"url": "weather/../escape.json"},
+            {"url": "weather/harmonie-a/0.json"}]}
+        self.assertEqual(superseded_objects("harmonie", previous, {"frames": []}),
+                         ["weather/harmonie-a/0.json"])
+
+    def test_an_object_named_for_another_model_is_left_to_the_sweep(self):
+        # Same object root, another model's run directory: a corrupt or hand-edited
+        # manifest must not be able to delete a live forecast that is not its own.
+        previous = {"model": "harmonie", "frames": [
+            {"url": "weather/gfs-2026091600-240h-v1/000.json"},
+            {"url": "weather/harmonie-eps-2026091600-48h-v1/000.json"},
+            {"url": "weather/harmonie-2026091600-60h-v2/000.json"}]}
+        self.assertEqual(superseded_objects("harmonie", previous, {"frames": []}),
+                         ["weather/harmonie-2026091600-60h-v2/000.json"])
+
+    def test_a_missing_or_foreign_previous_manifest_deletes_nothing(self):
+        other = {"model": "gfs", "frames": [{"url": "weather/gfs-2026091600-240h-v1/0.json"}]}
+        for previous in (None, "", {}, other):
+            self.assertEqual(superseded_objects("harmonie", previous, self.manifest), [])
+
+
+class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
+    """R2's support for If-None-Match is unverified, so the publisher must cope without it."""
+
+    def test_a_backend_that_refuses_the_header_still_publishes_immutably(self):
+        self.s3.reject_conditional = True
+        status, log = self.quietly(self.run_publish)
+        self.assertEqual(status, "published")
+        self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
+        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["ContentEncoding"], "gzip")
+        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["CacheControl"],
+                         "public, max-age=31536000, immutable")
+        # Asked once for the immutable objects and once for the pointer, not per object.
+        self.assertEqual(log.count("conditional_put_unsupported"), 2)
+
+    def test_a_collision_is_still_detected_without_conditional_puts(self):
+        self.s3.reject_conditional = True
+        self.s3.seed("weather/harmonie-a/0.json", b"wrong", metadata={"sha256": "wrong"})
+        with contextlib.redirect_stdout(StringIO()), self.assertRaises(ValueError):
+            self.run_publish()
+        self.assertNotIn("weather/harmonie.json", self.s3.objects)
+
+    def test_republishing_the_same_bytes_without_conditional_puts_is_a_no_op(self):
+        self.quietly(self.run_publish)
+        self.s3.reject_conditional = True
+        before = list(self.s3.writes)
+        self.assertEqual(self.quietly(self.run_publish)[0], "unchanged-or-newer")
+        self.assertEqual(before, self.s3.writes)
+
+    def test_an_unrelated_error_is_never_mistaken_for_a_missing_feature(self):
+        self.s3.fail_frame = True
+        with self.assertRaises(S3Error):
+            self.run_publish()
+        self.assertNotIn("weather/harmonie.json", self.s3.objects)
+
+
+class WorkerUnchangedRunTest(unittest.TestCase):
+    """An empty disk makes the bucket the only record of what has been imported."""
+
+    def setUp(self):
+        import worker
+        self.worker = worker
+        self.s3 = FakeS3()
+        self.s3.seed("weather/ecmwf.json", json.dumps(
+            {"model": "ecmwf", "run": "2026091300",
+             "frames": [{"url": "weather/e/0.json"}]}).encode())
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.args = SimpleNamespace(models=["ecmwf"], step=1, run=None, ecmwf_source="ecmwf",
+                                    bucket="test", prefix="", publish_only=False,
+                                    max_age_hours=None, timeout_seconds=60)
+
+    def run_models(self, code, s3=FIXTURE):
+        """Run the worker with the adapter replaced by a process that exits `code`."""
+        self.seen = {}
+
+        def fake_run(command, **kwargs):
+            self.seen = dict(kwargs.get("env") or {})
+            return subprocess.CompletedProcess(command, code)
+
+        out, err = StringIO(), StringIO()
+        with patch.object(self.worker.subprocess, "run", fake_run), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            status = self.worker.run_models(self.args, Path(self.temp.name),
+                                            self.s3 if s3 is FIXTURE else s3)
+        lines = (out.getvalue() + err.getvalue()).splitlines()
+        return status, json.loads(lines[-1])
+
+    def test_nothing_new_is_success_with_its_own_event_and_no_upload(self):
+        status, event = self.run_models(UNCHANGED_EXIT)
+        self.assertEqual(status, 0)
+        self.assertEqual(self.seen.get("FORCE5_PUBLISHED_RUN"), "2026091300")
+        self.assertEqual((event["event"], event["run"]), ("forecast_unchanged", "2026091300"))
+        self.assertEqual(self.s3.writes, [])
+
+    def test_a_real_failure_is_still_a_failure(self):
+        status, event = self.run_models(1)
+        self.assertEqual(status, 1)
+        self.assertEqual(event["event"], "forecast_failed")
+
+    def test_without_a_bucket_the_adapter_is_told_nothing(self):
+        self.args.bucket = None
+        status, event = self.run_models(UNCHANGED_EXIT, s3=None)
+        self.assertEqual(status, 0)
+        self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
+        self.assertIsNone(event["run"])
+
+    def test_an_unreadable_pointer_does_not_stop_the_import(self):
+        self.s3.deny.add("weather/ecmwf.json")
+        status, _ = self.run_models(UNCHANGED_EXIT)
+        self.assertEqual(status, 0)
+        self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
 
 
 if __name__ == "__main__":

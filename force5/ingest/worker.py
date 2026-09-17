@@ -1,4 +1,13 @@
-"""One-shot forecast job: ingest, validate, optionally publish to S3, then exit."""
+"""One-shot forecast job: ingest, validate, optionally publish to a bucket, then exit.
+
+The bucket is AWS S3 or any S3-compatible store; `--endpoint-url` points it at
+Cloudflare R2 instead. Credentials come from the standard environment chain and
+are never read or logged here. Run as a batch container with an empty disk, the
+bucket is also the only record of what has already been imported, so each model's
+current manifest is read before its adapter runs: an adapter whose source has
+published nothing new exits UNCHANGED_EXIT and this job logs `forecast_unchanged`
+and stops there, having downloaded nothing.
+"""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -10,8 +19,8 @@ import sys
 import time
 
 from prune import prune_published
-from publish_s3 import publish, validate_bundle
-from registry import MODELS
+from publish_s3 import make_client, object_prefix, publish, read_current, validate_bundle
+from registry import MANIFESTS, MODELS, PUBLISHED_RUN_ENV, UNCHANGED_EXIT
 from workspace import workspace_lock
 
 # Adapters that read ECMWF's open data and so take a mirror rather than a step.
@@ -44,6 +53,10 @@ def main():
                         help="ECMWF-hosted by default; the AWS mirror throttles with 503 SlowDown")
     parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET"), help="Omit for local-only output")
     parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
+    parser.add_argument("--endpoint-url", default=os.environ.get("S3_ENDPOINT_URL"),
+                        help="S3-compatible endpoint (Cloudflare R2); omit for AWS S3")
+    parser.add_argument("--region", default=os.environ.get("AWS_REGION"),
+                        help="Defaults to 'auto' when an endpoint URL is given, as R2 wants")
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
     parser.add_argument("--max-age-hours", type=float,
                         help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides, 48 observations)")
@@ -52,12 +65,7 @@ def main():
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:
         parser.error("Age limit and timeout must be positive")
     root = Path(os.environ.get("FORCE5_WORK_DIR", str(Path(__file__).resolve().parents[2])))
-    s3 = None
-    if args.bucket:
-        import boto3
-        from botocore.config import Config
-        s3 = boto3.client("s3", config=Config(retries={"mode": "standard", "max_attempts": 5},
-                                            connect_timeout=15, read_timeout=90))
+    s3 = make_client(args.endpoint_url, args.region) if args.bucket else None
     try:
         with workspace_lock(root):
             return run_models(args, root, s3)
@@ -77,6 +85,26 @@ def drop_downloads(root, model):
         shutil.rmtree(root / ".cache" / cache, ignore_errors=True)
 
 
+def published_run(s3, bucket, prefix, model):
+    """The run the bucket serves for this model right now, or None.
+
+    A one-shot container starts on an empty disk, so the bucket is the only record
+    of what has already been imported. Adapters that are scheduled more often than
+    their source publishes (ECMWF hourly against a twice-daily run, ENS twice per
+    run) read this and download nothing when it matches. Not knowing is never fatal:
+    the adapter then does what it always did and simply fetches the run.
+    """
+    if not s3:
+        return None
+    try:
+        current, _ = read_current(s3, bucket, object_prefix(prefix) + MANIFESTS[model])
+    except Exception as error:
+        print(json.dumps({"event": "published_run_unknown", "model": model,
+                          "error": str(error)}), file=sys.stderr, flush=True)
+        return None
+    return (current or {}).get("run")
+
+
 def run_models(args, root, s3):
     failures = 0
     for model in dict.fromkeys(args.models):
@@ -90,7 +118,21 @@ def run_models(args, root, s3):
                     command += ["--step", str(args.step)]
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
-                subprocess.run(command, check=True, timeout=args.timeout_seconds)
+                environment = dict(os.environ)
+                current = published_run(s3, args.bucket, args.prefix, model)
+                if current:
+                    environment[PUBLISHED_RUN_ENV] = current
+                code = subprocess.run(command, timeout=args.timeout_seconds, check=False,
+                                      env=environment).returncode
+                if code == UNCHANGED_EXIT:
+                    # The adapter resolved the run the bucket already serves and wrote
+                    # nothing, so there is no bundle to validate. This is success.
+                    print(json.dumps({"event": "forecast_unchanged", "model": model,
+                                      "run": current, "seconds": round(time.monotonic() - started),
+                                      "time": datetime.now(timezone.utc).isoformat()}), flush=True)
+                    continue
+                if code:
+                    raise subprocess.CalledProcessError(code, command)
             max_age = args.max_age_hours if args.max_age_hours is not None else MODELS[model]["maxAgeHours"]
             manifest, _, objects = validate_bundle(root / "public", model, max_age)
             status = publish(s3, root / "public", model, args.bucket, args.prefix, max_age) if s3 else "local-only"

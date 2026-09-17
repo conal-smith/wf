@@ -7,10 +7,23 @@
 forces its 1/3-hour `--step` on a source that does not publish those steps.
 `cache` names the directory under `.cache/` that holds the model's raw downloads;
 the worker empties it after every job, because a published run never needs them
-again and a failed one simply downloads afresh. Models without it keep small
-state there instead (station catalogues, SWAN's last-seen time, lagged members).
-Adding a model means adding one entry here and its fetch script.
+again and a failed one simply downloads afresh. Models without it write small
+state there instead (station catalogues, SWAN's last-seen files, lagged members).
+None of that state survives a one-shot container, which starts on an empty disk:
+it is re-derived or re-downloaded, except for `harmonie-eps`, whose members are
+the controls of earlier cycles and which therefore publishes a smaller ensemble
+there (see docs/LIVE_FORECAST_PIPELINE.md). Adding a model means adding one entry
+here and its fetch script.
 """
+
+# The exit code an adapter uses to say "the run I resolved is the one already
+# published, so I downloaded nothing and wrote nothing". It is part of the worker
+# contract, not a failure: there is no local bundle to validate afterwards.
+UNCHANGED_EXIT = 3
+# How the worker tells an adapter which run the bucket currently serves. On an
+# empty disk that is the only way to know, and it is what stops an hourly job
+# re-downloading a twice-daily run.
+PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 
 MODELS = {
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",

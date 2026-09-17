@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import prune
 from workspace import workspace_lock
@@ -262,6 +263,122 @@ class MainTest(unittest.TestCase):
         self.assertEqual((code, event["event"]), (0, "prune_skipped"))
         self.assertTrue((self.tree.public / "weather" / "harmonie-arriving").exists())
         self.assertTrue((self.tree.public / "weather" / "harmonie-previous").exists())
+
+
+class BucketPruneTest(unittest.TestCase):
+    """The bucket sweep clears failed uploads and nothing else, ever."""
+
+    def setUp(self):
+        from test_publish_s3 import FakeS3
+        self.s3 = FakeS3()
+        self.pointer = self.s3.seed("weather/harmonie.json", json.dumps(
+            wind_manifest("harmonie", "2026091600", "harmonie-live")).encode(), NOW)
+        self.live = [self.s3.seed(f"weather/harmonie-live/{hour:03d}-abc.json", b'{"u":[0]}',
+                                  NOW - timedelta(hours=100)) for hour in (0, 3)]
+        self.orphan = self.s3.seed("weather/harmonie-previous/000-abc.json", b'{"u":[0,0]}',
+                                   NOW - timedelta(hours=100))
+        self.arriving = self.s3.seed("weather/harmonie-arriving/000-abc.json", b'{"u":[0]}',
+                                     NOW - timedelta(hours=1))
+        self.archive = self.s3.seed("weather/manifests/harmonie/2026091600-abc.json", b"{}",
+                                    NOW - timedelta(hours=500))
+        self.station = self.s3.seed("marine/tides-DUBLIN-previous.json",
+                                    b'{"station":"DUBLIN","curve":[1,2]}', NOW - timedelta(hours=99))
+
+    def sweep(self, **kwargs):
+        return prune.bucket_prune(self.s3, "test", now=NOW, **kwargs)
+
+    def test_removes_only_unreferenced_objects_past_the_guard(self):
+        result = self.sweep()
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
+                                             "weather/harmonie-previous/000-abc.json"])
+        self.assertGreater(result["freedBytes"], 0)
+        for key in [*self.live, self.arriving, self.archive, self.pointer]:
+            self.assertIn(key, self.s3.objects, key)
+
+    def test_a_young_orphan_is_a_run_another_machine_may_still_be_uploading(self):
+        self.assertEqual(self.sweep()["withinGuard"], 1)
+        self.assertIn(self.arriving, self.s3.objects)
+        # Past the guard it is ordinary wreckage.
+        self.assertIn("weather/harmonie-arriving/000-abc.json",
+                      self.sweep(min_age_hours=0.5)["removed"])
+
+    def test_an_unreadable_manifest_aborts_before_deleting_anything(self):
+        self.s3.seed("weather/harmonie.json", b"{not json")
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_manifest_that_cannot_be_read_at_all_aborts(self):
+        self.s3.deny.add("weather/harmonie.json")
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_manifest_referencing_nothing_aborts(self):
+        self.s3.seed("weather/harmonie.json", json.dumps(
+            {"model": "harmonie", "run": "2026091600", "frames": []}).encode())
+        with self.assertRaises(ValueError):
+            self.sweep()
+        self.assertEqual(self.s3.deleted, [])
+
+    def test_a_pointer_for_a_model_the_registry_lacks_is_kept(self):
+        self.s3.seed("weather/nws-wave.json", json.dumps(
+            wind_manifest("nws-wave", "2026091600", "nws-wave-live")).encode(),
+            NOW - timedelta(hours=400))
+        self.assertNotIn("weather/nws-wave.json", self.sweep()["removed"])
+        self.assertIn("weather/nws-wave.json", self.s3.objects)
+
+    def test_dry_run_reports_without_deleting(self):
+        result = self.sweep(dry_run=True)
+        self.assertIn("weather/harmonie-previous/000-abc.json", result["removed"])
+        self.assertEqual(self.s3.deleted, [])
+        self.assertIn(self.orphan, self.s3.objects)
+
+    def test_listings_and_deletes_are_paginated(self):
+        self.s3.page_size = 400
+        keys = [self.s3.seed(f"weather/harmonie-failed/{i:05d}-abc.json", b"{}",
+                             NOW - timedelta(hours=50)) for i in range(1100)]
+        result = self.sweep()
+        self.assertEqual(len(result["removed"]), 1100 + 2)
+        self.assertGreater(self.s3.list_calls, 3)
+        self.assertEqual(self.s3.delete_calls, 2)  # 1102 keys, 1000 to a request.
+        for key in keys:
+            self.assertNotIn(key, self.s3.objects)
+
+    def test_a_prefix_confines_the_sweep(self):
+        self.s3.objects = {f"cdn/{key}": value for key, value in self.s3.objects.items()}
+        result = prune.bucket_prune(self.s3, "test", "cdn/", now=NOW)
+        self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
+                                             "weather/harmonie-previous/000-abc.json"])
+        self.assertIn("cdn/weather/harmonie-live/000-abc.json", self.s3.objects)
+
+
+class SweepCommandTest(unittest.TestCase):
+    def test_the_bucket_mode_reports_and_never_touches_a_work_directory(self):
+        from test_publish_s3 import FakeS3
+        s3 = FakeS3()
+        s3.seed("weather/harmonie.json", json.dumps(
+            wind_manifest("harmonie", "2026091600", "harmonie-live")).encode())
+        s3.seed("weather/harmonie-live/000-abc.json", b"{}")
+        orphan = s3.seed("weather/harmonie-previous/000-abc.json", b"{}",
+                         datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("publish_s3.make_client", return_value=s3):
+            code, event = run_main(["--bucket", "test", "--endpoint-url",
+                                    "https://account.r2.cloudflarestorage.com"])
+        self.assertEqual((code, event["event"]), (0, "sweep_complete"))
+        self.assertEqual(event["removed"], ["weather/harmonie-previous/000-abc.json"])
+        self.assertNotIn(orphan, s3.objects)
+
+    def test_a_broken_manifest_fails_the_command_without_deleting(self):
+        from test_publish_s3 import FakeS3
+        s3 = FakeS3()
+        s3.seed("weather/harmonie.json", b"nope")
+        s3.seed("weather/harmonie-previous/000-abc.json", b"{}",
+                datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("publish_s3.make_client", return_value=s3):
+            code, event = run_main(["--bucket", "test"])
+        self.assertEqual((code, event["event"]), (1, "sweep_failed"))
+        self.assertEqual(s3.deleted, [])
 
 
 class WorkerTest(unittest.TestCase):
