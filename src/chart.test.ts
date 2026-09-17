@@ -92,6 +92,32 @@ describe("column geometry", () => {
     expect(columnCentres(weights, 400)).toEqual([50, 150, 300]);
     expect(columnEdges([], 400)).toEqual([0]);
   });
+  it("lays out a real mixed 1/3/6-hour axis without losing a column", () => {
+    // What a live dock looks like: hourly HARMONIE to +60 h, then ECMWF's
+    // three-hourly half and its six-hourly tail.
+    const axis = [
+      ...times(Array.from({ length: 61 }, (_, i) => i)),
+      ...times(
+        Array.from({ length: 28 }, (_, i) => 63 + i * 3),
+        "2026-09-14T00:00:00Z",
+      ),
+      ...times(
+        Array.from({ length: 36 }, (_, i) => 150 + i * 6),
+        "2026-09-14T00:00:00Z",
+      ),
+    ];
+    const weights = columnWeights(axis);
+    expect(weights).toHaveLength(axis.length);
+    // An hourly column keeps a readable minimum; a six-hourly one keeps double.
+    expect(new Set(weights)).toEqual(new Set([1, 2]));
+    expect(columnCentres(weights, 1000)).toHaveLength(axis.length);
+    // Every column lands in exactly one candle and one day.
+    const groups = candleGroups(axis);
+    expect(groups.flat()).toEqual(axis.map((_, index) => index));
+    expect(
+      dayGroups(axis, dayLabel).reduce((sum, day) => sum + day.count, 0),
+    ).toBe(axis.length);
+  });
   it("groups columns into three-hour candles across a change of cadence", () => {
     // Three hourly columns make one candle; a six-hourly column makes its own.
     expect(candleGroups(times([0, 1, 2, 3, 4, 5, 6, 12]))).toEqual([

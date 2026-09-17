@@ -282,6 +282,13 @@ test("a column past the map model offers the run that reaches it", async ({
     "true",
   );
   await expect(chip).toBeVisible();
+  // Even at the narrowest supported width the chip stays inside the page.
+  await page.setViewportSize({ width: 320, height: 844 });
+  await expect(chip).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
 
   // Nothing switched by itself; the chip is the reader asking.
   await chip.click();
