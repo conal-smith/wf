@@ -17,8 +17,15 @@ import react from "@vitejs/plugin-react";
 declare const process: { env: Record<string, string | undefined> };
 const e2e = Boolean(process.env.E2E_SITE);
 
+// In development the marketplace API runs as its own process (npm run
+// market:api); proxying /api keeps the browser on one origin so no CORS or
+// VITE_MARKET_API_URL is needed locally.
+const marketApi = process.env.MARKET_API_PROXY ?? "http://127.0.0.1:8787";
+
 export default defineConfig({
   plugins: [react()],
   publicDir: e2e ? ".e2e/public" : "public",
   build: { outDir: e2e ? ".e2e/dist" : "dist" },
+  server: { proxy: { "/api": { target: marketApi, changeOrigin: true } } },
+  preview: { proxy: { "/api": { target: marketApi, changeOrigin: true } } },
 });

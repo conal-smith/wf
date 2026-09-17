@@ -47,6 +47,17 @@ Features:
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged). The public map and search show only 25 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
 
+## Marketplace
+
+`/market` is a free second-hand gear marketplace (listings with photos, seller
+profiles, contact reveal, star ratings and seller history) built as a separate
+package in [`market/`](market/README.md): a Hono API on Postgres with Clerk
+sign-in and S3-compatible photo storage, and React pages that consume the Force5
+design bundle. `src/main.tsx` lazy-loads it for `/market` URLs; the map bundle
+is otherwise untouched. Run it locally with `npm run market:api` and
+`VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
+`market/Dockerfile`. See the package README for the full runbook.
+
 ## Run it yourself on one machine
 
 The [local deployment guide](deploy/local/README.md) sets up the whole site on a single
