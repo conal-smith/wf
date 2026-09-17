@@ -31,6 +31,11 @@ MODELS = {
                  "kind": "wave", "maxAgeHours": 12},
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
               "kind": "tide", "maxAgeHours": 30},
+    # Observations, not a forecast: `run` is the newest observation hour, so this
+    # limit is how stale a reading the site will still show.
+    "sea-temperature": {"script": "fetch_sea_temperature.py",
+                        "manifest": "marine/sea-temperature.json",
+                        "kind": "observation", "maxAgeHours": 48},
     # One SWAN run a day, published around 09 UTC and occasionally a day late.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36},
