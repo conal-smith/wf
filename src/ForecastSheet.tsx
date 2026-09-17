@@ -25,7 +25,7 @@ interface Props {
 }
 
 /** Where this cell's value came from, when that is not simply "a published step". */
-export const provenance = (cell: ColumnCell): string | null =>
+const provenance = (cell: ColumnCell): string | null =>
   cell.interpolated
     ? `Between ${cell.manifest.modelName}'s ${cell.stepHours}-hourly steps.`
     : null;
@@ -59,7 +59,9 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
   const gustTitle = (cell: ColumnCell, hidden: boolean) => {
     if (hidden) return "No preceding forecast gust period at initialization";
     const between = provenance(cell);
-    if (cell.wind?.gust === null || cell.wind === null)
+    // Nothing covers this column at all; there is no gust to explain.
+    if (cell.wind === null) return undefined;
+    if (cell.wind.gust === null)
       return cell.manifest.gustAvailable === false
         ? `Gusts unavailable for this ${cell.manifest.modelName} run`
         : `${cell.manifest.modelName} publishes no gust for this hour`;
