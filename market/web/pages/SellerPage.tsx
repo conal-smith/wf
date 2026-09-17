@@ -5,7 +5,7 @@ import {
   Avatar,
   Empty,
   ListingGrid,
-  Notice,
+  LoadError,
   Stars,
   useAsync,
   usePageTitle,
@@ -24,17 +24,20 @@ export default function SellerPage({ id }: { id: string }) {
     return (
       <>
         <Back />
-        <Notice kind="warn">{result.error}</Notice>
+        <LoadError
+          title="This seller could not be loaded"
+          message={result.error}
+          onRetry={result.reload}
+        />
       </>
     );
   }
   if (!page)
     return (
-      <div
-        className="mk-skeleton"
-        style={{ aspectRatio: "16 / 6" }}
-        aria-busy="true"
-      />
+      <>
+        <Back />
+        <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
+      </>
     );
 
   const { seller, stats } = page;
@@ -43,25 +46,27 @@ export default function SellerPage({ id }: { id: string }) {
   return (
     <>
       <Back />
-      <section className="mk-pane mk-detail" aria-labelledby="mk-seller-name">
+      <section
+        className="mk-pane mk-seller-head"
+        aria-labelledby="mk-seller-name"
+      >
         <div className="mk-seller" style={{ alignItems: "flex-start" }}>
           <Avatar name={seller.displayName} large />
-          <div className="mk-stack--tight" style={{ minWidth: 0 }}>
-            <h1 className="mk-title" id="mk-seller-name">
-              {seller.displayName}
-            </h1>
-            <p className="mk-caption">
-              Member since{" "}
-              {new Date(seller.memberSince).toLocaleDateString("en-IE", {
-                month: "long",
-                year: "numeric",
-              })}
-              {seller.county ? ` · Co. ${seller.county}` : ""}
-            </p>
-            <div
-              className="mk-stats"
-              style={{ marginTop: "var(--sem-space-gap-loose)" }}
-            >
+          <div className="mk-stack" style={{ minWidth: 0 }}>
+            <div className="mk-stack--tight">
+              <h1 className="mk-title" id="mk-seller-name">
+                {seller.displayName}
+              </h1>
+              <p className="mk-meta">
+                Member since{" "}
+                {new Date(seller.memberSince).toLocaleDateString("en-IE", {
+                  month: "long",
+                  year: "numeric",
+                })}
+                {seller.county ? ` · Co. ${seller.county}` : ""}
+              </p>
+            </div>
+            <div className="mk-stats">
               <Stat label="Rating">
                 <span
                   className="mk-row"
@@ -83,17 +88,10 @@ export default function SellerPage({ id }: { id: string }) {
                 <span className="mk-lead">{stats.activeCount}</span>
               </Stat>
             </div>
-            {seller.bio && (
-              <p
-                className="mk-prose"
-                style={{ marginTop: "var(--sem-space-gap-loose)" }}
-              >
-                {seller.bio}
-              </p>
-            )}
+            {seller.bio && <p className="mk-prose">{seller.bio}</p>}
           </div>
         </div>
-        <div className="mk-pane mk-pane--sunken mk-stack--tight">
+        <div className="mk-pane mk-pane--sunken mk-stack">
           <p className="mk-eyebrow">Rating breakdown</p>
           {stats.ratingCount ? (
             <div
@@ -103,7 +101,7 @@ export default function SellerPage({ id }: { id: string }) {
             >
               {[5, 4, 3, 2, 1].map((n) => (
                 <div key={n} role="row" style={{ display: "contents" }}>
-                  <span className="mk-caption" role="cell">
+                  <span className="mk-meta" role="cell">
                     {n}★
                   </span>
                   <span
@@ -118,14 +116,14 @@ export default function SellerPage({ id }: { id: string }) {
                       }}
                     />
                   </span>
-                  <span className="mk-caption" role="cell">
+                  <span className="mk-meta" role="cell">
                     {stats.ratingHistogram[n]}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mk-caption">
+            <p className="mk-meta">
               No reviews yet. Ratings come from buyers who contacted{" "}
               {seller.displayName} through a listing.
             </p>
@@ -133,7 +131,11 @@ export default function SellerPage({ id }: { id: string }) {
         </div>
       </section>
 
-      <div className="f5-segmented" role="tablist" aria-label="Seller history">
+      <div
+        className="f5-segmented mk-tabs"
+        role="tablist"
+        aria-label="Seller history"
+      >
         {(
           [
             ["active", `Live (${stats.activeCount})`],
@@ -159,7 +161,9 @@ export default function SellerPage({ id }: { id: string }) {
         (page.active.length ? (
           <ListingGrid listings={page.active} />
         ) : (
-          <Empty title="Nothing live right now" />
+          <Empty title="Nothing live right now">
+            <p>When {seller.displayName} lists something, it will show here.</p>
+          </Empty>
         ))}
       {tab === "sold" &&
         (page.sold.length ? (
@@ -171,21 +175,21 @@ export default function SellerPage({ id }: { id: string }) {
         (page.reviews.length ? (
           <section className="mk-pane">
             {page.reviews.map((r) => (
-              <div key={r.id} className="mk-review mk-stack--tight">
+              <div key={r.id} className="mk-review">
                 <div className="mk-row mk-row--between">
                   <span className="mk-row">
                     <Stars value={r.rating} />
-                    <span className="mk-body">{r.reviewer.displayName}</span>
+                    <strong>{r.reviewer.displayName}</strong>
                   </span>
-                  <span className="mk-caption">{relativeAge(r.createdAt)}</span>
+                  <span className="mk-meta">{relativeAge(r.createdAt)}</span>
                 </div>
-                <p className="mk-caption">
+                <p className="mk-meta">
                   About{" "}
                   <Link to={paths.listing(r.listingId)} className="mk-link">
                     {r.listingTitle}
                   </Link>
                 </p>
-                {r.comment && <p className="mk-prose mk-body">{r.comment}</p>}
+                {r.comment && <p className="mk-prose">{r.comment}</p>}
               </div>
             ))}
           </section>
@@ -198,14 +202,11 @@ export default function SellerPage({ id }: { id: string }) {
 
 function Back() {
   return (
-    <p>
-      <Link
-        to={paths.browse()}
-        className="f5-button f5-button--pill f5-button--sm"
-      >
+    <div>
+      <Link to={paths.browse()} className="f5-button f5-button--sm">
         <ArrowLeft size={15} aria-hidden="true" /> All listings
       </Link>
-    </p>
+    </div>
   );
 }
 

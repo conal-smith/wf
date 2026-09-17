@@ -184,6 +184,27 @@ from the map; `sem.text.lead` (17px semibold) is the one thing a card leads with
 or a section heading. Neither is display type: `title` is still one per surface
 and `reading` is still the wind number alone.
 
+**2026-09-17 — A content page has its own ground and its own opaque surface.**
+The marketplace first shipped on `bg.page` with `surface.solid` panes, because
+those were the tokens that existed. `bg.page` is the sea: a mid-tone meant to be
+covered by a map, and `text.muted` on it is 2.4:1. A page that is read, with
+headings, filters and captions standing directly on the ground, cannot stand on
+that. `sem.color.bg.content` (teal.50) is the ground of a page with no map
+behind it, and `sem.color.surface.card` (white; teal.900 in dark) is the opaque
+surface that stands on it: a listing card, a form pane, a field fill. The card
+is *lighter* than its ground, which is what makes it read as lifted without
+glass. The whole text ramp passes on both: `text.muted` is 5.7:1 on the content
+ground and 6.0:1 on the card. Neither token is for anything over the map; that
+is still glass, with `surface.solid` as its fallback.
+
+**2026-09-17 — On a content page the header's Sell is the accent, unless the
+page brings its own.** One filled action per view still holds. Browse and the
+seller page have no primary of their own, so the header's Sell is filled there;
+on a listing (contact the seller), the sell form (publish) and the account
+pages it drops back to a quiet pill. A destructive confirmation is a dialog, a
+view of its own, and its one filled button is the warm pair, because removing a
+listing and its photos is the degraded case warm exists to mark.
+
 ---
 
 ## Gaps
@@ -221,5 +242,15 @@ one should update this list.
 - **No text field, select or textarea component.** The marketplace's forms
   carry `.mk-field` in product CSS (`market/web/market.css`), consuming `--sem-*`
   only, pending promotion into the bundle as a proper trio.
+- **Pill buttons and chips are drawn for glass only.** `.f5-button--pill` and
+  `.f5-chip` carry a white hairline and a translucent white fill, which vanish
+  on `bg.content`. The marketplace re-grounds them on `surface.card` /
+  `surface.sunken` with the ink hairline, scoped under `.mk-root` in
+  `market/web/market.css`. If a second content page appears, that belongs in
+  the components as a variant rather than in a second product stylesheet.
+- **No dialog or toast component.** The marketplace's confirm dialog
+  (`.mk-dialog`) is the dialog surface on a native `<dialog>`, in product CSS.
+- **No 16px type step.** iOS zooms a focused field under 16px; the scale goes
+  14 then 17, so marketplace fields take `lead`'s size on coarse pointers.
 - **No icon set.** `glyphs/` is empty; the product uses `lucide-react` directly.
   Whether Force5 wraps it or adopts it wholesale is undecided.

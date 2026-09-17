@@ -638,6 +638,20 @@
               }
             }
           }
+        },
+        "content": {
+          "$value": "{ref.color.teal.50}",
+          "$description": "The ground of a page that is read rather than flown over: no map behind it.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "background",
+              "use": "The marketplace and any other content page. Never the map shell.",
+              "modes": {
+                "light": "{ref.color.teal.50}",
+                "dark": "{ref.color.teal.950}"
+              }
+            }
+          }
         }
       },
       "surface": {
@@ -665,6 +679,20 @@
               "use": "Reduced-transparency fallback; any surface over unpredictable content.",
               "modes": {
                 "light": "{ref.color.teal.100}",
+                "dark": "{ref.color.teal.900}"
+              }
+            }
+          }
+        },
+        "card": {
+          "$value": "{ref.color.white.full}",
+          "$description": "An opaque surface standing on the content ground. Lighter than the ground, so it reads as lifted without glass.",
+          "$extensions": {
+            "com.multicode": {
+              "role": "surface",
+              "use": "A listing card, a form pane, a field fill on a content page. Not for anything over the map; that is glass or solid.",
+              "modes": {
+                "light": "{ref.color.white.full}",
                 "dark": "{ref.color.teal.900}"
               }
             }

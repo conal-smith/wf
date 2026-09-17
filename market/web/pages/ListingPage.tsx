@@ -1,10 +1,14 @@
 import {
   ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Image as ImageIcon,
   Mail,
   MessageCircle,
   Pencil,
   Phone,
+  Share2,
   Star,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -12,7 +16,9 @@ import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
   Avatar,
+  ConfirmDialog,
   Field,
+  LoadError,
   Notice,
   RatingPicker,
   SaveButton,
@@ -44,80 +50,151 @@ export default function ListingPage({ id }: { id: string }) {
     return (
       <>
         <BackLink />
-        <Notice kind="warn">{result.error}</Notice>
+        <LoadError
+          title="This listing could not be loaded"
+          message={result.error}
+          onRetry={result.reload}
+        />
       </>
     );
   }
   if (!listing)
     return (
-      <div
-        className="mk-skeleton"
-        style={{ aspectRatio: "16 / 6" }}
-        aria-busy="true"
-      />
+      <>
+        <BackLink />
+        <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
+      </>
     );
+
+  const where = listing.town
+    ? `${listing.town}, Co. ${listing.county}`
+    : `Co. ${listing.county}`;
+  const specs: [string, string | number | null][] = [
+    ["Category", categoryLabel(listing.category)],
+    ["Condition", conditionLabel(listing.condition)],
+    ["Brand", listing.brand],
+    ["Size", listing.sizeLabel],
+    ["Year", listing.year],
+    ["Location", where],
+  ];
 
   return (
     <>
       <BackLink />
       <article className="mk-detail">
-        <Gallery listing={listing} />
+        <div className="mk-detail__gallery">
+          <Gallery listing={listing} />
+        </div>
         <Aside listing={listing} onChange={(l) => result.setData(l)} />
+        <div className="mk-detail__body mk-stack mk-stack--loose">
+          <section className="mk-pane mk-stack mk-stack--loose">
+            <div className="mk-stack">
+              <h2 className="mk-lead">Details</h2>
+              <dl className="mk-specs">
+                {specs.map(
+                  ([label, value]) =>
+                    value != null &&
+                    value !== "" && (
+                      <div key={label}>
+                        <dt className="mk-meta">{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ),
+                )}
+              </dl>
+            </div>
+            <hr className="mk-divider" />
+            <div className="mk-stack">
+              <h2 className="mk-lead">Description</h2>
+              <p className="mk-prose">{listing.description}</p>
+            </div>
+          </section>
+          {auth.signedIn && !listing.isOwner && (
+            <ReviewSection listing={listing} />
+          )}
+        </div>
       </article>
-      <section className="mk-pane mk-stack" aria-labelledby="mk-desc">
-        <h2 className="mk-lead" id="mk-desc">
-          Description
-        </h2>
-        <p className="mk-prose">{listing.description}</p>
-      </section>
-      {auth.signedIn && !listing.isOwner && <ReviewSection listing={listing} />}
     </>
   );
 }
 
 function BackLink() {
   return (
-    <p>
-      <Link
-        to={paths.browse()}
-        className="f5-button f5-button--pill f5-button--sm"
-      >
+    <div>
+      <Link to={paths.browse()} className="f5-button f5-button--sm">
         <ArrowLeft size={15} aria-hidden="true" /> All listings
       </Link>
-    </p>
+    </div>
   );
 }
 
 function Gallery({ listing }: { listing: Listing }) {
   const [index, setIndex] = useState(0);
   useEffect(() => setIndex(0), [listing.id]);
+  const count = listing.photos.length;
   const photo = listing.photos[index];
+  const step = (delta: number) => setIndex((i) => (i + delta + count) % count);
   return (
-    <div>
+    <div
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Photos"
+      onKeyDown={(e) => {
+        if (count < 2) return;
+        if (e.key === "ArrowLeft") step(-1);
+        if (e.key === "ArrowRight") step(1);
+      }}
+    >
       <div className="mk-gallery__main">
         {photo ? (
           <img
             src={photo.url}
-            alt={`${listing.title}, photo ${index + 1} of ${listing.photos.length}`}
+            alt={`${listing.title}, photo ${index + 1} of ${count}`}
             width={photo.width ?? undefined}
             height={photo.height ?? undefined}
           />
         ) : (
-          <div className="mk-empty">
+          <div className="mk-stack--tight" style={{ alignItems: "center" }}>
             <ImageIcon size={32} aria-hidden="true" />
-            <p className="mk-caption">No photos yet</p>
+            <p className="mk-meta">The seller has not added photos</p>
           </div>
         )}
+        {count > 1 && (
+          <>
+            <button
+              type="button"
+              className="f5-button f5-button--pill f5-button--icon mk-gallery__nav mk-gallery__nav--prev"
+              aria-label="Previous photo"
+              onClick={() => step(-1)}
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="f5-button f5-button--pill f5-button--icon mk-gallery__nav mk-gallery__nav--next"
+              aria-label="Next photo"
+              onClick={() => step(1)}
+            >
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+            <span
+              className="f5-chip f5-chip--glass mk-gallery__count"
+              aria-hidden="true"
+            >
+              {index + 1} / {count}
+            </span>
+          </>
+        )}
       </div>
-      {listing.photos.length > 1 && (
-        <div className="mk-gallery__thumbs" role="group" aria-label="Photos">
+      {count > 1 && (
+        <div className="mk-gallery__thumbs">
           {listing.photos.map((p, i) => (
             <button
               key={p.id}
               type="button"
               className="mk-thumb"
               aria-pressed={i === index}
-              aria-label={`Photo ${i + 1}`}
+              aria-label={`Photo ${i + 1} of ${count}`}
               onClick={() => setIndex(i)}
             >
               <img src={p.url} alt="" loading="lazy" />
@@ -173,12 +250,22 @@ function Aside({
     }
   };
 
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [shared, setShared] = useState(false);
+
+  const share = async () => {
+    const data = { title: listing.title, url: window.location.href };
+    try {
+      if (navigator.share) return await navigator.share(data);
+      await navigator.clipboard.writeText(data.url);
+      setShared(true);
+      window.setTimeout(() => setShared(false), 2000);
+    } catch {
+      // Dismissing the share sheet rejects; there is nothing to report.
+    }
+  };
+
   const setStatus = async (status: Listing["status"]) => {
-    if (
-      status === "removed" &&
-      !window.confirm("Remove this listing? Its photos will be deleted.")
-    )
-      return;
     setStatusBusy(true);
     setError("");
     try {
@@ -189,6 +276,7 @@ function Aside({
       setError(errorMessage(e));
     } finally {
       setStatusBusy(false);
+      setConfirmRemove(false);
     }
   };
 
@@ -199,152 +287,199 @@ function Aside({
     ?.replace(/^0/, "353")
     .replace(/^\+/, "");
 
+  const shareButton = (
+    <button
+      type="button"
+      className="f5-button f5-button--pill f5-button--icon f5-button--lg"
+      aria-label={shared ? "Link copied" : "Share this listing"}
+      title={shared ? "Link copied" : "Share"}
+      onClick={share}
+    >
+      {shared ? (
+        <Check size={18} aria-hidden="true" />
+      ) : (
+        <Share2 size={18} aria-hidden="true" />
+      )}
+    </button>
+  );
+
   return (
-    <aside className="mk-pane mk-stack">
-      <div className="mk-stack--tight">
-        <p className="mk-price">
-          {formatPrice(listing.priceCents, listing.currency)}
-        </p>
-        <h1 className="mk-lead">{listing.title}</h1>
-        <p className="mk-caption">
-          Listed {relativeAge(listing.createdAt)} · {where}
-        </p>
-      </div>
-
-      <div className="mk-chips">
-        {listing.status !== "active" && (
-          <span className="f5-chip">
-            {listing.status === "sold" ? "Sold" : "Removed"}
-          </span>
-        )}
-        <span className="f5-chip">{categoryLabel(listing.category)}</span>
-        <span className="f5-chip">{conditionLabel(listing.condition)}</span>
-        {listing.brand && <span className="f5-chip">{listing.brand}</span>}
-        {listing.sizeLabel && (
-          <span className="f5-chip">{listing.sizeLabel}</span>
-        )}
-        {listing.year && <span className="f5-chip">{listing.year}</span>}
-      </div>
-
-      {listing.isOwner ? (
-        <div className="mk-form__actions">
-          <Link
-            to={paths.edit(listing.id)}
-            className="f5-button f5-button--pill"
-          >
-            <Pencil size={15} aria-hidden="true" /> Edit
-          </Link>
-          {listing.status === "active" ? (
-            <button
-              type="button"
-              className="f5-button f5-button--pill"
-              disabled={statusBusy}
-              onClick={() => setStatus("sold")}
-            >
-              Mark as sold
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="f5-button f5-button--pill"
-              disabled={statusBusy}
-              onClick={() => setStatus("active")}
-            >
-              Relist
-            </button>
+    <aside className="mk-detail__aside mk-stack">
+      <section className="mk-pane mk-stack">
+        <div className="mk-stack--tight">
+          {listing.status !== "active" && (
+            <p>
+              <span className="f5-chip f5-chip--warn">
+                {listing.status === "sold" ? "Sold" : "Removed"}
+              </span>
+            </p>
           )}
-          <button
-            type="button"
-            className="f5-button f5-button--link"
-            disabled={statusBusy}
-            onClick={() => setStatus("removed")}
-          >
-            Remove listing
-          </button>
-        </div>
-      ) : listing.status !== "active" ? (
-        <Notice>
-          This item has been {listing.status}. The seller may have other gear
-          listed.
-        </Notice>
-      ) : contact ? (
-        <div className="mk-pane--sunken mk-pane mk-contact" aria-live="polite">
-          <p className="mk-eyebrow">Contact {contact.displayName}</p>
-          {contact.phone && (
-            <a className="mk-link" href={`tel:${contact.phone}`}>
-              <Phone size={15} aria-hidden="true" /> {contact.phone}
-            </a>
-          )}
-          {contact.whatsapp && whatsappNumber && (
-            <a
-              className="mk-link"
-              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi, I'm interested in your wingfoil.ie listing: ${listing.title}`)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle size={15} aria-hidden="true" /> WhatsApp
-            </a>
-          )}
-          {contact.email && (
-            <a
-              className="mk-link"
-              href={`mailto:${contact.email}?subject=${encodeURIComponent(`wingfoil.ie: ${listing.title}`)}`}
-            >
-              <Mail size={15} aria-hidden="true" /> {contact.email}
-            </a>
-          )}
-          <p className="mk-caption">
-            Meet somewhere public, check the gear before paying, and never pay a
-            deposit to hold an item.
+          <h1 className="mk-lead">{listing.title}</h1>
+          <p className="mk-price">
+            {formatPrice(listing.priceCents, listing.currency)}
+          </p>
+          <p className="mk-meta">
+            {where} · Listed {relativeAge(listing.createdAt)}
           </p>
         </div>
-      ) : (
-        <div className="mk-form__actions">
-          <button
-            type="button"
-            className="f5-button f5-button--primary f5-button--lg"
-            disabled={contactBusy || auth.provider === "none"}
-            onClick={reveal}
+
+        {listing.isOwner ? (
+          <div className="mk-stack">
+            <div className="mk-actions">
+              <Link
+                to={paths.edit(listing.id)}
+                className="f5-button f5-button--primary f5-button--lg"
+              >
+                <Pencil size={16} aria-hidden="true" /> Edit listing
+              </Link>
+              {shareButton}
+            </div>
+            <div className="mk-form__actions">
+              {listing.status === "active" ? (
+                <button
+                  type="button"
+                  className="f5-button f5-button--pill"
+                  disabled={statusBusy}
+                  onClick={() => setStatus("sold")}
+                >
+                  Mark as sold
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="f5-button f5-button--pill"
+                  disabled={statusBusy}
+                  onClick={() => setStatus("active")}
+                >
+                  Relist
+                </button>
+              )}
+              <button
+                type="button"
+                className="f5-button f5-button--link"
+                disabled={statusBusy}
+                onClick={() => setConfirmRemove(true)}
+              >
+                Remove listing
+              </button>
+            </div>
+          </div>
+        ) : listing.status !== "active" ? (
+          <Notice>
+            This item has been {listing.status}. The seller may have other gear
+            listed.
+          </Notice>
+        ) : contact ? (
+          <div
+            className="mk-pane mk-pane--sunken mk-contact"
+            aria-live="polite"
           >
-            {auth.signedIn
-              ? "Show contact details"
-              : "Sign in to contact seller"}
-          </button>
-          <SaveButton
-            saved={Boolean(listing.saved)}
-            busy={saveBusy}
-            onToggle={toggleSave}
+            <p className="mk-eyebrow">Contact {contact.displayName}</p>
+            {contact.phone && (
+              <a className="mk-link" href={`tel:${contact.phone}`}>
+                <Phone size={16} aria-hidden="true" /> {contact.phone}
+              </a>
+            )}
+            {contact.whatsapp && whatsappNumber && (
+              <a
+                className="mk-link"
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi, I'm interested in your wingfoil.ie listing: ${listing.title}`)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle size={16} aria-hidden="true" /> WhatsApp
+              </a>
+            )}
+            {contact.email && (
+              <a
+                className="mk-link"
+                href={`mailto:${contact.email}?subject=${encodeURIComponent(`wingfoil.ie: ${listing.title}`)}`}
+              >
+                <Mail size={16} aria-hidden="true" /> {contact.email}
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="mk-actions">
+            <button
+              type="button"
+              className="f5-button f5-button--primary f5-button--lg"
+              disabled={contactBusy || auth.provider === "none"}
+              onClick={reveal}
+            >
+              {contactBusy
+                ? "Fetching details…"
+                : auth.signedIn
+                  ? "Show contact details"
+                  : "Sign in to contact seller"}
+            </button>
+            <SaveButton
+              saved={Boolean(listing.saved)}
+              busy={saveBusy}
+              onToggle={toggleSave}
+            />
+            {shareButton}
+          </div>
+        )}
+        {contact && !listing.isOwner && (
+          <div className="mk-actions">
+            <SaveButton
+              saved={Boolean(listing.saved)}
+              busy={saveBusy}
+              onToggle={toggleSave}
+            />
+            {shareButton}
+          </div>
+        )}
+        {auth.provider === "none" && !listing.isOwner && (
+          <p className="mk-meta">
+            Sign-in is not configured on this build, so contact details are
+            hidden.
+          </p>
+        )}
+        {error && <Notice kind="warn">{error}</Notice>}
+      </section>
+
+      <section className="mk-pane mk-stack" aria-label="Seller">
+        <Link to={paths.seller(listing.seller.id)} className="mk-seller">
+          <Avatar name={listing.seller.displayName} />
+          <span className="mk-stack--tight">
+            <span className="mk-lead">{listing.seller.displayName}</span>
+            <SellerRating seller={listing.seller} />
+          </span>
+          <ChevronRight
+            size={18}
+            className="mk-seller__chevron"
+            aria-hidden="true"
           />
-        </div>
-      )}
-      {auth.provider === "none" && !listing.isOwner && (
-        <p className="mk-caption">
-          Sign-in is not configured on this build, so contact details are
-          hidden.
+        </Link>
+        <p className="mk-meta">
+          {listing.seller.soldCount} sold · Member since{" "}
+          {new Date(listing.seller.memberSince).getFullYear()}
+          {listing.seller.county ? ` · Co. ${listing.seller.county}` : ""}
         </p>
+      </section>
+
+      {!listing.isOwner && listing.status === "active" && (
+        <Notice>
+          <span className="mk-body">
+            Meet somewhere public, check the gear before paying, and never pay a
+            deposit to hold an item.
+          </span>
+        </Notice>
       )}
-      {error && <Notice kind="warn">{error}</Notice>}
 
-      <hr className="mk-divider" />
-
-      <Link
-        to={paths.seller(listing.seller.id)}
-        className="mk-seller mk-link"
-        style={{ textDecoration: "none" }}
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Remove this listing?"
+        confirmLabel="Remove listing"
+        busy={statusBusy}
+        onConfirm={() => setStatus("removed")}
+        onCancel={() => setConfirmRemove(false)}
       >
-        <Avatar name={listing.seller.displayName} />
-        <span className="mk-stack--tight" style={{ minWidth: 0 }}>
-          <span className="mk-lead" style={{ display: "block" }}>
-            {listing.seller.displayName}
-          </span>
-          <SellerRating seller={listing.seller} />
-          <span className="mk-caption" style={{ display: "block" }}>
-            {listing.seller.soldCount} sold · member since{" "}
-            {new Date(listing.seller.memberSince).getFullYear()}
-            {listing.seller.county ? ` · Co. ${listing.seller.county}` : ""}
-          </span>
-        </span>
-      </Link>
+        It will disappear from the marketplace and its photos will be deleted.
+        This cannot be undone.
+      </ConfirmDialog>
     </aside>
   );
 }
@@ -452,8 +587,8 @@ function ReviewSection({ listing }: { listing: Listing }) {
               className="f5-button f5-button--pill"
               disabled={busy}
             >
-              <Star size={15} aria-hidden="true" />{" "}
-              {e.existing ? "Update review" : "Post review"}
+              <Star size={15} aria-hidden="true" />
+              {busy ? "Saving…" : e.existing ? "Update review" : "Post review"}
             </button>
           </div>
         </form>

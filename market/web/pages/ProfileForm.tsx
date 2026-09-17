@@ -66,6 +66,7 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
   return (
     <form
       className="mk-form"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -143,7 +144,7 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
           disabled={!form.contactPhone}
           onChange={(e) => set({ contactWhatsapp: e.target.checked })}
         />
-        <span className="mk-body">Buyers can WhatsApp this number</span>
+        <span>Buyers can WhatsApp this number</span>
       </label>
       <Field
         label="About you"
@@ -159,7 +160,7 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
           placeholder="Where you ride, what you tend to sell, how you like to hand over gear."
         />
       </Field>
-      <p className="mk-caption">
+      <p className="mk-meta">
         Only signed-in members can see your contact details, and only when they
         ask for them on a listing.
       </p>
@@ -171,7 +172,9 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
           className="f5-button f5-button--primary f5-button--lg"
           disabled={busy}
         >
-          {submitLabel ?? (profile ? "Save profile" : "Create profile")}
+          {busy
+            ? "Saving…"
+            : (submitLabel ?? (profile ? "Save profile" : "Create profile"))}
         </button>
       </div>
     </form>
