@@ -298,7 +298,7 @@ class ENSTests(unittest.TestCase):
 
     # --- publisher -----------------------------------------------------------
     def bundle(self, members=4):
-        (self.root / "weather/run").mkdir(parents=True, exist_ok=True)
+        (self.root / "weather/ecmwf-ens-run").mkdir(parents=True, exist_ok=True)
         run = datetime(2026, 9, 16, tzinfo=timezone.utc)
         hours = (0, 6, 12)
         manifest = {"model": "ecmwf-ens", "run": "2026091600", "runTime": run.isoformat(),
@@ -312,9 +312,9 @@ class ENSTests(unittest.TestCase):
             interval = None if hour == 0 else [hour - 6, hour]
             gust = None if hour == 0 else [9.0] * 4
             manifest["frames"].append({"hour": hour, "validTime": valid,
-                                       "url": f"weather/run/{hour}.json",
+                                       "url": f"weather/ecmwf-ens-run/{hour}.json",
                                        "gustIntervalHours": interval})
-            (self.root / f"weather/run/{hour}.json").write_text(json.dumps(
+            (self.root / f"weather/ecmwf-ens-run/{hour}.json").write_text(json.dumps(
                 {"model": "ecmwf-ens", "run": "2026091600", "hour": hour, "validTime": valid,
                  "grid": manifest["grid"], "gustIntervalHours": interval,
                  "u": [1.0] * 4, "v": [2.0] * 4, "gust": gust}))

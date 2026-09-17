@@ -7,10 +7,12 @@ one of those two suites failing.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import f5bin
 
@@ -124,6 +126,21 @@ class RefusalTests(unittest.TestCase):
             with self.subTest(name), self.assertRaises(ValueError):
                 f5bin.decode_frame(bytes(broken))
 
+    def test_a_frame_that_uses_the_reserved_bytes_is_refused(self):
+        """They are zero today so that giving them a meaning is a visible change.
+
+        A reader that skipped them could not tell a future encoder's file from
+        one of its own, and would decode it as though nothing had been added.
+        """
+        data = f5bin.encode_frame(frame())
+        self.assertEqual(data[18:24], b"\0" * 6)
+        for offset in range(18, 24):
+            broken = bytearray(data)
+            broken[offset] = 1
+            with self.subTest(offset=offset), self.assertRaises(ValueError) as caught:
+                f5bin.decode_frame(bytes(broken))
+            self.assertIn("reserved", str(caught.exception))
+
     def test_implausible_values_are_refused_by_both_ends(self):
         for field, values in [("u", [151.0] * 12), ("gust", [-1.0] * 12)]:
             with self.subTest(field), self.assertRaises(ValueError):
@@ -159,7 +176,7 @@ class SidecarTests(unittest.TestCase):
         data = f5bin.encode_frame(frame(width=40, height=30))
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "run" / "000-abc.bin"
-            f5bin.write_with_sidecars(path, data)
+            f5bin.write_with_sidecars(path, data, sidecars=True)
             self.assertEqual(path.read_bytes(), data)
             self.assertEqual(brotli.decompress(Path(str(path) + ".br").read_bytes()), data)
             self.assertEqual(gzip.decompress(Path(str(path) + ".gz").read_bytes()), data)
@@ -175,6 +192,44 @@ class SidecarTests(unittest.TestCase):
             digest = hashlib.sha256(data).hexdigest()[:12]
             self.assertEqual(name, f"model-2026091712-30h-v1/030-{digest}.bin")
             self.assertEqual((Path(temp) / name).read_bytes(), data)
+
+    def test_sidecars_can_be_turned_off_for_a_job_that_only_uploads(self):
+        """A bucket-only run serves no sidecar, so it should not spend one per frame."""
+        data = f5bin.encode_frame(frame(width=40, height=30))
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "000-abc.bin"
+            f5bin.write_with_sidecars(path, data, sidecars=False)
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ["000-abc.bin"])
+            self.assertEqual(path.read_bytes(), data)
+        for value, wanted in [("0", False), ("1", True), ("false", False), ("on", True),
+                              ("", True), (" 0 ", False)]:
+            with self.subTest(value), patch.dict(os.environ, {f5bin.SIDECARS_ENV: value}):
+                self.assertIs(f5bin.sidecars_wanted(), wanted)
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIs(f5bin.sidecars_wanted(), True)  # Local serving is the default.
+        with patch.dict(os.environ, {f5bin.SIDECARS_ENV: "maybe"}), self.assertRaises(ValueError):
+            f5bin.sidecars_wanted()
+
+    def test_an_unusable_brotli_quality_is_a_sentence_not_a_traceback(self):
+        """It is read at use, so a typo cannot kill every adapter at import time."""
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(f5bin.brotli_quality(), f5bin.DEFAULT_BROTLI_QUALITY)
+        with patch.dict(os.environ, {f5bin.QUALITY_ENV: "11"}):
+            self.assertEqual(f5bin.brotli_quality(), 11)
+        for value in ("high", "", "9.5", "12", "-1"):
+            with self.subTest(value), patch.dict(os.environ, {f5bin.QUALITY_ENV: value}):
+                with self.assertRaises(ValueError) as caught:
+                    f5bin.brotli_quality()
+                self.assertIn(f5bin.QUALITY_ENV, str(caught.exception))
+
+    def test_a_name_says_which_bytes_it_holds(self):
+        data = f5bin.encode_frame(frame(hour=30))
+        name = f5bin.basename(30, data)
+        self.assertTrue(f5bin.names_these_bytes(name, 30, data))
+        # Another hour, or another frame of the same shape, is a different name.
+        self.assertFalse(f5bin.names_these_bytes(name, 31, data))
+        self.assertFalse(f5bin.names_these_bytes(
+            name, 30, f5bin.encode_frame(frame(hour=30, u=[9.0] * 12))))
 
     def test_a_changed_value_changes_the_published_name(self):
         """The name is the content hash, which is what makes an object immutable."""

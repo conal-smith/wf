@@ -118,7 +118,7 @@ class ECMWFTests(unittest.TestCase):
         self.assertEqual(json.loads(output.read_text()), {"run": "last-good"})
 
     def bundle(self):
-        directory = self.root / "weather/run"
+        directory = self.root / "weather/ecmwf-run"
         directory.mkdir(parents=True)
         run = datetime(2026, 9, 13, tzinfo=timezone.utc)
         manifest = {"model": "ecmwf", "run": "2026091300", "runTime": run.isoformat(),
@@ -126,7 +126,7 @@ class ECMWFTests(unittest.TestCase):
                     "grid": {"width": 2, "height": 2}, "frames": []}
         for hour in ECMWF_HOURS:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-            info = {"hour": hour, "validTime": valid, "url": f"weather/run/{hour}.json"}
+            info = {"hour": hour, "validTime": valid, "url": f"weather/ecmwf-run/{hour}.json"}
             manifest["frames"].append(info)
             (self.root / info["url"]).write_text(json.dumps({"model": "ecmwf", "run": manifest["run"],
                 "hour": hour, "validTime": valid, "grid": manifest["grid"], "u": [1]*4, "v": [2]*4, "gust": None}))

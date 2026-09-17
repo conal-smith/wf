@@ -15,7 +15,7 @@ Layout of `HHH-hash.bin`, a 24-byte header then one block per variable:
     10  2  scale         uint16 (10 → values are tenths of a metre per second)
     12  2  hour          uint16 (forecast hour)
     14  4  run           uint32 (YYYYMMDDHH as a decimal number)
-    18  6  reserved      (zero)
+    18  6  reserved      (zero, and every reader refuses a frame that is not)
     24  …  u, v[, gust]: width × height int16 each, little-endian
 
 The header length is even because the browser views the payload as an
@@ -53,7 +53,13 @@ import numpy as np
 MAGIC = b"F5F1"
 VERSION = 1
 HEADER_BYTES = 24
-HEADER_FORMAT = "<4sBBHHHHI6x"
+# The reserved bytes are read rather than skipped (`6s`, not `6x`), because a
+# reader that ignores them cannot later be given a meaning for them: a file
+# written by some future encoder would be accepted and silently misread. They
+# must be zero today, so whatever fills them next is a change every reader
+# notices. `RESERVED_BYTES` is what "unused" looks like on the wire.
+HEADER_FORMAT = "<4sBBHHHHI6s"
+RESERVED_BYTES = b"\0" * 6
 SCALE = 10  # Stored values are tenths of a metre per second.
 MISSING = -32768
 ENCODING = "f5-int16-v1"  # What a manifest puts in its `encoding` field.
@@ -61,14 +67,52 @@ FIELDS = ("u", "v", "gust")
 MAX_SPEED = 150.0  # The same range check the JSON frames have always had.
 MAX_SCALED = int(MAX_SPEED * SCALE)
 MAX_DIMENSION = 65535  # Width and height are uint16.
-# Brotli quality. 9 costs about as much as writing the JSON frame it replaces
-# (39.9 ms against 39.1 ms for a HARMONIE step), which is what keeps ingest time
-# inside its 10% budget; 10 and 11 buy 9% and 14% more compression for four and
-# eleven times the encode time. Raise it here or in the environment on a machine
-# with time to spare.
-BROTLI_QUALITY = int(os.environ.get("FORCE5_BROTLI_QUALITY", "9"))
+DEFAULT_BROTLI_QUALITY = 9
+QUALITY_ENV = "FORCE5_BROTLI_QUALITY"
+SIDECARS_ENV = "FORCE5_SIDECARS"
 GZIP_LEVEL = 6
 SIDECARS = (".br", ".gz")
+
+
+def brotli_quality():
+    """The compression level for every brotli body this pipeline writes.
+
+    9 is the default because it costs about what writing the JSON frame it
+    replaces cost (see docs/FORECAST_DATA_PLAN.md), which is what keeps ingest
+    time inside its budget; 10 and 11 buy 9% and 12% more compression for four
+    and eleven times the encode time. `FORCE5_BROTLI_QUALITY` raises it on a
+    machine with time to spare, and is read here rather than at import so a typo
+    is a sentence about the setting instead of a traceback out of every adapter.
+    """
+    value = os.environ.get(QUALITY_ENV)
+    if value is None:
+        return DEFAULT_BROTLI_QUALITY
+    try:
+        quality = int(value)
+    except ValueError:
+        raise ValueError(f"{QUALITY_ENV} must be a whole number 0-11, not {value!r}") from None
+    if not 0 <= quality <= 11:
+        raise ValueError(f"{QUALITY_ENV} must be 0-11, not {quality}")
+    return quality
+
+
+def sidecars_wanted():
+    """Whether to write `.bin.br`/`.bin.gz` beside each frame. Default: yes.
+
+    The sidecars are what the local Caddy deployment serves, so they are on by
+    default. A job that only uploads to the bucket serves none of them — the
+    bucket stores one encoding per object — and should set `FORCE5_SIDECARS=0`
+    so it does not spend a brotli and a gzip per frame producing bytes nothing
+    will ever read. The uploader then compresses once, at upload time.
+    """
+    value = (os.environ.get(SIDECARS_ENV) or "").strip().lower()
+    if not value:  # Unset, or set to nothing, both mean the default.
+        return True
+    if value in ("0", "false", "no", "off"):
+        return False
+    if value in ("1", "true", "yes", "on"):
+        return True
+    raise ValueError(f"{SIDECARS_ENV} must be 0 or 1, not {value!r}")
 
 
 def _fold(values):
@@ -132,7 +176,7 @@ def encode_frame(payload):
     if len(blocks) not in (2, 3) or payload.get("u") is None or payload.get("v") is None:
         raise ValueError("A wind frame carries u and v, and gust or nothing")
     header = struct.pack(HEADER_FORMAT, MAGIC, VERSION, len(blocks), width, height,
-                         SCALE, hour, int(run))
+                         SCALE, hour, int(run), RESERVED_BYTES)
     body = [delta_encode(quantise(values, count, field), width, height).astype("<i2").tobytes()
             for field, values in zip(FIELDS, blocks)]
     return header + b"".join(body)
@@ -142,12 +186,14 @@ def read_header(data):
     """Just the header, for a caller that wants the identity without the grids."""
     if len(data) < HEADER_BYTES:
         raise ValueError("Binary frame is shorter than its header")
-    magic, version, blocks, width, height, scale, hour, run = struct.unpack(
+    magic, version, blocks, width, height, scale, hour, run, reserved = struct.unpack(
         HEADER_FORMAT, data[:HEADER_BYTES])
     if magic != MAGIC:
         raise ValueError("Not an F5 binary frame")
     if version != VERSION:
         raise ValueError(f"Unsupported binary frame version {version}")
+    if reserved != RESERVED_BYTES:
+        raise ValueError("Binary frame header uses reserved bytes")
     if blocks not in (2, 3):
         raise ValueError("A wind frame carries u and v, and gust or nothing")
     if scale != SCALE:
@@ -187,25 +233,39 @@ def decode_frame(data):
     return frame
 
 
+def brotli_body(data, quality=None):
+    import brotli
+    return brotli.compress(data, quality=brotli_quality() if quality is None else quality)
+
+
+def gzip_body(data):
+    import gzip
+    return gzip.compress(data, GZIP_LEVEL, mtime=0)
+
+
 def compress(data, quality=None):
     """The two sidecar bodies, by suffix. Brotli is what a browser actually gets."""
-    import brotli
-    import gzip
-    return {".br": brotli.compress(data, quality=BROTLI_QUALITY if quality is None else quality),
-            ".gz": gzip.compress(data, GZIP_LEVEL, mtime=0)}
+    return {".br": brotli_body(data, quality), ".gz": gzip_body(data)}
 
 
-def write_with_sidecars(path, data, quality=None):
-    """`name.bin`, `name.bin.br` and `name.bin.gz`, each replaced atomically.
+def write_with_sidecars(path, data, quality=None, sidecars=None):
+    """`name.bin`, and `name.bin.br`/`name.bin.gz` unless they are turned off.
 
     The sidecars are for the local Caddy deployment, which serves whichever of
     them the browser asked for (`file_server { precompressed br gzip }`). They
     are never uploaded as objects of their own: the bucket stores one encoding
-    per object, chosen by `publish_s3.put_immutable`.
+    per object, chosen by `publish_s3.put_immutable` — which reuses the `.br`
+    sidecar when one is here, rather than compressing the same bytes twice.
+
+    Each file is replaced atomically, and the frame itself is written first, so
+    a job killed part way leaves a readable frame with no sidecar rather than a
+    sidecar that does not match the frame beside it. Caddy falls back to the
+    plain file when a sidecar is absent, so that state serves correctly too.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    bodies = {"": data, **compress(data, quality)}
+    wanted = sidecars_wanted() if sidecars is None else sidecars
+    bodies = {"": data, **(compress(data, quality) if wanted else {})}
     for suffix, body in bodies.items():
         target = Path(str(path) + suffix)
         temporary = target.with_name(target.name + ".tmp")
@@ -213,9 +273,26 @@ def write_with_sidecars(path, data, quality=None):
         os.replace(temporary, target)
 
 
+def basename(hour, data):
+    """A frame's file name: its hour, then the hash of its own bytes."""
+    return f"{hour:03d}-{hashlib.sha256(data).hexdigest()[:12]}.bin"
+
+
 def frame_name(prefix, hour, data):
-    """Where a frame is published: its hour, then the hash of its own bytes."""
-    return f"{prefix}/{hour:03d}-{hashlib.sha256(data).hexdigest()[:12]}.bin"
+    """Where a frame is published, under its run directory."""
+    return f"{prefix}/{basename(hour, data)}"
+
+
+def names_these_bytes(name, hour, data):
+    """Does this published file name say it holds exactly these bytes, at this hour?
+
+    Every binary frame is content-addressed, so its name is checkable in a way a
+    JSON frame's never was: the reader can confirm the file is the one the
+    manifest meant rather than another frame moved into its place. The validator
+    uses it as an integrity check, and it is also the only thing that ties a
+    binary frame's *hour* to its name.
+    """
+    return name == basename(hour, data)
 
 
 def publish_frame(output, prefix, payload):

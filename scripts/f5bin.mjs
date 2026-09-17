@@ -113,6 +113,11 @@ export function decodeFrame(data) {
   const scale = buffer.readUInt16LE(10);
   const hour = buffer.readUInt16LE(12);
   const run = buffer.readUInt32LE(14);
+  // Reserved bytes 18-23 must be zero, so that giving them a meaning later is a
+  // change every existing reader notices rather than silently misreads.
+  for (let at = 18; at < HEADER_BYTES; at++)
+    if (buffer.readUInt8(at) !== 0)
+      throw new Error("Binary frame header uses reserved bytes");
   if (blockCount !== 2 && blockCount !== 3)
     throw new Error("A wind frame carries u and v, and gust or nothing");
   if (scale !== SCALE) throw new Error(`Unsupported scale ${scale}`);

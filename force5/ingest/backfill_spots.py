@@ -22,20 +22,28 @@ Ensemble manifests are refused: `spotMembers` holds per-member values and the
 bundled frames are the ensemble mean, so the members are not recoverable.
 
 Binary frames (`encoding: "f5-int16-v1"`) are decoded and resampled the same way,
-but they store tenths of a metre per second while the series beside them was
+but they store tenths of a metre per second while an adapter's own series was
 sampled from the full-precision field, so recomputation over them agrees only to
 `BINARY_TOLERANCE` rather than to rounding noise. That looser limit applies to a
 binary manifest and to nothing else.
+
+**A series this tool adds to a binary bundle is therefore coarser than one the
+adapter published.** The adapter sampled the source field; this samples the
+quantised frame, because the source is long gone — that is the whole point of
+the tool. The difference is at most 0.06 m/s, well under a tenth of a knot, and
+it is invisible in the table and the chart. It is worth knowing about anyway:
+a backfilled spot's series and a freshly ingested one are not byte-identical,
+and only the fresh one is exact. The next run publishes the exact series.
 """
 import argparse
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import sys
 
 import f5bin
 from fetch_forecast import ROOT, load_spots, sample, spots_file, write_json
 from publish_s3 import frame_encoding, referenced
-from registry import MANIFESTS, MODELS, object_root
+from registry import MANIFESTS, MODELS
 
 WIND_FIELDS = ("u", "v", "gust")
 # The manifest's own agreement limit: recomputation is deterministic, so anything
@@ -58,16 +66,20 @@ def tolerance(manifest):
 def read_frame(public, model, manifest, info):
     """One referenced frame, through the publisher's own unsafe-path guard.
 
-    A binary frame's header carries its run and hour, so a file from the wrong
-    step is still refused; its model and valid time are the manifest's, which is
-    the same source the JSON frames are checked against.
+    `referenced` requires the run directory to be named for this model, which is
+    what establishes a binary frame's model — the file itself does not carry one.
+    Its header carries the run, the hour and the grid size, and its name is the
+    hash of its own bytes, so a file from the wrong step or with the wrong
+    contents is refused. The valid time is the manifest's, as it is for JSON.
     """
-    _, data = referenced(public, info["url"], object_root(model), 3)
+    _, data = referenced(public, info["url"], model, 3)
     if frame_encoding(manifest):
         decoded = f5bin.decode_frame(data)
         if (decoded["run"], decoded["hour"]) != (manifest["run"], info["hour"]):
             raise ValueError(f"{info['url']} is not the frame the manifest lists at "
                              f"+{info['hour']}h of run {manifest['run']}")
+        if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, info["hour"], data):
+            raise ValueError(f"{info['url']} does not hold the frame its name claims")
         grid = manifest["grid"]
         if (decoded["width"], decoded["height"]) != (grid["width"], grid["height"]):
             raise ValueError(f"{info['url']} does not match the published grid")

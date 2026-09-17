@@ -15,7 +15,11 @@ import {
 // The Node encoder the sample generator uses. Decoding the golden file here and
 // re-encoding it through that module pins all three implementations of the
 // format to one another: this one, scripts/f5bin.mjs and force5/ingest/f5bin.py.
-import { encodeFrame, quantiseValue } from "../scripts/f5bin.mjs";
+import {
+  decodeFrame as decodeBin,
+  encodeFrame,
+  quantiseValue,
+} from "../scripts/f5bin.mjs";
 import { FIXTURE_ROOT } from "./bundles";
 
 // The same two files force5/ingest/test_f5bin.py reads.
@@ -53,6 +57,8 @@ const info: FrameInfo = {
   url: "weather/run/042-abc.bin",
   gustIntervalHours: [golden.hour - 1, golden.hour],
 };
+// A frame with no gust block must be asked for with no gust window.
+const noGust: FrameInfo = { ...info, gustIntervalHours: null };
 const manifest = {
   schemaVersion: 1,
   model: "golden",
@@ -123,7 +129,7 @@ describe("rounding and wrap-around, which both sides must spell the same way", (
         }),
       ),
       { ...manifest, grid: gridOf(4, 2) } as Manifest,
-      info,
+      noGust,
     );
     expect(nulled(frame.u)).toEqual(values);
     expect(frame.gust).toBeNull();
@@ -147,7 +153,7 @@ describe("rounding and wrap-around, which both sides must spell the same way", (
       const frame = decodeFrame(
         bytes(data),
         { ...manifest, grid: gridOf(2, 2) } as Manifest,
-        info,
+        noGust,
       );
       expect(nulled(frame.u)).toEqual(values);
     }
@@ -237,6 +243,59 @@ describe("a frame that is not the one that was asked for", () => {
     expect(() => decodeFrame(bytes(future), manifest, info)).toThrow(
       /newer format/,
     );
+  });
+
+  it("refuses a frame that uses the reserved header bytes", () => {
+    // Zero today so that giving them a meaning later is a change every reader
+    // notices instead of silently misreading. Both Node readers agree.
+    expect(goldenBytes.subarray(18, HEADER_BYTES).every((b) => b === 0)).toBe(
+      true,
+    );
+    for (let at = 18; at < HEADER_BYTES; at++) {
+      const used = Buffer.from(goldenBytes);
+      used.writeUInt8(1, at);
+      expect(() => decodeFrame(bytes(used), manifest, info)).toThrow(
+        /newer format/,
+      );
+      expect(() => decodeBin(used)).toThrow(/reserved/);
+    }
+  });
+
+  it("refuses a gust block the manifest does not declare, and the other way round", () => {
+    // The gust *window* lives only in the manifest, so the frame and the manifest
+    // can no longer be compared on it. Whether there is a gust block at all is
+    // the one thing they can still be made to agree about.
+    const withGust = encodeFrame({
+      ...source,
+      grid: { width: 2, height: 2 },
+      u: [1, 2, 3, 4],
+      v: [0, 0, 0, 0],
+      gust: [5, 6, 7, 8],
+    });
+    const without = encodeFrame({
+      ...source,
+      grid: { width: 2, height: 2 },
+      u: [1, 2, 3, 4],
+      v: [0, 0, 0, 0],
+      gust: null,
+    });
+    const small = { ...manifest, grid: gridOf(2, 2) } as Manifest;
+    const windowed = {
+      ...info,
+      gustIntervalHours: [41, 42] as [number, number],
+    };
+    const unwindowed = { ...info, gustIntervalHours: null };
+    expect(() => decodeFrame(bytes(withGust), small, unwindowed)).toThrow(
+      /Gust period does not match/,
+    );
+    expect(() => decodeFrame(bytes(without), small, windowed)).toThrow(
+      /Gust period does not match/,
+    );
+    // The two agreeing cases are accepted.
+    expect(decodeFrame(bytes(withGust), small, windowed).gust).toEqual([
+      5, 6, 7, 8,
+    ]);
+    expect(decodeFrame(bytes(without), small, unwindowed).gust).toBeNull();
   });
 
   it("refuses an out-of-range value the encoder would never have written", () => {

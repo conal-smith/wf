@@ -502,8 +502,9 @@ class BinaryUploadTests(unittest.TestCase):
                        "grid": grid, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": None}
             data = f5bin.encode_frame(payload)
             name = f5bin.frame_name("harmonie-bin", hour, data)
-            # Written exactly as an adapter writes it, sidecars and all.
-            f5bin.write_with_sidecars(self.root / "weather" / name, data)
+            # Written exactly as an adapter writes it, sidecars and all. Asked for
+            # explicitly so the suite does not depend on FORCE5_SIDECARS.
+            f5bin.write_with_sidecars(self.root / "weather" / name, data, sidecars=True)
             self.bodies[f"weather/{name}"] = data
             frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         self.manifest = {"model": "harmonie", "run": "2026091312",
@@ -559,6 +560,59 @@ class BinaryUploadTests(unittest.TestCase):
         pointer = self.stored("weather/harmonie.json")
         self.assertEqual(pointer["ContentType"], "application/json")
         self.assertNotIn("ContentEncoding", pointer)
+
+    def test_a_frame_is_uploaded_from_its_sidecar_rather_than_compressed_twice(self):
+        """The adapter already brotli'd every frame; doing it again is pure cost."""
+        import brotli
+        compressed = []
+        original = brotli.compress
+        with patch.object(brotli, "compress",
+                          lambda *args, **kwargs: compressed.append(1) or original(*args, **kwargs)):
+            publish(self.s3, self.root, "harmonie", "test", now=self.now)
+        self.assertEqual(compressed, [])  # Three frames, no second compression.
+        for key, body in self.bodies.items():
+            self.assertEqual(self.stored(key)["Body"],
+                             Path(str(self.root / key) + ".br").read_bytes())
+            self.assertEqual(brotli.decompress(self.stored(key)["Body"]), body)
+
+    def test_a_sidecar_that_is_not_this_frame_is_never_uploaded(self):
+        """Reuse is only safe because the bytes are checked rather than trusted.
+
+        A stale, truncated or half-written sidecar falls through to compressing
+        here, which is always correct; an unreadable one says so in the log.
+        """
+        import brotli
+        key = next(iter(self.bodies))
+        sidecar = Path(str(self.root / key) + ".br")
+        for broken, unusable in [(brotli.compress(b"a different frame"), False),
+                                 (b"not brotli at all", True), (b"", True)]:
+            with self.subTest(len(broken)):
+                s3, out, err = FakeS3(), StringIO(), StringIO()
+                sidecar.write_bytes(broken)
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    publish(s3, self.root, "harmonie", "test", now=self.now)
+                self.assertEqual(unusable, "sidecar_unusable" in out.getvalue() + err.getvalue())
+                # Whatever the sidecar held, the object is this frame.
+                self.assertEqual(brotli.decompress(s3.objects[key]["Body"]), self.bodies[key])
+
+    def test_a_run_with_no_sidecars_still_uploads_one_compressed_object(self):
+        """FORCE5_SIDECARS=0 is what a bucket-only job sets; the uploader copes."""
+        import brotli
+        for key in self.bodies:
+            Path(str(self.root / key) + ".br").unlink()
+            Path(str(self.root / key) + ".gz").unlink()
+        self.assertEqual(publish(self.s3, self.root, "harmonie", "test", now=self.now),
+                         "published")
+        for key, body in self.bodies.items():
+            self.assertEqual(self.stored(key)["ContentEncoding"], "br")
+            self.assertEqual(brotli.decompress(self.stored(key)["Body"]), body)
+
+    def test_the_gzip_fallback_reuses_the_gzip_sidecar(self):
+        publish(self.s3, self.root, "harmonie", "test", now=self.now, encoding="gzip")
+        for key, body in self.bodies.items():
+            self.assertEqual(self.stored(key)["Body"],
+                             Path(str(self.root / key) + ".gz").read_bytes())
+            self.assertEqual(gzip.decompress(self.stored(key)["Body"]), body)
 
     def test_the_superseded_delete_can_never_name_a_sidecar(self):
         """It works from the replaced manifest's urls, and no manifest lists a sidecar.
