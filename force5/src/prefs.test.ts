@@ -41,8 +41,12 @@ describe("display preferences", () => {
       waves: true,
       swell: false,
       windsea: false,
-      sea: true,
+      weather: true,
       air: true,
+      rain: true,
+      cloud: false,
+      pressure: false,
+      sea: false,
       tide: true,
     });
     expect(prefs.blendModels).toEqual(windModels().map((model) => model.id));
