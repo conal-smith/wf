@@ -52,6 +52,7 @@ import {
 import {
   useBlend,
   useModelAvailability,
+  useSpotSeaTemperature,
   useSpotTide,
   useSpotWaves,
   useSpotWeather,
@@ -62,6 +63,7 @@ import { dayNights } from "../force5/src/sun";
 import { framePosition, windTrackBackground } from "../force5/src/timeline";
 import {
   VIEWS,
+  rowOn,
   type ForecastView,
   type Prefs,
   type RowKey,
@@ -77,6 +79,12 @@ import {
   type Point,
 } from "../force5/src/weather";
 import { tideAt } from "../force5/src/tides";
+import {
+  NETWORK_LABEL,
+  observationAge,
+  seaTemperatureText,
+  sparklinePoints,
+} from "../force5/src/seaTemperature";
 import { precipIntervalHours, presentWeather } from "../force5/src/surface";
 import { variableValue } from "../force5/src/variables";
 import type { WaveFieldSet } from "../force5/src/waves";
@@ -187,7 +195,7 @@ const ROW_HELP: Record<RowKey, string> = {
     "Total cloud cover through the whole column, as a percentage, with a three-level bar beside it for high, medium and low cloud.",
   pressure:
     "Pressure reduced to mean sea level, in whole hectopascals. Off by default: it is a synoptic reading rather than a launch decision.",
-  sea: "Model skin temperature, approximate. Over sea this is the model's own surface field and a proxy for a sea temperature, not a measurement; over land it is the temperature of the ground, which on a sunny afternoon runs far above the air. No in-situ source is wired up yet.",
+  sea: "Model skin temperature, approximate. Over sea this is the model's own surface field and a proxy for a sea temperature, not a measurement; over land it is the temperature of the ground, which on a sunny afternoon runs far above the air. It is shown only where no station is measuring the water.",
   tide: "Predicted tide height at the nearest station. Astronomical prediction only: no surge and no wind effect.",
 };
 
@@ -251,6 +259,13 @@ const WEATHER_ROW_UNIT: Record<WeatherRowKey, string | undefined> = {
  * eye can scan.
  */
 const RAIN_TINT_FULL_MM = 4;
+
+/**
+ * The observed Sea row's sparkline. Thirteen pixels inside a 24px row, drawn
+ * beside the reading rather than under it, so the row keeps its budget and the
+ * seven-day shape costs nothing in height.
+ */
+const SEA_SPARK = { width: 54, height: 13 } as const;
 
 /** What one cell needs beyond its text: a tint, a muted style and a tooltip. */
 interface WeatherCell {
@@ -336,6 +351,7 @@ export default function ForecastDock({
   const series = usePointSeries(manifest, point);
   const { models, resolved } = useModelAvailability();
   const tide = useSpotTide(point.id);
+  const sea = useSpotSeaTemperature(point.id);
   const axis = useMemo(
     () => manifest.frames.map((frame) => frame.validTime),
     [manifest],
@@ -385,7 +401,16 @@ export default function ForecastDock({
     if (holder.current) observer.observe(holder.current);
     if (marine.current) observer.observe(marine.current);
     return () => observer.disconnect();
-  }, [manifest, now, open, prefs.view, rows, tide.tide, blend.stats.length]);
+  }, [
+    manifest,
+    now,
+    open,
+    prefs.view,
+    rows,
+    tide.tide,
+    sea.observed,
+    blend.stats.length,
+  ]);
 
   useLayoutEffect(() => {
     const container = scroll.current;
@@ -529,6 +554,37 @@ export default function ForecastDock({
     (weather.source?.fields[WEATHER_ROW_FIELD[key]]
       ? undefined
       : "not in this model");
+  /**
+   * The Sea row has two possible sources, and they are not the same kind of
+   * thing. An in-situ observation is a measurement of the water and wins wherever
+   * a station is in range; the model's skin temperature is an approximation, and
+   * the row says which of the two it is showing either way.
+   */
+  const observed = sea.observed;
+  // Recomputed against the dock's own clock rather than taken from the load, so
+  // "2 h ago" is still true in a tab that has been open since this morning.
+  const observedAge = observed
+    ? (now - Date.parse(observed.latest.time)) / 3600000
+    : 0;
+  const observedDepth =
+    observed?.station.depth === null || observed?.station.depth === undefined
+      ? "sensor depth not published"
+      : `sensor ${observed.station.depth} m below the surface`;
+  const seaHelp = observed
+    ? `Measured water temperature from ${observed.station.name}, the nearest Marine Institute station reporting near this spot. A measurement, not a forecast: it is one reading for the whole row rather than a value per column, and the newest reading is as recent as the water gets. The line is the last seven days.`
+    : `${ROW_HELP.sea}${sea.note ? ` ${sea.note}` : ""}`;
+  const seaTitle = observed
+    ? `${observed.latest.value.toFixed(1)} °C measured at ${
+        observed.station.name
+      } · ${NETWORK_LABEL[observed.station.network]} · ${observed.distanceKm.toFixed(
+        1,
+      )} km from ${point.name} · ${observedDepth} · ${dayLabel(
+        observed.latest.time,
+      )} ${timeLabel(observed.latest.time)} Irish time (${observationAge(
+        observedAge,
+      )}) · ${sea.manifest?.attribution ?? "Marine Institute observations"}`
+    : undefined;
+
   const rowOffers: Record<RowKey, RowOffer> = {
     blend: { label: "Model blend" },
     waveOverlay: { label: "Wave band on the chart", unavailable: waveOffer },
@@ -554,15 +610,27 @@ export default function ForecastDock({
         },
       ]),
     ) as Record<WeatherRowKey, RowOffer>),
+    // An observation needs no weather model behind it, so the row is offered on
+    // the strength of the observations alone where they cover this spot - and is
+    // on by default there, because measured water is worth a row. Where they do
+    // not, it is the model's approximation again, and off.
+    sea: {
+      label: WEATHER_ROW_LABEL.sea,
+      unavailable: observed ? undefined : weatherRowOffer("sea"),
+      defaultOn: !!observed,
+    },
     tide: { label: "Tide", unavailable: tideOffer },
   };
+  /** A row's own switch, or its default where the reader has not touched it. */
+  const rowShown = (key: RowKey) =>
+    rowOn(prefs, key, rowOffers[key].defaultOn) && !rowOffers[key].unavailable;
 
   const showTide = rows.tide && !tideOffer && !!tide.tide;
-  const waveRows = WAVE_ROWS.filter(
-    (key) => rows[key] && !rowOffers[key].unavailable,
-  );
-  const weatherRows = WEATHER_ROWS.filter(
-    (key) => rows[key] && !rowOffers[key].unavailable,
+  const waveRows = WAVE_ROWS.filter(rowShown);
+  const weatherRows = WEATHER_ROWS.filter(rowShown);
+  /** The rows the weather model is actually credited for: an observed Sea is not. */
+  const modelWeatherRows = weatherRows.filter(
+    (key) => key !== "sea" || !observed,
   );
   const marineRows: RowKey[] = [...waveRows, ...weatherRows];
   const showMarine = showTide || marineRows.length > 0;
@@ -722,7 +790,7 @@ export default function ForecastDock({
           : {
               content: Math.round(value),
               className: "proxy-cell",
-              title: `Model skin temperature ${degrees(value)}, approximate — not a measured sea temperature.`,
+              title: `Model skin temperature ${degrees(value)}, approximate — not a measured sea temperature. No observation is in range of this spot.`,
             };
       }
     }
@@ -1156,6 +1224,53 @@ export default function ForecastDock({
                 {showMarine && (
                   <tbody className="marine-rows" ref={marine}>
                     {marineRows.map((key) => {
+                      // A measurement is one reading, not a forecast per hour:
+                      // the observed Sea row spans its columns with the latest
+                      // reading at the left instead of implying a value at every
+                      // one of them.
+                      if (key === "sea" && observed) {
+                        const text = seaTemperatureText(observed, observedAge);
+                        const spark = sparklinePoints(
+                          observed.series,
+                          SEA_SPARK.width,
+                          SEA_SPARK.height,
+                        );
+                        return (
+                          <tr
+                            key={key}
+                            className="marine-row weather-row observed-row"
+                            data-row="sea"
+                          >
+                            <th scope="row">
+                              <RowLabel
+                                glyph={WEATHER_ROW_GLYPH.sea}
+                                label={WEATHER_ROW_LABEL.sea}
+                                help={seaHelp}
+                              />
+                            </th>
+                            <td
+                              className="observed-cell"
+                              colSpan={frames.length}
+                              title={seaTitle}
+                            >
+                              <span className="observed-reading">
+                                <b>{text.value}</b>
+                                <small>{`· ${text.detail}`}</small>
+                                {spark && (
+                                  <svg
+                                    className="observed-spark"
+                                    width={SEA_SPARK.width}
+                                    height={SEA_SPARK.height}
+                                    aria-hidden="true"
+                                  >
+                                    <polyline points={spark} />
+                                  </svg>
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      }
                       const wave = (WAVE_ROWS as readonly RowKey[]).includes(
                         key,
                       )
@@ -1176,7 +1291,13 @@ export default function ForecastDock({
                                   : WEATHER_ROW_GLYPH[surface!]
                               }
                               label={rowOffers[key].label}
-                              help={wave ? waveHelp(wave) : ROW_HELP[key]}
+                              help={
+                                wave
+                                  ? waveHelp(wave)
+                                  : key === "sea"
+                                    ? seaHelp
+                                    : ROW_HELP[key]
+                              }
                               unit={wave ? "m" : WEATHER_ROW_UNIT[surface!]}
                             />
                           </th>
@@ -1280,12 +1401,15 @@ export default function ForecastDock({
                 {waves.source.manifest.provider}
               </>
             )}
-            {weather.source && weatherRows.length > 0 && (
+            {weather.source && modelWeatherRows.length > 0 && (
               <>
                 {" · "}
                 {weather.source.manifest.modelName},{" "}
                 {weather.source.manifest.provider}
               </>
+            )}
+            {observed && (
+              <>{" · Sea temperature: Marine Institute observations"}</>
             )}
             {tide.tide && (
               <>

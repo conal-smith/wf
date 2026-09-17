@@ -1059,14 +1059,17 @@ stated reason, `tideForSpot` returns no curve for them without fetching anything
 and `tideSpotNote` gives the UI the manifest's own words. Heights are metres above
 the station's datum, which the dock prints in its credits line with every reading.
 
-`force5/src/seaTemperature.ts` is the same shape for the observation bundle, and
-is **data layer only**: `validateSeaTemperatureManifest`, `loadSeaTemperature`,
-`seaTemperatureForSpot` and `seaTemperatureNote`, with no dock UI yet. Because the
-whole bundle is one file, a spot's latest reading and its series need no second
-request, and `seaTemperatureForSpot` also returns `ageHours` so the UI can say how
-old the reading is. These are observations: nothing in the module interpolates
-forward from the newest one, and a station's distance travels with every value
-because a buoy 50 km offshore is not the water at the launch.
+`force5/src/seaTemperature.ts` is the same shape for the observation bundle:
+`validateSeaTemperatureManifest`, `loadSeaTemperature`, `seaTemperatureForSpot` and
+`seaTemperatureNote`, plus the display helpers the Sea row reads —
+`seaTemperatureText` (the reading in two parts), `observationAge` (how old it is,
+in words) and `sparklinePoints` (the recent series scaled to its own range and
+spaced by real time). Because the whole bundle is one file, a spot's latest reading
+and its series need no second request, and `seaTemperatureForSpot` also returns
+`ageHours` so the row can say how old the reading is. These are observations:
+nothing in the module interpolates forward from the newest one, and a station's
+distance travels with every value because a buoy 50 km offshore is not the water at
+the launch.
 
 ## Forecast dock
 
@@ -1123,13 +1126,30 @@ auto-scroll and the column hooks are shared:
   a code is read from the cell the spot sits in and is never averaged, blended or
   interpolated. **Cloud** (off by default) is total cover as a percentage with a
   three-level bar beside it for high, medium and low. **Pressure** (off) is mean
-  sea level pressure in whole hectopascals. **Sea** (off) shows the model's own
-  ground/skin temperature, drawn back and labelled "model skin temperature,
-  approximate" in both the cell and the row's explanation: over sea it is ICON's
-  SST field and a proxy, not an in-situ measurement, and the row stays off until a
-  real coastal source arrives. Air and Weather are on by default; Rain is opt-in because the weather glyph already shows it. Like the
+  sea level pressure in whole hectopascals. Air and Weather are on by default; Rain
+  is opt-in because the weather glyph already shows it. Like the
   waves, these steps are matched to the wind model's columns within 1.5 hours and
   are otherwise dashes, and the credits line names DWD for them.
+- **Sea** prefers the **measurement**. Where `marine/sea-temperature.json` has a
+  station reporting near the spot, the row is one reading spanning its columns at
+  the left — `15.2 °C · M3 buoy, 61 km, 2 h ago` — with the last seven days as a
+  13px sparkline beside it and a tooltip naming the station, its network, the
+  distance, the sensor depth where one is published, when it was measured and who
+  measured it. An observation is not a forecast, so it is shown once rather than
+  pretended at every column, the age is recomputed against the page's own clock,
+  and the credits line reads "Sea temperature: Marine Institute observations".
+  Where no station is in range the row falls back to the model's own ground/skin
+  temperature (`t_g`), drawn back and labelled "model skin temperature,
+  approximate" in the cell, with the manifest's own reason — "beyond the 60 km
+  limit" — in the row's explanation, so the row always says which of the two it is
+  showing. **The Sea row is on by default exactly where an observation exists**;
+  elsewhere it is off, because an approximation does not earn a row. That default
+  holds only until the reader touches the switch: `prefs.touchedRows` records the
+  rows they have set by hand, and a touched row is their choice at every spot from
+  then on (`rowOn(prefs, key, available)` in `force5/src/prefs.ts` is the whole
+  rule). Sea temperature is loaded on the same discipline as the tides — one
+  aborting fetch of one manifest — and a 404 simply means no observations, not an
+  error.
 - **Display options**: row switches, units and the models in the blend, persisted
   to local storage. Units drive the charts, the table and the map readouts
   together. Planned models are listed greyed; rows with no adapter yet say "no
@@ -1151,7 +1171,9 @@ and GFS (16–21 September) or ECMWF (to 28 September) shows them, because the
 bundled GFS-Wave run starts on 16 September at 18 UTC and the bundled ICON-EU
 surface run is that same hour plus one three-hour step.
 
-Default dock height, measured with the bundled snapshots: **439px at 1440** and
+A spot with an observation in range adds the Sea row to those defaults, which is
+one more 24px row (22px compact). Default dock height, measured with the bundled
+snapshots and no observations published: **439px at 1440** and
 **373px at 390** (411px and 349px with no tide predictions published). The Table
 view is 368px and 334px. The waves and tide rows are 28px, 24px compact; every
 surface-weather row takes the standard 24px, 22px compact. The three default-on
@@ -1175,7 +1197,7 @@ rows deserve to be on by default is a design call rather than a code one.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series and ICON-EU surface weather are all shown in the dock. The Sea row is the **model's own skin temperature** and is off by default: over sea it is ICON's SST field and a proxy, not an in-situ measurement, and no coastal temperature source is wired up yet. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed — with one exception: the Sea row, which is a measurement when a Marine Institute station is reporting near the spot. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series, ICON-EU surface weather and observed sea temperature are all shown in the dock. Where no station is in range the Sea row falls back to the **model's own skin temperature**, labelled as an approximation, and is off by default. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 

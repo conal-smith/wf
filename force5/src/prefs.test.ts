@@ -3,7 +3,9 @@ import {
   PREFS_KEY,
   defaultPrefs,
   loadPrefs,
+  rowOn,
   savePrefs,
+  setRow,
   type Prefs,
   type PrefsStorage,
 } from "./prefs";
@@ -53,6 +55,9 @@ describe("display preferences", () => {
     expect(prefs.blendModels).toContain("ecmwf-ens");
     expect(prefs.blendModels).not.toContain("ukv");
   });
+  it("starts with no row touched by hand", () => {
+    expect(defaultPrefs().touchedRows).toEqual([]);
+  });
   it("gives every caller its own mutable copy", () => {
     const first = defaultPrefs();
     first.blendModels.push("ukv");
@@ -81,6 +86,7 @@ describe("display preferences", () => {
       }),
     });
     const prefs = loadPrefs(storage);
+    expect(prefs.touchedRows).toEqual([]);
     expect(prefs.rows.gust).toBe(true);
     expect(prefs.rows.tide).toBe(true);
     expect(prefs.rows).not.toHaveProperty("unknownRow");
@@ -98,6 +104,40 @@ describe("display preferences", () => {
     expect(loadPrefs(fakeStorage())).toEqual(defaultPrefs());
     expect(loadPrefs(null)).toEqual(defaultPrefs());
     expect(loadPrefs(brokenStorage())).toEqual(defaultPrefs());
+  });
+  it("keeps only real row keys among the touched rows", () => {
+    const storage = fakeStorage({
+      [PREFS_KEY]: JSON.stringify({ touchedRows: ["sea", "nonsense", 7] }),
+    });
+    expect(loadPrefs(storage).touchedRows).toEqual(["sea"]);
+    expect(
+      loadPrefs(
+        fakeStorage({ [PREFS_KEY]: JSON.stringify({ touchedRows: 3 }) }),
+      ).touchedRows,
+    ).toEqual([]);
+  });
+  it("lets availability decide an untouched row and the reader decide a touched one", () => {
+    const prefs = defaultPrefs();
+    // A row with no availability answer is simply its stored boolean.
+    expect(rowOn(prefs, "sea")).toBe(false);
+    expect(rowOn(prefs, "air")).toBe(true);
+    // With one, an untouched row follows it in both directions.
+    expect(rowOn(prefs, "sea", true)).toBe(true);
+    expect(rowOn(prefs, "sea", false)).toBe(false);
+    // Switching it by hand takes it out of availability's hands for good.
+    const off = setRow(prefs, "sea", false);
+    expect(off.touchedRows).toEqual(["sea"]);
+    expect(rowOn(off, "sea", true)).toBe(false);
+    const on = setRow(off, "sea", true);
+    expect(on.touchedRows).toEqual(["sea"]);
+    expect(rowOn(on, "sea", false)).toBe(true);
+    // And it survives a round trip through storage.
+    const storage = fakeStorage();
+    savePrefs(on, storage);
+    expect(rowOn(loadPrefs(storage), "sea", false)).toBe(true);
+    // The original is untouched: preferences are replaced, never mutated.
+    expect(prefs.touchedRows).toEqual([]);
+    expect(prefs.rows.sea).toBe(false);
   });
   it("reports a failed write without throwing", () => {
     expect(savePrefs(defaultPrefs(), brokenStorage())).toBe(false);

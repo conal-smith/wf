@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SEA_TEMPERATURE_URL,
   loadSeaTemperature,
+  observationAge,
+  seaTemperatureLabel,
+  seaTemperatureText,
+  sparklinePoints,
   seaTemperatureForSpot,
   seaTemperatureNote,
   seaTemperatureStation,
@@ -241,5 +245,87 @@ describe("seaTemperatureForSpot", () => {
     vi.setSystemTime(new Date("2026-09-17T04:00:00Z"));
     expect(seaTemperatureForSpot(m, "rusheen")!.ageHours).toBe(6);
     vi.useRealTimers();
+  });
+});
+
+describe("observationAge", () => {
+  it("says how old a reading is in the units a reader thinks in", () => {
+    expect(observationAge(0)).toBe("just now");
+    expect(observationAge(-0.5)).toBe("just now"); // A clock skew, not the future.
+    expect(observationAge(0.5)).toBe("30 min ago");
+    expect(observationAge(1.4)).toBe("84 min ago");
+    expect(observationAge(2)).toBe("2 h ago");
+    expect(observationAge(24)).toBe("24 h ago");
+    expect(observationAge(40)).toBe("2 days ago");
+    expect(observationAge(26 * 24)).toBe("26 days ago");
+    expect(observationAge(Number.NaN)).toBe("age unknown");
+  });
+});
+
+describe("seaTemperatureText", () => {
+  const reading = () =>
+    seaTemperatureForSpot(
+      validateSeaTemperatureManifest(manifest()),
+      "dollymount",
+      Date.parse("2026-09-17T01:00:00Z"),
+    )!;
+
+  it("reads as the measurement, then where and when it was taken", () => {
+    const text = seaTemperatureText(reading());
+    expect(text.value).toBe("15.5 °C");
+    expect(text.detail).toBe("M2 buoy, 49 km, 2 h ago");
+    expect(seaTemperatureLabel(reading())).toBe(
+      "15.5 °C · M2 buoy, 49 km, 2 h ago",
+    );
+  });
+
+  it("takes an age against a later clock, so an open tab stays honest", () => {
+    expect(seaTemperatureText(reading(), 9).detail).toMatch(/9 h ago$/);
+  });
+
+  it("keeps a decimal for a station close enough for one to matter", () => {
+    const close = { ...reading(), distanceKm: 4.32 };
+    expect(seaTemperatureText(close).detail).toContain("4.3 km");
+  });
+});
+
+describe("sparklinePoints", () => {
+  const readings = (values: number[]) => series("2026-09-16T00:00:00Z", values);
+
+  it("scales a series to its own range and spaces it by real time", () => {
+    const points = sparklinePoints(readings([15, 16, 17]), 40, 10)
+      .split(" ")
+      .map((pair) => pair.split(",").map(Number));
+    expect(points).toHaveLength(3);
+    // Left to right across the full width, evenly for evenly spaced readings.
+    expect(points.map(([x]) => x)).toEqual([0, 20, 40]);
+    // The coldest reading sits at the bottom and the warmest at the top.
+    expect(points[0][1]).toBeGreaterThan(points[2][1]);
+    expect(points[2][1]).toBeCloseTo(0.5, 5);
+    expect(points[0][1]).toBeCloseTo(9.5, 5);
+  });
+
+  it("puts a gap in the readings where the gap actually is", () => {
+    const sparse = [
+      { time: "2026-09-16T00:00:00Z", value: 15 },
+      { time: "2026-09-16T01:00:00Z", value: 16 },
+      { time: "2026-09-16T05:00:00Z", value: 17 },
+    ];
+    expect(
+      sparklinePoints(sparse, 100, 10)
+        .split(" ")
+        .map((pair) => Number(pair.split(",")[0])),
+    ).toEqual([0, 20, 100]);
+  });
+
+  it("draws a flat series down the middle rather than dividing by zero", () => {
+    for (const pair of sparklinePoints(readings([15, 15]), 10, 10).split(" "))
+      expect(Number(pair.split(",")[1])).toBeCloseTo(5, 5);
+  });
+
+  it("draws nothing it cannot draw a line through", () => {
+    expect(sparklinePoints(readings([15]), 40, 10)).toBe("");
+    expect(sparklinePoints([], 40, 10)).toBe("");
+    expect(sparklinePoints(readings([15, 16]), 0, 10)).toBe("");
   });
 });

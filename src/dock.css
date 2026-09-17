@@ -376,6 +376,41 @@
   align-items: center;
   color: #35636e;
 }
+/* An observation is one measurement of the water, so it is one reading at the
+   left of the row rather than a value per forecast column: the cell spans the
+   row, and nothing in it is coloured like a forecast. */
+.forecast-table .marine-row td.observed-cell {
+  text-align: left;
+  white-space: nowrap;
+}
+.observed-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.observed-reading b {
+  font-weight: 600;
+  color: #1e4a57;
+}
+.observed-reading small {
+  font-size: 9px;
+  color: #6a8b94;
+}
+/* The last seven days of readings, drawn to their own range: the shape is the
+   point, so it carries no axis and no numbers of its own. */
+.observed-spark {
+  flex: none;
+  overflow: visible;
+}
+.observed-spark polyline {
+  fill: none;
+  stroke: #2a76b8;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
 /* A reading that is a model approximation rather than a measurement is drawn
    back, and the row's own explanation says why. */
 .forecast-table .marine-row td.proxy-cell {
