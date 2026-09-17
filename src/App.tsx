@@ -271,20 +271,14 @@ export default function App() {
   }, [columnModels, manifest, clock]);
   // Kept by identity so a minute's tick, or a sweep that says the same thing,
   // does not rebuild every chart and re-run the dock's measurement pass. The
-  // ref is written in an effect, never during render, and the handlers that
-  // need the columns outside a render read it there.
-  const columnsRef = useRef<DockColumn[]>(columns);
-  const stable = useMemo(() => {
-    const previous = columnsRef.current;
-    return previous.length === columns.length &&
-      previous.every(
-        (column, index) =>
-          column.validTime === columns[index].validTime &&
-          column.model === columns[index].model,
-      )
-      ? previous
-      : columns;
-  }, [columns]);
+  // key is what actually changed, and nothing is read or written through a ref
+  // while rendering.
+  const columnsKey = columns
+    .map((column) => `${column.validTime}|${column.model}`)
+    .join(",");
+  const stable = useMemo(() => columns, [columnsKey]);
+  // The handlers that need the columns outside a render read them here.
+  const columnsRef = useRef<DockColumn[]>(stable);
   useEffect(() => {
     columnsRef.current = stable;
   }, [stable]);
