@@ -11,6 +11,8 @@ playwright-report/
 .env.local
 .env.*
 !.env.example
+# Bucket credentials for the importer (docs/CLOUDFLARE_R2_SETUP.md).
+*.env
 .codex/
 .multicode/
 .claude/
