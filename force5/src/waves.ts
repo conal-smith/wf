@@ -1,26 +1,38 @@
-// Wave forecasts. A wave bundle is not a wind bundle: it declares its own
-// variables instead of publishing u/v/gust, its map frames are optional because
-// the precomputed per-spot series is the product, and a location the model
-// cannot resolve is published as nulls with a stated reason rather than
-// dropped. So it gets its own contract, validator and readers here, mirroring
-// `validate_wave_bundle` in force5/ingest/publish_s3.py.
-import type { FrameInfo, Grid } from "./weather";
+// Wave forecasts. The manifest shape, its validator and the nearest-step axis
+// matching are not wave-specific — a weather bundle says the same thing about
+// temperature and rain — so they live in `variables.ts` and this module is the
+// wave-shaped door onto them, holding only what is actually about the sea: the
+// coverage notes an adapter publishes for a beach it cannot resolve, which of
+// its variables carry a sea state, and which source the dock should prefer.
+import {
+  MAX_VARIABLES_HORIZON_HOURS,
+  VARIABLE_MATCH_HOURS,
+  VARIABLE_STEP_HOURS,
+  VARIABLE_VALUE_LIMITS,
+  pickVariable,
+  validateVariablesManifest,
+  variableAtAxis,
+  variableSeries,
+  variableSeriesHasData,
+  variablesHours,
+  type BundleVariable,
+  type VariableStep,
+  type VariablesManifest,
+} from "./variables";
 
 /** Cadences the importers publish; anything else is a contract break. */
-export const WAVE_STEP_HOURS: readonly number[] = [1, 3, 6];
+export const WAVE_STEP_HOURS = VARIABLE_STEP_HOURS;
 /** The longest horizon a frameless bundle may declare, as the importer allows. */
-export const MAX_WAVE_HORIZON_HOURS = 384;
+export const MAX_WAVE_HORIZON_HOURS = MAX_VARIABLES_HORIZON_HOURS;
 /** The importer's absolute bound on every published wave value. */
-export const MAX_WAVE_VALUE = 1000;
+export const MAX_WAVE_VALUE = VARIABLE_VALUE_LIMITS.wave;
 /**
  * How far a dock column may sit from a native wave step and still read it, in
  * hours. Wave values are never interpolated between steps: heights, periods and
  * directions belong to a spectrum the model solved at that hour, and averaging
- * two of them invents a sea state that was never forecast. Half a three-hour
- * step is wide enough to land every 3-hourly wave step on a 3-hourly wind
- * column and narrow enough to leave a 6-hourly wind column's odd hours empty.
+ * two of them invents a sea state that was never forecast.
  */
-export const WAVE_MATCH_HOURS = 1.5;
+export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
 
 /** Sources in the order the dock prefers them: Ireland's own model first. */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
@@ -28,17 +40,9 @@ export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "gfs-wave",
 ];
 
-export interface WaveVariable {
-  units: string;
-  label: string;
-  description: string;
-}
+export type WaveVariable = BundleVariable;
 /** One native forecast step for one spot; a variable with no value is null. */
-export interface WaveStep {
-  hour: number;
-  validTime: string;
-  values: Record<string, number | null>;
-}
+export type WaveStep = VariableStep;
 /**
  * Why a spot reads the way it does, as GFS-Wave publishes it. `landMasked` says
  * the cell over the location is land, ice or unresolved; `resolved` says a
@@ -59,214 +63,34 @@ export interface WaveSpotRecord {
   nest?: boolean;
   reason?: string;
 }
-export interface WaveManifest {
-  schemaVersion: number;
+export interface WaveManifest extends VariablesManifest {
   kind: "wave";
-  model: string;
-  modelName: string;
-  provider: string;
-  run: string;
-  runTime: string;
-  generatedAt: string;
-  stepHours: number;
-  stepRanges?: { throughHour: number; stepHours: number }[];
-  /** The last published hour, for a bundle whose frame count cannot imply it. */
-  horizonHours?: number;
-  resolutionKm?: number | null;
-  resolutionLabel?: string;
-  modelDetail?: string;
-  /** Present only when frames are; a frameless bundle needs no grid. */
-  grid?: Grid;
-  variables: Record<string, WaveVariable>;
-  /** May be empty: the spot series is the product, a wave grid is a luxury. */
-  frames: FrameInfo[];
-  /** The subset of `variables` the frames carry, when it is narrower. */
-  frameVariables?: string[];
-  spotSeries: Record<string, WaveStep[]>;
   spotCoverage?: Record<string, WaveCoverage>;
   spots?: Record<string, WaveSpotRecord>;
   directionConvention?: string;
   partitionNote?: string;
-  processing?: string;
-  sourceUrl: string;
-  attribution: string;
-  licenseUrl: string;
-  termsUrl?: string;
 }
-
-const INVALID = "Invalid wave forecast manifest. Refresh the wave forecast.";
-const fail = (): never => {
-  throw new Error(INVALID);
-};
-const filled = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
-const whole = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value);
-const bounded = (value: unknown): value is number =>
-  typeof value === "number" &&
-  Number.isFinite(value) &&
-  Math.abs(value) <= MAX_WAVE_VALUE;
-const VARIABLE_NAME = /^[a-z][a-z0-9_]{0,31}$/;
 
 /**
  * The hours a wave bundle publishes, from its cadence ladder, its frame count
  * or its declared horizon — the browser side of `expected_hours`.
  */
-export function waveHours(manifest: WaveManifest): number[] {
-  const step = manifest.stepHours;
-  const ranges = manifest.stepRanges;
-  if (ranges !== undefined) {
-    if (
-      !Array.isArray(ranges) ||
-      !ranges.length ||
-      ranges[0]?.stepHours !== step
-    )
-      fail();
-    const hours = [0];
-    let end = 0;
-    for (const range of ranges) {
-      const { throughHour: through, stepHours: entry } = range ?? {};
-      if (
-        !whole(entry) ||
-        entry <= 0 ||
-        !whole(through) ||
-        !(end < through && through <= 1000) ||
-        (through - end) % entry
-      )
-        fail();
-      for (let hour = end + entry; hour <= through; hour += entry)
-        hours.push(hour);
-      end = through;
-    }
-    return hours;
-  }
-  if (!whole(step) || !WAVE_STEP_HOURS.includes(step)) fail();
-  const frames = manifest.frames;
-  if (Array.isArray(frames) && frames.length)
-    return frames.map((_, index) => index * step);
-  // Frameless: the horizon is declared rather than implied by a frame count.
-  const horizon = manifest.horizonHours;
-  if (!whole(horizon) || horizon <= 0 || horizon > MAX_WAVE_HORIZON_HOURS)
-    return fail();
-  if (horizon % step) fail();
-  return Array.from({ length: horizon / step + 1 }, (_, index) => index * step);
-}
+export const waveHours = (manifest: WaveManifest): number[] =>
+  variablesHours(manifest, "wave");
 
 /**
  * A validated wave manifest, checking the manifest-level rules the importer
- * checks: the variable map, the optional frame list, the declared horizon and
- * the shape of every spot series. Frame *contents* are not checked here — the
- * dock reads series and never downloads a wave frame.
+ * checks. Frame *contents* are not checked: the dock reads series and never
+ * downloads a wave frame.
  */
-export function validateWaveManifest(m: WaveManifest): WaveManifest {
-  if (
-    !m ||
-    typeof m !== "object" ||
-    m.schemaVersion !== 1 ||
-    m.kind !== "wave" ||
-    !filled(m.model) ||
-    !filled(m.modelName) ||
-    !filled(m.provider) ||
-    !filled(m.attribution) ||
-    !Number.isFinite(Date.parse(m.runTime))
-  )
-    fail();
-  const variables = m.variables;
-  if (
-    !variables ||
-    typeof variables !== "object" ||
-    Array.isArray(variables) ||
-    !Object.keys(variables).length ||
-    !Object.entries(variables).every(
-      ([name, meta]) =>
-        VARIABLE_NAME.test(name) &&
-        meta &&
-        typeof meta === "object" &&
-        filled(meta.units) &&
-        filled(meta.label) &&
-        filled(meta.description),
-    )
-  )
-    fail();
-  if (!Array.isArray(m.frames)) fail();
-  const hours = waveHours(m);
-  const runTime = Date.parse(m.runTime);
-  // Compared as instants, not as strings: the importers write "…:00:00Z" and an
-  // ISO round-trip would add milliseconds that mean nothing.
-  const at = (hour: number) => runTime + hour * 3600000;
-  if (
-    m.horizonHours !== undefined &&
-    m.horizonHours !== hours[hours.length - 1]
-  )
-    fail();
-  if (
-    m.frames.length &&
-    !m.frames.every(
-      (frame, index) =>
-        frame &&
-        frame.hour === hours[index] &&
-        Date.parse(frame.validTime) === at(hours[index]) &&
-        filled(frame.url) &&
-        frame.url.startsWith("weather/") &&
-        !frame.url.includes(".."),
-    )
-  )
-    fail();
-  const gridded = m.frameVariables;
-  if (
-    gridded !== undefined &&
-    (!Array.isArray(gridded) ||
-      !gridded.length ||
-      new Set(gridded).size !== gridded.length ||
-      !gridded.every((name) => name in variables))
-  )
-    fail();
-  const series = m.spotSeries;
-  if (
-    !series ||
-    typeof series !== "object" ||
-    Array.isArray(series) ||
-    !Object.keys(series).length
-  )
-    fail();
-  const names = Object.keys(variables).sort();
-  for (const steps of Object.values(series)) {
-    if (!Array.isArray(steps) || steps.length !== hours.length) fail();
-    steps.forEach((step, index) => {
-      if (
-        !step ||
-        step.hour !== hours[index] ||
-        Date.parse(step.validTime) !== at(hours[index]) ||
-        !step.values ||
-        typeof step.values !== "object" ||
-        Array.isArray(step.values)
-      )
-        fail();
-      const keys = Object.keys(step.values).sort();
-      if (
-        keys.length !== names.length ||
-        keys.some((key, i) => key !== names[i]) ||
-        // Land, unresolved cells and locations with no usable cell are null,
-        // never zero: a zero would read as a flat calm sea that was measured.
-        !Object.values(step.values).every(
-          (value) => value === null || bounded(value),
-        )
-      )
-        fail();
-    });
-  }
-  return m;
-}
+export const validateWaveManifest =
+  validateVariablesManifest<WaveManifest>("wave");
 
 /** The precomputed series for a named spot, or null when this model omits it. */
-export function waveSeries(
+export const waveSeries = (
   manifest: WaveManifest,
   spotId: string | undefined,
-): WaveStep[] | null {
-  if (!spotId) return null;
-  const series = manifest.spotSeries?.[spotId];
-  return Array.isArray(series) && series.length ? series : null;
-}
+): WaveStep[] | null => variableSeries(manifest, spotId);
 
 /**
  * Whether a series says anything at all. A land-masked or unresolved location
@@ -276,9 +100,17 @@ export function waveSeries(
 export const waveSeriesHasData = (
   series: readonly WaveStep[] | null,
   variable = "swh",
-) =>
-  !!series &&
-  series.some((step) => typeof step.values?.[variable] === "number");
+) => variableSeriesHasData(series, variable);
+
+/**
+ * The nearest native wave step to each time on the dock's axis, or null where
+ * no step falls inside `WAVE_MATCH_HOURS`. Nothing is interpolated.
+ */
+export const waveAtAxis = (
+  series: readonly WaveStep[],
+  axisTimes: readonly string[],
+  toleranceHours = WAVE_MATCH_HOURS,
+): (WaveStep | null)[] => variableAtAxis(series, axisTimes, toleranceHours);
 
 /**
  * The manifest's own words on why a spot reads the way it does, or null when it
@@ -308,34 +140,6 @@ export function waveCoverageNote(
     : null;
 }
 
-/**
- * The nearest native wave step to each time on the dock's axis, or null where
- * no step falls inside `WAVE_MATCH_HOURS`. Nothing is interpolated: see the
- * note on that constant.
- */
-export function waveAtAxis(
-  series: readonly WaveStep[],
-  axisTimes: readonly string[],
-  toleranceHours = WAVE_MATCH_HOURS,
-): (WaveStep | null)[] {
-  const times = series.map((step) => Date.parse(step.validTime));
-  const limit = toleranceHours * 3600000;
-  return axisTimes.map((iso) => {
-    const when = Date.parse(iso);
-    if (!Number.isFinite(when)) return null;
-    let best = -1;
-    let distance = Infinity;
-    times.forEach((time, index) => {
-      const gap = Math.abs(time - when);
-      if (gap < distance) {
-        distance = gap;
-        best = index;
-      }
-    });
-    return best >= 0 && distance <= limit ? series[best] : null;
-  });
-}
-
 /** The variables that carry one sea state: a height, and a period and bearing. */
 export interface WaveFieldSet {
   height: string;
@@ -354,11 +158,6 @@ export interface WaveFields {
   windsea: WaveFieldSet | null;
 }
 
-const pick = (
-  variables: Record<string, WaveVariable>,
-  candidates: readonly string[],
-) => candidates.find((name) => name in variables) ?? null;
-
 export function waveFields(manifest: WaveManifest): WaveFields | null {
   const variables = manifest.variables ?? {};
   const set = (
@@ -366,13 +165,13 @@ export function waveFields(manifest: WaveManifest): WaveFields | null {
     periods: readonly string[],
     directions: readonly string[],
   ): WaveFieldSet | null => {
-    const height = pick(variables, heights);
+    const height = pickVariable(variables, heights);
     return height === null
       ? null
       : {
           height,
-          period: pick(variables, periods),
-          direction: pick(variables, directions),
+          period: pickVariable(variables, periods),
+          direction: pickVariable(variables, directions),
         };
   };
   const total = set(["swh"], ["pp1d", "mwp"], ["mwd", "pwd"]);
