@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# The scratch site the e2e suite is staged, built and served from; it holds the
+# synthetic sample weather, so the suite never opens public/weather.
+.e2e/
 .venv/
 .cache/
 __pycache__/

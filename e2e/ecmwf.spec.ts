@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { expect, test } from "./fixtures";
+import { readSample } from "./sample";
 import {
   SAMPLE_CLOCK,
   sampleColumn,
@@ -7,17 +7,18 @@ import {
   sampleColumnsWithoutEcmwf,
 } from "./columns";
 
-const ecmwf = JSON.parse(readFileSync("public/weather/ecmwf.json", "utf8"));
-const harmonie = JSON.parse(
-  readFileSync("public/weather/harmonie.json", "utf8"),
-);
+const ecmwf = readSample("ecmwf");
+const harmonie = readSample("harmonie");
 
 test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to HARMONIE", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // An hour into HARMONIE's run, so the axis is the one `sampleColumns`
+  // describes: the near run already covers now, so it opens the axis and there
+  // is no head. ECMWF's own run is fourteen hours old here, still current.
   await page.clock.setFixedTime(
-    new Date(Date.parse(ecmwf.runTime) + 12 * 3600000),
+    new Date(Date.parse(ecmwf.runTime) + 14 * 3600000),
   );
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(25, {
