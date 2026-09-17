@@ -85,8 +85,8 @@ somewhere safe straight away.
 ### 7. Put the settings where the importer reads them
 
 In the Home Compute job's environment, or in a local `r2.env` file for the first
-test. `r2.env` must never be committed (`.env*` is already gitignored; keep the
-file name inside that pattern or outside the repo).
+test. `r2.env` must never be committed: `*.env` is gitignored for exactly this file,
+but check `git status` shows nothing before the first commit after creating it.
 
 ```
 S3_BUCKET=force5-forecast
