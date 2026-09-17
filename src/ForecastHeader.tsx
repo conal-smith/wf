@@ -17,6 +17,8 @@ interface Props {
   onSelect: (index: number) => void;
   /** Sunrise and sunset in the day row; off when there is no room for them. */
   showSun: boolean;
+  /** The day's highest air temperature, by date, where a weather run reaches it. */
+  dayMax?: Record<string, number>;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function ForecastHeader({
   index,
   onSelect,
   showSun,
+  dayMax,
 }: Props) {
   const columnWidth = (column: number) => {
     const frames = manifest.frames;
@@ -58,6 +61,10 @@ export default function ForecastHeader({
   // group at the edge of a run would stretch that column. A partial day shows
   // its label only.
   const SUN_MIN_COLUMNS = 4;
+  // The day maximum is the third thing in a row that already holds two times, so
+  // it only appears on a group wide enough to have spare room for it. A day that
+  // cannot fit it skips it: a truncated temperature would be a wrong one.
+  const MAX_TEMP_MIN_COLUMNS = 6;
   return (
     <thead>
       <tr className="forecast-day-groups">
@@ -66,6 +73,7 @@ export default function ForecastHeader({
           const sun = sunTimes(point.lat, point.lon, day.noon);
           const rise = sun.sunrise && formatLocal(sun.sunrise);
           const set = sun.sunset && formatLocal(sun.sunset);
+          const high = dayMax?.[day.date];
           return (
             <th key={day.date} scope="colgroup" colSpan={day.count}>
               <span style={{ maxWidth: groupWidth(day) }}>
@@ -82,6 +90,17 @@ export default function ForecastHeader({
                     <i aria-hidden="true">{set}</i>
                   </span>
                 )}
+                {showSun &&
+                  day.count >= MAX_TEMP_MIN_COLUMNS &&
+                  high !== undefined && (
+                    <span
+                      className="day-max"
+                      role="img"
+                      aria-label={`Highest air temperature ${Math.round(high)} degrees Celsius`}
+                    >
+                      <i aria-hidden="true">{Math.round(high)}°</i>
+                    </span>
+                  )}
               </span>
             </th>
           );

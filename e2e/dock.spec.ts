@@ -304,18 +304,39 @@ test("a missing tide manifest hides the row and explains itself in the filter", 
   const tide = page.locator('.filter-switch:has(input[data-row="tide"])');
   await expect(tide.locator("input")).toBeDisabled();
   await expect(tide).toContainText("npm run tides:refresh");
-  // Sea and air temperature have no adapter at all yet, and say so.
-  for (const row of ["sea", "air"]) {
-    const entry = page.locator(`.filter-switch:has(input[data-row="${row}"])`);
-    await expect(entry.locator("input")).toBeDisabled();
-    await expect(entry).toContainText("no source yet");
-  }
+  // The surface-weather rows have an adapter now, so they survive the tides
+  // going missing too.
+  for (const row of ["weather", "air", "rain", "cloud", "pressure", "sea"])
+    await expect(
+      page.locator(`.filter-switch:has(input[data-row="${row}"]) input`),
+    ).toBeEnabled();
   // Waves do have one now, so the block survives the tides going missing.
   await expect(
     page.locator('.filter-switch:has(input[data-row="waves"]) input'),
   ).toBeEnabled();
   await expect(page.locator(".tide-row")).toHaveCount(0);
   await expect(page.locator('.wave-row[data-row="waves"]')).toHaveCount(1);
+});
+
+test("a missing weather manifest hides the rows and says why in the filter", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.route("**/weather/icon-eu-weather.json", (route) =>
+    route.fulfill({ status: 404, body: "Missing" }),
+  );
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".weather-row")).toHaveCount(0);
+  await expect(page.locator(".forecast-credits")).not.toContainText(
+    "ICON-EU surface",
+  );
+  await page.getByLabel("Display options", { exact: true }).click();
+  for (const row of ["weather", "air", "rain", "cloud", "pressure", "sea"]) {
+    const entry = page.locator(`.filter-switch:has(input[data-row="${row}"])`);
+    await expect(entry.locator("input")).toBeDisabled();
+    await expect(entry).toContainText("no source yet");
+  }
 });
 
 test("row glyphs explain themselves, and the dock fits its budget", async ({
@@ -338,14 +359,40 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   expect(tipBox.x).toBeGreaterThanOrEqual(0);
   await page.screenshot({ path: "test-results/dock-row-tooltip-390.png" });
   const dock = (await page.locator(".map-footer").boundingBox())!;
-  expect(dock.height).toBeLessThan(320);
+  // Three surface-weather rows are on by default — weather, air and rain — at
+  // the compact row height of 22px, which is 66px on top of the 307px this was
+  // before they existed. The budget is per row, not per dock: a row that wanted
+  // more than 22px here would be the failure.
+  expect(dock.height).toBeLessThan(380);
+  const compactRows = await page
+    .locator(".forecast-table .marine-row td:first-of-type")
+    .evaluateAll((cells) =>
+      cells.map((cell) => Math.round(cell.getBoundingClientRect().height)),
+    );
+  expect(compactRows.length).toBeGreaterThanOrEqual(4);
+  expect(Math.max(...compactRows)).toBeLessThanOrEqual(24);
   await page.locator(".map-footer").screenshot({
     path: "test-results/dock-blend-390.png",
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await expect(page.locator(".dock-views button > span").first()).toBeVisible();
   const wide = (await page.locator(".map-footer").boundingBox())!;
-  expect(wide.height).toBeLessThan(380);
+  // Two weather rows on by default at the full 24px: 48px on top of the previous 367px.
+  expect(wide.height).toBeLessThan(450);
+  const rows = await page
+    .locator(".forecast-table .marine-row td:first-of-type")
+    .evaluateAll((cells) =>
+      cells.map((cell) => Math.round(cell.getBoundingClientRect().height)),
+    );
+  // The weather rows take the standard 24px; only waves and the tide take 28px.
+  expect(
+    await page
+      .locator(".forecast-table .weather-row td:first-of-type")
+      .evaluateAll((cells) =>
+        cells.map((cell) => Math.round(cell.getBoundingClientRect().height)),
+      ),
+  ).toEqual([24, 24]);
+  expect(Math.max(...rows)).toBeLessThanOrEqual(28);
   await page.locator(".map-footer").screenshot({
     path: "test-results/dock-blend-1440.png",
   });
@@ -489,6 +536,166 @@ test("a spot with no wave coverage hides the row and says so in the filter", asy
     await expect(entry.locator("input")).toBeDisabled();
     await expect(entry).toContainText("no wave data at this spot");
   }
+});
+
+/**
+ * The bundled ICON-EU surface run is 2026-09-16 18 UTC, +0 and +3 h only, so it
+ * needs the same overlapping wind columns the wave rows do: GFS, whose 16
+ * September 12 UTC run reaches those hours. Its own `icon-eu` wind sibling ends
+ * before them and HARMONIE never reaches them at all.
+ */
+const weatherReadings = (page: Page, row: string) =>
+  page
+    .locator(`.weather-row[data-row="${row}"] td`)
+    .evaluateAll((cells) =>
+      cells.map((cell) => (cell.textContent ?? "").trim()),
+    );
+
+test("the Air and Rain rows read the bundled ICON-EU run for Brandon Bay", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await withWaveColumns(page);
+  await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay");
+
+  // Air and Weather are on by default; Rain, Cloud, Pressure and Sea are not.
+  // The weather glyph already says when it rains, so the Rain row is opt-in.
+  await expect(page.locator('.weather-row[data-row="air"]')).toHaveCount(1);
+  await expect(page.locator('.weather-row[data-row="weather"]')).toHaveCount(1);
+  for (const row of ["rain", "cloud", "pressure", "sea"])
+    await expect(page.locator(`.weather-row[data-row="${row}"]`)).toHaveCount(
+      0,
+    );
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('input[data-row="rain"]').check();
+  await page.getByLabel("Close display options").click();
+  await expect(page.locator('.weather-row[data-row="rain"]')).toHaveCount(1);
+
+  // Two native steps land on two of GFS's three-hourly columns: 15.6 °C then
+  // 16.0 °C, as whole degrees. Every other column is a dash, never a zero.
+  const air = await weatherReadings(page, "air");
+  expect(air.filter((text) => text !== "—")).toEqual(["16", "16"]);
+  expect(air.filter((text) => text === "—").length).toBe(air.length - 2);
+  expect(air).not.toContain("0");
+
+  // The run hour has no interval to difference, so its rain is a dash with the
+  // reason in the cell; the 18–21 UTC interval carries 0.6 mm.
+  const rain = page.locator('.weather-row[data-row="rain"]');
+  expect(await weatherReadings(page, "rain")).toContain("0.6");
+  await expect(rain.locator("td.rain-cell")).toHaveCount(1);
+  await expect(rain.locator("td.rain-cell")).toHaveAttribute(
+    "title",
+    /0\.6 mm in the 3 hours to/,
+  );
+  // The unit is stated once on each glyph, not in every cell.
+  await expect(rain.locator("th .row-label small")).toHaveText("mm");
+  await expect(
+    page.locator('.weather-row[data-row="air"] th .row-label small'),
+  ).toHaveText("°C");
+
+  // The air cell's own tooltip adds the dew point and the humidity.
+  await expect(
+    page.locator('.weather-row[data-row="air"] td[title]').first(),
+  ).toHaveAttribute("title", /dew point .* humidity \d+ %/);
+
+  // Present weather is an inline stroke glyph per code, with the code's words.
+  const glyphs = page.locator(".weather-cell");
+  await expect(glyphs).toHaveCount(2);
+  await expect(glyphs.nth(0)).toHaveAttribute("data-weather", "cloudy");
+  await expect(glyphs.nth(0)).toHaveAttribute("data-code", "3");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-weather", "rain");
+  await expect(glyphs.nth(1)).toHaveAttribute("data-code", "61");
+  await expect(glyphs.first().locator("svg")).toHaveAttribute(
+    "stroke",
+    "currentColor",
+  );
+  await expect(
+    page.locator('.weather-row[data-row="weather"] td[title]').first(),
+  ).toHaveAttribute("title", /WMO present-weather code 3/);
+  await expect(page.locator(".weather-cell .sr-only").nth(1)).toHaveText(
+    "Slight rain",
+  );
+
+  // The glyph explains the row, and the credits name DWD for it.
+  await page.getByRole("button", { name: "Rain", exact: true }).focus();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "an amount, not a rate",
+  );
+  await expect(page.locator(".forecast-credits")).toContainText(
+    "ICON-EU surface weather, DWD",
+  );
+  await page.locator(".map-footer").screenshot({
+    path: "test-results/dock-weather-1440.png",
+  });
+  expect(errors).toEqual([]);
+});
+
+test("the cloud, pressure and sea rows are off until the filter turns them on", async ({
+  page,
+}) => {
+  await withWaveColumns(page);
+  await page.getByLabel("Display options", { exact: true }).click();
+  for (const row of ["cloud", "pressure", "sea"]) {
+    const input = page.locator(`input[data-row="${row}"]`);
+    await expect(input).toBeEnabled();
+    await expect(input).not.toBeChecked();
+    await input.check();
+  }
+  await page.getByLabel("Close display options").click();
+
+  // Cloud is a number plus a three-level bar for high, medium and low.
+  const cloud = page.locator('.weather-row[data-row="cloud"]');
+  await expect(cloud.locator(".cloud-cell b").first()).toHaveText("97");
+  await expect(
+    cloud.locator(".cloud-cell").first().locator(".cloud-bars s"),
+  ).toHaveCount(3);
+  await expect(cloud.locator("td[title]").first()).toHaveAttribute(
+    "title",
+    /high 0 %, medium 73 %, low 89 %/,
+  );
+  // Pressure is whole hectopascals.
+  expect(
+    (await weatherReadings(page, "pressure")).filter((text) => text !== "—"),
+  ).toEqual(["1017", "1015"]);
+  // The sea row is the model's skin temperature, drawn back and labelled as an
+  // approximation in both the cell and the row's explanation.
+  const sea = page.locator('.weather-row[data-row="sea"]');
+  await expect(sea.locator("td.proxy-cell")).toHaveCount(2);
+  await expect(sea.locator("td.proxy-cell").first()).toHaveAttribute(
+    "title",
+    /Model skin temperature .* not a measured sea temperature/,
+  );
+  await page.getByRole("button", { name: "Sea temp", exact: true }).focus();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "Model skin temperature, approximate",
+  );
+  await page.locator(".map-footer").screenshot({
+    path: "test-results/dock-weather-all-1440.png",
+  });
+
+  // And the choices persist, like every other row switch.
+  await page.reload();
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await page.getByLabel("Display options", { exact: true }).click();
+  for (const row of ["cloud", "pressure", "sea"])
+    await expect(page.locator(`input[data-row="${row}"]`)).toBeChecked();
+});
+
+test("a wind model whose hours miss the weather run reads as dashes", async ({
+  page,
+}) => {
+  // HARMONIE's bundled run ends on 16 September at 01 UTC, hours the ICON-EU
+  // surface run does not reach. The rows stay, and say nothing, rather than
+  // borrowing a step from three days away.
+  await withTides(page);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.weather-row[data-row="air"]')).toHaveCount(1);
+  const air = await weatherReadings(page, "air");
+  expect(air.length).toBeGreaterThan(0);
+  expect(new Set(air)).toEqual(new Set(["—"]));
+  await expect(page.locator(".weather-cell")).toHaveCount(0);
 });
 
 test("an instantaneous-gust model reads at initialization", async ({

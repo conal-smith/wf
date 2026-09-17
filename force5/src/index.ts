@@ -9,4 +9,6 @@ export * from "./sun";
 export * from "./prefs";
 export * from "./tides";
 export * from "./seaTemperature";
+export * from "./variables";
 export * from "./waves";
+export * from "./surface";

@@ -47,10 +47,12 @@ test("map-first default has compact branding, collapsed search and a bottom-flus
   expect(dock!.x).toBe(0);
   expect(dock!.width).toBe(390);
   expect(dock!.y + dock!.height).toBe(844);
-  // The default dock is the blend chart plus the spread, direction and tide
-  // rows: measured 305px with tides published and 281px without them. The old
-  // 260px budget was the three-row table, which is now the Table view.
-  expect(dock!.height).toBeLessThan(320);
+  // The default dock is the blend chart, the spread row, the waves row and the
+  // three surface-weather rows that are on by default — weather, air and rain —
+  // plus the tide row when tides are published. Measured 373px with them and
+  // 349px without, at the compact 22px a row. The old 320px budget predated the
+  // weather rows, which added 66px here.
+  expect(dock!.height).toBeLessThan(380);
   await expect(page.locator(".sheet-heading, .sheet-current")).toHaveCount(0);
   await expect(page.getByRole("table", { name: /Brandon Bay/ })).toBeVisible();
   await expect(page.locator('[data-view="blend"]')).toHaveAttribute(
