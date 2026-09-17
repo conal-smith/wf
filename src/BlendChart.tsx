@@ -34,6 +34,8 @@ export interface BlendChartProps {
   columns: readonly DockColumn[];
   /** Columns grouped into three-hour candles; one arrow sits on each group. */
   groups: readonly (readonly number[])[];
+  /** How many distinct models put a value on each column. */
+  support: readonly number[];
   stats: readonly HourStats[];
   lines: readonly BlendInput[];
   directions: readonly (number | null)[];
@@ -55,6 +57,7 @@ export default function BlendChart({
   centres,
   columns,
   groups,
+  support,
   stats,
   lines,
   directions,
@@ -172,6 +175,24 @@ export default function BlendChart({
           ];
         });
 
+  /**
+   * Later days have fewer models behind them, and a band drawn the same way
+   * either side of that would read as a confident narrowing rather than as one
+   * model's opinion. Under three contributing models the band's own edge is
+   * drawn dashed over that stretch.
+   */
+  const thin = (values: readonly (number | null)[]) =>
+    values.map((value, index) => ((support[index] ?? 0) < 3 ? value : null));
+  const sparseEdge =
+    support.some((count) => count > 0 && count < 3) &&
+    stats.some((hour) => hour.n > 0)
+      ? `${linePath(centres, thin(maximum), y)} ${linePath(
+          centres,
+          thin(minimum),
+          y,
+        )}`.trim()
+      : "";
+
   // One arrow per three-hour group, so an hourly run does not draw a thicket of
   // them and a three-hourly one still gets one on every column.
   const arrowColumns = new Set(groups.map((group) => group[0]));
@@ -200,6 +221,10 @@ export default function BlendChart({
         )} ${unitLabel(units)} across ${lines.length} model lines.${
           waveBand
             ? ` A band along the foot shows wave height up to ${WAVE_BAND_MAX_M} metres; the Waves row prints it.`
+            : ""
+        }${
+          sparseEdge
+            ? " Where fewer than three models cover an hour the band's edge is dashed."
             : ""
         } The table view lists every value.`}
         onPointerMove={(event) => {
@@ -324,6 +349,7 @@ export default function BlendChart({
               </g>
             );
           })}
+          {sparseEdge && <path className="blend-sparse" d={sparseEdge} />}
           <path className="median-line" d={linePath(centres, median, y)} />
           {directions.map((angle, index) =>
             angle === null || median[index] === null || !arrowColumns.has(index)

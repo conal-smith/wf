@@ -20,6 +20,7 @@ import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import { useModelAvailability } from "./useBlend";
 import {
   dockColumns,
+  frameForTime,
   type ColumnModel,
   type DockColumn,
 } from "../force5/src/timeline";
@@ -190,12 +191,26 @@ export default function App() {
     setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
   };
 
-  // The map frame the selected time asks for. Nothing stores this: a run swap
-  // or a model switch changes which frame a time lands on, and deriving it is
-  // what keeps the reader's place through both.
+  // The frame the map is painting right now, by its own hour.
+  const paintedIndex =
+    manifest && frame
+      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
+      : -1;
+  /**
+   * The map frame the selected time asks for. Nothing stores this: a run swap
+   * or a model switch changes which frame a time lands on, and deriving it is
+   * what keeps the reader's place through both.
+   *
+   * A time this run cannot reach — the dock's columns run fifteen days and
+   * HARMONIE sixty hours — leaves the map exactly where it is. The dock offers
+   * the run that does reach it; nothing switches on the reader's behalf.
+   */
   const requestedIndex =
     manifest && selectedTime
-      ? nearestFrame(manifest.frames, Date.parse(selectedTime))
+      ? (frameForTime(manifest.frames, Date.parse(selectedTime)) ??
+        (paintedIndex >= 0
+          ? paintedIndex
+          : nearestFrame(manifest.frames, Date.parse(selectedTime))))
       : 0;
 
   // The sweep lives here rather than in the dock because the dock's columns are
@@ -280,10 +295,7 @@ export default function App() {
     return () => controller.abort();
   }, [manifest, requestedIndex, retry, pendingModel]);
 
-  const activeIndex =
-    manifest && frame
-      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
-      : requestedIndex;
+  const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;
   useEffect(() => {
     if (!playing || !manifest || loading || frameError) return;
@@ -666,6 +678,11 @@ export default function App() {
                     frameError ? (forecast?.validTime ?? null) : selectedTime
                   }
                   onSelect={selectTime}
+                  // The chip is the only way a far column changes the map, and
+                  // it is the reader's own decision: nothing switches by itself.
+                  onShowOnMap={(id, validTime) =>
+                    void chooseModel(id, validTime)
+                  }
                   open={sheetOpen}
                   onClose={() => {
                     setSheetOpen(false);

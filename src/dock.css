@@ -159,6 +159,61 @@
   font-style: normal;
 }
 
+/* ---------- model band ----------
+   A hairline under the day band saying which run answers for each stretch of
+   the axis. It is a header row, not decoration, so a screen reader hears the
+   model with the hour; it stays thin so fifteen days cost the dock one line. */
+.compact-layout .forecast-table .forecast-model-band th {
+  height: 15px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #3f6673;
+  background: #edf5f4;
+  border-top: 0;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+.forecast-model-band th:not(:first-child) span {
+  display: block;
+  position: sticky;
+  left: var(--forecast-label-width);
+  width: max-content;
+  overflow: hidden;
+  padding: 0 10px;
+}
+.forecast-model-band i {
+  font-style: normal;
+  font-weight: 450;
+  color: #7d5a2e;
+}
+
+/* The reader has selected an hour the map's own run cannot draw. Offer the run
+   that reaches it; never switch on their behalf. */
+.map-reach-chip {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 3px 10px;
+  border: 1px solid #ffffffa8;
+  border-radius: 14px;
+  background: #ffffff85;
+  color: #14586b;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-reach-chip:hover {
+  background: #ffffffc4;
+}
+
 /* ---------- chart row ---------- */
 .forecast-table th.chart-gutter {
   position: sticky;
@@ -239,6 +294,15 @@
 .blend-band,
 .blend-gust {
   stroke: none;
+}
+/* Fewer than three models behind these hours: the band's own edge is dashed,
+   so a narrow band there reads as thin evidence rather than as agreement. */
+.blend-sparse {
+  fill: none;
+  stroke: #1d5a68;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
 }
 .model-line {
   fill: none;

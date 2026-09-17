@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { SAMPLE_CLOCK, sampleColumns } from "./columns";
+import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
 
 const harmonie = JSON.parse(
   readFileSync("public/weather/harmonie.json", "utf8"),
@@ -166,7 +166,7 @@ test("the blend draws every model that covers the spot, and candles share its ax
   // group holds only them: the charts read the columns as evenly spaced. Past
   // day six the axis turns six-hourly and those columns keep twice the room.
   const widths = await page
-    .locator(".forecast-table thead tr:nth-child(2) th")
+    .locator(".forecast-table thead .forecast-hours th")
     .evaluateAll((cells) =>
       cells
         .slice(1)
@@ -210,6 +210,92 @@ test("the blend draws every model that covers the spot, and candles share its ax
   await expect(page.locator(".candle-gust").first()).toHaveCount(1);
   await page.screenshot({ path: "test-results/dock-candles.png" });
   expect(errors).toEqual([]);
+});
+
+test("the dock shows fifteen days with HARMONIE on the map, and says whose", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // HARMONIE stops at +60 h; the dock does not.
+  const days = page.locator(".forecast-day-groups th[scope=colgroup]");
+  expect(await days.count()).toBeGreaterThanOrEqual(15);
+  const span =
+    (Date.parse(sampleColumns.at(-1)!) - Date.parse(sampleColumns[0])) /
+    86400000;
+  expect(span).toBeGreaterThan(14);
+
+  // The model band names the run behind each stretch, in one thin header row.
+  const band = page.locator(".forecast-model-band th[scope=colgroup]");
+  await expect(band).toHaveCount(2);
+  await expect(band.nth(0)).toContainText("HARMONIE");
+  await expect(band.nth(1)).toContainText("ECMWF");
+  // ECMWF's sample run is more than eighteen hours old, and still owns its
+  // columns: the band says it is an older run rather than dropping it.
+  await expect(band.nth(1)).toContainText("older run");
+  expect(
+    await band.nth(0).evaluate((cell) => cell.getBoundingClientRect().height),
+  ).toBeLessThanOrEqual(16);
+
+  // Every wind cell has a value for a named spot, past HARMONIE's reach too,
+  // and none of it costs a frame download.
+  await page.locator('[data-view="table"]').click();
+  const wind = await page
+    .locator(".forecast-table .wind-cell")
+    .allTextContents();
+  expect(wind).toHaveLength(sampleColumns.length);
+  expect(wind.filter((text) => text === "\u2014")).toHaveLength(0);
+
+  // Later days have fewer models, and the chart draws its edge dashed there.
+  await page.locator('[data-view="blend"]').click();
+  await expect(page.locator(".blend-chart .blend-sparse")).toHaveCount(1);
+});
+
+test("a column past the map model offers the run that reaches it", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.clock.setFixedTime(SAMPLE_CLOCK);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const chip = page.getByRole("button", { name: /Show ECMWF on the map/ });
+  await expect(chip).toHaveCount(0);
+
+  // Day twelve: HARMONIE cannot draw it, so the map keeps its last frame.
+  const far = sampleColumn("2026-09-25T12:00:00Z");
+  const drawn = await page.locator(".spot-marker.active").textContent();
+  const slider = page.getByRole("slider", { name: "Forecast time" });
+  await slider.fill(String(far));
+  await expect(page.locator(`[data-forecast-index="${far}"]`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".spot-marker.active")).toHaveText(drawn!);
+  await expect(page.locator('[data-model="harmonie"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(chip).toBeVisible();
+
+  // Nothing switched by itself; the chip is the reader asking.
+  await chip.click();
+  await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+    { timeout: 20000 },
+  );
+  // The map is now at that very hour, and the selection never moved.
+  await expect(slider).toHaveValue(String(far));
+  // It landed on the hour itself, so there is no 'nearest forecast' notice.
+  await expect(page.locator(".model-status")).toHaveCount(0);
+  await expect(chip).toHaveCount(0);
+  await expect(page.locator(".spot-marker.active")).not.toHaveText(drawn!);
 });
 
 test("units drive the chart axis, the table and the map readouts together", async ({
@@ -436,9 +522,16 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   const dock = (await page.locator(".map-footer").boundingBox())!;
   // Three surface-weather rows are on by default — weather, air and rain — at
   // the compact row height of 22px, which is 66px on top of the 307px this was
-  // before they existed. The budget is per row, not per dock: a row that wanted
-  // more than 22px here would be the failure.
-  expect(dock.height).toBeLessThan(380);
+  // before they existed, and the model band adds a 15px hairline. The budget is
+  // per row, not per dock: a row that wanted more than 22px here would be the
+  // failure, and so would a model band that wanted more than a hairline.
+  expect(dock.height).toBeLessThan(400);
+  expect(
+    await page
+      .locator(".forecast-model-band th")
+      .first()
+      .evaluate((cell) => Math.round(cell.getBoundingClientRect().height)),
+  ).toBeLessThanOrEqual(16);
   const compactRows = await page
     .locator(".forecast-table .marine-row td:first-of-type")
     .evaluateAll((cells) =>
@@ -452,8 +545,9 @@ test("row glyphs explain themselves, and the dock fits its budget", async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await expect(page.locator(".dock-views button > span").first()).toBeVisible();
   const wide = (await page.locator(".map-footer").boundingBox())!;
-  // Two weather rows on by default at the full 24px: 48px on top of the previous 367px.
-  expect(wide.height).toBeLessThan(450);
+  // Two weather rows on by default at the full 24px: 48px on top of the previous
+  // 367px, plus the model band's hairline.
+  expect(wide.height).toBeLessThan(470);
   const rows = await page
     .locator(".forecast-table .marine-row td:first-of-type")
     .evaluateAll((cells) =>

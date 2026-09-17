@@ -4,6 +4,16 @@ import { dayLabel, timeLabel, type Point } from "../force5/src/weather";
 import type { DockColumn } from "../force5/src/timeline";
 import type { DayGroup } from "./chart";
 
+/** One stretch of the axis and the run that answers for it. */
+export interface ModelBand {
+  model: string;
+  label: string;
+  /** The run behind it was initialised more than eighteen hours ago. */
+  older: boolean;
+  start: number;
+  count: number;
+}
+
 interface Props {
   /** The dock's time axis. Every view hangs off these columns. */
   columns: readonly DockColumn[];
@@ -11,6 +21,8 @@ interface Props {
   weights: readonly number[];
   point: Point;
   days: readonly DayGroup[];
+  /** Which run answers for each stretch of columns; empty hides the band. */
+  bands: readonly ModelBand[];
   /** The selected forecast column. */
   selected: number;
   onSelect: (validTime: string) => void;
@@ -31,6 +43,7 @@ export default function ForecastHeader({
   weights,
   point,
   days,
+  bands,
   selected,
   onSelect,
   showSun,
@@ -61,10 +74,11 @@ export default function ForecastHeader({
   // day's label out of the next day's, while a label that fits stays as narrow
   // as its text so it slides out of view later. The group cell carries a
   // hairline divider, and separated table borders sit outside the cell's width.
-  const groupWidth = (day: DayGroup) =>
+  const spanWidth = (start: number, count: number) =>
     `calc(var(--forecast-column-width) * ${weights
-      .slice(day.start, day.start + day.count)
+      .slice(start, start + count)
       .reduce((sum, weight) => sum + weight, 0)} - 1px)`;
+  const groupWidth = (day: DayGroup) => spanWidth(day.start, day.count);
   // A day group is as wide as its own content, so sun times on a one-column
   // group at the edge of a run would stretch that column. A partial day shows
   // its label only.
@@ -114,7 +128,28 @@ export default function ForecastHeader({
           );
         })}
       </tr>
-      <tr>
+      {/* Which run each stretch of the axis comes from. The dock's columns
+          outlive any one model, and the seam between two of them can show a
+          jump: the band makes it visible rather than hiding it. */}
+      {bands.length > 0 && (
+        <tr className="forecast-model-band">
+          <th scope="col" aria-label="Forecast model" />
+          {bands.map((band) => (
+            <th
+              key={`${band.model}-${band.start}`}
+              scope="colgroup"
+              colSpan={band.count}
+              data-band-model={band.model}
+            >
+              <span style={{ maxWidth: spanWidth(band.start, band.count) }}>
+                {band.label}
+                {band.older && <i> · older run</i>}
+              </span>
+            </th>
+          ))}
+        </tr>
+      )}
+      <tr className="forecast-hours">
         <th scope="col">Hours</th>
         {columns.map((column, at) => (
           <th
