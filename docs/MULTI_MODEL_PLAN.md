@@ -36,7 +36,8 @@ spots:export`).
   filter), and wave rows in the dock reading `gfs-wave` / `mi-swan` through
   `force5/src/waves.ts`.
 - Still open: weather rows in the dock, ARPEGE/AROME, AIFS and the ECMWF wave stream,
-  an in-situ sea-temperature source, Northern Ireland tides, open-tab refresh.
+  Northern Ireland tides. Done since: an in-situ sea-temperature source (the Sea
+  row prefers the measurement) and open-tab refresh.
 
 ## Goal
 
