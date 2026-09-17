@@ -38,9 +38,14 @@ spots:export`).
   weather (`icon-eu-weather`), NOAA GEFS (31 members, ~19 MB per run via the NOMADS
   filter), and wave rows in the dock reading `gfs-wave` / `mi-swan` through
   `force5/src/waves.ts`.
-- Still open: weather rows in the dock, ARPEGE/AROME, AIFS and the ECMWF wave stream,
-  Northern Ireland tides. Done since: an in-situ sea-temperature source (the Sea
-  row prefers the measurement) and open-tab refresh.
+- Third wave (17 September): surface weather rows in the dock, Météo-France ARPEGE and
+  AROME (byte-range header walk, ~37 MB per run each; AROME's masked domain excludes
+  three northern spots), ECMWF AIFS and the IFS wave stream, Marine Institute observed
+  sea temperature (6 live stations, 9 of 25 spots) shown in the Sea row, and open-tab
+  refresh. ECMWF adapters default to the ECMWF-hosted source.
+- Still open: Northern Ireland tides, a wider sea-temperature source, ICON global and
+  UKV, a temperature raster on the map, and the dock height on phones (which rows are
+  on by default).
 
 ## Goal
 
