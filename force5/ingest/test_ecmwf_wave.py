@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import eccodes as ec
+import numpy as np
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES, expected_hours
 import fetch_ecmwf_wave
@@ -148,13 +149,11 @@ class WaveGribTests(unittest.TestCase):
 class WaveCroppingTests(unittest.TestCase):
     def test_a_direction_just_over_a_full_turn_is_normalised_not_rejected(self):
         """The source writes 360.001; a bare 0–360 range check would fail the run."""
-        import numpy as np
         values, wet = crop_values("mwd", np.array([360.001, 0.0, 359.9]), MISSING)
         self.assertEqual(values, [0.0, 0.0, 359.9])
         self.assertTrue(all(wet))
 
     def test_land_is_null_and_water_keeps_two_decimals(self):
-        import numpy as np
         values, wet = crop_values("swh", np.array([1.234, MISSING, 2.0]), MISSING)
         self.assertEqual(values, [1.23, None, 2.0])
         self.assertEqual(list(wet), [True, False, True])
@@ -167,7 +166,6 @@ class WaveSpotTests(unittest.TestCase):
             "south": 53.75, "dx": 0.25, "dy": 0.25}
 
     def plans(self):
-        import numpy as np
         wet = np.array([index not in LAND for index in range(9)])
         return spot_plans(self.GRID, wet, SPOTS), wet
 
@@ -191,7 +189,6 @@ class WaveSpotTests(unittest.TestCase):
 
     def test_a_bilinear_read_falls_to_null_when_its_stencil_loses_a_cell(self):
         """Sea ice moves and pp1d has its own mask; a partial stencil is not averaged."""
-        import numpy as np
         plans, wet = self.plans()
         values = [1.0] * 9
         self.assertEqual(read_spot(plans["wet"], values, wet, "height"), 1.0)
@@ -200,7 +197,6 @@ class WaveSpotTests(unittest.TestCase):
         self.assertIsNone(read_spot(plans["wet"], values, lost, "height"))
 
     def test_directions_are_interpolated_as_unit_vectors_across_the_seam(self):
-        import numpy as np
         wet = np.ones(9, dtype=bool)
         plans = spot_plans(self.GRID, wet, [{"id": "mid", "lon": -7.875, "lat": 54.125}])
         # Halfway between 350° and 10°: 0°, not 180°.
@@ -210,7 +206,6 @@ class WaveSpotTests(unittest.TestCase):
         self.assertEqual(read_spot(plans["mid"], values, wet, DIRECTION), 0.0)
 
     def test_the_nearest_cell_value_is_taken_unchanged(self):
-        import numpy as np
         plans, wet = self.plans()
         values = [float(index) for index in range(9)]
         cell = plans["dry"]["cell"]
