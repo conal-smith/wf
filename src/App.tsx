@@ -182,21 +182,32 @@ export default function App() {
   /** True when the clock has already overtaken the hour on screen. */
   const selectionIsPast = (now = Date.now()) =>
     selectedTime !== null && Date.parse(selectedTime) < now;
+  /**
+   * Where "now" lands, on the dock's own axis rather than the map model's
+   * frames: the axis is what the reader is looking at, and it outlives whatever
+   * run the map happens to be drawing. One helper, so a run swap and a tab
+   * coming back cannot land on two different hours.
+   */
+  const columnAtNow = (now = Date.now()): string | null =>
+    columnsRef.current.length
+      ? columnsRef.current[nearestFrame(columnsRef.current, now)].validTime
+      : null;
 
   // A newer run replaces the one on screen: metadata, map, series and time
   // commit together, exactly as a model switch does.
-  const commitRun = ({ manifest: next, frame: nextFrame, index }: RunSwap) => {
+  const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
     modelEpoch.current++;
     setManifest(next);
     setFrame(nextFrame);
-    // A new run is a new forecast. An hour the clock has already passed is not
-    // what the reader wants to see more of, so the selection returns to now; a
-    // time they chose in the future is theirs and is kept.
-    setSelectedTime(
-      selectionIsPast()
-        ? next.frames[nearestFrame(next.frames)].validTime
-        : next.frames[index].validTime,
-    );
+    // The reader's hour is theirs. A new run does not move it — the map simply
+    // loads its own nearest reachable frame for the same time, and a selection
+    // out past this run keeps its columns from whoever owns them. Only an hour
+    // the clock has already overtaken goes back to now: nobody came back to a
+    // tab to read more about this morning.
+    if (selectionIsPast()) {
+      const now = columnAtNow();
+      if (now) setSelectedTime(now);
+    }
     setFrameError("");
     setModelError("");
     setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
@@ -245,14 +256,11 @@ export default function App() {
     if (at === -1) return [...list, mine];
     return list.map((model, index) => (index === at ? mine : model));
   }, [models, manifest]);
-  // Kept by identity so a minute's tick, or a sweep that says the same thing,
-  // does not rebuild every chart and re-run the dock's measurement pass.
-  const lastColumns = useRef<DockColumn[]>([]);
   const columns = useMemo(() => {
     const built = dockColumns(columnModels, clock);
     // Until the sweep resolves there is one manifest to go on, and it is the
     // map's. The selection survives the change because it is a time.
-    const next = built.length
+    return built.length
       ? built
       : manifest
         ? manifest.frames.map((frame) => ({
@@ -260,19 +268,26 @@ export default function App() {
             model: manifest.model,
           }))
         : [];
-    const previous = lastColumns.current;
-    if (
-      previous.length === next.length &&
+  }, [columnModels, manifest, clock]);
+  // Kept by identity so a minute's tick, or a sweep that says the same thing,
+  // does not rebuild every chart and re-run the dock's measurement pass. The
+  // ref is written in an effect, never during render, and the handlers that
+  // need the columns outside a render read it there.
+  const columnsRef = useRef<DockColumn[]>(columns);
+  const stable = useMemo(() => {
+    const previous = columnsRef.current;
+    return previous.length === columns.length &&
       previous.every(
         (column, index) =>
-          column.validTime === next[index].validTime &&
-          column.model === next[index].model,
+          column.validTime === columns[index].validTime &&
+          column.model === columns[index].model,
       )
-    )
-      return previous;
-    lastColumns.current = next;
-    return next;
-  }, [columnModels, manifest, clock]);
+      ? previous
+      : columns;
+  }, [columns]);
+  useEffect(() => {
+    columnsRef.current = stable;
+  }, [stable]);
 
   /**
    * A tab left open all morning comes back to an hour that has already been and
@@ -284,9 +299,13 @@ export default function App() {
    */
   const backToNow = useRef<() => void>(() => {});
   backToNow.current = () => {
+    // Never mid-gesture: playback owns the selection while it runs, and a model
+    // switch is about to commit one of its own.
+    if (playing || pendingModel) return;
     const now = Date.now();
-    if (!columns.length || !selectionIsPast(now)) return;
-    setSelectedTime(columns[nearestFrame(columns, now)].validTime);
+    if (!selectionIsPast(now)) return;
+    const at = columnAtNow(now);
+    if (at) setSelectedTime(at);
   };
   useEffect(() => {
     const seen = () => {
@@ -696,7 +715,7 @@ export default function App() {
               {manifest && (
                 <ForecastDock
                   manifest={manifest}
-                  columns={columns}
+                  columns={stable}
                   models={models}
                   modelsResolved={modelsResolved}
                   point={point}

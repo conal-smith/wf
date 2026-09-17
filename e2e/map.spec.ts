@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { SAMPLE_CLOCK, sampleColumn, sampleColumns } from "./columns";
 import { readFileSync } from "node:fs";
 
@@ -18,6 +18,19 @@ const knots = (value: number) => String(Math.round(value * 1.94384449));
  * followed by ECMWF's.
  */
 const atSampleClock = (page: Page) => page.clock.setFixedTime(SAMPLE_CLOCK);
+
+/** Wait for a camera animation to finish, by the thing it is moving standing still. */
+async function settled(locator: Locator) {
+  let last = Number.NaN;
+  await expect
+    .poll(async () => {
+      const box = await locator.boundingBox();
+      const same = !!box && Math.abs(box.x - last) < 0.5;
+      last = box?.x ?? Number.NaN;
+      return same;
+    })
+    .toBe(true);
+}
 
 test("map-first default has compact branding, collapsed search and a bottom-flush dock", async ({
   page,
@@ -138,28 +151,28 @@ test("scrubber wind colours follow the selected spot and arbitrary-point series"
   await expect.poll(colour).not.toBe(initial);
   const dublin = await colour();
   // Choosing a spot flies the camera, and a point click is cancelled by a
-  // camera move: let it settle before asking the map for a bare point.
-  await expect(
-    page.getByRole("dialog", { name: /Dollymount information/ }),
-  ).toBeVisible();
-  await page.waitForTimeout(700);
+  // camera move: wait until the popout it carries has come to rest.
+  const popout = page.getByRole("dialog", { name: /Dollymount information/ });
+  await expect(popout).toBeVisible();
+  await settled(popout);
   await page
     .locator(".map-canvas canvas")
     .click({ position: { x: 600, y: 300 } });
   await expect(
     page.getByRole("table", { name: /Selected location/ }),
   ).toBeVisible();
-  // A bare point is read from the map model, so the last column it reaches is
-  // the last one with a reading.
+  // A bare point is read from the map model, so only the columns that run
+  // spans carry a reading.
+  const owns = sampleColumn(harmonie.frames[0].validTime);
   await expect(
-    page.locator(".wind-cell").nth(harmonie.frames.length - 1),
+    page.locator(".wind-cell").nth(owns + harmonie.frames.length - 1),
   ).not.toHaveText("—", { timeout: 30000 });
   await expect.poll(colour).not.toBe(dublin);
-  // The near term has real colours; the grey tail is the columns past the map
-  // model's reach, where a bare point has nothing to read.
+  // Those columns have real colours; the grey either side of them is where the
+  // map model does not reach and a bare point has nothing to read.
   await expect
-    .poll(colour)
-    .not.toMatch(/^linear-gradient\(to right, rgb\(184, 203, 208\)/);
+    .poll(async () => (await colour()).split(", rgb")[owns + 1])
+    .not.toContain("184, 203, 208");
 });
 
 test("double-click zooms without selecting; single click picks a point", async ({
@@ -229,10 +242,14 @@ for (const width of [390, 1440]) {
       await slider.fill(String(index));
       await assertSelectedVisible(index);
     }
+    // Playback follows the map model's own frames, so start from an hour it
+    // covers; the first columns belong to the run behind it.
+    const onMap = sampleColumn(harmonie.frames[4].validTime);
+    await slider.fill(String(onMap));
     await page
       .getByRole("button", { name: "Play forecast", exact: true })
       .click();
-    await expect(slider).not.toHaveValue("4", { timeout: 5000 });
+    await expect(slider).not.toHaveValue(String(onMap), { timeout: 5000 });
     await page
       .getByRole("button", { name: "Pause forecast", exact: true })
       .click();
@@ -303,7 +320,8 @@ test("switches real models, uses their own times and values, and clamps the shor
     .nth(1)
     .locator("td")
     .allTextContents();
-  expect(gusts.slice(0, harmonie.frames.length)).toEqual(
+  const owns = sampleColumn(harmonie.frames[0].validTime);
+  expect(gusts.slice(owns, owns + harmonie.frames.length)).toEqual(
     harmonie.spotForecasts.brandon.map(
       (s: { hour: number; gust: number | null }) =>
         s.hour === 0 || s.gust == null ? "—" : knots(s.gust),
@@ -474,12 +492,15 @@ test("mobile HARMONIE picker and sheet remain within the viewport", async ({
     await expect(page.locator(".gust-cell").first()).toHaveText("—");
   } else {
     await expect(page.locator(".forecast-table caption")).toContainText(
-      "Gust speed unavailable for this HARMONIE run",
+      "Gust speed unavailable for the HARMONIE hours",
     );
-    await expect(page.locator(".gust-cell").nth(1)).toHaveAttribute(
-      "title",
-      /Gusts unavailable for this HARMONIE run/,
-    );
+    // A column HARMONIE itself answers: the head of the axis belongs to the
+    // run that covers the hours before HARMONIE was initialised.
+    await expect(
+      page
+        .locator(".gust-cell")
+        .nth(sampleColumn(harmonie.frames[1].validTime)),
+    ).toHaveAttribute("title", /Gusts unavailable for this HARMONIE run/);
   }
   expect(
     await page.evaluate(

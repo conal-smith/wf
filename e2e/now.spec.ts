@@ -36,11 +36,12 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   const line = page.getByRole("img", { name: /^Now:/ });
   await expect(line).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  // HARMONIE is hourly, so +7 h is the column the opening selection lands on.
-  await expect(slider).toHaveValue("7");
+  // HARMONIE is hourly and ECMWF's five earlier columns come first, so +7 h is
+  // column twelve, and that is where the opening selection lands.
+  await expect(slider).toHaveValue("12");
   await expect
     .poll(async () => {
-      const p = await relativePosition(page, [7, 8]);
+      const p = await relativePosition(page, [12, 13]);
       return Math.abs(p.line - (p.a + p.b) / 2);
     })
     .toBeLessThan(1);
@@ -84,7 +85,7 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
   // that column's centre however the dock is resized around it.
   await expect
     .poll(async () => {
-      const p = await relativePosition(page, [8, 9]);
+      const p = await relativePosition(page, [13, 14]);
       return Math.abs(p.line - p.a);
     })
     .toBeLessThan(1);
@@ -109,6 +110,20 @@ test("Now uses the dock's own column times and disappears past them", async ({
   // dock's axis is ECMWF's. The Now line follows the columns, not the map, so
   // it is there before the reader switches the map to ECMWF as well.
   await expect(page.locator(".forecast-now")).toHaveCount(1);
+  // And the dead run answers no cell: the band names ECMWF the whole way, and
+  // every column carries a value, none of them from a forecast that has been
+  // and gone.
+  const band = page.locator(".forecast-model-band th[scope=colgroup]");
+  await expect(band).toHaveCount(1);
+  await expect(band).toContainText("ECMWF");
+  await expect(band).not.toContainText("HARMONIE");
+  await page.locator('[data-view="table"]').click();
+  const wind = await page
+    .locator(".forecast-table .wind-cell")
+    .allTextContents();
+  expect(wind).toHaveLength(ecmwf.frames.length);
+  expect(wind.filter((text) => text === "\u2014")).toHaveLength(0);
+  await page.locator('[data-view="blend"]').click();
   await page.getByLabel("Choose forecast model", { exact: true }).click();
   await page.locator('[data-model="ecmwf"]').click();
   await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(

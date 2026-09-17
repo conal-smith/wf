@@ -21,17 +21,22 @@ export const SAMPLE_CLOCK = new Date(
 );
 
 /**
- * The axis `dockColumns` builds from two runs: the near one's own times, then
- * the far one's from the first that is past them. Written out here rather than
+ * The axis `dockColumns` builds from two runs: the near one's own times, with
+ * the far one's on either side of them — the hours before the near run was
+ * initialised as well as the days after it ends. Written out here rather than
  * imported, so a spec states the expectation instead of re-deriving it.
  */
 const join = (near: Bundle, far: Bundle): string[] => {
+  const first = Date.parse(near.frames[0].validTime);
   const last = Date.parse(near.frames.at(-1)!.validTime);
+  const outside = (keep: (time: number) => boolean) =>
+    far.frames
+      .filter((frame) => keep(Date.parse(frame.validTime)))
+      .map((frame) => frame.validTime);
   return [
+    ...outside((time) => time < first),
     ...near.frames.map((frame) => frame.validTime),
-    ...far.frames
-      .filter((frame) => Date.parse(frame.validTime) > last)
-      .map((frame) => frame.validTime),
+    ...outside((time) => time > last),
   ];
 };
 

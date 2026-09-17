@@ -114,7 +114,9 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
   );
   // The columns do not move with the map; only the selection does, back to the
   // last hour HARMONIE reaches.
-  await expect(slider).toHaveValue(String(harmonie.frames.length - 1));
+  await expect(slider).toHaveValue(
+    String(sampleColumn(harmonie.frames.at(-1)!.validTime)),
+  );
   await expect(page.locator(".wind-cell")).toHaveCount(sampleColumns.length);
   // HARMONIE answers the columns it reaches, and its sample run has no gust.
   await expect(page.locator(".gust-cell").first()).toHaveText("—");

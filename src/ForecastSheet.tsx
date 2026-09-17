@@ -13,7 +13,6 @@ import {
   timeLabel,
   windColor,
   type Units,
-  type Wind,
 } from "../force5/src/weather";
 import type { ColumnCell } from "./ForecastDock";
 
@@ -25,18 +24,26 @@ interface Props {
   selected: number;
 }
 
+/** Where this cell's value came from, when that is not simply "a published step". */
+export const provenance = (cell: ColumnCell): string | null =>
+  cell.interpolated
+    ? `Between ${cell.manifest.modelName}'s ${cell.stepHours}-hourly steps.`
+    : null;
+
 /**
  * The table view's rows: wind, gust and direction, one cell per forecast
  * column. The scroller, the time header and the Now line belong to
  * `ForecastDock`, which every view shares.
  *
- * A column past the map model's range is read from the run that owns it, so
- * every tooltip here asks that run — not the map's — what its gust means.
+ * A column is read from the run that answers for it, so every tooltip here asks
+ * that run — not the map's — what its gust means, and a value that sits between
+ * two of its published steps says so rather than passing for a forecast the
+ * model published.
  */
 export default function ForecastSheet({ cells, units, selected }: Props) {
-  const reading = (w: Wind | null | undefined, gust = false) =>
-    w && (!gust || w.gust !== null)
-      ? Math.round(convert(gust ? w.gust! : speed(w), units))
+  const reading = (cell: ColumnCell, gust = false) =>
+    cell.wind && (!gust || cell.wind.gust !== null)
+      ? Math.round(convert(gust ? cell.wind.gust! : speed(cell.wind), units))
       : "—";
   const windowLabel = (runTime: string, hours: [number, number]) => {
     const at = (hour: number) =>
@@ -48,6 +55,32 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
       at(hours[1]),
     )} (Irish time)`;
   };
+  /** What the gust in this cell is, in that run's own terms. */
+  const gustTitle = (cell: ColumnCell, hidden: boolean) => {
+    if (hidden) return "No preceding forecast gust period at initialization";
+    const between = provenance(cell);
+    if (cell.wind?.gust === null || cell.wind === null)
+      return cell.manifest.gustAvailable === false
+        ? `Gusts unavailable for this ${cell.manifest.modelName} run`
+        : `${cell.manifest.modelName} publishes no gust for this hour`;
+    if (between) return `${between} Gust interpolated with the wind.`;
+    if (cell.manifest.gustKind === "instantaneous")
+      return `Instantaneous gust at ${dayLabel(cell.validTime)} ${timeLabel(
+        cell.validTime,
+      )} (Irish time)`;
+    return cell.frame?.gustIntervalHours
+      ? windowLabel(cell.manifest.runTime, cell.frame.gustIntervalHours)
+      : `Maximum gust published by ${cell.manifest.modelName} for this hour`;
+  };
+  /** The shared attributes every cell in a column carries. */
+  const cellProps = (cell: ColumnCell, column: number, extra = "") => ({
+    key: cell.validTime,
+    className:
+      [extra, selected === column ? "selected-hour" : ""]
+        .filter(Boolean)
+        .join(" ") || undefined,
+    "data-interpolated": cell.interpolated ? "" : undefined,
+  });
   return (
     <tbody>
       <tr>
@@ -58,10 +91,10 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
         >
           <WindIcon size={18} aria-hidden="true" /> <small>{units}</small>
         </th>
-        {cells.map((cell, i) => (
+        {cells.map((cell, column) => (
           <td
-            key={cell.validTime}
-            className={`wind-cell ${selected === i ? "selected-hour" : ""}`}
+            {...cellProps(cell, column, "wind-cell")}
+            title={provenance(cell) ?? undefined}
             style={
               {
                 "--wind-colour": cell.wind
@@ -70,7 +103,7 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
               } as React.CSSProperties
             }
           >
-            {reading(cell.wind)}
+            {reading(cell)}
           </td>
         ))}
       </tr>
@@ -83,27 +116,18 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
           <WindArrowDown size={18} aria-hidden="true" />
           <small>{units}</small>
         </th>
-        {cells.map((cell, i) => {
+        {cells.map((cell, column) => {
           // An instantaneous gust is a point value: it exists at initialization
           // too, so hour zero shows a reading where an interval source has none.
-          const instantaneous = cell.manifest.gustKind === "instantaneous";
-          const hidden = cell.frame?.hour === 0 && !instantaneous;
+          // Only a cell that really is that run's hour zero is hidden — an
+          // interpolated one belongs to no run hour at all.
+          const hidden =
+            cell.frame?.hour === 0 &&
+            cell.manifest.gustKind !== "instantaneous";
           return (
             <td
-              key={cell.validTime}
-              className={`gust-cell ${selected === i ? "selected-hour" : ""}`}
-              title={
-                hidden
-                  ? "No preceding forecast gust period at initialization"
-                  : instantaneous
-                    ? `Instantaneous gust at ${dayLabel(cell.validTime)} ${timeLabel(cell.validTime)} (Irish time)`
-                    : cell.frame?.gustIntervalHours
-                      ? windowLabel(
-                          cell.manifest.runTime,
-                          cell.frame.gustIntervalHours,
-                        )
-                      : `Gusts unavailable for this ${cell.manifest.modelName} run`
-              }
+              {...cellProps(cell, column, "gust-cell")}
+              title={gustTitle(cell, hidden)}
               style={
                 {
                   "--wind-colour":
@@ -113,7 +137,7 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
                 } as React.CSSProperties
               }
             >
-              {hidden ? "—" : reading(cell.wind, true)}
+              {hidden ? "—" : reading(cell, true)}
             </td>
           );
         })}
@@ -126,13 +150,13 @@ export default function ForecastSheet({ cells, units, selected }: Props) {
         >
           <Navigation size={18} aria-hidden="true" />
         </th>
-        {cells.map((cell, i) => {
+        {cells.map((cell, column) => {
           const w = cell.wind;
           const d = w ? direction(w.u, w.v) : 0;
           return (
             <td
-              key={cell.validTime}
-              className={selected === i ? "selected-hour" : ""}
+              {...cellProps(cell, column)}
+              title={provenance(cell) ?? undefined}
             >
               {w && speed(w) > 0.1 ? (
                 <span className="direction-cell">
