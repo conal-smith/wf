@@ -114,6 +114,18 @@ The marketplace is two Railway services plus one bucket:
 domain>`. The static host must rewrite `/market/*` to `index.html` (the same
    SPA fallback the map already needs for any deep link).
 
+   There is nothing on disk at `/market`, `/market/sell` or
+   `/market/listing/:id`: the site is one `index.html` and `src/main.tsx` reads
+   the pathname to decide which bundle to mount. Three hosts, three answers, and
+   all three are already handled:
+   - `vite preview` has the fallback built in; nothing to configure.
+   - `deploy/local/Caddyfile` does it with `try_files {path} /index.html`.
+   - Cloudflare Pages (and Netlify) read `public/_redirects`, which ships one
+     rule — `/*  /index.html  200`. Static files that exist are served before
+     the rule is consulted, so it cannot shadow `/assets/*`. A host that reads
+     neither that file nor a Caddyfile needs the same rewrite configured by
+     hand, or every direct load and refresh under `/market` 404s.
+
 5. **Clerk**: create an application, enable the sign-in methods you want, add
    `wingfoil.ie` as an allowed origin. Nothing else: the API only ever reads
    the `sub` claim of the session token, and the profile stores what the

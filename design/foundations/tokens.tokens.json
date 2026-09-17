@@ -386,10 +386,7 @@
           "$description": "Everything that is read."
         },
         "display": {
-          "$value": [
-            "Manrope",
-            "sans-serif"
-          ],
+          "$value": ["Manrope", "sans-serif"],
           "$description": "The wordmark, and nothing else."
         }
       },
@@ -616,6 +613,10 @@
       "lg": {
         "$value": "46px",
         "$description": "Search, and the primary chrome pills."
+      },
+      "touch": {
+        "$value": "44px",
+        "$description": "The comfortable target on a finger. Not a paint size: it is the floor a hit area is padded out to on a coarse pointer."
       }
     }
   },
@@ -1549,6 +1550,16 @@
           "com.multicode": {
             "role": "sizing",
             "use": "Search and the primary chrome pills."
+          }
+        }
+      },
+      "heightTouch": {
+        "$value": "{ref.control.touch}",
+        "$description": "The minimum target on a coarse pointer.",
+        "$extensions": {
+          "com.multicode": {
+            "role": "sizing",
+            "use": "Menu rows, and the padded hit area of a 40px icon button on touch. The rule the system already states in prose, as a value a component can read."
           }
         }
       }

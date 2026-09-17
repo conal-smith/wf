@@ -86,6 +86,18 @@
   color: var(--sem-color-text-muted);
 }
 
+/*
+ * The site menu's trigger lives in the bar, but the bar is already a glass
+ * pill and the system does not stack glass. The panel that hangs out of it
+ * takes the solid ground the surface component already ships as its
+ * reduced-transparency fallback, so there is only ever one blur here.
+ */
+.mk-header__bar .f5-site-menu__panel {
+  background: var(--sem-color-surface-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .mk-header__actions {
   display: flex;
   align-items: center;
@@ -822,6 +834,14 @@
       var(--sem-space-pad-control),
       env(safe-area-inset-right)
     );
+  }
+  /* The site menu now starts the bar. Below the label breakpoint the bar's own
+     insets pay for it, rather than a label being squeezed onto two lines: a
+     round control needs less inset than a word does anyway. */
+  .mk-header__bar {
+    gap: var(--sem-space-gap-tight);
+    padding-left: var(--sem-space-gap-tight);
+    padding-right: var(--sem-space-gap-tight);
   }
   .mk-detail {
     grid-template-columns: minmax(0, 1fr);

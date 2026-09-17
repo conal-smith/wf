@@ -9,7 +9,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { WindMap, Force5Brand } from "../force5/src";
+import { WindMap, Force5Brand, SiteMenu } from "../force5/src";
 import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
@@ -465,17 +465,25 @@ export default function App() {
       style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
     >
       <header className="site-header">
-        <button
-          ref={searchTrigger}
-          className="search-trigger glass"
-          aria-label="Open spot search"
-          aria-expanded={searchOpen}
-          aria-controls="spot-search-results"
-          hidden={searchOpen}
-          onClick={() => setSearchOpen(true)}
-        >
-          <Search size={20} />
-        </button>
+        {/*
+          The two round controls share a row, and the row stands down entirely
+          while the search panel is open so the panel keeps the header's full
+          width and its usual height below the top inset.
+        */}
+        <div className="site-header-controls" hidden={searchOpen}>
+          <SiteMenu current="map" />
+          <button
+            ref={searchTrigger}
+            className="search-trigger glass"
+            aria-label="Open spot search"
+            aria-expanded={searchOpen}
+            aria-controls="spot-search-results"
+            hidden={searchOpen}
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search size={20} />
+          </button>
+        </div>
         {searchOpen && (
           <div className="search-panel">
             <div className="search-box glass">

@@ -1,0 +1,12 @@
+# SPA fallback, for static hosts that read this file (Cloudflare Pages, Netlify).
+#
+# The site is one index.html: `src/main.tsx` reads the pathname and mounts the
+# wind map or the marketplace. So /market, /market/sell and /market/listing/:id
+# are real URLs with no file behind them, and a host that 404s them breaks every
+# direct load, refresh and shared link into the marketplace.
+#
+# Static assets that exist on disk are served before this rule is consulted, so
+# the catch-all cannot shadow /assets/*. Hosts that do not read this file ignore
+# it: `vite preview` has the fallback built in, and deploy/local/Caddyfile does
+# it with `try_files {path} /index.html`.
+/*  /index.html  200
