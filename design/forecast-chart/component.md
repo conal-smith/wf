@@ -52,7 +52,15 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
   - `__weather-cell`, one of nine inline stroke glyphs for the present-weather
     code, drawn in the row's own text colour;
   - `__proxy-cell`, any reading that is a model approximation rather than a
-    measurement — today the sea row's skin temperature — drawn back and italic.
+    measurement — the sea row's skin temperature, where no station measures the
+    water — drawn back and italic.
+- **Observed row** (`__observed-row`) — a marine row whose reading is a
+  measurement rather than a forecast, at the standard 24px. It holds exactly one
+  cell, `__observed-cell`, spanning every column, left-aligned: an
+  `__observed-reading` of the value, then its provenance as muted small text —
+  where it was measured, how far away and how long ago — and an optional
+  `__observed-spark`, a 13px polyline of the recent series scaled to its own range
+  and spaced by real time. No axis, no numbers, no per-column value.
 - **Day maximum** (`__day-max`) — the day's highest air temperature after the sun
   times in a day group, quieter than them, and only on a group wide enough for it.
 - **Filter** (`.f5-forecast-filter`) — a dialog holding the row switches, the
@@ -85,6 +93,9 @@ reaches the yellow part of the scale is yellow for the same reason the map is.
   glyph; `[data-weather]` names the group and `[data-code]` the code itself.
 - `.f5-forecast-chart__proxy-cell` — a reading that is a model approximation and
   not a measurement, drawn back with the caveat in the row's explanation.
+- `.f5-forecast-chart__observed-cell` — the row has a measurement, so it shows one
+  reading spanning the row instead of a value per column, and the row's own
+  explanation names the station rather than the model.
 - `.f5-forecast-chart[data-state="empty"]` — no model publishes a series for
   this spot yet. The chart says so rather than drawing an empty box.
 - `.f5-forecast-chart--candles` — the candle variant.
@@ -126,10 +137,19 @@ between models or interpolated between two hours — the mean of "fog" and "rain
 not a forecast. Nine shapes stand in for a hundred codes, and the code's own words
 and number are in the cell's tooltip for anyone who wants the rest.
 
-Do say when a reading is an approximation, in the row and in the cell. The sea row
-shows a model skin temperature until a real in-situ source exists; it is drawn back,
+Do say when a reading is an approximation, in the row and in the cell. Where no
+station measures the water, the sea row shows a model skin temperature: drawn back,
 its explanation says "model skin temperature, approximate", and it is off by default
 rather than sitting on and looking like a measurement.
+
+Don't draw a measurement as a forecast. A row that holds an observation holds one
+value — the newest reading is as recent as the water gets — so it is shown once, at
+the left, spanning its columns, and never repeated across hours it says nothing
+about. The reading carries its own provenance in the same breath (station, distance,
+age), because a buoy 60 km offshore is not the water at the launch, and a row that
+has a measurement is on by default while the same row falling back to a model field
+is off. Both are the same row: what changes is which source it found, and it always
+says which.
 
 Don't let a tint be the reading. The rain cells are tinted by amount because a wet
 band should be findable before it is read, but the millimetres are printed in the

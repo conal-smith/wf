@@ -3,6 +3,7 @@ export { Force5Brand } from "./Force5Brand";
 export * from "./weather";
 export * from "./units";
 export * from "./manifests";
+export * from "./revalidate";
 export * from "./series";
 export * from "./blend";
 export * from "./sun";

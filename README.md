@@ -1253,6 +1253,7 @@ tests and no UI; the dock consumes them through `src/ForecastDock.tsx`. See the
 ```text
 force5/src/units.ts      Units type, conversion, labels, formatted speeds
 force5/src/manifests.ts  Model registry (live and planned) and the manifest cache
+force5/src/revalidate.ts When an open tab should look for a newer run, as a pure decision
 force5/src/series.ts     Precomputed per-spot and per-member series access
 force5/src/blend.ts      Common hourly axis, interpolation, statistics, candles, plot helpers
 force5/src/sun.ts        Sunrise, sunset, civil twilight, night intervals for shading
@@ -1314,14 +1315,17 @@ stated reason, `tideForSpot` returns no curve for them without fetching anything
 and `tideSpotNote` gives the UI the manifest's own words. Heights are metres above
 the station's datum, which the dock prints in its credits line with every reading.
 
-`force5/src/seaTemperature.ts` is the same shape for the observation bundle, and
-is **data layer only**: `validateSeaTemperatureManifest`, `loadSeaTemperature`,
-`seaTemperatureForSpot` and `seaTemperatureNote`, with no dock UI yet. Because the
-whole bundle is one file, a spot's latest reading and its series need no second
-request, and `seaTemperatureForSpot` also returns `ageHours` so the UI can say how
-old the reading is. These are observations: nothing in the module interpolates
-forward from the newest one, and a station's distance travels with every value
-because a buoy 50 km offshore is not the water at the launch.
+`force5/src/seaTemperature.ts` is the same shape for the observation bundle:
+`validateSeaTemperatureManifest`, `loadSeaTemperature`, `seaTemperatureForSpot` and
+`seaTemperatureNote`, plus the display helpers the Sea row reads —
+`seaTemperatureText` (the reading in two parts), `observationAge` (how old it is,
+in words) and `sparklinePoints` (the recent series scaled to its own range and
+spaced by real time). Because the whole bundle is one file, a spot's latest reading
+and its series need no second request, and `seaTemperatureForSpot` also returns
+`ageHours` so the row can say how old the reading is. These are observations:
+nothing in the module interpolates forward from the newest one, and a station's
+distance travels with every value because a buoy 50 km offshore is not the water at
+the launch.
 
 ## Forecast dock
 
@@ -1378,13 +1382,30 @@ auto-scroll and the column hooks are shared:
   a code is read from the cell the spot sits in and is never averaged, blended or
   interpolated. **Cloud** (off by default) is total cover as a percentage with a
   three-level bar beside it for high, medium and low. **Pressure** (off) is mean
-  sea level pressure in whole hectopascals. **Sea** (off) shows the model's own
-  ground/skin temperature, drawn back and labelled "model skin temperature,
-  approximate" in both the cell and the row's explanation: over sea it is ICON's
-  SST field and a proxy, not an in-situ measurement, and the row stays off until a
-  real coastal source arrives. Air and Weather are on by default; Rain is opt-in because the weather glyph already shows it. Like the
+  sea level pressure in whole hectopascals. Air and Weather are on by default; Rain
+  is opt-in because the weather glyph already shows it. Like the
   waves, these steps are matched to the wind model's columns within 1.5 hours and
   are otherwise dashes, and the credits line names DWD for them.
+- **Sea** prefers the **measurement**. Where `marine/sea-temperature.json` has a
+  station reporting near the spot, the row is one reading spanning its columns at
+  the left — `15.2 °C · M3 buoy, 61 km, 2 h ago` — with the last seven days as a
+  13px sparkline beside it and a tooltip naming the station, its network, the
+  distance, the sensor depth where one is published, when it was measured and who
+  measured it. An observation is not a forecast, so it is shown once rather than
+  pretended at every column, the age is recomputed against the page's own clock,
+  and the credits line reads "Sea temperature: Marine Institute observations".
+  Where no station is in range the row falls back to the model's own ground/skin
+  temperature (`t_g`), drawn back and labelled "model skin temperature,
+  approximate" in the cell, with the manifest's own reason — "beyond the 60 km
+  limit" — in the row's explanation, so the row always says which of the two it is
+  showing. **The Sea row is on by default exactly where an observation exists**;
+  elsewhere it is off, because an approximation does not earn a row. That default
+  holds only until the reader touches the switch: `prefs.touchedRows` records the
+  rows they have set by hand, and a touched row is their choice at every spot from
+  then on (`rowOn(prefs, key, available)` in `force5/src/prefs.ts` is the whole
+  rule). Sea temperature is loaded on the same discipline as the tides — one
+  aborting fetch of one manifest — and a 404 simply means no observations, not an
+  error.
 - **Display options**: row switches, units and the models in the blend, persisted
   to local storage. Units drive the charts, the table and the map readouts
   together. Planned models are listed greyed; rows with no adapter yet say "no
@@ -1406,7 +1427,9 @@ and GFS (16–21 September) or ECMWF (to 28 September) shows them, because the
 bundled GFS-Wave run starts on 16 September at 18 UTC and the bundled ICON-EU
 surface run is that same hour plus one three-hour step.
 
-Default dock height, measured with the bundled snapshots: **439px at 1440** and
+A spot with an observation in range adds the Sea row to those defaults, which is
+one more 24px row (22px compact). Default dock height, measured with the bundled
+snapshots and no observations published: **439px at 1440** and
 **373px at 390** (411px and 349px with no tide predictions published). The Table
 view is 368px and 334px. The waves and tide rows are 28px, 24px compact; every
 surface-weather row takes the standard 24px, 22px compact. The three default-on
@@ -1414,6 +1437,41 @@ weather rows are what grew the dock by 72px and 66px over its previous 367px and
 307px, which is the largest thing outstanding about this feature: the per-row
 budget is intact, but the phone dock is now 44 % of an 844px viewport, and which
 rows deserve to be on by default is a design call rather than a code one.
+
+## Open-tab refresh
+
+A run is replaced every few hours, so a tab left open all morning used to show a
+stale forecast until someone reloaded it. It now revalidates itself:
+
+- **Cadence.** Every five minutes while the tab is visible, and on
+  `visibilitychange` or `focus` once five minutes have passed. A hidden tab fetches
+  nothing at all. The decision is a pure function,
+  `revalidateDecision(lastCheck, now, visible, busy)` in
+  `force5/src/revalidate.ts`, which answers `go`, `wait` or `defer`;
+  `shouldRevalidate` is the same question as a boolean. Both are unit-tested, and
+  the hook that drives them is a minute's heartbeat plus those two listeners.
+- **What it fetches.** `clearManifestCache(id)` then `loadManifest(id)` for the
+  **active map model**, which is a `cache: "no-cache"` request past both the
+  five-minute manifest cache and the HTTP cache. If the run is the one already on
+  screen, that is the end of it — one small JSON and no re-render.
+- **The swap.** A newer `run` is loaded whole through the same `loadModel`
+  transaction a model switch uses — manifest, nearest frame to the **selected**
+  valid time, and its index — and committed in one React batch, so the map, the
+  chart and the scrubber never show two runs at once. The selected time is kept;
+  the column number may change, because a newer run starts later.
+- **Never under the reader's hand.** While the forecast is playing, while a model
+  switch is in flight, while a pointer is down or while the scrubber has focus, a
+  due check is deferred and retried a minute later.
+- **The chart's other models** are swept on the same cadence through
+  `useModelAvailability`, so the blend, the waves and the surface rows pick up
+  their own new runs. An unchanged sweep keeps the previous array, so nothing is
+  recomputed for nothing.
+- **Silence on failure.** A background refresh that fails logs to the console and
+  leaves the forecast that is already on screen exactly as it is. The reader is
+  never shown an error for work they did not ask for.
+- **What it says.** One line in the existing model-message strip: "Updated to the
+  16:00 UTC run." — runs are named by their UTC hour, as every source publishes
+  them — which dismisses itself after six seconds.
 
 ## Sources and limitations
 
@@ -1431,7 +1489,7 @@ rows deserve to be on by default is a design call rather than a code one.
 
 Set `VITE_BASEMAP_STYLE_URL` in `.env.local` to use a compatible hosted or self-hosted MapLibre style (including working glyphs). Restart/rebuild after changing it. The default style has simplified custom city labels; provider attribution remains visible.
 
-This is a **forecast snapshot**, not a live observation feed. The browser flags runs older than 18 hours and snapshots whose coverage has ended. There is no background refresh service yet. Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series and ICON-EU surface weather are all shown in the dock. The Sea row is the **model's own skin temperature** and is off by default: over sea it is ICON's SST field and a proxy, not an in-situ measurement, and no coastal temperature source is wired up yet. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
+This is a **forecast snapshot**, not a live observation feed — with one exception: the Sea row, which is a measurement when a Marine Institute station is reporting near the spot. The browser flags runs older than 18 hours and snapshots whose coverage has ended. An open tab now follows the runs: every five minutes while it is visible it revalidates the active model's manifest and, if a newer run has been published, swaps manifest and frame together at the time the reader had selected (see "Open-tab refresh" below). Spatial interpolation makes the map look smooth but cannot increase native detail (6.5 km ICON-EU / 2 km HARMONIE); shelter, headlands and launch-site turbulence remain unresolved. Tidal predictions, wave series, ICON-EU surface weather and observed sea temperature are all shown in the dock. Where no station is in range the Sea row falls back to the **model's own skin temperature**, labelled as an approximation, and is off by default. There are no marine warning feeds and no rideability scores. The source dialog links to official warnings. Numerical/data-pipeline validation is not a measured forecast-accuracy comparison against observations.
 
 The raster colour image is generated at 512 × 512 and displayed by MapLibre's GPU. Particles use a precomputed screen-space wind grid and Canvas 2D at about 30 fps, capped at 2,600 particles with DPR capped at 2. Pan/zoom invalidates the sampled screen grid; animation pauses while moving, in hidden tabs, and with reduced-motion preference. This is an intentional small-prototype implementation, not a claimed reproduction of Windy's proprietary renderer. A WebGL particle layer can replace it after profiling real mobile devices.
 

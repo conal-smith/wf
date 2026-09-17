@@ -24,6 +24,14 @@ export type ForecastView = "table" | "blend" | "candles";
 
 export interface Prefs {
   rows: Record<RowKey, boolean>;
+  /**
+   * Rows the reader has switched by hand. Everything else follows its default,
+   * and a default may depend on what the spot actually has rather than on a
+   * fixed boolean: the Sea row is on where a station is reporting and off where
+   * none is. Once a row is listed here its stored boolean wins for good, so a
+   * reader who turned it off never has it come back at the next spot.
+   */
+  touchedRows: RowKey[];
   units: Units;
   /** Models feeding the blend, separate from the single map model. */
   blendModels: string[];
@@ -59,8 +67,11 @@ export const PREFS_KEY = "force5.prefs.v1";
  * Of the surface-weather rows, the three a rider decides with are on — is it
  * warm, is it raining, and what is the sky doing. Cloud cover is the detail
  * behind the present weather and pressure is a synoptic reading, so both start
- * off. So does the sea row: its only source today is the model's own skin
- * temperature, which is an approximation and not an in-situ measurement.
+ * off.
+ *
+ * The sea row's boolean here is only its fallback: it is decided by
+ * availability through `rowOn`, on where an observation covers the spot and off
+ * where the row would be the model's own skin temperature instead.
  */
 export const defaultPrefs = (): Prefs => ({
   rows: {
@@ -81,10 +92,34 @@ export const defaultPrefs = (): Prefs => ({
     sea: false,
     tide: true,
   },
+  touchedRows: [],
   units: "kn",
   blendModels: windModels().map((model) => model.id),
   view: "blend",
 });
+
+/**
+ * Whether a row is shown. `available` is the default-by-availability answer for
+ * the rows that have one — pass it as undefined for a row whose default is just
+ * its stored boolean. An untouched row follows availability; a touched one is
+ * the reader's own choice and is never overridden.
+ */
+export function rowOn(prefs: Prefs, key: RowKey, available?: boolean): boolean {
+  if (available === undefined || prefs.touchedRows.includes(key))
+    return prefs.rows[key];
+  return available;
+}
+
+/** Switch a row by hand, which also takes it out of availability's hands. */
+export function setRow(prefs: Prefs, key: RowKey, on: boolean): Prefs {
+  return {
+    ...prefs,
+    rows: { ...prefs.rows, [key]: on },
+    touchedRows: prefs.touchedRows.includes(key)
+      ? prefs.touchedRows
+      : [...prefs.touchedRows, key],
+  };
+}
 
 export interface PrefsStorage {
   getItem(key: string): string | null;
@@ -126,6 +161,9 @@ export function loadPrefs(
     if (!stored || typeof stored !== "object") return defaults;
     return {
       rows: mergeRows(stored.rows, defaults.rows),
+      touchedRows: Array.isArray(stored.touchedRows)
+        ? ROW_KEYS.filter((key) => stored.touchedRows!.includes(key))
+        : defaults.touchedRows,
       units: isUnits(stored.units) ? stored.units : defaults.units,
       blendModels:
         Array.isArray(stored.blendModels) &&
