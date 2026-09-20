@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: high
@@ -51,3 +51,4 @@ LOG:
 - 2026-09-20 agent: not proved: the Clerk lookup against a real Clerk instance (no key here; typechecked against @clerk/backend 3.18.1 only). Stopped here; status left for whoever merges.
 - 2026-09-20 agent: review round 1 (cf/site-users-r1): no defect found in S1-S6. Two claims had no test and have one now: the Clerk lookup's mapping (full name, then first name, then username; no picture unless the account has its own) and its failure path (row still made as "Member"), against a stubbed client in site/api/users.test.ts; and the cross-origin preflight on /api/me in app.test.ts. Re-proved on a throwaway Postgres 16 (not the market:db volume): 0001+0002 with a profile and a listing, then 0003 applies, a second migrate is a no-op, users matches S1, market_profiles absent, three FKs and the view on users; on pgUsersRepo: two racing first calls give one row, four people called Aoife racing get aoife-2..-5, a handle left out is kept, a clash throws HandleTakenError, the shape and role checks refuse bad rows; over HTTP on the built dist (PORT=8802): first GET /api/me makes the row, listing without contact 409, with contact 201, handle clash 409.
 - 2026-09-20 agent: seen in review, not this item's: a body that is not JSON answers 500 `internal` on every route that reads one (c.req.json() throws outside the ZodError branch of onError, app.ts:90); it did so before this item. The header comment of market/api/src/auth.ts:1 still says the client sends everything the profile stores; the name and picture now come from Clerk once.
+- 2026-09-20 integrator: merged b60ec7c; gates npm test 362 passed (31 files), npm run build ok, npm run market:api:build ok; npm run ui:lint skipped, the script does not exist.
