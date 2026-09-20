@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: high
 risk: normal
@@ -35,3 +35,4 @@ LOG:
 - 2026-09-20 agent: review r1, fixed: the site image could not build. deploy/local/Dockerfile.web copies sources by name and .dockerignore is an allowlist, so shared/ never reached the image (nor did site/shared, which market/web has read since site-users). Both are copied now and `!shared/**` is allowed; `docker build -f deploy/local/Dockerfile.web --target build .` runs npm run build to the end. TOUCH grew by those two files.
 - 2026-09-20 agent: review r1, fixed: the two "not proved" lines above now have tests. shared/web/auth.test.ts stands in for the identity provider's package and pins that `home` reaches afterSignOutUrl, signInFallbackRedirectUrl and signOut's redirectUrl, for /community and, through MarketAuthProvider, for /market. shared/web/usePageTitle.test.ts runs the effect by hand (title set, then restored) and the marketplace's own usePageTitle still ends "— wingfoil.ie Market". Each was checked to fail when the behaviour is broken. Also corrected http.ts's header, which said no other browser file calls fetch; the map does, for forecast files.
 - 2026-09-20 agent: review r1, gates: npm test 383 passed (34 files); npm run build ok; npm run market:api:build ok; PREVIEW_PORT=4303 npm run test:e2e 65 passed; `grep -rn "fetch(" market/web` finds nothing; npm run ui:lint does not exist on this branch. Left for the owner: a real sign-in and sign-out against a live key. For the next item: ApiError is declared twice, shared/web/http.ts for the browser and market/shared/types.ts for the API (outside TOUCH); API_ROOT is exported and unused until the community's live stream needs the origin.
+- 2026-09-20 integrator: merged 4c08079; gates npm test 493 passed (36 files), npm run build ok, npm run market:api:build ok, npm run ui:lint clean. One conflict, tsconfig.json include: kept both shared/web and ui. The merged tree broke the site image again (src/main.tsx imports ui/theme.css since the theme item, and ui/ was not copied); 0e99aa4 copies ui/ and allows `!ui/**`, and `docker build -f deploy/local/Dockerfile.web --target build .` runs to the end. Still the owner's: a real sign-in and sign-out against a live key.
