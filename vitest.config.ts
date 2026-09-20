@@ -6,6 +6,7 @@ export default defineConfig({
       "force5/src/**/*.test.ts",
       "tests/**/*.test.ts",
       "market/**/*.test.ts",
+      "site/**/*.test.ts",
     ],
   },
 });
