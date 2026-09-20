@@ -4,13 +4,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * The two apps on this origin must not reach each other.
+ * The three apps on this origin must not reach each other.
  *
- * `src/main.tsx` picks the wind map or the marketplace from the pathname and
- * lazy-loads the marketplace, so the map never pays for it and it never pays
- * for MapLibre. The shared site menu is the one piece of code both import, and
- * a single careless `from "../force5/src"` in it — the barrel, which exports
- * `WindMap` — would quietly pull the whole map into the marketplace chunk.
+ * `src/main.tsx` picks the wind map, the marketplace or the community from the
+ * pathname and lazy-loads the latter two, so the map never pays for them and
+ * they never pay for MapLibre, nor for each other. The shared site menu is the
+ * one piece of code all three import, and a single careless
+ * `from "../force5/src"` in it — the barrel, which exports `WindMap` — would
+ * quietly pull the whole map into the marketplace chunk and the community's.
  * Nothing about that would fail: the site would build, run and look right, and
  * the marketplace would have grown by half a megabyte.
  *
@@ -91,8 +92,11 @@ describe("the shared site menu", () => {
     });
   }
 
-  it("is reached from both apps, so the check above is about something", () => {
+  it("is reached from every app, so the check above is about something", () => {
     expect(staticGraph("market/web/MarketApp.tsx")).toContain(
+      "force5/src/SiteMenu.tsx",
+    );
+    expect(staticGraph("community/web/CommunityApp.tsx")).toContain(
       "force5/src/SiteMenu.tsx",
     );
     expect(staticGraph("src/App.tsx")).toContain("force5/src/SiteMenu.tsx");
@@ -115,6 +119,41 @@ describe("the marketplace bundle", () => {
   });
 });
 
+describe("the community bundle", () => {
+  const ENTRY = "community/web/CommunityApp.tsx";
+
+  it("does not statically reach the map", () => {
+    expect(reached(ENTRY, "force5/src/index.ts")).toEqual([]);
+    expect(reached(ENTRY, "WindMap")).toEqual([]);
+    expect(reached(ENTRY, "maplibre-gl")).toEqual([]);
+    expect([...staticGraph(ENTRY)].filter((m) => m.startsWith("src/"))).toEqual(
+      [],
+    );
+  });
+
+  it("does not reach the marketplace, nor the marketplace it", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter((m) => m.startsWith("market/")),
+    ).toEqual([]);
+    expect(
+      [...staticGraph("market/web/MarketApp.tsx")].filter((m) =>
+        m.startsWith("community/"),
+      ),
+    ).toEqual([]);
+  });
+
+  // The API's code is Node's: a repo or a handler in the browser's graph would
+  // build, and ship a database client to every reader.
+  it("takes only plain data from the API's side of the section", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter(
+        (m) =>
+          m.startsWith("community/") && !/^community\/(web|shared)\//.test(m),
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe("the map bundle", () => {
   it("reaches the marketplace only through the lazy import in main.tsx", () => {
     const graph = staticGraph("src/main.tsx");
@@ -122,6 +161,14 @@ describe("the map bundle", () => {
     // The one line that does cross, and it is a dynamic import.
     expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
       /React\.lazy\(\s*\(\)\s*=>\s*import\("\.\.\/market\/web\/MarketApp"\)/,
+    );
+  });
+
+  it("reaches the community only through its lazy import, likewise", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect([...graph].filter((m) => m.startsWith("community/"))).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /React\.lazy\(\s*\(\)\s*=>\s*import\("\.\.\/community\/web\/CommunityApp"\)/,
     );
   });
 
