@@ -52,8 +52,9 @@ const ALLOW = /ui-lint-allow:(.*)/;
 
 const ARBITRARY_RULES = [
   [/[a-z0-9]-\[[^\]\s]*\]/i, "arbitrary value"],
-  [/[a-z0-9]-\(--[\w-]+\)/i, "arbitrary value"],
-  [/[a-z0-9]\/\[[^\]\s]+\]/i, "arbitrary modifier"],
+  // `w-(--gutter)`, and the same with a type hint: `bg-(color:--brand)`.
+  [/[a-z0-9]-\((?:[a-z-]+:)?--[^)\s]*\)/i, "arbitrary value"],
+  [/[a-z0-9]\/(?:\[[^\]\s]+\]|\(--[^)\s]*\))/i, "arbitrary modifier"],
   [/(?:^|[\s"'`:])\[[^\]\s]+\]:(?=[\w!@*[-])/, "arbitrary variant"],
   [/(?:^|[\s"'`:])\[[a-z-]+:[^\]\s]+\](?=[\s"'`]|$)/, "arbitrary property"],
 ];
