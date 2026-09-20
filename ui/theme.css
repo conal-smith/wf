@@ -61,6 +61,7 @@
      weights, and `--shadow-*` and `--text-*` leave three families of stock
      shadows drawn in black. */
   --font-weight-*: initial;
+  --leading-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
@@ -161,6 +162,13 @@
   --text-reading: 48px;
   --text-reading--line-height: 1.3;
 
+  /* The three leadings, for the few places a step's own is not the one wanted:
+     a card's title takes the prose size at the tight leading. `leading-none`
+     is Tailwind's own and needs nothing here. */
+  --leading-tight: 1.3;
+  --leading-normal: 1.5;
+  --leading-loose: 1.75;
+
   /* ---- shape and depth ------------------------------------------------- */
 
   --radius-control: 12px;
@@ -185,16 +193,26 @@
   --container-reading: 44ch;
   /* A message's measure, as `max-w-measure`: what a line of conversation runs to. */
   --container-measure: 68ch;
-  /* The page measure every content section shares, as `max-w-page`. */
+  /* The page measure every content section shares, as `max-w-page`, and what
+     a form runs to inside it, as `max-w-form`: a column of fields is read
+     like a paragraph, not spread across the whole page. */
   --container-page: 1200px;
+  --container-form: 760px;
 
-  /* A section's two columns, as `grid-cols-shell`: the rail, then the page. */
+  /* A section's two columns, as `grid-cols-shell`: the rail, then the page.
+     A grid of cards, as `grid-cols-cards`: as many 240px columns as fit. */
   --grid-template-columns-shell: 236px minmax(0, 1fr);
+  --grid-template-columns-cards: repeat(auto-fill, minmax(240px, 1fr));
 
   /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
      written in the stock breakpoints' unit so the two sort together; a media
      query reads the browser's 16px, not the root's 14. */
   --breakpoint-rail: 56.25rem;
+
+  /* Where a row has the room to write words beside its controls, as `wide:`
+     and `max-wide:`: the marketplace's header labels, its gutter, its filter
+     row and its grid all turn here. 720px, in the same unit. */
+  --breakpoint-wide: 45rem;
 
   /* ---- motion and layers ----------------------------------------------- */
 
@@ -238,5 +256,15 @@
 @custom-variant reduced-transparency {
   @media (prefers-reduced-transparency: reduce) {
     @slot;
+  }
+}
+
+/* A row that scrolls sideways inside a page that does not: the cut-off item at
+   its edge already says there is more, and a bar drawn over it would only eat
+   into the row. Two spellings, because no browser reads both. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
