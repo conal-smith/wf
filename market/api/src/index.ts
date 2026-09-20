@@ -11,6 +11,7 @@ import { loadConfig } from "./env.js";
 import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
+import { memoryHub, pgHub } from "../../../community/api/hub.js";
 import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory.js";
 import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
 import { clerkIdentity, devIdentity } from "../../../site/api/identity.js";
@@ -20,7 +21,7 @@ import { pgUsersRepo } from "../../../site/api/repo-pg.js";
 async function main() {
   const config = loadConfig();
 
-  let repo, community, users;
+  let repo, community, users, hub;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
@@ -36,6 +37,9 @@ async function main() {
     repo = pgRepo(sql);
     community = pgCommunityRepo(sql);
     users = pgUsersRepo(sql);
+    // A client of its own: the LISTEN keeps a connection for good, and the
+    // pool above has five for every query the API makes.
+    hub = await pgHub(connect(config.db.url!), sql);
   } else {
     console.warn(
       "market: MARKET_DB=memory, listings and threads will not survive a restart",
@@ -44,6 +48,7 @@ async function main() {
     repo = memoryRepo(memoryUsers);
     community = memoryCommunityRepo(memoryUsers);
     users = memoryUsers;
+    hub = memoryHub();
   }
 
   const verify =
@@ -70,6 +75,7 @@ async function main() {
     storagePrefix: config.storage.prefix,
     corsOrigins: config.corsOrigins,
     authMode: config.auth.mode,
+    hub,
   });
 
   const server = serve(
@@ -85,8 +91,9 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`market: ${signal}, shutting down`);
     server.close();
-    // On Postgres both close the one connection, which ends once.
-    await Promise.all([repo.close(), community.close()]);
+    // On Postgres both repos close the one pool, which ends once. The hub
+    // ends its own listening connection.
+    await Promise.all([repo.close(), community.close(), hub.close()]);
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
