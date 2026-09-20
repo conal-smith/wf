@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: l
 criticality: high
 risk: normal
@@ -51,3 +51,4 @@ LOG:
 - 2026-09-20 agent: review r1, fixed: the two repos disagreed inside a removed thread whose replies are still visible rows (setThreadStatus removed). Postgres wrote the edit or the reaction and then answered null; memory wrote it and answered the message. Both now change nothing and answer null, and the interface says so. Test: "changes nothing inside a removed thread" (both repos).
 - 2026-09-20 agent: review r1, added the test the last line said was missing: an archived channel leaves getMeta, listChannels, the feed and search, still resolves by slug and still lists its own threads (Postgres run; no repo method archives one). slugifyTitle's combining-mark range is now written as escapes, as site/api/users.ts writes it, not as two invisible characters.
 - 2026-09-20 agent: review r1, proved again from cf/community-schema-repo-r1: npm test 421 passed, 50 skipped without DATABASE_URL; 471 passed, 0 skipped with it (Postgres 16, a throwaway container on its own port), the 20 parallel replies among them. npm run build; npm run market:api:build. Built API booted on PORT=8805 against a newly created database: market_migrations 3, community_migrations 1, categories 4, channels 10, tags 39, threads 0, messages 0, users 0. npm run test:e2e 65 passed (PREVIEW_PORT=4305). No ui:lint script yet. Not re-run: the docker build of market/Dockerfile.
+- 2026-09-20 integrator: merged 6702619; gates npm test 552 passed, 50 skipped (no DATABASE_URL here; the Postgres run is the reviewer's, 471 passed); npm run build ok; npm run market:api:build ok; npm run ui:lint clean. Conflicts in .dockerignore, tsconfig.json and vitest.config.ts kept both sides (shared/, ui/ and community/).
