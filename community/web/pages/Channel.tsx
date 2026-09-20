@@ -69,6 +69,8 @@ export function canStartThread(
 export interface ChannelProps {
   slug: string;
   channels: ChannelsState;
+  /** The shell's `useChannels().reload`: a new thread changes a channel's counts. */
+  onPosted: () => void;
   /** The member's role where it matters, from the shell's `useViewerRole`. */
   role: UserRole | null;
   pathname: string;
@@ -78,6 +80,7 @@ export interface ChannelProps {
 export function Channel({
   slug,
   channels,
+  onPosted,
   role,
   pathname,
   search,
@@ -118,6 +121,7 @@ export function Channel({
       key={listed.id}
       listed={listed}
       channels={channels}
+      onPosted={onPosted}
       role={role}
       pathname={pathname}
       search={search}
@@ -128,6 +132,7 @@ export function Channel({
 function Listed({
   listed,
   channels,
+  onPosted,
   role,
   pathname,
   search,
@@ -268,6 +273,7 @@ function Listed({
               ? channels.groups.flatMap((group) => group.channels)
               : []
           }
+          onPosted={onPosted}
         />
       )}
     </>

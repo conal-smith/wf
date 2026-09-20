@@ -121,6 +121,7 @@ function Shell() {
             <Page
               route={route}
               channels={channels.state}
+              onPosted={channels.reload}
               role={role}
               pathname={pathname}
               search={search}
@@ -139,6 +140,7 @@ function Page({
 }: {
   route: Route;
   channels: ChannelsState;
+  onPosted: () => void;
   role: ReturnType<typeof useViewerRole>;
   pathname: string;
   search: URLSearchParams;

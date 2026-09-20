@@ -36,11 +36,13 @@ export function membersLine(count: number | null): string | null {
 
 export interface HomeProps {
   channels: ChannelsState;
+  /** The shell's `useChannels().reload`: a new thread changes a channel's counts. */
+  onPosted: () => void;
   pathname: string;
   search: URLSearchParams;
 }
 
-export function Home({ channels, pathname, search }: HomeProps) {
+export function Home({ channels, onPosted, pathname, search }: HomeProps) {
   const auth = useSiteAuth();
   const styles = homeStyles();
   const q = (search.get(QUERY) ?? "").trim();
@@ -115,6 +117,7 @@ export function Home({ channels, pathname, search }: HomeProps) {
         search={search}
         channel={null}
         channels={every}
+        onPosted={onPosted}
       />
     </>
   );
