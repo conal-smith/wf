@@ -12,6 +12,11 @@ const trigger = (page: Page) => page.getByRole("button", { name: "Site menu" });
 const panel = (page: Page) => page.getByRole("navigation", { name: "Site" });
 const row = (page: Page, name: string) =>
   panel(page).getByRole("link", { name });
+/**
+ * The marketplace's header pill: the one box inside its banner, which is
+ * Tailwind now and carries no class name worth writing down.
+ */
+const headerBar = (page: Page) => page.getByRole("banner").locator("> div");
 // The same rows in the same order, whichever bundle drew them.
 const SECTIONS = ["Wind map", "Marketplace", "Community"];
 
@@ -265,9 +270,7 @@ test("at 390px the marketplace header takes the menu without squeezing a label",
 
   // Nothing inside the pill overflows it, font or no font.
   expect(
-    await page
-      .locator(".mk-header__bar")
-      .evaluate((el) => el.scrollWidth - el.clientWidth),
+    await headerBar(page).evaluate((el) => el.scrollWidth - el.clientWidth),
   ).toBeLessThanOrEqual(0);
 
   expect(
@@ -342,7 +345,7 @@ test.describe("on a coarse pointer", () => {
     expect(owner.onTrigger).toBe(false);
 
     // The grown area also stays inside the header pill it sits in.
-    const bar = (await page.locator(".mk-header__bar").boundingBox())!;
+    const bar = (await headerBar(page).boundingBox())!;
     const menu = (await trigger(page).boundingBox())!;
     const grown = await trigger(page).evaluate((el) => {
       const rect = el.getBoundingClientRect();

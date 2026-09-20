@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import "./market.css";
 import { MarketAuthProvider } from "./auth";
 import { Compass } from "lucide-react";
+import { buttonStyles } from "../../ui/Button";
+import { tv } from "../../ui/tv";
 import { Empty, MarketFooter, MarketHeader } from "./components";
 import BrowsePage from "./pages/BrowsePage";
 import ListingPage from "./pages/ListingPage";
@@ -14,6 +16,29 @@ import MePage from "./pages/MePage";
 import SellPage from "./pages/SellPage";
 import SellerPage from "./pages/SellerPage";
 import { Link, matchRoute, paths, useLocation } from "./router";
+
+export const shellStyles = tv({
+  slots: {
+    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink antialiased",
+    // The page measure, and the narrower gutter a phone can spare.
+    page: "mx-auto flex w-full max-w-page flex-1 flex-col px-6 max-wide:px-3",
+    main: "flex min-w-0 flex-1 flex-col gap-6 pt-3 max-wide:gap-5",
+  },
+  variants: {
+    // A form is read down a column, not across a page: it stops well short of
+    // the page measure and sits in the middle of what is left.
+    narrow: { true: { main: "mx-auto w-full max-w-form" } },
+  },
+});
+
+/**
+ * What is left of market.css on the shell's root, and nothing else is on it:
+ * the pages this item did not convert still read `.mk-root …` rules of their
+ * own (the button and chip overrides, the margin reset, the coarse-pointer
+ * field sizes), and `data-mode` is what pins the design/ tokens to light
+ * while any of them remain. Both go with the last page converted (D7, D8).
+ */
+const LEGACY_ROOT = "mk-root";
 
 export default function MarketApp() {
   return (
@@ -34,15 +59,13 @@ function Shell() {
   // that bring a primary of their own (contact the seller, publish, sign in).
   const accentSell = route.page === "browse" || route.page === "seller";
   const narrow = route.page === "sell" || route.page === "edit";
+  const styles = shellStyles({ narrow });
 
   return (
-    <div className="mk-root" data-mode="light">
-      <div className="mk-page">
+    <div className={styles.root({ className: LEGACY_ROOT })} data-mode="light">
+      <div className={styles.page()}>
         <MarketHeader accentSell={accentSell} />
-        <main
-          id="mk-main"
-          className={`mk-main ${narrow ? "mk-main--narrow" : ""}`}
-        >
+        <main id="market-main" className={styles.main()}>
           <Page route={route} />
         </main>
         <MarketFooter />
@@ -72,8 +95,12 @@ function Page({ route }: { route: ReturnType<typeof matchRoute> }) {
           icon={<Compass size={24} aria-hidden="true" />}
         >
           <p>The link may be old, or the listing may have been removed.</p>
+          {/* Empty's own row of actions, which the item that converts it takes. */}
           <div className="mk-empty__actions">
-            <Link to={paths.browse()} className="f5-button f5-button--primary">
+            <Link
+              to={paths.browse()}
+              className={buttonStyles({ variant: "primary" })}
+            >
               Browse listings
             </Link>
           </div>
