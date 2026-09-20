@@ -11,6 +11,8 @@ import { loadConfig } from "./env.js";
 import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
+import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory.js";
+import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
 import { clerkIdentity, devIdentity } from "../../../site/api/identity.js";
 import { memoryUsersRepo } from "../../../site/api/repo-memory.js";
 import { pgUsersRepo } from "../../../site/api/repo-pg.js";
@@ -18,7 +20,7 @@ import { pgUsersRepo } from "../../../site/api/repo-pg.js";
 async function main() {
   const config = loadConfig();
 
-  let repo, users;
+  let repo, community, users;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
@@ -32,13 +34,15 @@ async function main() {
     if (ranCommunity.length)
       console.log(`community: applied migrations ${ranCommunity.join(", ")}`);
     repo = pgRepo(sql);
+    community = pgCommunityRepo(sql);
     users = pgUsersRepo(sql);
   } else {
     console.warn(
-      "market: MARKET_DB=memory, listings will not survive a restart",
+      "market: MARKET_DB=memory, listings and threads will not survive a restart",
     );
     const memoryUsers = memoryUsersRepo();
     repo = memoryRepo(memoryUsers);
+    community = memoryCommunityRepo(memoryUsers);
     users = memoryUsers;
   }
 
@@ -59,6 +63,7 @@ async function main() {
 
   const app = createApp({
     repo,
+    community,
     people: { users, identity },
     verify,
     storage,
@@ -80,7 +85,8 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`market: ${signal}, shutting down`);
     server.close();
-    await repo.close();
+    // On Postgres both close the one connection, which ends once.
+    await Promise.all([repo.close(), community.close()]);
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));

@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { devVerifier } from "./auth";
 import { memoryRepo } from "./repo-memory";
 import type { Storage } from "./storage";
+import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory";
 import { devIdentity } from "../../../site/api/identity";
 import { memoryUsersRepo } from "../../../site/api/repo-memory";
 import type { User } from "../../../site/shared/types";
@@ -44,6 +45,7 @@ function harness() {
   const storage = fakeStorage();
   const app = createApp({
     repo,
+    community: memoryCommunityRepo(users),
     people: { users, identity: devIdentity() },
     storage,
     verify: devVerifier(),

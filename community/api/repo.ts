@@ -92,6 +92,13 @@ export class ReplyTargetError extends Error {
   }
 }
 
+/** Thrown by createThread and createMessage when a photo's storage key is already on a message. */
+export class PhotoKeyTakenError extends Error {
+  constructor(public storageKey: string) {
+    super(`Photo ${storageKey} is already attached`);
+  }
+}
+
 export interface Repo {
   /** The categories and the active channels with their tags, in rail order. */
   getMeta(): Promise<Meta>;
