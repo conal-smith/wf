@@ -20,10 +20,21 @@ SPEC:
 - S4 wind.*, warm.*, green.* unchanged. Dark-mode halves unchanged (not adopted).
 - S5 Dated ruling added to design/foundations/principles.md: one neutral family and one accent; Atlantic.
 DO: edit tokens.tokens.json; `npm run design:build` twice and diff (byte-stable); `npm run design:lint` exits 0.
-TOUCH: design/foundations/tokens.tokens.json, design/foundations/tokens.css (generated), design/catalog/index.html (generated), design/foundations/principles.md.
+TOUCH: design/foundations/tokens.tokens.json, design/foundations/tokens.css (generated), design/catalog/index.html (generated), design/foundations/principles.md, tests/atlantic-tokens.test.ts.
 AVOID: Hand-editing generated files. Renaming tokens. Touching map CSS (it reads no tokens; iteration 2).
 ACCEPT:
-- [ ] npm run design:lint exits 0.
-- [ ] /market in dev shows the navy ground and a #1463ff Sell button; no teal remains on the page.
-- [ ] Contrast recorded in LOG: text.muted on bg.content and on surface.card >= 4.5:1; action.fg on action.bg >= 4.5:1.
+- [x] npm run design:lint exits 0.
+- [x] /market in dev shows the navy ground and a #1463ff Sell button; no teal remains on the page. (Painted page only: see OPEN.)
+- [x] Contrast recorded in LOG: text.muted on bg.content and on surface.card >= 4.5:1; action.fg on action.bg >= 4.5:1.
 REFS: D5. Superseded by retire-force5-bundle.
+OPEN: src/styles.css:10 paints `html` in the map's own sea literal (#83afb9) on every route, /market included. `.mk-root` is opaque and covers the viewport, so nothing teal is painted, but the canvas behind it still is and can show on an overscroll bounce. It is map CSS, which AVOID puts in iteration 2, so it is left.
+OPEN: S4 keeps the dark halves as they were, and they are aliases, so their resolved values follow the ramp (dark `bg.page` is now #050f20). The one dark literal, `surface.glass` #103138db, stays teal over a navy `surface.solid`. Dark is not adopted; plan 13.1 says it needs its own pass first.
+LOG:
+2026-09-20 agent: STATE verified. market/web/market.css has 444 `var(--sem-*)` and 0 colour literals; force5/src/siteMenu.css only imports the bundle. tokens.css carries resolved hex, not `var(--ref-*)`, and dark applies on `prefers-color-scheme` as well as `[data-mode]`.
+2026-09-20 agent: S2 names no ref home for #0b2545 and the bundle's rule is that sem aliases ref, so it is a new step, `ref.color.teal.750`, shared by `surface.inverse`, `action.quiet` and `action.focus`. Nothing is renamed; the resolved values are the SPEC's.
+2026-09-20 agent: `surface.glass` light re-valued to #eef2f9db (plan 13.1: glass at the same alpha); it is a literal in sem, so S1 alone would have left it teal. Contrast figures quoted in token descriptions re-measured.
+2026-09-20 agent: TOUCH gained tests/atlantic-tokens.test.ts, since S1 to S5 had no test and none of the touched files can hold one. 16 tests: ramp, aliases, accent, ink, the untouched families, dark aliases, no old step in the light block, contrast, the dated ruling.
+2026-09-20 agent: contrast (WCAG 2.x relative luminance). `text.muted` #4a607c on `bg.content` #f4f6fa 5.96:1, on `surface.card` #ffffff 6.45:1, on `surface.solid` #eef2f9 5.75:1. `action.fg` #ffffff on `action.bg` #1463ff 4.93:1, on `action.bgHover` #0d4fd1 6.87:1. `teal.500` on `surface.solid` 3.22:1, still strokes only.
+2026-09-20 agent: `npm run design:build` run twice, tokens.css and catalog/index.html byte-identical by checksum; 203 tokens. `npm run design:lint` exits 0.
+2026-09-20 agent: /market on the dev server, light, 1280x900, computed styles of every painted element, at rest and with the site menu open: ground rgb(244, 246, 250), text rgb(10, 31, 60), Sell rgb(20, 99, 255) with white label, hover rgb(13, 79, 209), focus ring rgb(11, 37, 69). None of the eleven old steps, nor the map's #173d49, is painted; the only hit is the `html` canvas in OPEN. The API was not running, so the listings pane was in its error state and no listing card was on the page; cards read the same tokens.
+2026-09-20 agent: gates. npm test 339 passed; npm run build, npm run market:api:build exit 0; PREVIEW_PORT=4301 npm run test:e2e 65 passed. `ui:lint` is not a script yet, skipped.
