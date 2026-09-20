@@ -8,6 +8,7 @@ export default defineConfig({
       "market/**/*.test.ts",
       "site/**/*.test.ts",
       "shared/**/*.test.ts",
+      "community/**/*.test.ts",
     ],
   },
 });

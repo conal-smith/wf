@@ -14,6 +14,17 @@
     "rootDir": "../..",
     "outDir": "./dist"
   },
-  "include": ["src", "../shared", "../../site/api", "../../site/shared"],
-  "exclude": ["src/**/*.test.ts", "../../site/**/*.test.ts"]
+  "include": [
+    "src",
+    "../shared",
+    "../../site/api",
+    "../../site/shared",
+    "../../community/api",
+    "../../community/shared"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "../../site/**/*.test.ts",
+    "../../community/**/*.test.ts"
+  ]
 }
