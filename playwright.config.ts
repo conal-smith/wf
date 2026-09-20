@@ -18,6 +18,8 @@ const PHONE = /community\/phone\.spec\.ts$/;
  * comparing against is not a gate.
  */
 const MAP_SHOTS = /map\/shots\.spec\.ts$/;
+/** The marketplace's visual baseline, which sets its own widths and writes files. */
+const MARKET_SHOTS = /market\/shots\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -30,7 +32,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", testIgnore: [PHONE, MAP_SHOTS] },
+    { name: "desktop", testIgnore: [PHONE, MAP_SHOTS, MARKET_SHOTS] },
     ...(process.env.MAP_SHOTS
       ? [{ name: "map-shots", testMatch: MAP_SHOTS }]
       : []),
@@ -43,6 +45,29 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // `npm run market:shots` and nothing else: the baseline it writes is
+    // committed, so a plain `playwright test` must not rewrite it on its way
+    // past. It opens a window of its own per view, at a width of its own, so
+    // neither project above fits, and it records forty-odd of them in a run.
+    //
+    // The two flags are what makes a re-run byte-identical rather than nearly
+    // so: rastering a tile on several threads, and reusing part of an earlier
+    // raster, both let the antialiasing along a rounded corner land a shade
+    // either side, which is a file that differs for no reason anyone can see.
+    ...(process.env.MARKET_SHOTS
+      ? [
+          {
+            name: "market-shots",
+            testMatch: MARKET_SHOTS,
+            timeout: 180000,
+            use: {
+              launchOptions: {
+                args: ["--num-raster-threads=1", "--disable-partial-raster"],
+              },
+            },
+          },
+        ]
+      : []),
   ],
   webServer: [
     {
