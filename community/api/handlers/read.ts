@@ -42,15 +42,20 @@ function windowOf(params: URLSearchParams): MessageWindow {
 }
 
 export function readRoutes(r: Router, deps: CommunityDeps) {
-  const { repo } = deps;
+  const { repo, people } = deps;
   const find = lookups(repo);
 
   r.get("/meta", async (c) => {
+    const [meta, memberCount] = await Promise.all([
+      repo.getMeta(),
+      people.users.countUsers(),
+    ]);
     const payload: MetaPayload = {
-      ...(await repo.getMeta()),
+      ...meta,
       reactions: REACTIONS,
       limits: LIMITS,
       auth: deps.authMode,
+      memberCount,
     };
     return c.json(payload);
   });
