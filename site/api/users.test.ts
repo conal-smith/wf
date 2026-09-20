@@ -77,6 +77,13 @@ describe("ensureUser", () => {
     expect(identity).toHaveBeenCalledTimes(1);
   });
 
+  it("is found again by its handle, and nobody by one that is free", async () => {
+    const users = memoryUsersRepo();
+    const made = await ensureUser({ users, identity: named("Aoife K") }, "u1");
+    expect(await users.getUserByHandle("aoife-k")).toEqual(made);
+    expect(await users.getUserByHandle("aoife")).toBeNull();
+  });
+
   it("adds a numeric suffix when the handle is taken", async () => {
     const users = memoryUsersRepo();
     const people = { users, identity: named("Aoife") };
