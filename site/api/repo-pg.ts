@@ -15,6 +15,7 @@ interface UserRow {
   contact_email: string | null;
   contact_phone: string | null;
   contact_whatsapp: boolean;
+  auto_follow: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -34,6 +35,7 @@ function toUser(r: UserRow): User {
     contactEmail: r.contact_email,
     contactPhone: r.contact_phone,
     contactWhatsapp: r.contact_whatsapp,
+    autoFollow: r.auto_follow,
     createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   };
@@ -73,6 +75,7 @@ export function pgUsersRepo(sql: Sql): UsersRepo {
             contact_phone = ${input.contactPhone ?? null},
             contact_whatsapp = ${input.contactWhatsapp ?? false},
             bio = ${input.bio ?? null},
+            auto_follow = coalesce(${input.autoFollow ?? null}, auto_follow),
             updated_at = now()
           where id = ${id}
           returning *`;

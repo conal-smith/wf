@@ -42,6 +42,7 @@ export function memoryUsersRepo(
         contactEmail: null,
         contactPhone: null,
         contactWhatsapp: false,
+        autoFollow: true,
         createdAt: at,
         updatedAt: at,
       };
@@ -65,6 +66,7 @@ export function memoryUsersRepo(
         contactPhone: input.contactPhone ?? null,
         contactWhatsapp: input.contactWhatsapp ?? false,
         bio: input.bio ?? null,
+        autoFollow: input.autoFollow ?? existing.autoFollow,
         updatedAt: now().toISOString(),
       };
       users.set(id, user);
