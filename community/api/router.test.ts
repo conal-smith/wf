@@ -2697,8 +2697,10 @@ describe("community API: what staff can do", () => {
       ["PUT", react(message.id, "👍"), { on: true }],
       ["POST", `/messages/${message.id}/report`, { reason: "other" }],
       ["PUT", `/threads/${thread.id}/follow`, { level: "all" }],
+      ["PUT", "/channels/general/follow", { on: true }],
       ["PUT", `/threads/${thread.id}/read`, { seq: 1 }],
       ["PUT", "/notifications/read", { all: true }],
+      ["POST", "/uploads", { contentType: "image/jpeg" }],
     ];
     for (const [method, path, body] of writes) {
       const w = await call(method, path, body, "brian");

@@ -231,7 +231,8 @@ export interface Repo {
   /**
    * Saves the report and, with it, a `report` row in the bell of everyone
    * whose role is staff, the reporter included if they are one. Reports never
-   * fold: two on one message are two rows.
+   * fold: two on one message are two rows. Muting the thread does not stop
+   * them: a report is work to do, not the thread's news.
    */
   addReport(report: NewReport): Promise<void>;
   countReportsBy(reporterId: string, since: Date): Promise<number>;

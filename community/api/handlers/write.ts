@@ -2,8 +2,9 @@
  * Everything a member can change: start a thread, reply, edit and remove
  * their own words, react. Each needs a session, and each makes the member's
  * `users` row the first time, so nobody fills in a form to join. Each new
- * thing takes a token from the rate limiter last of all, so a request that
- * was going to be refused anyway costs its sender nothing.
+ * thing takes a token from the rate limiter once everything the handler can
+ * check has passed, so a body refused for what it says costs its sender
+ * nothing.
  */
 import {
   announce,
