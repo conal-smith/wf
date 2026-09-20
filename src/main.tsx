@@ -6,13 +6,18 @@ import "./compact.css";
 import "./dock.css";
 import "../ui/theme.css";
 import App from "./App";
-import { isMarketPath } from "../force5/src/siteNav";
+import { isCommunityPath, isMarketPath } from "../force5/src/siteNav";
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
 // shared site menu links to, from the same one match.
 const MarketApp = React.lazy(() => import("../market/web/MarketApp"));
 const isMarket = isMarketPath(window.location.pathname);
+
+// The community is the third bundle, split off the same way: everything under
+// /community, and nothing of it in the map's chunk or the marketplace's.
+const CommunityApp = React.lazy(() => import("../community/web/CommunityApp"));
+const isCommunity = isCommunityPath(window.location.pathname);
 
 // The kit gallery, at /ui, under the dev server only. The mode is a constant in
 // a build, and `vite build` is "production" whatever the shell says, so the
@@ -35,6 +40,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     ) : isMarket ? (
       <Suspense fallback={null}>
         <MarketApp />
+      </Suspense>
+    ) : isCommunity ? (
+      <Suspense fallback={null}>
+        <CommunityApp />
       </Suspense>
     ) : (
       <App />
