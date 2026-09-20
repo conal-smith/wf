@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: normal
@@ -38,3 +38,4 @@ LOG:
 - 2026-09-20 agent: stopped here. Not built, by AVOID: sockets, a per-member stream, presence, bodies in payloads. Not built, for community-web-thread: the EventSource URL and the fetch that followThread is handed, and putting onMessages' messages in place by id.
 - 2026-09-20 agent: review r1, two fixes in community/shared/followThread.ts, both with tests that failed first. (1) An edit, removal or reaction on the opening post asks fetchAfter(-1), and the API refuses after=-1 (read.ts:41-43 takes digits only; no cursor is what starts at seq 0), so the opening post never updated live. followThread.ts now exports afterQuery(seq), "" below 0 and ?after=<seq> otherwise, FollowOptions.fetchAfter names it, and hub.test.ts runs the follower over the real routes: a reply, then the opening post edited. community-web-thread builds its fetch with afterQuery. (2) An edit or reaction told while a fetch was under way, on a message beyond lastSeq, became a second catch-up that found nothing, and the page kept the message as the first fetch had read it. Whether to catch up or fetch the one message is now settled when the task's turn comes, after the fetch before it. followThread.test.ts 16 tests, hub.test.ts 19.
 - 2026-09-20 agent: review r1, proved again. Built API on PORT=8808 against npm run market:db, dev auth: a reader on the stream fetching messages?after=, three replies 31, 32, 23 ms from the request to the reader's page, the opening post's edit 15 ms, through LISTEN/NOTIFY. One `listen "community"` backend beside the pool's five; SIGTERM with a stream open: exit, port free, that backend gone. The thread and member the run made are deleted and general's count is back to 0. Gates: npm test 738 passed, 56 skipped; with DATABASE_URL 794 passed, 0 skipped; npm run build, npm run market:api:build, npm run ui:lint clean; npm run test:e2e 65 passed (PREVIEW_PORT=4308); both test files typecheck strict (one-off tsc). Left for the owner: how production is fronted decides whether the last X-Forwarded-For hop is the reader's address (S3's LOG line above).
+- 2026-09-20 integrator: merged 812624f; gates npm test 738 passed, 56 skipped; npm run build ok; npm run market:api:build ok; npm run ui:lint clean.
