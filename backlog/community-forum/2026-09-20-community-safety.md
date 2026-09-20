@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: normal
@@ -44,3 +44,4 @@ LOG:
 - 2026-09-20 agent: left as found. A locked thread is locked for staff too. blockSuspended measures a suspension on the real clock, not deps.now, so no test here moves past one; site-users covers its expiry.
 - 2026-09-20 agent: review 1, fixed. countMessagesBy counted what still stood in a removed thread, so a member whose advert thread staff removed kept their three messages and their links; both repos now leave a removed thread's messages out (repo.test.ts on memory and Postgres, router.test.ts "makes a member new again"). The two refusals counted in days said "give it a moment" with a wait of up to a day; they now say tomorrow, and a bucket's wait over a minute says "later". limits.test.ts gained the sweep: past ten thousand buckets only the full ones go.
 - 2026-09-20 agent: review 1, read and left. Every S line against its code and tests; each test bites (a moved take, a dropped log row, a dropped staffOnly or removed check each fail one). A staff action and its community_mod_log row are two writes, not one transaction: a failed log insert leaves the action unlogged; making them one needs a Repo method per action, which is more than a review should add to a hot file. A refused photo key or a reply target lost to a race costs the sender a token. Gates after the fixes, DATABASE_URL set: npm test 44 files, 872 passed, none skipped; build, market:api:build, ui:lint clean; test:e2e on 4309, 65 passed; community/ test files type-checked by hand, clean.
+- 2026-09-20 integrator: merged d594388; gates npm test 49 files, 888 passed, 72 skipped (no DATABASE_URL here, so the Postgres cases did not run); npm run build, npm run market:api:build, npm run ui:lint clean. No conflicts; package.json unchanged. Left from review 1 and not blocking ACCEPT: a staff action and its community_mod_log row are two writes.
