@@ -6,6 +6,8 @@
  */
 import { Hono } from "hono";
 import type { CommunityDeps, Env } from "./handlers/context.js";
+import { followRoutes } from "./handlers/follow.js";
+import { notificationRoutes } from "./handlers/notifications.js";
 import { readRoutes } from "./handlers/read.js";
 import { uploadRoutes } from "./handlers/uploads.js";
 import { writeRoutes } from "./handlers/write.js";
@@ -18,6 +20,8 @@ export function createCommunityRouter(deps: CommunityDeps) {
   r.use("*", blockSuspended(deps.people.users));
   readRoutes(r, deps);
   writeRoutes(r, deps);
+  followRoutes(r, deps);
+  notificationRoutes(r, deps);
   uploadRoutes(r, deps);
   return r;
 }

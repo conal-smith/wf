@@ -1,8 +1,8 @@
 /**
  * The community's routes over app.request(), on the memory repo, with dev
  * tokens: `Bearer dev:aoife` is the member dev_aoife. What only staff or a
- * sibling item's route can do (pin, lock, mark read) is done on the repo
- * directly, which is where those routes will land too.
+ * sibling item's route can do (pin, lock) is done on the repo directly, which
+ * is where those routes will land too.
  */
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -13,8 +13,10 @@ import { SEED_CHANNELS } from "./seed";
 import {
   LIMITS,
   REACTIONS,
+  type MentionPage,
   type Message,
   type MessagePage,
+  type NotificationPage,
   type Thread,
   type ThreadPage,
   type ThreadView,
@@ -129,6 +131,17 @@ function harness(storage: Storage = fakeStorage()) {
     expect(r.status).toBe(201);
     return r.body as Message;
   };
+  /**
+   * Past the new-member rule: three messages standing and an account over a
+   * day old. They go in a thread of the first name's, in off-topic.
+   */
+  const settle = async (...names: string[]) => {
+    const thread = await startThread(names[0], {}, "off-topic");
+    for (const name of names)
+      for (let i = 0; i < LIMITS.newMemberMessages; i++)
+        await reply(thread.id, `Hello ${i}`, name);
+    at += (LIMITS.newMemberHours + 1) * 60 * 60 * 1000;
+  };
   return {
     app,
     repo,
@@ -137,6 +150,7 @@ function harness(storage: Storage = fakeStorage()) {
     makeStaff,
     startThread,
     reply,
+    settle,
     /** Moves every clock forward, the edit window's included. */
     wait: (ms: number) => void (at += ms),
   };
@@ -208,7 +222,7 @@ describe("community API: reading", () => {
 
   it("refuses a tab it does not have and a cursor it did not make", async () => {
     const { call } = harness();
-    let r = await call("GET", "/feed?tab=following");
+    let r = await call("GET", "/feed?tab=popular");
     expect(r.status).toBe(400);
     expect(r.body.error).toBe("invalid");
     r = await call("GET", "/feed?cursor=not-a-cursor");
@@ -478,6 +492,8 @@ describe("community API: ids and errors", () => {
         `/messages/:id/reactions/${encodeURIComponent("👍")}`,
         { on: true },
       ],
+      ["PUT", "/threads/:id/follow", { level: "all" }],
+      ["PUT", "/threads/:id/read", { seq: 0 }],
     ];
     for (const bad of [
       "nope",
@@ -641,7 +657,7 @@ describe("community API: threads", () => {
     });
   });
 
-  it("makes no row for a first write it refuses, and lets first words name their author", async () => {
+  it("makes no row for a first write it refuses", async () => {
     const { call, startThread, users } = harness();
     const thread = await startThread("aoife");
     const refused: [string, unknown][] = [
@@ -656,6 +672,8 @@ describe("community API: threads", () => {
       ],
       [`/threads/${thread.id}/messages`, { body: "  " }],
       [`/threads/${thread.id}/messages`, "{not json"],
+      // A new member names nobody yet, themselves included.
+      [`/threads/${thread.id}/messages`, { body: "That is me, <@dev_brian>." }],
     ];
     for (const [path, body] of refused) {
       const r = await call("POST", path, body, "brian");
@@ -666,13 +684,11 @@ describe("community API: threads", () => {
     const r = await call(
       "POST",
       `/threads/${thread.id}/messages`,
-      { body: "That is me, <@dev_brian>." },
+      { body: "That is me." },
       "brian",
     );
     expect(r.status).toBe(201);
-    expect((r.body as Message).mentions.map((u) => u.id)).toEqual([
-      "dev_brian",
-    ]);
+    expect(await users.getUser("dev_brian")).not.toBeNull();
   });
 
   it("keeps a staff-only channel for staff", async () => {
@@ -1310,7 +1326,8 @@ describe("community API: bodies and mentions", () => {
   });
 
   it("resolves mention tokens to members at write", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, startThread, reply, settle } = harness();
+    await settle("aoife");
     const thread = await startThread("aoife");
     await reply(thread.id, "Here.", "brian");
 
@@ -1339,7 +1356,8 @@ describe("community API: bodies and mentions", () => {
   });
 
   it("refuses a mention of nobody, and more than five", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, startThread, reply, settle } = harness();
+    await settle("aoife");
     const thread = await startThread("aoife");
     const names = ["brian", "ciara", "dara", "eoin", "fiona", "grace"];
     for (const name of names) await reply(thread.id, "Here.", name);
@@ -1387,5 +1405,593 @@ describe("community API: bodies and mentions", () => {
       "aoife",
     );
     expect(r.status).toBe(400);
+  });
+});
+
+describe("community API: following", () => {
+  it("follows a thread on starting it and on replying, and keeps a manual choice", async () => {
+    const { call, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    expect(thread.following).toBe("all");
+    await reply(thread.id, "Me too", "brian");
+    const asBrian = async () =>
+      (await call("GET", `/threads/${thread.id}`, undefined, "brian")).body
+        .thread as Thread;
+    expect((await asBrian()).following).toBe("all");
+
+    for (const level of ["mentions", "none", "all", "none"] as const) {
+      const r = await call(
+        "PUT",
+        `/threads/${thread.id}/follow`,
+        { level },
+        "brian",
+      );
+      expect([level, r.status]).toEqual([level, 200]);
+      expect(r.body).toMatchObject({ id: thread.id, following: level });
+      expect((await asBrian()).following).toBe(level);
+    }
+    await reply(thread.id, "Still here", "brian");
+    expect((await asBrian()).following).toBe("none");
+  });
+
+  it("validates a follow, needs a session, and makes the member's row", async () => {
+    const { call, startThread, users } = harness();
+    const thread = await startThread("aoife");
+    for (const body of [{}, { level: "loud" }, { level: null }, "{not json"]) {
+      const r = await call(
+        "PUT",
+        `/threads/${thread.id}/follow`,
+        body,
+        "ciara",
+      );
+      expect(r.status).toBe(400);
+      expect(r.body.error).toBe("invalid");
+    }
+    expect(await users.getUser("dev_ciara")).toBeNull();
+    const paths: [string, unknown][] = [
+      [`/threads/${thread.id}/follow`, { level: "all" }],
+      [`/threads/${thread.id}/read`, { seq: 0 }],
+      ["/channels/general/follow", { on: true }],
+    ];
+    for (const [path, body] of paths) {
+      expect([path, (await call("PUT", path, body)).status]).toEqual([
+        path,
+        401,
+      ]);
+      const elsewhere = path.replace(thread.id, UNKNOWN_ID);
+      if (elsewhere !== path)
+        expect([
+          path,
+          (await call("PUT", elsewhere, body, "ciara")).status,
+        ]).toEqual([path, 404]);
+    }
+    expect(
+      (await call("PUT", "/channels/no-such/follow", { on: true }, "ciara"))
+        .status,
+    ).toBe(404);
+    // Reading needs no row; a follow names its member, so it makes one.
+    await call("PUT", `/threads/${thread.id}/read`, { seq: 0 }, "ciara");
+    expect(await users.getUser("dev_ciara")).toBeNull();
+    const r = await call(
+      "PUT",
+      `/threads/${thread.id}/follow`,
+      { level: "all" },
+      "ciara",
+    );
+    expect(r.status).toBe(200);
+    expect(await users.getUser("dev_ciara")).not.toBeNull();
+  });
+
+  it("follows and unfollows a channel, and counts its followers", async () => {
+    const { call } = harness();
+    let r = await call("PUT", "/channels/wings/follow", { on: true }, "aoife");
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({
+      slug: "wings",
+      following: true,
+      followerCount: 1,
+    });
+    await call("PUT", "/channels/wings/follow", { on: true }, "aoife");
+    await call("PUT", "/channels/wings/follow", { on: true }, "brian");
+    const listed = (await call("GET", "/channels", undefined, "aoife")).body
+      .channels as {
+      slug: string;
+      following: boolean;
+      followerCount: number;
+    }[];
+    expect(listed.filter((c) => c.following).map((c) => c.slug)).toEqual([
+      "wings",
+    ]);
+    expect(listed.find((c) => c.slug === "wings")!.followerCount).toBe(2);
+
+    r = await call("PUT", "/channels/wings/follow", { on: false }, "aoife");
+    expect(r.body).toMatchObject({ following: false, followerCount: 1 });
+    r = await call("PUT", "/channels/wings/follow", { on: "yes" }, "aoife");
+    expect(r.status).toBe(400);
+  });
+
+  it("writes no follow for a member who switched autoFollow off on /api/me", async () => {
+    const { app, call, startThread, reply } = harness();
+    const me = (method: string, body?: unknown) =>
+      app.request("/api/me", {
+        method,
+        headers: {
+          Authorization: "Bearer dev:brian",
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    expect(await (await me("GET")).json()).toMatchObject({ autoFollow: true });
+    expect(
+      await (
+        await me("PUT", { displayName: "Brian", autoFollow: false })
+      ).json(),
+    ).toMatchObject({ autoFollow: false });
+    // The marketplace's form never sends it, and does not switch it back on.
+    expect(
+      await (await me("PUT", { displayName: "Brian B" })).json(),
+    ).toMatchObject({ displayName: "Brian B", autoFollow: false });
+    expect(
+      (await me("PUT", { displayName: "Brian", autoFollow: "no" })).status,
+    ).toBe(400);
+
+    const theirs = await startThread("aoife");
+    await reply(theirs.id, "Passing through", "brian");
+    const mine = await startThread("brian");
+    expect(mine.following).toBeNull();
+    await reply(theirs.id, "Hello brian", "aoife");
+    await reply(mine.id, "Hello brian", "aoife");
+    expect(
+      (await call("GET", "/notifications/count", undefined, "brian")).body,
+    ).toEqual({ count: 0 });
+    expect(
+      (await call("GET", "/feed?tab=following", undefined, "brian")).body.items,
+    ).toEqual([]);
+
+    // The button still works, and switching back on follows the next reply.
+    await call("PUT", `/threads/${mine.id}/follow`, { level: "all" }, "brian");
+    await reply(mine.id, "And again", "aoife");
+    expect(
+      (await call("GET", "/notifications/count", undefined, "brian")).body,
+    ).toEqual({ count: 1 });
+    await me("PUT", { displayName: "Brian", autoFollow: true });
+    await reply(theirs.id, "Back", "brian");
+    expect(
+      (await call("GET", `/threads/${theirs.id}`, undefined, "brian")).body
+        .thread.following,
+    ).toBe("all");
+  });
+});
+
+describe("community API: notifications", () => {
+  type Call = ReturnType<typeof harness>["call"];
+  const bell = async (call: Call, user: string) =>
+    (await call("GET", "/notifications", undefined, user))
+      .body as NotificationPage;
+  const count = async (call: Call, user: string) =>
+    (await call("GET", "/notifications/count", undefined, user)).body.count;
+
+  it("needs a session on all three routes", async () => {
+    const { call } = harness();
+    expect((await call("GET", "/notifications/count")).status).toBe(401);
+    expect((await call("GET", "/notifications")).status).toBe(401);
+    expect(
+      (await call("PUT", "/notifications/read", { all: true })).status,
+    ).toBe(401);
+    // A reader with no row yet has an empty bell, not an error.
+    expect(await count(call, "ciara")).toBe(0);
+    expect(await bell(call, "ciara")).toEqual({ items: [], nextCursor: null });
+  });
+
+  it("4 replies by 2 people make one unread row, count 4, two actors; a mention its own; opening the thread clears them", async () => {
+    const { call, startThread, reply, settle } = harness();
+    await settle("brian");
+    const thread = await startThread("aoife");
+    await reply(thread.id, "One", "brian");
+    await reply(thread.id, "Two", "ciara");
+    await reply(thread.id, "Three", "brian");
+    const fourth = await reply(thread.id, "Four", "ciara");
+    const named = await reply(
+      thread.id,
+      "Tide is wrong for that.\nAsk <@dev_aoife>, she was there.",
+      "brian",
+    );
+
+    expect(await count(call, "aoife")).toBe(2);
+    const page = await bell(call, "aoife");
+    expect(page.nextCursor).toBeNull();
+    expect(page.items).toHaveLength(2);
+    const [mention, replies] = page.items;
+    expect(replies).toMatchObject({
+      kind: "reply",
+      count: 4,
+      actorCount: 2,
+      messageId: fourth.id,
+      seq: 4,
+      readAt: null,
+      thread: {
+        id: thread.id,
+        slug: thread.slug,
+        title: thread.title,
+        channel: { slug: "general" },
+      },
+    });
+    expect(replies.actors.map((a) => a.handle)).toEqual(["ciara", "brian"]);
+    expect(mention).toMatchObject({
+      kind: "mention",
+      count: 1,
+      messageId: named.id,
+      seq: 5,
+      excerpt: "Ask @aoife, she was there.",
+      readAt: null,
+    });
+    expect(mention.actors.map((a) => a.handle)).toEqual(["brian"]);
+    expect(mention.id).toMatch(ID_PATTERN);
+
+    // Opening the thread: the client reports how far it has read.
+    const r = await call(
+      "PUT",
+      `/threads/${thread.id}/read`,
+      { seq: 5 },
+      "aoife",
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ id: thread.id, lastReadSeq: 5, unread: 0 });
+    expect(await count(call, "aoife")).toBe(0);
+    expect(
+      (await bell(call, "aoife")).items.every((n) => n.readAt !== null),
+    ).toBe(true);
+    // Everyone else's rows are untouched.
+    expect(await count(call, "ciara")).toBe(1);
+  });
+
+  it("writes no rows for level none, and only mentions for level mentions", async () => {
+    const { call, startThread, reply, settle } = harness();
+    await settle("brian");
+    const thread = await startThread("aoife");
+    await reply(thread.id, "Here", "ciara");
+    const follow = (level: string, user: string) =>
+      call("PUT", `/threads/${thread.id}/follow`, { level }, user);
+    await follow("none", "aoife");
+    await follow("mentions", "ciara");
+    await call("PUT", "/notifications/read", { all: true }, "aoife");
+
+    await reply(thread.id, "A plain reply", "brian");
+    const named = await reply(
+      thread.id,
+      "<@dev_aoife> and <@dev_ciara>, look",
+      "brian",
+    );
+    const mine = await reply(thread.id, "Muted, and still talking", "aoife");
+    await call("PUT", react(mine.id, "👍"), { on: true }, "ciara");
+
+    expect(await count(call, "aoife")).toBe(0);
+    expect(
+      (await bell(call, "aoife")).items.filter((n) => n.readAt === null),
+    ).toEqual([]);
+    expect(
+      (await bell(call, "ciara")).items.map((n) => [n.kind, n.messageId]),
+    ).toEqual([["mention", named.id]]);
+  });
+
+  it("keeps reactions in the list and out of the count", async () => {
+    const { call, startThread } = harness();
+    const thread = await startThread("aoife");
+    const opening = (await call("GET", `/threads/${thread.id}`)).body
+      .opening as Message;
+    await call("PUT", react(opening.id, "🤙"), { on: true }, "brian");
+    await call("PUT", react(opening.id, "🔥"), { on: true }, "ciara");
+    await call("PUT", react(opening.id, "🔥"), { on: true }, "aoife");
+
+    expect(await count(call, "aoife")).toBe(0);
+    const { items } = await bell(call, "aoife");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: "reaction",
+      count: 2,
+      emoji: "🔥",
+      messageId: opening.id,
+      seq: 0,
+    });
+    expect(items[0].actors.map((a) => a.handle)).toEqual(["ciara", "brian"]);
+  });
+
+  it("marks read by ids, by thread or all, exactly one of them", async () => {
+    const { call, startThread, reply } = harness();
+    const a = await startThread("aoife");
+    const b = await startThread("aoife", { title: "A second thread" });
+    const c = await startThread("aoife", { title: "A third thread" });
+    for (const t of [a, b, c]) await reply(t.id, "Hello", "brian");
+    expect(await count(call, "aoife")).toBe(3);
+
+    const bad: unknown[] = [
+      {},
+      { all: false },
+      { ids: [] },
+      { ids: ["nope"] },
+      { threadId: "nope" },
+      { all: true, threadId: a.id },
+      { ids: Array.from({ length: 101 }, () => UNKNOWN_ID) },
+    ];
+    for (const body of bad) {
+      const r = await call("PUT", "/notifications/read", body, "aoife");
+      expect([body, r.status]).toEqual([body, 400]);
+    }
+    expect(await count(call, "aoife")).toBe(3);
+
+    const rows = (await bell(call, "aoife")).items;
+    const rowA = rows.find((n) => n.thread!.id === a.id)!;
+    const read = (body: unknown, user: string) =>
+      call("PUT", "/notifications/read", body, user);
+    // Someone else's id changes nothing.
+    expect((await read({ ids: [rowA.id] }, "brian")).body).toEqual({
+      count: 0,
+    });
+    expect(await count(call, "aoife")).toBe(3);
+    expect((await read({ ids: [rowA.id] }, "aoife")).body).toEqual({
+      count: 2,
+    });
+    expect((await read({ threadId: b.id }, "aoife")).body).toEqual({
+      count: 1,
+    });
+    expect((await read({ all: true }, "aoife")).body).toEqual({ count: 0 });
+  });
+
+  it("pages the list by cursor and refuses one it did not make", async () => {
+    const { call, startThread, reply } = harness();
+    const ids: string[] = [];
+    for (let i = 0; i < LIMITS.pageSize + 2; i++) {
+      const t = await startThread("aoife", { title: `Thread number ${i}` });
+      await reply(t.id, "Hello", "brian");
+      ids.push(t.id);
+    }
+    const first = await bell(call, "aoife");
+    expect(first.items).toHaveLength(LIMITS.pageSize);
+    const second = (
+      await call(
+        "GET",
+        `/notifications?cursor=${first.nextCursor}`,
+        undefined,
+        "aoife",
+      )
+    ).body as NotificationPage;
+    expect(second.items).toHaveLength(2);
+    expect(second.nextCursor).toBeNull();
+    expect([...first.items, ...second.items].map((n) => n.thread!.id)).toEqual(
+      [...ids].reverse(),
+    );
+    const r = await call(
+      "GET",
+      "/notifications?cursor=nope",
+      undefined,
+      "aoife",
+    );
+    expect(r.status).toBe(400);
+  });
+
+  it("tells a channel's followers about a new thread", async () => {
+    const { call, startThread, reply } = harness();
+    await call("PUT", "/channels/wings/follow", { on: true }, "brian");
+    const thread = await startThread("aoife", {}, "wings");
+    await startThread("aoife", {}, "foils");
+    await reply(thread.id, "A reply", "ciara");
+
+    const { items } = await bell(call, "brian");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: "thread",
+      seq: 0,
+      thread: { id: thread.id, channel: { slug: "wings" } },
+    });
+    expect(items[0].actors.map((a) => a.handle)).toEqual(["aoife"]);
+    expect(await count(call, "brian")).toBe(1);
+  });
+});
+
+describe("community API: reading position and the rail", () => {
+  it("moves the read position forward only, and validates the seq", async () => {
+    const { call, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    for (let i = 0; i < 5; i++) await reply(thread.id, `Reply ${i}`, "brian");
+    const read = (seq: unknown) =>
+      call("PUT", `/threads/${thread.id}/read`, { seq }, "ciara");
+
+    expect((await read(3)).body).toMatchObject({ lastReadSeq: 3, unread: 2 });
+    expect((await read(1)).body).toMatchObject({ lastReadSeq: 3, unread: 2 });
+    expect((await read(999)).body).toMatchObject({ lastReadSeq: 5, unread: 0 });
+    for (const seq of [-1, 1.5, "3", null])
+      expect([seq, (await read(seq)).status]).toEqual([seq, 400]);
+  });
+
+  it("counts a channel's unread threads since the viewer last opened it", async () => {
+    const { call, startThread, reply } = harness();
+    const unread = async (user: string) =>
+      (
+        (await call("GET", "/channels", undefined, user)).body.channels as {
+          slug: string;
+          unread: number;
+        }[]
+      ).find((c) => c.slug === "wings")!.unread;
+    // Unread counts from when they joined, so brian needs a row first.
+    await call("PUT", "/channels/general/follow", { on: true }, "brian");
+    const one = await startThread("aoife", {}, "wings");
+    await startThread("aoife", { title: "A second thread" }, "wings");
+    expect(await unread("brian")).toBe(2);
+
+    // A signed-out look and a later page change nothing; the first page resets it.
+    await call("GET", "/channels/wings/threads");
+    expect(await unread("brian")).toBe(2);
+    await call("GET", "/channels/wings/threads", undefined, "brian");
+    expect(await unread("brian")).toBe(0);
+    await reply(one.id, "Bump", "aoife");
+    expect(await unread("brian")).toBe(1);
+    // Their own activity is not news to them.
+    await reply(one.id, "Bump back", "brian");
+    expect(await unread("brian")).toBe(0);
+  });
+
+  it("caps a channel's unread at 99", async () => {
+    const { call, startThread } = harness();
+    await call("PUT", "/channels/general/follow", { on: true }, "brian");
+    for (let i = 0; i < 101; i++)
+      await startThread("aoife", { title: `Thread number ${i}` }, "wings");
+    const channels = (await call("GET", "/channels", undefined, "brian")).body
+      .channels as { slug: string; unread: number }[];
+    expect(channels.find((c) => c.slug === "wings")!.unread).toBe(99);
+  });
+});
+
+describe("community API: the Following and Mentions feeds", () => {
+  it("needs a session for both, and leaves Latest public", async () => {
+    const { call } = harness();
+    for (const tab of ["following", "mentions"]) {
+      const r = await call("GET", `/feed?tab=${tab}`);
+      expect([tab, r.status, r.body.error]).toEqual([
+        tab,
+        401,
+        "unauthenticated",
+      ]);
+    }
+    expect((await call("GET", "/feed?tab=latest")).status).toBe(200);
+  });
+
+  it("lists followed threads and new threads in followed channels, each with why", async () => {
+    const { call, startThread, reply } = harness();
+    const follow = (threadId: string, level: string) =>
+      call("PUT", `/threads/${threadId}/follow`, { level }, "aoife");
+    const started = await startThread("aoife", { title: "Aoife started this" });
+    const replied = await startThread("brian", { title: "Aoife replied here" });
+    const pressed = await startThread("brian", {
+      title: "Aoife pressed Follow",
+    });
+    const muted = await startThread("brian", { title: "Aoife muted this" });
+    await startThread("brian", { title: "Before the follow" }, "foils");
+    await reply(replied.id, "Me too", "aoife");
+    await follow(pressed.id, "all");
+    await reply(muted.id, "Enough", "aoife");
+    await follow(muted.id, "none");
+    await call("PUT", "/channels/foils/follow", { on: true }, "aoife");
+    await startThread("brian", { title: "After the follow" }, "foils");
+    await startThread("brian", { title: "Nothing to do with Aoife" });
+    await reply(started.id, "Bump", "brian");
+
+    const r = await call("GET", "/feed?tab=following", undefined, "aoife");
+    expect(r.status).toBe(200);
+    const page = r.body as ThreadPage;
+    expect(page.items.map((t) => [t.title, t.why])).toEqual([
+      ["Aoife started this", "started"],
+      ["After the follow", "channel"],
+      ["Aoife replied here", "replied"],
+      ["Aoife pressed Follow", "followed"],
+    ]);
+    expect(page.items[0]).toMatchObject({ unread: 1, following: "all" });
+    expect(page.nextCursor).toBeNull();
+    // Latest carries no why.
+    const latest = (await call("GET", "/feed", undefined, "aoife"))
+      .body as ThreadPage;
+    for (const t of latest.items) expect(t).not.toHaveProperty("why");
+  });
+
+  it("lists the messages that mention the viewer, newest first, by cursor", async () => {
+    const { call, startThread, reply, settle } = harness();
+    await settle("brian");
+    const thread = await startThread("aoife");
+    const ids: string[] = [];
+    for (let i = 0; i < LIMITS.pageSize + 1; i++)
+      ids.push((await reply(thread.id, `Hey <@dev_aoife> ${i}`, "brian")).id);
+    await reply(thread.id, "Nobody named", "brian");
+
+    const first = (await call("GET", "/feed?tab=mentions", undefined, "aoife"))
+      .body as MentionPage;
+    expect(first.items).toHaveLength(LIMITS.pageSize);
+    expect(first.items[0]).toMatchObject({
+      message: {
+        id: ids[ids.length - 1],
+        body: `Hey <@dev_aoife> ${LIMITS.pageSize}`,
+        author: { handle: "brian" },
+        mentions: [{ id: "dev_aoife" }],
+        myReactions: [],
+      },
+      thread: {
+        id: thread.id,
+        title: thread.title,
+        channel: { slug: "general" },
+      },
+    });
+    const second = (
+      await call(
+        "GET",
+        `/feed?tab=mentions&cursor=${first.nextCursor}`,
+        undefined,
+        "aoife",
+      )
+    ).body as MentionPage;
+    expect(second.items.map((x) => x.message.id)).toEqual([ids[0]]);
+    expect(second.nextCursor).toBeNull();
+    expect(
+      (await call("GET", "/feed?tab=mentions", undefined, "brian")).body.items,
+    ).toEqual([]);
+  });
+});
+
+describe("community API: new members and mentions", () => {
+  it("refuses a mention until the account is a day old and three messages stand", async () => {
+    const { call, startThread, reply, wait, makeStaff } = harness();
+    const thread = await startThread("aoife");
+    const mention = (user: string, path = `/threads/${thread.id}/messages`) =>
+      call(
+        "POST",
+        path,
+        { title: "Calling someone", body: "Hi <@dev_aoife>" },
+        user,
+      );
+
+    // No row at all: nothing written, so new.
+    let r = await mention("brian");
+    expect(r.status).toBe(400);
+    expect(r.body).toMatchObject({
+      error: "mentions_not_yet",
+      message: expect.any(String),
+    });
+    expect((await mention("brian", "/channels/general/threads")).status).toBe(
+      400,
+    );
+
+    // Three messages and still under a day.
+    const mine: Message[] = [];
+    for (let i = 0; i < LIMITS.newMemberMessages; i++)
+      mine.push(await reply(thread.id, `Reply ${i}`, "brian"));
+    expect((await mention("brian")).body.error).toBe("mentions_not_yet");
+    // Editing one in is the same thing.
+    r = await call(
+      "PUT",
+      `/messages/${mine[2].id}`,
+      { body: "Hi <@dev_aoife>" },
+      "brian",
+    );
+    expect(r.body.error).toBe("mentions_not_yet");
+
+    // A day on, with one of the three removed: two stand.
+    wait(LIMITS.newMemberHours * 60 * 60 * 1000);
+    await call("DELETE", `/messages/${mine[0].id}`, undefined, "brian");
+    expect((await mention("brian")).body.error).toBe("mentions_not_yet");
+    await reply(thread.id, "A third that stands", "brian");
+    expect((await mention("brian")).status).toBe(201);
+    expect((await mention("brian", "/channels/general/threads")).status).toBe(
+      201,
+    );
+    // Nothing reached aoife from the refused ones: two mentions, and the replies in one row.
+    const kinds = (
+      (await call("GET", "/notifications", undefined, "aoife"))
+        .body as NotificationPage
+    ).items.map((n) => n.kind);
+    expect(kinds.sort()).toEqual(["mention", "mention", "reply"]);
+
+    // An old account that has written nothing is still new; staff never are.
+    await call("PUT", "/channels/general/follow", { on: true }, "ciara");
+    wait(2 * LIMITS.newMemberHours * 60 * 60 * 1000);
+    expect((await mention("ciara")).body.error).toBe("mentions_not_yet");
+    await makeStaff("sorcha");
+    expect((await mention("sorcha")).status).toBe(201);
   });
 });

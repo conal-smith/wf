@@ -4,6 +4,7 @@
  * `users` row the first time, so nobody fills in a form to join.
  */
 import {
+  isNewMember,
   jsonBody,
   lookups,
   readJson,
@@ -41,10 +42,20 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
   /**
    * The people a body's <@user_id> tokens name. The body is stored as typed,
    * so a token that names nobody is refused here, not dropped later. The
-   * schema has already capped how many there are.
+   * schema has already capped how many there are. A new member names nobody
+   * yet, themselves included: a mention reaches into someone's bell.
    */
-  async function resolveMentions(body: string): Promise<string[]> {
+  async function resolveMentions(
+    body: string,
+    userId: string,
+  ): Promise<string[]> {
     const ids = mentionIds(body);
+    if (ids.length && (await isNewMember(deps, userId, now())))
+      fail(
+        400,
+        "mentions_not_yet",
+        `You can mention people once your account is a day old and ${LIMITS.newMemberMessages} of your messages are up.`,
+      );
     const found = await Promise.all(ids.map((id) => people.users.getUser(id)));
     const unknown = ids.filter((_, i) => !found[i]);
     if (unknown.length)
@@ -124,9 +135,9 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
         tagIds: stray,
       });
     const photos = resolvePhotos(input.photoKeys, userId);
-    // Before the mentions: a member's first words may name themselves.
+    // The last refusal comes first, so a refused first write makes no row.
+    const mentions = await resolveMentions(input.body, userId);
     await ensureUser(people, userId);
-    const mentions = await resolveMentions(input.body);
     try {
       const thread = await repo.createThread({
         id: newId(),
@@ -159,8 +170,8 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
     if (thread.status === "locked") refuseClosed(thread);
     const input = messageInputSchema.parse(await readJson(c));
     const photos = resolvePhotos(input.photoKeys, userId);
+    const mentions = await resolveMentions(input.body, userId);
     await ensureUser(people, userId);
-    const mentions = await resolveMentions(input.body);
     try {
       const message = await repo.createMessage({
         id: newId(),
@@ -208,7 +219,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
     const message = await repo.editMessage(
       current.id,
       body,
-      await resolveMentions(body),
+      await resolveMentions(body, userId),
     );
     if (!message) fail(404, "not_found", "That message has been removed.");
     return c.json(message);
