@@ -21,8 +21,11 @@ import { newId } from "./ids.js";
 import type { PresignResponse } from "../../shared/types.js";
 
 export interface Storage {
-  /** Only keys under this prefix belong to `userId`; the API refuses anything else. */
-  keyFor(userId: string, contentType: string): string;
+  /**
+   * Only keys under this prefix belong to `userId`; the API refuses anything
+   * else. `prefix` is the configured one unless a section names its own.
+   */
+  keyFor(userId: string, contentType: string, prefix?: string): string;
   publicUrl(key: string): string;
   presign(key: string, contentType: string): Promise<PresignResponse>;
   delete(key: string): Promise<void>;
@@ -77,8 +80,8 @@ export function s3Storage(config: Config["storage"]): Storage {
       ? `${endpoint.replace(/\/$/, "")}/${bucket}`
       : `https://${bucket}.s3.${region}.amazonaws.com`);
   return {
-    keyFor: (userId, contentType) =>
-      makeKey(config.prefix, userId, contentType),
+    keyFor: (userId, contentType, prefix = config.prefix) =>
+      makeKey(prefix, userId, contentType),
     publicUrl: (key) => `${base}/${key}`,
     async presign(key, contentType) {
       const uploadUrl = await getSignedUrl(
@@ -120,8 +123,8 @@ export function localStorage(
   };
   const url = (key: string) => `${publicUrl}/api/market/uploads/${key}`;
   return {
-    keyFor: (userId, contentType) =>
-      makeKey(config.prefix, userId, contentType),
+    keyFor: (userId, contentType, prefix = config.prefix) =>
+      makeKey(prefix, userId, contentType),
     publicUrl: url,
     async presign(key, contentType) {
       const expires = String(Date.now() + 5 * 60 * 1000);
