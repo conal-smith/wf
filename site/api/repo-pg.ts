@@ -54,6 +54,12 @@ export function pgUsersRepo(sql: Sql): UsersRepo {
       return rows.length ? toUser(rows[0]) : null;
     },
 
+    async getUserByHandle(handle) {
+      const rows = await sql<UserRow[]>`
+        select * from users where handle = ${handle}`;
+      return rows.length ? toUser(rows[0]) : null;
+    },
+
     async countUsers() {
       const rows = await sql<{ count: number }[]>`
         select count(*)::int as count from users`;

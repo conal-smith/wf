@@ -605,6 +605,7 @@ export function memoryRepo(
             !query.following || Boolean(viewerId && whyFollowed(t, viewerId)),
         )
         .filter((t) => !query.tagId || t.tagIds.includes(query.tagId))
+        .filter((t) => !query.authorId || t.authorId === query.authorId)
         .filter((t) => !terms.length || matches(t, terms))
         .sort(order)
         .filter((t) => !cursor || order(cursor, t) < 0);

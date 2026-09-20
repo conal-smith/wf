@@ -4,7 +4,7 @@
  * Everything here is plain data. Nothing imports React, Node or a database,
  * so both sides can depend on it without pulling in the other's runtime.
  */
-import type { UserRole } from "../../site/shared/types.js";
+import type { County, UserRole } from "../../site/shared/types.js";
 
 export const LIMITS = {
   titleMax: 120,
@@ -104,6 +104,18 @@ export interface Member {
   displayName: string;
   avatarUrl: string | null;
   role: UserRole;
+}
+
+/**
+ * A member's public profile: the person, and what they chose to say of
+ * themselves. Built field by field from their `users` row, so nothing else of
+ * that row can ride along.
+ */
+export interface MemberProfile extends Member {
+  county: County | null;
+  bio: string | null;
+  /** When their row was made: "Joined September 2026". */
+  joinedAt: string;
 }
 
 export interface Category {
@@ -250,6 +262,8 @@ export interface ThreadQuery {
   tagId?: string;
   /** Words to find in titles and message bodies. */
   q?: string;
+  /** Only the threads this member started: their profile's list. */
+  authorId?: string;
   /** Only what the viewer follows, each with its `why`. Nothing without a viewer. */
   following?: boolean;
   cursor?: ThreadCursor | null;
@@ -260,6 +274,12 @@ export interface ThreadPage {
   items: Thread[];
   /** Null on the last page. Opaque to the client: see encodeCursor. */
   nextCursor: string | null;
+}
+
+/** GET /members/:handle: the profile, and a page of the threads they started. */
+export interface MemberView {
+  member: MemberProfile;
+  threads: ThreadPage;
 }
 
 /** Messages page by seq, in either direction or around a position. */

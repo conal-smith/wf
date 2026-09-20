@@ -7,10 +7,10 @@
  * column of numbers; below the rail breakpoint those stand down and the same
  * numbers are written into the line under the title.
  */
-import { Hash, MessageCircle, Pin } from "lucide-react";
+import { Bell, Hash, MessageCircle, Pin } from "lucide-react";
 import { Avatar, Chip } from "../../../ui";
 import { RING, tv } from "../../../ui/tv";
-import type { Member, Thread } from "../../shared/types";
+import type { FollowReason, Member, Thread } from "../../shared/types";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { paths, routed } from "../router";
 
@@ -33,6 +33,7 @@ export const threadRowStyles = tv({
     meta: "flex flex-wrap items-center gap-x-2 gap-y-1 pt-1",
     channel:
       "inline-flex items-center gap-0.5 text-body font-semibold text-ink-2",
+    why: "inline-flex items-center gap-1 text-body font-semibold text-ink-2",
     by: "text-body text-ink-muted",
     // The numbers, written into the line: only where the column is not drawn.
     inline: "rail:hidden",
@@ -100,6 +101,14 @@ export const newCount = (unread: number) =>
 
 export const replyWords = (count: number) =>
   count === 1 ? "1 reply" : `${count} replies`;
+
+/** Why a thread is in the Following feed, as the row says it. */
+export const WHY: Record<FollowReason, string> = {
+  started: "You started this",
+  replied: "You replied",
+  followed: "You follow this thread",
+  channel: "You follow this channel",
+};
 
 /**
  * The line under the title. A body keeps a mention as <@user_id>; the row
@@ -182,6 +191,12 @@ export function ThreadRow({
           {thread.tags.map((tag) => (
             <Chip key={tag.id}>{tag.label}</Chip>
           ))}
+          {thread.why && (
+            <span className={styles.why()}>
+              <Bell size={13} aria-hidden="true" />
+              {WHY[thread.why]}
+            </span>
+          )}
           <span className={styles.by()}>
             {thread.author.displayName}
             <span className={styles.inline()}>

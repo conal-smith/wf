@@ -24,6 +24,8 @@ export class HandleTakenError extends Error {
 
 export interface UsersRepo {
   getUser(id: string): Promise<User | null>;
+  /** The owner of a handle, for a profile's URL. Handles are stored lowercase. */
+  getUserByHandle(handle: string): Promise<User | null>;
   /**
    * Inserts the row, or returns null and changes nothing when either the id
    * or the handle is already there. The caller tells the two apart.

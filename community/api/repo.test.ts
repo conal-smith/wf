@@ -637,6 +637,29 @@ function contract(name: string, backend: () => Backend) {
         expect(two.nextCursor).toBeNull();
       });
 
+      it("narrows to the threads one member started, in every channel, by the same cursor", async () => {
+        await start(aoife, "Hers, in wings");
+        const his = await start(cian, "His");
+        await start(aoife, "Hers, in foils", { channelId: foils });
+        await start(aoife, "Hers, the third");
+        // Replying in a thread does not make it theirs.
+        await reply(aoife, his.id, "A reply");
+        const one = await repo.listThreads({ authorId: aoife, limit: 2 }, cian);
+        expect(titles(one.items)).toEqual([
+          "Hers, the third",
+          "Hers, in foils",
+        ]);
+        const two = await repo.listThreads(
+          { authorId: aoife, limit: 2, cursor: decodeCursor(one.nextCursor!) },
+          cian,
+        );
+        expect(titles(two.items)).toEqual(["Hers, in wings"]);
+        expect(two.nextCursor).toBeNull();
+        expect(
+          (await repo.listThreads({ authorId: niamh }, null)).items,
+        ).toEqual([]);
+      });
+
       it("ends on a full last page without promising another", async () => {
         for (let i = 1; i <= 4; i++) await start(aoife, `Thread ${i}`);
         const one = await repo.listThreads({ limit: 2 }, null);
@@ -1900,6 +1923,17 @@ describe.skipIf(!url)("Postgres", () => {
       // The marketplace's profile form never sends it.
       expect((await put({ county: "Sligo" }))!.autoFollow).toBe(false);
       expect((await put({ autoFollow: true }))!.autoFollow).toBe(true);
+    });
+
+    it("finds a member by handle, for a profile's URL", async () => {
+      await backend.reset();
+      const users = pgUsersRepo(sql);
+      const aoife = await backend.addUser("aoife");
+      const found = await users.getUserByHandle(
+        (await users.getUser(aoife))!.handle,
+      );
+      expect(found?.id).toBe(aoife);
+      expect(await users.getUserByHandle("nobody")).toBeNull();
     });
 
     it("counts the users, for the member count in /meta", async () => {

@@ -31,6 +31,10 @@ export function memoryUsersRepo(
       return users.get(id) ?? null;
     },
 
+    async getUserByHandle(handle) {
+      return handleOwner(handle) ?? null;
+    },
+
     async countUsers() {
       return users.size;
     },
