@@ -1,12 +1,13 @@
 /**
  * The browser side of the marketplace API. One class, one method per route,
- * and a hook that binds it to the signed-in user's token.
+ * and a hook that binds it to the signed-in user's token. The request itself,
+ * the token and the error shape are the site's: `shared/web/http.ts`.
  */
 import { useMemo, useRef } from "react";
+import { request, sendBytes, type ApiSettings } from "../../shared/web/http";
 import { useMarketAuth } from "./auth";
 import { resizeImage } from "./images";
 import type {
-  ApiError,
   Listing,
   ListingInput,
   ListingQuery,
@@ -25,83 +26,21 @@ import type {
 } from "../shared/types";
 import { listingQueryToParams } from "../shared/validate";
 
-const ROOT = (
-  (import.meta.env.VITE_MARKET_API_URL as string | undefined) ?? ""
-).replace(/\/$/, "");
-
-export class ApiRequestError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-    public details?: Record<string, string>,
-  ) {
-    super(message);
-  }
-}
-
-/** What a reader is told when the API answers with nothing of its own to say. */
-const unavailable = (status: number) =>
-  status >= 500
-    ? "The marketplace is not responding right now. Try again in a moment."
-    : `That did not work (error ${status}). Try again in a moment.`;
+export { ApiRequestError } from "../../shared/web/http";
 
 export class MarketApi {
-  constructor(private getToken: () => Promise<string | null>) {}
+  private settings: ApiSettings;
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    const headers: Record<string, string> = {};
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    const token = await this.getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-    let res: Response;
-    try {
-      res = await fetch(`${ROOT}/api/market${path}`, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-    } catch {
-      throw new ApiRequestError(
-        0,
-        "offline",
-        "The marketplace could not be reached. Check your connection.",
-      );
-    }
-    if (res.status === 204) return undefined as T;
-    const text = await res.text();
-    // This API only ever writes JSON. A body that is not JSON did not come
-    // from it: a proxy, a captive portal, a login wall, or the site's own SPA
-    // fallback answering for a path the API never saw. That is a failed
-    // request with a status worth reporting, not a SyntaxError from inside a
-    // parser three layers down.
-    let payload: unknown = null;
-    if (text)
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        throw new ApiRequestError(
-          res.status,
-          "bad-response",
-          res.ok
-            ? "The marketplace sent a reply this page could not read. Try again in a moment."
-            : unavailable(res.status),
-        );
-      }
-    if (!res.ok) {
-      const err = (payload ?? {}) as Partial<ApiError>;
-      throw new ApiRequestError(
-        res.status,
-        err.error ?? "error",
-        err.message ?? unavailable(res.status),
-        err.details as Record<string, string> | undefined,
-      );
-    }
-    return payload as T;
+  constructor(getToken: () => Promise<string | null>) {
+    this.settings = {
+      prefix: "/api/market",
+      subject: "The marketplace",
+      getToken,
+    };
+  }
+
+  private request<T>(method: string, path: string, body?: unknown) {
+    return request<T>(this.settings, method, path, body);
   }
 
   listListings(query: Partial<ListingQuery>) {
@@ -161,17 +100,7 @@ export class MarketApi {
       byteLength: image.blob.size,
     });
     onProgress?.(0.3);
-    const put = await fetch(slot.uploadUrl, {
-      method: slot.method,
-      headers: slot.headers,
-      body: image.blob,
-    });
-    if (!put.ok)
-      throw new ApiRequestError(
-        put.status,
-        "upload",
-        "The photo upload failed. Try again.",
-      );
+    await sendBytes(slot, image.blob, "The photo upload failed. Try again.");
     onProgress?.(1);
     return {
       key: slot.key,
