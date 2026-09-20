@@ -6,6 +6,7 @@
  * memory users repo, handed in so both see the same rows.
  */
 import {
+  PhotoKeyTakenError,
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
@@ -271,6 +272,17 @@ export function memoryRepo(
   const mentioned = (ids: string[]) =>
     [...new Set(ids)].filter((id) => users.peek(id)).sort();
 
+  /** The table's unique storage_key: a photo goes on one message, removed or not. */
+  const refuseTakenKeys = (photos: PhotoRow[]) => {
+    const taken = new Set(
+      [...messages.values()].flatMap((m) => m.photos.map((p) => p.storageKey)),
+    );
+    for (const p of photos) {
+      if (taken.has(p.storageKey)) throw new PhotoKeyTakenError(p.storageKey);
+      taken.add(p.storageKey);
+    }
+  };
+
   const readUpTo = (userId: string, threadId: string, seq: number) => {
     const k = key(userId, threadId);
     reads.set(k, Math.max(reads.get(k) ?? -1, seq));
@@ -361,6 +373,7 @@ export function memoryRepo(
       const at = now().toISOString();
       const channel = channels.get(input.channelId);
       if (!channel) throw new Error(`No channel ${input.channelId}`);
+      refuseTakenKeys(input.photos);
       const thread: StoredThread = {
         id: input.id,
         channelId: input.channelId,
@@ -448,6 +461,7 @@ export function memoryRepo(
         if (!target || target.threadId !== t.id)
           throw new ReplyTargetError(input.replyToId);
       }
+      refuseTakenKeys(input.photos);
       const at = now().toISOString();
       t.lastSeq += 1;
       const message: StoredMessage = {
