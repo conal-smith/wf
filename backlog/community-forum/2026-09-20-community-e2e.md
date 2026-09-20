@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: normal
@@ -37,3 +37,4 @@ LOG:
 - 2026-09-20 agent: gates. npm test 1148 passed, 75 skipped (the Postgres repo tests, no DATABASE_URL); npm run build ok; npm run market:api:build ok; npm run ui:lint clean over 82 files; npm run test:e2e 85 passed. Both ports were free afterwards.
 - 2026-09-20 agent: review r1. Two assertions of a quiet bell could pass without biting: the bell reads "Notifications" both when the count is nothing and before it has drawn the answer, and waitForResponse settles before the page has. S4's "set to nothing" and S5's "the author has heard nothing" now hold the API's own count to 0 as well as the bell (conversation.spec.ts nextCount answers with the number; report.spec.ts reads the count the reload asks for). Proved to bite: with aoife left on every reply the S4 step fails, expected 0 received 1; with TagPills put back the phone spec fails, as the LOG above says. Also checked: e2e/community and playwright.config.ts typecheck under strict with a throwaway tsconfig (no tsconfig of the repo includes e2e/, as before this item); api.ts started with MARKET_DB=postgres exits with its own error. Gates on this head: npm test 1148 passed, 75 skipped; build ok; market:api:build ok; ui:lint clean; test:e2e 85 passed.
 - 2026-09-20 agent: not covered: S3's fallback (polling messages?after= when the stream is down) is not driven here, only the stream; S7 runs the rules engine on four views signed in, not on the notifications popover or the report dialog.
+- 2026-09-20 integrator: merged f63b0ae; gates npm test 1148 passed, 75 skipped; build ok; market:api:build ok; ui:lint clean over 82 files; test:e2e 85 passed. No conflicts; npm install added the two packages of the NEW-DEP and left the lockfile as merged. The two OPEN lines stand for the owner.
