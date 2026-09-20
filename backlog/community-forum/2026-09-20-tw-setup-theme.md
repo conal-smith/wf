@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: normal
@@ -56,3 +56,4 @@ LOG:
 - 2026-09-20 reviewer: round 1, fixed on cf/tw-setup-theme-r1. (1) Layered utilities lost to the site's unlayered reset whatever their specificity: in the browser, `bg-accent text-accent-ink block border` on a button computed to transparent, inherited ink, inline-flex and no border; `text-*` lost on a link, `mt-4` on p, h1, h2. ACCEPT 1 only held on a div. The utilities import is now unlayered; re-measured on / and /market, the four classes give rgb(20, 99, 255), white, 40px on div, button, a and p. This supersedes the LOG line above about both layers sitting under the site's stylesheets. No existing element carries a utility class, and of the 404 class names in the site's stylesheets only `sr-only` is also a utility name (same declarations, not emitted today).
 - 2026-09-20 reviewer: (2) `--font-*: initial` does not clear `--font-weight-*` (the LOG line above says it does): `font-black` and `font-thin` still compiled. Nor do `--shadow-*` and `--text-*` clear the inset, drop and text shadows, which are drawn in black. All four families are now cleared. (3) `mt-4` measured 14px, not 16px: the stock step is a quarter rem and the root is 14px. `--spacing: 4px` pins it; `p-4` now measures 16px. (4) The lint missed `bg-(color:--brand)`, `w-(length:--gutter)` and `bg-accent/(--alpha)`, all of which compile; it now fails on them. Tests added for each; the new theme tests fail against the round-0 theme.
 - 2026-09-20 reviewer: not covered by the lint, by design of S10: named colours (`color: white`), and bare numbers the scale accepts (`p-13`, `z-7`). Gates after the fixes: npm test (31 files, 433 tests), npm run build, npm run market:api:build, npm run ui:lint, PREVIEW_PORT=4300 npm run test:e2e (65 of 65).
+- 2026-09-20 integrator: merged 7cc5b4c; gates npm test 472 passed (33 files), npm run build ok, npm run market:api:build ok, npm run ui:lint clean (15 files, probe 7 cases). tsconfig.json include conflicted with site-users; both kept ("site/shared" and "ui"). The three OPEN lines stay open for the owner and ui-kit; none blocks ACCEPT.
