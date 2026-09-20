@@ -6,7 +6,7 @@
 import { useMemo, useRef } from "react";
 import { request, sendBytes, type ApiSettings } from "../../shared/web/http";
 import { useMarketAuth } from "./auth";
-import { resizeImage } from "./images";
+import { resizeImage } from "../../shared/web/images";
 import type {
   Listing,
   ListingInput,
