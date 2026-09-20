@@ -125,10 +125,27 @@ describe("ui/theme.css: blur, measures and animation", () => {
     ["max-w-dialog", "--container-dialog", "420px"],
     ["max-w-dialog-wide", "--container-dialog-wide", "640px"],
     ["max-w-reading", "--container-reading", "44ch"],
+    ["max-w-page", "--container-page", "1200px"],
+    [
+      "grid-cols-shell",
+      "--grid-template-columns-shell",
+      "236px minmax(0, 1fr)",
+    ],
   ])("%s reads %s, which is %s", (name, variable, value) => {
     const css = build([name]);
     expect(css).toContain(selector(name));
     expect(css).toContain(`${variable}: ${value};`);
+  });
+
+  // 900px, in rem: a media query reads the browser's 16px, not the root's 14.
+  it("the rail's two columns start at 900px and stop below it", () => {
+    const css = build(["rail:grid-cols-shell", "max-rail:hidden"]);
+    expect(css).toMatch(
+      /@media \(width >= 56\.25rem\) \{\s*\.rail\\:grid-cols-shell \{/,
+    );
+    expect(css).toMatch(
+      /@media \(width < 56\.25rem\) \{\s*\.max-rail\\:hidden \{/,
+    );
   });
 
   it("a placeholder pulses and a dialog arrives, and both can be declined", () => {

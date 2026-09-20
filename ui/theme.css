@@ -183,6 +183,16 @@
   --container-dialog: 420px;
   --container-dialog-wide: 640px;
   --container-reading: 44ch;
+  /* The page measure every content section shares, as `max-w-page`. */
+  --container-page: 1200px;
+
+  /* A section's two columns, as `grid-cols-shell`: the rail, then the page. */
+  --grid-template-columns-shell: 236px minmax(0, 1fr);
+
+  /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
+     written in the stock breakpoints' unit so the two sort together; a media
+     query reads the browser's 16px, not the root's 14. */
+  --breakpoint-rail: 56.25rem;
 
   /* ---- motion and layers ----------------------------------------------- */
 
