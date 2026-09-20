@@ -12,22 +12,28 @@
  *
  * What is deliberately absent:
  *
- * - The reset. Only the theme and utilities layers are imported. The map's
+ * - The reset. Only the theme and the utilities are imported. The map's
  *   stylesheets were written without one and would move under it, so it stays
  *   out until they hold no literals of their own.
  * - The stock palette, type scale, radii, shadows and font stacks. They are
  *   cleared first, so `bg-red-500` or `text-lg` produce no CSS at all. The
- *   spacing base is kept: one step is 4px.
+ *   spacing scale is kept, with its step pinned at 4px.
  *
- * Both layers sit below the unlayered stylesheets the site already has, so an
- * existing rule always wins over a utility and nothing that is there today
- * changes.
+ * The utilities are not in a cascade layer. The site's own small reset
+ * (src/styles.css: `button { background: none }`, `a { color: inherit }`,
+ * `h1, h2, p { margin: 0 }`) is unlayered, and an unlayered rule beats every
+ * layered one whatever its specificity, so in a layer `bg-accent` never reached
+ * a button and `mt-4` never reached a paragraph. Out of a layer a class beats
+ * an element, as it does everywhere else in the site's CSS. Nothing that is
+ * there today changes, because no element carries a utility class yet.
+ *
+ * One rule in that reset still outranks a plain variant:
+ * `button:enabled:hover` sets a background. A filled button's hover has to be
+ * written `enabled:hover:bg-…`, which outranks it in turn.
  */
 
-@layer theme, utilities;
-
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tailwindcss/utilities.css" source(none);
 
 /*
  * Class names are read from the directories that are written in utilities,
@@ -45,6 +51,17 @@
   --radius-*: initial;
   --shadow-*: initial;
   --font-*: initial;
+  /* The wildcards above stop short of these: `--font-*` leaves the stock
+     weights, and `--shadow-*` and `--text-*` leave three families of stock
+     shadows drawn in black. */
+  --font-weight-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* One step is 4px. The stock base is a quarter rem, and the root font size
+     here is 14px (src/styles.css), which would make a step 3.5px. */
+  --spacing: 4px;
 
   /* ---- colour: Atlantic ------------------------------------------------ */
 

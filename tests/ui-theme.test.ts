@@ -36,13 +36,17 @@ beforeAll(async () => {
   build = (candidates) => compiled.build(candidates);
 });
 
-/** The declarations of `.name { … }` in compiled CSS, or null if no such rule. */
+/**
+ * The declarations of `.name { … }` in compiled CSS, or null if no such rule.
+ * Only a rule at the top level is found: one inside `@layer` is indented, and
+ * is not where a utility may be (see the cascade test below).
+ */
 function rule(css: string, name: string): string | null {
   const selector = `.${name.replace(/[^\w-]/g, "\\$&")} {`;
-  const start = css.indexOf(`\n  ${selector}`);
+  const start = css.indexOf(`\n${selector}`);
   if (start === -1) return null;
-  const open = start + selector.length + 3;
-  return css.slice(open, css.indexOf("\n  }", open));
+  const open = start + selector.length + 1;
+  return css.slice(open, css.indexOf("\n}", open));
 }
 
 /** The value a theme variable is emitted with, or null if it is not emitted. */
@@ -127,6 +131,21 @@ describe("ui/theme.css: how it is wired", () => {
     expect(css).not.toMatch(/@layer base/);
     expect(css).not.toMatch(/box-sizing/);
   });
+
+  // An unlayered rule beats a layered one whatever its specificity, and the
+  // site's reset is unlayered: `button { background: none }`, `a { color:
+  // inherit }`, `h1, h2, p { margin: 0 }`. In a layer, `bg-accent` never
+  // reached a button. Out of one, a class beats an element.
+  it("keeps the utilities out of a cascade layer, level with the site's reset", () => {
+    const css = build(["bg-accent", "mt-4"]);
+    expect(css).not.toMatch(/@layer[^;{]*\butilities\b/);
+    expect(css).toMatch(/^\.bg-accent \{$/m);
+    expect(css).toMatch(/^\.mt-4 \{$/m);
+
+    const reset = readFileSync(resolve(ROOT, "src/styles.css"), "utf8");
+    expect(reset).not.toMatch(/@layer/);
+    expect(reset).toMatch(/^button \{[^}]*background: none;/m);
+  });
 });
 
 describe("ui/theme.css: the stock values are gone", () => {
@@ -142,14 +161,27 @@ describe("ui/theme.css: the stock values are gone", () => {
     "shadow-xl",
     "font-mono",
     "font-serif",
+    // The wildcards in S4 stop short of these four families.
+    "font-thin",
+    "font-light",
+    "font-extrabold",
+    "font-black",
+    "inset-shadow-sm",
+    "drop-shadow-md",
+    "text-shadow-md",
   ])("%s produces no CSS", (name) => {
     expect(rule(build([name]), name)).toBeNull();
   });
 
-  it("keeps the spacing base: one step is a quarter rem, 4px", () => {
+  // Not the stock quarter rem: the root font size is 14px here, so a quarter
+  // rem is 3.5px and `p-4` would be 14px.
+  it("keeps the spacing scale, with one step pinned at 4px", () => {
     const css = build(["p-4"]);
     expect(rule(css, "p-4")).toContain("padding: calc(var(--spacing) * 4);");
-    expect(variable(css, "--spacing")).toBe("0.25rem");
+    expect(variable(css, "--spacing")).toBe("4px");
+
+    const reset = readFileSync(resolve(ROOT, "src/styles.css"), "utf8");
+    expect(reset).toMatch(/^:root \{[^}]*font-size: 14px;/m);
   });
 });
 
