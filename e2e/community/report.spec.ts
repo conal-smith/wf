@@ -62,8 +62,14 @@ test("a reported message reaches the staff bell, and removing it shows on both o
     await row.click();
     await expect(staff).toHaveURL(new RegExp(`${thread.path}#m-2$`));
 
-    // Told to staff only: the one who wrote it has heard nothing.
+    // Told to staff only: the one who wrote it has heard nothing. The count
+    // is the API's answer on this load, since a bell that has not drawn its
+    // answer yet reads the same as one with nothing in it.
+    const counted = cian.waitForResponse(
+      /\/api\/community\/notifications\/count/,
+    );
     await cian.reload();
+    expect((await (await counted).json()).count).toBe(0);
     await expect(message(cian, advert)).toBeVisible();
     await expect(bell(cian)).toHaveAccessibleName("Notifications");
   });
