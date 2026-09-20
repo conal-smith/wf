@@ -22,7 +22,7 @@ import {
   usePageTitle,
 } from "../components";
 import ProfileForm from "./ProfileForm";
-import { Link, navigate, paths } from "../router";
+import { Link, paths } from "../router";
 import type { Listing, MePayload } from "../../shared/types";
 import { formatPrice, relativeAge } from "../../shared/validate";
 
@@ -81,17 +81,13 @@ export default function MePage({ tab }: { tab: string }) {
   return (
     <>
       <div className="mk-section-head">
-        <h1 className="mk-title">
-          {data.profile ? data.profile.displayName : "Your marketplace"}
-        </h1>
-        {data.profile && (
-          <Link
-            to={paths.seller(data.profile.id)}
-            className="f5-button f5-button--link"
-          >
-            View your public seller page
-          </Link>
-        )}
+        <h1 className="mk-title">{data.profile.displayName}</h1>
+        <Link
+          to={paths.seller(data.profile.id)}
+          className="f5-button f5-button--link"
+        >
+          View your public seller page
+        </Link>
       </div>
       <div
         className="f5-segmented mk-tabs"
@@ -138,6 +134,7 @@ export default function MePage({ tab }: { tab: string }) {
         <section className="mk-pane">
           <ProfileForm
             profile={data.profile}
+            requireContact={data.listings.some((l) => l.status === "active")}
             onSaved={(profile) =>
               me.setData((d) => (d ? { ...d, profile } : d))
             }
@@ -185,25 +182,6 @@ function MyListings({
     }
   };
 
-  if (!data.profile) {
-    return (
-      <Empty
-        title="Set up your seller profile to start listing"
-        icon={<UserRound size={24} aria-hidden="true" />}
-      >
-        <p>Buyers see your name and county on everything you list.</p>
-        <div className="mk-empty__actions">
-          <button
-            type="button"
-            className="f5-button f5-button--primary"
-            onClick={() => navigate(paths.me("profile"))}
-          >
-            Create profile
-          </button>
-        </div>
-      </Empty>
-    );
-  }
   if (!data.listings.length) {
     return (
       <Empty

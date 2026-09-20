@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY market/ ./market/
+COPY site/ ./site/
 RUN npx tsc -p market/api/tsconfig.json
 
 FROM node:22-slim
@@ -24,4 +25,4 @@ EXPOSE 8787
 # Only used with MARKET_STORAGE=local; mount a volume here.
 VOLUME ["/data"]
 HEALTHCHECK --interval=30s --timeout=3s CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/market/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "market/api/dist/api/src/index.js"]
+CMD ["node", "market/api/dist/market/api/src/index.js"]
