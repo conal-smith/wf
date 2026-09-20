@@ -435,6 +435,29 @@ export function readRows(
   );
 }
 
+/** What marking rows read is done to: the list in hand, the badge, and what a refusal does. */
+export interface MarkedRows {
+  change: (rewrite: (rows: Notification[]) => Notification[]) => void;
+  onCount: (count: number) => void;
+  onRefused: (error: unknown) => void;
+}
+
+/**
+ * Marks some rows read, or with no ids all of them: in hand first, then on the
+ * API, whose answer is the bell's number as it now stands.
+ */
+export function markRows(
+  api: Pick<CommunityApi, "markNotificationsRead">,
+  ids: string[] | undefined,
+  to: MarkedRows,
+  at = new Date().toISOString(),
+): Promise<void> {
+  to.change((rows) => readRows(rows, at, ids));
+  return api
+    .markNotificationsRead(ids ? { ids } : { all: true })
+    .then((reply) => to.onCount(reply.count), to.onRefused);
+}
+
 /**
  * The bell's rows and what is done to them, for the popover and for the page a
  * phone gets. A row is read in hand first and on the API after: the reader is
@@ -454,16 +477,15 @@ export function useBell(
   const mark = useCallback(
     (ids?: string[]) => {
       setFailure(null);
-      const at = new Date().toISOString();
-      change((rows) => readRows(rows, at, ids));
-      api.markNotificationsRead(ids ? { ids } : { all: true }).then(
-        (reply) => onCount(reply.count),
-        (error: unknown) => {
+      void markRows(api, ids, {
+        change,
+        onCount,
+        onRefused: (error) => {
           if (!ids)
             setFailure(messageOf(error, "That did not work. Try again."));
           reload();
         },
-      );
+      });
     },
     [api, change, reload, onCount],
   );
