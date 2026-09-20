@@ -14,6 +14,9 @@ COPY market/web ./market/web
 COPY market/shared ./market/shared
 # ...and its stylesheet imports the design system's tokens and component CSS.
 COPY design ./design
+# It also reads the site's user types, and the auth bridge and fetch core every section shares.
+COPY site/shared ./site/shared
+COPY shared ./shared
 COPY public ./public
 RUN npm run build
 
