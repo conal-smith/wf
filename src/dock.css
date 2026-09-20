@@ -702,8 +702,10 @@
   box-shadow: 0 14px 44px color-mix(in srgb, var(--color-ink) 20%, transparent);
   color: var(--color-ink);
 }
+/* A third of the full scrim: this is a panel anchored to the dock, not a dialog
+   over the page, and the map and the chart behind it stay readable. */
 .display-filter::backdrop {
-  background: var(--color-scrim);
+  background: color-mix(in srgb, var(--color-scrim) 33%, transparent);
 }
 .display-filter h2 {
   font-size: 9px;
