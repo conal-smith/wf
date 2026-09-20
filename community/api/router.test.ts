@@ -1818,7 +1818,7 @@ describe("community API: reading position and the rail", () => {
     await startThread("aoife", { title: "A second thread" }, "wings");
     expect(await unread("brian")).toBe(2);
 
-    // A signed-out look and a later page change nothing; the first page resets it.
+    // A signed-out look changes nothing; a member opening the first page resets it.
     await call("GET", "/channels/wings/threads");
     expect(await unread("brian")).toBe(2);
     await call("GET", "/channels/wings/threads", undefined, "brian");
