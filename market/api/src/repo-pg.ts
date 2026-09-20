@@ -12,14 +12,10 @@ import {
   type Listing,
   type ListingQuery,
   type ListingStatus,
-  type Profile,
   type Review,
   type SellerPage,
 } from "../../shared/types.js";
-import type {
-  ProfileInputParsed,
-  ReviewInputParsed,
-} from "../../shared/validate.js";
+import type { ReviewInputParsed } from "../../shared/validate.js";
 
 interface ListingRow {
   id: string;
@@ -59,16 +55,13 @@ interface PhotoDbRow {
   position: number;
 }
 
-interface ProfileRow {
-  user_id: string;
+/** The columns of `users` a seller page shows. */
+interface SellerRow {
+  id: string;
   display_name: string;
   county: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  contact_whatsapp: boolean;
   bio: string | null;
   created_at: Date;
-  updated_at: Date;
 }
 
 interface StatsRow {
@@ -94,20 +87,6 @@ const iso = (d: Date) => d.toISOString();
 const num = (v: string | number | null | undefined) =>
   v == null ? 0 : Number(v);
 const avg = (v: string | null | undefined) => (v == null ? null : Number(v));
-
-function toProfile(r: ProfileRow): Profile {
-  return {
-    id: r.user_id,
-    displayName: r.display_name,
-    county: r.county as Profile["county"],
-    contactEmail: r.contact_email,
-    contactPhone: r.contact_phone,
-    contactWhatsapp: r.contact_whatsapp,
-    bio: r.bio,
-    createdAt: iso(r.created_at),
-    updatedAt: iso(r.updated_at),
-  };
-}
 
 function toReview(r: ReviewRow): Review {
   return {
@@ -175,7 +154,7 @@ export function pgRepo(sql: Db): Repo {
 
   const from = sql`
     from market_listings l
-    join market_profiles p on p.user_id = l.seller_id
+    join users p on p.id = l.seller_id
     left join market_seller_stats st on st.user_id = l.seller_id`;
 
   const reviewSelect = sql`
@@ -183,7 +162,7 @@ export function pgRepo(sql: Db): Repo {
            r.reviewer_id, rp.display_name as reviewer_name, r.created_at
     from market_reviews r
     join market_listings l on l.id = r.listing_id
-    join market_profiles rp on rp.user_id = r.reviewer_id`;
+    join users rp on rp.id = r.reviewer_id`;
 
   async function photosFor(ids: string[]): Promise<Map<string, PhotoDbRow[]>> {
     const map = new Map<string, PhotoDbRow[]>();
@@ -342,36 +321,11 @@ export function pgRepo(sql: Db): Repo {
       return Number(row.n);
     },
 
-    async getProfile(userId) {
-      const rows = await sql<
-        ProfileRow[]
-      >`select * from market_profiles where user_id = ${userId}`;
-      return rows.length ? toProfile(rows[0]) : null;
-    },
-
-    async upsertProfile(userId, input: ProfileInputParsed) {
-      const [row] = await sql<ProfileRow[]>`
-        insert into market_profiles (user_id, display_name, county, contact_email, contact_phone, contact_whatsapp, bio)
-        values (${userId}, ${input.displayName}, ${input.county ?? null}, ${input.contactEmail ?? null},
-                ${input.contactPhone ?? null}, ${input.contactWhatsapp ?? false}, ${input.bio ?? null})
-        on conflict (user_id) do update set
-          display_name = excluded.display_name,
-          county = excluded.county,
-          contact_email = excluded.contact_email,
-          contact_phone = excluded.contact_phone,
-          contact_whatsapp = excluded.contact_whatsapp,
-          bio = excluded.bio,
-          updated_at = now()
-        returning *`;
-      return toProfile(row);
-    },
-
     async getSellerPage(sellerId, viewerId): Promise<SellerPage | null> {
-      const profiles = await sql<
-        ProfileRow[]
-      >`select * from market_profiles where user_id = ${sellerId}`;
-      if (!profiles.length) return null;
-      const p = profiles[0];
+      const sellers = await sql<SellerRow[]>`
+        select id, display_name, county, bio, created_at from users where id = ${sellerId}`;
+      if (!sellers.length) return null;
+      const p = sellers[0];
       const [stats] = await sql<
         StatsRow[]
       >`select * from market_seller_stats where user_id = ${sellerId}`;
@@ -389,9 +343,9 @@ export function pgRepo(sql: Db): Repo {
       ]);
       return {
         seller: {
-          id: p.user_id,
+          id: p.id,
           displayName: p.display_name,
-          county: p.county as Profile["county"],
+          county: p.county as Listing["seller"]["county"],
           memberSince: iso(p.created_at),
           ratingAvg: avg(stats?.rating_avg),
           ratingCount: num(stats?.rating_count),

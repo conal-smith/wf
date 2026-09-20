@@ -19,7 +19,7 @@
     "spots:export": "node scripts/export-riding-locations.mjs",
     "market:api": "tsx watch market/api/src/index.ts",
     "market:api:build": "tsc -p market/api/tsconfig.json",
-    "market:api:start": "node market/api/dist/api/src/index.js",
+    "market:api:start": "node market/api/dist/market/api/src/index.js",
     "market:db": "docker compose -f market/docker-compose.yml up -d",
     "test:weather": ".venv/bin/python -m unittest discover -s force5/ingest -p 'test_*.py'",
     "weather:sample": "node scripts/sample-weather.mjs --all",

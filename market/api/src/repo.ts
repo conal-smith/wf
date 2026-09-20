@@ -1,20 +1,20 @@
 /**
  * The persistence seam. `app.ts` talks only to this interface; `repo-pg.ts`
  * implements it on Postgres and `repo-memory.ts` on plain arrays for tests
- * and for running the API with no database at all.
+ * and for running the API with no database at all. People are not kept here:
+ * sellers and reviewers are rows of the site's `users` table (site/api/repo.ts),
+ * which this repo only joins against.
  */
 import type {
   Listing,
   ListingQuery,
   ListingStatus,
   Page,
-  Profile,
   Review,
   SellerPage,
 } from "../../shared/types.js";
 import type {
   ListingInputParsed,
-  ProfileInputParsed,
   ReviewInputParsed,
 } from "../../shared/validate.js";
 
@@ -54,9 +54,7 @@ export interface Repo {
   listBySeller(sellerId: string): Promise<Listing[]>;
   countActiveBySeller(sellerId: string): Promise<number>;
 
-  getProfile(userId: string): Promise<Profile | null>;
-  upsertProfile(userId: string, input: ProfileInputParsed): Promise<Profile>;
-  /** Null when the seller has no profile (never listed anything). */
+  /** Null when there is no such person. */
   getSellerPage(
     sellerId: string,
     viewerId: string | null,

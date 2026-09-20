@@ -4,6 +4,12 @@
  * Everything here is plain data. Nothing imports React, Node or a database,
  * so both sides can depend on it without pulling in the other's runtime.
  */
+import {
+  USER_LIMITS,
+  type County,
+  type User,
+  type UserInput,
+} from "../../site/shared/types.js";
 
 export const CATEGORIES = [
   { id: "wing", label: "Wings", hint: "Inflatable wings, any size" },
@@ -55,43 +61,9 @@ export const CONDITIONS = [
 export type ConditionId = (typeof CONDITIONS)[number]["id"];
 export const CONDITION_IDS = CONDITIONS.map((c) => c.id) as ConditionId[];
 
-/** All 32 counties, so a seller in Derry or Down can list alongside Kerry. */
-export const COUNTIES = [
-  "Antrim",
-  "Armagh",
-  "Carlow",
-  "Cavan",
-  "Clare",
-  "Cork",
-  "Derry",
-  "Donegal",
-  "Down",
-  "Dublin",
-  "Fermanagh",
-  "Galway",
-  "Kerry",
-  "Kildare",
-  "Kilkenny",
-  "Laois",
-  "Leitrim",
-  "Limerick",
-  "Longford",
-  "Louth",
-  "Mayo",
-  "Meath",
-  "Monaghan",
-  "Offaly",
-  "Roscommon",
-  "Sligo",
-  "Tipperary",
-  "Tyrone",
-  "Waterford",
-  "Westmeath",
-  "Wexford",
-  "Wicklow",
-] as const;
-
-export type County = (typeof COUNTIES)[number];
+// The counties and the person's row belong to the whole site; the marketplace
+// re-exports them so its own modules keep one import.
+export { COUNTIES, type County } from "../../site/shared/types.js";
 
 export const CURRENCIES = ["EUR", "GBP"] as const;
 export type Currency = (typeof CURRENCIES)[number];
@@ -108,8 +80,8 @@ export const LIMITS = {
   brandMax: 40,
   sizeMax: 30,
   townMax: 60,
-  displayNameMax: 40,
-  bioMax: 400,
+  displayNameMax: USER_LIMITS.displayNameMax,
+  bioMax: USER_LIMITS.bioMax,
   reviewCommentMax: 600,
   photosPerListing: 8,
   activeListingsPerSeller: 20,
@@ -207,17 +179,8 @@ export interface Listing {
   isOwner?: boolean;
 }
 
-export interface Profile {
-  id: string;
-  displayName: string;
-  county: County | null;
-  contactEmail: string | null;
-  contactPhone: string | null;
-  contactWhatsapp: boolean;
-  bio: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+/** A seller is a person of the site: the marketplace keeps no profile of its own. */
+export type Profile = User;
 
 /** What a signed-in viewer sees when they ask for a seller's contact details. */
 export interface SellerContact {
@@ -251,14 +214,7 @@ export interface ListingInput {
   photos: PhotoInput[];
 }
 
-export interface ProfileInput {
-  displayName: string;
-  county?: County | null;
-  contactEmail?: string | null;
-  contactPhone?: string | null;
-  contactWhatsapp?: boolean;
-  bio?: string | null;
-}
+export type ProfileInput = UserInput;
 
 export interface ListingQuery {
   q?: string;
@@ -292,7 +248,8 @@ export interface PresignResponse {
 }
 
 export interface MePayload {
-  profile: Profile | null;
+  /** Never null: the row is made the first time anything asks for it. */
+  profile: Profile;
   listings: Listing[];
   saved: Listing[];
   /** Enquiries received per listing id (contact reveals), for the seller's own view. */

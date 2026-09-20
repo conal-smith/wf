@@ -3,6 +3,9 @@ import { createApp } from "./app";
 import { devVerifier } from "./auth";
 import { memoryRepo } from "./repo-memory";
 import type { Storage } from "./storage";
+import { devIdentity } from "../../../site/api/identity";
+import { memoryUsersRepo } from "../../../site/api/repo-memory";
+import type { User } from "../../../site/shared/types";
 import type {
   Listing,
   MePayload,
@@ -36,23 +39,25 @@ function fakeStorage(): Storage & { deleted: string[] } {
 }
 
 function harness() {
-  const repo = memoryRepo();
+  const users = memoryUsersRepo();
+  const repo = memoryRepo(users);
   const storage = fakeStorage();
   const app = createApp({
     repo,
+    people: { users, identity: devIdentity() },
     storage,
     verify: devVerifier(),
     storagePrefix: "market",
     corsOrigins: "*",
     authMode: "dev",
   });
-  const call = async (
+  const request = async (
     method: string,
     path: string,
     body?: unknown,
     user?: string,
   ) => {
-    const res = await app.request(`/api/market${path}`, {
+    const res = await app.request(path, {
       method,
       headers: {
         ...(body ? { "Content-Type": "application/json" } : {}),
@@ -63,7 +68,9 @@ function harness() {
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null };
   };
-  return { app, repo, storage, call };
+  const call = (method: string, path: string, body?: unknown, user?: string) =>
+    request(method, `/api/market${path}`, body, user);
+  return { app, repo, users, storage, call, request };
 }
 
 const profile = {
@@ -92,11 +99,11 @@ const wing = (over: Partial<Record<string, unknown>> = {}) => ({
 });
 
 describe("marketplace API", () => {
-  it("requires a profile before listing, then publishes and lists", async () => {
+  it("requires contact details before listing, then publishes and lists", async () => {
     const { call } = harness();
     let r = await call("POST", "/listings", wing(), "aoife");
     expect(r.status).toBe(409);
-    expect(r.body.error).toBe("profile_required");
+    expect(r.body.error).toBe("contact_required");
 
     r = await call("PUT", "/me", profile, "aoife");
     expect(r.status).toBe(200);
@@ -272,7 +279,7 @@ describe("marketplace API", () => {
     expect(r.body.isOwner).toBe(false);
 
     const me: MePayload = (await call("GET", "/me", undefined, "ciara")).body;
-    expect(me.profile).toBeNull();
+    expect(me.profile).toMatchObject({ handle: "ciara", contactEmail: null });
     expect(me.saved.map((l) => l.id)).toEqual([body.id]);
     expect(me.listings).toEqual([]);
   });
@@ -353,10 +360,216 @@ describe("marketplace API", () => {
     expect(me.enquiries[listing.id]).toBe(1);
   });
 
-  it("returns 401 for authenticated routes without a token", async () => {
+  it("refuses an edit once the seller has no contact details left", async () => {
     const { call } = harness();
+    await call("PUT", "/me", profile, "aoife");
+    const { body } = await call("POST", "/listings", wing(), "aoife");
+
+    let r = await call("PUT", "/me", { displayName: "Aoife" }, "aoife");
+    expect(r.status).toBe(200);
+    expect(r.body.contactEmail).toBeNull();
+
+    r = await call("PUT", `/listings/${body.id}`, wing(), "aoife");
+    expect(r.status).toBe(409);
+    expect(r.body.error).toBe("contact_required");
+
+    r = await call("PUT", "/me", { ...profile, contactEmail: "" }, "aoife");
+    expect(r.status).toBe(200);
+    r = await call("PUT", `/listings/${body.id}`, wing(), "aoife");
+    expect(r.status).toBe(200);
+  });
+
+  it("answers 403 suspended on every write route, and still lets them read", async () => {
+    const { call, request, users } = harness();
+    await call("PUT", "/me", profile, "aoife");
+    await call("PUT", "/me", profile, "brian");
+    const { body: listing } = await call("POST", "/listings", wing(), "aoife");
+    const { body: theirs } = await call("POST", "/listings", wing(), "brian");
+    await call("GET", `/listings/${theirs.id}/contact`, undefined, "aoife");
+
+    await users.setSuspendedUntil(
+      "dev_aoife",
+      new Date(Date.now() + 86_400_000),
+    );
+
+    const writes: [string, string, unknown][] = [
+      ["POST", "/api/market/listings", wing()],
+      ["PUT", `/api/market/listings/${listing.id}`, wing()],
+      ["POST", `/api/market/listings/${listing.id}/status`, { status: "sold" }],
+      ["PUT", `/api/market/listings/${theirs.id}/saved`, { saved: true }],
+      ["PUT", `/api/market/listings/${theirs.id}/review`, { rating: 5 }],
+      [
+        "POST",
+        "/api/market/uploads",
+        { contentType: "image/jpeg", byteLength: 1000 },
+      ],
+      ["PUT", "/api/market/me", profile],
+      ["PUT", "/api/me", profile],
+    ];
+    for (const [method, path, body] of writes) {
+      const r = await request(method, path, body, "aoife");
+      expect([method, path, r.status]).toEqual([method, path, 403]);
+      expect(r.body.error).toBe("suspended");
+    }
+
+    expect((await request("GET", "/api/me", undefined, "aoife")).status).toBe(
+      200,
+    );
+    expect((await call("GET", "/me", undefined, "aoife")).status).toBe(200);
+    expect((await call("GET", "/listings", undefined, "aoife")).status).toBe(
+      200,
+    );
+    // Someone else's writes are untouched.
+    expect(
+      (
+        await call(
+          "PUT",
+          `/listings/${listing.id}/saved`,
+          { saved: true },
+          "brian",
+        )
+      ).status,
+    ).toBe(200);
+
+    // A suspension that has run out no longer blocks anything.
+    await users.setSuspendedUntil("dev_aoife", new Date(Date.now() - 1000));
+    expect((await request("PUT", "/api/me", profile, "aoife")).status).toBe(
+      200,
+    );
+  });
+
+  it("returns 401 for authenticated routes without a token", async () => {
+    const { call, request } = harness();
+    expect((await request("GET", "/api/me")).status).toBe(401);
+    expect((await request("PUT", "/api/me", profile)).status).toBe(401);
     expect((await call("GET", "/me")).status).toBe(401);
     expect((await call("POST", "/listings", wing())).status).toBe(401);
     expect((await call("GET", "/sellers/nobody")).status).toBe(404);
+  });
+});
+
+describe("site API: /api/me", () => {
+  it("makes the row on the first call, with a handle from the name", async () => {
+    const { request } = harness();
+    const r = await request("GET", "/api/me", undefined, "aoife");
+    expect(r.status).toBe(200);
+    const me: User = r.body;
+    expect(me).toMatchObject({
+      id: "dev_aoife",
+      handle: "aoife",
+      displayName: "aoife",
+      avatarUrl: null,
+      role: "member",
+      suspendedUntil: null,
+      contactEmail: null,
+      contactPhone: null,
+      contactWhatsapp: false,
+    });
+
+    const again: User = (await request("GET", "/api/me", undefined, "aoife"))
+      .body;
+    expect(again.createdAt).toBe(me.createdAt);
+    expect(again.handle).toBe("aoife");
+  });
+
+  it("answers a cross-origin preflight, as /api/market does", async () => {
+    const { app } = harness();
+    for (const path of ["/api/me", "/api/market/me"]) {
+      const res = await app.request(path, {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://wingfoil.ie",
+          "Access-Control-Request-Method": "PUT",
+        },
+      });
+      expect([path, res.status]).toEqual([path, 204]);
+      expect(res.headers.get("access-control-allow-origin")).toBe("*");
+      expect(res.headers.get("access-control-allow-methods")).toContain("PUT");
+    }
+  });
+
+  it("is the same row the marketplace reads and writes", async () => {
+    const { call, request } = harness();
+    let r = await request("PUT", "/api/me", profile, "aoife");
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ handle: "aoife", displayName: "Aoife" });
+
+    const me: MePayload = (await call("GET", "/me", undefined, "aoife")).body;
+    expect(me.profile).toEqual(r.body);
+
+    r = await call("PUT", "/me", { ...profile, handle: "aoife-k" }, "aoife");
+    expect(r.status).toBe(200);
+    expect((await request("GET", "/api/me", undefined, "aoife")).body).toEqual(
+      r.body,
+    );
+    expect(r.body.handle).toBe("aoife-k");
+  });
+
+  it("saves a profile with no contact details", async () => {
+    const { request } = harness();
+    const r = await request(
+      "PUT",
+      "/api/me",
+      { displayName: "Ciara", county: "Mayo", bio: "Rides Keel lake." },
+      "ciara",
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({
+      displayName: "Ciara",
+      county: "Mayo",
+      contactEmail: null,
+      contactPhone: null,
+    });
+  });
+
+  it("keeps the handle when none is sent, and validates one that is", async () => {
+    const { request } = harness();
+    await request("GET", "/api/me", undefined, "aoife");
+    let r = await request("PUT", "/api/me", { displayName: "Aoife" }, "aoife");
+    expect(r.body.handle).toBe("aoife");
+
+    r = await request(
+      "PUT",
+      "/api/me",
+      { displayName: "Aoife", handle: "Aoife-K" },
+      "aoife",
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.handle).toBe("aoife-k");
+
+    for (const handle of [
+      "ab",
+      "a".repeat(31),
+      "aoife_k",
+      "aoife k",
+      "admin",
+      "me",
+    ]) {
+      r = await request(
+        "PUT",
+        "/api/me",
+        { displayName: "Aoife", handle },
+        "aoife",
+      );
+      expect([handle, r.status]).toEqual([handle, 400]);
+      expect(r.body.details.handle).toBeDefined();
+    }
+  });
+
+  it("answers 409 handle_taken for someone else's handle", async () => {
+    const { request } = harness();
+    await request("GET", "/api/me", undefined, "aoife");
+    const r = await request(
+      "PUT",
+      "/api/me",
+      { displayName: "Brian", handle: "aoife" },
+      "brian",
+    );
+    expect(r.status).toBe(409);
+    expect(r.body.error).toBe("handle_taken");
+    expect(r.body.details.handle).toBeDefined();
+    expect(
+      (await request("GET", "/api/me", undefined, "brian")).body.handle,
+    ).toBe("brian");
   });
 });

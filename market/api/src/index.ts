@@ -6,21 +6,27 @@ import { loadConfig } from "./env.js";
 import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
+import { clerkIdentity, devIdentity } from "../../../site/api/identity.js";
+import { memoryUsersRepo } from "../../../site/api/repo-memory.js";
+import { pgUsersRepo } from "../../../site/api/repo-pg.js";
 
 async function main() {
   const config = loadConfig();
 
-  let repo;
+  let repo, users;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
     if (ran.length) console.log(`market: applied migrations ${ran.join(", ")}`);
     repo = pgRepo(sql);
+    users = pgUsersRepo(sql);
   } else {
     console.warn(
       "market: MARKET_DB=memory, listings will not survive a restart",
     );
-    repo = memoryRepo();
+    const memoryUsers = memoryUsersRepo();
+    repo = memoryRepo(memoryUsers);
+    users = memoryUsers;
   }
 
   const verify =
@@ -33,8 +39,14 @@ async function main() {
       ? s3Storage(config.storage)
       : localStorage(config.storage, config.publicUrl);
 
+  const identity =
+    config.auth.mode === "clerk"
+      ? clerkIdentity(config.auth.clerkSecretKey)
+      : devIdentity();
+
   const app = createApp({
     repo,
+    people: { users, identity },
     verify,
     storage,
     storagePrefix: config.storage.prefix,
