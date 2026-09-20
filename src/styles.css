@@ -835,7 +835,11 @@ button svg {
     inset -1px 0 color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 .forecast-table thead button[aria-pressed="true"] {
-  color: var(--color-accent-hover);
+  /* The pressed hour is also the selected column, which tints itself with the
+     accent, so the accent on top of it reads 4.4:1 (S4). The state is already
+     carried by the weight, the tint and the rule below, so the label takes the
+     ink step. */
+  color: var(--color-ink);
   font-weight: 700;
   box-shadow: inset 0 -2px var(--color-accent);
 }

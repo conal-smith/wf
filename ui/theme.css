@@ -51,11 +51,12 @@
 @source "../market/web";
 @source "../community/web";
 
-/* `static`, because the map's stylesheets read these variables with `var()`
-   rather than through a utility class. A plain `@theme` emits only the values
-   some generated utility uses, and `--color-ok` and `--color-now` had no
-   utility, so `var(--color-ok)` in src/styles.css would have resolved to
-   nothing. Static emits every value, whatever reads it. */
+/*
+ * `static`: every value below is written into `:root`, used by a utility class
+ * or not. Without it Tailwind emits only the ones a scanned class asks for, and
+ * the map's stylesheets — which are not scanned, and read the theme through
+ * plain `var()` — would find half of it missing.
+ */
 @theme static {
   --color-*: initial;
   --text-*: initial;
@@ -115,11 +116,6 @@
   --color-warn: #854d31;
   --color-warn-ground: #fff4e8;
   --color-now: #a8442e;
-  /* The dashed rule the now marker draws down the forecast grid, lighter than
-     the marker's own label. Its value is the one the map has always drawn
-     (D12: the now marker is not re-themed), written here only so no stylesheet
-     has to hold a literal. */
-  --color-now-line: #bf6546;
 
   /* Wind speed, in knots. These mean wind and nothing else. */
   --color-wind-k00: #355897;
@@ -136,6 +132,12 @@
   --color-wind-k50: #be334f;
   --color-wind-k60: #923d98;
   --color-wind-k65: #724297;
+
+  /* A mark that says what it is rather than which palette it came from, so the
+     palette does not move it: the dashed line the map draws at the present
+     hour, at the value it has always drawn (D12: the now marker is not
+     re-themed). */
+  --color-now-marker: #bf6546;
 
   /* ---- type ------------------------------------------------------------ */
 
