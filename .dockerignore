@@ -23,6 +23,8 @@
 market/api/dist
 # The API imports the site's users module (site/api, site/shared).
 !site/**
+# And runs the community's migrations at boot (community/api, community/shared).
+!community/**
 # The site image builds the browser code every section shares (shared/web).
 !shared/**
 # ...and the Tailwind theme src/main.tsx imports (ui/theme.css).

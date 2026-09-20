@@ -1,7 +1,12 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { clerkVerifier, devVerifier } from "./auth.js";
-import { connect, migrate } from "./db.js";
+import {
+  COMMUNITY_LEDGER,
+  COMMUNITY_MIGRATIONS_DIR,
+  connect,
+  migrate,
+} from "./db.js";
 import { loadConfig } from "./env.js";
 import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
@@ -18,6 +23,14 @@ async function main() {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
     if (ran.length) console.log(`market: applied migrations ${ran.join(", ")}`);
+    // After the marketplace's: the community's tables reference `users`.
+    const ranCommunity = await migrate(
+      sql,
+      COMMUNITY_MIGRATIONS_DIR,
+      COMMUNITY_LEDGER,
+    );
+    if (ranCommunity.length)
+      console.log(`community: applied migrations ${ranCommunity.join(", ")}`);
     repo = pgRepo(sql);
     users = pgUsersRepo(sql);
   } else {
