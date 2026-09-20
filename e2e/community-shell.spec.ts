@@ -71,6 +71,11 @@ test("/community is the header, the rail from the API and one main column", asyn
   page,
 }) => {
   await answerApi(page);
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    const { pathname } = new URL(request.url());
+    if (pathname.startsWith("/api/")) asked.push(pathname);
+  });
   await page.goto("/community");
 
   await expect(
@@ -103,6 +108,12 @@ test("/community is the header, the rail from the API and one main column", asyn
   expect(mainBox.x).toBeGreaterThan(railBox.x + railBox.width);
   // And the page measure is 1200 however wide the window.
   expect(mainBox.x + mainBox.width - railBox.x).toBeLessThanOrEqual(1200);
+
+  // The rail's two reads and no more: a signed-out reader has no bell to ask for.
+  expect([...new Set(asked)].sort()).toEqual([
+    "/api/community/channels",
+    "/api/community/meta",
+  ]);
 });
 
 test("unread is weight and a count, and a staff-only channel is a lock with words", async ({
