@@ -11,6 +11,8 @@ const api = `http://127.0.0.1:${apiPort}`;
 
 /** The one spec written for a phone; every other spec is the desktop's. */
 const PHONE = /community\/phone\.spec\.ts$/;
+/** The marketplace's visual baseline, which sets its own widths and writes files. */
+const SHOTS = /market\/shots\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -23,7 +25,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", testIgnore: PHONE },
+    { name: "desktop", testIgnore: [PHONE, SHOTS] },
     {
       name: "phone",
       testMatch: PHONE,
@@ -33,6 +35,13 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // `npm run market:shots` and nothing else: the baseline it writes is
+    // committed, so a plain `playwright test` must not rewrite it on its way
+    // past. It opens a window of its own per view, at a width of its own, so
+    // neither project above fits, and it records thirty-odd of them in a run.
+    ...(process.env.MARKET_SHOTS
+      ? [{ name: "market-shots", testMatch: SHOTS, timeout: 180000 }]
+      : []),
   ],
   webServer: [
     {

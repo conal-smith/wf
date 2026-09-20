@@ -22,6 +22,7 @@
     "market:api:build": "tsc -p market/api/tsconfig.json",
     "market:api:start": "node market/api/dist/market/api/src/index.js",
     "market:db": "docker compose -f market/docker-compose.yml up -d",
+    "market:shots": "MARKET_SHOTS=1 playwright test --project=market-shots",
     "test:weather": ".venv/bin/python -m unittest discover -s force5/ingest -p 'test_*.py'",
     "weather:sample": "node scripts/sample-weather.mjs --all",
     "weather:fixtures": "node scripts/sample-weather.mjs --out tests/fixtures/weather --force",
