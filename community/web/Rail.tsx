@@ -114,7 +114,7 @@ function Row({
         {locked && (
           <span className={styles.lock()}>
             <Lock size={12} aria-hidden="true" />
-            <span className={styles.hidden()}>, staff posts only</span>
+            <span className={styles.hidden()}>staff posts only</span>
           </span>
         )}
         <Count
