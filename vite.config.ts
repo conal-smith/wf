@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 /**
  * The e2e build is a site of its own, served from a scratch tree.
@@ -22,8 +23,10 @@ const e2e = Boolean(process.env.E2E_SITE);
 // VITE_MARKET_API_URL is needed locally.
 const marketApi = process.env.MARKET_API_PROXY ?? "http://127.0.0.1:8787";
 
+// Tailwind is configured in CSS, not here: ui/theme.css is the theme and the
+// list of directories scanned for class names. There is no tailwind.config.js.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   publicDir: e2e ? ".e2e/public" : "public",
   build: { outDir: e2e ? ".e2e/dist" : "dist" },
   server: { proxy: { "/api": { target: marketApi, changeOrigin: true } } },
