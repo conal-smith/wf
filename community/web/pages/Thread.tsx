@@ -44,6 +44,7 @@ import { FollowMenu } from "../components/FollowMenu";
 import { Message } from "../components/Message";
 import { MessageStream } from "../components/MessageStream";
 import { Popover, PopoverItem } from "../components/Popover";
+import { SpotCard } from "../components/SpotCard";
 import { LockDialog, ReportDialog } from "../components/ThreadDialogs";
 import { navigate, paths, routed } from "../router";
 import {
@@ -400,6 +401,7 @@ function Conversation({
         message={stream.opening}
         opening
         marked={marked === 0}
+        attached={<SpotCard spotId={thread.spotId} now={now} />}
       />
 
       <MessageStream

@@ -142,6 +142,21 @@ describe("the community bundle", () => {
     ).toEqual([]);
   });
 
+  // The spot card reads the forecast contract, and that is all of the map it
+  // takes: the series loader in src/ stays where the first check keeps it.
+  it("reaches the forecast contract, so the check above is about something", () => {
+    expect(staticGraph(ENTRY)).toContain("force5/src/weather.ts");
+  });
+
+  // A thread stores a spot's id. The wind at it is the browser's to fetch.
+  it("has an API that knows nothing about weather", () => {
+    expect(
+      [...staticGraph("community/api/router.ts")].filter(
+        (m) => m.startsWith("force5/") || m.startsWith("src/"),
+      ),
+    ).toEqual([]);
+  });
+
   // The API's code is Node's: a repo or a handler in the browser's graph would
   // build, and ship a database client to every reader.
   it("takes only plain data from the API's side of the section", () => {
