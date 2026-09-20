@@ -28,8 +28,14 @@
  * there today changes, because no element carries a utility class yet.
  *
  * One rule in that reset still outranks a plain variant:
- * `button:enabled:hover` sets a background. A filled button's hover has to be
- * written `enabled:hover:bg-…`, which outranks it in turn.
+ * `button:enabled:hover` sets a background, and an element and two
+ * pseudo-classes beat a class and one. The kit writes a hover
+ * `not-disabled:hover:…`, which outranks it in turn and reads the same on a
+ * link, which is never disabled (ui/tv.ts). The reset's other two states,
+ * `button:focus-visible` (and the same on a link and an input, the map's
+ * ring) and `button:disabled` (a fade), are an element and one pseudo-class:
+ * a plain `focus-visible:…` or `disabled:…` already beats them, and the kit
+ * answers both, with its own ring and with `disabled:opacity-100`.
  */
 
 @import "tailwindcss/theme.css" layer(theme);
@@ -58,6 +64,11 @@
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
+  /* Cleared because the kit restates them below: a blur, a measure or an
+     animation is a design value like any other. */
+  --blur-*: initial;
+  --container-*: initial;
+  --animate-*: initial;
 
   /* One step is 4px. The stock base is a quarter rem, and the root font size
      here is 14px (src/styles.css), which would make a step 3.5px. */
@@ -163,6 +174,16 @@
   --shadow-surface: 0px 10px 40px #0a1f3c33;
   --shadow-dock: 0px -4px 24px #0a1f3c33;
 
+  /* Glass sits over the moving map; the scrim sits behind a dialog. */
+  --blur-glass: 28px;
+  --blur-scrim: 5px;
+
+  /* Measures, as `max-w-dialog`: the widths a dialog and a line of reading
+     take when the viewport leaves them the room. */
+  --container-dialog: 420px;
+  --container-dialog-wide: 640px;
+  --container-reading: 44ch;
+
   /* ---- motion and layers ----------------------------------------------- */
 
   --transition-duration-fast: 150ms;
@@ -173,6 +194,23 @@
   --z-index-header: 20;
   --z-index-dialog: 30;
 
+  /* A placeholder breathing while its content loads, and a dialog arriving. */
+  --animate-pulse: pulse 1s ease-in-out infinite alternate;
+  --animate-dialog-in: dialog-in 150ms ease both;
+
+  @keyframes pulse {
+    from {
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
   /* ---- controls -------------------------------------------------------- */
 
   /* Heights, as named spacing: `h-control-md`, `min-h-touch`. A tap target is
@@ -181,4 +219,12 @@
   --spacing-control-md: 40px;
   --spacing-control-lg: 46px;
   --spacing-touch: 44px;
+}
+
+/* The one media feature the kit reads that has no variant of its own: glass
+   goes solid for a reader who has asked for less transparency. */
+@custom-variant reduced-transparency {
+  @media (prefers-reduced-transparency: reduce) {
+    @slot;
+  }
 }
