@@ -314,7 +314,7 @@ describe("S2: a channel", () => {
         current: picked.id,
       }),
     );
-    expect(out).toMatch(/^<nav aria-label="Filter by tag">/);
+    expect(out).toMatch(/^<nav aria-label="Filter by tag"[ >]/);
     const pills = [
       ...out.matchAll(/<a([^>]*)href="([^"]*)"([^>]*)>([^<]*)<\/a>/g),
     ].map(([, before, href, after, label]) => ({
