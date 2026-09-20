@@ -49,11 +49,14 @@ export const tv = createTV({
 });
 
 /*
- * The states below are written `not-disabled:…` for their weight, not their
- * meaning. The site's reset (src/styles.css) styles `button:enabled:hover`,
- * `button:focus-visible` and `button:disabled`, each an element and a
- * pseudo-class, which outranks a class and a pseudo-class. `:not(:disabled)`
- * adds the one step that wins, and unlike `:enabled` it also matches a link.
+ * A hover below is written `not-disabled:…` for its weight as much as its
+ * meaning. The site's reset (src/styles.css) styles `button:enabled:hover`, an
+ * element and two pseudo-classes, which outranks a class and one.
+ * `:not(:disabled)` adds the one step that wins, and unlike `:enabled` it also
+ * matches a link. The reset's `button:focus-visible` and `button:disabled`
+ * are an element and one pseudo-class, which a class and one already beats:
+ * the ring carries `not-disabled:` only to be written as the hover is, and
+ * `focus-visible:outline-hidden` is enough to take the map's ring off a field.
  */
 
 /** The one focus ring: 3px of focus, 2px clear of the control. */

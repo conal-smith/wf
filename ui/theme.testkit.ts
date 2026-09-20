@@ -29,6 +29,15 @@ export async function compileTheme(): Promise<(names: string[]) => string> {
 /** A class name as it is written in a selector. */
 export const selector = (name: string) => `.${name.replace(/[^\w-]/g, "\\$&")}`;
 
+/**
+ * Whether the CSS holds a rule for this name itself. `.text-ink` is also how
+ * `.text-ink-muted` begins, so the selector has to end where the name does.
+ */
+export const holds = (css: string, name: string) =>
+  new RegExp(
+    `${selector(name).replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\w\\\\-])`,
+  ).test(css);
+
 /** The names the theme declares under one prefix: `--radius-` gives `control`… */
 export function declared(prefix: string): string[] {
   const names = new Set<string>();

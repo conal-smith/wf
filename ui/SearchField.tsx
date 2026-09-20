@@ -8,6 +8,8 @@ export const searchFieldStyles = tv({
       "flex min-w-0 items-center gap-2 rounded-full border border-line bg-card px-3 shadow-control",
       "font-sans text-ink-muted transition-colors duration-fast hover:border-line-strong",
       "aria-busy:cursor-progress",
+      // A tap target is never shorter than touch, whatever size was asked for.
+      "pointer-coarse:min-h-touch",
       RING_WITHIN,
     ],
     input: [

@@ -26,6 +26,6 @@ export {
 } from "./Segmented";
 export { Select, type SelectProps } from "./Select";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
-export { Surface } from "./Surface";
+export { Surface, type SurfaceProps } from "./Surface";
 export { TextArea, type TextAreaProps } from "./TextArea";
 export { TextInput, type TextInputProps } from "./TextInput";

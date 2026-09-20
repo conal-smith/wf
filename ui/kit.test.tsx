@@ -8,7 +8,7 @@ import { buttonStyles } from "./Button";
 import { chipStyles } from "./Chip";
 import { controlStyles } from "./control";
 import { countStyles } from "./Count";
-import { dialogStyles, syncModal } from "./Dialog";
+import { backdropPress, dialogStyles, onBackdrop, syncModal } from "./Dialog";
 import { emptyStyles } from "./Empty";
 import { fieldStyles } from "./Field";
 import * as kit from "./index";
@@ -20,7 +20,7 @@ import { searchFieldStyles } from "./SearchField";
 import { segmentedStyles } from "./Segmented";
 import { skeletonStyles } from "./Skeleton";
 import { surfaceStyles } from "./Surface";
-import { UI, compileTheme, selector } from "./theme.testkit";
+import { UI, compileTheme, holds, selector } from "./theme.testkit";
 import { RING, RING_WITHIN } from "./tv";
 
 const {
@@ -119,7 +119,7 @@ describe("the kit is styled only from the theme", () => {
       for (const name of names) {
         // `group/field` is a marker for a variant to find, not a rule.
         if (name.startsWith("group/")) continue;
-        expect(css, name).toContain(selector(name));
+        expect(holds(css, name), name).toBe(true);
       }
     },
   );
@@ -298,6 +298,32 @@ describe("S4: states", () => {
     }
   });
 
+  // The epic's tap-target rule: 44px on a touch device, whatever the size.
+  it("every control is a touch target under pointer: coarse", () => {
+    for (const size of ["sm", "md", "lg"] as const) {
+      const button = buttonStyles({ variant: "pill", size }).split(" ");
+      expect(button, size).toContain("pointer-coarse:min-h-touch");
+      const icon = buttonStyles({ icon: true, size }).split(" ");
+      expect(icon, size).toContain("pointer-coarse:min-h-touch");
+      expect(icon, size).toContain("pointer-coarse:min-w-touch");
+    }
+    for (const size of ["md", "lg"] as const)
+      expect(searchFieldStyles({ size }).base().split(" "), size).toContain(
+        "pointer-coarse:min-h-touch",
+      );
+    expect(segmentedStyles().item().split(" ")).toContain(
+      "pointer-coarse:min-h-touch",
+    );
+    for (const kind of ["text", "area", "select"] as const)
+      expect(controlStyles({ kind }).box().split(" "), kind).toContain(
+        "min-h-touch",
+      );
+    // A link in running text has no box of its own to make taller.
+    const link = buttonStyles({ variant: "link" }).split(" ");
+    expect(link).toContain("pointer-coarse:min-h-0");
+    expect(link).not.toContain("pointer-coarse:min-h-touch");
+  });
+
   it("says pressed to a screen reader too", () => {
     expect(html(<Button pressed>Wings</Button>)).toContain(
       'aria-pressed="true"',
@@ -435,6 +461,51 @@ describe("S7: Dialog", () => {
     syncModal(dialog, false, opener, () => null);
     expect(dialog.close).toHaveBeenCalledOnce();
     expect(gone.focus).not.toHaveBeenCalled();
+  });
+
+  // The box is 100 to 300 across and 100 to 200 down.
+  const boxed = {
+    getBoundingClientRect: () => ({
+      left: 100,
+      right: 300,
+      top: 100,
+      bottom: 200,
+    }),
+  };
+  const at = (target: unknown, clientX: number, clientY: number) => ({
+    target,
+    clientX,
+    clientY,
+  });
+
+  it("only a point outside the box is the backdrop, not the dialog's padding", () => {
+    expect(onBackdrop(boxed, at(boxed, 10, 10))).toBe(true);
+    expect(onBackdrop(boxed, at(boxed, 301, 150))).toBe(true);
+    expect(onBackdrop(boxed, at(boxed, 104, 104))).toBe(false);
+    // Something inside the dialog, wherever the pointer says it is.
+    expect(onBackdrop(boxed, at({}, 10, 10))).toBe(false);
+    expect(onBackdrop(null, at(boxed, 10, 10))).toBe(false);
+  });
+
+  it("a press and release on the backdrop closes", () => {
+    const press = backdropPress(() => boxed);
+    press.down(at(boxed, 10, 10));
+    expect(press.click(at(boxed, 12, 10))).toBe(true);
+  });
+
+  // The click lands on the dialog, the nearest thing the two ends share.
+  it("a selection dragged out of a field and let go on the backdrop does not", () => {
+    const press = backdropPress(() => boxed);
+    press.down(at({}, 150, 150));
+    expect(press.click(at(boxed, 10, 10))).toBe(false);
+  });
+
+  it("a click with no press of its own does not, and one press is one click", () => {
+    const press = backdropPress(() => boxed);
+    expect(press.click(at(boxed, 10, 10))).toBe(false);
+    press.down(at(boxed, 10, 10));
+    expect(press.click(at(boxed, 150, 150))).toBe(false);
+    expect(press.click(at(boxed, 10, 10))).toBe(false);
   });
 
   it("ConfirmDialog asks with Cancel first and the danger answer last", () => {

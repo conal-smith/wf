@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -73,6 +74,58 @@ export function syncModal(
   }
 }
 
+/** As much of a pointer event as telling the backdrop from the box needs. */
+export interface PointAt {
+  readonly target: unknown;
+  readonly clientX: number;
+  readonly clientY: number;
+}
+
+/** As much of a <dialog> as knowing where its box is needs. */
+export interface BoxHost {
+  getBoundingClientRect(): {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  };
+}
+
+/**
+ * The backdrop is part of the dialog as far as a pointer can tell, and so is
+ * the dialog's own padding: only a point outside the box counts.
+ */
+export function onBackdrop(host: BoxHost | null, at: PointAt): boolean {
+  if (!host || at.target !== host) return false;
+  const box = host.getBoundingClientRect();
+  return (
+    at.clientX < box.left ||
+    at.clientX > box.right ||
+    at.clientY < box.top ||
+    at.clientY > box.bottom
+  );
+}
+
+/**
+ * A click on the backdrop, told from a press that only ends there. A selection
+ * dragged out of a field and let go past the edge is a click on the dialog too
+ * (the dialog is what the two ends have in common), and closing on it would
+ * throw away what was being written. So the press has to begin there as well.
+ */
+export function backdropPress(host: () => BoxHost | null) {
+  let began = false;
+  return {
+    down(at: PointAt): void {
+      began = onBackdrop(host(), at);
+    },
+    click(at: PointAt): boolean {
+      const was = began;
+      began = false;
+      return was && onBackdrop(host(), at);
+    },
+  };
+}
+
 export type DialogProps = VariantProps<typeof dialogStyles> & {
   open: boolean;
   title: string;
@@ -111,6 +164,7 @@ export function Dialog({
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const opener = useRef<FocusTarget | null>(null);
+  const [press] = useState(() => backdropPress(() => ref.current));
   const titleId = useId();
   const styles = dialogStyles({ size });
 
@@ -148,17 +202,9 @@ export function Dialog({
         event.preventDefault();
         if (!busy) onClose();
       }}
+      onPointerDown={(event) => press.down(event)}
       onClick={(event) => {
-        // The backdrop is part of the dialog as far as a click can tell, and
-        // so is the dialog's own padding: only a point outside the box counts.
-        if (event.target !== ref.current || busy) return;
-        const box = ref.current.getBoundingClientRect();
-        const inside =
-          event.clientX >= box.left &&
-          event.clientX <= box.right &&
-          event.clientY >= box.top &&
-          event.clientY <= box.bottom;
-        if (!inside) onClose();
+        if (press.click(event) && !busy) onClose();
       }}
     >
       <div className={styles.head()}>
