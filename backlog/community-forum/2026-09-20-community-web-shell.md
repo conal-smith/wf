@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: normal
@@ -44,3 +44,4 @@ LOG:
 - 2026-09-20 agent: proved. ACCEPT 1: API on MARKET_DB=memory MARKET_AUTH_MODE=dev MARKET_STORAGE=local PORT=8810, vite dev on 4311 with MARKET_API_PROXY and VITE_MARKET_DEV_USER; a browser at /community/c/wings got 200 /meta and /channels, drew 4 category heads and 10 channel links, aria-current on Wings. ACCEPT 2: npm run build writes CommunityApp-*.js; "api/community", "Search the community" and "community:navigate" occur in that chunk only, not in index-*.js, MarketApp-*.js or the shared http-*.js. ACCEPT 3: e2e/community-shell.spec.ts tabs from the search field through the feeds, heads and channels in order, moves aria-current by Enter without a page load, and folds a head by keyboard.
 - 2026-09-20 agent: gates. npm test 796 passed, 51 skipped (the Postgres repo tests, no DATABASE_URL); npm run build ok; npm run ui:lint clean; npm run test:e2e 75 passed (PREVIEW_PORT=4310). The first e2e run failed one assertion: the lock's hidden words began with a comma and the accessible name read "Announcements , staff posts only"; the comma is gone.
 - 2026-09-20 agent: review round 1. Read the whole diff against SPEC, ACCEPT and the epic's decisions; nothing in the product code needed changing. Re-proved ACCEPT 1 (API on memory at 8810, vite dev at 4310 as a dev member: 200 /meta and /channels, 4 heads, 10 channels, aria-current on Wings, New thread the one filled control, none on a thread) and ACCEPT 2 (the three marker strings occur in CommunityApp-*.js only). Fixed one gap in the tests: nothing held S7's "nothing is asked of a signed-out reader", so e2e/community-shell.spec.ts now holds a signed-out load to the rail's two reads; it fails when the guard in useNotificationsCount is removed. A trial merge onto community-forum 21d61bd is clean. Gates: npm test 796 passed, 51 skipped; npm run build ok; npm run market:api:build ok; npm run ui:lint clean; npm run test:e2e 75 passed (PREVIEW_PORT=4310).
+- 2026-09-20 integrator: merged 765d79c; gates npm test 858 passed, 71 skipped; npm run build ok; npm run market:api:build ok; npm run ui:lint clean (51 files). The merge was clean and package.json did not change. GET /notifications/count is on the epic branch since community-follow-notify merged (d4b60d2), so the bell no longer asks into a 404.
