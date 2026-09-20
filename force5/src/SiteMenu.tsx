@@ -1,21 +1,33 @@
 /**
- * The one site menu, in both apps.
+ * The one site menu, in every app.
  *
- * wingfoil.ie is two bundles on one origin and `src/main.tsx` chooses between
+ * wingfoil.ie is three bundles on one origin and `src/main.tsx` chooses between
  * them from the pathname, so the menu's rows are plain `<a href>`: moving
- * between the map and the marketplace is a page load by construction, and a
- * client router cannot do it. Inside either app its own router still owns its
- * own routes.
+ * between the map, the marketplace and the community is a page load by
+ * construction, and a client router cannot do it. Inside each app its own
+ * router still owns its own routes.
  *
- * The map imports this through `force5/src`; the marketplace imports this file
- * directly, so neither bundle picks up the other by importing a barrel.
+ * The map imports this through `force5/src`; the marketplace and the community
+ * import this file directly, so no bundle picks up another by importing a
+ * barrel.
  */
-import { Menu, Store, Wind, X, type LucideIcon } from "lucide-react";
+import {
+  Menu,
+  MessagesSquare,
+  Store,
+  Wind,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import "./siteMenu.css";
 import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
 
-const ICONS: Record<SiteSectionId, LucideIcon> = { map: Wind, market: Store };
+const ICONS: Record<SiteSectionId, LucideIcon> = {
+  map: Wind,
+  market: Store,
+  community: MessagesSquare,
+};
 
 export function SiteMenu({
   /**
