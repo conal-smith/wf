@@ -4,7 +4,7 @@ import {
   type APIRequestContext,
   type Page,
 } from "@playwright/test";
-import { PHOTO, photo } from "./photos";
+import { FRAME_COUNT, PHOTO, photo } from "./photos";
 
 /**
  * What the marketplace's visual baseline stands on: the real API (the one
@@ -29,9 +29,10 @@ import { PHOTO, photo } from "./photos";
  * Ids are random (market/api/src/ids.ts) and none of them is drawn: they are
  * in URLs and in DOM ids, neither of which a screenshot holds.
  *
- * One date is neither pinned nor drawn from the fixtures: "Member since", which
- * the API takes from when the dev identity first asked for anything. It is the
- * month the shots were taken, so two runs agree and two months do not.
+ * One date the fixtures cannot stamp: "Member since", which the API takes from
+ * when the dev identity first asked it for anything, and which the seller page
+ * draws as a month and the listing page as a year. The API's clock is the
+ * community suite's too, so it is pinned on the way into the browser instead.
  */
 
 /** shared/web/auth.tsx DEV_USER_KEY, which cannot be imported without the identity provider's package. */
@@ -40,6 +41,8 @@ const DEV_USER_KEY = "wingfoil:dev-user";
 /** Who the baseline is: dev identities, as e2e/community/people.ts explains. */
 export const SELLER = "maeve";
 export const BUYER = "fionn";
+/** Signed in, and the API has never heard of them: the sell form's first step. */
+export const NEWCOMER = "ronan";
 
 /** The two widths every view is recorded at: a laptop and a phone. */
 export const WIDTHS = [1240, 390] as const;
@@ -51,6 +54,9 @@ const BASELINE = "e2e/market/__baseline__";
 
 /** Three days, which is how far past the fixtures every page's clock is set. */
 const AGE = 3 * 24 * 60 * 60 * 1000;
+
+/** What every seller has been a member since, whatever month the shots are taken in. */
+const MEMBER_SINCE = "2024-04-11T09:00:00.000Z";
 
 /** A listing a shot goes looking for, by what it is there to show. */
 export interface Fixture {
@@ -250,9 +256,9 @@ async function makeBaseline(request: APIRequestContext): Promise<Baseline> {
     contactEmail: "fionn@example.com",
   });
 
-  // Four frames, uploaded again wherever a listing needs another photo: it is
+  // Every frame, uploaded again wherever a listing needs another photo: it is
   // the same camera, and a run is shorter for drawing them once.
-  const frames = [0, 1, 2, 3].map(photo);
+  const frames = Array.from({ length: FRAME_COUNT }, (_, i) => photo(i));
   let next = 0;
   const upload = async () => {
     const body = frames[next++ % frames.length];
@@ -332,6 +338,26 @@ export type Shoot = (
 ) => Promise<void>;
 
 /**
+ * The seller's age, pinned. Every marketplace reply but the photos goes through
+ * here on its way into the browser and comes out with the one field the API
+ * stamps from its own wall clock replaced, so a recapture next month draws the
+ * same two lines as this one.
+ */
+async function pinMemberSince(page: Page) {
+  await page.route(/\/api\/market\/(?!uploads\/)/, async (route) => {
+    const reply = await route.fetch();
+    await route.fulfill({
+      status: reply.status(),
+      contentType: reply.headers()["content-type"],
+      body: (await reply.text()).replace(
+        /"memberSince":"[^"]*"/g,
+        `"memberSince":"${MEMBER_SINCE}"`,
+      ),
+    });
+  });
+}
+
+/**
  * Everything that must be finished before the shutter, and the two states that
  * must never be recorded: a baseline of a skeleton or of an error page would be
  * converted to Tailwind as carefully as the view it stands in for.
@@ -349,6 +375,17 @@ async function settle(page: Page) {
       [...document.images].map((image) => image.decode().catch(() => {})),
     );
   });
+  // The site's type is fetched, not bundled (src/styles.css imports it), and a
+  // fallback face moves every line of every shot. `document.fonts.check` is no
+  // use — it answers true for a family nobody has — so ask the set itself.
+  expect(
+    await page.evaluate(() =>
+      [...document.fonts].some(
+        (f) => f.family.includes("DM Sans") && f.status === "loaded",
+      ),
+    ),
+    "DM Sans loaded",
+  ).toBe(true);
   // Every view is shot from the top. The header is sticky, so a page left
   // scrolled — the sell form scrolls its first bad field into view — would be
   // recorded with the header sitting across the middle of it.
@@ -382,6 +419,7 @@ export const test = base.extend<{ baseline: Baseline; shoot: Shoot }>({
           );
         const page = await context.newPage();
         await page.clock.setFixedTime(baseline.clock);
+        await pinMemberSince(page);
         await prepare(page);
         await settle(page);
         await page.screenshot({
