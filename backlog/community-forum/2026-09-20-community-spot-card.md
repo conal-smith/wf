@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: normal
 risk: low
@@ -43,3 +43,4 @@ LOG:
 
 - 2026-09-20 agent: review, round 1 (cf/community-spot-card-r1). Fixed: the reading was taken once, when the manifest landed, and a thread is a page left open (live messages, D20), so "19 kn now" stood for as long as the tab did, and past the end of the run. useSpotCard now keeps the spot's hours and takes the reading at the page's clock (`now`, required, handed down from Thread.tsx's useNow), so it moves to the next hour and stands down to the name and link once the nearest hour is more than 90 minutes off. Held by a new e2e test on a controlled clock (19 kn -> 31 kn after three hours -> no number two hours past the run's last hour), which fails on fb900f3; it answers a run of its own with a gust, so the gust half of the line is now proved in the browser too. Added a unit test for the removed opening post (OPEN, above). CommunityApp-*.js 221300 -> 221417 raw, so the item's delta is +5819 raw over e6cdd20. Checked and left: every S and ACCEPT line against code and tests, the bundle delta remeasured (215598 -> 221300 raw, as logged), no frame decoder or map library string in the community chunk, all 25 ids round-trip through /?spot=, no hot file touched. A series entry that is not an object would throw inside the manifest's then and leave the card at S1 with a console error; the map trusts the same file the same way, so it is left.
 - 2026-09-20 agent: review gates. npm test 1079 passed, 73 skipped (Postgres repo tests, no DATABASE_URL; no repo work here); npm run build, npm run market:api:build, npm run ui:lint (74 files) ok; npm run test:e2e 80 passed (PREVIEW_PORT=4314).
+- 2026-09-20 integrator: merged cb4cae2; gates npm test 1079 passed, 73 skipped (Postgres repo tests, no DATABASE_URL); npm run build ok; npm run market:api:build ok; npm run ui:lint clean over 74 files.
