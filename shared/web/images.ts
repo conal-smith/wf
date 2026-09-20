@@ -1,7 +1,8 @@
 /**
  * Shrink a photo in the browser before upload. Phones produce 12MP HEIC and
- * 4MB JPEGs; a listing needs neither. Output is always JPEG at most 1600px
- * on the long side, which also sidesteps formats the server cannot serve.
+ * 4MB JPEGs; neither a listing nor a thread needs them. Output is always JPEG
+ * at most 1600px on the long side, which also sidesteps formats the server
+ * cannot serve.
  */
 const MAX_EDGE = 1600;
 const QUALITY = 0.86;
