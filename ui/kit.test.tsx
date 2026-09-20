@@ -185,7 +185,7 @@ describe("S2: what ui/ exports", () => {
     ["Button", buttonStyles, "size", ["sm", "md", "lg"]],
     ["Button", buttonStyles, "icon", ["true"]],
     ["Button", buttonStyles, "pressed", ["true"]],
-    ["Chip", chipStyles, "tone", ["neutral", "warn"]],
+    ["Chip", chipStyles, "tone", ["neutral", "warn", "glass"]],
     ["Chip", chipStyles, "eyebrow", ["true"]],
     ["Pane", paneStyles, "kind", ["card", "sunken"]],
     ["Avatar", avatarStyles, "size", ["sm", "md", "lg"]],
@@ -223,11 +223,20 @@ describe("S3: the content ground is the default", () => {
     expect(chipStyles({ tone: "warn" })).toContain("bg-warn-ground text-warn");
   });
 
-  it("only Surface is glass", () => {
+  // Glass is for what is laid over something else that is worth seeing: the
+  // moving map, or a photograph. A Surface is the first; a Chip's `glass` tone
+  // is the second, and a badge on a listing's cover is the only thing that
+  // asks for it. Nothing else in the kit may reach for it, and a chip's own
+  // default stays sunken (above).
+  it("only Surface and a glass Chip are glass", () => {
     for (const [name, recipe] of Object.entries(RECIPES)) {
       const glass = classesOf(recipe as Recipe).some((c) => /glass/.test(c));
-      expect(glass, name).toBe(name === "surfaceStyles");
+      expect(glass, name).toBe(
+        name === "surfaceStyles" || name === "chipStyles",
+      );
     }
+    expect(chipStyles({ tone: "glass" })).toContain("bg-glass");
+    expect(chipStyles()).not.toContain("glass");
   });
 });
 
@@ -307,7 +316,7 @@ describe("S4: states", () => {
       expect(icon, size).toContain("pointer-coarse:min-h-touch");
       expect(icon, size).toContain("pointer-coarse:min-w-touch");
     }
-    for (const size of ["md", "lg"] as const)
+    for (const size of ["md", "lg", "hero"] as const)
       expect(searchFieldStyles({ size }).base().split(" "), size).toContain(
         "pointer-coarse:min-h-touch",
       );
