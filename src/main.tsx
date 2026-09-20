@@ -4,6 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./styles.css";
 import "./compact.css";
 import "./dock.css";
+import "../ui/theme.css";
 import App from "./App";
 import { isMarketPath } from "../force5/src/siteNav";
 
