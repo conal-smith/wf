@@ -34,6 +34,7 @@ import {
 import { ID_PATTERN, newId } from "../../market/api/src/ids";
 import { memoryUsersRepo } from "../../site/api/repo-memory";
 import { pgUsersRepo } from "../../site/api/repo-pg";
+import { userInputSchema } from "../../site/shared/validate";
 
 /** What a suite needs from either backend. The clock moves a second per reading. */
 interface Backend {
@@ -410,6 +411,14 @@ function contract(name: string, backend: () => Backend) {
           lastSeq: 20,
           replyCount: 20,
           participantCount: 3,
+        });
+        // Aoife followed from the start: the 13 replies that are not hers fold into one row.
+        const rows = (await repo.listNotifications(aoife, null)).items;
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          kind: "reply",
+          count: 13,
+          actorCount: 2,
         });
       });
 
@@ -1276,6 +1285,14 @@ function contract(name: string, backend: () => Backend) {
           "🔥": 4,
           "🌊": 4,
         });
+        // One row for the author, one count per person, her own reactions aside.
+        const rows = (await repo.listNotifications(aoife, null)).items;
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          kind: "reaction",
+          count: 3,
+          actorCount: 3,
+        });
       });
 
       it("answers null for a message that is gone", async () => {
@@ -1807,6 +1824,23 @@ describe.skipIf(!url)("Postgres", () => {
       });
       expect(landed.seq).toBe(1);
       expect(await backend.repo.countNotifications(aoife)).toBe(1);
+    });
+
+    // The users row is the site's, but its only Postgres run is this one.
+    it("keeps autoFollow through a PUT /api/me that leaves it out", async () => {
+      await backend.reset();
+      const aoife = await backend.addUser("aoife");
+      const users = pgUsersRepo(sql);
+      expect((await users.getUser(aoife))!.autoFollow).toBe(true);
+      const put = (input: object) =>
+        users.updateUser(
+          aoife,
+          userInputSchema.parse({ displayName: "Aoife", ...input }),
+        );
+      expect((await put({ autoFollow: false }))!.autoFollow).toBe(false);
+      // The marketplace's profile form never sends it.
+      expect((await put({ county: "Sligo" }))!.autoFollow).toBe(false);
+      expect((await put({ autoFollow: true }))!.autoFollow).toBe(true);
     });
 
     // No repo method archives a channel: it is a row edited by hand, so only
