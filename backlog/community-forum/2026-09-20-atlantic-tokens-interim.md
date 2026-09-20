@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: high
 risk: normal
@@ -41,3 +41,4 @@ LOG:
 2026-09-20 agent: gates. npm test 339 passed; npm run build, npm run market:api:build exit 0; PREVIEW_PORT=4301 npm run test:e2e 65 passed. `ui:lint` is not a script yet, skipped.
 2026-09-20 agent: review r1. design/USAGE.md:143 asks for a manifest version bump on any change of token value, and it was not made: design/design-system.json 0.4.0 -> 0.5.0, its description no longer says "one teal ramp" (the catalog head quotes it), catalog regenerated and byte-stable. The dark-half test held 6 of the 24 halves and its light check skipped the `[data-mode="light"]` block both pages render under; it now holds all 24 and both blocks, and a mutated `text.disabled` dark half fails it. 18 tests.
 2026-09-20 agent: review r1, ACCEPT re-proved. Token diff against community-forum by script: only the ramp, teal.750, blue, the five inks, the glass light literal and the five light aliases moved; no dark half did. Contrast recomputed independently, same figures. /market on the dev server (4301) with the API on the memory repo (8801) and one listing: browse and listing pages, light and a dark-asking device, no old step painted inside `.mk-root`; Sell is the only #1463ff fill; the `html` canvas is the one hit, as in OPEN. Gates: npm test 341, build and market:api:build exit 0, design:lint exit 0, test:e2e 65 passed; `ui:lint` not a script yet.
+2026-09-20 integrator: merged 5c59995; gates npm test 341 passed, npm run build, npm run market:api:build and npm run design:lint exit 0; `ui:lint` is not a script yet, skipped.
