@@ -183,17 +183,43 @@ describe("what Atlantic does not touch", () => {
     ]);
   });
 
-  it("leaves the dark halves on the aliases they had", () => {
-    expect(modes("sem.color.action.bg").dark).toBe("{ref.color.teal.400}");
-    expect(modes("sem.color.action.bgHover").dark).toBe("{ref.color.teal.300}");
-    expect(modes("sem.color.action.quiet").dark).toBe("{ref.color.teal.200}");
-    expect(modes("sem.color.action.focus").dark).toBe("{ref.color.teal.200}");
-    expect(modes("sem.color.surface.inverse").dark).toBe("{ref.color.teal.300}");
-    expect(modes("sem.color.surface.glass").dark).toBe("#103138db");
+  it("leaves every dark half on the alias it had", () => {
+    const dark: Record<string, string> = {
+      "bg.page": "{ref.color.teal.950}",
+      "bg.content": "{ref.color.teal.950}",
+      "surface.glass": "#103138db",
+      "surface.solid": "{ref.color.teal.900}",
+      "surface.card": "{ref.color.teal.900}",
+      "surface.raised": "{ref.color.white.a05}",
+      "surface.sunken": "{ref.color.teal.950}",
+      "surface.inverse": "{ref.color.teal.300}",
+      "border.hairline": "{ref.color.white.a05}",
+      "border.glass": "{ref.color.white.a15}",
+      "border.strong": "{ref.color.teal.400}",
+      "text.primary": "{ref.color.teal.100}",
+      "text.secondary": "{ref.color.teal.200}",
+      "text.muted": "{ref.color.teal.300}",
+      "text.inverse": "{ref.color.teal.950}",
+      "text.disabled": "{ref.color.teal.500}",
+      "action.bg": "{ref.color.teal.400}",
+      "action.bgHover": "{ref.color.teal.300}",
+      "action.fg": "{ref.color.teal.950}",
+      "action.quiet": "{ref.color.teal.200}",
+      "action.quietHover": "{ref.color.white.a15}",
+      "action.focus": "{ref.color.teal.200}",
+      "status.warnFg": "{ref.color.warm.100}",
+      "status.warnBg": "{ref.color.warm.800}",
+    };
+    for (const [token, alias] of Object.entries(dark))
+      expect(modes(`sem.color.${token}`).dark, token).toBe(alias);
   });
 
   it("leaves no teal in anything a page resolves in light", () => {
-    const light = css.slice(0, css.indexOf("@media (prefers-color-scheme"));
+    // The default block, and the block a `data-mode="light"` root opts into:
+    // the marketplace and the site menu both render under the second.
+    const optIn = css.slice(css.indexOf('[data-mode="light"] {'));
+    const light = css.slice(0, css.indexOf("@media (prefers-color-scheme")) + optIn;
+    expect(optIn).toContain("--sem-color-action-bg: #1463ff;");
     for (const old of [
       "#f1fafc",
       "#e6f4f8",
@@ -208,6 +234,21 @@ describe("what Atlantic does not touch", () => {
       "#0a2126",
     ])
       expect(light).not.toContain(old);
+  });
+});
+
+describe("the manifest", () => {
+  const manifest = JSON.parse(
+    readFileSync(resolve(ROOT, "design/design-system.json"), "utf8"),
+  ) as { version: string; description: string };
+
+  it("is versioned past the teal bundle, as a change of value must be", () => {
+    const [major, minor] = manifest.version.split(".").map(Number);
+    expect(major * 1000 + minor).toBeGreaterThan(4);
+  });
+
+  it("no longer calls the palette teal at the head of the catalog", () => {
+    expect(manifest.description).not.toMatch(/teal/i);
   });
 });
 
