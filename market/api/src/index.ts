@@ -1,26 +1,54 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { clerkVerifier, devVerifier } from "./auth.js";
-import { connect, migrate } from "./db.js";
+import {
+  COMMUNITY_LEDGER,
+  COMMUNITY_MIGRATIONS_DIR,
+  connect,
+  migrate,
+} from "./db.js";
 import { loadConfig } from "./env.js";
 import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
+import { memoryHub, pgHub } from "../../../community/api/hub.js";
+import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory.js";
+import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
+import { clerkIdentity, devIdentity } from "../../../site/api/identity.js";
+import { memoryUsersRepo } from "../../../site/api/repo-memory.js";
+import { pgUsersRepo } from "../../../site/api/repo-pg.js";
 
 async function main() {
   const config = loadConfig();
 
-  let repo;
+  let repo, community, users, hub;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
     if (ran.length) console.log(`market: applied migrations ${ran.join(", ")}`);
+    // After the marketplace's: the community's tables reference `users`.
+    const ranCommunity = await migrate(
+      sql,
+      COMMUNITY_MIGRATIONS_DIR,
+      COMMUNITY_LEDGER,
+    );
+    if (ranCommunity.length)
+      console.log(`community: applied migrations ${ranCommunity.join(", ")}`);
     repo = pgRepo(sql);
+    community = pgCommunityRepo(sql);
+    users = pgUsersRepo(sql);
+    // A client of its own: the LISTEN keeps a connection for good, and the
+    // pool above has five for every query the API makes.
+    hub = await pgHub(connect(config.db.url!), sql);
   } else {
     console.warn(
-      "market: MARKET_DB=memory, listings will not survive a restart",
+      "market: MARKET_DB=memory, listings and threads will not survive a restart",
     );
-    repo = memoryRepo();
+    const memoryUsers = memoryUsersRepo();
+    repo = memoryRepo(memoryUsers);
+    community = memoryCommunityRepo(memoryUsers);
+    users = memoryUsers;
+    hub = memoryHub();
   }
 
   const verify =
@@ -33,13 +61,21 @@ async function main() {
       ? s3Storage(config.storage)
       : localStorage(config.storage, config.publicUrl);
 
+  const identity =
+    config.auth.mode === "clerk"
+      ? clerkIdentity(config.auth.clerkSecretKey)
+      : devIdentity();
+
   const app = createApp({
     repo,
+    community,
+    people: { users, identity },
     verify,
     storage,
     storagePrefix: config.storage.prefix,
     corsOrigins: config.corsOrigins,
     authMode: config.auth.mode,
+    hub,
   });
 
   const server = serve(
@@ -55,7 +91,9 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`market: ${signal}, shutting down`);
     server.close();
-    await repo.close();
+    // On Postgres both repos close the one pool, which ends once. The hub
+    // ends its own listening connection.
+    await Promise.all([repo.close(), community.close(), hub.close()]);
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));

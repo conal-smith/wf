@@ -26,6 +26,7 @@ import {
   type PhotoInput,
   type Profile,
 } from "../../shared/types";
+import { hasContact } from "../../../site/shared/types";
 import {
   issuesByField,
   listingInputSchema,
@@ -140,10 +141,10 @@ export default function SellPage({ editId }: { editId?: string }) {
     );
   }
 
-  if (me.error || existing.error)
+  if (me.error || existing.error || !me.data)
     return (
       <LoadError
-        message={me.error ?? existing.error ?? ""}
+        message={me.error ?? existing.error ?? "Try again in a moment."}
         onRetry={() => {
           me.reload();
           existing.reload();
@@ -155,19 +156,22 @@ export default function SellPage({ editId }: { editId?: string }) {
     return <Notice kind="warn">Only the seller can edit this listing.</Notice>;
   }
 
-  if (!me.data?.profile) {
+  // Selling is the one thing that needs a way to reach you (the API answers
+  // 409 contact_required without one), so it is asked for here and not before.
+  if (!hasContact(me.data.profile)) {
     return (
       <section className="mk-pane mk-stack mk-stack--loose">
         <div className="mk-page-head">
           <p className="mk-eyebrow">Step 1 of 2</p>
-          <h1 className="mk-title">First, your seller profile</h1>
+          <h1 className="mk-title">First, how buyers reach you</h1>
           <p className="mk-muted">
             Buyers see your name and county on every listing, and your contact
             details when they ask for them.
           </p>
         </div>
         <ProfileForm
-          profile={null}
+          profile={me.data.profile}
+          requireContact
           submitLabel="Save and continue"
           onSaved={(profile: Profile) =>
             me.setData((d) => (d ? { ...d, profile } : d))

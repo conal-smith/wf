@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SITE_SECTIONS, isMarketPath } from "./siteNav";
+import { SITE_SECTIONS, isCommunityPath, isMarketPath } from "./siteNav";
 
 describe("isMarketPath", () => {
   it("claims /market and everything under it", () => {
@@ -26,21 +26,47 @@ describe("isMarketPath", () => {
   });
 });
 
+describe("isCommunityPath", () => {
+  it("claims /community and everything under it", () => {
+    expect(isCommunityPath("/community")).toBe(true);
+    expect(isCommunityPath("/community/")).toBe(true);
+    expect(isCommunityPath("/community/following")).toBe(true);
+    expect(isCommunityPath("/community/c/wings")).toBe(true);
+    expect(isCommunityPath("/community/t/abc123/5m-or-6m")).toBe(true);
+  });
+
+  it("does not claim a path that merely starts with the word", () => {
+    expect(isCommunityPath("/community-guidelines")).toBe(false);
+    expect(isCommunityPath("/communityx")).toBe(false);
+  });
+
+  it("does not claim the map or the marketplace", () => {
+    expect(isCommunityPath("/")).toBe(false);
+    expect(isCommunityPath("")).toBe(false);
+    expect(isCommunityPath("/market")).toBe(false);
+    expect(isCommunityPath("/market/community")).toBe(false);
+    expect(isCommunityPath("/?to=/community")).toBe(false);
+  });
+});
+
 describe("SITE_SECTIONS", () => {
   it("links with absolute paths, because crossing sections is a page load", () => {
     for (const section of SITE_SECTIONS)
       expect(section.href.startsWith("/")).toBe(true);
   });
 
-  it("offers exactly the two sections the entry point branches on", () => {
-    expect(SITE_SECTIONS.map((section) => section.id)).toEqual([
-      "map",
-      "market",
+  it("offers exactly the three sections the entry point branches on", () => {
+    expect(SITE_SECTIONS).toEqual([
+      { id: "map", href: "/", label: "Wind map" },
+      { id: "market", href: "/market", label: "Marketplace" },
+      { id: "community", href: "/community", label: "Community" },
     ]);
   });
 
   it("gives each section an href the entry point routes to that section", () => {
-    for (const section of SITE_SECTIONS)
+    for (const section of SITE_SECTIONS) {
       expect(isMarketPath(section.href)).toBe(section.id === "market");
+      expect(isCommunityPath(section.href)).toBe(section.id === "community");
+    }
   });
 });

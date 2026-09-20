@@ -1,0 +1,754 @@
+<div class="rv" data-mode="light">
+  <header class="rv-intro">
+    <p class="cm-eyebrow">wingfoil.ie · design review · 20 September 2026</p>
+    <h1 class="cm-title">Community: channels and threads, in the Atlantic palette</h1>
+    <p>
+      Five desktop views and three phone views, scoped to the first iteration. The site sets the channels; members start threads inside
+      them; a thread is one flat, live conversation with reply-to references and reactions rather than a
+      tree of nested comments. Every colour, space, radius and type step is a Force5 <code>--sem-*</code>
+      token, and the page is built from the real bundle CSS.
+    </p>
+  </header>
+
+  <!-- 1 ─ HOME -->
+  <section class="rv-screen" id="s-home">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">1 · Desktop · /community</p>
+      <h2 class="cm-lead">Home: one feed, so a small community reads as one busy room</h2>
+      <p>
+        Latest activity across every channel, with the channel named on each row. Two columns: channels and the
+        conversation, no side panel. The member count appears from 50 members. Every
+        channel is set up by the site.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="01-home-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="home"></div>
+              <main class="cm-main">
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">Community</h1>
+                    <p>Gear, spots, technique and sessions, from wingfoilers around Ireland.</p>
+                    <p class="cm-meta cm-inline">
+                      <span>1,284 members · 38 threads active this week</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="home"></div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ─ CHANNEL -->
+  <section class="rv-screen" id="s-channel">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">2 · Desktop · /community/wings</p>
+      <h2 class="cm-lead">A channel: threads sorted by last activity, filtered by tag</h2>
+      <p>
+        One pane, rows divided by hairlines, in one order: most recent activity first, so a reply bumps a
+        thread. Tags are the only filter. Unread is carried by weight, a dot and a count, never
+        by colour alone. The head shows two counts: threads and followers.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="02-channel-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main" data-slot="channel-main"></main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 ─ THREAD -->
+  <section class="rv-screen" id="s-thread">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">3 · Desktop · /community/wings/5m-or-6m-one-wing-quiver</p>
+      <h2 class="cm-lead">A thread: a flat, live conversation</h2>
+      <p>
+        The opening post is the one card; replies stream below it on the ground, in time order. A reply can
+        point at an earlier message, carry photos and reactions, and the thread can link a spot to show its
+        live wind. Here the composer’s Reply is the filled action, so the header’s New thread goes quiet.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="03-thread-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="false"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>wings</span></a>
+
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</h1>
+                    <div class="cm-row">
+                      <span class="f5-chip">Question</span>
+                      <span class="f5-chip">Sizing</span>
+                      <span class="cm-meta">24 replies · 9 riders · started 2 days ago</span>
+                    </div>
+                  </div>
+                  <div class="cm-head__actions">
+                    <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true">
+                      <i-c n="bell" s="15"></i-c><span>Following · every reply</span><i-c n="chevron-down" s="14"></i-c>
+                    </button>
+                    <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Copy link"><i-c n="link" s="15"></i-c></button>
+                    <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="More"><i-c n="more" s="15"></i-c></button>
+                  </div>
+                </div>
+
+                <article class="cm-pane cm-post">
+                  <div class="cm-byline">
+                    <span class="cm-avatar" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-byline__who">
+                      <div class="cm-row"><span class="cm-strong">Aoife K</span></div>
+                      <span class="cm-meta">Thursday at 19:42</span>
+                    </div>
+                  </div>
+                  <div class="cm-prose">
+                    <p>
+                      I’ve been out about 25 times on a rented 5m and I’m buying my first wing. I’m 82 kg on a 95 L
+                      board with a 1600 cm² front foil, riding mostly Dollymount and Malahide. Most of my days are
+                      14 to 22 knots.
+                    </p>
+                    <p>
+                      Do I get a 6m and accept being overpowered on the windy days, or a 5m and sit out the light
+                      ones? The budget is one wing until spring.
+                    </p>
+                  </div>
+                  <a class="cm-spotcard" href="#">
+                    <span class="cm-spot__swatch" style="background: var(--sem-color-wind-k15)" aria-hidden="true"></span>
+                    <span class="cm-stack cm-stack--tight">
+                      <span class="cm-strong cm-inline"><i-c n="map-pin" s="14"></i-c>Dollymount, Co. Dublin</span>
+                      <span class="cm-meta">WSW · gusting 26 kn · low water 14:10</span>
+                    </span>
+                    <span class="cm-spot__reading">19 <small>kn now</small></span>
+                    <i-c n="chevron-right" s="18"></i-c>
+                  </a>
+                  <div class="cm-reactions">
+                    <button class="cm-reaction" aria-pressed="true">🤙 <span>12</span></button>
+                    <button class="cm-reaction" aria-pressed="false">👀 <span>3</span></button>
+                    <button class="cm-reaction cm-reaction--add" aria-label="Add a reaction"><i-c n="smile-plus" s="15"></i-c></button>
+                  </div>
+                </article>
+
+                <div class="cm-stream">
+                  <div class="cm-msg">
+                    <span class="cm-avatar" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head">
+                      <span class="cm-strong">Cian M</span><span class="cm-meta">Thursday at 20:05</span>
+                    </div>
+                    <div class="cm-msg__body">
+                      <p>
+                        At 82 kg on that foil, 5m. You’ll be flying from 15 knots once your pumping improves, and a
+                        6m over 25 at Dollymount is a handful in the shore break. Fix the light days with a bigger
+                        foil, not a bigger wing.
+                      </p>
+                    </div>
+                    <div class="cm-reactions">
+                      <button class="cm-reaction" aria-pressed="false">👍 <span>18</span></button>
+                    </div>
+                  </div>
+
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Cian M</span><span>Fix the light days with a bigger foil, not a bigger wing.</span></a>
+                    <span class="cm-avatar" data-tone="3" aria-hidden="true">NR</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Niamh R</span><span class="cm-meta">Thursday at 21:30</span></div>
+                    <div class="cm-msg__body">
+                      <p>Agree on the foil. I went from 1600 to 2000 and got three knots of low end for less than the price of a wing.</p>
+                    </div>
+                  </div>
+
+                  <div class="cm-day"><span class="cm-eyebrow">Today</span></div>
+
+                  <div class="cm-msg" data-hover="true">
+                    <div class="cm-msg__tools" role="toolbar" aria-label="Message actions">
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Add a reaction"><i-c n="smile-plus" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Reply to this message"><i-c n="reply" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Report"><i-c n="flag" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="More"><i-c n="more" s="15"></i-c></button>
+                    </div>
+                    <span class="cm-avatar" aria-hidden="true">TB</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Tomás B</span><span class="cm-meta">09:12</span></div>
+                    <div class="cm-msg__body">
+                      <p>
+                        Counterpoint: if you only ride weekends you take what you’re given. I’m 85 kg and my 6m gets
+                        twice the use of my 5m from May to September.
+                      </p>
+                    </div>
+                    <div class="cm-reactions"><button class="cm-reaction" aria-pressed="false">👍 <span>6</span></button></div>
+                  </div>
+
+                  <div class="cm-day cm-day--new"><span class="cm-count">2 new since you were last here</span></div>
+
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Tomás B</span><span>if you only ride weekends you take what you’re given</span></a>
+                    <span class="cm-avatar" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Aoife K</span><span class="f5-chip">Started the thread</span><span class="cm-meta">09:40</span></div>
+                    <div class="cm-msg__body"><p>That’s my worry exactly. Would a 5.5 be the coward’s answer?</p></div>
+                    <div class="cm-reactions"><button class="cm-reaction" aria-pressed="false">😂 <span>9</span></button></div>
+                  </div>
+
+                  <div class="cm-msg">
+                    <span class="cm-avatar" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Cian M</span><span class="cm-meta">4 minutes ago</span></div>
+                    <div class="cm-msg__body">
+                      <p>
+                        Not cowardly at all, <span class="cm-mention">@Aoife K</span>. The 5.5 is the most-ridden size in the
+                        country for a reason. Mine at Dollymount last Saturday, 18 gusting 27, and it never felt like too much:
+                      </p>
+                      <div class="cm-photos"><span data-photo="1"></span><span data-photo="2"></span></div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="cm-composer">
+                  <div class="cm-composer__input">Reply to the thread…</div>
+                  <div class="cm-composer__bar">
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Add photos"><i-c n="image" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Link a spot"><i-c n="map-pin" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Mention someone"><i-c n="at-sign" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Emoji"><i-c n="smile" s="16"></i-c></button>
+                    <button class="f5-button f5-button--primary f5-button--sm"><span>Reply</span><i-c n="send" s="14"></i-c></button>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 ─ NEW THREAD -->
+  <section class="rv-screen" id="s-new">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">4 · Desktop · New thread, signed in with Clerk</p>
+      <h2 class="cm-lead">Starting a thread: a dialog over the channel</h2>
+      <p>
+        A title, tags, what you want to say. A spot and photos are optional. Post thread is the dialog’s one filled action.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame frame--fixed" data-shot="04-new-thread-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="false"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main" data-slot="channel-main"></main>
+            </div>
+          </div>
+          <div class="cm-scrim">
+            <div class="f5-surface f5-surface--dialog cm-dialog" role="dialog" aria-labelledby="nt-title">
+              <div class="cm-dialog__head">
+                <div class="cm-stack cm-stack--tight">
+                  <h2 class="cm-title" id="nt-title">Start a thread</h2>
+                  <p class="cm-meta cm-inline">in <span class="cm-channel-chip"><i-c n="hash" s="13"></i-c>wings</span> · posting as Aoife K</p>
+                </div>
+                <button class="f5-button f5-button--icon f5-button--sm" aria-label="Close"><i-c n="x" s="16"></i-c></button>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-t">Title <small>62 / 120</small></label>
+                <div class="cm-field__control cm-field__control--focus"><span id="nt-t">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</span></div>
+              </div>
+
+              <div class="cm-field">
+                <span class="cm-field__label">Tags <small>At least one, up to three</small></span>
+                <div class="cm-tags" role="group" aria-label="Tags">
+                  <button class="f5-button f5-button--pill" aria-pressed="true">Question</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="true">Sizing</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">Review</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">Repair</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">New release</button>
+                </div>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-b">What’s on your mind?</label>
+                <div class="cm-field__control cm-field__control--area">
+                  <span id="nt-b">I’ve been out about 25 times on a rented 5m and I’m buying my first wing. I’m 82 kg on a 95 L board with a 1600 cm² front foil, riding mostly Dollymount and Malahide…</span>
+                  <div class="cm-row cm-row--tight">
+                    <span class="cm-attached" data-photo="1"></span>
+                    <span class="cm-addphoto"><i-c n="image" s="20"></i-c></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-s">Spot <small>Optional. Shows the live wind on your thread.</small></label>
+                <div class="cm-field__control"><i-c n="map-pin" s="16"></i-c><span id="nt-s">Dollymount, Co. Dublin</span><i-c n="chevron-down" s="16"></i-c></div>
+              </div>
+
+              <div class="cm-dialog__foot">
+                <span class="cm-meta">Be sound. <a class="cm-link" href="#">House rules</a></span>
+                <div class="cm-row">
+                  <button class="f5-button f5-button--pill">Cancel</button>
+                  <button class="f5-button f5-button--primary">Post thread</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ─ FOLLOWING + NOTIFICATIONS -->
+  <section class="rv-screen" id="s-following">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">5 · Desktop · /community/following, with the bell open</p>
+      <h2 class="cm-lead">Following and notifications</h2>
+      <p>
+        You follow a thread by starting it or replying to it, and a channel by choosing to. Following is the
+        feed of those; each row says why it is there. The bell is the inbox: replies are grouped per thread,
+        a mention always gets its own line, and a followed channel tells you about new threads, not every reply.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame frame--fixed" data-shot="05-following-notifications-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true" data-bell="open"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="following"></div>
+              <main class="cm-main">
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">Following</h1>
+                    <p>Threads you started or replied to, and new threads in the channels you follow.</p>
+                  </div>
+                </div>
+                <div class="cm-row">
+                  <span class="cm-meta">Channels</span>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>wings</a>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>sessions</a>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>meetups</a>
+                  <a class="f5-button f5-button--link" href="#">Manage</a>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="following"></div>
+              </main>
+            </div>
+          </div>
+          <div class="cm-pane cm-pop" role="dialog" aria-label="Notifications">
+            <div class="cm-pop__head">
+              <h2 class="cm-lead">Notifications</h2>
+              <div class="cm-row cm-row--tight">
+                <button class="f5-button f5-button--link">Mark all read</button>
+                <button class="f5-button f5-button--icon f5-button--sm" aria-label="Notification settings"><i-c n="settings" s="15"></i-c></button>
+              </div>
+            </div>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatar cm-avatar--sm" data-tone="4" aria-hidden="true">CM</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Cian M</span> mentioned you in <span class="cm-strong">5m or 6m as a one-wing quiver…</span></span>
+                <span class="cm-meta cm-note__quote">Not cowardly at all, @Aoife K. The 5.5 is the most-ridden size…</span>
+                <span class="cm-meta cm-inline"><i-c n="at-sign" s="12"></i-c>Mention · 4 min ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatars"><span class="cm-avatar cm-avatar--sm" aria-hidden="true">TB</span><span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">NR</span></span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Tomás B</span> and <span class="cm-strong">Niamh R</span> replied in <span class="cm-strong">Saturday: SW 22 to 28 at Dollymount…</span></span>
+                <span class="cm-meta cm-inline"><i-c n="message" s="12"></i-c>4 new replies · 12 min ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">PD</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Pádraig D</span> started <span class="cm-strong">Autumn meet-up: Rush South, Saturday 4 October</span></span>
+                <span class="cm-meta cm-inline"><i-c n="hash" s="12"></i-c>meetups · 1 h ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#">
+              <span class="cm-avatar cm-avatar--sm" aria-hidden="true">SO</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Sorcha O</span> reacted 🤙 to your message in <span class="cm-strong">Leading-edge pinhole, fixed on the beach…</span></span>
+                <span class="cm-meta">Yesterday</span>
+              </span>
+              <span></span>
+            </a>
+            <a class="cm-pop__foot cm-meta" href="#">See all notifications</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ─ PHONES -->
+  <section class="rv-screen" id="s-phones">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">6 · Phone · 390 wide</p>
+      <h2 class="cm-lead">On a phone: channels, then threads, then the conversation</h2>
+      <p>
+        Three full pages rather than a squeezed split view. The third is signed out: reading is public, and
+        the reply slot is offered rather than hidden, the way the marketplace offers Contact seller.
+      </p>
+    </div>
+    <div class="rv-phones">
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6a · Channels</p>
+        <div class="frame frame--phone" data-shot="06a-phone-channels">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true"></div>
+              <main class="cm-main">
+                <h1 class="cm-title">Community</h1>
+                <p class="cm-meta">1,284 members · 38 threads active this week</p>
+                <div class="cm-scroller">
+                  <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true"><i-c n="home" s="14"></i-c>Latest</button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="bell" s="14"></i-c>Following <span class="cm-count">3</span></button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="at-sign" s="14"></i-c>Mentions <span class="cm-count">1</span></button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="search" s="14"></i-c>Search</button>
+                </div>
+                <div data-slot="phone-channels"></div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6b · Threads in a channel</p>
+        <div class="frame frame--phone" data-shot="06b-phone-threads">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>Channels</span></a>
+                <div class="cm-row cm-row--between">
+                  <h1 class="cm-title cm-title--channel"><i-c n="hash" s="22"></i-c>wings</h1>
+                  <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Follow channel"><i-c n="bell" s="15"></i-c></button>
+                </div>
+                <div class="cm-scroller">
+                  <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true">All</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Question</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Review</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Sizing</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Repair</button>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="wings" data-compact="true"></div>
+              </main>
+            </div>
+            <div class="cm-fab">
+              <button class="f5-button f5-button--primary f5-button--lg"><i-c n="plus" s="18"></i-c>New thread</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6c · A thread, signed out</p>
+        <div class="frame frame--phone" data-shot="06c-phone-thread">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true" data-signedout="true"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>wings</span></a>
+                <h1 class="cm-lead">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</h1>
+                <div class="cm-row cm-row--tight">
+                  <span class="f5-chip">Question</span><span class="f5-chip">Sizing</span>
+                  <span class="cm-meta">24 replies · 9 riders</span>
+                </div>
+                <article class="cm-pane cm-post">
+                  <div class="cm-byline">
+                    <span class="cm-avatar cm-avatar--sm" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-row cm-row--tight"><span class="cm-strong">Aoife K</span><span class="cm-meta">Thu 19:42</span></div>
+                  </div>
+                  <div class="cm-prose">
+                    <p>I’m 82 kg on a 95 L board with a 1600 cm² front foil, riding mostly Dollymount and Malahide. Most of my days are 14 to 22 knots. Do I get a 6m, or a 5m and sit out the light ones?</p>
+                  </div>
+                  <a class="cm-spotcard" href="#">
+                    <span class="cm-spot__swatch" style="background: var(--sem-color-wind-k15)" aria-hidden="true"></span>
+                    <span class="cm-stack cm-stack--tight">
+                      <span class="cm-strong">Dollymount</span>
+                      <span class="cm-meta">WSW · gusting 26 kn</span>
+                    </span>
+                    <span class="cm-spot__reading">19 <small>kn</small></span>
+                  </a>
+                  <div class="cm-reactions">
+                    <button class="cm-reaction">🤙 <span>12</span></button><button class="cm-reaction">👀 <span>3</span></button>
+                  </div>
+                </article>
+                <div class="cm-stream">
+                  <div class="cm-msg">
+                    <span class="cm-avatar cm-avatar--sm" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Cian M</span><span class="cm-meta">Thu 20:05</span></div>
+                    <div class="cm-msg__body"><p>At 82 kg on that foil, 5m. Fix the light days with a bigger foil, not a bigger wing.</p></div>
+                    <div class="cm-reactions"><button class="cm-reaction">👍 <span>18</span></button></div>
+                  </div>
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Cian M</span><span>Fix the light days with a bigger foil</span></a>
+                    <span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">NR</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Niamh R</span><span class="cm-meta">Thu 21:30</span></div>
+                    <div class="cm-msg__body"><p>Agree on the foil. I went from 1600 to 2000 and got three knots of low end.</p></div>
+                  </div>
+                </div>
+              </main>
+            </div>
+            <div class="cm-dock">
+              <div class="cm-gate">
+                <span class="cm-stack cm-stack--tight"><span class="cm-strong">Join the conversation</span><span class="cm-meta">Reading is open to everyone.</span></span>
+                <button class="f5-button f5-button--primary"><i-c n="log-in" s="15"></i-c>Sign in to reply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- 7 ─ COLOUR -->
+  <section class="rv-screen" id="s-colour">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">7 · Colour · decided 20 September 2026</p>
+      <h2 class="cm-lead">Atlantic: navy ink, a neutral ground, electric blue for the one filled action</h2>
+      <p>
+        Every screen above is now drawn in it. Before and after, side by side. Only colour tokens differ,
+        which is how it is built: the marketplace reads the same tokens and changes with it; the wind map
+        is a separate piece of work, because its stylesheets do not read the tokens yet.
+      </p>
+    </div>
+    <div class="rv-phones" data-shot="07-before-after">
+      <div class="rv-phone">
+        <div class="rv-screen__head"><p class="cm-eyebrow">Before</p><p class="cm-strong">Force5 teal</p><div class="pal-sw pal-a"><i style="background:var(--sem-color-bg-content)"></i><i style="background:var(--sem-color-surface-sunken)"></i><i style="background:var(--sem-color-text-muted)"></i><i style="background:var(--sem-color-surface-inverse)"></i><i style="background:var(--sem-color-action-bg)"></i></div></div>
+        <div class="frame frame--phone pal-a" data-clone="06b-phone-threads"></div>
+      </div>
+      <div class="rv-phone">
+        <div class="rv-screen__head"><p class="cm-eyebrow">After</p><p class="cm-strong">Atlantic</p><div class="pal-sw"><i style="background:var(--sem-color-bg-content)"></i><i style="background:var(--sem-color-surface-sunken)"></i><i style="background:var(--sem-color-text-muted)"></i><i style="background:var(--sem-color-surface-inverse)"></i><i style="background:var(--sem-color-action-bg)"></i></div></div>
+        <div class="frame frame--phone" data-clone="06b-phone-threads"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var ICONS = {
+      menu: '<path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/>',
+      wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+      hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+      plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      "plus-circle": '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+      message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+      bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/>',
+      "smile-plus": '<path d="M22 11v1a10 10 0 1 1-9-10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M16 5h6"/><path d="M19 2v6"/>',
+      send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+      reply: '<path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+      "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+      "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+      lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      "map-pin": '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+      more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+      "log-in": '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+      "arrow-left": '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+      megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      "at-sign": '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+      "badge-check": '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+      link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+      home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      locate: '<path d="M2 12h3"/><path d="M19 12h3"/><path d="M12 2v3"/><path d="M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
+      settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'
+    };
+    function ic(n, s) {
+      s = s || 16;
+      return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || "") + "</svg>";
+    }
+    function av(initials, tone, size) {
+      return '<span class="cm-avatar' + (size ? " cm-avatar--" + size : "") + '"' + (tone ? ' data-tone="' + tone + '"' : "") + ' aria-hidden="true">' + initials + "</span>";
+    }
+    function photo(v) {
+      var sun = v === 2 ? "" : '<circle cx="92" cy="22" r="9" style="fill:var(--sem-color-surface-card)"/>';
+      var wing = v === 2
+        ? '<path d="M30 44 Q52 8 88 30 Q56 26 30 44Z" style="fill:var(--sem-color-text-primary)"/>'
+        : '<path d="M40 42 Q56 16 80 34 Q58 30 40 42Z" style="fill:var(--sem-color-text-primary)"/><path d="M60 38 61 57" style="stroke:var(--sem-color-text-primary);stroke-width:1.5"/><path d="M52 58h20" style="stroke:var(--sem-color-surface-card);stroke-width:2.5;stroke-linecap:round"/>';
+      return '<svg class="cm-photo" viewBox="0 0 120 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="120" height="90" style="fill:var(--sem-color-surface-sunken)"/>' + sun +
+        '<path d="M0 54 Q30 48 60 54 T120 54 V90 H0Z" style="fill:var(--sem-color-border-strong)"/>' + wing +
+        '<path d="M0 68 Q30 62 60 68 T120 68 V90 H0Z" style="fill:var(--sem-color-surface-inverse)"/></svg>';
+    }
+
+    // ---- header ---------------------------------------------------------------
+    function header(el) {
+      var accent = el.dataset.accent === "true", phone = el.dataset.phone === "true", out = el.dataset.signedout === "true";
+      var right;
+      if (out) {
+        right = '<button class="f5-button f5-button--pill f5-button--sm">' + ic("log-in", 15) + "<span>Sign in</span></button>";
+      } else {
+        right =
+          (phone ? "" : '<button class="f5-button f5-button--sm ' + (accent ? "f5-button--primary" : "f5-button--pill") + '">' + ic("plus-circle", 15) + "<span>New thread</span></button>") +
+          '<button class="f5-button f5-button--pill f5-button--icon f5-button--sm cm-bell" aria-label="Notifications, 4 unread"' + (el.dataset.bell === "open" ? ' aria-pressed="true"' : "") + '>' + ic("bell", 15) + '<span class="cm-count" aria-hidden="true">4</span></button>' +
+          '<span style="display:inline-flex;padding:0 var(--sem-space-gap)">' + av("AK", 2, "sm") + "</span>";
+      }
+      el.outerHTML =
+        '<header class="cm-header"><div class="f5-surface f5-surface--pill cm-header__bar">' +
+        '<button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Site menu">' + ic("menu", 15) + "</button>" +
+        '<a class="cm-brand" href="#">' + ic("wind", 22) + '<span>wingfoil<span class="cm-brand__domain">.ie</span></span><span class="f5-chip f5-chip--eyebrow">Community</span></a>' +
+        '<nav class="cm-header__actions" aria-label="Community">' + right + "</nav></div></header>";
+    }
+
+    // ---- rail -----------------------------------------------------------------
+    // Every channel is set up by the site.
+    var GROUPS = [
+      ["Community", [["announcements", "megaphone", 0, true], ["general", "hash", 2]]],
+      ["Gear", [["wings", "hash", 5], ["boards", "hash", 0], ["foils", "hash", 3]]],
+      ["Riding", [["spots-and-conditions", "hash", 12], ["sessions", "hash", 4], ["technique", "hash", 1]]],
+      ["Social", [["meetups", "hash", 3], ["off-topic", "hash", 0]]]
+    ];
+    function rail(el) {
+      var active = el.dataset.active;
+      function row(id, icon, n, locked, label) {
+        var cur = id === active;
+        return '<a class="cm-channel" href="#"' + (cur ? ' aria-current="page"' : "") + (n && !cur ? ' data-unread="true"' : "") + ">" + ic(icon, 16) + "<span>" + (label || id) + "</span>" +
+          (n && !cur ? '<span class="cm-count' + (n > 4 ? "" : " cm-count--quiet") + '">' + n + "</span>" : locked ? '<span class="cm-channel__lock">' + ic("lock", 12) + "</span>" : "") + "</a>";
+      }
+      var html = '<nav class="cm-rail" aria-label="Channels">' +
+        '<label class="f5-search f5-search--sm">' + ic("search", 16) + '<input type="search" placeholder="Search the community" aria-label="Search the community"></label>' +
+        '<div class="cm-rail__group">' + row("home", "home", 0, false, "Latest") + row("following", "bell", 3, false, "Following") + row("mentions", "at-sign", 1, false, "Mentions") + "</div>";
+      GROUPS.forEach(function (g) {
+        html += '<div class="cm-rail__group"><div class="cm-rail__label"><span class="cm-eyebrow cm-inline">' + ic("chevron-down", 11) + g[0] + "</span>" +
+          "</div>" +
+          g[1].map(function (c) { return row(c[0], c[1], c[2], c[3]); }).join("") +
+          "</div>";
+      });
+      el.outerHTML = html + "</nav>";
+    }
+
+    // ---- threads --------------------------------------------------------------
+    var T = {
+      q: { a: ["AK", 2], ch: "wings", title: "5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board", pre: "Cian M: Not cowardly at all. The 5.5 is the most-ridden size in the country for a reason.", tags: ["Question", "Sizing"], by: "Aoife K", n: 24, when: "4 min ago", who: [["CM", 4], ["NR", 3], ["TB", 0]], unread: 2 },
+      rev: { a: ["CM", 4], ch: "wings", title: "Unit D/LAB 4.5 after 30 sessions: an honest review", pre: "Stiffer than the standard Unit and you feel it in the gusts. The canopy has held its shape, but the price…", tags: ["Review"], by: "Cian M", n: 41, when: "1 h ago", who: [["SO", 2], ["AK", 2], ["PD", 3]], photo: 1 },
+      rep: { a: ["SO", 0], ch: "wings", title: "Leading-edge pinhole, fixed on the beach at Rush. Photos inside", pre: "Tear-Aid Type A, an alcohol wipe and ten minutes. Here is exactly what I carry in the van now.", tags: ["Repair"], by: "Sorcha O", n: 12, when: "3 h ago", who: [["TB", 0], ["NR", 3]], photo: 2, unread: 5 },
+      ach: { a: ["PD", 3], ch: "wings", title: "Strike V4 or Flux for gusty westerlies off Achill?", pre: "Keel lake is fine, it’s the open-sea days that catch me out. Which one depowers more cleanly?", tags: ["Question"], by: "Pádraig D", n: 18, when: "Yesterday", who: [["CM", 4], ["SO", 0]] },
+      han: { a: ["NR", 3], ch: "wings", title: "Hard handles or a boom? My shoulder is sore after long sessions", pre: "Two hours at Tramore on Sunday and my front shoulder was done. Is this technique, or the handles?", tags: ["Question"], by: "Niamh R", n: 33, when: "Yesterday", who: [["CM", 4], ["AK", 2], ["TB", 0]] },
+      rel: { a: ["TB", 0], ch: "wings", title: "2027 wings: what has been announced so far", pre: "Keeping a running list in the first post. Add what you see and I’ll fold it in.", tags: ["New release"], by: "Tomás B", n: 57, when: "2 days ago", who: [["PD", 3], ["SO", 0], ["NR", 3]] },
+      sat: { a: ["SO", 0], ch: "sessions", title: "Saturday: SW 22 to 28 at Dollymount, low water 14:10. Who’s in?", pre: "Tomás B: I’ll be there from 12. Bringing the 4m and the spare pump.", tags: ["Dublin"], by: "Sorcha O", n: 16, when: "12 min ago", who: [["TB", 0], ["AK", 2], ["CM", 4]], unread: 4 },
+      gyb: { a: ["NR", 3], ch: "technique", title: "First foiling gybes: what finally made it click for you?", pre: "Forty attempts, four made. I keep stalling the foil as I switch hands.", tags: ["Question", "Gybes"], by: "Niamh R", n: 29, when: "2 h ago", who: [["CM", 4], ["PD", 3]] },
+      bra: { a: ["PD", 3], ch: "trip-reports", title: "Brandon Bay long weekend: three spots, four days, one broken mast", pre: "Scraggane on the flood was the best flat water I’ve had in Ireland. Notes on each spot, parking and tides inside.", tags: ["Kerry"], by: "Pádraig D", n: 22, when: "5 h ago", who: [["SO", 0], ["AK", 2]], photo: 1 },
+      foi: { a: ["TB", 0], ch: "foils", title: "Axis ART 999 or Armstrong HA 880 for light-wind bay riding?", pre: "85 kg, mostly 12 to 18 knots in Malahide estuary. Pump and glide matter more to me than top speed.", tags: ["Question"], by: "Tomás B", n: 14, when: "Yesterday", who: [["CM", 4], ["NR", 3]] }
+    };
+    T.blast = { a: ["PD", 3], ch: "meetups", title: "Autumn meet-up: Rush South, Saturday 4 October", pre: "Low water 13:20, so on the water from 10. Chipper afterwards. Reply if you are coming.", tags: ["Dublin"], by: "Pádraig D", n: 3, when: "1 h ago", who: [["SO", 0], ["NR", 3]], unread: 3 };
+    var WHY = { blast: "You follow this channel", q: "You started this", sat: "You replied", gyb: "You replied" };
+    var SETS = { following: ["blast", "q", "sat", "gyb"], home: ["sat", "q", "gyb", "rev", "bra", "foi"], wings: ["q", "rev", "rep", "ach", "han", "rel"] };
+
+    function threadRow(t, showChannel, compact) {
+      var meta = (showChannel ? '<span class="cm-channel-chip">' + ic("hash", 12) + t.ch + "</span>" : "") +
+        t.tags.map(function (x) { return '<span class="f5-chip">' + x + "</span>"; }).join("") +
+        (t.why ? '<span class="cm-helpful">' + ic("bell", 13) + t.why + "</span>" : "") +
+        (t.answered ? '<span class="cm-helpful">' + ic("badge-check", 14) + "Answered</span>" : "") +
+        '<span class="cm-meta">' + t.by + (compact ? " · " + t.n + " replies · " + t.when : "") + "</span>";
+      var main = '<div class="cm-thread__main"><h3 class="cm-thread__title">' + (t.unread ? '<span class="cm-unread-dot" aria-hidden="true"></span>' : "") + "<span>" + t.title + "</span></h3>" +
+        '<p class="cm-thread__preview">' + t.pre + '</p><div class="cm-thread__meta">' + meta +
+        (compact && t.unread ? '<span class="cm-count">' + t.unread + " new</span>" : "") + "</div></div>";
+      if (compact) return '<a class="cm-thread" href="#"' + (t.unread ? ' data-unread="true"' : "") + ">" + av(t.a[0], t.a[1], "sm") + main + "</a>";
+      return '<a class="cm-thread" href="#"' + (t.unread ? ' data-unread="true"' : "") + ">" + av(t.a[0], t.a[1]) + main +
+        (t.photo ? '<span class="cm-thread__thumb">' + photo(t.photo) + "</span>" : "<span></span>") +
+        '<div class="cm-thread__stats"><span class="cm-row cm-row--tight">' + (t.unread ? '<span class="cm-count">' + t.unread + " new</span>" : "") +
+        '<span class="cm-thread__replies">' + ic("message", 14) + t.n + "</span></span>" +
+        '<span class="cm-avatars">' + t.who.map(function (w) { return av(w[0], w[1], "xs"); }).join("") + "</span>" +
+        '<span class="cm-meta">' + t.when + "</span></div></a>";
+    }
+    function threads(el) {
+      var set = el.dataset.set, compact = el.dataset.compact === "true";
+      var pinned = set === "wings"
+        ? '<a class="cm-thread cm-thread--pinned" href="#">' + ic("pin", 16) + '<span><span class="cm-strong">Read first: how to ask a sizing question</span> <span class="cm-muted">' + (compact ? "" : "· weight, board volume, usual spot") + '</span></span><span class="f5-chip">Pinned</span></a>'
+        : "";
+      el.innerHTML = pinned + SETS[set].slice(0, compact ? 5 : 6).map(function (k) {
+        var t = Object.assign({}, T[k], { why: set === "following" ? WHY[k] : null });
+        return threadRow(t, set !== "wings", compact);
+      }).join("");
+    }
+
+    function channelMain(el) {
+      el.innerHTML =
+        '<div class="cm-head"><div class="cm-head__text"><h1 class="cm-title cm-title--channel">' + ic("hash", 24) + "wings</h1>" +
+        "<p>Hand wings: sizing, ranges, reviews, new releases and repairs.</p>" +
+        '<p class="cm-meta">412 threads · 640 following</p></div>' +
+        '<div class="cm-head__actions"><button class="f5-button f5-button--pill f5-button--sm" aria-pressed="false">' + ic("bell", 15) + "<span>Follow channel</span></button></div></div>" +
+        '<div class="cm-controls"><div class="cm-tags" role="group" aria-label="Filter by tag">' +
+        ["All", "Question", "Review", "Sizing", "Repair", "New release"].map(function (x, i) { return '<button class="f5-button f5-button--pill" aria-pressed="' + (i === 0) + '">' + x + "</button>"; }).join("") +
+        '</div><span class="cm-meta">Most recent activity first</span></div>' + '<div class="cm-pane cm-threads" data-slot="threads" data-set="wings"></div>';
+    }
+
+    // ---- asides -----------------------------------------------------------------
+    function blowing() {
+      var spots = [["Dollymount", "WSW · gusts 26 · 2 threads", 19, "k15"], ["Rush South", "SW · gusts 24 · 1 thread", 17, "k15"], ["Keel, Achill", "W · gusts 34 · 1 thread", 27, "k25"], ["Tramore", "SW · gusts 15 · 1 thread", 11, "k10"]];
+      return '<section class="cm-pane cm-pane--pad cm-stack"><div class="cm-aside__head"><h2 class="cm-lead">Blowing now</h2><a class="cm-link cm-meta" href="#">Wind map</a></div><ul class="cm-spots">' +
+        spots.map(function (s) {
+          return '<li class="cm-spot"><span class="cm-spot__swatch" style="background:var(--sem-color-wind-' + s[3] + ')" aria-hidden="true"></span><span class="cm-stack cm-stack--tight"><span class="cm-strong">' + s[0] + '</span><span class="cm-meta">' + s[1] + '</span></span><span class="cm-spot__reading">' + s[2] + " <small>kn</small></span></li>";
+        }).join("") + '</ul><p class="cm-meta">Spots members linked to threads in the last two days. <a class="cm-link" href="#">Set a home spot</a> to see yours first.</p></section>';
+    }
+    function people(title, list) {
+      return '<section class="cm-pane cm-pane--pad cm-stack"><div class="cm-aside__head"><h2 class="cm-lead">' + title + '</h2></div><ul class="cm-people">' +
+        list.map(function (p) { return '<li class="cm-person">' + av(p[0], p[1], "sm") + '<span class="cm-person__name">' + p[2] + "</span>" + (p[3] ? '<span class="f5-chip">' + p[3] + "</span>" : "") + "</li>"; }).join("") + "</ul></section>";
+    }
+    function aside(el) {
+      var kind = el.dataset.kind, html = '<aside class="cm-aside">';
+      if (kind === "home") {
+        html += blowing() + people('<span class="cm-inline"><span class="cm-live" aria-hidden="true"></span>Here now · 23</span>', [["CM", 4, "Cian M", "Coach"], ["SO", 0, "Sorcha O", "Team"], ["TB", 0, "Tomás B"], ["NR", 3, "Niamh R"], ["PD", 3, "Pádraig D", "Achill local"]]);
+      } else if (kind === "channel") {
+        html += '<section class="cm-pane cm-pane--pad cm-pane--sunken cm-stack"><h2 class="cm-lead">Before you post</h2><ul class="cm-guide">' +
+          ["Sizing questions: give your weight, board volume and usual spot.", "Selling a wing? That’s what the Market is for.", "Reviews: say how many sessions, and in what wind."].map(function (x) { return "<li>" + ic("check", 14) + "<span>" + x + "</span></li>"; }).join("") + "</ul></section>" +
+          blowing() + people("Most helpful in wings", [["CM", 4, "Cian M", "Coach"], ["SO", 0, "Sorcha O", "Team"], ["TB", 0, "Tomás B"]]);
+      } else {
+        html += '<section class="cm-pane cm-pane--pad cm-stack"><h2 class="cm-lead">Notify me</h2><div class="f5-segmented f5-segmented--stack">' +
+          '<button class="f5-segmented__item" aria-pressed="true">Every reply</button><button class="f5-segmented__item" aria-pressed="false">Mentions only</button><button class="f5-segmented__item" aria-pressed="false">Nothing</button></div>' +
+          '<p class="cm-meta">You follow threads you start or reply to.</p></section>' +
+          people("In this thread · 9", [["AK", 2, "Aoife K", "Started it"], ["CM", 4, "Cian M", "Coach"], ["NR", 3, "Niamh R"], ["TB", 0, "Tomás B"]]) +
+          '<section class="cm-pane cm-pane--pad cm-stack"><h2 class="cm-lead">Related threads</h2><ul class="cm-stack">' +
+          [["Is a 3m worth owning in Ireland, or is 4m small enough?", "29 replies"], ["What size wing for a 70 kg beginner?", "46 replies · answered"], ["Bigger foil or bigger wing for light days?", "38 replies"]].map(function (r) { return '<li class="cm-stack cm-stack--tight"><a class="cm-strong" href="#">' + r[0] + '</a><span class="cm-meta">' + r[1] + "</span></li>"; }).join("") + "</ul></section>";
+      }
+      el.outerHTML = html + "</aside>";
+    }
+
+    function phoneChannels(el) {
+      var last = { announcements: "Autumn meet-up: Rush, 4 October", general: "Hi from Galway, six sessions in", wings: "5m or 6m as a one-wing quiver…", boards: "Downsizing from 95 L to 75 L", foils: "ART 999 or HA 880 for light wind?", "gear-help": "Pump gauge reading low?", "spots-and-conditions": "Bull Wall car park closed Sunday", technique: "First foiling gybes: what made it click?", "trip-reports": "Brandon Bay long weekend", sessions: "Saturday: SW 22 to 28 at Dollymount" };
+      el.outerHTML = GROUPS.slice(0, 3).map(function (g) {
+        return '<div class="cm-stack" style="gap:var(--sem-space-gap)"><span class="cm-eyebrow" style="padding-left:var(--sem-space-gap-tight)">' + g[0] + '</span><div class="cm-pane">' +
+          g[1].map(function (c) {
+            return '<a class="cm-chanrow" href="#"' + (c[2] ? ' data-unread="true"' : "") + '><span class="cm-chanrow__icon">' + ic(c[1], 16) + '</span><span class="cm-chanrow__text"><span class="cm-chanrow__name">' + c[0] + '</span><span class="cm-meta">' + last[c[0]] + "</span></span>" +
+              (c[2] ? '<span class="cm-count">' + c[2] + "</span>" : '<span class="cm-muted">' + ic("chevron-right", 16) + "</span>") + "</a>";
+          }).join("") + "</div></div>";
+      }).join("");
+    }
+
+    var fill = { header: header, rail: rail, "channel-main": channelMain, aside: aside, "phone-channels": phoneChannels };
+    Object.keys(fill).forEach(function (k) {
+      document.querySelectorAll('[data-slot="' + k + '"]').forEach(fill[k]);
+    });
+    document.querySelectorAll('[data-slot="threads"]').forEach(threads);
+    document.querySelectorAll("[data-clone]").forEach(function (el) {
+      el.innerHTML = document.querySelector('[data-shot="' + el.dataset.clone + '"]').innerHTML;
+    });
+    document.querySelectorAll("[data-photo]").forEach(function (el) { el.innerHTML = photo(+el.dataset.photo); });
+    document.querySelectorAll("i-c").forEach(function (el) { el.outerHTML = ic(el.getAttribute("n"), +el.getAttribute("s")); });
+  })();
+</script>
