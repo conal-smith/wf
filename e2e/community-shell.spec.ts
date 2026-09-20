@@ -6,7 +6,8 @@ import { expect, test, type Page } from "./fixtures";
  *
  * The API is not running in this suite, so the two replies the rail is drawn
  * from are answered here, in the API's own shapes. What a thread or a feed
- * does is not this spec's business; nothing under test reads one.
+ * does is not this spec's business: the lists a page asks for are answered
+ * empty, and nothing under test reads one.
  */
 
 const CATEGORIES = [
@@ -60,6 +61,13 @@ async function answerApi(page: Page) {
   await page.route("**/api/community/channels", (route) =>
     route.fulfill({ json: { channels: CHANNELS } }),
   );
+  const nothing = { json: { items: [], nextCursor: null } };
+  await page.route("**/api/community/feed?*", (route) =>
+    route.fulfill(nothing),
+  );
+  await page.route("**/api/community/channels/*/threads*", (route) =>
+    route.fulfill(nothing),
+  );
 }
 
 const rail = (page: Page) => page.getByRole("navigation", { name: "Channels" });
@@ -109,9 +117,11 @@ test("/community is the header, the rail from the API and one main column", asyn
   // And the page measure is 1200 however wide the window.
   expect(mainBox.x + mainBox.width - railBox.x).toBeLessThanOrEqual(1200);
 
-  // The rail's two reads and no more: a signed-out reader has no bell to ask for.
+  // The rail's two reads and home's feed, and no more: a signed-out reader has
+  // no bell to ask for.
   expect([...new Set(asked)].sort()).toEqual([
     "/api/community/channels",
+    "/api/community/feed",
     "/api/community/meta",
   ]);
 });
