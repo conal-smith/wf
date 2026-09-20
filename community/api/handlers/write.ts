@@ -171,7 +171,10 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
       (await repo.countThreadsBy(userId, dayStart(now()))) >=
         LIMITS.newMemberThreadsPerDay
     )
-      rateLimited(untilTomorrowMs(now()));
+      rateLimited(
+        untilTomorrowMs(now()),
+        `You can start ${LIMITS.newMemberThreadsPerDay} threads a day while your account is new. You can start another tomorrow.`,
+      );
     limiter.take(userId, "thread");
     await ensureUser(people, userId);
     try {

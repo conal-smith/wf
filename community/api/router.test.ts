@@ -2185,6 +2185,27 @@ describe("community API: new members, links and threads", () => {
     ).toMatchObject({ body: "Nothing to see", editedAt: null });
   });
 
+  it("makes a member new again when staff remove the thread their messages stood in", async () => {
+    const { call, makeStaff, startThread, wait } = harness();
+    await makeStaff("sorcha");
+    const advert = await startThread("brian", { title: "Wings, cheap" });
+    for (const body of ["Still for sale", "Still for sale, anyone?"])
+      await call("POST", `/threads/${advert.id}/messages`, { body }, "brian");
+    wait((LIMITS.newMemberHours + 1) * 60 * 60 * 1000);
+    const thread = await startThread("aoife");
+    const link = () =>
+      call(
+        "POST",
+        `/threads/${thread.id}/messages`,
+        { body: "My shop: https://example.com/wings" },
+        "brian",
+      );
+    expect((await link()).status).toBe(201);
+    await call("POST", `/threads/${advert.id}/remove`, undefined, "sorcha");
+    // One message of his can still be seen, so the link waits again.
+    expect((await link()).body.error).toBe("links_not_yet");
+  });
+
   it("takes three threads a day from a new member, until midnight", async () => {
     const { call, startThread, settle, wait } = harness();
     const start = (user: string) =>
@@ -2199,7 +2220,11 @@ describe("community API: new members, links and threads", () => {
       made.push(await startThread("ciara"));
     const r = await start("ciara");
     expect(r.status).toBe(429);
-    expect(r.body).toMatchObject({ error: "rate_limited" });
+    // The wait is a day, and the words say so.
+    expect(r.body).toMatchObject({
+      error: "rate_limited",
+      message: expect.stringContaining("tomorrow"),
+    });
     // The clock started at midnight, so the wait is the day less the seconds gone.
     expect(r.body.retryAfter).toBeGreaterThan(24 * 60 * 60 - 60);
     expect(r.body.retryAfter).toBeLessThan(24 * 60 * 60);
@@ -2363,6 +2388,7 @@ describe("community API: reports", () => {
       expect((await report()).status).toBe(201);
     const r = await report();
     expect([r.status, r.body.error]).toEqual([429, "rate_limited"]);
+    expect(r.body.message).toContain("tomorrow");
     wait(r.body.retryAfter * 1000);
     expect((await report()).status).toBe(201);
   });

@@ -36,16 +36,18 @@ export interface Limiter {
   take(userId: string, action: RateAction): void;
 }
 
-/** Ends the request with 429 and how many seconds to wait, in the body and in Retry-After. */
-export function rateLimited(retryAfterMs: number): never {
+/**
+ * Ends the request with 429 and how many seconds to wait, in the body and in
+ * Retry-After. The limits counted in days say so: their wait is no moment.
+ */
+export function rateLimited(
+  retryAfterMs: number,
+  message = "That is a lot at once. Give it a moment and try again.",
+): never {
   const retryAfter = Math.max(1, Math.ceil(retryAfterMs / SECOND));
   throw new HTTPException(429, {
     res: Response.json(
-      {
-        error: "rate_limited",
-        message: "That is a lot at once. Give it a moment and try again.",
-        retryAfter,
-      },
+      { error: "rate_limited", message, retryAfter },
       { status: 429, headers: { "Retry-After": String(retryAfter) } },
     ),
   });
@@ -99,6 +101,9 @@ export function createLimiter(
           tokens >= WHOLE ? 0 : ((1 - tokens) * rate.perMs) / rate.max,
         ),
       );
+      // Threads and reports come back in minutes and hours, which is no moment either.
+      if (waitMs > MINUTE)
+        rateLimited(waitMs, "That is a lot in a short while. Try again later.");
       if (waitMs > 0) rateLimited(waitMs);
       for (const { k, rate, tokens } of held)
         buckets.set(k, { tokens: Math.max(0, tokens - 1), at: t, rate });

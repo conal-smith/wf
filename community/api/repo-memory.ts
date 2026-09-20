@@ -928,7 +928,10 @@ export function memoryRepo(
 
     async countMessagesBy(authorId) {
       return [...messages.values()].filter(
-        (m) => m.authorId === authorId && m.status === "visible",
+        (m) =>
+          m.authorId === authorId &&
+          m.status === "visible" &&
+          !inRemovedThread(m),
       ).length;
     },
 

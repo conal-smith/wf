@@ -1250,8 +1250,9 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
 
     async countMessagesBy(authorId) {
       const [row] = await sql<{ n: string }[]>`
-        select count(*) as n from community_messages
-        where author_id = ${authorId} and status = 'visible'`;
+        select count(*) as n from community_messages m
+        join community_threads t on t.id = m.thread_id
+        where m.author_id = ${authorId} and m.status = 'visible' and t.status <> 'removed'`;
       return num(row.n);
     },
 
