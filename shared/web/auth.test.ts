@@ -11,10 +11,18 @@ import type { SiteAuth } from "./auth";
  * and they are the two the API's dev mode is tested against.
  */
 
-async function authWith(env: { clerk?: string; devUser?: string }) {
+async function authWith(env: {
+  clerk?: string;
+  devUser?: string;
+  /** A build made with VITE_MARKET_DEV_SWITCH, and the name its browser keeps. */
+  kept?: string | null;
+}) {
   vi.resetModules();
   vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", env.clerk ?? "");
   vi.stubEnv("VITE_MARKET_DEV_USER", env.devUser ?? "");
+  vi.stubEnv("VITE_MARKET_DEV_SWITCH", env.kept === undefined ? "" : "1");
+  if (env.kept !== undefined)
+    vi.stubGlobal("localStorage", { getItem: () => env.kept });
   const { SiteAuthProvider, useSiteAuth } = await import("./auth");
   let seen: SiteAuth | undefined;
   const Probe = () => {
@@ -30,7 +38,10 @@ async function authWith(env: { clerk?: string; devUser?: string }) {
   return seen!;
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("useSiteAuth", () => {
   it("is nobody, loaded and signed out, when nothing is configured", async () => {
@@ -51,6 +62,26 @@ describe("useSiteAuth", () => {
     expect(auth.userId).toBe("dev_ann");
     expect(auth.identity).toEqual({ name: "ann", email: "ann@example.com" });
     await expect(auth.getToken()).resolves.toBe("dev:ann");
+  });
+
+  it("reads the dev identity from the browser on a build that asked to", async () => {
+    const auth = await authWith({ kept: "cian" });
+    expect(auth.provider).toBe("dev");
+    expect(auth.userId).toBe("dev_cian");
+    await expect(auth.getToken()).resolves.toBe("dev:cian");
+    // Nothing kept is the build's own name, or nobody when it has none.
+    expect((await authWith({ kept: null })).provider).toBe("none");
+    expect((await authWith({ kept: null, devUser: "ann" })).userId).toBe(
+      "dev_ann",
+    );
+    // A name the API's dev mode would refuse signs nobody in.
+    expect((await authWith({ kept: "not a name" })).signedIn).toBe(false);
+  });
+
+  it("leaves what the browser keeps alone on a build that did not ask", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => "cian" });
+    expect((await authWith({})).provider).toBe("none");
+    expect((await authWith({ devUser: "ann" })).userId).toBe("dev_ann");
   });
 
   it("answers outside any provider as nobody, rather than throwing", async () => {
@@ -128,6 +159,13 @@ describe("the bridge over the identity provider", () => {
     await expect(auth.getToken()).resolves.toBe("session-token");
     await auth.signOut();
     expect(clerk.signOut).toHaveBeenCalledWith({ redirectUrl: "/community" });
+  });
+
+  it("is never a dev identity, whatever the build asked and the browser keeps", async () => {
+    standInForClerk();
+    const auth = await authWith({ clerk: "pk_test_bridge", kept: "cian" });
+    expect(auth.provider).toBe("clerk");
+    expect(auth.userId).toBe("user_ann");
   });
 
   it("sends the marketplace's sign-out to /market, as it always did", async () => {

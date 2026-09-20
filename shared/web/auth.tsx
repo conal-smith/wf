@@ -4,7 +4,9 @@
  *
  * - Clerk, when VITE_CLERK_PUBLISHABLE_KEY is set (production).
  * - A fixed dev identity, when VITE_MARKET_DEV_USER is set and the API runs
- *   with MARKET_AUTH_MODE=dev. No Clerk account needed to develop.
+ *   with MARKET_AUTH_MODE=dev. No Clerk account needed to develop. A build
+ *   made with VITE_MARKET_DEV_SWITCH reads the name from the browser instead
+ *   (`devUserNow`), which is how the e2e suite is several people on one build.
  * - Nobody, when neither is set: the section is read-only and says so.
  *
  * Every section of the site (the marketplace, the community) mounts the one
@@ -44,6 +46,27 @@ export const useSiteAuth = () => useContext(Ctx);
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
   string | undefined;
 const devUser = import.meta.env.VITE_MARKET_DEV_USER as string | undefined;
+const devSwitch = Boolean(import.meta.env.VITE_MARKET_DEV_SWITCH);
+
+/** Where a build made with VITE_MARKET_DEV_SWITCH keeps who is signed in. */
+export const DEV_USER_KEY = "wingfoil:dev-user";
+
+/**
+ * The dev identity is one name a build, and a browser test needs several
+ * people, and nobody, on the one build. So a build that asked for it reads the
+ * name from localStorage on each load: a name the API's dev mode would take, or
+ * nothing there for the build's own. It is a dev identity either way: the API
+ * refuses `dev:` tokens in production, and a Clerk build never gets here.
+ */
+function devUserNow(): string | undefined {
+  if (!devSwitch) return devUser;
+  try {
+    const kept = localStorage.getItem(DEV_USER_KEY);
+    return kept && /^[A-Za-z0-9_-]{1,64}$/.test(kept) ? kept : devUser;
+  } catch {
+    return devUser;
+  }
+}
 
 /** `home` is the section's own root (`/market`), where a sign-out lands. */
 export function SiteAuthProvider({
@@ -64,9 +87,16 @@ export function SiteAuthProvider({
       </ClerkProvider>
     );
   }
-  if (devUser)
-    return <Ctx.Provider value={devAuth(devUser)}>{children}</Ctx.Provider>;
-  return <Ctx.Provider value={none}>{children}</Ctx.Provider>;
+  return <DevOrNobody>{children}</DevOrNobody>;
+}
+
+function DevOrNobody({ children }: { children: ReactNode }) {
+  // Once for the page: a new identity on every render would be a new session.
+  const value = useMemo(() => {
+    const name = devUserNow();
+    return name ? devAuth(name) : none;
+  }, []);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 function devAuth(name: string): SiteAuth {
