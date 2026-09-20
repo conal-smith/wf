@@ -6,10 +6,12 @@
  * memory users repo, handed in so both see the same rows.
  */
 import {
+  NOTIFICATION_ACTORS,
   PhotoKeyTakenError,
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
+  mentionLine,
   pageLimit,
   redact,
   searchTerms,
@@ -24,14 +26,22 @@ import {
   REACTIONS,
   type Channel,
   type FollowLevel,
+  type FollowReason,
   type FollowSource,
+  type FollowTarget,
   type Member,
   type Message,
+  type Notification,
+  type NotificationKind,
+  type NotificationSelector,
   type Reaction,
   type Thread,
+  type ThreadCursor,
+  type ThreadRef,
   type ThreadStatus,
 } from "../shared/types.js";
 import { encodeCursor } from "../shared/validate.js";
+import { newId } from "../../market/api/src/ids.js";
 import type { MemoryUsersRepo } from "../../site/api/repo-memory.js";
 
 interface StoredThread {
@@ -70,7 +80,29 @@ interface StoredMessage {
   reactions: Map<Reaction, Set<string>>;
 }
 
+interface StoredNotification {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  threadId: string;
+  messageId: string;
+  /** Everyone folded into the row, most recent first. */
+  actorIds: string[];
+  count: number;
+  emoji: Reaction | null;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const key = (...parts: string[]) => parts.join("\n");
+
+/** Newest first, then by id: the order the Mentions page and the bell share with their cursors. */
+const newestFirst = (
+  a: { at: string; id: string },
+  b: { at: string; id: string },
+) =>
+  a.at < b.at ? 1 : a.at > b.at ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 export function memoryRepo(
   users: MemoryUsersRepo,
@@ -85,8 +117,9 @@ export function memoryRepo(
   const channelSeen = new Map<string, string>(); // userId, channelId -> seen at
   const follows = new Map<
     string, // userId, targetType, targetId
-    { level: FollowLevel; source: FollowSource }
+    { level: FollowLevel; source: FollowSource; createdAt: string }
   >();
+  const notifications: StoredNotification[] = [];
   const reports: (NewReport & { createdAt: string })[] = [];
   const modLog: ModLogRow[] = [];
 
@@ -153,7 +186,34 @@ export function memoryRepo(
     };
   };
 
-  const viewThread = (t: StoredThread, viewerId: string | null): Thread => {
+  /** Why a thread is in the viewer's Following feed, or null when it is not. */
+  const whyFollowed = (
+    t: StoredThread,
+    viewerId: string,
+  ): FollowReason | null => {
+    const own = follows.get(key(viewerId, "thread", t.id));
+    if (own)
+      return own.level === "none"
+        ? null
+        : t.authorId === viewerId
+          ? "started"
+          : visible(t.id).some((m) => m.authorId === viewerId)
+            ? "replied"
+            : "followed";
+    // A channel tells its followers about what started after they followed it.
+    const channel = follows.get(key(viewerId, "channel", t.channelId));
+    return channel &&
+      channel.level !== "none" &&
+      t.createdAt >= channel.createdAt
+      ? "channel"
+      : null;
+  };
+
+  const viewThread = (
+    t: StoredThread,
+    viewerId: string | null,
+    why?: FollowReason | null,
+  ): Thread => {
     const channel = channels.get(t.channelId)!;
     const seen = visible(t.id);
     const newest = seen[seen.length - 1];
@@ -195,6 +255,7 @@ export function memoryRepo(
       lastReadSeq,
       unread: t.lastSeq - (lastReadSeq ?? -1),
       following: follows.get(key(viewerId, "thread", t.id))?.level ?? null,
+      ...(why ? { why } : {}),
     };
   };
 
@@ -283,6 +344,200 @@ export function memoryRepo(
     }
   };
 
+  const threadRef = (t: StoredThread): ThreadRef => {
+    const channel = channels.get(t.channelId)!;
+    return {
+      id: t.id,
+      slug: t.slug,
+      title: t.title,
+      channel: { id: channel.id, slug: channel.slug, name: channel.name },
+    };
+  };
+
+  // ---- follows and the bell ------------------------------------------------
+
+  const follow = (
+    userId: string,
+    targetType: FollowTarget,
+    targetId: string,
+    level: FollowLevel,
+    source: FollowSource,
+    at: string,
+  ) => {
+    const k = key(userId, targetType, targetId);
+    const existing = follows.get(k);
+    if (source === "auto" && existing) return;
+    follows.set(k, { level, source, createdAt: existing?.createdAt ?? at });
+  };
+
+  /** Starting or replying follows the thread, unless the author switched that off. */
+  const autoFollow = (authorId: string, threadId: string, at: string) => {
+    if (users.peek(authorId)?.autoFollow)
+      follow(authorId, "thread", threadId, "all", "auto", at);
+  };
+
+  const muted = (userId: string, threadId: string) =>
+    follows.get(key(userId, "thread", threadId))?.level === "none";
+
+  const followersOf = (
+    targetType: FollowTarget,
+    targetId: string,
+    wanted: (level: FollowLevel) => boolean,
+  ) =>
+    [...follows.entries()]
+      .filter(
+        ([k, f]) =>
+          k.endsWith(key("", targetType, targetId)) && wanted(f.level),
+      )
+      .map(([k]) => k.split("\n")[0]);
+
+  /** Replies fold into the thread's unread row and reactions into the message's; the rest stand alone. */
+  const notify = (
+    n: Pick<
+      StoredNotification,
+      "userId" | "kind" | "threadId" | "messageId"
+    > & { actorId: string; emoji?: Reaction },
+    at: string,
+  ) => {
+    const open = notifications.find(
+      (x) =>
+        x.userId === n.userId &&
+        x.kind === n.kind &&
+        x.readAt === null &&
+        (n.kind === "reply"
+          ? x.threadId === n.threadId
+          : n.kind === "reaction" && x.messageId === n.messageId),
+    );
+    if (!open) {
+      notifications.push({
+        id: newId(),
+        userId: n.userId,
+        kind: n.kind,
+        threadId: n.threadId,
+        messageId: n.messageId,
+        actorIds: [n.actorId],
+        count: 1,
+        emoji: n.emoji ?? null,
+        readAt: null,
+        createdAt: at,
+        updatedAt: at,
+      });
+      return;
+    }
+    // A reaction row counts people, so the same person reacting again adds nothing.
+    if (n.kind === "reply" || !open.actorIds.includes(n.actorId))
+      open.count += 1;
+    open.actorIds = [
+      n.actorId,
+      ...open.actorIds.filter((id) => id !== n.actorId),
+    ];
+    open.messageId = n.messageId;
+    open.emoji = n.emoji ?? null;
+    open.updatedAt = at;
+  };
+
+  /**
+   * Who a new message tells. The people it names get a row of their own;
+   * `rest` is who else hears of it (the thread's followers for a reply, the
+   * channel's for a new thread) and under which kind.
+   */
+  const fanOut = (
+    m: StoredMessage,
+    rest: { kind: "reply" | "thread"; userIds: string[] },
+    at: string,
+  ) => {
+    const told = new Set([m.authorId]);
+    const tell = (userId: string, kind: NotificationKind) => {
+      if (told.has(userId) || muted(userId, m.threadId)) return;
+      told.add(userId);
+      notify(
+        {
+          userId,
+          kind,
+          threadId: m.threadId,
+          messageId: m.id,
+          actorId: m.authorId,
+        },
+        at,
+      );
+    };
+    for (const userId of m.mentionIds) tell(userId, "mention");
+    for (const userId of rest.userIds) tell(userId, rest.kind);
+  };
+
+  /** What the bell shows and counts: nothing of a removed thread, no mention or reaction of a removed message. */
+  const shown = (n: StoredNotification) =>
+    threads.get(n.threadId)?.status !== "removed" &&
+    ((n.kind !== "mention" && n.kind !== "reaction") ||
+      messages.get(n.messageId)?.status === "visible");
+
+  const viewNotification = (n: StoredNotification): Notification => {
+    const t = threads.get(n.threadId);
+    const m = messages.get(n.messageId);
+    return {
+      id: n.id,
+      kind: n.kind,
+      thread: t ? threadRef(t) : null,
+      messageId: n.messageId,
+      seq: m?.seq ?? null,
+      actors: n.actorIds.slice(0, NOTIFICATION_ACTORS).map(member),
+      actorCount: n.actorIds.length,
+      count: n.count,
+      emoji: n.emoji,
+      excerpt:
+        n.kind === "mention" && m
+          ? mentionLine(
+              m.body,
+              n.userId,
+              new Map(m.mentionIds.map((id) => [id, member(id).displayName])),
+            )
+          : null,
+      readAt: n.readAt,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    };
+  };
+
+  const markNotificationsRead = (
+    userId: string,
+    which: NotificationSelector,
+  ) => {
+    const at = now().toISOString();
+    for (const n of notifications) {
+      if (n.userId !== userId || n.readAt !== null) continue;
+      if (
+        "all" in which ||
+        ("ids" in which
+          ? which.ids.includes(n.id)
+          : n.threadId === which.threadId && n.kind !== "report")
+      )
+        n.readAt = at;
+    }
+  };
+
+  /** One page of rows already in newestFirst order, and the cursor for the next. */
+  const pageOf = <T extends { at: string; id: string }>(
+    rows: T[],
+    cursor: ThreadCursor | null,
+    limit: number | undefined,
+  ) => {
+    const size = pageLimit(limit);
+    const rest = rows.filter(
+      (r) =>
+        !cursor ||
+        newestFirst({ at: cursor.lastMessageAt, id: cursor.id }, r) < 0,
+    );
+    const page = rest.slice(0, size);
+    const last = page[page.length - 1];
+    return {
+      page,
+      nextCursor:
+        rest.length > size
+          ? encodeCursor({ lastMessageAt: last.at, id: last.id })
+          : null,
+    };
+  };
+
   const readUpTo = (userId: string, threadId: string, seq: number) => {
     const k = key(userId, threadId);
     reads.set(k, Math.max(reads.get(k) ?? -1, seq));
@@ -345,6 +600,10 @@ export function memoryRepo(
             ? t.channelId === query.channelId
             : channels.get(t.channelId)!.status === "active",
         )
+        .filter(
+          (t) =>
+            !query.following || Boolean(viewerId && whyFollowed(t, viewerId)),
+        )
         .filter((t) => !query.tagId || t.tagIds.includes(query.tagId))
         .filter((t) => !terms.length || matches(t, terms))
         .sort(order)
@@ -352,7 +611,13 @@ export function memoryRepo(
       const page = rows.slice(0, limit);
       const last = page[page.length - 1];
       return {
-        items: page.map((t) => viewThread(t, viewerId)),
+        items: page.map((t) =>
+          viewThread(
+            t,
+            viewerId,
+            query.following && viewerId ? whyFollowed(t, viewerId) : null,
+          ),
+        ),
         nextCursor:
           rows.length > limit
             ? encodeCursor({
@@ -414,6 +679,15 @@ export function memoryRepo(
       channel.lastMessageAt = at;
       recountChannel(channel.id);
       readUpTo(input.authorId, thread.id, 0);
+      autoFollow(input.authorId, thread.id, at);
+      fanOut(
+        messages.get(input.messageId)!,
+        {
+          kind: "thread",
+          userIds: followersOf("channel", channel.id, (l) => l !== "none"),
+        },
+        at,
+      );
       return viewThread(thread, input.authorId);
     },
 
@@ -485,6 +759,15 @@ export function memoryRepo(
       recount(t);
       channels.get(t.channelId)!.lastMessageAt = at;
       readUpTo(input.authorId, t.id, message.seq);
+      autoFollow(input.authorId, t.id, at);
+      fanOut(
+        message,
+        {
+          kind: "reply",
+          userIds: followersOf("thread", t.id, (l) => l === "all"),
+        },
+        at,
+      );
       return viewMessage(message, input.authorId);
     },
 
@@ -518,9 +801,22 @@ export function memoryRepo(
       const m = messages.get(messageId);
       if (!m || m.status === "removed" || inRemovedThread(m)) return null;
       const who = m.reactions.get(emoji) ?? new Set<string>();
+      const fresh = on && !who.has(userId);
       if (on) who.add(userId);
       else who.delete(userId);
       m.reactions.set(emoji, who);
+      if (fresh && m.authorId !== userId && !muted(m.authorId, m.threadId))
+        notify(
+          {
+            userId: m.authorId,
+            kind: "reaction",
+            threadId: m.threadId,
+            messageId: m.id,
+            actorId: userId,
+            emoji,
+          },
+          now().toISOString(),
+        );
       return viewMessage(m, userId);
     },
 
@@ -532,6 +828,7 @@ export function memoryRepo(
         threadId,
         Math.min(Math.max(Math.trunc(seq), 0), t.lastSeq),
       );
+      markNotificationsRead(userId, { threadId });
     },
 
     async markChannelSeen(userId, channelId) {
@@ -540,9 +837,7 @@ export function memoryRepo(
     },
 
     async setFollow(userId, targetType, targetId, level, source) {
-      const k = key(userId, targetType, targetId);
-      if (source === "auto" && follows.has(k)) return;
-      follows.set(k, { level, source });
+      follow(userId, targetType, targetId, level, source, now().toISOString());
       if (targetType === "channel" && channels.has(targetId))
         recountChannel(targetId);
     },
@@ -551,6 +846,51 @@ export function memoryRepo(
       follows.delete(key(userId, targetType, targetId));
       if (targetType === "channel" && channels.has(targetId))
         recountChannel(targetId);
+    },
+
+    async listMentions(userId, cursor, limit) {
+      const rows = [...messages.values()]
+        .filter(
+          (m) =>
+            m.mentionIds.includes(userId) &&
+            m.authorId !== userId &&
+            m.status === "visible" &&
+            !inRemovedThread(m),
+        )
+        .map((m) => ({ at: m.createdAt, id: m.id, m }))
+        .sort(newestFirst);
+      const { page, nextCursor } = pageOf(rows, cursor, limit);
+      return {
+        items: page.map(({ m }) => ({
+          message: viewMessage(m, userId),
+          thread: threadRef(threads.get(m.threadId)!),
+        })),
+        nextCursor,
+      };
+    },
+
+    async countNotifications(userId) {
+      const unread = notifications.filter(
+        (n) =>
+          n.userId === userId &&
+          n.readAt === null &&
+          n.kind !== "reaction" &&
+          shown(n),
+      ).length;
+      return Math.min(unread, 99);
+    },
+
+    async listNotifications(userId, cursor, limit) {
+      const rows = notifications
+        .filter((n) => n.userId === userId && shown(n))
+        .map((n) => ({ at: n.updatedAt, id: n.id, n }))
+        .sort(newestFirst);
+      const { page, nextCursor } = pageOf(rows, cursor, limit);
+      return { items: page.map(({ n }) => viewNotification(n)), nextCursor };
+    },
+
+    async markNotificationsRead(userId, which) {
+      markNotificationsRead(userId, which);
     },
 
     async addReport(report) {

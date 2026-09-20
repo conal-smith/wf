@@ -17,6 +17,7 @@ import {
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
+  mentionLine,
   seqRange,
   type PhotoRow,
   type Repo,
@@ -39,6 +40,8 @@ interface Backend {
   repo: Repo;
   /** A member called `name`, id `dev_<name>`, who joined at the clock's next second. */
   addUser(name: string, role?: "member" | "staff"): Promise<string>;
+  /** The switch on the profile page, which the repos only ever read. */
+  setAutoFollow(id: string, on: boolean): Promise<void>;
   /** Back to a fresh database: the seeded channels and nothing else. */
   reset(): Promise<void>;
 }
@@ -70,6 +73,9 @@ function memoryBackend(): Backend {
       current.users.peek(id)!.role = role;
       return id;
     },
+    async setAutoFollow(id, on) {
+      current.users.peek(id)!.autoFollow = on;
+    },
     async reset() {
       current = make();
     },
@@ -94,6 +100,9 @@ function pgBackend(sql: Db): Backend {
       });
       await sql`update users set role = ${role}, created_at = ${now()} where id = ${id}`;
       return id;
+    },
+    async setAutoFollow(id, on) {
+      await sql`update users set auto_follow = ${on} where id = ${id}`;
     },
     async reset() {
       await sql`truncate users, community_channel_seen cascade`;
@@ -169,11 +178,13 @@ function contract(name: string, backend: () => Backend) {
       });
 
     const titles = (threads: Thread[]) => threads.map((t) => t.title);
+    let setAutoFollow: Backend["setAutoFollow"];
 
     beforeEach(async () => {
       const b = backend();
       await b.reset();
       repo = b.repo;
+      setAutoFollow = (id, on) => b.setAutoFollow(id, on);
       aoife = await b.addUser("aoife");
       cian = await b.addUser("cian");
       niamh = await b.addUser("niamh");
@@ -728,7 +739,11 @@ function contract(name: string, backend: () => Backend) {
 
       it("counts unread from the last read seq, and the author has read their own words", async () => {
         const t = await start(aoife, "Unread");
-        expect(t).toMatchObject({ lastReadSeq: 0, unread: 0, following: null });
+        expect(t).toMatchObject({
+          lastReadSeq: 0,
+          unread: 0,
+          following: "all",
+        });
         await reply(cian, t.id, "One");
         await reply(niamh, t.id, "Two");
 
@@ -805,6 +820,412 @@ function contract(name: string, backend: () => Backend) {
         expect((await repo.getChannel("wings", cian))!.following).toBe(false);
         await repo.clearFollow(aoife, "channel", wings);
         expect(await followers()).toBe(0);
+      });
+    });
+
+    describe("following and the bell", () => {
+      const bell = async (who: string) =>
+        (await repo.listNotifications(who, null)).items;
+      const level = async (threadId: string, who: string) =>
+        (await repo.getThread(threadId, who))!.following;
+
+      it("follows a thread for whoever starts it or replies, and never over a choice", async () => {
+        const t = await start(aoife, "Auto follow");
+        expect(await level(t.id, aoife)).toBe("all");
+        expect(await level(t.id, cian)).toBeNull();
+        await reply(cian, t.id, "Me too");
+        expect(await level(t.id, cian)).toBe("all");
+
+        await repo.setFollow(cian, "thread", t.id, "none", "manual");
+        await reply(cian, t.id, "Still muted");
+        expect(await level(t.id, cian)).toBe("none");
+      });
+
+      it("folds a thread's replies into one unread row: 4 replies by 2 people, count 4, two actors", async () => {
+        const t = await start(aoife, "Grouped");
+        await reply(cian, t.id, "One");
+        await reply(niamh, t.id, "Two");
+        await reply(cian, t.id, "Three");
+        const last = await reply(niamh, t.id, "Four");
+
+        const rows = await bell(aoife);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          kind: "reply",
+          count: 4,
+          actorCount: 2,
+          messageId: last.id,
+          seq: 4,
+          readAt: null,
+          emoji: null,
+          excerpt: null,
+          thread: {
+            id: t.id,
+            title: "Grouped",
+            channel: { slug: "wings", name: "Wings" },
+          },
+        });
+        expect(rows[0].id).toMatch(ID_PATTERN);
+        // Most recent first.
+        expect(rows[0].actors.map((a) => a.id)).toEqual([niamh, cian]);
+        expect(rows[0].actors[0]).toEqual({
+          id: niamh,
+          handle: "niamh",
+          displayName: "Niamh",
+          avatarUrl: null,
+          role: "member",
+        });
+        expect(Date.parse(rows[0].updatedAt)).toBeGreaterThan(
+          Date.parse(rows[0].createdAt),
+        );
+        expect(await repo.countNotifications(aoife)).toBe(1);
+
+        // Nobody hears about their own reply: cian's row holds niamh's two and aoife's none.
+        const cians = await bell(cian);
+        expect(cians).toHaveLength(1);
+        expect(cians[0]).toMatchObject({ kind: "reply", count: 2 });
+        expect(cians[0].actors.map((a) => a.id)).toEqual([niamh]);
+        // Staff never wrote here and follow nothing.
+        expect(await bell(staff)).toEqual([]);
+      });
+
+      it("starts a new row once the last one was read", async () => {
+        const t = await start(aoife, "Read, then more");
+        await reply(cian, t.id, "One");
+        await repo.markRead(aoife, t.id, 1);
+        expect(await repo.countNotifications(aoife)).toBe(0);
+        expect((await bell(aoife))[0].readAt).not.toBeNull();
+
+        await reply(niamh, t.id, "Two");
+        const rows = await bell(aoife);
+        expect(rows.map((r) => [r.count, r.readAt === null])).toEqual([
+          [1, true],
+          [1, false],
+        ]);
+        expect(rows[0].actors.map((a) => a.id)).toEqual([niamh]);
+        expect(await repo.countNotifications(aoife)).toBe(1);
+      });
+
+      it("gives a mention a row of its own, never folded, and not a reply row as well", async () => {
+        const t = await start(aoife, "Mentions");
+        const body = `First line.\nOver to <@${aoife}> and <@${niamh}> for this one.`;
+        const first = await reply(cian, t.id, body, {
+          mentionIds: [aoife, niamh, cian],
+        });
+        const second = await reply(cian, t.id, `And <@${aoife}> again.`, {
+          mentionIds: [aoife],
+        });
+
+        const rows = await bell(aoife);
+        expect(rows.map((r) => [r.kind, r.messageId, r.count])).toEqual([
+          ["mention", second.id, 1],
+          ["mention", first.id, 1],
+        ]);
+        expect(rows[0].excerpt).toBe("And @Aoife again.");
+        expect(rows[1].excerpt).toBe("Over to @Aoife and @Niamh for this one.");
+        expect(rows[1].actors.map((a) => a.id)).toEqual([cian]);
+        expect(await repo.countNotifications(aoife)).toBe(2);
+
+        // Niamh follows nothing here and still hears; cian named himself and does not.
+        expect((await bell(niamh)).map((r) => r.kind)).toEqual(["mention"]);
+        expect(await bell(cian)).toEqual([]);
+      });
+
+      it("sends nothing to level none, and only mentions to level mentions", async () => {
+        const t = await start(aoife, "Levels");
+        await repo.setFollow(aoife, "thread", t.id, "none", "manual");
+        await repo.setFollow(niamh, "thread", t.id, "mentions", "manual");
+        const named = await reply(cian, t.id, `<@${aoife}> <@${niamh}> look`, {
+          mentionIds: [aoife, niamh],
+        });
+        await reply(cian, t.id, "And a plain reply");
+        await repo.setReaction(named.id, cian, "👍", true);
+
+        expect(await bell(aoife)).toEqual([]);
+        expect(await repo.countNotifications(aoife)).toBe(0);
+        expect((await bell(niamh)).map((r) => r.kind)).toEqual(["mention"]);
+
+        // A muted author hears nothing of reactions to their message either.
+        const mine = await reply(aoife, t.id, "Muted, and still talking");
+        await repo.setReaction(mine.id, cian, "🤙", true);
+        expect(await bell(aoife)).toEqual([]);
+      });
+
+      it("writes no follow for an author whose autoFollow is off", async () => {
+        await setAutoFollow(cian, false);
+        const t = await start(cian, "Quiet start");
+        expect(await level(t.id, cian)).toBeNull();
+        const other = await start(aoife, "Quiet reply");
+        await reply(cian, other.id, "Just passing");
+        expect(await level(other.id, cian)).toBeNull();
+
+        await reply(niamh, t.id, "Anyone there?");
+        await reply(niamh, other.id, "Anyone here?");
+        expect(await bell(cian)).toEqual([]);
+        expect((await bell(aoife)).map((r) => r.count)).toEqual([2]);
+
+        await setAutoFollow(cian, true);
+        await reply(cian, other.id, "Back again");
+        expect(await level(other.id, cian)).toBe("all");
+      });
+
+      it("tells a channel's followers about a new thread, and not about its replies", async () => {
+        await repo.setFollow(cian, "channel", wings, "all", "manual");
+        await repo.setFollow(aoife, "channel", wings, "all", "manual");
+        const t = await start(aoife, "New in wings");
+        await start(aoife, "New in foils", { channelId: foils });
+        await reply(niamh, t.id, "A reply");
+
+        const rows = await bell(cian);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          kind: "thread",
+          count: 1,
+          seq: 0,
+          thread: { id: t.id, title: "New in wings" },
+        });
+        expect(rows[0].actors.map((a) => a.id)).toEqual([aoife]);
+        // The author follows the channel too, and is not told of their own thread.
+        expect((await bell(aoife)).map((r) => r.kind)).toEqual(["reply"]);
+
+        // Someone the opening post names hears once, as a mention.
+        await repo.setFollow(niamh, "channel", wings, "all", "manual");
+        await start(aoife, "Named", {
+          body: `Calling <@${niamh}>.`,
+          mentionIds: [niamh],
+        });
+        expect((await bell(niamh)).map((r) => r.kind)).toEqual(["mention"]);
+      });
+
+      it("folds reactions per message, one count per person, and keeps them out of the count", async () => {
+        const t = await start(aoife, "Reactions");
+        const m = await reply(aoife, t.id, "Rate this");
+        await repo.setReaction(m.id, cian, "👍", true);
+        await repo.setReaction(m.id, cian, "👍", true);
+        await repo.setReaction(m.id, cian, "🔥", true);
+        await repo.setReaction(m.id, niamh, "🤙", true);
+        await repo.setReaction(m.id, aoife, "✅", true);
+        await repo.setReaction(m.id, cian, "👍", false);
+
+        let rows = await bell(aoife);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          kind: "reaction",
+          count: 2,
+          actorCount: 2,
+          emoji: "🤙",
+          messageId: m.id,
+          seq: 1,
+          readAt: null,
+        });
+        expect(rows[0].actors.map((a) => a.id)).toEqual([niamh, cian]);
+        expect(await repo.countNotifications(aoife)).toBe(0);
+
+        // Another message is another row.
+        await repo.setReaction(
+          (await repo.listMessages(t.id, { after: -1 }, null))!.items[0].id,
+          cian,
+          "❤️",
+          true,
+        );
+        rows = await bell(aoife);
+        expect(rows.map((r) => [r.kind, r.seq, r.emoji])).toEqual([
+          ["reaction", 0, "❤️"],
+          ["reaction", 1, "🤙"],
+        ]);
+      });
+
+      it("clears a thread's rows when it is opened, and the rest by id or all at once", async () => {
+        const a = await start(aoife, "Thread A");
+        const b = await start(aoife, "Thread B");
+        const c = await start(aoife, "Thread C");
+        await reply(cian, a.id, `Hello <@${aoife}>`, { mentionIds: [aoife] });
+        await reply(cian, a.id, "Hello again");
+        await reply(cian, b.id, "Hello B");
+        await reply(cian, c.id, "Hello C");
+        await reply(niamh, c.id, "Hello C too");
+        expect(await repo.countNotifications(aoife)).toBe(4);
+
+        await repo.markRead(aoife, a.id, 1);
+        let rows = await bell(aoife);
+        expect(
+          rows.filter((r) => r.readAt === null).map((r) => r.thread!.id),
+        ).toEqual([c.id, b.id]);
+        expect(await repo.countNotifications(aoife)).toBe(2);
+        // Someone else's open rows in the same thread are theirs to clear.
+        await reply(aoife, a.id, "Thanks");
+        expect(await repo.countNotifications(cian)).toBe(2);
+
+        const [rowC] = rows.filter((r) => r.thread!.id === c.id);
+        await repo.markNotificationsRead(cian, { ids: [rowC.id] });
+        expect(await repo.countNotifications(aoife)).toBe(2);
+        await repo.markNotificationsRead(aoife, { ids: [rowC.id] });
+        expect(await repo.countNotifications(aoife)).toBe(1);
+        await repo.markNotificationsRead(aoife, { threadId: b.id });
+        expect(await repo.countNotifications(aoife)).toBe(0);
+
+        await reply(cian, b.id, "More B");
+        await reply(cian, c.id, "More C");
+        expect(await repo.countNotifications(aoife)).toBe(2);
+        await repo.markNotificationsRead(aoife, { all: true });
+        expect(await repo.countNotifications(aoife)).toBe(0);
+        rows = await bell(aoife);
+        expect(rows.every((r) => r.readAt !== null)).toBe(true);
+        expect(await repo.countNotifications(cian)).toBe(2);
+      });
+
+      it("pages the bell by cursor, most recently changed first", async () => {
+        const made: string[] = [];
+        for (let i = 0; i < 7; i++) {
+          const t = await start(aoife, `Thread ${i}`);
+          await reply(cian, t.id, "Hello");
+          made.push(t.id);
+        }
+        // A fold moves its row back to the top.
+        await reply(niamh, made[2], "Hello again");
+        const expected = [made[2], ...made.filter((_, i) => i !== 2).reverse()];
+
+        const seen: string[] = [];
+        let cursor: string | null = null;
+        let pages = 0;
+        do {
+          const page = await repo.listNotifications(
+            aoife,
+            cursor ? decodeCursor(cursor) : null,
+            3,
+          );
+          seen.push(...page.items.map((r) => r.thread!.id));
+          cursor = page.nextCursor;
+          pages++;
+        } while (cursor);
+        expect(pages).toBe(3);
+        expect(seen).toEqual(expected);
+      });
+
+      it("drops the rows of a removed thread and the mention of a removed message", async () => {
+        const t = await start(aoife, "Going");
+        const named = await reply(cian, t.id, `<@${niamh}> see this`, {
+          mentionIds: [niamh],
+        });
+        expect(await repo.countNotifications(niamh)).toBe(1);
+        await repo.removeMessage(named.id, cian);
+        expect(await bell(niamh)).toEqual([]);
+        expect(await repo.countNotifications(niamh)).toBe(0);
+        expect((await repo.listMentions(niamh, null)).items).toEqual([]);
+
+        expect(await repo.countNotifications(aoife)).toBe(1);
+        await repo.setThreadStatus(t.id, "removed", null);
+        expect(await bell(aoife)).toEqual([]);
+        expect(await repo.countNotifications(aoife)).toBe(0);
+      });
+
+      it("lists what the viewer follows, each with why, most recent activity first", async () => {
+        const started = await start(aoife, "Aoife started");
+        const replied = await start(cian, "Aoife replied");
+        const pressed = await start(cian, "Aoife pressed Follow");
+        const muted = await start(cian, "Aoife muted");
+        const before = await start(niamh, "In foils, before the follow", {
+          channelId: foils,
+        });
+        await reply(aoife, replied.id, "Me too");
+        await repo.setFollow(aoife, "thread", pressed.id, "mentions", "manual");
+        await reply(aoife, muted.id, "Enough of this");
+        await repo.setFollow(aoife, "thread", muted.id, "none", "manual");
+        await repo.setFollow(aoife, "channel", foils, "all", "manual");
+        const after = await start(niamh, "In foils, after the follow", {
+          channelId: foils,
+        });
+        await start(niamh, "Nothing to do with Aoife");
+        await reply(cian, started.id, "Bump");
+
+        const page = await repo.listThreads({ following: true }, aoife);
+        expect(page.items.map((t) => [t.title, t.why])).toEqual([
+          ["Aoife started", "started"],
+          ["In foils, after the follow", "channel"],
+          ["Aoife replied", "replied"],
+          ["Aoife pressed Follow", "followed"],
+        ]);
+        expect(page.items.map((t) => t.id)).not.toContain(before.id);
+        expect(page.items.map((t) => t.id)).toContain(after.id);
+        expect(page.nextCursor).toBeNull();
+
+        // The same cursor as every thread list.
+        const first = await repo.listThreads(
+          { following: true, limit: 3 },
+          aoife,
+        );
+        const second = await repo.listThreads(
+          {
+            following: true,
+            limit: 3,
+            cursor: decodeCursor(first.nextCursor!),
+          },
+          aoife,
+        );
+        expect(titles([...first.items, ...second.items])).toEqual(
+          titles(page.items),
+        );
+        // Nobody's feed without a viewer, and no `why` anywhere else.
+        expect(
+          (await repo.listThreads({ following: true }, null)).items,
+        ).toEqual([]);
+        expect((await repo.listThreads({}, aoife)).items[0]).not.toHaveProperty(
+          "why",
+        );
+        // Unfollowing a channel takes its threads back out.
+        await repo.clearFollow(aoife, "channel", foils);
+        expect(
+          titles((await repo.listThreads({ following: true }, aoife)).items),
+        ).not.toContain("In foils, after the follow");
+      });
+
+      it("lists every message that mentions someone, newest first, by cursor", async () => {
+        const t = await start(aoife, "Mentions page");
+        const other = await start(cian, "Elsewhere", { channelId: foils });
+        const ids: string[] = [];
+        for (let i = 0; i < 4; i++)
+          ids.push(
+            (
+              await reply(
+                cian,
+                i % 2 ? other.id : t.id,
+                `Hey <@${aoife}> ${i}`,
+                {
+                  mentionIds: [aoife],
+                },
+              )
+            ).id,
+          );
+        await reply(aoife, t.id, `Note to self <@${aoife}>`, {
+          mentionIds: [aoife],
+        });
+        await reply(cian, t.id, "Nobody named");
+        // Muting a thread silences the bell, not the record.
+        await repo.setFollow(aoife, "thread", other.id, "none", "manual");
+
+        const first = await repo.listMentions(aoife, null, 3);
+        expect(first.items.map((x) => x.message.id)).toEqual(
+          [...ids].reverse().slice(0, 3),
+        );
+        expect(first.items[0]).toMatchObject({
+          message: { body: `Hey <@${aoife}> 3`, author: { id: cian } },
+          thread: {
+            id: other.id,
+            title: "Elsewhere",
+            channel: { slug: "foils" },
+          },
+        });
+        expect(first.items[0].message.mentions.map((u) => u.id)).toEqual([
+          aoife,
+        ]);
+        const second = await repo.listMentions(
+          aoife,
+          decodeCursor(first.nextCursor!),
+          3,
+        );
+        expect(second.items.map((x) => x.message.id)).toEqual([ids[0]]);
+        expect(second.nextCursor).toBeNull();
+        expect((await repo.listMentions(niamh, null)).items).toEqual([]);
       });
     });
 
@@ -1070,6 +1491,24 @@ describe("helpers both repos share", () => {
     expect(excerpt("")).toBe("");
   });
 
+  it("quotes the line that names someone, with each token as its @name", () => {
+    const names = new Map([
+      ["dev_aoife", "Aoife K"],
+      ["dev_cian", "Cian M"],
+    ]);
+    const body =
+      "Not cowardly at all.\n\nAsk <@dev_aoife> or <@dev_cian>, or <@dev_gone>.\nLast line.";
+    expect(mentionLine(body, "dev_aoife", names)).toBe(
+      "Ask @Aoife K or @Cian M, or @member.",
+    );
+    // The token went in an edit: the first line stands in.
+    expect(mentionLine(body, "dev_niamh", names)).toBe("Not cowardly at all.");
+    expect(
+      mentionLine(`<@dev_aoife> ${"x".repeat(200)}`, "dev_aoife", names),
+    ).toHaveLength(140);
+    expect(mentionLine("", "dev_aoife", names)).toBe("");
+  });
+
   it("turns a window into a seq range, a page at most", () => {
     expect(seqRange({ after: -1 }, 100)).toEqual({
       lo: 0,
@@ -1159,8 +1598,14 @@ describe.skipIf(!url)("Postgres", () => {
             { name: string }[]
           >`select name from ${sql(ledger)} order by name`
         ).map((r) => r.name);
-      expect(await names("community_migrations")).toEqual(["0001_init.sql"]);
+      expect(await names("community_migrations")).toEqual([
+        "0001_init.sql",
+        "0002_notify.sql",
+      ]);
       expect(await names("market_migrations")).toContain("0003_users.sql");
+      expect(await names("market_migrations")).toContain(
+        "0004_auto_follow.sql",
+      );
     });
 
     it("runs nothing the second time, on either ledger", async () => {
@@ -1184,7 +1629,7 @@ describe.skipIf(!url)("Postgres", () => {
           migrate(boot, COMMUNITY_MIGRATIONS_DIR, COMMUNITY_LEDGER),
           migrate(boot, COMMUNITY_MIGRATIONS_DIR, COMMUNITY_LEDGER),
         ]);
-        expect(ran.flat()).toEqual(["0001_init.sql"]);
+        expect(ran.flat()).toEqual(["0001_init.sql", "0002_notify.sql"]);
       } finally {
         await boot`drop schema if exists ${boot(other)} cascade`;
         await boot.end({ timeout: 5 });
@@ -1249,13 +1694,119 @@ describe.skipIf(!url)("Postgres", () => {
       expect(def("community_notifications_user")).toContain(
         "(user_id, read_at, created_at DESC)",
       );
+      // 0002 narrowed it: only replies fold per thread, and reactions per message.
       expect(def("community_notifications_unread")).toContain("UNIQUE");
       expect(def("community_notifications_unread")).toContain(
-        "(user_id, thread_id, kind)",
+        "(user_id, thread_id)",
       );
-      expect(def("community_notifications_unread")).toContain(
-        "WHERE (read_at IS NULL)",
+      expect(def("community_notifications_unread")).toMatch(
+        /WHERE \(\(read_at IS NULL\) AND \(kind = 'reply'::text\)\)/,
       );
+      expect(def("community_notifications_unread_reaction")).toContain(
+        "UNIQUE",
+      );
+      expect(def("community_notifications_unread_reaction")).toContain(
+        "(user_id, message_id)",
+      );
+      expect(def("community_notifications_unread_reaction")).toMatch(
+        /WHERE \(\(read_at IS NULL\) AND \(kind = 'reaction'::text\)\)/,
+      );
+      expect(def("community_notifications_list")).toContain(
+        "(user_id, updated_at DESC, id)",
+      );
+    });
+
+    it("writes the notification rows in the message's transaction: a failure leaves neither", async () => {
+      await backend.reset();
+      const aoife = await backend.addUser("aoife");
+      const cian = await backend.addUser("cian");
+      const wings = SEED_CHANNELS.find((c) => c.slug === "wings")!;
+      const thread = await backend.repo.createThread({
+        id: newId(),
+        messageId: newId(),
+        channelId: wings.id,
+        authorId: aoife,
+        title: "All or nothing",
+        slug: "all-or-nothing",
+        spotId: null,
+        tagIds: [],
+        body: "Opening post.",
+        photos: [],
+        mentionIds: [],
+      });
+      await backend.repo.setFollow(cian, "channel", wings.id, "all", "manual");
+      const replyId = newId();
+      const threadId = newId();
+      const counts = async () => {
+        const [row] = await sql<
+          { messages: string; threads: string; rows: string; follows: string }[]
+        >`
+          select (select count(*) from community_messages) as messages,
+                 (select count(*) from community_threads) as threads,
+                 (select count(*) from community_notifications) as rows,
+                 (select count(*) from community_follows) as follows`;
+        return row;
+      };
+      const before = await counts();
+
+      // Every new notification row is refused; the ones already there stand.
+      await sql`
+        alter table community_notifications
+        add constraint refuse_all check (false) not valid`;
+      try {
+        await expect(
+          backend.repo.createMessage({
+            id: replyId,
+            threadId: thread.id,
+            authorId: cian,
+            body: "A reply that cannot tell anyone.",
+            replyToId: null,
+            photos: [],
+            mentionIds: [],
+          }),
+        ).rejects.toMatchObject({ code: "23514" });
+        await expect(
+          backend.repo.createThread({
+            id: threadId,
+            messageId: newId(),
+            channelId: wings.id,
+            authorId: aoife,
+            title: "A thread that cannot tell anyone",
+            slug: "a-thread",
+            spotId: null,
+            tagIds: [],
+            body: "Opening post.",
+            photos: [],
+            mentionIds: [],
+          }),
+        ).rejects.toMatchObject({ code: "23514" });
+      } finally {
+        await sql`alter table community_notifications drop constraint refuse_all`;
+      }
+
+      expect(await counts()).toEqual(before);
+      expect(await backend.repo.getMessage(replyId, cian)).toBeNull();
+      expect(await backend.repo.getThread(threadId, aoife)).toBeNull();
+      // No seq was spent, and cian's automatic follow went with the reply.
+      expect(await backend.repo.getThread(thread.id, cian)).toMatchObject({
+        lastSeq: 0,
+        replyCount: 0,
+        following: null,
+      });
+      expect(await backend.repo.countNotifications(aoife)).toBe(0);
+
+      // The same reply lands once nothing refuses it, and tells aoife.
+      const landed = await backend.repo.createMessage({
+        id: replyId,
+        threadId: thread.id,
+        authorId: cian,
+        body: "A reply that can.",
+        replyToId: null,
+        photos: [],
+        mentionIds: [],
+      });
+      expect(landed.seq).toBe(1);
+      expect(await backend.repo.countNotifications(aoife)).toBe(1);
     });
 
     // No repo method archives a channel: it is a row edited by hand, so only
