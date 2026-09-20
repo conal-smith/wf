@@ -16,8 +16,10 @@ import { expect, test, type Page } from "../fixtures";
  *                 particle field, the camera easing and the CSS transitions,
  *                 and `animations: "disabled"` at the shutter for the rest;
  *   the basemap   hidden, see `hideBasemap`;
- *   the fonts     awaited — they are fetched, so an early shutter catches the
- *                 fallback face and moves every line of text a little.
+ *   the fonts     awaited and then checked — they are fetched, so an early or
+ *                 offline shutter catches the fallback face and moves every
+ *                 line of text a little;
+ *   the layout    watched until it stops, see `settled`.
  *
  * Each state is a test of its own so that it opens its own context: the dock
  * remembers display choices in storage, and a shot must not inherit them.
@@ -63,22 +65,65 @@ async function openMap(page: Page) {
   await expect(page.locator(".map-loading")).toHaveCount(0);
 }
 
-/** The camera has landed when the thing it is moving stands still. */
+/**
+ * Nothing is moving any more.
+ *
+ * Two things move after an action: the camera, read off the marker it carries,
+ * and the map itself, which is given its height back when the forecast panel
+ * closes at 390 and hands that height to the basemap a frame later. Watching
+ * only the marker missed the second — the shot came out with the map still at
+ * its old size on one machine and at its new one on the next, which is exactly
+ * the difference a colour diff must not have to explain.
+ */
 async function settled(page: Page) {
-  let last = Number.NaN;
+  let last = "";
   await expect
     .poll(async () => {
-      const box = await page.locator(".spot-marker").first().boundingBox();
-      const same = !!box && Math.abs(box.x - last) < 0.5;
-      last = box?.x ?? Number.NaN;
+      const now = await page.evaluate(() =>
+        [".map-panel", ".map-credits", ".spot-marker"]
+          .map((selector) => {
+            const el = document.querySelector(selector);
+            if (!el) return "-";
+            const box = el.getBoundingClientRect();
+            return [box.x, box.y, box.width, box.height]
+              .map(Math.round)
+              .join(",");
+          })
+          .join("|"),
+      );
+      const same = now === last;
+      last = now;
       return same;
     })
     .toBe(true);
 }
 
-/** The shutter. Text is measured with the real faces or not at all. */
+/** The shutter. Everything held still, then the frame. */
 async function shoot(page: Page, state: string, width: number) {
+  await settled(page);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // Text is measured with the real faces or not at all. They are fetched
+  // (styles.css:1), `fonts.ready` settles just as happily on a failure, and a
+  // shot over the fallback moves every line of text in it — a baseline that
+  // quietly means something else off the network is worse than none. Every
+  // word the map draws is DM Sans; Manrope is the wordmark's alone and the map
+  // never draws it, so its faces stay unloaded and are not asked after.
+  expect(
+    await page.evaluate(() => {
+      const faces = [...document.fonts];
+      return {
+        body: faces.some(
+          (face) =>
+            face.family.replace(/"/g, "") === "DM Sans" &&
+            face.status === "loaded",
+        ),
+        failed: faces
+          .filter((face) => face.status === "error")
+          .map((face) => face.family),
+      };
+    }),
+    "the shot would be of the fallback face",
+  ).toEqual({ body: true, failed: [] });
   await page.screenshot({
     path: shot(state, width),
     animations: "disabled",
@@ -95,7 +140,6 @@ for (const { width, height } of [
 
     test("idle map", async ({ page }) => {
       await openMap(page);
-      await settled(page);
       // The map with nothing over it. The dock opens on the nearest spot, so
       // the idle state is one dismissal away — and leaving it up would make
       // this shot a second copy of the blend one.
@@ -116,6 +160,20 @@ for (const { width, height } of [
       await shoot(page, "search", width);
     });
 
+    test("search row hovered", async ({ page }) => {
+      // Hover is a colour and nothing else, and no other shot has one. The
+      // pointer stays where `hover` left it, so the shutter sees the state.
+      await openMap(page);
+      await page.getByRole("button", { name: "Open spot search" }).click();
+      await page
+        .getByRole("searchbox", { name: "Search Irish spots" })
+        .fill("Dublin");
+      const row = page.locator(".search-results .spot-row").first();
+      await row.hover();
+      await expect(row).toBeVisible();
+      await shoot(page, "row-hover", width);
+    });
+
     test("layers panel", async ({ page }) => {
       await openMap(page);
       await page.getByRole("button", { name: "Layers", exact: true }).click();
@@ -134,7 +192,6 @@ for (const { width, height } of [
       await expect(page.locator(".sheet-loading")).toHaveCount(0, {
         timeout: 30000,
       });
-      await settled(page);
       await shoot(page, "popup", width);
     });
 
@@ -193,7 +250,6 @@ for (const { width, height } of [
       await page.keyboard.press("Escape");
       await expect(page.locator(".spot-popout-card")).toHaveCount(0);
       await expect(page.locator(".dock-place strong")).toHaveText("Dollymount");
-      await settled(page);
       await shoot(page, "forecast-sheet", width);
     });
 
@@ -239,8 +295,53 @@ for (const { width, height } of [
       await expect(page.locator(".site-footer")).toContainText(
         "Archived snapshot",
       );
-      await settled(page);
       await shoot(page, "stale", width);
+    });
+
+    test("model switch loading", async ({ page }) => {
+      // Hold the frames the switch needs: the banner stays on its first line,
+      // spinner and all, for as long as the shutter needs. `animations:
+      // disabled` rewinds the spinner to its first frame, so it is the same
+      // spinner every time.
+      await openMap(page);
+      await page.route("**/weather/icon-eu-*/*", () => {});
+      await page.getByLabel("Choose forecast model", { exact: true }).click();
+      await page.locator('.model-options [data-model="icon-eu"]').click();
+      await expect(page.locator(".model-status .spinner")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Cancel switch" }),
+      ).toBeVisible();
+      await shoot(page, "model-loading", width);
+    });
+
+    test("model switch warning", async ({ page }) => {
+      // The one warm surface the map draws (.frame-status.is-error). The
+      // manifest is asked for on load and cached, so it has to fail from the
+      // start, as e2e/map.spec.ts does it.
+      await hideBasemap(page);
+      await page.route("**/weather/latest.json", (route) =>
+        route.fulfill({ status: 503, body: "Unavailable" }),
+      );
+      await page.goto("/");
+      await expect(page.locator(".spot-marker")).toHaveCount(25, {
+        timeout: 30000,
+      });
+      await page.getByLabel("Choose forecast model", { exact: true }).click();
+      await page.locator('.model-options [data-model="icon-eu"]').click();
+      await expect(page.locator(".model-status.is-error")).toBeVisible();
+      await shoot(page, "warning", width);
+    });
+
+    test("focus ring", async ({ page }) => {
+      // The site menu button is the first thing a Tab reaches. The ring is its
+      // own colour, drawn nowhere else in the baseline, and the house rule is
+      // that there is only ever this one.
+      await openMap(page);
+      await page.keyboard.press("Tab");
+      await expect(
+        page.getByRole("button", { name: "Site menu" }),
+      ).toBeFocused();
+      await shoot(page, "focus-ring", width);
     });
   });
 }
