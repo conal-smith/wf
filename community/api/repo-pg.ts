@@ -1,6 +1,7 @@
 import type { PendingQuery, Row, TransactionSql } from "postgres";
 import type { Db } from "../../market/api/src/db.js";
 import {
+  PhotoKeyTakenError,
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
@@ -143,6 +144,15 @@ function groupBy<T extends { owner_id: string }>(rows: T[]): Map<string, T[]> {
     map.set(row.owner_id, list);
   }
   return map;
+}
+
+/** Postgres reports a broken unique constraint as 23505 and names the constraint. */
+function isKeyClash(err: unknown): boolean {
+  const e = err as { code?: string; constraint_name?: string };
+  return (
+    e?.code === "23505" &&
+    e.constraint_name === "community_message_photos_storage_key_key"
+  );
 }
 
 export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
@@ -473,9 +483,15 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
       insert into community_messages (id, thread_id, seq, author_id, body, reply_to_id, created_at)
       values (${m.id}, ${m.threadId}, ${m.seq}, ${m.authorId}, ${m.body}, ${m.replyToId}, ${at})`;
     for (const p of m.photos) {
-      await tx`
-        insert into community_message_photos (id, message_id, storage_key, url, width, height, position)
-        values (${p.id}, ${m.id}, ${p.storageKey}, ${p.url}, ${p.width}, ${p.height}, ${p.position})`;
+      try {
+        await tx`
+          insert into community_message_photos (id, message_id, storage_key, url, width, height, position)
+          values (${p.id}, ${m.id}, ${p.storageKey}, ${p.url}, ${p.width}, ${p.height}, ${p.position})`;
+      } catch (err) {
+        // The transaction is lost either way; this gives the caller the reason.
+        if (isKeyClash(err)) throw new PhotoKeyTakenError(p.storageKey);
+        throw err;
+      }
     }
     await replaceMentions(tx, m.id, m.mentionIds);
     await tx`

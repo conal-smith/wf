@@ -11,7 +11,12 @@ import {
   type CommunityDeps,
   type Router,
 } from "./context.js";
-import { ReplyTargetError, ThreadClosedError, type PhotoRow } from "../repo.js";
+import {
+  PhotoKeyTakenError,
+  ReplyTargetError,
+  ThreadClosedError,
+  type PhotoRow,
+} from "../repo.js";
 import { LIMITS, type Thread } from "../../shared/types.js";
 import {
   isReaction,
@@ -71,6 +76,14 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
     });
   }
 
+  /** A key is attached once, ever. Only the repo knows what is already on a message. */
+  function refuseTakenKey(err: unknown): void {
+    if (err instanceof PhotoKeyTakenError)
+      fail(400, "invalid", "That photo is already attached to a message.", {
+        photoKeys: err.storageKey,
+      });
+  }
+
   function refuseClosed(thread: Pick<Thread, "lockedReason">): never {
     fail(
       409,
@@ -86,14 +99,17 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
   r.post("/channels/:slug/threads", requireAuth, jsonBody, async (c) => {
     const userId = c.var.userId!;
     const channel = await find.channel(c.req.param("slug"), userId);
-    const user = await ensureUser(people, userId);
     if (channel.status !== "active")
       fail(
         409,
         "archived",
         "This channel is archived and takes no new threads.",
       );
-    if (channel.postPolicy === "staff" && user.role !== "staff")
+    // Staff are made by hand, so a caller with no row yet is not one.
+    if (
+      channel.postPolicy === "staff" &&
+      (await people.users.getUser(userId))?.role !== "staff"
+    )
       fail(
         403,
         "forbidden",
@@ -107,20 +123,29 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
       fail(400, "invalid", "A tag you picked is not one of this channel's.", {
         tagIds: stray,
       });
-    const thread = await repo.createThread({
-      id: newId(),
-      messageId: newId(),
-      channelId: channel.id,
-      authorId: userId,
-      title: input.title,
-      slug: slugifyTitle(input.title),
-      spotId: input.spotId ?? null,
-      tagIds: input.tagIds,
-      body: input.body,
-      mentionIds: await resolveMentions(input.body),
-      photos: resolvePhotos(input.photoKeys, userId),
-    });
-    return c.json(thread, 201);
+    const photos = resolvePhotos(input.photoKeys, userId);
+    // Before the mentions: a member's first words may name themselves.
+    await ensureUser(people, userId);
+    const mentions = await resolveMentions(input.body);
+    try {
+      const thread = await repo.createThread({
+        id: newId(),
+        messageId: newId(),
+        channelId: channel.id,
+        authorId: userId,
+        title: input.title,
+        slug: slugifyTitle(input.title),
+        spotId: input.spotId ?? null,
+        tagIds: input.tagIds,
+        body: input.body,
+        mentionIds: mentions,
+        photos,
+      });
+      return c.json(thread, 201);
+    } catch (err) {
+      refuseTakenKey(err);
+      throw err;
+    }
   });
 
   // ---- messages -----------------------------------------------------------
@@ -132,10 +157,10 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
     if (thread.status === "removed")
       fail(404, "not_found", "That thread has been removed.");
     if (thread.status === "locked") refuseClosed(thread);
-    await ensureUser(people, userId);
     const input = messageInputSchema.parse(await readJson(c));
-    const mentions = await resolveMentions(input.body);
     const photos = resolvePhotos(input.photoKeys, userId);
+    await ensureUser(people, userId);
+    const mentions = await resolveMentions(input.body);
     try {
       const message = await repo.createMessage({
         id: newId(),
@@ -148,6 +173,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
       });
       return c.json(message, 201);
     } catch (err) {
+      refuseTakenKey(err);
       if (err instanceof ReplyTargetError)
         fail(
           400,

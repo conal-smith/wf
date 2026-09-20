@@ -641,8 +641,42 @@ describe("community API: threads", () => {
     });
   });
 
+  it("makes no row for a first write it refuses, and lets first words name their author", async () => {
+    const { call, startThread, users } = harness();
+    const thread = await startThread("aoife");
+    const refused: [string, unknown][] = [
+      ["/channels/general/threads", { title: "Hi", body: "Too short a title" }],
+      [
+        "/channels/general/threads",
+        {
+          title: "Someone else's photo",
+          body: "Hello",
+          photoKeys: ["community/dev_aoife/aaaaaaaaaaaaaaa1.jpg"],
+        },
+      ],
+      [`/threads/${thread.id}/messages`, { body: "  " }],
+      [`/threads/${thread.id}/messages`, "{not json"],
+    ];
+    for (const [path, body] of refused) {
+      const r = await call("POST", path, body, "brian");
+      expect([path, r.status]).toEqual([path, 400]);
+    }
+    expect(await users.getUser("dev_brian")).toBeNull();
+
+    const r = await call(
+      "POST",
+      `/threads/${thread.id}/messages`,
+      { body: "That is me, <@dev_brian>." },
+      "brian",
+    );
+    expect(r.status).toBe(201);
+    expect((r.body as Message).mentions.map((u) => u.id)).toEqual([
+      "dev_brian",
+    ]);
+  });
+
   it("keeps a staff-only channel for staff", async () => {
-    const { call, makeStaff } = harness();
+    const { call, makeStaff, users } = harness();
     const post = {
       title: "New forecast model",
       body: "It is live from today.",
@@ -655,6 +689,8 @@ describe("community API: threads", () => {
     );
     expect(r.status).toBe(403);
     expect(r.body.error).toBe("forbidden");
+    // Refused before the member's row was needed.
+    expect(await users.getUser("dev_aoife")).toBeNull();
 
     await makeStaff("site");
     r = await call("POST", "/channels/announcements/threads", post, "site");
@@ -669,6 +705,30 @@ describe("community API: threads", () => {
       "aoife",
     );
     expect(r.status).toBe(201);
+  });
+
+  it("answers 409 archived in a channel that has left the rail", async () => {
+    const { call, repo, users } = harness();
+    // No route or repo method archives a channel: that is a migration. The row is read as one here.
+    const getChannel = repo.getChannel.bind(repo);
+    vi.spyOn(repo, "getChannel").mockImplementation(async (slug, viewerId) => {
+      const channel = await getChannel(slug, viewerId);
+      return channel && { ...channel, status: "archived" };
+    });
+    const r = await call(
+      "POST",
+      "/channels/general/threads",
+      { title: "Anyone still here", body: "Hello" },
+      "aoife",
+    );
+    expect(r.status).toBe(409);
+    expect(r.body).toMatchObject({
+      error: "archived",
+      message: expect.any(String),
+    });
+    expect(await users.getUser("dev_aoife")).toBeNull();
+    // Its threads are still there to read.
+    expect((await call("GET", "/channels/general/threads")).status).toBe(200);
   });
 
   it("validates a new thread", async () => {
@@ -795,6 +855,51 @@ describe("community API: messages", () => {
         )
       ).status,
     ).toBe(201);
+  });
+
+  it("answers 409 locked when the lock lands between the check and the insert", async () => {
+    const { call, repo, startThread } = harness();
+    const thread = await startThread("aoife");
+    const createMessage = repo.createMessage.bind(repo);
+    vi.spyOn(repo, "createMessage").mockImplementation(async (input) => {
+      await repo.setThreadStatus(thread.id, "locked", null);
+      return createMessage(input);
+    });
+    const r = await call(
+      "POST",
+      `/threads/${thread.id}/messages`,
+      { body: "One more" },
+      "brian",
+    );
+    expect(r.status).toBe(409);
+    expect(r.body).toMatchObject({
+      error: "locked",
+      message: expect.any(String),
+    });
+  });
+
+  it("takes no reply in a removed thread, from staff either", async () => {
+    const { call, makeStaff, startThread } = harness();
+    await makeStaff("site");
+    const thread = await startThread("aoife");
+    const view = (await call("GET", `/threads/${thread.id}`))
+      .body as ThreadView;
+    await call("DELETE", `/messages/${view.opening.id}`, undefined, "aoife");
+
+    // Staff still see it; nobody else does.
+    expect(
+      (await call("GET", `/threads/${thread.id}`, undefined, "site")).status,
+    ).toBe(200);
+    for (const user of ["site", "brian"]) {
+      const r = await call(
+        "POST",
+        `/threads/${thread.id}/messages`,
+        { body: "One more" },
+        user,
+      );
+      expect([user, r.status]).toEqual([user, 404]);
+      expect(r.body.error).toBe("not_found");
+    }
   });
 
   it("lets the author edit inside the window and nobody else", async () => {
@@ -1009,6 +1114,7 @@ describe("community API: photos", () => {
     const { call, startThread, reply } = harness();
     const a = await presign(call, "aoife");
     const b = await presign(call, "aoife");
+    const d = await presign(call, "aoife");
     expect(a.key).toMatch(/^community\/dev_aoife\/[0-9a-z]{16}\.jpg$/);
     expect(a.uploadUrl).toContain(a.key);
 
@@ -1019,12 +1125,12 @@ describe("community API: photos", () => {
       "And from the other side.",
       "aoife",
       {
-        photoKeys: [b.key, a.key],
+        photoKeys: [d.key, b.key],
       },
     );
     expect(message.photos.map((p) => p.url)).toEqual([
+      d.publicUrl,
       b.publicUrl,
-      a.publicUrl,
     ]);
     for (const p of message.photos) expect(p.id).toMatch(ID_PATTERN);
 
@@ -1154,6 +1260,39 @@ describe("community API: photos", () => {
     const page = (await call("GET", `/threads/${thread.id}/messages`))
       .body as MessagePage;
     expect(page.items).toHaveLength(1);
+  });
+
+  it("attaches a key once, and refuses it on a second message or thread", async () => {
+    const { call, startThread } = harness();
+    const used = await presign(call, "aoife");
+    const thread = await startThread("aoife", { photoKeys: [used.key] });
+
+    let r = await call(
+      "POST",
+      `/threads/${thread.id}/messages`,
+      { body: "The same photo again", photoKeys: [used.key] },
+      "aoife",
+    );
+    expect(r.status).toBe(400);
+    expect(r.body).toMatchObject({
+      error: "invalid",
+      details: { photoKeys: used.key },
+    });
+
+    r = await call(
+      "POST",
+      "/channels/general/threads",
+      { title: "And once more", body: "Hello", photoKeys: [used.key] },
+      "aoife",
+    );
+    expect(r.status).toBe(400);
+    expect(r.body.details).toEqual({ photoKeys: used.key });
+
+    // Neither refusal left anything behind.
+    expect((await call("GET", "/feed")).body.items).toHaveLength(1);
+    const head = (await call("GET", `/threads/${thread.id}`))
+      .body as ThreadView;
+    expect(head.thread.lastSeq).toBe(0);
   });
 });
 
