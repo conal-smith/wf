@@ -1,0 +1,167 @@
+/*
+ * The theme: the one place a design value is written down.
+ *
+ * Every colour, type step, radius, shadow, duration, layer and control height
+ * the utility classes can produce is declared in the @theme block below, and
+ * nowhere else. `bg-card text-ink rounded-surface` resolves from here; a class
+ * that names a value this file does not hold resolves to nothing. `npm run
+ * ui:lint` closes the two doors that are left: arbitrary values in a class
+ * string, and colour literals outside this file.
+ *
+ * Imported once, from src/main.tsx, so every bundle on the origin shares it.
+ *
+ * What is deliberately absent:
+ *
+ * - The reset. Only the theme and utilities layers are imported. The map's
+ *   stylesheets were written without one and would move under it, so it stays
+ *   out until they hold no literals of their own.
+ * - The stock palette, type scale, radii, shadows and font stacks. They are
+ *   cleared first, so `bg-red-500` or `text-lg` produce no CSS at all. The
+ *   spacing base is kept: one step is 4px.
+ *
+ * Both layers sit below the unlayered stylesheets the site already has, so an
+ * existing rule always wins over a utility and nothing that is there today
+ * changes.
+ */
+
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+/*
+ * Class names are read from the directories that are written in utilities,
+ * and from nowhere else. The map's own sources are left unscanned: a bare word
+ * there such as `hidden` or `grid` would otherwise become a rule that lands on
+ * its markup.
+ */
+@source "../ui";
+@source "../market/web";
+@source "../community/web";
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+
+  /* ---- colour: Atlantic ------------------------------------------------ */
+
+  /* Grounds and surfaces. `solid` is a fill only: `border-solid` and
+     `outline-solid` already mean the line style, and keep meaning it. */
+  --color-ground: #f4f6fa;
+  --color-sea: #9db0cc;
+  --color-card: #fff;
+  --color-solid: #eef2f9;
+  --color-glass: #eef2f9db;
+  --color-sunken: #e1e8f3;
+  --color-inverse: #0b2545;
+  --color-scrim: #0a1f3c73;
+
+  /* Lines. */
+  --color-line: #0a1f3c1a;
+  --color-line-strong: #7488a6;
+
+  /* Text. */
+  --color-ink: #0a1f3c;
+  --color-ink-2: #1f3a5c;
+  --color-ink-muted: #4a607c;
+  --color-ink-disabled: #7488a6;
+  --color-ink-inverse: #fff;
+
+  /* Action: one filled action per view takes the accent. */
+  --color-accent: #1463ff;
+  --color-accent-hover: #0d4fd1;
+  --color-accent-ink: #fff;
+  --color-quiet: #0b2545;
+  --color-focus: #0b2545;
+
+  /* Status. Warm means now or degraded, never decoration. */
+  --color-ok: #3c8a72;
+  --color-warn: #854d31;
+  --color-warn-ground: #fff4e8;
+  --color-now: #a8442e;
+
+  /* Wind speed, in knots. These mean wind and nothing else. */
+  --color-wind-k00: #355897;
+  --color-wind-k05: #2a76b8;
+  --color-wind-k09: #2e97be;
+  --color-wind-k10: #209e78;
+  --color-wind-k15: #32a74f;
+  --color-wind-k20: #5bb437;
+  --color-wind-k25: #92c134;
+  --color-wind-k30: #bfcc3a;
+  --color-wind-k35: #e8be30;
+  --color-wind-k40: #ea862d;
+  --color-wind-k45: #dd4e38;
+  --color-wind-k50: #be334f;
+  --color-wind-k60: #923d98;
+  --color-wind-k65: #724297;
+
+  /* ---- type ------------------------------------------------------------ */
+
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* A step carries its own line height, and its weight and tracking where it
+     has one: `text-title` is the whole step, not only a size. */
+  --text-eyebrow: 9px;
+  --text-eyebrow--line-height: 1.5;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 1.1px;
+  --text-caption: 10px;
+  --text-caption--line-height: 1.5;
+  --text-label: 11px;
+  --text-label--line-height: 1.3;
+  --text-label--font-weight: 600;
+  --text-body: 12px;
+  --text-body--line-height: 1.5;
+  --text-prose: 14px;
+  --text-prose--line-height: 1.5;
+  --text-lead: 17px;
+  --text-lead--line-height: 1.3;
+  --text-lead--font-weight: 600;
+  --text-title: 25px;
+  --text-title--line-height: 1.3;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.7px;
+  --text-reading: 48px;
+  --text-reading--line-height: 1.3;
+
+  /* ---- shape and depth ------------------------------------------------- */
+
+  --radius-control: 12px;
+  --radius-surface: 20px;
+  --radius-pill: 24px;
+  --radius-dialog: 30px;
+  --radius-full: 9999px;
+
+  --shadow-control: 0px 1px 5px #0a1f3c1f;
+  --shadow-marker: 0px 3px 12px #0a1f3c2e;
+  --shadow-surface: 0px 10px 40px #0a1f3c33;
+  --shadow-dock: 0px -4px 24px #0a1f3c33;
+
+  /* ---- motion and layers ----------------------------------------------- */
+
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 250ms;
+
+  --z-index-popover: 6;
+  --z-index-panel: 15;
+  --z-index-header: 20;
+  --z-index-dialog: 30;
+
+  /* ---- controls -------------------------------------------------------- */
+
+  /* Heights, as named spacing: `h-control-md`, `min-h-touch`. A tap target is
+     never shorter than touch. */
+  --spacing-control-sm: 30px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 46px;
+  --spacing-touch: 44px;
+}
