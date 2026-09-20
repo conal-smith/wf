@@ -29,12 +29,25 @@ DO:
 1. Deps, plugin, theme file, import.
 2. Lint script, probe, npm script.
 3. tsconfig.json:9 include "ui".
-TOUCH: package.json, package-lock.json, vite.config.ts, tsconfig.json, src/main.tsx, ui/theme.css, scripts/lint-ui.mjs.
+TOUCH: package.json, package-lock.json, vite.config.ts, tsconfig.json, src/main.tsx, ui/theme.css, scripts/lint-ui.mjs, tests/ui-theme.test.ts, tests/ui-lint.test.ts.
 AVOID: Preflight. tailwind.config.js. Editing design/. Touching any existing class or stylesheet.
 GATES: npm run build; npm test; e2e suite unchanged (npm run test:e2e).
 ACCEPT:
-- [ ] A scratch element with `bg-accent text-accent-ink rounded-full h-control-md` renders #1463ff, white, 40px tall in dev.
-- [ ] `bg-red-500` produces no CSS (defaults removed).
-- [ ] npm run test:e2e passes with zero snapshot changes.
-- [ ] npm run ui:lint exits 0; the probe proves it exits non-zero on `p-[13px]`.
+- [x] A scratch element with `bg-accent text-accent-ink rounded-full h-control-md` renders #1463ff, white, 40px tall in dev.
+- [x] `bg-red-500` produces no CSS (defaults removed).
+- [x] npm run test:e2e passes with zero snapshot changes.
+- [x] npm run ui:lint exits 0; the probe proves it exits non-zero on `p-[13px]`.
 REFS: D1 D2 D3 D5 D6. Plan 13.1, 14.
+OPEN: S5 names a colour `solid`. `bg-solid` and `text-solid` work, but `border-solid` and `outline-solid` already mean the line style and keep meaning it, so this one colour can never be a border. Fine while it is only a fill; rename it if ui-kit ever wants it as a line.
+LOG:
+- 2026-09-20 agent: anchors verified before editing: tsconfig.json:9 is the include line; design/foundations/tokens.css:147-160 is the fourteen --sem-color-wind-* lines; package.json had no Tailwind; vite.config.ts had only the React plugin.
+- 2026-09-20 agent: installed tailwindcss 4.3.3 and @tailwindcss/vite 4.3.3 as devDependencies, beside vite.
+- 2026-09-20 agent: TOUCH grew by tests/ui-theme.test.ts and tests/ui-lint.test.ts, because every S line owes a test and vitest only collects from tests/, src, force5/src and market. The theme test compiles ui/theme.css with the real compiler and asserts on the CSS that comes back.
+- 2026-09-20 agent: ui/theme.css scans ui/, market/web and community/web only (source(none) plus three @source lines, the same three directories the lint reads). With automatic detection the scanner also read src/, docs/ and backlog/, where bare words become rules (.hidden, .grid) and this item's own `p-[13px]` became CSS. Even so, words in market/web already yield .fixed .block .contents .inline .table .filter in the utilities layer; no element on the site carries any of those as a class today (grepped className and classList in src, force5/src, market/web).
+- 2026-09-20 agent: both layers sit under the site's unlayered stylesheets, so an existing rule always beats a utility. The import sits after dock.css in src/main.tsx, which is after styles.css as S2 asks.
+- 2026-09-20 agent: S8 shadow values taken from the mockup's Atlantic block (backlog/mockups/2026-09-20-community-atlantic.html:651-653): control 0 1 5 #0a1f3c1f, marker 0 3 12 #0a1f3c2e, surface 0 10 40 #0a1f3c33. The mockup has no dock shadow; dock keeps the token's geometry and alpha on the new ink, 0 -4 24 #0a1f3c33. Note the marker alpha is 2e in the mockup and 33 in design/foundations/tokens.css:218; the mockup won, as it did for the hairline (1a, not 14).
+- 2026-09-20 agent: S7 followed as written: reading has no tracking. design/foundations/tokens.css:215 gives the reading step -0.7px; nothing in the forum uses the step, so it is left for whoever first does.
+- 2026-09-20 agent: S8 namespaces: durations are --transition-duration-{fast,base} (duration-fast), layers are --z-index-* (z-header), control heights are --spacing-control-{sm,md,lg} and --spacing-touch (h-control-md, min-h-touch). S9 weights are --font-weight-{normal,medium,semibold,bold}; they have to be restated because `--font-*: initial` clears them with the families.
+- 2026-09-20 agent: S10 goes a little past `[`: it also fails on the bracketless custom-property form `w-(--gutter)`, on `/[…]` modifiers, and on arbitrary variants and properties, since each resolves without the theme. ui/theme.css is the one file exempt from the colour rule. The allow comment works on the line or the line above and is refused without a reason. `npm run ui:lint` runs the lint, then `--probe`: seven scratch trees in the OS temp directory, each linted in a child process; the working tree is never written to.
+- 2026-09-20 agent: ACCEPT 1 proved on the dev server (port 4300) on / and /market: an injected element with the four classes computed to rgb(20, 99, 255), rgb(255, 255, 255), 40px, and `bg-red-500` to a transparent background. ACCEPT 3: 65 of 65 e2e specs passed on PREVIEW_PORT=4300; the suite holds no screenshot snapshots, so there were none to change. Gates run: npm run build, npm test (31 files, 423 tests), npm run market:api:build, npm run ui:lint, npm run test:e2e.
+- 2026-09-20 agent: stopped at the end of the item. Nothing in design/, no existing class or stylesheet, and no tailwind.config.js were touched.
