@@ -1460,6 +1460,8 @@ function contract(name: string, backend: () => Backend) {
         const second = await backend().addUser("site", "staff");
         const t = await start(aoife, "Reported twice");
         const m = await reply(cian, t.id, "Buy my wing, link in bio.");
+        // A mute is about the thread's news, and a report is not that.
+        await repo.setFollow(second, "thread", t.id, "none", "manual");
         const report = (reporterId: string) =>
           repo.addReport({
             id: newId(),
