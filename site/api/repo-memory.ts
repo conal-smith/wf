@@ -31,6 +31,10 @@ export function memoryUsersRepo(
       return users.get(id) ?? null;
     },
 
+    async countUsers() {
+      return users.size;
+    },
+
     async insertUser(row: NewUser) {
       if (users.has(row.id) || handleOwner(row.handle)) return null;
       const at = now().toISOString();

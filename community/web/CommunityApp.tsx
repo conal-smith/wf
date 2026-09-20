@@ -14,10 +14,19 @@ import { usePageTitle } from "../../shared/web/usePageTitle";
 import { Button, Empty } from "../../ui";
 import { tv } from "../../ui/tv";
 import { Header } from "./Header";
-import { useChannels, useNotificationsCount } from "./hooks";
+import {
+  findChannel,
+  useChannels,
+  useNotificationsCount,
+  useViewerRole,
+  type ChannelsState,
+} from "./hooks";
+import { canStartThread, Channel } from "./pages/Channel";
+import { Home } from "./pages/Home";
 import { Rail, railCurrent } from "./Rail";
 import {
   BASE,
+  NEW_THREAD,
   matchRoute,
   paths,
   routed,
@@ -54,13 +63,14 @@ export default function CommunityApp() {
 /**
  * One filled action per view: the header's New thread is it, except where the
  * page brings a primary of its own (Reply on a thread, the way back on a page
- * that does not exist).
+ * that does not exist), and while the dialog it opens is up, whose Post thread
+ * is the filled one.
  */
-export const accentNewThread = (route: Route) =>
-  route.page !== "thread" && route.page !== "not-found";
+export const accentNewThread = (route: Route, composing = false) =>
+  !composing && route.page !== "thread" && route.page !== "not-found";
 
 function Shell() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const route = matchRoute(pathname);
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -69,16 +79,25 @@ function Shell() {
   const channels = useChannels();
   const unread = useNotificationsCount();
   const home = route.page === "home";
+  // A channel the site's team posts in offers New thread to them alone, which
+  // is the one thing here that needs the member's role: asked only there.
+  const open =
+    route.page === "channel" ? findChannel(channels.state, route.slug) : null;
+  const role = useViewerRole(open?.postPolicy === "staff");
   const styles = shellStyles({ railIsPage: home });
 
   return (
     <div className={styles.root()}>
       <div className={styles.page()}>
         <Header
-          accentNew={accentNewThread(route)}
-          newThread={paths.newThread(
-            route.page === "channel" ? route.slug : undefined,
-          )}
+          accentNew={accentNewThread(route, search.has(NEW_THREAD))}
+          newThread={
+            open && !canStartThread(open, role)
+              ? null
+              : paths.newThread(
+                  route.page === "channel" ? route.slug : undefined,
+                )
+          }
           unread={unread}
         />
         <div className={styles.shell()}>
@@ -99,7 +118,14 @@ function Shell() {
                 <span>Channels</span>
               </Button>
             )}
-            <Page route={route} />
+            <Page
+              route={route}
+              channels={channels.state}
+              onPosted={channels.reload}
+              role={role}
+              pathname={pathname}
+              search={search}
+            />
           </main>
         </div>
       </div>
@@ -108,8 +134,22 @@ function Shell() {
 }
 
 /** The pages arrive with their own items; the shell holds their place. */
-function Page({ route }: { route: Route }) {
+function Page({
+  route,
+  ...page
+}: {
+  route: Route;
+  channels: ChannelsState;
+  onPosted: () => void;
+  role: ReturnType<typeof useViewerRole>;
+  pathname: string;
+  search: URLSearchParams;
+}) {
   switch (route.page) {
+    case "home":
+      return <Home {...page} />;
+    case "channel":
+      return <Channel key={route.slug} slug={route.slug} {...page} />;
     case "not-found":
       return <NotFound />;
     default:

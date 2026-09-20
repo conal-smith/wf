@@ -36,8 +36,11 @@ export interface HeaderProps {
    * a primary of its own, where it goes quiet.
    */
   accentNew: boolean;
-  /** Where New thread goes: `paths.newThread`, for the channel that is open. */
-  newThread: string;
+  /**
+   * Where New thread goes: `paths.newThread`, for the channel that is open.
+   * Null where this member cannot start one, and the bar then offers none.
+   */
+  newThread: string | null;
   /** Unread notifications, from `useNotificationsCount`. */
   unread: number;
 }
@@ -63,15 +66,17 @@ export function Header({ accentNew, newThread, unread }: HeaderProps) {
         <nav className={styles.actions()} aria-label="Community">
           {auth.signedIn ? (
             <>
-              <Button
-                {...routed(newThread)}
-                variant={accentNew ? "primary" : "pill"}
-                size="sm"
-                className={styles.newThread()}
-              >
-                <PlusCircle size={15} aria-hidden="true" />
-                <span>New thread</span>
-              </Button>
+              {newThread && (
+                <Button
+                  {...routed(newThread)}
+                  variant={accentNew ? "primary" : "pill"}
+                  size="sm"
+                  className={styles.newThread()}
+                >
+                  <PlusCircle size={15} aria-hidden="true" />
+                  <span>New thread</span>
+                </Button>
+              )}
               <Button
                 {...routed(paths.notifications())}
                 variant="pill"

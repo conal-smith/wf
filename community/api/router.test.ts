@@ -184,6 +184,16 @@ describe("community API: reading", () => {
     expect(r.body.auth).toBe("dev");
   });
 
+  it("counts the members in meta: everyone who has a row, and nobody who only reads", async () => {
+    const { call, startThread } = harness();
+    expect((await call("GET", "/meta")).body.memberCount).toBe(0);
+    await call("GET", "/channels", undefined, "niamh");
+    await startThread("aoife");
+    await startThread("aoife");
+    await startThread("cian");
+    expect((await call("GET", "/meta")).body.memberCount).toBe(2);
+  });
+
   it("lists channels with unread only for a signed-in viewer", async () => {
     const { call, startThread } = harness();
     // Unread counts from when a member joined, so brian is here first.

@@ -1902,6 +1902,15 @@ describe.skipIf(!url)("Postgres", () => {
       expect((await put({ autoFollow: true }))!.autoFollow).toBe(true);
     });
 
+    it("counts the users, for the member count in /meta", async () => {
+      await backend.reset();
+      const users = pgUsersRepo(sql);
+      expect(await users.countUsers()).toBe(0);
+      await backend.addUser("aoife");
+      await backend.addUser("cian");
+      expect(await users.countUsers()).toBe(2);
+    });
+
     // No repo method archives a channel: it is a row edited by hand, so only
     // this run can reach it.
     it("takes an archived channel out of the rail and the feed, and still resolves it", async () => {
