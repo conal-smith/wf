@@ -8,7 +8,7 @@ import {
   lookups,
   readJson,
   UPLOAD_PREFIX,
-  type CommunityDeps,
+  type LiveDeps,
   type Router,
 } from "./context.js";
 import {
@@ -17,7 +17,8 @@ import {
   ThreadClosedError,
   type PhotoRow,
 } from "../repo.js";
-import { LIMITS, type Thread } from "../../shared/types.js";
+import type { LiveEvent } from "../../shared/live.js";
+import { LIMITS, type Message, type Thread } from "../../shared/types.js";
 import {
   isReaction,
   mentionIds,
@@ -33,8 +34,8 @@ import { newId } from "../../../market/api/src/ids.js";
 import { keyBelongsTo } from "../../../market/api/src/storage.js";
 import { ensureUser } from "../../../site/api/users.js";
 
-export function writeRoutes(r: Router, deps: CommunityDeps) {
-  const { repo, people, storage } = deps;
+export function writeRoutes(r: Router, deps: LiveDeps) {
+  const { repo, people, storage, hub } = deps;
   const now = deps.now ?? (() => new Date());
   const find = lookups(repo);
 
@@ -92,6 +93,23 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
         ? `This thread is locked: ${thread.lockedReason}`
         : "This thread is locked.",
     );
+  }
+
+  /**
+   * Tells the thread's open streams, once the repo has committed. It is never
+   * the write's failure: a reader who misses this catches up on their next fetch.
+   */
+  async function announce(t: LiveEvent["t"], message: Message): Promise<void> {
+    try {
+      await hub.publish({
+        t,
+        thread: message.threadId,
+        id: message.id,
+        seq: message.seq,
+      });
+    } catch (err) {
+      console.error("community: a live event was not published", err);
+    }
   }
 
   // ---- threads ------------------------------------------------------------
@@ -171,6 +189,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
         mentionIds: mentions,
         photos,
       });
+      await announce("msg", message);
       return c.json(message, 201);
     } catch (err) {
       refuseTakenKey(err);
@@ -211,6 +230,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
       await resolveMentions(body),
     );
     if (!message) fail(404, "not_found", "That message has been removed.");
+    await announce("edit", message);
     return c.json(message);
   });
 
@@ -222,6 +242,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
       fail(403, "forbidden", "Only its author can delete this message.");
     const message = await repo.removeMessage(current.id, userId);
     if (!message) fail(404, "not_found", "That message does not exist.");
+    await announce("remove", message);
     return c.json(message);
   });
 
@@ -238,6 +259,7 @@ export function writeRoutes(r: Router, deps: CommunityDeps) {
     await ensureUser(people, userId);
     const message = await repo.setReaction(current.id, userId, emoji, on);
     if (!message) fail(404, "not_found", "That message has been removed.");
+    await announce("react", message);
     return c.json(message);
   });
 }

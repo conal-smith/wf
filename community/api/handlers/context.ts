@@ -4,6 +4,7 @@
  */
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import type { Hub } from "../hub.js";
 import type { Repo } from "../repo.js";
 import type { Channel, Message, Thread } from "../../shared/types.js";
 import type { AuthVariables } from "../../../market/api/src/auth.js";
@@ -20,7 +21,12 @@ export interface CommunityDeps {
   authMode: "clerk" | "dev";
   /** The clock the edit window is measured on. Tests move it. */
   now?: () => Date;
+  /** Where a committed write is announced. Left out, events stay in this process. */
+  hub?: Hub;
 }
+
+/** What the routes that publish or stream are given: the router has settled the hub. */
+export type LiveDeps = CommunityDeps & { hub: Hub };
 
 export type Env = { Variables: AuthVariables };
 export type Router = Hono<Env>;
