@@ -4,7 +4,7 @@
  * when it gives up on the stream and polls.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { followThread, type EventSourceLike } from "./followThread";
+import { afterQuery, followThread, type EventSourceLike } from "./followThread";
 import { LIVE, parseLiveEvent, type LiveEvent } from "./live";
 import type { Message, MessagePage } from "./types";
 
@@ -43,15 +43,19 @@ function setup(lastSeq: number, pageSize = 30) {
   for (let seq = 0; seq <= lastSeq; seq++) thread.push(message(seq));
   const asked: number[] = [];
   let failing = false;
+  /** While set, an answer already read from the thread has not yet arrived. */
+  let held: Promise<void> | null = null;
   const fetchAfter = async (seq: number): Promise<MessagePage> => {
     asked.push(seq);
     if (failing) throw new Error("offline");
     const newer = thread.filter((m) => m.seq > seq);
-    return {
+    const page = {
       items: newer.slice(0, pageSize),
       hasOlder: seq >= 0,
       hasNewer: newer.length > pageSize,
     };
+    await held;
+    return page;
   };
   const sources: (EventSourceLike & { closed: boolean })[] = [];
   const open = () => {
@@ -86,6 +90,15 @@ function setup(lastSeq: number, pageSize = 30) {
     source: sources[0],
     sources,
     fail: (on: boolean) => (failing = on),
+    /** Holds every answer back until the returned function is called. */
+    hold() {
+      let release = () => {};
+      held = new Promise((resolve) => (release = resolve));
+      return () => {
+        held = null;
+        release();
+      };
+    },
   };
 }
 
@@ -186,6 +199,42 @@ describe("followThread", () => {
       [message(2, "After react")],
       [message(2, "After remove")],
     ]);
+  });
+
+  it("fetches the opening post again from before seq 0, which the API spells as no cursor", async () => {
+    const { thread, asked, got, source, settle } = setup(1);
+    thread[0] = message(0, "Edited.");
+    source.onmessage!({ data: live("edit", 0) });
+    await settle();
+    expect(asked).toEqual([-1]);
+    expect(got).toEqual([[message(0, "Edited.")]]);
+    expect(afterQuery(-1)).toBe("");
+    expect(afterQuery(0)).toBe("?after=0");
+    expect(afterQuery(25)).toBe("?after=25");
+  });
+
+  it("does not lose a change to a message that a fetch under way had already read", async () => {
+    const { thread, asked, got, source, settle, hold } = setup(1);
+    thread.push(message(2));
+    const release = hold();
+    source.onmessage!({ data: live("msg", 2) });
+    await settle();
+    // The answer is on its way with message 2 as it was; then it is reacted to.
+    thread[2] = message(2, "After react");
+    source.onmessage!({ data: live("react", 2) });
+    release();
+    await settle();
+    expect(asked).toEqual([1, 1]);
+    expect(got).toEqual([[message(2)], [message(2, "After react")]]);
+  });
+
+  it("told of a change to a message it has not reached, fetches up to it", async () => {
+    const { thread, asked, got, source, settle } = setup(1);
+    thread.push(message(2, "After edit"));
+    source.onmessage!({ data: live("edit", 2) });
+    await settle();
+    expect(asked).toEqual([1]);
+    expect(got).toEqual([[message(2, "After edit")]]);
   });
 
   it("asks again from the same seq after a fetch fails", async () => {
