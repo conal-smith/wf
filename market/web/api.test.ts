@@ -79,3 +79,51 @@ describe("a reply that is JSON", () => {
     await expect(api.getListing("abc")).resolves.toBeNull();
   });
 });
+
+/**
+ * The fetch core moved to `shared/web/http.ts`. What the marketplace sends,
+ * where it sends it and what it tells a reader did not move with it.
+ */
+describe("the marketplace on the shared fetch core", () => {
+  it("still asks /api/market, with the signed-in user's bearer token", async () => {
+    const spy = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ id: "abc", saved: true }), {
+          status: 200,
+        }),
+    );
+    vi.stubGlobal("fetch", spy);
+    await new MarketApi(async () => "dev:ann").setSaved("abc", true);
+    expect(spy.mock.calls[0]).toEqual([
+      "/api/market/listings/abc/saved",
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer dev:ann",
+        },
+        body: JSON.stringify({ saved: true }),
+      },
+    ]);
+  });
+
+  it("still says the marketplace could not be reached when offline", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    const error = await api.me().catch((e) => e);
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error.code).toBe("offline");
+    expect(error.message).toBe(
+      "The marketplace could not be reached. Check your connection.",
+    );
+  });
+
+  it("throws the one error class the shared core throws", async () => {
+    const http = await import("../../shared/web/http");
+    expect(ApiRequestError).toBe(http.ApiRequestError);
+  });
+});
