@@ -96,6 +96,8 @@ export interface MessageProps {
   viewer: Viewer;
   now: Date;
   marked?: boolean;
+  /** What the thread hangs under the opening post's words: its spot. */
+  attached?: ReactNode;
   /** Absent on a locked thread and for nobody else: signed out, the page asks for a sign-in. */
   onReply?: (message: MessageData) => void;
   onReact: (message: MessageData, emoji: Reaction, on: boolean) => void;
@@ -262,6 +264,7 @@ export function Message({
   viewer,
   now,
   marked = false,
+  attached,
   onReply,
   onReact,
   onReport,
@@ -436,6 +439,7 @@ export function Message({
         ) : (
           content(message, viewer.staff)
         ))}
+      {opening && visible && attached}
       {opening && visible && (
         <Reactions message={message} onReact={react} picker />
       )}

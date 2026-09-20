@@ -16,6 +16,7 @@ import { streamStyles } from "./components/MessageStream";
 import { newThreadStyles } from "./components/NewThreadDialog";
 import { popoverStyles } from "./components/Popover";
 import { reactionStyles } from "./components/Reactions";
+import { spotCardStyles } from "./components/SpotCard";
 import { tagPillsStyles } from "./components/TagPills";
 import { threadListStyles } from "./components/ThreadList";
 import { threadRowStyles } from "./components/ThreadRow";
@@ -49,6 +50,7 @@ const RECIPES = {
   railStyles,
   reactionStyles,
   shellStyles,
+  spotCardStyles,
   streamStyles,
   tagPillsStyles,
   threadListStyles,
