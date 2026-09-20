@@ -42,6 +42,19 @@ export function ridingLocations(original: Spot[]): Spot[] {
   });
 }
 
+/**
+ * The place a link from elsewhere on the site opens the map on: `/?spot=keel`,
+ * as the community's spot card writes it. An id the layer does not hold is no
+ * place at all, and the map opens where it always has.
+ */
+export function spotFromSearch(
+  search: string,
+  spots: readonly Spot[],
+): Spot | undefined {
+  const id = new URLSearchParams(search).get("spot");
+  return id ? spots.find((spot) => spot.id === id) : undefined;
+}
+
 // Preserve original coordinates/IDs: bundled spot forecasts refer to those exact points.
 const existingIds: Record<string, string> = {
   "fi-inchydoney-east-beach": "inchydoney",

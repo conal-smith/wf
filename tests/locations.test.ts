@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { mergeLocations, ridingLocations } from "../src/locations";
+import {
+  mergeLocations,
+  ridingLocations,
+  spotFromSearch,
+} from "../src/locations";
 
 const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
   (name) => JSON.parse(readFileSync(`data/locations/${name}.json`, "utf8")),
@@ -22,6 +26,20 @@ describe("saved Irish wind-sport coordinates", () => {
     expect(
       spots.some((s) => /Watersports|School|Club|Resort/.test(s.name)),
     ).toBe(false);
+  });
+  it("opens on the riding place a link names, and where it always has for any other", () => {
+    const spots = ridingLocations(
+      JSON.parse(readFileSync("public/spots.json", "utf8")),
+    );
+    expect(spotFromSearch("?spot=kilcrea", spots)?.name).toBe(
+      "Kilcrea — Malahide Estuary",
+    );
+    expect(spotFromSearch("?model=gfs&spot=keel", spots)?.id).toBe("keel");
+    expect(spotFromSearch("", spots)).toBeUndefined();
+    expect(spotFromSearch("?spot=", spots)).toBeUndefined();
+    expect(spotFromSearch("?spot=atlantis", spots)).toBeUndefined();
+    // An operator's own id is not a place the public layer holds.
+    expect(spotFromSearch("?spot=osm-blast-kilcrea", spots)).toBeUndefined();
   });
   it("retains all collected research records while preserving original forecast IDs and coordinates", () => {
     const original = JSON.parse(readFileSync("public/spots.json", "utf8"));
