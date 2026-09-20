@@ -3,7 +3,8 @@
  * JSON in and out, and one error class for everything that can go wrong. A
  * section keeps its own endpoints and hands this its prefix and its name.
  *
- * This is the only file in the browser code that calls `fetch`.
+ * No section's client calls `fetch` itself: its requests and its uploads go
+ * through here. (The map reads forecast files, which are not the API's.)
  */
 
 /** Where the API lives. Empty in development, where Vite proxies /api. */
