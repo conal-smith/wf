@@ -5,7 +5,14 @@
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { Repo } from "../repo.js";
-import type { Channel, Message, Thread } from "../../shared/types.js";
+import {
+  LIMITS,
+  type Channel,
+  type Message,
+  type Thread,
+  type ThreadCursor,
+} from "../../shared/types.js";
+import { decodeCursor } from "../../shared/validate.js";
 import type { AuthVariables } from "../../../market/api/src/auth.js";
 import { fail } from "../../../market/api/src/errors.js";
 import { ID_PATTERN } from "../../../market/api/src/ids.js";
@@ -18,7 +25,7 @@ export interface CommunityDeps {
   people: People;
   storage: Storage;
   authMode: "clerk" | "dev";
-  /** The clock the edit window is measured on. Tests move it. */
+  /** The clock the edit window and a member's newness are measured on. Tests move it. */
   now?: () => Date;
 }
 
@@ -47,6 +54,36 @@ export async function readJson(c: Context<Env>): Promise<unknown> {
   } catch {
     fail(400, "invalid", "The request body must be JSON.");
   }
+}
+
+/** The `cursor` of a list's query, or null on its first page. One this API did not make is a 400, not an empty page. */
+export function cursorOf(params: URLSearchParams): ThreadCursor | null {
+  const text = params.get("cursor");
+  if (!text) return null;
+  const cursor = decodeCursor(text);
+  if (!cursor)
+    fail(400, "invalid", "That cursor is not one this API made.", {
+      cursor: text,
+    });
+  return cursor;
+}
+
+/**
+ * New is an account under a day old, or with fewer than three messages
+ * standing. Someone with no row yet has written nothing, so they are new.
+ * Staff are made by hand and never are.
+ */
+export async function isNewMember(
+  deps: Pick<CommunityDeps, "repo" | "people">,
+  userId: string,
+  now: Date,
+): Promise<boolean> {
+  const user = await deps.people.users.getUser(userId);
+  if (!user) return true;
+  if (user.role === "staff") return false;
+  const ageMs = now.getTime() - Date.parse(user.createdAt);
+  if (ageMs < LIMITS.newMemberHours * 60 * 60 * 1000) return true;
+  return (await deps.repo.countMessagesBy(userId)) < LIMITS.newMemberMessages;
 }
 
 const SLUG_PATTERN = /^[a-z0-9-]{1,60}$/;

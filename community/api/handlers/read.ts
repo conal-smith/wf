@@ -3,31 +3,23 @@
  * repo adds what is the viewer's own (unread, following, myReactions) to the
  * same answer, and without one those fields are simply not there.
  */
-import { lookups, type CommunityDeps, type Router } from "./context.js";
+import {
+  cursorOf,
+  lookups,
+  type CommunityDeps,
+  type Router,
+} from "./context.js";
 import {
   LIMITS,
   REACTIONS,
   type MessageWindow,
   type MetaPayload,
-  type ThreadCursor,
   type ThreadView,
 } from "../../shared/types.js";
-import { decodeCursor } from "../../shared/validate.js";
 import { fail } from "../../../market/api/src/errors.js";
 import { ID_PATTERN } from "../../../market/api/src/ids.js";
 
 const SEARCH_MAX = 100;
-
-function cursorOf(params: URLSearchParams): ThreadCursor | null {
-  const text = params.get("cursor");
-  if (!text) return null;
-  const cursor = decodeCursor(text);
-  if (!cursor)
-    fail(400, "invalid", "That cursor is not one this API made.", {
-      cursor: text,
-    });
-  return cursor;
-}
 
 /** after, before or around, as a seq. With none of them the stream starts at the opening post. */
 function windowOf(params: URLSearchParams): MessageWindow {
@@ -67,14 +59,26 @@ export function readRoutes(r: Router, deps: CommunityDeps) {
     c.json({ channels: await repo.listChannels(c.var.userId) }),
   );
 
-  // Following and Mentions are this query with a filter, and arrive with follows.
+  // Latest is everyone's. Following and Mentions are a member's own, so they need a session.
   r.get("/feed", async (c) => {
     const params = new URL(c.req.url).searchParams;
     const tab = params.get("tab") ?? "latest";
-    if (tab !== "latest")
+    if (tab !== "latest" && tab !== "following" && tab !== "mentions")
       fail(400, "invalid", "There is no such tab.", { tab });
+    const cursor = cursorOf(params);
+    if (tab === "latest")
+      return c.json(await repo.listThreads({ cursor }, c.var.userId));
+    // requireAuth's answer: it cannot sit on the route, which Latest shares.
+    const userId = c.var.userId;
+    if (!userId)
+      return c.json(
+        { error: "unauthenticated", message: "Sign in to do that." },
+        401,
+      );
     return c.json(
-      await repo.listThreads({ cursor: cursorOf(params) }, c.var.userId),
+      tab === "following"
+        ? await repo.listThreads({ following: true, cursor }, userId)
+        : await repo.listMentions(userId, cursor),
     );
   });
 
@@ -84,16 +88,15 @@ export function readRoutes(r: Router, deps: CommunityDeps) {
     const tag = params.get("tag");
     if (tag && !ID_PATTERN.test(tag))
       fail(400, "invalid", "That is not a tag.", { tag });
-    return c.json(
-      await repo.listThreads(
-        {
-          channelId: channel.id,
-          tagId: tag ?? undefined,
-          cursor: cursorOf(params),
-        },
-        c.var.userId,
-      ),
+    const cursor = cursorOf(params);
+    const page = await repo.listThreads(
+      { channelId: channel.id, tagId: tag ?? undefined, cursor },
+      c.var.userId,
     );
+    // Looking at a channel's first page is what resets its unread count in the rail.
+    if (c.var.userId && !cursor)
+      await repo.markChannelSeen(c.var.userId, channel.id);
+    return c.json(page);
   });
 
   r.get("/threads/:id", async (c) => {
