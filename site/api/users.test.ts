@@ -6,6 +6,12 @@ import { ensureUser, handleCandidate, slugifyHandle } from "./users";
 import { RESERVED_HANDLES, USER_LIMITS } from "../shared/types";
 import { handleSchema } from "../shared/validate";
 
+// The provider's client, with the one call the lookup makes swapped for a stub.
+const getUser = vi.hoisted(() => vi.fn());
+vi.mock("@clerk/backend", () => ({
+  createClerkClient: () => ({ users: { getUser } }),
+}));
+
 const named =
   (name: string | null, avatarUrl: string | null = null): IdentityLookup =>
   async () => ({ name, avatarUrl });
@@ -117,6 +123,51 @@ describe("ensureUser", () => {
       "dev_brian",
     );
     expect(made).toMatchObject({ handle: "brian", displayName: "brian" });
+  });
+
+  it("takes the name and picture the provider holds", async () => {
+    getUser.mockResolvedValueOnce({
+      fullName: "Aoife Kelly",
+      firstName: "Aoife",
+      username: "aoifek",
+      hasImage: true,
+      imageUrl: "https://img.test/aoife.jpg",
+    });
+    expect(await clerkIdentity("sk_test_x")("user_1")).toEqual({
+      name: "Aoife Kelly",
+      avatarUrl: "https://img.test/aoife.jpg",
+    });
+    expect(getUser).toHaveBeenLastCalledWith("user_1");
+
+    // No full name: the username will do. The provider's stock picture is not theirs.
+    getUser.mockResolvedValueOnce({
+      fullName: null,
+      firstName: null,
+      username: "aoifek",
+      hasImage: false,
+      imageUrl: "https://img.test/default.png",
+    });
+    expect(await clerkIdentity("sk_test_x")("user_1")).toEqual({
+      name: "aoifek",
+      avatarUrl: null,
+    });
+  });
+
+  it("still makes the row when the provider cannot be reached", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    getUser.mockRejectedValueOnce(new Error("503"));
+    const users = memoryUsersRepo();
+    const made = await ensureUser(
+      { users, identity: clerkIdentity("sk_test_x") },
+      "user_1",
+    );
+    expect(made).toMatchObject({
+      handle: "member",
+      displayName: "Member",
+      avatarUrl: null,
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 
   it("has nothing to ask with when only a JWT key is configured", async () => {

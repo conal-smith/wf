@@ -472,6 +472,22 @@ describe("site API: /api/me", () => {
     expect(again.handle).toBe("aoife");
   });
 
+  it("answers a cross-origin preflight, as /api/market does", async () => {
+    const { app } = harness();
+    for (const path of ["/api/me", "/api/market/me"]) {
+      const res = await app.request(path, {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://wingfoil.ie",
+          "Access-Control-Request-Method": "PUT",
+        },
+      });
+      expect([path, res.status]).toEqual([path, 204]);
+      expect(res.headers.get("access-control-allow-origin")).toBe("*");
+      expect(res.headers.get("access-control-allow-methods")).toContain("PUT");
+    }
+  });
+
   it("is the same row the marketplace reads and writes", async () => {
     const { call, request } = harness();
     let r = await request("PUT", "/api/me", profile, "aoife");
