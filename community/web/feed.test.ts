@@ -980,6 +980,8 @@ describe("S8 and the pages", () => {
             accentNew: true,
             newThread,
             unread: 0,
+            onUnread: () => {},
+            pathname: "/community",
           }),
         }),
       );

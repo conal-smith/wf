@@ -3,8 +3,8 @@
  * a hook that binds it to the signed-in member's token. The request itself, the
  * token and the error shape are the site's: `shared/web/http.ts`.
  *
- * The shell's routes, then each page's beside them: the feed's, then the
- * thread's.
+ * The shell's routes, then each page's beside them: the feed's, what a member
+ * follows and is told, then the thread's.
  */
 import { useMemo, useRef } from "react";
 import {
@@ -15,16 +15,20 @@ import {
 } from "../../shared/web/http";
 import { useSiteAuth } from "../../shared/web/auth";
 import { resizeImage } from "../../shared/web/images";
-import type { User } from "../../site/shared/types";
+import type { User, UserInput } from "../../site/shared/types";
 import { afterQuery } from "../shared/followThread";
 import type {
   Channel,
   FollowLevel,
+  MemberView,
+  MentionPage,
   Message,
   MessageInput,
   MessagePage,
   MessageWindow,
   MetaPayload,
+  NotificationPage,
+  NotificationSelector,
   Reaction,
   Thread,
   ThreadInput,
@@ -134,6 +138,48 @@ export class CommunityApi {
   /** The member's own row. The site's route, not the community's: /api/me. */
   me() {
     return request<User>({ ...this.settings, prefix: "/api" }, "GET", "/me");
+  }
+  /** The whole row goes back: what this PUT is not sent, it resets. See `profileInput`. */
+  updateMe(input: UserInput) {
+    return request<User>(
+      { ...this.settings, prefix: "/api" },
+      "PUT",
+      "/me",
+      input,
+    );
+  }
+
+  /** What the member follows, each thread with its `why`. */
+  following(cursor: string | null = null) {
+    return this.request<ThreadPage>(
+      "GET",
+      withQuery("/feed", { tab: "following", cursor }),
+    );
+  }
+  /** The messages that name the member, newest first. */
+  mentions(cursor: string | null = null) {
+    return this.request<MentionPage>(
+      "GET",
+      withQuery("/feed", { tab: "mentions", cursor }),
+    );
+  }
+  /** The bell's rows, most recently changed first. */
+  notifications(cursor: string | null = null) {
+    return this.request<NotificationPage>(
+      "GET",
+      withQuery("/notifications", { cursor }),
+    );
+  }
+  /** Some rows, one thread's, or all of them. The answer is the bell's number now. */
+  markNotificationsRead(which: NotificationSelector) {
+    return this.request<{ count: number }>("PUT", "/notifications/read", which);
+  }
+  /** A member's public profile, and a page of the threads they started. */
+  member(handle: string, cursor: string | null = null) {
+    return this.request<MemberView>(
+      "GET",
+      withQuery(`/members/${encodeURIComponent(handle)}`, { cursor }),
+    );
   }
 
   // ---- the thread page ------------------------------------------------------

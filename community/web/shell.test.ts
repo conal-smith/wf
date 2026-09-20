@@ -8,12 +8,15 @@ import { compileTheme, holds } from "../../ui/theme.testkit";
 import { SEED_CATEGORIES, SEED_CHANNELS } from "../api/seed";
 import type { Channel } from "../shared/types";
 import { accentNewThread, shellStyles } from "./CommunityApp";
+import { bellStyles } from "./components/Bell";
 import { bodyStyles } from "./components/Body";
 import { composerStyles } from "./components/Composer";
 import { followMenuStyles } from "./components/FollowMenu";
+import { membersOnlyStyles } from "./components/MembersOnly";
 import { messageStyles } from "./components/Message";
 import { streamStyles } from "./components/MessageStream";
 import { newThreadStyles } from "./components/NewThreadDialog";
+import { notificationRowStyles } from "./components/NotificationRow";
 import { popoverStyles } from "./components/Popover";
 import { reactionStyles } from "./components/Reactions";
 import { tagPillsStyles } from "./components/TagPills";
@@ -22,7 +25,11 @@ import { threadRowStyles } from "./components/ThreadRow";
 import { headerStyles } from "./Header";
 import { railGroups, type ChannelsState } from "./hooks";
 import { channelStyles } from "./pages/Channel";
+import { followingStyles } from "./pages/Following";
 import { homeStyles } from "./pages/Home";
+import { mentionsStyles } from "./pages/Mentions";
+import { notificationsStyles } from "./pages/Notifications";
+import { profileStyles } from "./pages/Profile";
 import { Rail, railCurrent, railStyles } from "./Rail";
 import { threadStyles } from "./pages/Thread";
 import { matchRoute } from "./router";
@@ -37,15 +44,22 @@ const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 
 const RECIPES = {
+  bellStyles,
   bodyStyles,
   channelStyles,
   composerStyles,
   followMenuStyles,
+  followingStyles,
   headerStyles,
   homeStyles,
+  membersOnlyStyles,
+  mentionsStyles,
   messageStyles,
   newThreadStyles,
+  notificationRowStyles,
+  notificationsStyles,
   popoverStyles,
+  profileStyles,
   railStyles,
   reactionStyles,
   shellStyles,
@@ -169,8 +183,9 @@ async function shellAs(devUser: string | null, pathname: string) {
 
 async function headerAs(
   devUser: string | null,
-  props: { accentNew: boolean; newThread: string; unread: number },
+  shown: { accentNew: boolean; newThread: string; unread: number },
 ) {
+  const props = { ...shown, onUnread: () => {}, pathname: "/community" };
   vi.resetModules();
   vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
   vi.stubEnv("VITE_MARKET_DEV_USER", devUser ?? "");
@@ -445,10 +460,22 @@ describe("S3 and S4: the shell around a route", () => {
     expect(out).not.toContain("bg-accent ");
   });
 
-  it("a known URL whose page has not arrived holds an empty main column", async () => {
+  it.each([
+    ["/community/following", "Following", "what you follow"],
+    ["/community/mentions", "Mentions", "your mentions"],
+    ["/community/notifications", "Notifications", "your notifications"],
+  ])(
+    "%s is a member's own page: its title, and signed out the way in",
+    async (pathname, title, what) => {
+      const out = await shellAs(null, pathname);
+      expect(out).toContain(`>${title}</h1>`);
+      expect(out).toContain(`Sign in to see ${what}`);
+    },
+  );
+
+  it("a member's URL is their profile, which anyone can read", async () => {
     const out = await shellAs(null, "/community/u/aoife");
-    expect(out).toMatch(
-      /<main id="community-main" class="[^"]*"><a [^>]*>.*?<span>Channels<\/span><\/a><\/main>/,
-    );
+    expect(out).toContain("Loading the profile…");
+    expect(out).not.toContain("Sign in to see");
   });
 });

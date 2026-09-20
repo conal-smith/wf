@@ -4,11 +4,12 @@
  * page: start a thread, read the bell, be themselves.
  */
 import { UserButton } from "@clerk/clerk-react";
-import { Bell, LogIn, PlusCircle, Wind } from "lucide-react";
+import { LogIn, PlusCircle, Wind } from "lucide-react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { useSiteAuth } from "../../shared/web/auth";
-import { Button, Chip, Count } from "../../ui";
+import { Button, Chip } from "../../ui";
 import { RING, tv } from "../../ui/tv";
+import { Bell } from "./components/Bell";
 import { paths, routed } from "./router";
 
 export const headerStyles = tv({
@@ -24,8 +25,6 @@ export const headerStyles = tv({
     actions: "ml-auto flex items-center gap-1",
     // On a phone the way to start a thread is the page's own, not the bar's.
     newThread: "max-rail:hidden",
-    bell: "relative",
-    count: "absolute -top-1 -right-1",
     user: "inline-flex items-center px-2 font-sans text-body text-ink-muted",
   },
 });
@@ -41,11 +40,20 @@ export interface HeaderProps {
    * Null where this member cannot start one, and the bar then offers none.
    */
   newThread: string | null;
-  /** Unread notifications, from `useNotificationsCount`. */
+  /** Unread notifications, from `useNotificationsCount`, and its `setCount`. */
   unread: number;
+  onUnread: (count: number) => void;
+  /** Where the reader is, for the bell: it opens nothing over its own page. */
+  pathname: string;
 }
 
-export function Header({ accentNew, newThread, unread }: HeaderProps) {
+export function Header({
+  accentNew,
+  newThread,
+  unread,
+  onUnread,
+  pathname,
+}: HeaderProps) {
   const auth = useSiteAuth();
   const styles = headerStyles();
   return (
@@ -77,21 +85,7 @@ export function Header({ accentNew, newThread, unread }: HeaderProps) {
                   <span>New thread</span>
                 </Button>
               )}
-              <Button
-                {...routed(paths.notifications())}
-                variant="pill"
-                size="sm"
-                icon
-                className={styles.bell()}
-                aria-label={
-                  unread > 0
-                    ? `Notifications, ${unread} unread`
-                    : "Notifications"
-                }
-              >
-                <Bell size={15} aria-hidden="true" />
-                <Count value={unread} className={styles.count()} />
-              </Button>
+              <Bell unread={unread} onUnread={onUnread} pathname={pathname} />
               {auth.provider === "clerk" ? (
                 <span className={styles.user()}>
                   <UserButton />
