@@ -175,6 +175,10 @@ export function Popover({
           className={styles.panel()}
           role="group"
           aria-label={panelLabel}
+          // One engine does not focus a button that is pressed: the focus
+          // would fall to the body, and the blur above would take the panel
+          // away before the press became a click.
+          onMouseDown={(event) => event.preventDefault()}
         >
           {children(close)}
         </div>

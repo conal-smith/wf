@@ -83,8 +83,9 @@ export const messageStyles = tv({
   },
 });
 
-/** A long press is this long, and a finger that moves is scrolling instead. */
+/** A long press is this long, and a finger that moves this far is scrolling instead. */
 const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
 
 export interface MessageProps {
   message: MessageData;
@@ -273,6 +274,7 @@ export function Message({
   const [picking, setPicking] = useState(false);
   const root = useRef<HTMLElement>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressedAt = useRef({ x: 0, y: 0 });
 
   const styles = messageStyles({
     opening,
@@ -305,7 +307,14 @@ export function Message({
   const startPress = (event: PointerEvent) => {
     if (event.pointerType === "mouse") return;
     cancelPress();
+    pressedAt.current = { x: event.clientX, y: event.clientY };
     press.current = setTimeout(() => setHeld(true), LONG_PRESS_MS);
+  };
+  // A finger at rest still trembles: only a real move is a scroll.
+  const movePress = (event: PointerEvent) => {
+    const { x, y } = pressedAt.current;
+    if (Math.hypot(event.clientX - x, event.clientY - y) > LONG_PRESS_SLOP)
+      cancelPress();
   };
 
   const react = (emoji: Reaction, on: boolean) => onReact(message, emoji, on);
@@ -320,7 +329,7 @@ export function Message({
       aria-label={`${author.displayName}, ${messageTime(message.createdAt, now).long}`}
       onPointerDown={startPress}
       onPointerUp={cancelPress}
-      onPointerMove={cancelPress}
+      onPointerMove={movePress}
       onPointerCancel={cancelPress}
       onPointerLeave={cancelPress}
     >
