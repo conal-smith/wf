@@ -1,7 +1,8 @@
 /**
- * The HTTP surface. The marketplace lives under /api/market and the site's
- * own routes (/api/me) beside it, so the same routes work behind a same-origin
- * proxy in development and on their own Railway domain in production.
+ * The HTTP surface. The marketplace lives under /api/market, the community
+ * under /api/community and the site's own routes (/api/me) beside them, so
+ * the same routes work behind a same-origin proxy in development and on their
+ * own Railway domain in production.
  */
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -14,9 +15,12 @@ import {
   type AuthVariables,
   type Verifier,
 } from "./auth.js";
+import { fail } from "./errors.js";
 import { ID_PATTERN, newId } from "./ids.js";
 import type { PhotoRow, Repo } from "./repo.js";
 import { keyBelongsTo, type Storage } from "./storage.js";
+import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
+import { createCommunityRouter } from "../../../community/api/router.js";
 import {
   blockSuspended,
   createSiteRouter,
@@ -46,6 +50,8 @@ import {
 
 export interface AppDeps {
   repo: Repo;
+  /** The forum's own persistence seam, beside the marketplace's. */
+  community: CommunityRepo;
   /** The site's `users` table and where a new row's name comes from. */
   people: People;
   verify: Verifier;
@@ -53,28 +59,19 @@ export interface AppDeps {
   storagePrefix: string;
   corsOrigins: string[] | "*";
   authMode: "clerk" | "dev";
+  /** The clock the community measures its edit window on. Tests move it. */
+  now?: () => Date;
 }
 
 type Env = { Variables: AuthVariables };
 
 const JSON_LIMIT = 64 * 1024;
 
-function fail(
-  status: 400 | 403 | 404 | 409 | 413,
-  error: string,
-  message: string,
-  details?: unknown,
-): never {
-  throw new HTTPException(status, {
-    res: Response.json({ error, message, details }, { status }),
-  });
-}
-
 export function createApp(deps: AppDeps) {
   const { repo, people, storage } = deps;
   const app = new Hono<Env>();
 
-  for (const path of ["/api/market/*", "/api/me"]) {
+  for (const path of ["/api/market/*", "/api/community/*", "/api/me"]) {
     app.use(
       path,
       cors({
@@ -499,6 +496,16 @@ export function createApp(deps: AppDeps) {
   }
 
   app.route("/api/market", r);
+  app.route(
+    "/api/community",
+    createCommunityRouter({
+      repo: deps.community,
+      people,
+      storage,
+      authMode: deps.authMode,
+      now: deps.now,
+    }),
+  );
   app.route("/api", createSiteRouter(people));
   return app;
 }

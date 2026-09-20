@@ -113,6 +113,13 @@ export interface Meta {
   channels: Channel[];
 }
 
+/** GET /meta: everything a client needs before it draws anything. */
+export interface MetaPayload extends Meta {
+  reactions: readonly Reaction[];
+  limits: typeof LIMITS;
+  auth: "clerk" | "dev";
+}
+
 export interface MessagePhoto {
   id: string;
   url: string;
@@ -221,6 +228,14 @@ export interface MessagePage {
   items: Message[];
   hasOlder: boolean;
   hasNewer: boolean;
+}
+
+/** GET /threads/:id: the head of the page, its opening post and where to start reading. */
+export interface ThreadView {
+  thread: Thread;
+  opening: Message;
+  /** Around the viewer's last read; from the top for anyone who has not opened it. */
+  messages: MessagePage;
 }
 
 export interface ThreadInput {
