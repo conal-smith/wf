@@ -140,6 +140,16 @@ describe("links", () => {
       { t: "text", text: ", then go." },
     ]);
   });
+
+  it("an address in a label is the label's words: a link holds no link", () => {
+    const markup = html(
+      "[**https://one.example** and more](https://two.example/)",
+    );
+    expect(elements(markup).filter((name) => name === "a")).toEqual(["a"]);
+    expect(markup).toContain('href="https://two.example/"');
+    expect(markup).not.toContain('href="https://one.example');
+    expect(markup).toContain("<strong");
+  });
 });
 
 describe("the subset", () => {
