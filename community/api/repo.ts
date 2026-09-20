@@ -240,7 +240,7 @@ export interface Repo {
   /** Newest first. */
   listModLog(limit: number): Promise<ModLogRow[]>;
 
-  /** Visible messages by this person, opening posts included. */
+  /** Visible messages by this person, opening posts included. What stands in a removed thread is not counted: nobody can see it. */
   countMessagesBy(authorId: string): Promise<number>;
   /** Threads this person started since `since`, removed ones included. */
   countThreadsBy(authorId: string, since: Date): Promise<number>;

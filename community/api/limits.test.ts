@@ -58,7 +58,7 @@ describe("rate limits", () => {
     expect(await take("aoife", "message")).toBeNull();
     expect(await take("aoife", "message")).toMatchObject({
       error: "rate_limited",
-      message: expect.any(String),
+      message: "That is a lot at once. Give it a moment and try again.",
       retryAfter: 3,
     });
     wait(1200);
@@ -99,7 +99,11 @@ describe("rate limits", () => {
     const { take, wait } = clocked();
     for (let i = 0; i < 5; i++)
       expect(await take("aoife", "thread")).toBeNull();
-    expect((await take("aoife", "thread"))!.retryAfter).toBe(12 * 60);
+    // Twelve minutes is no moment, and the refusal does not call it one.
+    expect(await take("aoife", "thread")).toMatchObject({
+      message: "That is a lot in a short while. Try again later.",
+      retryAfter: 12 * 60,
+    });
     expect(await take("brian", "thread")).toBeNull();
     expect(await take("aoife", "message")).toBeNull();
     for (let i = 0; i < 60; i++)
@@ -121,6 +125,18 @@ describe("rate limits", () => {
     for (let i = 0; i < 5; i++)
       expect(await take("aoife", "report")).toBeNull();
     expect(await take("aoife", "report")).not.toBeNull();
+  });
+
+  it("keeps a bucket that is still short when it forgets the full ones", async () => {
+    const { take, wait } = clocked();
+    for (let i = 0; i < 5; i++)
+      expect(await take("aoife", "thread")).toBeNull();
+    // Past ten thousand buckets the full ones are dropped; two minutes fills every reaction's.
+    for (let i = 0; i <= 10_000; i++)
+      expect(await take(`member-${i}`, "reaction")).toBeNull();
+    wait(2 * MINUTE);
+    expect(await take("brian", "reaction")).toBeNull();
+    expect((await take("aoife", "thread"))!.retryAfter).toBe(10 * 60);
   });
 
   it("measures a table's day from midnight UTC", () => {

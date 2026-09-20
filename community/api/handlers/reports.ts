@@ -34,7 +34,10 @@ export function reportRoutes(r: Router, deps: LiveDeps) {
       (await repo.countReportsBy(userId, dayStart(now()))) >=
       LIMITS.reportsPerDay
     )
-      rateLimited(untilTomorrowMs(now()));
+      rateLimited(
+        untilTomorrowMs(now()),
+        `That is ${LIMITS.reportsPerDay} reports today, which is the most anyone can send. You can report again tomorrow.`,
+      );
     limiter.take(userId, "report");
     // The report's row names its reporter, so they need a row by now.
     await ensureUser(people, userId);

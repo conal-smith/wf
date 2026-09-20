@@ -1539,6 +1539,11 @@ function contract(name: string, backend: () => Backend) {
         expect(await repo.countMessagesBy(aoife)).toBe(3);
         await repo.removeMessage(m.id, aoife);
         expect(await repo.countMessagesBy(aoife)).toBe(2);
+        // A thread staff removed takes what was said in it along: nobody can see those either.
+        await reply(aoife, t.id, "Said before it went.");
+        await repo.setThreadStatus(t.id, "removed", null);
+        expect(await repo.countMessagesBy(aoife)).toBe(1);
+        expect(await repo.countMessagesBy(cian)).toBe(0);
 
         expect(
           await repo.countThreadsBy(aoife, new Date("2026-01-01T00:00:00Z")),
