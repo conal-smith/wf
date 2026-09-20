@@ -10,13 +10,12 @@ export const surfaceStyles = tv({
   ],
 });
 
+export type SurfaceProps = HTMLAttributes<HTMLDivElement>;
+
 /**
  * Glass, for what floats over the moving map. On the content ground a white
  * hairline and a translucent fill vanish: that is a Pane.
  */
-export function Surface({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
+export function Surface({ className, ...props }: SurfaceProps) {
   return <div {...props} className={surfaceStyles({ className })} />;
 }

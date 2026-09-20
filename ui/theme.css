@@ -27,13 +27,15 @@
  * an element, as it does everywhere else in the site's CSS. Nothing that is
  * there today changes, because no element carries a utility class yet.
  *
- * Three rules in that reset still outrank a plain variant, each an element
- * and a pseudo-class against a class and a pseudo-class:
- * `button:enabled:hover` sets a background, `button:focus-visible` (and the
- * same on a link and an input) draws the map's ring, and `button:disabled`
- * fades. The kit writes those states `not-disabled:hover:…`,
- * `not-disabled:focus-visible:…` and `disabled:…`, which outrank them in turn
- * and read the same on a link, which is never disabled (ui/tv.ts).
+ * One rule in that reset still outranks a plain variant:
+ * `button:enabled:hover` sets a background, and an element and two
+ * pseudo-classes beat a class and one. The kit writes a hover
+ * `not-disabled:hover:…`, which outranks it in turn and reads the same on a
+ * link, which is never disabled (ui/tv.ts). The reset's other two states,
+ * `button:focus-visible` (and the same on a link and an input, the map's
+ * ring) and `button:disabled` (a fade), are an element and one pseudo-class:
+ * a plain `focus-visible:…` or `disabled:…` already beats them, and the kit
+ * answers both, with its own ring and with `disabled:opacity-100`.
  */
 
 @import "tailwindcss/theme.css" layer(theme);

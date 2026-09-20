@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { compileTheme, declared, selector } from "./theme.testkit";
+import { compileTheme, declared, holds, selector } from "./theme.testkit";
 import {
   DISABLED,
   HOVER,
@@ -61,7 +61,17 @@ describe("ui/tv.ts: the shared states", () => {
   ])("every class in %s resolves from the theme", (_, classes) => {
     const names = classes.split(" ");
     const css = build(names);
-    for (const name of names) expect(css, name).toContain(selector(name));
+    for (const name of names) expect(holds(css, name), name).toBe(true);
+  });
+
+  // `.text-ink` is how `.text-ink-muted` begins: a name the theme has lost
+  // must not pass for one that merely starts the same way.
+  it("a name is not held by a longer one that begins with it", () => {
+    const css = build(["text-ink-muted", "border-card/70"]);
+    expect(holds(css, "text-ink-muted")).toBe(true);
+    expect(holds(css, "border-card/70")).toBe(true);
+    expect(holds(css, "text-ink-mut")).toBe(false);
+    expect(holds(css, "border-card")).toBe(false);
   });
 
   // S4: one ring, 3px of focus, 2px clear.
@@ -83,9 +93,10 @@ describe("ui/tv.ts: the shared states", () => {
     for (const name of ring.split(" ")) expect(name).toContain(`${state}:`);
   });
 
-  // The site's reset styles `button:focus-visible`, `button:enabled:hover` and
-  // `button:disabled`: an element and a pseudo-class. A class and a
-  // pseudo-class loses to that; a class and two wins.
+  // The site's reset styles `button:enabled:hover`: an element and two
+  // pseudo-classes. A class and one loses to that; a class and two wins. Its
+  // `button:focus-visible` and `button:disabled` are an element and one, which
+  // any class and pseudo-class outranks.
   it("outranks the site reset's button states", () => {
     const css = build([...RING.split(" "), HOVER, ...DISABLED.split(" ")]);
     expect(css).toContain(
