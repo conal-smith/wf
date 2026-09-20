@@ -10,6 +10,9 @@ import { paths, routed } from "../router";
 
 export const tagPillsStyles = tv({
   slots: {
+    // A flex item beside the order line: without this its least width is the
+    // whole unwrapped strip, and a phone's page scrolls sideways with it.
+    nav: "min-w-0",
     // Wrapping beside the rail. On a phone one line that scrolls sideways, let
     // out to the screen's edges so a pill is not cut off at the gutter.
     base: [
@@ -50,7 +53,7 @@ export function TagPills({ slug, tags, current }: TagPillsProps) {
   ];
   const styles = tagPillsStyles();
   return (
-    <nav aria-label="Filter by tag">
+    <nav aria-label="Filter by tag" className={styles.nav()}>
       <ul className={styles.base()}>
         {pills.map((pill) => (
           <li key={pill.id ?? "all"} className={styles.item()}>
