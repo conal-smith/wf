@@ -1,12 +1,12 @@
 ---
 type: epic
-status: ready
+status: in_progress
 difficulty: xl
 criticality: high
 risk: high
 mockups: backlog/mockups/2026-09-20-community-atlantic.html
 dependenciesPlanned: true
-updated: 2026-09-20T14:59:41.318Z
+updated: 2026-09-20T20:47:15.744Z
 ---
 
 # Community forum, on Tailwind and the Atlantic palette
