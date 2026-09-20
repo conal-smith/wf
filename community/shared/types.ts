@@ -18,6 +18,12 @@ export const LIMITS = {
   /** A member is new for this long, and until this many of their messages stand. */
   newMemberHours: 24,
   newMemberMessages: 3,
+  /** While new: this many threads in a day, and no links or mentions in a body. */
+  newMemberThreadsPerDay: 3,
+  reportsPerDay: 5,
+  reportNoteMax: 500,
+  /** A lock's reason is shown on the thread; a removal's only goes in the log. */
+  modReasonMax: 200,
 } as const;
 
 /** The fixed twelve. A reaction outside this list is refused. */
@@ -48,6 +54,16 @@ export type ThreadStatus = (typeof THREAD_STATUSES)[number];
 
 export const MESSAGE_STATUSES = ["visible", "removed"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
+
+/** Why a member reports a message. `other` leans on the note. */
+export const REPORT_REASONS = [
+  "spam",
+  "abuse",
+  "unsafe",
+  "off-topic",
+  "other",
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const FOLLOW_TARGETS = ["thread", "channel"] as const;
 export type FollowTarget = (typeof FOLLOW_TARGETS)[number];

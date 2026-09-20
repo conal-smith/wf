@@ -1,10 +1,15 @@
 /**
  * Everything a member can change: start a thread, reply, edit and remove
  * their own words, react. Each needs a session, and each makes the member's
- * `users` row the first time, so nobody fills in a form to join.
+ * `users` row the first time, so nobody fills in a form to join. Each new
+ * thing takes a token from the rate limiter once everything the handler can
+ * check has passed, so a body refused for what it says costs its sender
+ * nothing.
  */
 import {
+  announce,
   isNewMember,
+  isStaff,
   jsonBody,
   lookups,
   readJson,
@@ -18,9 +23,10 @@ import {
   ThreadClosedError,
   type PhotoRow,
 } from "../repo.js";
-import type { LiveEvent } from "../../shared/live.js";
-import { LIMITS, type Message, type Thread } from "../../shared/types.js";
+import { dayStart, rateLimited, untilTomorrowMs } from "../limits.js";
+import { LIMITS, type Thread } from "../../shared/types.js";
 import {
+  hasLink,
   isReaction,
   mentionIds,
   messageEditSchema,
@@ -36,9 +42,28 @@ import { keyBelongsTo } from "../../../market/api/src/storage.js";
 import { ensureUser } from "../../../site/api/users.js";
 
 export function writeRoutes(r: Router, deps: LiveDeps) {
-  const { repo, people, storage, hub } = deps;
+  const { repo, people, storage, hub, limiter } = deps;
   const now = deps.now ?? (() => new Date());
   const find = lookups(repo);
+
+  /** Whether the caller is still new, looked up at most once a request and only if something asks. */
+  const newness = (userId: string) => {
+    let answer: Promise<boolean> | undefined;
+    return () => (answer ??= isNewMember(deps, userId, now()));
+  };
+
+  /** A new member's words carry no link yet: it is what an account made to advertise posts first. */
+  async function refuseLinks(
+    body: string,
+    isNew: () => Promise<boolean>,
+  ): Promise<void> {
+    if (hasLink(body) && (await isNew()))
+      fail(
+        400,
+        "links_not_yet",
+        `You can post links once your account is a day old and ${LIMITS.newMemberMessages} of your messages are up.`,
+      );
+  }
 
   /**
    * The people a body's <@user_id> tokens name. The body is stored as typed,
@@ -48,10 +73,10 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
    */
   async function resolveMentions(
     body: string,
-    userId: string,
+    isNew: () => Promise<boolean>,
   ): Promise<string[]> {
     const ids = mentionIds(body);
-    if (ids.length && (await isNewMember(deps, userId, now())))
+    if (ids.length && (await isNew()))
       fail(
         400,
         "mentions_not_yet",
@@ -106,23 +131,6 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
     );
   }
 
-  /**
-   * Tells the thread's open streams, once the repo has committed. It is never
-   * the write's failure: a reader who misses this catches up on their next fetch.
-   */
-  async function announce(t: LiveEvent["t"], message: Message): Promise<void> {
-    try {
-      await hub.publish({
-        t,
-        thread: message.threadId,
-        id: message.id,
-        seq: message.seq,
-      });
-    } catch (err) {
-      console.error("community: a live event was not published", err);
-    }
-  }
-
   // ---- threads ------------------------------------------------------------
 
   r.post("/channels/:slug/threads", requireAuth, jsonBody, async (c) => {
@@ -154,7 +162,20 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
       });
     const photos = resolvePhotos(input.photoKeys, userId);
     // The last refusal comes first, so a refused first write makes no row.
-    const mentions = await resolveMentions(input.body, userId);
+    const isNew = newness(userId);
+    await refuseLinks(input.body, isNew);
+    const mentions = await resolveMentions(input.body, isNew);
+    // Counted from the table over the calendar day, so the wait is exact and a restart forgets nothing.
+    if (
+      (await isNew()) &&
+      (await repo.countThreadsBy(userId, dayStart(now()))) >=
+        LIMITS.newMemberThreadsPerDay
+    )
+      rateLimited(
+        untilTomorrowMs(now()),
+        `You can start ${LIMITS.newMemberThreadsPerDay} threads a day while your account is new. You can start another tomorrow.`,
+      );
+    limiter.take(userId, "thread");
     await ensureUser(people, userId);
     try {
       const thread = await repo.createThread({
@@ -188,7 +209,10 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
     if (thread.status === "locked") refuseClosed(thread);
     const input = messageInputSchema.parse(await readJson(c));
     const photos = resolvePhotos(input.photoKeys, userId);
-    const mentions = await resolveMentions(input.body, userId);
+    const isNew = newness(userId);
+    await refuseLinks(input.body, isNew);
+    const mentions = await resolveMentions(input.body, isNew);
+    limiter.take(userId, "message");
     await ensureUser(people, userId);
     try {
       const message = await repo.createMessage({
@@ -200,7 +224,7 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
         mentionIds: mentions,
         photos,
       });
-      await announce("msg", message);
+      await announce(hub, "msg", message);
       return c.json(message, 201);
     } catch (err) {
       refuseTakenKey(err);
@@ -235,25 +259,38 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
         `A message can be edited for ${LIMITS.editWindowMin} minutes after it is posted.`,
       );
     const { body } = messageEditSchema.parse(await readJson(c));
+    const isNew = newness(userId);
+    await refuseLinks(body, isNew);
     const message = await repo.editMessage(
       current.id,
       body,
-      await resolveMentions(body, userId),
+      await resolveMentions(body, isNew),
     );
     if (!message) fail(404, "not_found", "That message has been removed.");
-    await announce("edit", message);
+    await announce(hub, "edit", message);
     return c.json(message);
   });
 
   // Soft, and with no window. Removing the opening post removes the thread.
+  // Staff may remove anyone's, and that goes in the log; their own does not.
   r.delete("/messages/:id", requireAuth, async (c) => {
     const userId = c.var.userId!;
     const current = await find.message(c.req.param("id"), userId);
-    if (current.author.id !== userId)
+    const asStaff = current.author.id !== userId;
+    if (asStaff && !(await isStaff(deps, userId)))
       fail(403, "forbidden", "Only its author can delete this message.");
     const message = await repo.removeMessage(current.id, userId);
     if (!message) fail(404, "not_found", "That message does not exist.");
-    await announce("remove", message);
+    if (asStaff && current.status !== "removed")
+      await repo.addModLog({
+        id: newId(),
+        actorId: userId,
+        action: "remove",
+        targetType: "message",
+        targetId: message.id,
+        reason: null,
+      });
+    await announce(hub, "remove", message);
     return c.json(message);
   });
 
@@ -266,11 +303,12 @@ export function writeRoutes(r: Router, deps: LiveDeps) {
     if (!isReaction(emoji))
       fail(400, "invalid", "That is not one of the reactions.", { emoji });
     const { on } = reactionInputSchema.parse(await readJson(c));
+    limiter.take(userId, "reaction");
     // The reaction's row names its member, so they need a row by now.
     await ensureUser(people, userId);
     const message = await repo.setReaction(current.id, userId, emoji, on);
     if (!message) fail(404, "not_found", "That message has been removed.");
-    await announce("react", message);
+    await announce(hub, "react", message);
     return c.json(message);
   });
 }

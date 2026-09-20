@@ -18,7 +18,7 @@ import {
   type EventSourceLike,
 } from "../shared/followThread";
 import { LIVE, type LiveEvent } from "../shared/live";
-import type { Message, MessagePage, Thread } from "../shared/types";
+import type { Message, MessagePage, Thread, ThreadView } from "../shared/types";
 import { createApp } from "../../market/api/src/app";
 import { devVerifier } from "../../market/api/src/auth";
 import { newId } from "../../market/api/src/ids";
@@ -188,6 +188,8 @@ function harness(hub: Hub = memoryHub()) {
     authMode: "dev",
     now: () => new Date(at),
     hub: spied,
+    // Replies come a second apart here, and the rate limits are not what this file is about.
+    limiter: { take() {} },
   });
   const call = async <T>(
     method: string,
@@ -215,7 +217,7 @@ function harness(hub: Hub = memoryHub()) {
     call<Message>("POST", `/threads/${threadId}/messages`, { body }, "brian");
   const events = (threadId: string, headers: Record<string, string> = {}) =>
     app.request(`/api/community/threads/${threadId}/events`, { headers });
-  return { app, hub, published, call, startThread, reply, events };
+  return { app, hub, published, users, call, startThread, reply, events };
 }
 
 /** Reads a stream as text, a wait at a time. */
@@ -253,6 +255,30 @@ describe("what a write publishes", () => {
       { t: "edit", ...at },
       { t: "react", ...at },
       { t: "remove", ...at },
+    ]);
+  });
+
+  it("a thread staff removed, as the removal of its opening post", async () => {
+    const { published, users, call, startThread } = harness();
+    const thread = await startThread();
+    await users.insertUser({
+      id: "dev_sorcha",
+      handle: "sorcha",
+      displayName: "Sorcha",
+      avatarUrl: null,
+    });
+    users.peek("dev_sorcha")!.role = "staff";
+    const { opening } = await call<ThreadView>("GET", `/threads/${thread.id}`);
+    await call(
+      "POST",
+      `/threads/${thread.id}/lock`,
+      { reason: "A pause" },
+      "sorcha",
+    );
+    expect(published).toEqual([]);
+    await call("POST", `/threads/${thread.id}/remove`, {}, "sorcha");
+    expect(published).toEqual([
+      { t: "remove", thread: thread.id, id: opening.id, seq: 0 },
     ]);
   });
 
