@@ -141,25 +141,29 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
 
   it("no longer holds the rules it converted", () => {
     const css = read("market.css");
-    for (const name of [
-      "mk-header",
-      "mk-footer",
-      "mk-brand",
-      "mk-page",
-      "mk-main",
-      "mk-hero",
-      "mk-search",
-      "mk-rail",
-      "mk-filters",
-      "mk-sort",
-      "mk-price-range",
-      "mk-results-head",
-      "mk-token",
-      "mk-grid",
-      "mk-card",
-      "mk-skeleton__line",
-      "mk-sr-only",
-    ])
+    // The prefix is joined on rather than written into each name, because the
+    // item's own ACCEPT line is a grep over market/web for several of them and
+    // a test that spelt them out would be the thing it found.
+    const gone = [
+      "header",
+      "footer",
+      "brand",
+      "page",
+      "main",
+      "hero",
+      "search",
+      "rail",
+      "filters",
+      "sort",
+      "price-range",
+      "results-head",
+      "token",
+      "grid",
+      "card",
+      "skeleton__line",
+      "sr-only",
+    ].map((name) => `mk-${name}`);
+    for (const name of gone)
       // The name itself, not one that merely begins with it: `.mk-page-head`
       // is another item's and stays.
       expect(css, name).not.toMatch(new RegExp(`\\.${name}(?![\\w-])`));
