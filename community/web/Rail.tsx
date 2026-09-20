@@ -64,9 +64,13 @@ export const railStyles = tv({
 
 /**
  * Which row of the rail a route lights, as that row's key. A thread lights
- * none: the shell does not know a thread's channel until its page has loaded.
+ * its channel, which the shell only knows once the thread's page has loaded
+ * and said so; until then it lights none.
  */
-export function railCurrent(route: Route): string | null {
+export function railCurrent(
+  route: Route,
+  threadChannel: string | null = null,
+): string | null {
   switch (route.page) {
     case "home":
     case "following":
@@ -74,6 +78,8 @@ export function railCurrent(route: Route): string | null {
       return route.page;
     case "channel":
       return channelKey(route.slug);
+    case "thread":
+      return threadChannel ? channelKey(threadChannel) : null;
     default:
       return null;
   }
