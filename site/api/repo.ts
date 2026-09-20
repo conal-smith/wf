@@ -33,4 +33,6 @@ export interface UsersRepo {
   updateUser(id: string, input: UserInputParsed): Promise<User | null>;
   /** Null lifts the suspension. */
   setSuspendedUntil(id: string, until: Date | null): Promise<User | null>;
+  /** Everyone with a row: the community's member count. */
+  countUsers(): Promise<number>;
 }

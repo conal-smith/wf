@@ -54,6 +54,12 @@ export function pgUsersRepo(sql: Sql): UsersRepo {
       return rows.length ? toUser(rows[0]) : null;
     },
 
+    async countUsers() {
+      const rows = await sql<{ count: number }[]>`
+        select count(*)::int as count from users`;
+      return rows[0].count;
+    },
+
     async insertUser(row: NewUser) {
       // No conflict target: a taken id and a taken handle both insert nothing.
       const rows = await sql<UserRow[]>`
