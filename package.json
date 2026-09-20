@@ -16,6 +16,7 @@
     "format": "prettier --write src tests e2e scripts *.ts *.md index.html package.json",
     "design:build": "node design/scripts/build-tokens.mjs && node design/scripts/build-catalog.mjs",
     "design:lint": "npm run design:build && node design/scripts/lint.mjs",
+    "ui:lint": "node scripts/lint-ui.mjs && node scripts/lint-ui.mjs --probe",
     "spots:export": "node scripts/export-riding-locations.mjs",
     "market:api": "tsx watch market/api/src/index.ts",
     "market:api:build": "tsc -p market/api/tsconfig.json",
