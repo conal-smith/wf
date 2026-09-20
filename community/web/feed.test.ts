@@ -139,6 +139,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.doUnmock("../../shared/web/images");
+  vi.doUnmock("./hooks");
 });
 
 describe("S1: home", () => {
@@ -717,13 +718,27 @@ describe("S7: instead of a list", () => {
   });
 });
 
-/** A page under the session a build would give it, as shell.test.ts does. */
+/**
+ * A page under the session a build would give it, as shell.test.ts does. No
+ * effect runs in static markup, so a list is loading unless `feed` says what
+ * it came to.
+ */
 async function pageAs(
   devUser: string | null,
   page: "home" | "channel",
   props: Record<string, unknown>,
+  feed?: FeedState,
 ) {
   vi.resetModules();
+  if (feed)
+    vi.doMock("./hooks", async (original) => ({
+      ...(await original<typeof import("./hooks")>()),
+      useThreadFeed: () => ({
+        state: feed,
+        reload: () => {},
+        loadMore: () => {},
+      }),
+    }));
   vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
   vi.stubEnv("VITE_MARKET_DEV_USER", devUser ?? "");
   const { SiteAuthProvider } = await import("../../shared/web/auth");
@@ -749,6 +764,110 @@ const filled = (out: string) =>
   [...out.matchAll(/<(a|button)\b[^>]*class="[^"]*bg-accent[^"]*"[^>]*>/g)].map(
     (m) => m[0],
   );
+
+describe("S7: a page with nothing to list", () => {
+  const quiet = (out: string, label: string) =>
+    out.match(new RegExp(`<a [^>]*>${label}</a>`))?.[0] ?? "";
+
+  it("home says No threads yet and offers Start the first one, quietly", async () => {
+    const out = await pageAs(
+      "aoife",
+      "home",
+      {
+        channels: channelsReady,
+        pathname: "/community",
+        search: new URLSearchParams(),
+      },
+      ready([]),
+    );
+    expect(out).toContain("No threads yet");
+    const start = quiet(out, "Start the first one");
+    expect(start).toContain('href="/community?new=1"');
+    expect(start).not.toContain("bg-accent");
+    // The floating New thread is still the one filled control.
+    expect(filled(out)).toHaveLength(1);
+  });
+
+  it("a channel says so too, and its Start the first one opens the dialog over it", async () => {
+    const props = {
+      slug: "wings",
+      channels: channelsReady,
+      role: null,
+      pathname: "/community/c/wings",
+      search: new URLSearchParams(),
+    };
+    const out = await pageAs("aoife", "channel", props, ready([]));
+    expect(out).toContain("No threads yet");
+    const start = quiet(out, "Start the first one");
+    expect(start).toContain('href="/community/c/wings?new=1"');
+    expect(start).not.toContain("bg-accent");
+    expect(filled(out)).toHaveLength(1);
+  });
+
+  it("a staff-only channel with nothing in it offers a member no way to start one", async () => {
+    const out = await pageAs(
+      "aoife",
+      "channel",
+      {
+        slug: "announcements",
+        channels: channelsReady,
+        role: "member",
+        pathname: "/community/c/announcements",
+        search: new URLSearchParams(),
+      },
+      ready([]),
+    );
+    expect(out).toContain("No threads yet");
+    expect(out).not.toContain("Start the first one");
+    expect(filled(out)).toEqual([]);
+  });
+
+  it("a tag with nothing under it says which, and offers every thread", async () => {
+    const tag = wings.tags[0];
+    const out = await pageAs(
+      "aoife",
+      "channel",
+      {
+        slug: "wings",
+        channels: channelsReady,
+        role: null,
+        pathname: "/community/c/wings",
+        search: new URLSearchParams(`tag=${tag.id}`),
+      },
+      ready([]),
+    );
+    expect(out).toContain(`No threads tagged ${tag.label}`);
+    expect(quiet(out, "Show every thread")).toContain(
+      'href="/community/c/wings"',
+    );
+    expect(out).not.toContain("No threads yet");
+  });
+
+  it("a search that finds nothing says so, and a failed list names what failed", async () => {
+    const props = {
+      channels: channelsReady,
+      pathname: "/community",
+      search: new URLSearchParams("q=gybes"),
+    };
+    const none = await pageAs(null, "home", props, ready([]));
+    expect(none).toContain("Nothing found for “gybes”");
+    expect(none).not.toContain("No threads yet");
+    const failed = await pageAs(
+      "aoife",
+      "channel",
+      {
+        slug: "wings",
+        channels: channelsReady,
+        role: null,
+        pathname: "/community/c/wings",
+        search: new URLSearchParams(),
+      },
+      { status: "error", message: "The community could not be reached." },
+    );
+    expect(failed).toContain("We could not load the threads in Wings");
+    expect(failed).toMatch(/<button type="button"[^>]*>Try again<\/button>/);
+  });
+});
 
 describe("S8 and the pages", () => {
   it("home is a title, a line about the place and the count", async () => {
@@ -845,6 +964,31 @@ describe("S8 and the pages", () => {
     const staff = await pageAs("aoife", "channel", { ...props, role: "staff" });
     expect(staff).toContain("<dialog");
     expect(staff).toContain("Post thread");
+  });
+
+  it("the header offers no New thread where the shell hands it none", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
+    vi.stubEnv("VITE_MARKET_DEV_USER", "aoife");
+    const { SiteAuthProvider } = await import("../../shared/web/auth");
+    const { Header } = await import("./Header");
+    const header = (newThread: string | null) =>
+      html(
+        createElement(SiteAuthProvider, {
+          home: "/community",
+          children: createElement(Header, {
+            accentNew: true,
+            newThread,
+            unread: 0,
+          }),
+        }),
+      );
+    expect(header("/community/c/wings?new=1")).toContain("New thread");
+    const none = header(null);
+    expect(none).not.toContain("New thread");
+    expect(filled(none)).toEqual([]);
+    // The bell and the member are still there.
+    expect(none).toContain("Notifications");
   });
 
   it("a channel that is not there says so, quietly", async () => {

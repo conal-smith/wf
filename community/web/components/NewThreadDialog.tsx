@@ -187,6 +187,8 @@ export interface NewThreadProps {
   channel: Channel | null;
   /** Every channel, for the pick over home. */
   channels: readonly Channel[];
+  /** A thread went up: what the shell holds (a channel's counts) is now behind. */
+  onPosted: () => void;
 }
 
 /**
@@ -201,6 +203,7 @@ export function NewThread({
   search,
   channel,
   channels,
+  onPosted,
 }: NewThreadProps) {
   const auth = useSiteAuth();
   const step = newThreadStep(search.has(NEW_THREAD), auth);
@@ -220,7 +223,12 @@ export function NewThread({
   });
   if (step !== "dialog") return null;
   return (
-    <NewThreadDialog channel={channel} channels={channels} onClose={close} />
+    <NewThreadDialog
+      channel={channel}
+      channels={channels}
+      onClose={close}
+      onPosted={onPosted}
+    />
   );
 }
 
@@ -228,10 +236,12 @@ function NewThreadDialog({
   channel,
   channels,
   onClose,
+  onPosted,
 }: {
   channel: Channel | null;
   channels: readonly Channel[];
   onClose: () => void;
+  onPosted: () => void;
 }) {
   const api = useApi();
   const auth = useSiteAuth();
@@ -340,7 +350,10 @@ function NewThreadDialog({
     setPosting(true);
     try {
       const thread = await api.createThread(into.slug, input);
-      navigate(paths.thread(thread.id, thread.slug));
+      onPosted();
+      // In place of the URL that asked for the dialog: Back from the thread is
+      // the list it was started from, not an empty form.
+      navigate(paths.thread(thread.id, thread.slug), { replace: true });
     } catch (e) {
       const { fields, top } =
         e instanceof ApiRequestError
