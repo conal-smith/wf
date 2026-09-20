@@ -1456,6 +1456,58 @@ function contract(name: string, backend: () => Backend) {
         ).toBe(0);
       });
 
+      it("puts a report in every staff bell, never folded, and opening the thread leaves it there", async () => {
+        const second = await backend().addUser("site", "staff");
+        const t = await start(aoife, "Reported twice");
+        const m = await reply(cian, t.id, "Buy my wing, link in bio.");
+        const report = (reporterId: string) =>
+          repo.addReport({
+            id: newId(),
+            reporterId,
+            messageId: m.id,
+            reason: "spam",
+            note: null,
+          });
+        await report(niamh);
+        await report(aoife);
+        // Someone on the team who reports still gets the row: it is work to do.
+        await report(staff);
+
+        for (const who of [staff, second]) {
+          const rows = (await repo.listNotifications(who, null)).items;
+          expect(rows.map((n) => [n.kind, n.actors[0].id, n.count])).toEqual([
+            ["report", staff, 1],
+            ["report", aoife, 1],
+            ["report", niamh, 1],
+          ]);
+          expect(rows[0]).toMatchObject({
+            thread: { id: t.id, title: "Reported twice" },
+            messageId: m.id,
+            seq: 1,
+            actorCount: 1,
+            readAt: null,
+          });
+          expect(await repo.countNotifications(who)).toBe(3);
+        }
+        // Nobody else hears of it: the thread's author has the reply, and no more.
+        for (const who of [aoife, cian, niamh])
+          expect(
+            (await repo.listNotifications(who, null)).items.filter(
+              (n) => n.kind === "report",
+            ),
+          ).toEqual([]);
+
+        await repo.markRead(staff, t.id, 1);
+        await repo.markNotificationsRead(staff, { threadId: t.id });
+        expect(await repo.countNotifications(staff)).toBe(3);
+        // The message going does not take the report with it: it is still the record of why.
+        await repo.removeMessage(m.id, staff);
+        expect(await repo.countNotifications(staff)).toBe(3);
+        await repo.markNotificationsRead(staff, { all: true });
+        expect(await repo.countNotifications(staff)).toBe(0);
+        expect(await repo.countNotifications(second)).toBe(3);
+      });
+
       it("keeps the moderation log, newest first", async () => {
         const t = await start(aoife, "Logged");
         for (const action of ["pin", "lock", "unlock"])

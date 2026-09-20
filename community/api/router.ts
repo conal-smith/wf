@@ -12,6 +12,7 @@ import { eventRoutes } from "./handlers/events.js";
 import { followRoutes } from "./handlers/follow.js";
 import { notificationRoutes } from "./handlers/notifications.js";
 import { readRoutes } from "./handlers/read.js";
+import { reportRoutes } from "./handlers/reports.js";
 import { uploadRoutes } from "./handlers/uploads.js";
 import { writeRoutes } from "./handlers/write.js";
 import { blockSuspended } from "../../site/api/router.js";
@@ -28,6 +29,7 @@ export function createCommunityRouter(deps: CommunityDeps) {
   };
   readRoutes(r, deps);
   writeRoutes(r, live);
+  reportRoutes(r, live);
   followRoutes(r, deps);
   notificationRoutes(r, deps);
   uploadRoutes(r, deps);
