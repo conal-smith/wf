@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { memoryRepo } from "./repo-memory";
 import { pgRepo } from "./repo-pg";
 import {
+  PhotoKeyTakenError,
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
@@ -476,6 +477,26 @@ function contract(name: string, backend: () => Backend) {
           role: "member",
         });
         expect(m.photos.map((p) => p.id)).toEqual([photos[1].id, photos[0].id]);
+      });
+
+      it("refuses a photo that is already on a message, and writes nothing", async () => {
+        const used = photo(0);
+        const t = await start(aoife, "One photo", { photos: [used] });
+        const again = { ...photo(0), storageKey: used.storageKey };
+
+        await expect(
+          reply(aoife, t.id, "The same photo", { photos: [again] }),
+        ).rejects.toBeInstanceOf(PhotoKeyTakenError);
+        await expect(
+          start(aoife, "And as a thread", { photos: [again] }),
+        ).rejects.toBeInstanceOf(PhotoKeyTakenError);
+
+        expect((await repo.getThread(t.id, null))!.lastSeq).toBe(0);
+        expect(titles((await repo.listThreads({}, null)).items)).toEqual([
+          "One photo",
+        ]);
+        // The refusal cost no seq: the next reply is 1.
+        expect((await reply(cian, t.id, "Nice")).seq).toBe(1);
       });
     });
 
