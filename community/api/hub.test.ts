@@ -188,6 +188,8 @@ function harness(hub: Hub = memoryHub()) {
     authMode: "dev",
     now: () => new Date(at),
     hub: spied,
+    // Replies come a second apart here, and the rate limits are not what this file is about.
+    limiter: { take() {} },
   });
   const call = async <T>(
     method: string,

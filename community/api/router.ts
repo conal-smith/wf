@@ -6,6 +6,7 @@
  */
 import { Hono } from "hono";
 import { memoryHub } from "./hub.js";
+import { createLimiter } from "./limits.js";
 import type { CommunityDeps, Env } from "./handlers/context.js";
 import { eventRoutes } from "./handlers/events.js";
 import { followRoutes } from "./handlers/follow.js";
@@ -20,7 +21,11 @@ export type { CommunityDeps };
 export function createCommunityRouter(deps: CommunityDeps) {
   const r = new Hono<Env>();
   r.use("*", blockSuspended(deps.people.users));
-  const live = { ...deps, hub: deps.hub ?? memoryHub() };
+  const live = {
+    ...deps,
+    hub: deps.hub ?? memoryHub(),
+    limiter: deps.limiter ?? createLimiter(deps.now),
+  };
   readRoutes(r, deps);
   writeRoutes(r, live);
   followRoutes(r, deps);

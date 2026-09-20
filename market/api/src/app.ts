@@ -20,6 +20,7 @@ import { ID_PATTERN, newId } from "./ids.js";
 import type { PhotoRow, Repo } from "./repo.js";
 import { keyBelongsTo, type Storage } from "./storage.js";
 import type { Hub } from "../../../community/api/hub.js";
+import type { Limiter } from "../../../community/api/limits.js";
 import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
 import { createCommunityRouter } from "../../../community/api/router.js";
 import {
@@ -64,6 +65,8 @@ export interface AppDeps {
   now?: () => Date;
   /** Where the community announces a committed write to its open threads. */
   hub?: Hub;
+  /** The community's rate limits. Left out, the real ones; see community/api/limits.ts. */
+  limiter?: Limiter;
 }
 
 type Env = { Variables: AuthVariables };
@@ -508,6 +511,7 @@ export function createApp(deps: AppDeps) {
       authMode: deps.authMode,
       now: deps.now,
       hub: deps.hub,
+      limiter: deps.limiter,
     }),
   );
   app.route("/api", createSiteRouter(people));

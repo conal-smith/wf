@@ -5,7 +5,9 @@
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { Hub } from "../hub.js";
+import type { Limiter } from "../limits.js";
 import type { Repo } from "../repo.js";
+import type { LiveEvent } from "../../shared/live.js";
 import {
   LIMITS,
   type Channel,
@@ -30,10 +32,12 @@ export interface CommunityDeps {
   now?: () => Date;
   /** Where a committed write is announced. Left out, events stay in this process. */
   hub?: Hub;
+  /** The rate limits. Left out, the real ones on `now`; tests that are not about them pass one that never refuses. */
+  limiter?: Limiter;
 }
 
-/** What the routes that publish or stream are given: the router has settled the hub. */
-export type LiveDeps = CommunityDeps & { hub: Hub };
+/** What the routes that write, publish or stream are given: the router has settled the hub and the limiter. */
+export type LiveDeps = CommunityDeps & { hub: Hub; limiter: Limiter };
 
 export type Env = { Variables: AuthVariables };
 export type Router = Hono<Env>;
@@ -90,6 +94,36 @@ export async function isNewMember(
   const ageMs = now.getTime() - Date.parse(user.createdAt);
   if (ageMs < LIMITS.newMemberHours * 60 * 60 * 1000) return true;
   return (await deps.repo.countMessagesBy(userId)) < LIMITS.newMemberMessages;
+}
+
+/** Staff are made by hand in the database, so a caller with no row yet is not one. */
+export async function isStaff(
+  deps: Pick<CommunityDeps, "people">,
+  userId: string,
+): Promise<boolean> {
+  return (await deps.people.users.getUser(userId))?.role === "staff";
+}
+
+/**
+ * Tells a thread's open streams about one of its messages, once the repo has
+ * committed. It is never the write's failure: a reader who misses this
+ * catches up on their next fetch.
+ */
+export async function announce(
+  hub: Hub,
+  t: LiveEvent["t"],
+  message: Pick<Message, "id" | "threadId" | "seq">,
+): Promise<void> {
+  try {
+    await hub.publish({
+      t,
+      thread: message.threadId,
+      id: message.id,
+      seq: message.seq,
+    });
+  } catch (err) {
+    console.error("community: a live event was not published", err);
+  }
 }
 
 const SLUG_PATTERN = /^[a-z0-9-]{1,60}$/;

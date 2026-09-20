@@ -49,7 +49,11 @@ function fakeStorage(): Storage {
   };
 }
 
-function harness(storage: Storage = fakeStorage()) {
+/**
+ * `rateLimits` off, the default, swaps in a limiter that never refuses: the
+ * clock below moves a second per write, which the real one would call a flood.
+ */
+function harness(storage: Storage = fakeStorage(), rateLimits = false) {
   // The repos' clock moves a second per reading, so activity sorts the way it happened.
   let at = Date.parse("2026-01-01T00:00:00.000Z");
   const tick = () => new Date((at += 1000));
@@ -65,6 +69,7 @@ function harness(storage: Storage = fakeStorage()) {
     corsOrigins: "*",
     authMode: "dev",
     now: () => new Date(at),
+    limiter: rateLimits ? undefined : { take() {} },
   });
   const call = async (
     method: string,
@@ -86,7 +91,11 @@ function harness(storage: Storage = fakeStorage()) {
             : JSON.stringify(body),
     });
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null };
+    return {
+      status: res.status,
+      headers: res.headers,
+      body: text ? JSON.parse(text) : null,
+    };
   };
   /** A staff member. Nothing in the API makes one, so the row is written here. */
   const makeStaff = async (name: string) => {
@@ -199,7 +208,9 @@ describe("community API: reading", () => {
   });
 
   it("pages the feed by cursor, most recent activity first", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const made: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 5; i++)
       made.push((await startThread("aoife", { title: `Thread ${i}` })).id);
@@ -235,7 +246,9 @@ describe("community API: reading", () => {
   });
 
   it("lists a channel's threads pinned first, then by last activity, and by tag", async () => {
-    const { call, repo, startThread, reply } = harness();
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const wings = SEED_CHANNELS.find((c) => c.slug === "wings")!;
     const [question, review] = wings.tags;
     const a = await startThread(
@@ -272,7 +285,9 @@ describe("community API: reading", () => {
   });
 
   it("pages a channel's threads by cursor with the pinned ones on the first page", async () => {
-    const { call, repo, startThread } = harness();
+    const { call, repo, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const made: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 2; i++)
       made.push((await startThread("aoife", { title: `Thread ${i}` })).id);
@@ -420,7 +435,9 @@ describe("community API: reading", () => {
   });
 
   it("pages search results by cursor", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     for (let i = 0; i < LIMITS.pageSize + 3; i++)
       await startThread("aoife", { title: `Downwind run ${i}` });
     const one = (await call("GET", "/search?q=downwind")).body as ThreadPage;
@@ -1738,7 +1755,9 @@ describe("community API: notifications", () => {
   });
 
   it("pages the list by cursor and refuses one it did not make", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const ids: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 2; i++) {
       const t = await startThread("aoife", { title: `Thread number ${i}` });
@@ -1831,7 +1850,9 @@ describe("community API: reading position and the rail", () => {
   });
 
   it("caps a channel's unread at 99", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     await call("PUT", "/channels/general/follow", { on: true }, "brian");
     for (let i = 0; i < 101; i++)
       await startThread("aoife", { title: `Thread number ${i}` }, "wings");
@@ -1856,7 +1877,9 @@ describe("community API: the Following and Mentions feeds", () => {
   });
 
   it("lists followed threads and new threads in followed channels, each with why", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("brian");
     const follow = (threadId: string, level: string) =>
       call("PUT", `/threads/${threadId}/follow`, { level }, "aoife");
     const started = await startThread("aoife", { title: "Aoife started this" });
@@ -1993,5 +2016,212 @@ describe("community API: new members and mentions", () => {
     expect((await mention("ciara")).body.error).toBe("mentions_not_yet");
     await makeStaff("sorcha");
     expect((await mention("sorcha")).status).toBe(201);
+  });
+});
+
+describe("community API: rate limits", () => {
+  const REFUSED = {
+    error: "rate_limited",
+    message: expect.any(String),
+    retryAfter: expect.any(Number),
+  };
+
+  it("takes a message every three seconds, and the wait it names is the wait", async () => {
+    const { call, startThread, wait } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const say = (user: string) =>
+      call("POST", `/threads/${thread.id}/messages`, { body: "Again" }, user);
+    expect((await say("brian")).status).toBe(201);
+    const r = await say("brian");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual(REFUSED);
+    expect(r.body.retryAfter).toBeGreaterThanOrEqual(1);
+    expect(r.body.retryAfter).toBeLessThanOrEqual(3);
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+    // Someone else is not held up, and the refused one was not saved.
+    expect((await say("ciara")).status).toBe(201);
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.thread.lastSeq,
+    ).toBe(2);
+    wait(r.body.retryAfter * 1000);
+    expect((await say("brian")).status).toBe(201);
+  });
+
+  it("spends nothing on a message that was refused for another reason", async () => {
+    const { call, startThread } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const path = `/threads/${thread.id}/messages`;
+    expect((await call("POST", path, { body: "" }, "brian")).status).toBe(400);
+    expect(
+      (await call("POST", path, { body: "See https://example.com" }, "brian"))
+        .body.error,
+    ).toBe("links_not_yet");
+    expect((await call("POST", path, { body: "Hello" }, "brian")).status).toBe(
+      201,
+    );
+  });
+
+  it("takes five threads an hour", async () => {
+    const { call, makeStaff, wait } = harness(fakeStorage(), true);
+    // Staff are never new, so this is the bucket and not the new member's three a day.
+    await makeStaff("sorcha");
+    const start = (user: string) =>
+      call(
+        "POST",
+        "/channels/general/threads",
+        { title: "Another one", body: "And another." },
+        user,
+      );
+    for (let i = 0; i < 5; i++)
+      expect((await start("sorcha")).status).toBe(201);
+    const r = await start("sorcha");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual(REFUSED);
+    // A token comes back every twelve minutes; a few seconds of this one have run.
+    expect(r.body.retryAfter).toBeGreaterThan(11 * 60);
+    expect(r.body.retryAfter).toBeLessThanOrEqual(12 * 60);
+    expect((await start("aoife")).status).toBe(201);
+    wait(r.body.retryAfter * 1000);
+    expect((await start("sorcha")).status).toBe(201);
+    expect((await start("sorcha")).status).toBe(429);
+    expect((await call("GET", "/feed")).body.items).toHaveLength(7);
+  });
+
+  it("takes sixty reactions a minute", async () => {
+    const { call, startThread, wait } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const opening = (await call("GET", `/threads/${thread.id}`)).body
+      .opening as Message;
+    // On her own message, so nobody is told and the clock stands still.
+    const toggle = (i: number, user = "aoife") =>
+      call("PUT", react(opening.id, "🤙"), { on: i % 2 === 0 }, user);
+    for (let i = 0; i < 60; i++) expect((await toggle(i)).status).toBe(200);
+    const r = await toggle(60);
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual({ ...REFUSED, retryAfter: 1 });
+    // The sixty-first changed nothing: the sixtieth took it off.
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.opening.reactions,
+    ).toEqual({});
+    wait(60 * 1000);
+    for (let i = 0; i < 60; i++) expect((await toggle(i)).status).toBe(200);
+    expect((await toggle(60)).status).toBe(429);
+  });
+});
+
+describe("community API: new members, links and threads", () => {
+  it("refuses a link until the third message stands on an account a day old", async () => {
+    const { call, startThread, reply, wait } = harness();
+    const thread = await startThread("aoife");
+    const link = (body: string, path = `/threads/${thread.id}/messages`) =>
+      call("POST", path, { title: "Have a look", body }, "brian");
+
+    let r = await link("My shop: https://example.com/wings");
+    expect(r.status).toBe(400);
+    expect(r.body).toMatchObject({
+      error: "links_not_yet",
+      message: expect.any(String),
+    });
+    expect((await link("HTTP://EXAMPLE.COM")).body.error).toBe("links_not_yet");
+    expect(
+      (await link("https://example.com", "/channels/general/threads")).body
+        .error,
+    ).toBe("links_not_yet");
+    // Only a scheme makes a link, so this is just words.
+    await reply(thread.id, "It is on example.com somewhere", "brian");
+
+    // A day on, the account is old enough and the count is what is left.
+    wait(LIMITS.newMemberHours * 60 * 60 * 1000);
+    expect((await link("https://example.com")).body.error).toBe(
+      "links_not_yet",
+    );
+    await reply(thread.id, "Two", "brian");
+    expect((await link("https://example.com")).body.error).toBe(
+      "links_not_yet",
+    );
+    const third = await reply(thread.id, "Three", "brian");
+
+    // The third message standing ends it, for links, mentions and edits alike.
+    expect((await link("Here: https://example.com <@dev_aoife>")).status).toBe(
+      201,
+    );
+    r = await call(
+      "PUT",
+      `/messages/${third.id}`,
+      { body: "Three, and https://example.com" },
+      "brian",
+    );
+    expect(r.status).toBe(200);
+    expect(
+      (await link("https://example.com", "/channels/general/threads")).status,
+    ).toBe(201);
+    // Nothing of the refused ones was kept.
+    const stream = (await call("GET", `/threads/${thread.id}/messages`))
+      .body as MessagePage;
+    expect(stream.items.map((m) => m.body)).toEqual([
+      "Is the car park open at low tide?",
+      "It is on example.com somewhere",
+      "Two",
+      "Three, and https://example.com",
+      "Here: https://example.com <@dev_aoife>",
+    ]);
+  });
+
+  it("refuses a link edited in by a new member", async () => {
+    const { call, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    const mine = await reply(thread.id, "Nothing to see", "brian");
+    const r = await call(
+      "PUT",
+      `/messages/${mine.id}`,
+      { body: "Actually: https://example.com" },
+      "brian",
+    );
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("links_not_yet");
+    expect(
+      (await call("GET", `/threads/${thread.id}/messages?after=0`)).body
+        .items[0],
+    ).toMatchObject({ body: "Nothing to see", editedAt: null });
+  });
+
+  it("takes three threads a day from a new member, until midnight", async () => {
+    const { call, startThread, settle, wait } = harness();
+    const start = (user: string) =>
+      call(
+        "POST",
+        "/channels/general/threads",
+        { title: "One more thread", body: "Words." },
+        user,
+      );
+    const made: Thread[] = [];
+    for (let i = 0; i < LIMITS.newMemberThreadsPerDay; i++)
+      made.push(await startThread("ciara"));
+    const r = await start("ciara");
+    expect(r.status).toBe(429);
+    expect(r.body).toMatchObject({ error: "rate_limited" });
+    // The clock started at midnight, so the wait is the day less the seconds gone.
+    expect(r.body.retryAfter).toBeGreaterThan(24 * 60 * 60 - 60);
+    expect(r.body.retryAfter).toBeLessThan(24 * 60 * 60);
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+
+    // Removing one does not hand the place back: two messages stand, three threads were started.
+    const opening = (await call("GET", `/threads/${made[0].id}`)).body
+      .opening as Message;
+    await call("DELETE", `/messages/${opening.id}`, undefined, "ciara");
+    expect((await start("ciara")).status).toBe(429);
+
+    // Midnight: still new, with two messages standing, and the day's count is back to nothing.
+    wait(r.body.retryAfter * 1000);
+    for (let i = 0; i < LIMITS.newMemberThreadsPerDay; i++)
+      expect((await start("ciara")).status).toBe(201);
+    // A minute on the account is a day old with five standing: no longer new, so no longer counted.
+    wait(60 * 1000);
+    expect((await start("ciara")).status).toBe(201);
+
+    // Someone who was never new today is not counted either.
+    await settle("dara");
+    for (let i = 0; i <= LIMITS.newMemberThreadsPerDay; i++)
+      expect((await start("dara")).status).toBe(201);
   });
 });
