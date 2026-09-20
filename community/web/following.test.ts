@@ -44,6 +44,7 @@ import {
   appendItems,
   feedKey,
   loadFeed,
+  markRows,
   railGroups,
   readRows,
   type ChannelsState,
@@ -746,6 +747,57 @@ describe("S5: opening, marking read, and the settings", () => {
     ]);
     // The rows in hand are not written over: a refusal puts them back.
     expect(rows[0].readAt).toBeNull();
+  });
+
+  it("pressing a row is what opens it: the row is handed on, read or not", () => {
+    const onOpen = vi.fn();
+    const row = note("a", { seq: 12 });
+    const link = NotificationRow({ row, onOpen, now: NOW });
+    // A press that asks for a new tab: handed on all the same, and not followed here.
+    link.props.onClick({ button: 0, metaKey: true, defaultPrevented: false });
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(row);
+  });
+
+  it("marks in hand first, then on the API, and the badge takes the answer", async () => {
+    const at = NOW.toISOString();
+    const steps: string[] = [];
+    let rows = [note("a"), note("b")];
+    const hands = {
+      change: (rewrite: (was: Notification[]) => Notification[]) => {
+        steps.push("in hand");
+        rows = rewrite(rows);
+      },
+      onCount: vi.fn(),
+      onRefused: vi.fn(),
+    };
+    const api = {
+      markNotificationsRead: vi.fn(async () => {
+        steps.push("api");
+        return { count: 1 };
+      }),
+    };
+    await markRows(api, ["a"], hands, at);
+    expect(steps).toEqual(["in hand", "api"]);
+    expect(rows.map((row) => row.readAt)).toEqual([at, null]);
+    expect(api.markNotificationsRead).toHaveBeenCalledWith({ ids: ["a"] });
+    expect(hands.onCount).toHaveBeenCalledExactlyOnceWith(1);
+
+    await markRows(api, undefined, hands, at);
+    expect(api.markNotificationsRead).toHaveBeenLastCalledWith({ all: true });
+    expect(rows.map((row) => row.readAt)).toEqual([at, at]);
+    expect(hands.onRefused).not.toHaveBeenCalled();
+  });
+
+  it("hands a refusal on, and leaves the badge alone", async () => {
+    const refused = new Error("No luck.");
+    const hands = { change: vi.fn(), onCount: vi.fn(), onRefused: vi.fn() };
+    await markRows(
+      { markNotificationsRead: async () => Promise.reject(refused) },
+      ["a"],
+      hands,
+    );
+    expect(hands.onRefused).toHaveBeenCalledExactlyOnceWith(refused);
+    expect(hands.onCount).not.toHaveBeenCalled();
   });
 
   it("tells the API which, and takes the count it answers with", async () => {
