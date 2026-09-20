@@ -56,6 +56,7 @@ export const composerStyles = tv({
       "absolute bottom-full left-3 z-popover mb-1 flex min-w-56 flex-col gap-0.5 rounded-control border border-line bg-card p-1 shadow-marker",
     match: [
       "flex min-h-control-md w-full cursor-pointer items-center gap-2 rounded-control px-2 text-left text-body text-ink-2",
+      "pointer-coarse:min-h-touch",
       HOVER,
     ],
     matchName: "font-semibold text-ink",

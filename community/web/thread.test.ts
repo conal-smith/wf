@@ -9,6 +9,7 @@ import type {
 import {
   ago,
   applyMention,
+  arrivedSince,
   canDelete,
   canEdit,
   dayLabel,
@@ -22,6 +23,7 @@ import {
   mentionQuery,
   messageTime,
   newestSeq,
+  owesRead,
   peopleOf,
   sendsOnEnter,
   startStream,
@@ -211,6 +213,20 @@ describe("S10: live messages", () => {
     expect(seqs(stream.replies)).toEqual(run(1, 46).map((m) => m.seq));
   });
 
+  it("a change heard in pages a jump to the end passes over leaves no hole", () => {
+    let stream = startStream(
+      view(page(0, 29, { hasNewer: true }), { lastSeq: 80 }),
+    );
+    // An edit to 40, which is on no page yet, then a new message.
+    stream = withMessages(stream, [message(40, { body: "edited" })]);
+    stream = withMessages(stream, [message(81)]);
+    expect(seqs(stream.beyond)).toEqual([40, 81]);
+    stream = withPage(stream, page(51, 80), "replace");
+    expect(seqs(stream.replies)).toEqual(run(51, 81).map((m) => m.seq));
+    expect(stream.hasOlder).toBe(true);
+    expect(stream.beyond).toEqual([]);
+  });
+
   it("fills a hole the viewer's own reply left behind it", () => {
     let stream = startStream(view(page(0, 24)));
     // Their reply came back as 26: someone else's 25 had not been heard yet.
@@ -269,6 +285,22 @@ describe("S10: live messages", () => {
     expect(headAfter(after, [message(26)])).toBe(after);
     // An edit is not an arrival.
     expect(headAfter(after, [message(3, { body: "edited" })])).toBe(after);
+  });
+
+  it("the pill counts what came in past the newest the reader has seen", () => {
+    expect(arrivedSince(27, 24, false)).toBe(3);
+    // At the end of a run that reaches the end a message appends: no pill.
+    expect(arrivedSince(27, 24, true)).toBe(0);
+    expect(arrivedSince(24, 24, false)).toBe(0);
+  });
+
+  it("S3: a read is owed once per new seq, to a member with the newest in view", () => {
+    expect(owesRead(true, true, 25, 24)).toBe(true);
+    // A first visit has sent nothing, not even the opening post.
+    expect(owesRead(true, true, 0, -1)).toBe(true);
+    expect(owesRead(true, true, 25, 25)).toBe(false);
+    expect(owesRead(true, false, 25, 24)).toBe(false);
+    expect(owesRead(false, true, 25, 24)).toBe(false);
   });
 });
 

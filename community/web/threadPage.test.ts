@@ -7,14 +7,21 @@ import {
   type Message as MessageData,
   type Thread,
 } from "../shared/types";
-import { Composer, LockedNotice, SignInToReply } from "./components/Composer";
+import {
+  Composer,
+  LockedNotice,
+  SignInToReply,
+  composerStyles,
+} from "./components/Composer";
 import { FOLLOW_CHOICES, followLabel } from "./components/FollowMenu";
 import { Message, type MessageProps } from "./components/Message";
 import { MessageStream } from "./components/MessageStream";
+import { popoverStyles } from "./components/Popover";
 import {
   ReactionFaces,
   Reactions,
   reactionChips,
+  reactionStyles,
 } from "./components/Reactions";
 import { ThreadHead, ThreadPage } from "./pages/Thread";
 import type { StreamRow, Viewer } from "./thread";
@@ -206,6 +213,14 @@ describe("S2: the opening post is the one card", () => {
       "Started the thread",
     );
     expect(drawn({})).not.toContain("Started the thread");
+  });
+
+  it("a name carries no role: badges are out (D24)", () => {
+    const staff = drawn({
+      message: message({ author: member("Orla", "staff") }),
+    });
+    const plain = drawn({ message: message({ author: member("Orla") }) });
+    expect(staff).toBe(plain);
   });
 });
 
@@ -407,6 +422,13 @@ describe("S8, S9, S11: the reply slot", () => {
     expect(markup).toContain('aria-label="Mention someone"');
     // Nothing to send yet.
     expect(markup).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
+  });
+
+  it("what a finger presses is 44px: a person an @ offers, a face, a chip, a menu row", () => {
+    expect(composerStyles().match()).toContain("pointer-coarse:min-h-touch");
+    expect(reactionStyles().face()).toContain("pointer-coarse:size-touch");
+    expect(reactionStyles().chip()).toContain("pointer-coarse:min-h-touch");
+    expect(popoverStyles().item()).toContain("pointer-coarse:min-h-touch");
   });
 
   it("says who is being replied to, with a way out of it", () => {

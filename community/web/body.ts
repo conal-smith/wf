@@ -66,7 +66,12 @@ function text(value: string): Inline[] {
   return value ? [{ t: "text", text: value }] : [];
 }
 
-export function parseInline(source: string, depth = 0): Inline[] {
+export function parseInline(
+  source: string,
+  depth = 0,
+  /** Inside a link's label: an address there is its words, not a second link. */
+  linked = false,
+): Inline[] {
   if (depth >= MAX_DEPTH) return text(source);
   const out: Inline[] = [];
   let at = 0;
@@ -79,22 +84,26 @@ export function parseInline(source: string, depth = 0): Inline[] {
     let length = whole.length;
     if (mention !== undefined) node = { t: "mention", id: mention };
     else if (label !== undefined) {
-      const href = safeHref(target);
+      const href = linked ? null : safeHref(target);
       if (href)
-        node = { t: "link", href, children: parseInline(label, depth + 1) };
+        node = {
+          t: "link",
+          href,
+          children: parseInline(label, depth + 1, true),
+        };
     } else if (bare !== undefined) {
       const address = bare.replace(TRAILING, "");
-      const href = safeHref(address);
+      const href = linked ? null : safeHref(address);
       if (href) {
         node = { t: "link", href, children: text(address) };
         length = address.length;
       }
     } else if (bold !== undefined)
-      node = { t: "bold", children: parseInline(bold, depth + 1) };
+      node = { t: "bold", children: parseInline(bold, depth + 1, linked) };
     else
       node = {
         t: "italic",
-        children: parseInline(star ?? under, depth + 1),
+        children: parseInline(star ?? under, depth + 1, linked),
       };
     // Not a link after all: what was typed stays as it was typed.
     if (!node) continue;

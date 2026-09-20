@@ -56,9 +56,15 @@ function settled(stream: Stream): Stream {
     const last = stream.replies.at(-1)?.seq ?? 0;
     return { ...stream, beyond: stream.beyond.filter((m) => m.seq > last) };
   }
+  // One that waited from before the run (a change heard in pages a jump to
+  // the end passed over) would leave a hole: it is left for its page to bring.
+  const first = stream.replies[0]?.seq ?? 0;
   return {
     ...stream,
-    replies: merged(stream.replies, stream.beyond),
+    replies: merged(
+      stream.replies,
+      stream.beyond.filter((m) => m.seq > first),
+    ),
     beyond: [],
   };
 }
@@ -143,6 +149,31 @@ export function newestSeq(stream: Stream, thread: Pick<Thread, "lastSeq">) {
     stream.replies.at(-1)?.seq ?? 0,
     stream.beyond.at(-1)?.seq ?? 0,
   );
+}
+
+/**
+ * S10. What the "N new" pill counts: seqs past the newest the reader has had
+ * in view. At the end of a run that reaches the end there is nothing to count.
+ */
+export function arrivedSince(
+  newest: number,
+  seen: number,
+  caughtUp: boolean,
+): number {
+  return caughtUp ? 0 : Math.max(0, newest - seen);
+}
+
+/**
+ * S3. Whether PUT /read is owed: a member, with the newest message in view,
+ * and further on than the last seq that was sent.
+ */
+export function owesRead(
+  signedIn: boolean,
+  caughtUp: boolean,
+  newest: number,
+  sent: number,
+): boolean {
+  return signedIn && caughtUp && newest > sent;
 }
 
 /** The message with this seq, if it is on the page. */

@@ -47,8 +47,10 @@ import { Popover, PopoverItem } from "../components/Popover";
 import { LockDialog, ReportDialog } from "../components/ThreadDialogs";
 import { navigate, paths, routed } from "../router";
 import {
+  arrivedSince,
   headMeta,
   newestSeq,
+  owesRead,
   peopleOf,
   streamRows,
   type Viewer,
@@ -200,7 +202,7 @@ function Conversation({
   useEffect(() => {
     if (caughtUp) setSeen((now) => Math.max(now, newest));
   }, [caughtUp, newest]);
-  const arrived = caughtUp ? 0 : Math.max(0, newest - seen);
+  const arrived = arrivedSince(newest, seen, caughtUp);
 
   const rows = useMemo(
     () => streamRows(stream, entry, now),
@@ -257,7 +259,7 @@ function Conversation({
   const markedRead = useRef(entry.lastReadSeq ?? -1);
   const { markRead } = data;
   useEffect(() => {
-    if (!signedIn || !caughtUp || newest <= markedRead.current) return;
+    if (!owesRead(signedIn, caughtUp, newest, markedRead.current)) return;
     markedRead.current = newest;
     // A miss is made up by the next message that comes into view.
     markRead(newest).catch(() => {});

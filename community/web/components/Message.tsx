@@ -458,7 +458,6 @@ function Byline({
   return (
     <div className={styles.head()}>
       <span className={styles.name()}>{message.author.displayName}</span>
-      {message.author.role === "staff" && <Chip>Team</Chip>}
       {started && <Chip>Started the thread</Chip>}
       <Time iso={message.createdAt} now={now} />
       {message.editedAt && message.status === "visible" && (
