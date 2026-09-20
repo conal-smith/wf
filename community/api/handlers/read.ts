@@ -12,12 +12,16 @@ import {
 import {
   LIMITS,
   REACTIONS,
+  type MemberProfile,
+  type MemberView,
   type MessageWindow,
   type MetaPayload,
   type ThreadView,
 } from "../../shared/types.js";
 import { fail } from "../../../market/api/src/errors.js";
 import { ID_PATTERN } from "../../../market/api/src/ids.js";
+import { USER_LIMITS, type User } from "../../../site/shared/types.js";
+import { HANDLE_PATTERN } from "../../../site/shared/validate.js";
 
 const SEARCH_MAX = 100;
 
@@ -40,6 +44,18 @@ function windowOf(params: URLSearchParams): MessageWindow {
       ? { before: seq }
       : { around: seq };
 }
+
+/** Named field by field: contact details and the rest of the row stay where they are. */
+const profileOf = (user: User): MemberProfile => ({
+  id: user.id,
+  handle: user.handle,
+  displayName: user.displayName,
+  avatarUrl: user.avatarUrl,
+  role: user.role,
+  county: user.county,
+  bio: user.bio,
+  joinedAt: user.createdAt,
+});
 
 export function readRoutes(r: Router, deps: CommunityDeps) {
   const { repo, people } = deps;
@@ -134,6 +150,27 @@ export function readRoutes(r: Router, deps: CommunityDeps) {
     if (!page)
       fail(404, "not_found", "That thread does not exist or has been removed.");
     return c.json(page);
+  });
+
+  // A profile is public, like the threads under it. Reading one makes nobody a row.
+  r.get("/members/:handle", async (c) => {
+    const handle = c.req.param("handle").toLowerCase();
+    const user =
+      handle.length <= USER_LIMITS.handleMax && HANDLE_PATTERN.test(handle)
+        ? await people.users.getUserByHandle(handle)
+        : null;
+    if (!user) fail(404, "not_found", "There is no such member.");
+    const view: MemberView = {
+      member: profileOf(user),
+      threads: await repo.listThreads(
+        {
+          authorId: user.id,
+          cursor: cursorOf(new URL(c.req.url).searchParams),
+        },
+        c.var.userId,
+      ),
+    };
+    return c.json(view);
   });
 
   r.get("/search", async (c) => {

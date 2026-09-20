@@ -815,6 +815,8 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
         conditions.push(sql`exists (
           select 1 from community_thread_tags tt
           where tt.thread_id = t.id and tt.tag_id = ${query.tagId})`);
+      if (query.authorId)
+        conditions.push(sql`t.author_id = ${query.authorId}`);
       if (q)
         conditions.push(sql`(
           to_tsvector('english', t.title) @@ websearch_to_tsquery('english', ${q})

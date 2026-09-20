@@ -13,6 +13,7 @@ import { SEED_CHANNELS } from "./seed";
 import {
   LIMITS,
   REACTIONS,
+  type MemberView,
   type MentionPage,
   type Message,
   type MessagePage,
@@ -1964,6 +1965,104 @@ describe("community API: the Following and Mentions feeds", () => {
     expect(
       (await call("GET", "/feed?tab=mentions", undefined, "brian")).body.items,
     ).toEqual([]);
+  });
+});
+
+describe("community API: a member's profile", () => {
+  it("is public: the person, what they said of themselves, and nothing of how to reach them", async () => {
+    const { app, call, startThread } = harness();
+    await startThread("aoife");
+    const put = await app.request("/api/me", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer dev:aoife",
+      },
+      body: JSON.stringify({
+        displayName: "Aoife K",
+        county: "Dublin",
+        bio: "Dollymount most days.",
+        contactEmail: "aoife@example.test",
+        contactPhone: "+353 85 000 0000",
+      }),
+    });
+    expect(put.status).toBe(200);
+
+    const r = await call("GET", "/members/aoife");
+    expect(r.status).toBe(200);
+    const { member } = r.body as MemberView;
+    expect(member).toEqual({
+      id: "dev_aoife",
+      handle: "aoife",
+      displayName: "Aoife K",
+      avatarUrl: null,
+      role: "member",
+      county: "Dublin",
+      bio: "Dollymount most days.",
+      joinedAt: expect.any(String),
+    });
+    expect(JSON.stringify(r.body)).not.toContain("example.test");
+    expect(JSON.stringify(r.body)).not.toContain("35385");
+  });
+
+  it("lists the threads they started, most recent activity first, by cursor", async () => {
+    const { call, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
+    const theirs: string[] = [];
+    for (let i = 0; i < LIMITS.pageSize + 1; i++)
+      theirs.push((await startThread("aoife", { title: `Thread ${i}` })).id);
+    const other = await startThread("brian", { title: "Brian started this" });
+    // A reply is not a thread of theirs, and a reply to one of theirs bumps it.
+    await reply(other.id, "Aoife replied here", "aoife");
+    await reply(theirs[0], "Bumped", "brian");
+
+    const first = (await call("GET", "/members/aoife")).body as MemberView;
+    expect(first.threads.items).toHaveLength(LIMITS.pageSize);
+    expect(first.threads.items[0].id).toBe(theirs[0]);
+    expect(first.threads.items.map((t) => t.id)).not.toContain(other.id);
+    expect(first.threads.nextCursor).toEqual(expect.any(String));
+    const second = (
+      await call(
+        "GET",
+        `/members/aoife?cursor=${encodeURIComponent(first.threads.nextCursor!)}`,
+      )
+    ).body as MemberView;
+    expect(second.threads.items).toHaveLength(1);
+    expect(second.threads.nextCursor).toBeNull();
+    // Signed out, a thread carries nothing of a viewer; signed in, it does.
+    for (const field of VIEWER_THREAD_FIELDS)
+      expect(first.threads.items[0]).not.toHaveProperty(field);
+    const asBrian = (await call("GET", "/members/aoife", undefined, "brian"))
+      .body as MemberView;
+    expect(asBrian.threads.items[0].unread).toEqual(expect.any(Number));
+  });
+
+  it("leaves out a removed thread", async () => {
+    const { call, makeStaff, startThread } = harness();
+    await makeStaff("sorcha");
+    const kept = await startThread("aoife", { title: "Kept" });
+    const gone = await startThread("aoife", { title: "Gone" });
+    expect(
+      (await call("POST", `/threads/${gone.id}/remove`, {}, "sorcha")).status,
+    ).toBe(200);
+    const view = (await call("GET", "/members/aoife")).body as MemberView;
+    expect(view.threads.items.map((t) => t.id)).toEqual([kept.id]);
+  });
+
+  it("reads a handle in any case, answers 404 for nobody, and makes nobody a row", async () => {
+    const { call, users, startThread } = harness();
+    await startThread("aoife");
+    expect((await call("GET", "/members/Aoife")).status).toBe(200);
+    for (const handle of ["nobody", "no%20body", "a".repeat(31)]) {
+      const r = await call("GET", `/members/${handle}`, undefined, "cian");
+      expect([handle, r.status, r.body.error]).toEqual([
+        handle,
+        404,
+        "not_found",
+      ]);
+    }
+    expect(await users.countUsers()).toBe(1);
   });
 });
 
