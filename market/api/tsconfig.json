@@ -11,9 +11,9 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "rootDir": "..",
+    "rootDir": "../..",
     "outDir": "./dist"
   },
-  "include": ["src", "../shared"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["src", "../shared", "../../site/api", "../../site/shared"],
+  "exclude": ["src/**/*.test.ts", "../../site/**/*.test.ts"]
 }

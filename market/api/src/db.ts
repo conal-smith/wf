@@ -19,13 +19,13 @@ export function connect(url: string): Db {
   });
 }
 
-/** market/api/migrations, whether this file runs from src/ or from dist/api/src/. */
+/** market/api/migrations, whether this file runs from src/ or from dist/market/api/src/. */
 const MIGRATIONS_DIR = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     process.env.MARKET_MIGRATIONS_DIR,
     join(here, "..", "migrations"),
-    join(here, "..", "..", "..", "migrations"),
+    join(here, "..", "..", "..", "..", "migrations"),
   ].filter((c): c is string => Boolean(c));
   return candidates.find((c) => existsSync(c)) ?? candidates[0];
 })();
