@@ -130,7 +130,7 @@ export interface Repo {
    * replies number 1, 2, 3 with no gap and no repeat.
    */
   createMessage(input: NewMessage): Promise<Message>;
-  /** Changes the words and the mentions, and stamps editedAt. */
+  /** Changes the words and the mentions, and stamps editedAt. Null, and nothing changed, in a removed thread. */
   editMessage(
     id: string,
     body: string,
@@ -141,7 +141,7 @@ export interface Repo {
    * thread. The returned message is as `removedBy` sees it.
    */
   removeMessage(id: string, removedBy: string): Promise<Message | null>;
-  /** Idempotent. The message's counts change in the same transaction. */
+  /** Idempotent. The message's counts change in the same transaction. Null in a removed thread, as editMessage. */
   setReaction(
     messageId: string,
     userId: string,
