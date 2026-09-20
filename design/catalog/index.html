@@ -59,7 +59,7 @@
   <p class="sub">The design system behind wingfoil.ie's Force5 forecast map: a glass-on-sea surface language over one teal ramp and one canonical wind scale.</p>
   <p class="counts">
     v0.4.0 &middot; schema 1 &middot;
-    200 tokens (24 mode-varying) &middot;
+    203 tokens (24 mode-varying) &middot;
     9 components &middot; modes: light, dark
   </p>
 
@@ -158,11 +158,11 @@
   </div>
 
   <h2>Tokens</h2>
-<h3 id="t-ref.color">ref.color <span>44</span></h3>
+<h3 id="t-ref.color">ref.color <span>47</span></h3>
 <table class="tokens"><tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-50)"></i></td>
   <th><code>--ref-color-teal-50</code></th>
-  <td class="desc">Lightest wash. Dialog insets and pressed-pill grounds.</td>
+  <td class="desc">Lightest wash. The content ground; dialog insets and pressed-pill grounds.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-100)"></i></td>
@@ -187,22 +187,27 @@
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-500)"></i></td>
   <th><code>--ref-color-teal-500</code></th>
-  <td class="desc">3.50:1 on the panel ground. UI strokes and icons only, never text.</td>
+  <td class="desc">3.22:1 on the panel ground. UI strokes and icons only, never text.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-600)"></i></td>
   <th><code>--ref-color-teal-600</code></th>
-  <td class="desc">5.46:1 on the panel ground. The floor for body text and the resting action colour.</td>
+  <td class="desc">5.75:1 on the panel ground. The floor for body text.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-700)"></i></td>
   <th><code>--ref-color-teal-700</code></th>
-  <td class="desc">7.81:1. Emphasised text and the hovered action fill.</td>
+  <td class="desc">10.29:1. Emphasised text.</td>
+</tr>
+<tr>
+  <td><i class="sw sw--color" style="background: var(--ref-color-teal-750)"></i></td>
+  <th><code>--ref-color-teal-750</code></th>
+  <td class="desc">13.70:1. The inverse navy: the inverse surface, quiet actions and the focus ring. White on it is 15.39:1.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-800)"></i></td>
   <th><code>--ref-color-teal-800</code></th>
-  <td class="desc">10.29:1. Primary text.</td>
+  <td class="desc">14.68:1. Primary text, and the base every shadow is tinted with.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-900)"></i></td>
@@ -212,7 +217,17 @@
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-teal-950)"></i></td>
   <th><code>--ref-color-teal-950</code></th>
-  <td class="desc">Dark-mode page ground and the base every shadow is tinted with.</td>
+  <td class="desc">Dark-mode page ground.</td>
+</tr>
+<tr>
+  <td><i class="sw sw--color" style="background: var(--ref-color-blue-500)"></i></td>
+  <th><code>--ref-color-blue-500</code></th>
+  <td class="desc">The filled action at rest. White on it is 4.93:1.</td>
+</tr>
+<tr>
+  <td><i class="sw sw--color" style="background: var(--ref-color-blue-600)"></i></td>
+  <th><code>--ref-color-blue-600</code></th>
+  <td class="desc">The filled action, hovered. White on it is 6.87:1.</td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--ref-color-white-a05)"></i></td>
@@ -798,17 +813,17 @@
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-text-primary)"></i></td>
   <th><code>--sem-color-text-primary</code> <em class="modal">light / dark</em></th>
-  <td class="desc">Everything read at length. 10.29:1 on the panel ground.<em>Body, headings, the wind reading.</em></td>
+  <td class="desc">Everything read at length. 14.68:1 on the panel ground.<em>Body, headings, the wind reading.</em></td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-text-secondary)"></i></td>
   <th><code>--sem-color-text-secondary</code> <em class="modal">light / dark</em></th>
-  <td class="desc">Supporting text that is still prose. 7.81:1.<em>Dialog paragraphs, sub-labels that carry meaning.</em></td>
+  <td class="desc">Supporting text that is still prose. 10.29:1.<em>Dialog paragraphs, sub-labels that carry meaning.</em></td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-text-muted)"></i></td>
   <th><code>--sem-color-text-muted</code> <em class="modal">light / dark</em></th>
-  <td class="desc">The quietest text the system permits. 5.46:1 on the panel ground, and the floor: nothing readable is lighter than this.<em>Eyebrows, coordinates, ticks, captions, table metadata.</em></td>
+  <td class="desc">The quietest text the system permits. 5.75:1 on the panel ground, and the floor: nothing readable is lighter than this.<em>Eyebrows, coordinates, ticks, captions, table metadata.</em></td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-text-inverse)"></i></td>
@@ -833,7 +848,7 @@
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-action-fg)"></i></td>
   <th><code>--sem-color-action-fg</code> <em class="modal">light / dark</em></th>
-  <td class="desc">The label on a filled action. 6.05:1 on action.bg.<em>Text and icons inside a filled action.</em></td>
+  <td class="desc">The label on a filled action. 4.93:1 on action.bg.<em>Text and icons inside a filled action.</em></td>
 </tr>
 <tr>
   <td><i class="sw sw--color" style="background: var(--sem-color-action-quiet)"></i></td>
