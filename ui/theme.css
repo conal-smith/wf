@@ -51,7 +51,12 @@
 @source "../market/web";
 @source "../community/web";
 
-@theme {
+/* `static`, because the map's stylesheets read these variables with `var()`
+   rather than through a utility class. A plain `@theme` emits only the values
+   some generated utility uses, and `--color-ok` and `--color-now` had no
+   utility, so `var(--color-ok)` in src/styles.css would have resolved to
+   nothing. Static emits every value, whatever reads it. */
+@theme static {
   --color-*: initial;
   --text-*: initial;
   --radius-*: initial;
@@ -110,6 +115,11 @@
   --color-warn: #854d31;
   --color-warn-ground: #fff4e8;
   --color-now: #a8442e;
+  /* The dashed rule the now marker draws down the forecast grid, lighter than
+     the marker's own label. Its value is the one the map has always drawn
+     (D12: the now marker is not re-themed), written here only so no stylesheet
+     has to hold a literal. */
+  --color-now-line: #bf6546;
 
   /* Wind speed, in knots. These mean wind and nothing else. */
   --color-wind-k00: #355897;

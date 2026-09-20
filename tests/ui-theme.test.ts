@@ -81,6 +81,7 @@ const COLOURS: Record<string, string> = {
   warn: "#854d31",
   "warn-ground": "#fff4e8",
   now: "#a8442e",
+  "now-line": "#bf6546",
 };
 
 // S7: size, line height, then weight and tracking where the step has one.
