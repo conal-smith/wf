@@ -46,7 +46,7 @@ import { MessageStream } from "../components/MessageStream";
 import { Popover, PopoverItem } from "../components/Popover";
 import { SpotCard } from "../components/SpotCard";
 import { LockDialog, ReportDialog } from "../components/ThreadDialogs";
-import { navigate, paths, routed } from "../router";
+import { messageSeq, navigate, paths, routed, useLocation } from "../router";
 import {
   arrivedSince,
   headMeta,
@@ -281,12 +281,23 @@ function Conversation({
     return () => clearTimeout(timer);
   }, [marked]);
 
-  const jump = (ref: ReplyRef) => {
+  const jumpTo = (seq: number) => {
     fromBottom.current = null;
-    void data.reach(ref.seq).then((there) => {
-      if (there) setTarget(ref.seq);
+    void data.reach(seq).then((there) => {
+      if (there) setTarget(seq);
     });
   };
+  const jump = (ref: ReplyRef) => jumpTo(ref.seq);
+
+  // A link to one message (the bell's rows, a mention) names it in the hash,
+  // `paths.message`: arriving by one is a jump to it, here already or not.
+  const { hash } = useLocation();
+  useEffect(() => {
+    const seq = messageSeq(hash);
+    if (seq !== null) jumpTo(seq);
+    // `jumpTo` is this render's; the hash is what asks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hash]);
 
   /** Runs something a member asked for, and says so in place when it fails. */
   const attempt = (work: Promise<unknown>, fallback: string) => {

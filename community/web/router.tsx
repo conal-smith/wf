@@ -48,10 +48,15 @@ export function navigate(to: string, options: { replace?: boolean } = {}) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-export function useLocation(): { pathname: string; search: URLSearchParams } {
+export function useLocation(): {
+  pathname: string;
+  search: URLSearchParams;
+  hash: string;
+} {
   const read = () => ({
     pathname: location.pathname,
     search: new URLSearchParams(location.search),
+    hash: location.hash,
   });
   const [state, setState] = useState(read);
   useEffect(() => {
@@ -114,12 +119,29 @@ export const NEW_THREAD = "new";
 export const TAG = "tag";
 export const QUERY = "q";
 
+/**
+ * The member's own profile, whoever they are: `me` is a handle nobody can take
+ * (RESERVED_HANDLES), so the bell can link there before it knows their handle.
+ */
+export const ME = "me";
+/** The part of that profile the bell's settings link lands on. */
+export const SETTINGS_ID = "following-settings";
+
 /** The URL the dialog was opened over: the same one, no longer asking for it. */
 export function withoutNewThread(pathname: string, search: URLSearchParams) {
   const rest = new URLSearchParams(search);
   rest.delete(NEW_THREAD);
   const q = rest.toString();
   return q ? `${pathname}?${q}` : pathname;
+}
+
+const thread = (id: string, slug?: string | null) =>
+  slug ? `${BASE}/t/${id}/${slug}` : `${BASE}/t/${id}`;
+
+/** The seq a `paths.message` URL names in its hash, or null where it names none. */
+export function messageSeq(hash: string): number | null {
+  const found = /^#m-(\d+)$/.exec(hash);
+  return found ? Number(found[1]) : null;
 }
 
 export const paths = {
@@ -133,9 +155,16 @@ export const paths = {
   /** A tag narrows a channel's list, and rides in the URL so a link keeps it. */
   channel: (slug: string, tagId?: string | null) =>
     tagId ? `${BASE}/c/${slug}?${TAG}=${tagId}` : `${BASE}/c/${slug}`,
-  thread: (id: string, slug?: string | null) =>
-    slug ? `${BASE}/t/${id}/${slug}` : `${BASE}/t/${id}`,
+  thread,
+  /**
+   * A message, inside its thread: the thread page gives each message the id
+   * `m-<seq>`. Without a seq it is the thread.
+   */
+  message: (id: string, slug: string | null, seq: number | null) =>
+    seq === null ? thread(id, slug) : `${thread(id, slug)}#m-${seq}`,
   member: (handle: string) => `${BASE}/u/${handle}`,
+  /** What following tells a member about: the autoFollow switch on their profile. */
+  settings: () => `${BASE}/u/${ME}#${SETTINGS_ID}`,
   /**
    * Starting a thread is a dialog over the channel it will land in, or over
    * home. It is a URL so that a sign-in on the way comes back to it.

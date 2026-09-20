@@ -22,7 +22,11 @@ import {
   type ChannelsState,
 } from "./hooks";
 import { canStartThread, Channel } from "./pages/Channel";
+import { Following } from "./pages/Following";
 import { Home } from "./pages/Home";
+import { Mentions } from "./pages/Mentions";
+import { Notifications } from "./pages/Notifications";
+import { Profile } from "./pages/Profile";
 import { ThreadPage } from "./pages/Thread";
 import { Rail, railCurrent } from "./Rail";
 import {
@@ -78,7 +82,7 @@ function Shell() {
   }, [pathname]);
 
   const channels = useChannels();
-  const unread = useNotificationsCount();
+  const bell = useNotificationsCount();
   const home = route.page === "home";
   // A channel the site's team posts in offers New thread to them alone, which
   // is the one thing here that needs the member's role: asked only there.
@@ -101,7 +105,9 @@ function Shell() {
                   route.page === "channel" ? route.slug : undefined,
                 )
           }
-          unread={unread}
+          unread={bell.count}
+          onUnread={bell.setCount}
+          pathname={pathname}
         />
         <div className={styles.shell()}>
           <Rail
@@ -130,6 +136,8 @@ function Shell() {
               role={role}
               pathname={pathname}
               search={search}
+              unread={bell.count}
+              onUnread={bell.setCount}
             />
           </main>
         </div>
@@ -142,19 +150,30 @@ function Shell() {
 function Page({
   route,
   onThreadChannel,
+  unread,
+  onUnread,
   ...page
 }: {
   route: Route;
   onThreadChannel: (slug: string | null) => void;
   channels: ChannelsState;
+  /** The shell's `useChannels().reload`: a post or a follow changes the rail's copy. */
   onPosted: () => void;
   role: ReturnType<typeof useViewerRole>;
   pathname: string;
   search: URLSearchParams;
+  unread: number;
+  onUnread: (count: number) => void;
 }) {
   switch (route.page) {
     case "home":
       return <Home {...page} />;
+    case "following":
+      return <Following channels={page.channels} onFollowed={page.onPosted} />;
+    case "mentions":
+      return <Mentions />;
+    case "notifications":
+      return <Notifications unread={unread} onUnread={onUnread} />;
     case "channel":
       return <Channel key={route.slug} slug={route.slug} {...page} />;
     case "thread":
@@ -162,6 +181,8 @@ function Page({
       return (
         <ThreadPage key={route.id} id={route.id} onChannel={onThreadChannel} />
       );
+    case "member":
+      return <Profile handle={route.handle} />;
     case "not-found":
       return <NotFound />;
     default:
