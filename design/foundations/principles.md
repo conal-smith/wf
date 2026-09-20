@@ -63,9 +63,11 @@ reverse. A rounded thing inside a more-rounded thing reads as a mistake.
 at the same z casts the same shadow. If two things at the same layer look
 different, one of them is at the wrong layer.
 
-**Colour.** One hue. `ref.color.teal.*` is the entire structural palette; the only
-other families are `warm` (degraded / now), `green` (one liveness dot) and
-`wind` (data). A fifth family is a design change, not an implementation detail.
+**Colour.** One neutral family and one accent. `ref.color.teal.*` (the navy ramp
+since the ruling of 2026-09-20) is the entire structural palette, and
+`ref.color.blue.*` is the filled action and nothing else; the only other families
+are `warm` (degraded / now), `green` (one liveness dot) and `wind` (data). A
+further family is a design change, not an implementation detail.
 
 ## The wind scale is data, not decoration
 
@@ -204,6 +206,33 @@ on a listing (contact the seller), the sell form (publish) and the account
 pages it drops back to a quiet pill. A destructive confirmation is a dialog, a
 view of its own, and its one filled button is the warm pair, because removing a
 listing and its photos is the degraded case warm exists to mark.
+
+**2026-09-20 — Atlantic: one neutral family and one accent.**
+The teal was made to sit quietly over a map full of wind colour; on a page with
+no map behind it, it read cold and still. "One hue" becomes one neutral family
+(navy) and one accent (blue). The navy ramp replaces `ref.color.teal.*` step for
+step, `#f4f6fa` at 50 to `#050f20` at 950, and the family keeps its name so that
+every `sem` alias keeps pointing at the same step number; the rename belongs to
+the bundle's retirement, not to this change. One step is added, `teal.750`
+(`#0b2545`), which `surface.inverse`, `action.quiet` and `action.focus` share.
+The accent is `ref.color.blue.500` (`#1463ff`) with `blue.600` (`#0d4fd1`) for
+hover, and it has one job: `action.bg`. The accent rule itself does not change:
+one filled action per view. Warm still means now or degraded, wind colours still
+mean wind, and `warm`, `green` and all fourteen `wind` stops keep their values.
+The ink alphas (hairline, shadows, scrim) are re-based on `#0a1f3c`.
+
+Measured the way the ruling of 2026-09-14 measured the old ramp: on the panel
+ground 600 is 5.75:1 and 500 is 3.22:1, so 600 is still the floor for text and
+500 is still never text. `text.muted` is 5.96:1 on the content ground and 6.45:1
+on a card; white on `action.bg` is 4.93:1, and 6.87:1 hovered. Those figures
+replace the teal ones quoted in the rulings of 2026-09-14 and 2026-09-17, which
+stand as the record of how the old ramp was made.
+
+The map does not follow yet. Its stylesheets read no tokens, so until they are
+migrated the map stays teal while the pages around it are navy: separate page
+loads, a visible seam rather than a broken one. The dark-mode halves keep their
+aliases and have not had this pass; dark is still not adopted (see the gap
+below), and they need it before it ever is.
 
 ---
 
