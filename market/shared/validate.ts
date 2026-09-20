@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
   CATEGORY_IDS,
   CONDITION_IDS,
-  COUNTIES,
   CURRENCIES,
   LIMITS,
   PHOTO_CONTENT_TYPES,
@@ -15,18 +14,12 @@ import {
   type Currency,
   type ListingQuery,
 } from "./types.js";
-
-const trimmed = (max: number) => z.string().trim().max(max);
-const optionalText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max)
-    .transform((s) => (s.length ? s : null))
-    .nullable()
-    .optional();
-
-const county = z.enum(COUNTIES);
+import {
+  county,
+  optionalText,
+  trimmed,
+  userInputSchema,
+} from "../../site/shared/validate.js";
 
 export const photoInputSchema = z
   .object({
@@ -72,44 +65,19 @@ export const listingInputSchema = z.object({
 
 export type ListingInputParsed = z.infer<typeof listingInputSchema>;
 
-const phone = z
-  .string()
-  .trim()
-  .regex(
-    /^\+?[0-9 ()-]{7,20}$/,
-    "Enter a phone number with digits, spaces or a leading +",
-  )
-  .transform((s) => s.replace(/[^0-9+]/g, ""));
-
-export const profileInputSchema = z
-  .object({
-    displayName: trimmed(LIMITS.displayNameMax).min(
-      2,
-      "Use a name of at least 2 characters",
-    ),
-    county: county.nullable().optional(),
-    contactEmail: z
-      .string()
-      .trim()
-      .email("Enter a valid email address")
-      .max(120)
-      .nullable()
-      .optional()
-      .or(z.literal("").transform(() => null)),
-    contactPhone: phone
-      .nullable()
-      .optional()
-      .or(z.literal("").transform(() => null)),
-    contactWhatsapp: z.boolean().optional().default(false),
-    bio: optionalText(LIMITS.bioMax),
-  })
-  .refine((p) => p.contactEmail || p.contactPhone, {
+/**
+ * The seller's form: the site's own profile fields, plus the one thing only
+ * the marketplace asks for. PUT /me itself accepts a row with no contact;
+ * publishing a listing is where the API insists (contact_required).
+ */
+export const profileInputSchema = userInputSchema.refine(
+  (p) => p.contactEmail || p.contactPhone,
+  {
     message:
       "Buyers need at least one way to reach you: an email or a phone number",
     path: ["contactEmail"],
-  });
-
-export type ProfileInputParsed = z.infer<typeof profileInputSchema>;
+  },
+);
 
 export const reviewInputSchema = z.object({
   rating: z
