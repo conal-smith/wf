@@ -10,6 +10,8 @@ import type { UserInputParsed } from "../shared/validate.js";
 export interface MemoryUsersRepo extends UsersRepo {
   /** Synchronous read, for other in-memory repos only. */
   peek(id: string): User | undefined;
+  /** Everyone whose role is staff, the same way: what `where role = 'staff'` answers on Postgres. */
+  staff(): User[];
 }
 
 export function memoryUsersRepo(
@@ -22,6 +24,8 @@ export function memoryUsersRepo(
 
   return {
     peek: (id) => users.get(id),
+
+    staff: () => [...users.values()].filter((u) => u.role === "staff"),
 
     async getUser(id) {
       return users.get(id) ?? null;

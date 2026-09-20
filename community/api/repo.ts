@@ -76,7 +76,7 @@ export interface NewReport {
 export interface ModLogEntry {
   id: string;
   actorId: string;
-  /** What was done: pin, unpin, lock, unlock, remove, suspend. */
+  /** What was done: pin, unpin, lock, unlock, remove, suspend, unsuspend. */
   action: string;
   targetType: "thread" | "message" | "user";
   targetId: string;
@@ -228,6 +228,11 @@ export interface Repo {
     which: NotificationSelector,
   ): Promise<void>;
 
+  /**
+   * Saves the report and, with it, a `report` row in the bell of everyone
+   * whose role is staff, the reporter included if they are one. Reports never
+   * fold: two on one message are two rows.
+   */
   addReport(report: NewReport): Promise<void>;
   countReportsBy(reporterId: string, since: Date): Promise<number>;
   addModLog(entry: ModLogEntry): Promise<void>;

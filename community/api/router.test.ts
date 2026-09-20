@@ -2225,3 +2225,145 @@ describe("community API: new members, links and threads", () => {
       expect((await start("dara")).status).toBe(201);
   });
 });
+
+describe("community API: reports", () => {
+  type Call = ReturnType<typeof harness>["call"];
+  const bell = async (call: Call, user: string) =>
+    (await call("GET", "/notifications", undefined, user))
+      .body as NotificationPage;
+  const count = async (call: Call, user: string) =>
+    (await call("GET", "/notifications/count", undefined, user)).body.count;
+
+  it("saves a report and puts one row in the bell of everyone on the team", async () => {
+    const { call, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    await makeStaff("site");
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing, link in bio.", "brian");
+    const path = `/messages/${advert.id}/report`;
+
+    // Ciara has written nothing yet: reporting is what makes her row.
+    const r = await call(
+      "POST",
+      path,
+      { reason: "spam", note: "  Same line in three threads.  " },
+      "ciara",
+    );
+    expect(r.status).toBe(201);
+    expect(r.body).toEqual({ id: expect.stringMatching(ID_PATTERN) });
+
+    for (const staff of ["sorcha", "site"]) {
+      const rows = (await bell(call, staff)).items;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        kind: "report",
+        thread: { id: thread.id },
+        messageId: advert.id,
+        seq: 1,
+        actors: [{ id: "dev_ciara" }],
+        count: 1,
+        readAt: null,
+      });
+      expect(await count(call, staff)).toBe(1);
+    }
+    // Nobody else is told, the reported member least of all.
+    for (const member of ["aoife", "brian", "ciara"])
+      expect(
+        (await bell(call, member)).items.filter((n) => n.kind === "report"),
+      ).toEqual([]);
+
+    // A second report of the same message is a second row, and reading the thread clears neither.
+    expect(
+      (await call("POST", path, { reason: "abuse" }, "aoife")).status,
+    ).toBe(201);
+    await call("PUT", `/threads/${thread.id}/read`, { seq: 1 }, "sorcha");
+    await call("PUT", "/notifications/read", { threadId: thread.id }, "sorcha");
+    expect(await count(call, "sorcha")).toBe(2);
+  });
+
+  it("refuses a report with no session, no such reason, or nothing left to report", async () => {
+    const { call, repo, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    const mine = await reply(thread.id, "Said in haste.", "brian");
+    const path = `/messages/${mine.id}/report`;
+    expect((await call("POST", path, { reason: "spam" })).status).toBe(401);
+    for (const body of [
+      { reason: "rude" },
+      { note: "No reason given" },
+      { reason: "spam", note: "x".repeat(LIMITS.reportNoteMax + 1) },
+      "not json",
+    ]) {
+      const r = await call("POST", path, body, "ciara");
+      expect([body, r.status, r.body.error]).toEqual([body, 400, "invalid"]);
+    }
+    expect(
+      (
+        await call(
+          "POST",
+          `/messages/${UNKNOWN_ID}/report`,
+          { reason: "spam" },
+          "ciara",
+        )
+      ).status,
+    ).toBe(404);
+    await call("DELETE", `/messages/${mine.id}`, undefined, "brian");
+    expect((await call("POST", path, { reason: "spam" }, "ciara")).status).toBe(
+      404,
+    );
+    // None of those was saved, or counted against her.
+    expect(await repo.countReportsBy("dev_ciara", new Date(0))).toBe(0);
+  });
+
+  it("takes five a day from one reporter, and the next day five more", async () => {
+    const { call, makeStaff, startThread, reply, wait } = harness(
+      fakeStorage(),
+      true,
+    );
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing.", "brian");
+    const report = (user: string) =>
+      call("POST", `/messages/${advert.id}/report`, { reason: "spam" }, user);
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report("ciara")).status).toBe(201);
+    const r = await report("ciara");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual({
+      error: "rate_limited",
+      message: expect.any(String),
+      retryAfter: expect.any(Number),
+    });
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+    // Counted from the table over the calendar day, and the clock started at midnight.
+    expect(r.body.retryAfter).toBeGreaterThan(24 * 60 * 60 - 60);
+    expect(r.body.retryAfter).toBeLessThan(24 * 60 * 60);
+    expect((await report("dara")).status).toBe(201);
+    expect(await count(call, "sorcha")).toBe(LIMITS.reportsPerDay + 1);
+
+    // Midnight, and a minute: the bucket fills over a rolling day, from her fifth.
+    wait(r.body.retryAfter * 1000 + 60 * 1000);
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report("ciara")).status).toBe(201);
+    expect((await report("ciara")).status).toBe(429);
+  });
+
+  it("still counts the day's reports when the process has forgotten them", async () => {
+    // The limiter that never refuses stands in for a restart: only the table is left.
+    const { call, startThread, reply, wait } = harness();
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing.", "brian");
+    const report = () =>
+      call(
+        "POST",
+        `/messages/${advert.id}/report`,
+        { reason: "spam" },
+        "ciara",
+      );
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report()).status).toBe(201);
+    const r = await report();
+    expect([r.status, r.body.error]).toEqual([429, "rate_limited"]);
+    wait(r.body.retryAfter * 1000);
+    expect((await report()).status).toBe(201);
+  });
+});
