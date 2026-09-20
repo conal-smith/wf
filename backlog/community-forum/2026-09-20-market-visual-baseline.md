@@ -1,11 +1,12 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: high
 risk: low
 epic: community-forum
 iteration: 2
+updated: 2026-09-20T22:54:48.129Z
 ---
 
 # Capture a visual baseline of every marketplace view
@@ -45,3 +46,4 @@ LOG:
 - 2026-09-20 reviewer: the type comes over the network, which nothing said. A run without it would have recorded a fallback face and moved every line of all 49 files, silently. settle() now fails unless a DM Sans face is loaded; document.fonts.check is no use for this, it answers true for a family nobody has.
 - 2026-09-20 reviewer: 14 shots added, each of them the only place something is drawn — sell-edit (the photo tiles, the cover chip, the reorder and remove tools), listing-contact (the panel behind the button, on the listing they had already enquired on so the shot records nothing new), browse-empty (also the only search box with anything in it, and the filter tokens), sell-contact (step 1, someone the API has never heard of), sell-signed-out (the only warn notice), me-signed-out (the gate), seller-sold (the only grid with a status on the cards).
 - 2026-09-20 reviewer: left out, and why. The loading skeletons and the "could not be loaded" panes: the shutter refuses both on purpose, and reaching one means stalling or breaking the API mid-flight. The pager: pageSize is the constant 24 (market/shared/types.ts:90), so drawing one needs 25 listings, which would swamp the browse shot the conversion actually needs. The share control's "Link copied": a two-second icon swap behind a clipboard permission. The uploader's drag-over, busy and failed tiles: each needs a file drop. The profile form's errors: the same invalid Field that sell-errors already records at both widths.
+- 2026-09-20 integrator: merged 4c210b7 into community-forum-2. playwright.config.ts conflicted with map-visual-baseline; both projects kept and the pattern renamed MARKET_SHOTS beside MAP_SHOTS. On the merged branch: npm test 1148 pass, build, market:api:build, ui:lint green, test:e2e 85 pass, then market:shots (49) and map:shots (36) re-shot with the tree left clean.
