@@ -1,0 +1,2886 @@
+<title>Wingfoil Community Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}button,input{font:inherit}
+:root {
+  --ref-color-teal-50: #f1fafc;
+  --ref-color-teal-100: #e6f4f8;
+  --ref-color-teal-200: #d1e6ec;
+  --ref-color-teal-300: #afcdd5;
+  --ref-color-teal-400: #82aab4;
+  --ref-color-teal-500: #568996;
+  --ref-color-teal-600: #346a76;
+  --ref-color-teal-700: #20525d;
+  --ref-color-teal-800: #163f49;
+  --ref-color-teal-900: #103138;
+  --ref-color-teal-950: #0a2126;
+  --ref-color-white-a05: #ffffff0d;
+  --ref-color-white-a15: #ffffff26;
+  --ref-color-white-a25: #ffffff40;
+  --ref-color-white-a40: #ffffff66;
+  --ref-color-white-a55: #ffffff8c;
+  --ref-color-white-a70: #ffffffb3;
+  --ref-color-white-a85: #ffffffd9;
+  --ref-color-white-a95: #fffffff2;
+  --ref-color-white-full: #ffffff;
+  --ref-color-ink-a08: #0a212614;
+  --ref-color-ink-a12: #0a21261f;
+  --ref-color-ink-a20: #0a212633;
+  --ref-color-ink-a30: #0a21264d;
+  --ref-color-ink-a45: #0a212673;
+  --ref-color-warm-100: #fff4e8;
+  --ref-color-warm-500: #bb6c23;
+  --ref-color-warm-700: #a8442e;
+  --ref-color-warm-800: #854d31;
+  --ref-color-green-600: #3c8a72;
+  --ref-color-wind-k00: #355897;
+  --ref-color-wind-k05: #2a76b8;
+  --ref-color-wind-k09: #2e97be;
+  --ref-color-wind-k10: #209e78;
+  --ref-color-wind-k15: #32a74f;
+  --ref-color-wind-k20: #5bb437;
+  --ref-color-wind-k25: #92c134;
+  --ref-color-wind-k30: #bfcc3a;
+  --ref-color-wind-k35: #e8be30;
+  --ref-color-wind-k40: #ea862d;
+  --ref-color-wind-k45: #dd4e38;
+  --ref-color-wind-k50: #be334f;
+  --ref-color-wind-k60: #923d98;
+  --ref-color-wind-k65: #724297;
+  --ref-gradient-wind: linear-gradient(90deg, #355897 0%, #2a76b8 7.69%, #2e97be 13.85%, #209e78 15.38%, #32a74f 23.08%, #5bb437 30.77%, #92c134 38.46%, #bfcc3a 46.15%, #e8be30 53.85%, #ea862d 61.54%, #dd4e38 69.23%, #be334f 76.92%, #923d98 92.31%, #724297 100%);
+  --ref-space-0: 0px;
+  --ref-space-2: 2px;
+  --ref-space-4: 4px;
+  --ref-space-6: 6px;
+  --ref-space-8: 8px;
+  --ref-space-10: 10px;
+  --ref-space-12: 12px;
+  --ref-space-16: 16px;
+  --ref-space-20: 20px;
+  --ref-space-24: 24px;
+  --ref-space-32: 32px;
+  --ref-space-40: 40px;
+  --ref-radius-sm: 4px;
+  --ref-radius-md: 8px;
+  --ref-radius-lg: 12px;
+  --ref-radius-xl: 16px;
+  --ref-radius-2xl: 20px;
+  --ref-radius-3xl: 24px;
+  --ref-radius-4xl: 30px;
+  --ref-radius-full: 9999px;
+  --ref-stroke-thin: 1px;
+  --ref-stroke-medium: 2px;
+  --ref-stroke-thick: 3px;
+  --ref-font-family-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --ref-font-family-display: Manrope, sans-serif;
+  --ref-font-size-2xs: 9px;
+  --ref-font-size-xs: 10px;
+  --ref-font-size-sm: 11px;
+  --ref-font-size-md: 12px;
+  --ref-font-size-lg: 14px;
+  --ref-font-size-xl: 17px;
+  --ref-font-size-2xl: 20px;
+  --ref-font-size-3xl: 25px;
+  --ref-font-size-4xl: 32px;
+  --ref-font-size-5xl: 48px;
+  --ref-font-weight-regular: 400;
+  --ref-font-weight-medium: 500;
+  --ref-font-weight-semibold: 600;
+  --ref-font-weight-bold: 700;
+  --ref-font-weight-display: 800;
+  --ref-font-tracking-tight: -0.7px;
+  --ref-font-tracking-normal: 0px;
+  --ref-font-tracking-label: 1.1px;
+  --ref-font-leading-tight: 1.3;
+  --ref-font-leading-normal: 1.5;
+  --ref-font-leading-loose: 1.75;
+  --ref-shadow-sm: 0px 1px 5px #0a21261f;
+  --ref-shadow-md: 0px 3px 12px #0a212633;
+  --ref-shadow-lg: 0px 10px 40px #0a212633;
+  --ref-shadow-dock: 0px -4px 24px #0a212633;
+  --ref-duration-fast: 150ms;
+  --ref-duration-base: 250ms;
+  --ref-duration-slow: 400ms;
+  --ref-blur-glass: 28px;
+  --ref-blur-scrim: 5px;
+  --ref-z-map: 1;
+  --ref-z-overlay: 3;
+  --ref-z-marker: 4;
+  --ref-z-popover: 6;
+  --ref-z-dock: 7;
+  --ref-z-chrome: 8;
+  --ref-z-panel: 15;
+  --ref-z-header: 20;
+  --ref-z-dialog: 30;
+  --ref-control-sm: 30px;
+  --ref-control-md: 40px;
+  --ref-control-lg: 46px;
+  --ref-control-touch: 44px;
+  --sem-color-bg-page: #82aab4;
+  --sem-color-bg-content: #f1fafc;
+  --sem-color-surface-glass: #e6f4f8db;
+  --sem-color-surface-solid: #e6f4f8;
+  --sem-color-surface-card: #ffffff;
+  --sem-color-surface-raised: #ffffff66;
+  --sem-color-surface-sunken: #d1e6ec;
+  --sem-color-surface-inverse: #20525d;
+  --sem-color-surface-scrim: #0a212673;
+  --sem-color-border-hairline: #0a212614;
+  --sem-color-border-glass: #ffffffb3;
+  --sem-color-border-strong: #568996;
+  --sem-color-text-primary: #163f49;
+  --sem-color-text-secondary: #20525d;
+  --sem-color-text-muted: #346a76;
+  --sem-color-text-inverse: #ffffff;
+  --sem-color-text-disabled: #568996;
+  --sem-color-action-bg: #346a76;
+  --sem-color-action-bg-hover: #20525d;
+  --sem-color-action-fg: #ffffff;
+  --sem-color-action-quiet: #20525d;
+  --sem-color-action-quiet-hover: #ffffff8c;
+  --sem-color-action-focus: #20525d;
+  --sem-color-status-ok: #3c8a72;
+  --sem-color-status-warn-fg: #854d31;
+  --sem-color-status-warn-bg: #fff4e8;
+  --sem-color-status-now: #a8442e;
+  --sem-color-wind-k00: #355897;
+  --sem-color-wind-k05: #2a76b8;
+  --sem-color-wind-k09: #2e97be;
+  --sem-color-wind-k10: #209e78;
+  --sem-color-wind-k15: #32a74f;
+  --sem-color-wind-k20: #5bb437;
+  --sem-color-wind-k25: #92c134;
+  --sem-color-wind-k30: #bfcc3a;
+  --sem-color-wind-k35: #e8be30;
+  --sem-color-wind-k40: #ea862d;
+  --sem-color-wind-k45: #dd4e38;
+  --sem-color-wind-k50: #be334f;
+  --sem-color-wind-k60: #923d98;
+  --sem-color-wind-k65: #724297;
+  --sem-space-gap-tight: 4px;
+  --sem-space-gap: 8px;
+  --sem-space-gap-loose: 12px;
+  --sem-space-pad-control: 12px;
+  --sem-space-pad-surface: 20px;
+  --sem-space-pad-dialog: 32px;
+  --sem-space-inset: 24px;
+  --sem-radius-control: 12px;
+  --sem-radius-surface: 20px;
+  --sem-radius-pill: 24px;
+  --sem-radius-dialog: 30px;
+  --sem-radius-round: 9999px;
+  --sem-stroke-hairline: 1px;
+  --sem-stroke-emphasis: 2px;
+  --sem-stroke-focus-width: 3px;
+  --sem-stroke-focus-offset: 2px;
+  --sem-text-eyebrow-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-eyebrow-font-size: 9px;
+  --sem-text-eyebrow-font-weight: 600;
+  --sem-text-eyebrow-letter-spacing: 1.1px;
+  --sem-text-eyebrow-line-height: 1.5;
+  --sem-text-caption-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-caption-font-size: 10px;
+  --sem-text-caption-font-weight: 400;
+  --sem-text-caption-letter-spacing: 0px;
+  --sem-text-caption-line-height: 1.5;
+  --sem-text-body-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-body-font-size: 12px;
+  --sem-text-body-font-weight: 400;
+  --sem-text-body-letter-spacing: 0px;
+  --sem-text-body-line-height: 1.5;
+  --sem-text-prose-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-prose-font-size: 14px;
+  --sem-text-prose-font-weight: 400;
+  --sem-text-prose-letter-spacing: 0px;
+  --sem-text-prose-line-height: 1.5;
+  --sem-text-label-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-label-font-size: 11px;
+  --sem-text-label-font-weight: 600;
+  --sem-text-label-letter-spacing: 0px;
+  --sem-text-label-line-height: 1.3;
+  --sem-text-lead-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-lead-font-size: 17px;
+  --sem-text-lead-font-weight: 600;
+  --sem-text-lead-letter-spacing: 0px;
+  --sem-text-lead-line-height: 1.3;
+  --sem-text-title-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-title-font-size: 25px;
+  --sem-text-title-font-weight: 600;
+  --sem-text-title-letter-spacing: -0.7px;
+  --sem-text-title-line-height: 1.3;
+  --sem-text-reading-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sem-text-reading-font-size: 48px;
+  --sem-text-reading-font-weight: 400;
+  --sem-text-reading-letter-spacing: -0.7px;
+  --sem-text-reading-line-height: 1.3;
+  --sem-effect-shadow-control: 0px 1px 5px #0a21261f;
+  --sem-effect-shadow-marker: 0px 3px 12px #0a212633;
+  --sem-effect-shadow-surface: 0px 10px 40px #0a212633;
+  --sem-effect-shadow-dock: 0px -4px 24px #0a212633;
+  --sem-effect-blur-glass: 28px;
+  --sem-effect-blur-scrim: 5px;
+  --sem-effect-duration-fast: 150ms;
+  --sem-effect-duration-base: 250ms;
+  --sem-control-height-sm: 30px;
+  --sem-control-height-md: 40px;
+  --sem-control-height-lg: 46px;
+  --sem-control-height-touch: 44px;
+  --sem-z-map: 1;
+  --sem-z-overlay: 3;
+  --sem-z-marker: 4;
+  --sem-z-popover: 6;
+  --sem-z-dock: 7;
+  --sem-z-chrome: 8;
+  --sem-z-panel: 15;
+  --sem-z-header: 20;
+  --sem-z-dialog: 30;
+  --sem-gradient-wind: linear-gradient(90deg, #355897 0%, #2a76b8 7.69%, #2e97be 13.85%, #209e78 15.38%, #32a74f 23.08%, #5bb437 30.77%, #92c134 38.46%, #bfcc3a 46.15%, #e8be30 53.85%, #ea862d 61.54%, #dd4e38 69.23%, #be334f 76.92%, #923d98 92.31%, #724297 100%);
+}
+
+
+/* design/surface/component.css */
+.f5-surface {
+  background: var(--sem-color-surface-glass);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
+  border-radius: var(--sem-radius-surface);
+  padding: var(--sem-space-pad-surface);
+  box-shadow: var(--sem-effect-shadow-surface);
+  -webkit-backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+  backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+  color: var(--sem-color-text-primary);
+}
+
+.f5-surface--pill {
+  border-radius: var(--sem-radius-pill);
+  padding: var(--sem-space-gap-tight) var(--sem-space-pad-control);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-surface--dock {
+  border-radius: 0;
+  border-width: 0;
+  border-top-width: var(--sem-stroke-hairline);
+  border-top-color: var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-dock);
+}
+
+.f5-surface--dialog {
+  border-radius: var(--sem-radius-dialog);
+  padding: var(--sem-space-pad-dialog);
+}
+
+.f5-surface--sunken {
+  background: var(--sem-color-surface-sunken);
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.f5-surface[data-elevated="false"] {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .f5-surface {
+    background: var(--sem-color-surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) { /* ds-lint-allow: feature-detection probe, not a design value */
+  .f5-surface {
+    background: var(--sem-color-surface-solid);
+  }
+}
+
+/* design/button/component.css */
+.f5-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sem-space-gap-tight);
+  height: var(--sem-control-height-md);
+  padding: 0 var(--sem-space-pad-control);
+  border: 0;
+  border-radius: var(--sem-radius-control);
+  background: none;
+  color: var(--sem-color-action-quiet);
+  font-family: var(--sem-text-label-font-family);
+  font-size: var(--sem-text-label-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  line-height: var(--sem-text-label-line-height);
+  letter-spacing: var(--sem-text-label-letter-spacing);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--sem-effect-duration-fast) ease,
+    color var(--sem-effect-duration-fast) ease;
+}
+
+.f5-button:enabled:hover {
+  background-color: var(--sem-color-action-quiet-hover);
+}
+
+.f5-button:focus-visible {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: var(--sem-stroke-focus-offset);
+}
+
+.f5-button:disabled {
+  color: var(--sem-color-text-disabled);
+  cursor: default;
+}
+
+.f5-button--primary:disabled {
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-disabled);
+}
+
+.f5-button--pill:disabled {
+  background: none;
+  border-color: var(--sem-color-border-hairline);
+}
+
+.f5-button[aria-pressed="true"] {
+  background: var(--sem-color-surface-raised);
+  color: var(--sem-color-text-primary);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-button--primary {
+  background: var(--sem-color-action-bg);
+  color: var(--sem-color-action-fg);
+}
+
+.f5-button--primary:enabled:hover {
+  background-color: var(--sem-color-action-bg-hover);
+}
+
+.f5-button--pill {
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
+  background: var(--sem-color-surface-raised);
+  border-radius: var(--sem-radius-round);
+}
+
+.f5-button--icon {
+  width: var(--sem-control-height-md);
+  padding: 0;
+  border-radius: var(--sem-radius-round);
+}
+
+.f5-button--link {
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--sem-color-action-quiet);
+  font-weight: var(--sem-text-body-font-weight);
+  text-decoration: underline;
+}
+
+.f5-button--link:enabled:hover {
+  background: none;
+  color: var(--sem-color-text-primary);
+}
+
+.f5-button--sm {
+  height: var(--sem-control-height-sm);
+  padding: 0 var(--sem-space-gap);
+}
+
+.f5-button--sm.f5-button--icon {
+  width: var(--sem-control-height-sm);
+  padding: 0;
+}
+
+.f5-button--lg {
+  height: var(--sem-control-height-lg);
+  padding: 0 var(--sem-space-pad-surface);
+}
+
+.f5-button--lg.f5-button--icon {
+  width: var(--sem-control-height-lg);
+  padding: 0;
+}
+
+.f5-button > svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* design/chip/component.css */
+.f5-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  padding: var(--sem-space-gap-tight) var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-raised);
+  color: var(--sem-color-text-muted);
+  font-family: var(--sem-text-caption-font-family);
+  font-size: var(--sem-text-caption-font-size);
+  font-weight: var(--sem-text-caption-font-weight);
+  line-height: var(--sem-text-caption-line-height);
+  white-space: nowrap;
+}
+
+.f5-chip--glass {
+  background: var(--sem-color-surface-glass);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
+  box-shadow: var(--sem-effect-shadow-control);
+  -webkit-backdrop-filter: blur(var(--sem-effect-blur-glass));
+  backdrop-filter: blur(var(--sem-effect-blur-glass));
+}
+
+.f5-chip__dot {
+  width: var(--sem-space-gap-tight);
+  height: var(--sem-space-gap-tight);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-text-muted);
+  flex-shrink: 0;
+}
+
+.f5-chip--status[data-status="ok"] .f5-chip__dot {
+  background: var(--sem-color-status-ok);
+}
+
+.f5-chip--status[data-status="warn"] .f5-chip__dot {
+  background: var(--sem-color-status-warn-fg);
+}
+
+.f5-chip--warn {
+  background: var(--sem-color-status-warn-bg);
+  color: var(--sem-color-status-warn-fg);
+}
+
+.f5-chip--eyebrow {
+  font-family: var(--sem-text-eyebrow-font-family);
+  font-size: var(--sem-text-eyebrow-font-size);
+  font-weight: var(--sem-text-eyebrow-font-weight);
+  letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .f5-chip--glass {
+    background: var(--sem-color-surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* design/search-field/component.css */
+.f5-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  height: var(--sem-control-height-lg);
+  padding: 0 var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-glass);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
+  box-shadow: var(--sem-effect-shadow-control);
+  color: var(--sem-color-text-muted);
+  -webkit-backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+  backdrop-filter: blur(var(--sem-effect-blur-glass)) saturate(1.45);
+}
+
+.f5-search--sm {
+  height: var(--sem-control-height-md);
+}
+
+.f5-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--sem-color-text-primary);
+  font-family: var(--sem-text-body-font-family);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-body-font-weight);
+  line-height: var(--sem-text-body-line-height);
+}
+
+.f5-search input::placeholder {
+  color: var(--sem-color-text-muted);
+  opacity: 1; /* ds-lint-allow: Firefox dims placeholders by default; this restores the token */
+}
+
+.f5-search:focus-within {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: var(--sem-stroke-focus-offset);
+}
+
+.f5-search > svg {
+  flex-shrink: 0;
+}
+
+.f5-search[data-busy="true"] {
+  cursor: progress;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .f5-search {
+    background: var(--sem-color-surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* design/segmented/component.css */
+.f5-segmented {
+  display: inline-flex;
+  padding: var(--sem-space-gap-tight);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-sunken);
+}
+
+.f5-segmented--stack {
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: var(--sem-radius-control);
+  gap: var(--sem-space-gap-tight);
+}
+
+.f5-segmented__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sem-space-gap-tight);
+  height: var(--sem-control-height-sm);
+  padding: 0 var(--sem-space-gap);
+  border: 0;
+  border-radius: var(--sem-radius-control);
+  background: none;
+  color: var(--sem-color-text-muted);
+  font-family: var(--sem-text-label-font-family);
+  font-size: var(--sem-text-label-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  line-height: var(--sem-text-label-line-height);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--sem-effect-duration-fast) ease;
+}
+
+.f5-segmented--stack .f5-segmented__item {
+  height: var(--sem-control-height-md);
+  justify-content: flex-start;
+  padding: 0 var(--sem-space-pad-control);
+}
+
+.f5-segmented__item:enabled:hover {
+  background-color: var(--sem-color-action-quiet-hover);
+  color: var(--sem-color-text-primary);
+}
+
+.f5-segmented__item[aria-pressed="true"] {
+  background: var(--sem-color-surface-raised);
+  box-shadow: var(--sem-effect-shadow-control);
+  color: var(--sem-color-text-primary);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.f5-segmented--stack .f5-segmented__item[aria-pressed="true"] {
+  background: var(--sem-color-surface-inverse);
+  color: var(--sem-color-text-inverse);
+}
+
+.f5-segmented__item:focus-visible {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: calc(-1 * var(--sem-stroke-focus-offset));
+}
+
+.f5-segmented__item:disabled {
+  color: var(--sem-color-text-disabled);
+  cursor: default;
+}
+
+.f5-segmented__item > small {
+  margin-left: auto;
+  font-size: var(--sem-text-caption-font-size);
+  color: var(--sem-color-text-muted);
+}
+
+/*
+ * Community mockups. Static review material, not product code.
+ *
+ * build.mjs inlines the real Force5 bundle ahead of this file: the light half
+ * of design/foundations/tokens.css, then surface, button, chip, search-field
+ * and segmented. Everything below consumes --sem-* only, the way
+ * market/web/market.css does; layout measures the system does not tokenise
+ * (column widths, frame sizes) are literals, as they are there.
+ *
+ * .cm-* is the forum's product prefix, the way .mk-* is the marketplace's.
+ * The re-grounding of pills and chips for the content ground is copied from
+ * market.css; the plan promotes it into the bundle as a variant instead of a
+ * second copy.
+ */
+
+/* ---- Atlantic (decided 20 September 2026) ------------------------------------------------------
+   The proposed values, laid over the bundle's tokens so every mockup is drawn in them. These
+   literals are here only until design/foundations/tokens.tokens.json carries them. */
+
+:root {
+  --sem-color-bg-page: #9db0cc;
+  --sem-color-bg-content: #f4f6fa;
+  --sem-color-surface-glass: #eef2f9db;
+  --sem-color-surface-solid: #eef2f9;
+  --sem-color-surface-card: #ffffff;
+  --sem-color-surface-sunken: #e1e8f3;
+  --sem-color-surface-inverse: #0b2545;
+  --sem-color-surface-scrim: #0a1f3c73;
+  --sem-color-border-hairline: #0a1f3c1a;
+  --sem-color-border-strong: #7488a6;
+  --sem-color-text-primary: #0a1f3c;
+  --sem-color-text-secondary: #1f3a5c;
+  --sem-color-text-muted: #4a607c;
+  --sem-color-text-disabled: #7488a6;
+  --sem-color-action-bg: #1463ff;
+  --sem-color-action-bg-hover: #0d4fd1;
+  --sem-color-action-fg: #ffffff;
+  --sem-color-action-quiet: #0b2545;
+  --sem-color-action-focus: #0b2545;
+  --sem-effect-shadow-control: 0px 1px 5px #0a1f3c1f;
+  --sem-effect-shadow-marker: 0px 3px 12px #0a1f3c2e;
+  --sem-effect-shadow-surface: 0px 10px 40px #0a1f3c33;
+}
+
+/* ---- the review page around the frames ------------------------------------ */
+
+html {
+  background: var(--sem-color-surface-sunken);
+}
+
+body {
+  margin: 0;
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-primary);
+  font-family: var(--sem-text-prose-font-family);
+  font-size: var(--sem-text-prose-font-size);
+  line-height: var(--sem-text-prose-line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+.rv {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sem-space-pad-dialog) * 2);
+  padding-block: var(--sem-space-pad-dialog);
+  padding-inline: max(16px, env(safe-area-inset-left));
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.rv h1,
+.rv h2,
+.rv h3,
+.rv p,
+.rv ul,
+.rv ol {
+  margin: 0;
+}
+
+.rv-intro {
+  display: grid;
+  gap: var(--sem-space-gap-loose);
+  max-width: 68ch;
+}
+
+.rv-screen {
+  display: grid;
+  gap: var(--sem-space-pad-surface);
+  min-width: 0;
+}
+
+.rv-screen__head {
+  display: grid;
+  gap: var(--sem-space-gap-tight);
+  max-width: 76ch;
+}
+
+.rv-screen__head p {
+  color: var(--sem-color-text-secondary);
+}
+
+.rv-scroll {
+  overflow-x: auto;
+  margin-inline: -16px;
+  padding: 0 16px var(--sem-space-inset);
+}
+
+.rv-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sem-space-pad-dialog);
+  align-items: flex-start;
+}
+
+.rv-phone {
+  display: grid;
+  gap: var(--sem-space-gap-loose);
+  width: min(390px, 100%);
+}
+
+.frame {
+  position: relative;
+  width: 1240px;
+  border-radius: var(--sem-radius-surface);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-surface);
+  overflow: hidden;
+  background: var(--sem-color-bg-content);
+}
+
+.frame--fixed {
+  height: 900px;
+}
+
+.frame--phone {
+  width: 100%;
+  height: 844px;
+  border-radius: var(--sem-radius-dialog);
+}
+
+/* ---- page ------------------------------------------------------------------ */
+
+.cm-root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--sem-color-bg-content);
+  color: var(--sem-color-text-primary);
+  font-family: var(--sem-text-prose-font-family);
+  font-size: var(--sem-text-prose-font-size);
+  font-weight: var(--sem-text-prose-font-weight);
+  line-height: var(--sem-text-prose-line-height);
+}
+
+.cm-root h1,
+.cm-root h2,
+.cm-root h3,
+.cm-root p,
+.cm-root ul,
+.cm-root ol {
+  margin: 0;
+}
+
+.cm-root ul,
+.cm-root ol {
+  padding: 0;
+  list-style: none;
+}
+
+.cm-root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cm-root svg {
+  flex-shrink: 0;
+}
+
+/* Copied from market.css: pills, chips and the filled action on the content ground. */
+.cm-root .f5-button--pill {
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.cm-root .f5-button--pill[aria-pressed="true"] {
+  color: var(--sem-color-text-primary);
+}
+
+.cm-root .f5-button--primary {
+  border-radius: var(--sem-radius-round);
+}
+
+.cm-root .f5-button--lg {
+  font-size: var(--sem-text-prose-font-size);
+}
+
+.cm-root .f5-chip:not(.f5-chip--glass):not(.f5-chip--warn) {
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px; /* the marketplace's page measure */
+  margin: 0 auto;
+  padding: 0 var(--sem-space-inset);
+}
+
+/* ---- header: the marketplace bar, with Community in the chip ------------------ */
+
+.cm-header {
+  padding: var(--sem-space-gap-loose) 0;
+}
+
+.cm-root .cm-header__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  min-height: var(--sem-control-height-lg);
+  padding-left: var(--sem-space-pad-control);
+  padding-right: var(--sem-space-gap);
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-marker);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.cm-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  font-size: var(--sem-text-lead-font-size);
+  font-weight: var(--sem-text-lead-font-weight);
+  line-height: var(--sem-text-lead-line-height);
+  white-space: nowrap;
+}
+
+.cm-brand__domain {
+  font-weight: var(--sem-text-body-font-weight);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  margin-left: auto;
+}
+
+.cm-root .cm-header__actions .f5-button--primary,
+.cm-root .cm-header__actions .f5-button--pill:not(.f5-button--icon) {
+  padding: 0 var(--sem-space-pad-control);
+}
+
+.cm-bell {
+  position: relative;
+}
+
+/* A count, in words for a screen reader and a number for the eye. */
+.cm-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--sem-space-pad-surface);
+  height: var(--sem-space-pad-surface);
+  padding: 0 var(--sem-space-gap-tight);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-inverse);
+  color: var(--sem-color-text-inverse);
+  font-size: var(--sem-text-caption-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-bell .cm-count {
+  position: absolute;
+  top: calc(-1 * var(--sem-space-gap-tight));
+  right: calc(-1 * var(--sem-space-gap-tight));
+}
+
+.cm-count--quiet {
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+}
+
+/* ---- avatars ---------------------------------------------------------------- */
+
+.cm-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: var(--sem-control-height-md);
+  height: var(--sem-control-height-md);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-inverse);
+  color: var(--sem-color-text-inverse);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.cm-avatar[data-tone="2"] {
+  background: var(--sem-color-action-bg);
+}
+
+.cm-avatar[data-tone="3"] {
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-avatar[data-tone="4"] {
+  background: var(--sem-color-text-primary);
+}
+
+.cm-avatar--sm {
+  width: var(--sem-control-height-sm);
+  height: var(--sem-control-height-sm);
+  font-size: var(--sem-text-caption-font-size);
+}
+
+.cm-avatar--xs {
+  width: var(--sem-space-inset);
+  height: var(--sem-space-inset);
+  font-size: var(--sem-text-eyebrow-font-size);
+}
+
+.cm-avatars {
+  display: inline-flex;
+}
+
+.cm-avatars .cm-avatar {
+  box-shadow: 0 0 0 var(--sem-stroke-emphasis) var(--sem-color-surface-card);
+}
+
+.cm-avatars .cm-avatar + .cm-avatar {
+  margin-left: calc(-1 * var(--sem-space-gap-tight));
+}
+
+/* ---- type helpers ------------------------------------------------------------ */
+
+.cm-title {
+  font-size: var(--sem-text-title-font-size);
+  font-weight: var(--sem-text-title-font-weight);
+  line-height: var(--sem-text-title-line-height);
+  letter-spacing: var(--sem-text-title-letter-spacing);
+  text-wrap: balance;
+}
+
+.cm-lead {
+  font-size: var(--sem-text-lead-font-size);
+  font-weight: var(--sem-text-lead-font-weight);
+  line-height: var(--sem-text-lead-line-height);
+}
+
+.cm-meta {
+  font-size: var(--sem-text-body-font-size);
+  line-height: var(--sem-text-body-line-height);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-eyebrow {
+  font-size: var(--sem-text-eyebrow-font-size);
+  font-weight: var(--sem-text-eyebrow-font-weight);
+  letter-spacing: var(--sem-text-eyebrow-letter-spacing);
+  line-height: var(--sem-text-eyebrow-line-height);
+  text-transform: uppercase;
+  color: var(--sem-color-text-muted);
+}
+
+.cm-strong {
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-muted {
+  color: var(--sem-color-text-muted);
+}
+
+.cm-link {
+  color: var(--sem-color-action-quiet);
+  text-decoration: underline;
+  text-decoration-color: var(--sem-color-border-strong);
+  text-underline-offset: var(--sem-space-gap-tight);
+}
+
+.cm-root a.cm-link {
+  color: var(--sem-color-action-quiet);
+  text-decoration: underline;
+  text-decoration-color: var(--sem-color-border-strong);
+}
+
+.cm-mention {
+  padding: 0 var(--sem-space-gap-tight);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sem-space-gap);
+}
+
+.cm-row--tight {
+  gap: var(--sem-space-gap-tight);
+}
+
+.cm-row--between {
+  justify-content: space-between;
+}
+
+.cm-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+}
+
+/* The one liveness dot the palette allows. */
+.cm-live {
+  width: var(--sem-space-gap);
+  height: var(--sem-space-gap);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-status-ok);
+  flex-shrink: 0;
+}
+
+/* ---- shell: rail, main, aside --------------------------------------------------- */
+
+/* Two columns: the channels and the conversation. */
+.cm-shell {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: var(--sem-space-pad-dialog);
+  align-items: start;
+  padding: var(--sem-space-gap-loose) 0 var(--sem-space-pad-dialog);
+}
+
+.cm-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-pad-surface);
+  min-width: 0;
+}
+
+.cm-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-pad-surface);
+  min-width: 0;
+}
+
+/* ---- channel rail ------------------------------------------------------------------
+   No pane: the rail stands on the ground, and the channel you are in is the one
+   lifted thing in it. Raised and filled, the way the site menu marks a section. */
+
+.cm-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-pad-surface);
+  min-width: 0;
+}
+
+.cm-rail__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-stroke-emphasis);
+}
+
+.cm-rail__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sem-space-pad-control) var(--sem-space-gap-tight);
+}
+
+.cm-channel {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  height: calc(var(--sem-control-height-sm) + var(--sem-space-gap-tight));
+  padding: 0 var(--sem-space-gap) 0 var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-control);
+  color: var(--sem-color-text-muted);
+  white-space: nowrap;
+}
+
+.cm-root a.cm-channel {
+  color: var(--sem-color-text-muted);
+}
+
+.cm-channel > svg {
+  color: var(--sem-color-border-strong);
+}
+
+.cm-channel > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-channel > .cm-count,
+.cm-channel > .cm-channel__lock {
+  margin-left: auto;
+}
+
+/* Unread is weight and a count, not colour alone. */
+.cm-root a.cm-channel[data-unread="true"] {
+  color: var(--sem-color-text-primary);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-root a.cm-channel[aria-current="page"] {
+  background: var(--sem-color-surface-card);
+  color: var(--sem-color-text-primary);
+  font-weight: var(--sem-text-label-font-weight);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.cm-channel[aria-current="page"] > svg {
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-root .cm-rail .f5-search {
+  height: var(--sem-control-height-md);
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-border-hairline);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ---- panes ---------------------------------------------------------------------- */
+
+.cm-pane {
+  background: var(--sem-color-surface-card);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  border-radius: var(--sem-radius-surface);
+  box-shadow: var(--sem-effect-shadow-control);
+  min-width: 0;
+}
+
+.cm-pane--pad {
+  padding: var(--sem-space-pad-surface);
+}
+
+.cm-pane--sunken {
+  background: var(--sem-color-surface-sunken);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.cm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-gap-loose);
+  min-width: 0;
+}
+
+.cm-stack--tight {
+  gap: var(--sem-space-gap-tight);
+}
+
+/* ---- channel head and controls ------------------------------------------------------ */
+
+.cm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sem-space-pad-surface);
+}
+
+.cm-head__text {
+  display: grid;
+  gap: var(--sem-space-gap);
+  min-width: 0;
+}
+
+.cm-head__text > p {
+  max-width: 60ch;
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  flex-shrink: 0;
+}
+
+.cm-title--channel {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+}
+
+.cm-title--channel > svg {
+  color: var(--sem-color-border-strong);
+}
+
+.cm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-tabs .f5-segmented__item {
+  height: calc(var(--sem-control-height-sm) + var(--sem-space-gap-tight));
+  padding: 0 var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-round);
+  font-size: var(--sem-text-body-font-size);
+}
+
+.cm-tabs .f5-segmented__item[aria-pressed="true"] {
+  background: var(--sem-color-surface-card);
+}
+
+.cm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sem-space-gap-tight);
+}
+
+.cm-root .cm-tags .f5-button {
+  height: var(--sem-control-height-sm);
+  padding: 0 var(--sem-space-pad-control);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-body-font-weight);
+  box-shadow: none;
+}
+
+.cm-root .cm-scroller .f5-button[aria-pressed="true"],
+.cm-root .cm-tags .f5-button[aria-pressed="true"] {
+  background: var(--sem-color-surface-inverse);
+  border-color: transparent;
+  color: var(--sem-color-text-inverse);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+/* ---- thread list: one pane, rows divided by hairlines ---------------------------------- */
+
+.cm-threads {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cm-thread {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sem-space-pad-control) var(--sem-space-pad-surface);
+  padding: var(--sem-space-pad-surface);
+  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  transition: background-color var(--sem-effect-duration-fast) ease;
+}
+
+.cm-thread:first-child {
+  border-top: 0;
+}
+
+.cm-thread:hover,
+.cm-thread[data-hover="true"] {
+  background: var(--sem-color-bg-content);
+}
+
+.cm-thread > .cm-avatar {
+  align-self: start;
+}
+
+.cm-thread__main {
+  display: grid;
+  gap: var(--sem-space-gap-tight);
+  min-width: 0;
+}
+
+.cm-thread__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sem-space-gap);
+  font-size: var(--sem-text-lead-font-size);
+  font-weight: var(--sem-text-body-font-weight);
+  line-height: var(--sem-text-lead-line-height);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-thread[data-unread="true"] .cm-thread__title {
+  font-weight: var(--sem-text-lead-font-weight);
+  color: var(--sem-color-text-primary);
+}
+
+.cm-unread-dot {
+  width: var(--sem-space-gap);
+  height: var(--sem-space-gap);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-action-bg);
+  flex-shrink: 0;
+  transform: translateY(calc(-1 * var(--sem-stroke-hairline)));
+}
+
+.cm-thread__preview {
+  color: var(--sem-color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-thread__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sem-space-gap-tight) var(--sem-space-gap);
+  padding-top: var(--sem-space-gap-tight);
+}
+
+.cm-thread__thumb {
+  width: 76px;
+  height: 57px;
+  border-radius: var(--sem-radius-control);
+  overflow: hidden;
+}
+
+.cm-thread__stats {
+  display: grid;
+  justify-items: end;
+  gap: var(--sem-space-gap);
+  width: 112px;
+}
+
+.cm-thread__replies {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  color: var(--sem-color-text-secondary);
+  font-weight: var(--sem-text-label-font-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-thread--pinned {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding-block: var(--sem-space-pad-control);
+  background: var(--sem-color-bg-content);
+}
+
+.cm-thread--pinned > svg {
+  color: var(--sem-color-text-muted);
+}
+
+/* A photo stand-in drawn from the ramp, for mockups only. */
+.cm-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--sem-color-surface-sunken);
+}
+
+/* ---- aside panes ------------------------------------------------------------------ */
+
+.cm-aside__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-gap);
+}
+
+.cm-people {
+  display: grid;
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-person {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  min-width: 0;
+}
+
+.cm-person__name {
+  font-weight: var(--sem-text-label-font-weight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-person .f5-chip {
+  margin-left: auto;
+}
+
+/* Wind is data: the swatch takes the speed band's stop from the wind ramp and
+   the number stays in ink, so the reading never rests on the colour. */
+.cm-spots {
+  display: grid;
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-spot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-spot__swatch {
+  width: var(--sem-space-gap);
+  height: var(--sem-control-height-sm);
+  border-radius: var(--sem-radius-round);
+}
+
+.cm-spot__reading {
+  font-size: var(--sem-text-lead-font-size);
+  font-weight: var(--sem-text-lead-font-weight);
+  line-height: var(--sem-text-lead-line-height);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cm-spot__reading small {
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-body-font-weight);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-guide {
+  display: grid;
+  gap: var(--sem-space-gap);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-guide li {
+  display: flex;
+  gap: var(--sem-space-gap);
+}
+
+.cm-guide li > svg {
+  margin-top: var(--sem-stroke-focus-width);
+  color: var(--sem-color-text-muted);
+}
+
+/* ---- thread view ------------------------------------------------------------------- */
+
+.cm-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  align-self: flex-start;
+  color: var(--sem-color-text-muted);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-root a.cm-back {
+  color: var(--sem-color-text-muted);
+}
+
+.cm-post {
+  display: grid;
+  gap: var(--sem-space-pad-surface);
+  padding: var(--sem-space-inset);
+}
+
+.cm-byline {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-byline__who {
+  display: grid;
+  gap: var(--sem-stroke-emphasis);
+  min-width: 0;
+}
+
+.cm-prose {
+  display: grid;
+  gap: var(--sem-space-gap-loose);
+  max-width: 68ch;
+  color: var(--sem-color-text-primary);
+}
+
+/* A spot attached to a thread: its live reading, and the way to the forecast. */
+.cm-spotcard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sem-space-pad-control);
+  padding: var(--sem-space-pad-control) var(--sem-space-pad-surface);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-bg-content);
+  max-width: 68ch;
+}
+
+.cm-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+}
+
+.cm-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  height: calc(var(--sem-control-height-sm) - var(--sem-space-gap-tight));
+  padding: 0 var(--sem-space-gap);
+  border: var(--sem-stroke-hairline) solid transparent;
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+  font-family: inherit;
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Yours: raised and outlined as well as filled. */
+.cm-reaction[aria-pressed="true"] {
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-action-bg);
+  color: var(--sem-color-text-primary);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.cm-reaction--add {
+  background: none;
+  color: var(--sem-color-text-muted);
+}
+
+/* The stream: flat and chronological, like a channel, not a tree. */
+.cm-stream {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sem-space-gap-tight);
+}
+
+.cm-day {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap-loose);
+  padding: var(--sem-space-gap) var(--sem-space-pad-control);
+}
+
+.cm-day::before,
+.cm-day::after {
+  content: "";
+  flex: 1;
+  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+}
+
+.cm-day--new::before,
+.cm-day--new::after {
+  border-top-color: var(--sem-color-border-strong);
+}
+
+.cm-msg {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sem-space-gap-tight) var(--sem-space-gap-loose);
+  padding: var(--sem-space-gap-loose) var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-control);
+}
+
+.cm-msg[data-hover="true"] {
+  background: var(--sem-color-surface-card);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.cm-msg > .cm-avatar {
+  grid-row: span 3;
+  align-self: start;
+}
+
+.cm-msg__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sem-space-gap-tight) var(--sem-space-gap);
+}
+
+.cm-msg__body {
+  display: grid;
+  gap: var(--sem-space-gap);
+  max-width: 68ch;
+}
+
+/* Reply-to: a quoted line that jumps to its target, in place of nesting. */
+.cm-replyto {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  min-width: 0;
+  color: var(--sem-color-text-muted);
+  font-size: var(--sem-text-body-font-size);
+}
+
+.cm-replyto > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-msg--reply > .cm-avatar {
+  grid-row: 2 / span 3;
+}
+
+.cm-msg__tools {
+  position: absolute;
+  top: calc(-1 * var(--sem-space-gap-loose));
+  right: var(--sem-space-pad-control);
+  display: flex;
+  padding: var(--sem-stroke-emphasis);
+  border-radius: var(--sem-radius-round);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  background: var(--sem-color-surface-card);
+  box-shadow: var(--sem-effect-shadow-marker);
+}
+
+.cm-helpful {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-gap-tight);
+  color: var(--sem-color-text-secondary);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+/* A marketplace listing unfurled inside a message. */
+.cm-unfurl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sem-space-pad-control);
+  padding: var(--sem-space-gap);
+  padding-right: var(--sem-space-pad-surface);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-surface-card);
+  max-width: 440px;
+}
+
+.cm-unfurl__thumb {
+  width: 76px;
+  height: 57px;
+  border-radius: var(--sem-radius-control);
+  overflow: hidden;
+}
+
+.cm-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 200px));
+  gap: var(--sem-space-gap);
+}
+
+.cm-photos > span {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--sem-radius-control);
+  overflow: hidden;
+}
+
+.cm-typing {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  padding: 0 var(--sem-space-pad-control);
+  min-height: var(--sem-space-inset);
+}
+
+.cm-typing__dots {
+  display: inline-flex;
+  gap: var(--sem-stroke-focus-width);
+}
+
+.cm-typing__dots i {
+  width: var(--sem-space-gap-tight);
+  height: var(--sem-space-gap-tight);
+  border-radius: var(--sem-radius-round);
+  background: var(--sem-color-border-strong);
+}
+
+.cm-typing__dots i:nth-child(2) {
+  background: var(--sem-color-text-muted);
+}
+
+/* ---- composer ---------------------------------------------------------------------- */
+
+.cm-composer {
+  display: grid;
+  gap: var(--sem-space-gap);
+  padding: var(--sem-space-pad-control);
+  padding-left: var(--sem-space-pad-surface);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-strong);
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-surface-card);
+  box-shadow: var(--sem-effect-shadow-marker);
+}
+
+.cm-composer__input {
+  min-height: var(--sem-control-height-lg);
+  padding-top: var(--sem-space-gap);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-composer__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-stroke-emphasis);
+}
+
+.cm-composer__bar .f5-button--primary {
+  margin-left: auto;
+  padding: 0 var(--sem-space-pad-surface);
+  font-size: var(--sem-text-body-font-size);
+}
+
+.cm-composer__replying {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  color: var(--sem-color-text-muted);
+  font-size: var(--sem-text-body-font-size);
+}
+
+/* Signed out: the same slot, one action. */
+.cm-gate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-pad-control);
+  padding: var(--sem-space-pad-control) var(--sem-space-pad-control)
+    var(--sem-space-pad-control) var(--sem-space-pad-surface);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+  border-radius: var(--sem-radius-surface);
+  background: var(--sem-color-surface-card);
+  box-shadow: var(--sem-effect-shadow-marker);
+}
+
+/* ---- fields (the marketplace's .mk-field, pending promotion) ------------------------------ */
+
+.cm-field {
+  display: grid;
+  gap: var(--sem-space-gap);
+  min-width: 0;
+}
+
+.cm-field__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sem-space-gap);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-field__label small {
+  font-size: inherit;
+  font-weight: var(--sem-text-body-font-weight);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-field__control {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-gap);
+  min-height: var(--sem-control-height-touch);
+  padding: 0 var(--sem-space-pad-control);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-strong);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-surface-card);
+}
+
+.cm-field__control--area {
+  display: grid;
+  align-items: start;
+  gap: var(--sem-space-gap);
+  padding: var(--sem-space-pad-control);
+}
+
+.cm-field__control--focus {
+  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
+  outline-offset: var(--sem-stroke-focus-offset);
+}
+
+.cm-field__control > svg {
+  color: var(--sem-color-text-muted);
+}
+
+.cm-field__control > svg:last-child {
+  margin-left: auto;
+}
+
+.cm-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sem-space-gap-loose);
+  padding: var(--sem-space-pad-control) var(--sem-space-pad-surface);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-surface-sunken);
+  color: var(--sem-color-text-secondary);
+}
+
+.cm-notice > svg {
+  margin-top: var(--sem-stroke-emphasis);
+}
+
+/* ---- dialog ---------------------------------------------------------------------------- */
+
+.cm-scrim {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--sem-color-surface-scrim);
+  -webkit-backdrop-filter: blur(var(--sem-effect-blur-scrim));
+  backdrop-filter: blur(var(--sem-effect-blur-scrim));
+}
+
+.cm-root .cm-dialog {
+  width: 640px;
+  display: grid;
+  gap: var(--sem-space-pad-surface);
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-border-hairline);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.cm-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sem-space-pad-control);
+}
+
+.cm-dialog__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-gap);
+}
+
+.cm-addphoto {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 72px;
+  border: var(--sem-stroke-emphasis) dashed var(--sem-color-border-strong);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-bg-content);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-attached {
+  width: 96px;
+  height: 72px;
+  border-radius: var(--sem-radius-control);
+  overflow: hidden;
+}
+
+/* ---- home ---------------------------------------------------------------------------------- */
+
+.cm-channel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-stroke-emphasis);
+  color: var(--sem-color-text-secondary);
+  font-size: var(--sem-text-body-font-size);
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-channel-chip > svg {
+  color: var(--sem-color-border-strong);
+}
+
+/* ---- phone ------------------------------------------------------------------------------------ */
+
+.cm-root--phone {
+  position: relative;
+  height: 100%;
+}
+
+.cm-root--phone .cm-page {
+  padding: 0 var(--sem-space-pad-control);
+}
+
+.cm-root--phone .cm-header__bar {
+  gap: var(--sem-space-gap-tight);
+  padding-left: var(--sem-space-gap-tight);
+  padding-right: var(--sem-space-gap-tight);
+}
+
+.cm-root--phone .cm-main {
+  gap: var(--sem-space-pad-control);
+  padding-top: var(--sem-space-gap-tight);
+}
+
+.cm-root--phone .cm-thread {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: var(--sem-space-pad-control);
+  gap: var(--sem-space-gap-loose);
+}
+
+.cm-root--phone .cm-thread--pinned {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.cm-root--phone .cm-thread__title {
+  font-size: var(--sem-text-prose-font-size);
+  font-weight: var(--sem-text-body-font-weight);
+}
+
+.cm-root--phone .cm-thread[data-unread="true"] .cm-thread__title {
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-root--phone .cm-thread__preview {
+  font-size: var(--sem-text-body-font-size);
+}
+
+.cm-root--phone .cm-pane {
+  border-radius: var(--sem-radius-control);
+}
+
+.cm-scroller {
+  display: flex;
+  gap: var(--sem-space-gap-tight);
+  overflow: hidden;
+  margin-inline: calc(-1 * var(--sem-space-pad-control));
+  padding: var(--sem-space-gap-tight) var(--sem-space-pad-control);
+}
+
+.cm-scroller > * {
+  flex: 0 0 auto;
+}
+
+.cm-chanrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sem-space-gap-loose);
+  min-height: calc(var(--sem-control-height-touch) + var(--sem-space-gap-loose));
+  padding: var(--sem-space-gap) var(--sem-space-pad-control);
+  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+}
+
+.cm-chanrow:first-child {
+  border-top: 0;
+}
+
+.cm-chanrow__icon {
+  display: grid;
+  place-items: center;
+  width: var(--sem-control-height-sm);
+  height: var(--sem-control-height-sm);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-bg-content);
+  color: var(--sem-color-text-muted);
+}
+
+.cm-chanrow__text {
+  display: grid;
+  min-width: 0;
+}
+
+.cm-chanrow__text > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-chanrow[data-unread="true"] .cm-chanrow__name {
+  font-weight: var(--sem-text-label-font-weight);
+}
+
+.cm-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--sem-space-gap-loose) var(--sem-space-pad-control)
+    var(--sem-space-pad-surface);
+  background: linear-gradient(
+    to top,
+    var(--sem-color-bg-content) 70%,
+    transparent
+  );
+}
+
+.cm-fab {
+  position: absolute;
+  right: var(--sem-space-pad-control);
+  bottom: var(--sem-space-pad-surface);
+}
+
+.cm-root .cm-fab .f5-button {
+  box-shadow: var(--sem-effect-shadow-marker);
+}
+
+.cm-root--phone .cm-post {
+  padding: var(--sem-space-pad-control);
+  gap: var(--sem-space-pad-control);
+}
+
+.cm-root--phone .cm-msg {
+  padding: var(--sem-space-gap) 0;
+}
+
+.cm-root--phone .cm-spotcard {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--sem-space-gap-loose);
+}
+
+/* ---- rail: collapsible category heads ------------------------------------------------ */
+
+.cm-rail__label .cm-eyebrow > svg {
+  color: var(--sem-color-border-strong);
+}
+
+.cm-rail__label {
+  min-height: var(--sem-control-height-sm);
+}
+
+/* ---- notifications: a popover hung from the bell ------------------------------------------ */
+
+.cm-root .cm-pop {
+  position: absolute;
+  top: calc(var(--sem-control-height-lg) + var(--sem-space-pad-dialog));
+  right: calc(var(--sem-space-inset) + var(--sem-space-pad-surface));
+  z-index: var(--sem-z-popover);
+  width: 400px;
+  padding: var(--sem-space-gap);
+  box-shadow: var(--sem-effect-shadow-surface);
+}
+
+.cm-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sem-space-gap);
+  padding: var(--sem-space-gap) var(--sem-space-gap) var(--sem-space-gap) var(--sem-space-pad-control);
+}
+
+.cm-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sem-space-gap-loose);
+  padding: var(--sem-space-pad-control);
+  border-radius: var(--sem-radius-control);
+}
+
+.cm-note[data-unread="true"] {
+  background: var(--sem-color-bg-content);
+}
+
+.cm-note + .cm-note {
+  margin-top: var(--sem-space-gap-tight);
+}
+
+.cm-note .cm-unread-dot {
+  margin-top: var(--sem-space-gap);
+}
+
+.cm-note__quote {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-root a.cm-pop__foot {
+  display: block;
+  padding: var(--sem-space-pad-control);
+  text-align: center;
+  color: var(--sem-color-text-muted);
+}
+
+/* ---- colour options ---------------------------------------------------------------------------
+   The before and after comparison. */
+
+.pal-sw {
+  display: flex;
+  gap: var(--sem-space-gap-tight);
+  padding: var(--sem-space-gap-tight) 0;
+}
+
+.pal-sw > i {
+  width: var(--sem-space-inset);
+  height: var(--sem-space-inset);
+  border-radius: var(--sem-radius-round);
+  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
+}
+
+.rv-phones[data-shot] {
+  padding: var(--sem-space-gap);
+}
+
+/* Before: the teal the bundle ships today, restated so the comparison can be drawn. */
+.pal-a {
+  --sem-color-bg-content: #f1fafc;
+  --sem-color-surface-card: #ffffff;
+  --sem-color-surface-sunken: #d1e6ec;
+  --sem-color-surface-inverse: #20525d;
+  --sem-color-border-hairline: #0a212614;
+  --sem-color-border-strong: #568996;
+  --sem-color-text-primary: #163f49;
+  --sem-color-text-secondary: #20525d;
+  --sem-color-text-muted: #346a76;
+  --sem-color-action-bg: #346a76;
+  --sem-color-action-bg-hover: #20525d;
+  --sem-color-action-fg: #ffffff;
+  --sem-color-action-quiet: #20525d;
+  --sem-color-action-focus: #20525d;
+  --sem-effect-shadow-control: 0px 1px 5px #0a21261f;
+  --sem-effect-shadow-marker: 0px 3px 12px #0a212633;
+}
+
+</style>
+<div class="rv" data-mode="light">
+  <header class="rv-intro">
+    <p class="cm-eyebrow">wingfoil.ie · design review · 20 September 2026</p>
+    <h1 class="cm-title">Community: channels and threads, in the Atlantic palette</h1>
+    <p>
+      Five desktop views and three phone views, scoped to the first iteration. The site sets the channels; members start threads inside
+      them; a thread is one flat, live conversation with reply-to references and reactions rather than a
+      tree of nested comments. Every colour, space, radius and type step is a Force5 <code>--sem-*</code>
+      token, and the page is built from the real bundle CSS.
+    </p>
+  </header>
+
+  <!-- 1 ─ HOME -->
+  <section class="rv-screen" id="s-home">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">1 · Desktop · /community</p>
+      <h2 class="cm-lead">Home: one feed, so a small community reads as one busy room</h2>
+      <p>
+        Latest activity across every channel, with the channel named on each row. Two columns: channels and the
+        conversation, no side panel. The member count appears from 50 members. Every
+        channel is set up by the site.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="01-home-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="home"></div>
+              <main class="cm-main">
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">Community</h1>
+                    <p>Gear, spots, technique and sessions, from wingfoilers around Ireland.</p>
+                    <p class="cm-meta cm-inline">
+                      <span>1,284 members · 38 threads active this week</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="home"></div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ─ CHANNEL -->
+  <section class="rv-screen" id="s-channel">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">2 · Desktop · /community/wings</p>
+      <h2 class="cm-lead">A channel: threads sorted by last activity, filtered by tag</h2>
+      <p>
+        One pane, rows divided by hairlines, in one order: most recent activity first, so a reply bumps a
+        thread. Tags are the only filter. Unread is carried by weight, a dot and a count, never
+        by colour alone. The head shows two counts: threads and followers.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="02-channel-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main" data-slot="channel-main"></main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 ─ THREAD -->
+  <section class="rv-screen" id="s-thread">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">3 · Desktop · /community/wings/5m-or-6m-one-wing-quiver</p>
+      <h2 class="cm-lead">A thread: a flat, live conversation</h2>
+      <p>
+        The opening post is the one card; replies stream below it on the ground, in time order. A reply can
+        point at an earlier message, carry photos and reactions, and the thread can link a spot to show its
+        live wind. Here the composer’s Reply is the filled action, so the header’s New thread goes quiet.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame" data-shot="03-thread-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="false"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>wings</span></a>
+
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</h1>
+                    <div class="cm-row">
+                      <span class="f5-chip">Question</span>
+                      <span class="f5-chip">Sizing</span>
+                      <span class="cm-meta">24 replies · 9 riders · started 2 days ago</span>
+                    </div>
+                  </div>
+                  <div class="cm-head__actions">
+                    <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true">
+                      <i-c n="bell" s="15"></i-c><span>Following · every reply</span><i-c n="chevron-down" s="14"></i-c>
+                    </button>
+                    <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Copy link"><i-c n="link" s="15"></i-c></button>
+                    <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="More"><i-c n="more" s="15"></i-c></button>
+                  </div>
+                </div>
+
+                <article class="cm-pane cm-post">
+                  <div class="cm-byline">
+                    <span class="cm-avatar" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-byline__who">
+                      <div class="cm-row"><span class="cm-strong">Aoife K</span></div>
+                      <span class="cm-meta">Thursday at 19:42</span>
+                    </div>
+                  </div>
+                  <div class="cm-prose">
+                    <p>
+                      I’ve been out about 25 times on a rented 5m and I’m buying my first wing. I’m 82 kg on a 95 L
+                      board with a 1600 cm² front foil, riding mostly Dollymount and Malahide. Most of my days are
+                      14 to 22 knots.
+                    </p>
+                    <p>
+                      Do I get a 6m and accept being overpowered on the windy days, or a 5m and sit out the light
+                      ones? The budget is one wing until spring.
+                    </p>
+                  </div>
+                  <a class="cm-spotcard" href="#">
+                    <span class="cm-spot__swatch" style="background: var(--sem-color-wind-k15)" aria-hidden="true"></span>
+                    <span class="cm-stack cm-stack--tight">
+                      <span class="cm-strong cm-inline"><i-c n="map-pin" s="14"></i-c>Dollymount, Co. Dublin</span>
+                      <span class="cm-meta">WSW · gusting 26 kn · low water 14:10</span>
+                    </span>
+                    <span class="cm-spot__reading">19 <small>kn now</small></span>
+                    <i-c n="chevron-right" s="18"></i-c>
+                  </a>
+                  <div class="cm-reactions">
+                    <button class="cm-reaction" aria-pressed="true">🤙 <span>12</span></button>
+                    <button class="cm-reaction" aria-pressed="false">👀 <span>3</span></button>
+                    <button class="cm-reaction cm-reaction--add" aria-label="Add a reaction"><i-c n="smile-plus" s="15"></i-c></button>
+                  </div>
+                </article>
+
+                <div class="cm-stream">
+                  <div class="cm-msg">
+                    <span class="cm-avatar" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head">
+                      <span class="cm-strong">Cian M</span><span class="cm-meta">Thursday at 20:05</span>
+                    </div>
+                    <div class="cm-msg__body">
+                      <p>
+                        At 82 kg on that foil, 5m. You’ll be flying from 15 knots once your pumping improves, and a
+                        6m over 25 at Dollymount is a handful in the shore break. Fix the light days with a bigger
+                        foil, not a bigger wing.
+                      </p>
+                    </div>
+                    <div class="cm-reactions">
+                      <button class="cm-reaction" aria-pressed="false">👍 <span>18</span></button>
+                    </div>
+                  </div>
+
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Cian M</span><span>Fix the light days with a bigger foil, not a bigger wing.</span></a>
+                    <span class="cm-avatar" data-tone="3" aria-hidden="true">NR</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Niamh R</span><span class="cm-meta">Thursday at 21:30</span></div>
+                    <div class="cm-msg__body">
+                      <p>Agree on the foil. I went from 1600 to 2000 and got three knots of low end for less than the price of a wing.</p>
+                    </div>
+                  </div>
+
+                  <div class="cm-day"><span class="cm-eyebrow">Today</span></div>
+
+                  <div class="cm-msg" data-hover="true">
+                    <div class="cm-msg__tools" role="toolbar" aria-label="Message actions">
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Add a reaction"><i-c n="smile-plus" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Reply to this message"><i-c n="reply" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="Report"><i-c n="flag" s="15"></i-c></button>
+                      <button class="f5-button f5-button--icon f5-button--sm" aria-label="More"><i-c n="more" s="15"></i-c></button>
+                    </div>
+                    <span class="cm-avatar" aria-hidden="true">TB</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Tomás B</span><span class="cm-meta">09:12</span></div>
+                    <div class="cm-msg__body">
+                      <p>
+                        Counterpoint: if you only ride weekends you take what you’re given. I’m 85 kg and my 6m gets
+                        twice the use of my 5m from May to September.
+                      </p>
+                    </div>
+                    <div class="cm-reactions"><button class="cm-reaction" aria-pressed="false">👍 <span>6</span></button></div>
+                  </div>
+
+                  <div class="cm-day cm-day--new"><span class="cm-count">2 new since you were last here</span></div>
+
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Tomás B</span><span>if you only ride weekends you take what you’re given</span></a>
+                    <span class="cm-avatar" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Aoife K</span><span class="f5-chip">Started the thread</span><span class="cm-meta">09:40</span></div>
+                    <div class="cm-msg__body"><p>That’s my worry exactly. Would a 5.5 be the coward’s answer?</p></div>
+                    <div class="cm-reactions"><button class="cm-reaction" aria-pressed="false">😂 <span>9</span></button></div>
+                  </div>
+
+                  <div class="cm-msg">
+                    <span class="cm-avatar" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Cian M</span><span class="cm-meta">4 minutes ago</span></div>
+                    <div class="cm-msg__body">
+                      <p>
+                        Not cowardly at all, <span class="cm-mention">@Aoife K</span>. The 5.5 is the most-ridden size in the
+                        country for a reason. Mine at Dollymount last Saturday, 18 gusting 27, and it never felt like too much:
+                      </p>
+                      <div class="cm-photos"><span data-photo="1"></span><span data-photo="2"></span></div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="cm-composer">
+                  <div class="cm-composer__input">Reply to the thread…</div>
+                  <div class="cm-composer__bar">
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Add photos"><i-c n="image" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Link a spot"><i-c n="map-pin" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Mention someone"><i-c n="at-sign" s="16"></i-c></button>
+                    <button class="f5-button f5-button--icon f5-button--sm" aria-label="Emoji"><i-c n="smile" s="16"></i-c></button>
+                    <button class="f5-button f5-button--primary f5-button--sm"><span>Reply</span><i-c n="send" s="14"></i-c></button>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 ─ NEW THREAD -->
+  <section class="rv-screen" id="s-new">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">4 · Desktop · New thread, signed in with Clerk</p>
+      <h2 class="cm-lead">Starting a thread: a dialog over the channel</h2>
+      <p>
+        A title, tags, what you want to say. A spot and photos are optional. Post thread is the dialog’s one filled action.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame frame--fixed" data-shot="04-new-thread-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="false"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="wings"></div>
+              <main class="cm-main" data-slot="channel-main"></main>
+            </div>
+          </div>
+          <div class="cm-scrim">
+            <div class="f5-surface f5-surface--dialog cm-dialog" role="dialog" aria-labelledby="nt-title">
+              <div class="cm-dialog__head">
+                <div class="cm-stack cm-stack--tight">
+                  <h2 class="cm-title" id="nt-title">Start a thread</h2>
+                  <p class="cm-meta cm-inline">in <span class="cm-channel-chip"><i-c n="hash" s="13"></i-c>wings</span> · posting as Aoife K</p>
+                </div>
+                <button class="f5-button f5-button--icon f5-button--sm" aria-label="Close"><i-c n="x" s="16"></i-c></button>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-t">Title <small>62 / 120</small></label>
+                <div class="cm-field__control cm-field__control--focus"><span id="nt-t">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</span></div>
+              </div>
+
+              <div class="cm-field">
+                <span class="cm-field__label">Tags <small>At least one, up to three</small></span>
+                <div class="cm-tags" role="group" aria-label="Tags">
+                  <button class="f5-button f5-button--pill" aria-pressed="true">Question</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="true">Sizing</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">Review</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">Repair</button>
+                  <button class="f5-button f5-button--pill" aria-pressed="false">New release</button>
+                </div>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-b">What’s on your mind?</label>
+                <div class="cm-field__control cm-field__control--area">
+                  <span id="nt-b">I’ve been out about 25 times on a rented 5m and I’m buying my first wing. I’m 82 kg on a 95 L board with a 1600 cm² front foil, riding mostly Dollymount and Malahide…</span>
+                  <div class="cm-row cm-row--tight">
+                    <span class="cm-attached" data-photo="1"></span>
+                    <span class="cm-addphoto"><i-c n="image" s="20"></i-c></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cm-field">
+                <label class="cm-field__label" for="nt-s">Spot <small>Optional. Shows the live wind on your thread.</small></label>
+                <div class="cm-field__control"><i-c n="map-pin" s="16"></i-c><span id="nt-s">Dollymount, Co. Dublin</span><i-c n="chevron-down" s="16"></i-c></div>
+              </div>
+
+              <div class="cm-dialog__foot">
+                <span class="cm-meta">Be sound. <a class="cm-link" href="#">House rules</a></span>
+                <div class="cm-row">
+                  <button class="f5-button f5-button--pill">Cancel</button>
+                  <button class="f5-button f5-button--primary">Post thread</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ─ FOLLOWING + NOTIFICATIONS -->
+  <section class="rv-screen" id="s-following">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">5 · Desktop · /community/following, with the bell open</p>
+      <h2 class="cm-lead">Following and notifications</h2>
+      <p>
+        You follow a thread by starting it or replying to it, and a channel by choosing to. Following is the
+        feed of those; each row says why it is there. The bell is the inbox: replies are grouped per thread,
+        a mention always gets its own line, and a followed channel tells you about new threads, not every reply.
+      </p>
+    </div>
+    <div class="rv-scroll">
+      <div class="frame frame--fixed" data-shot="05-following-notifications-desktop">
+        <div class="cm-root">
+          <div class="cm-page">
+            <div data-slot="header" data-accent="true" data-bell="open"></div>
+            <div class="cm-shell">
+              <div data-slot="rail" data-active="following"></div>
+              <main class="cm-main">
+                <div class="cm-head">
+                  <div class="cm-head__text">
+                    <h1 class="cm-title">Following</h1>
+                    <p>Threads you started or replied to, and new threads in the channels you follow.</p>
+                  </div>
+                </div>
+                <div class="cm-row">
+                  <span class="cm-meta">Channels</span>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>wings</a>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>sessions</a>
+                  <a class="f5-button f5-button--pill f5-button--sm" href="#"><i-c n="hash" s="13"></i-c>meetups</a>
+                  <a class="f5-button f5-button--link" href="#">Manage</a>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="following"></div>
+              </main>
+            </div>
+          </div>
+          <div class="cm-pane cm-pop" role="dialog" aria-label="Notifications">
+            <div class="cm-pop__head">
+              <h2 class="cm-lead">Notifications</h2>
+              <div class="cm-row cm-row--tight">
+                <button class="f5-button f5-button--link">Mark all read</button>
+                <button class="f5-button f5-button--icon f5-button--sm" aria-label="Notification settings"><i-c n="settings" s="15"></i-c></button>
+              </div>
+            </div>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatar cm-avatar--sm" data-tone="4" aria-hidden="true">CM</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Cian M</span> mentioned you in <span class="cm-strong">5m or 6m as a one-wing quiver…</span></span>
+                <span class="cm-meta cm-note__quote">Not cowardly at all, @Aoife K. The 5.5 is the most-ridden size…</span>
+                <span class="cm-meta cm-inline"><i-c n="at-sign" s="12"></i-c>Mention · 4 min ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatars"><span class="cm-avatar cm-avatar--sm" aria-hidden="true">TB</span><span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">NR</span></span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Tomás B</span> and <span class="cm-strong">Niamh R</span> replied in <span class="cm-strong">Saturday: SW 22 to 28 at Dollymount…</span></span>
+                <span class="cm-meta cm-inline"><i-c n="message" s="12"></i-c>4 new replies · 12 min ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#" data-unread="true">
+              <span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">PD</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Pádraig D</span> started <span class="cm-strong">Autumn meet-up: Rush South, Saturday 4 October</span></span>
+                <span class="cm-meta cm-inline"><i-c n="hash" s="12"></i-c>meetups · 1 h ago</span>
+              </span>
+              <span class="cm-unread-dot" aria-label="Unread"></span>
+            </a>
+            <a class="cm-note" href="#">
+              <span class="cm-avatar cm-avatar--sm" aria-hidden="true">SO</span>
+              <span class="cm-stack cm-stack--tight">
+                <span><span class="cm-strong">Sorcha O</span> reacted 🤙 to your message in <span class="cm-strong">Leading-edge pinhole, fixed on the beach…</span></span>
+                <span class="cm-meta">Yesterday</span>
+              </span>
+              <span></span>
+            </a>
+            <a class="cm-pop__foot cm-meta" href="#">See all notifications</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ─ PHONES -->
+  <section class="rv-screen" id="s-phones">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">6 · Phone · 390 wide</p>
+      <h2 class="cm-lead">On a phone: channels, then threads, then the conversation</h2>
+      <p>
+        Three full pages rather than a squeezed split view. The third is signed out: reading is public, and
+        the reply slot is offered rather than hidden, the way the marketplace offers Contact seller.
+      </p>
+    </div>
+    <div class="rv-phones">
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6a · Channels</p>
+        <div class="frame frame--phone" data-shot="06a-phone-channels">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true"></div>
+              <main class="cm-main">
+                <h1 class="cm-title">Community</h1>
+                <p class="cm-meta">1,284 members · 38 threads active this week</p>
+                <div class="cm-scroller">
+                  <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true"><i-c n="home" s="14"></i-c>Latest</button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="bell" s="14"></i-c>Following <span class="cm-count">3</span></button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="at-sign" s="14"></i-c>Mentions <span class="cm-count">1</span></button>
+                  <button class="f5-button f5-button--pill f5-button--sm"><i-c n="search" s="14"></i-c>Search</button>
+                </div>
+                <div data-slot="phone-channels"></div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6b · Threads in a channel</p>
+        <div class="frame frame--phone" data-shot="06b-phone-threads">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>Channels</span></a>
+                <div class="cm-row cm-row--between">
+                  <h1 class="cm-title cm-title--channel"><i-c n="hash" s="22"></i-c>wings</h1>
+                  <button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Follow channel"><i-c n="bell" s="15"></i-c></button>
+                </div>
+                <div class="cm-scroller">
+                  <button class="f5-button f5-button--pill f5-button--sm" aria-pressed="true">All</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Question</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Review</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Sizing</button>
+                  <button class="f5-button f5-button--pill f5-button--sm">Repair</button>
+                </div>
+                <div class="cm-pane cm-threads" data-slot="threads" data-set="wings" data-compact="true"></div>
+              </main>
+            </div>
+            <div class="cm-fab">
+              <button class="f5-button f5-button--primary f5-button--lg"><i-c n="plus" s="18"></i-c>New thread</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rv-phone">
+        <p class="cm-eyebrow">6c · A thread, signed out</p>
+        <div class="frame frame--phone" data-shot="06c-phone-thread">
+          <div class="cm-root cm-root--phone">
+            <div class="cm-page">
+              <div data-slot="header" data-phone="true" data-signedout="true"></div>
+              <main class="cm-main">
+                <a class="cm-back" href="#"><i-c n="arrow-left" s="15"></i-c><span>wings</span></a>
+                <h1 class="cm-lead">5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board</h1>
+                <div class="cm-row cm-row--tight">
+                  <span class="f5-chip">Question</span><span class="f5-chip">Sizing</span>
+                  <span class="cm-meta">24 replies · 9 riders</span>
+                </div>
+                <article class="cm-pane cm-post">
+                  <div class="cm-byline">
+                    <span class="cm-avatar cm-avatar--sm" data-tone="2" aria-hidden="true">AK</span>
+                    <div class="cm-row cm-row--tight"><span class="cm-strong">Aoife K</span><span class="cm-meta">Thu 19:42</span></div>
+                  </div>
+                  <div class="cm-prose">
+                    <p>I’m 82 kg on a 95 L board with a 1600 cm² front foil, riding mostly Dollymount and Malahide. Most of my days are 14 to 22 knots. Do I get a 6m, or a 5m and sit out the light ones?</p>
+                  </div>
+                  <a class="cm-spotcard" href="#">
+                    <span class="cm-spot__swatch" style="background: var(--sem-color-wind-k15)" aria-hidden="true"></span>
+                    <span class="cm-stack cm-stack--tight">
+                      <span class="cm-strong">Dollymount</span>
+                      <span class="cm-meta">WSW · gusting 26 kn</span>
+                    </span>
+                    <span class="cm-spot__reading">19 <small>kn</small></span>
+                  </a>
+                  <div class="cm-reactions">
+                    <button class="cm-reaction">🤙 <span>12</span></button><button class="cm-reaction">👀 <span>3</span></button>
+                  </div>
+                </article>
+                <div class="cm-stream">
+                  <div class="cm-msg">
+                    <span class="cm-avatar cm-avatar--sm" data-tone="4" aria-hidden="true">CM</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Cian M</span><span class="cm-meta">Thu 20:05</span></div>
+                    <div class="cm-msg__body"><p>At 82 kg on that foil, 5m. Fix the light days with a bigger foil, not a bigger wing.</p></div>
+                    <div class="cm-reactions"><button class="cm-reaction">👍 <span>18</span></button></div>
+                  </div>
+                  <div class="cm-msg cm-msg--reply">
+                    <a class="cm-replyto" href="#"><i-c n="reply" s="13"></i-c><span class="cm-strong">Cian M</span><span>Fix the light days with a bigger foil</span></a>
+                    <span class="cm-avatar cm-avatar--sm" data-tone="3" aria-hidden="true">NR</span>
+                    <div class="cm-msg__head"><span class="cm-strong">Niamh R</span><span class="cm-meta">Thu 21:30</span></div>
+                    <div class="cm-msg__body"><p>Agree on the foil. I went from 1600 to 2000 and got three knots of low end.</p></div>
+                  </div>
+                </div>
+              </main>
+            </div>
+            <div class="cm-dock">
+              <div class="cm-gate">
+                <span class="cm-stack cm-stack--tight"><span class="cm-strong">Join the conversation</span><span class="cm-meta">Reading is open to everyone.</span></span>
+                <button class="f5-button f5-button--primary"><i-c n="log-in" s="15"></i-c>Sign in to reply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- 7 ─ COLOUR -->
+  <section class="rv-screen" id="s-colour">
+    <div class="rv-screen__head">
+      <p class="cm-eyebrow">7 · Colour · decided 20 September 2026</p>
+      <h2 class="cm-lead">Atlantic: navy ink, a neutral ground, electric blue for the one filled action</h2>
+      <p>
+        Every screen above is now drawn in it. Before and after, side by side. Only colour tokens differ,
+        which is how it is built: the marketplace reads the same tokens and changes with it; the wind map
+        is a separate piece of work, because its stylesheets do not read the tokens yet.
+      </p>
+    </div>
+    <div class="rv-phones" data-shot="07-before-after">
+      <div class="rv-phone">
+        <div class="rv-screen__head"><p class="cm-eyebrow">Before</p><p class="cm-strong">Force5 teal</p><div class="pal-sw pal-a"><i style="background:var(--sem-color-bg-content)"></i><i style="background:var(--sem-color-surface-sunken)"></i><i style="background:var(--sem-color-text-muted)"></i><i style="background:var(--sem-color-surface-inverse)"></i><i style="background:var(--sem-color-action-bg)"></i></div></div>
+        <div class="frame frame--phone pal-a" data-clone="06b-phone-threads"></div>
+      </div>
+      <div class="rv-phone">
+        <div class="rv-screen__head"><p class="cm-eyebrow">After</p><p class="cm-strong">Atlantic</p><div class="pal-sw"><i style="background:var(--sem-color-bg-content)"></i><i style="background:var(--sem-color-surface-sunken)"></i><i style="background:var(--sem-color-text-muted)"></i><i style="background:var(--sem-color-surface-inverse)"></i><i style="background:var(--sem-color-action-bg)"></i></div></div>
+        <div class="frame frame--phone" data-clone="06b-phone-threads"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var ICONS = {
+      menu: '<path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/>',
+      wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+      hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+      plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      "plus-circle": '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+      message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+      bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/>',
+      "smile-plus": '<path d="M22 11v1a10 10 0 1 1-9-10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M16 5h6"/><path d="M19 2v6"/>',
+      send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+      reply: '<path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+      "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+      "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+      lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      "map-pin": '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+      more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+      "log-in": '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+      "arrow-left": '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+      megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      "at-sign": '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+      "badge-check": '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+      link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+      home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      locate: '<path d="M2 12h3"/><path d="M19 12h3"/><path d="M12 2v3"/><path d="M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
+      settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'
+    };
+    function ic(n, s) {
+      s = s || 16;
+      return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || "") + "</svg>";
+    }
+    function av(initials, tone, size) {
+      return '<span class="cm-avatar' + (size ? " cm-avatar--" + size : "") + '"' + (tone ? ' data-tone="' + tone + '"' : "") + ' aria-hidden="true">' + initials + "</span>";
+    }
+    function photo(v) {
+      var sun = v === 2 ? "" : '<circle cx="92" cy="22" r="9" style="fill:var(--sem-color-surface-card)"/>';
+      var wing = v === 2
+        ? '<path d="M30 44 Q52 8 88 30 Q56 26 30 44Z" style="fill:var(--sem-color-text-primary)"/>'
+        : '<path d="M40 42 Q56 16 80 34 Q58 30 40 42Z" style="fill:var(--sem-color-text-primary)"/><path d="M60 38 61 57" style="stroke:var(--sem-color-text-primary);stroke-width:1.5"/><path d="M52 58h20" style="stroke:var(--sem-color-surface-card);stroke-width:2.5;stroke-linecap:round"/>';
+      return '<svg class="cm-photo" viewBox="0 0 120 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="120" height="90" style="fill:var(--sem-color-surface-sunken)"/>' + sun +
+        '<path d="M0 54 Q30 48 60 54 T120 54 V90 H0Z" style="fill:var(--sem-color-border-strong)"/>' + wing +
+        '<path d="M0 68 Q30 62 60 68 T120 68 V90 H0Z" style="fill:var(--sem-color-surface-inverse)"/></svg>';
+    }
+
+    // ---- header ---------------------------------------------------------------
+    function header(el) {
+      var accent = el.dataset.accent === "true", phone = el.dataset.phone === "true", out = el.dataset.signedout === "true";
+      var right;
+      if (out) {
+        right = '<button class="f5-button f5-button--pill f5-button--sm">' + ic("log-in", 15) + "<span>Sign in</span></button>";
+      } else {
+        right =
+          (phone ? "" : '<button class="f5-button f5-button--sm ' + (accent ? "f5-button--primary" : "f5-button--pill") + '">' + ic("plus-circle", 15) + "<span>New thread</span></button>") +
+          '<button class="f5-button f5-button--pill f5-button--icon f5-button--sm cm-bell" aria-label="Notifications, 4 unread"' + (el.dataset.bell === "open" ? ' aria-pressed="true"' : "") + '>' + ic("bell", 15) + '<span class="cm-count" aria-hidden="true">4</span></button>' +
+          '<span style="display:inline-flex;padding:0 var(--sem-space-gap)">' + av("AK", 2, "sm") + "</span>";
+      }
+      el.outerHTML =
+        '<header class="cm-header"><div class="f5-surface f5-surface--pill cm-header__bar">' +
+        '<button class="f5-button f5-button--pill f5-button--icon f5-button--sm" aria-label="Site menu">' + ic("menu", 15) + "</button>" +
+        '<a class="cm-brand" href="#">' + ic("wind", 22) + '<span>wingfoil<span class="cm-brand__domain">.ie</span></span><span class="f5-chip f5-chip--eyebrow">Community</span></a>' +
+        '<nav class="cm-header__actions" aria-label="Community">' + right + "</nav></div></header>";
+    }
+
+    // ---- rail -----------------------------------------------------------------
+    // Every channel is set up by the site.
+    var GROUPS = [
+      ["Community", [["announcements", "megaphone", 0, true], ["general", "hash", 2]]],
+      ["Gear", [["wings", "hash", 5], ["boards", "hash", 0], ["foils", "hash", 3]]],
+      ["Riding", [["spots-and-conditions", "hash", 12], ["sessions", "hash", 4], ["technique", "hash", 1]]],
+      ["Social", [["meetups", "hash", 3], ["off-topic", "hash", 0]]]
+    ];
+    function rail(el) {
+      var active = el.dataset.active;
+      function row(id, icon, n, locked, label) {
+        var cur = id === active;
+        return '<a class="cm-channel" href="#"' + (cur ? ' aria-current="page"' : "") + (n && !cur ? ' data-unread="true"' : "") + ">" + ic(icon, 16) + "<span>" + (label || id) + "</span>" +
+          (n && !cur ? '<span class="cm-count' + (n > 4 ? "" : " cm-count--quiet") + '">' + n + "</span>" : locked ? '<span class="cm-channel__lock">' + ic("lock", 12) + "</span>" : "") + "</a>";
+      }
+      var html = '<nav class="cm-rail" aria-label="Channels">' +
+        '<label class="f5-search f5-search--sm">' + ic("search", 16) + '<input type="search" placeholder="Search the community" aria-label="Search the community"></label>' +
+        '<div class="cm-rail__group">' + row("home", "home", 0, false, "Latest") + row("following", "bell", 3, false, "Following") + row("mentions", "at-sign", 1, false, "Mentions") + "</div>";
+      GROUPS.forEach(function (g) {
+        html += '<div class="cm-rail__group"><div class="cm-rail__label"><span class="cm-eyebrow cm-inline">' + ic("chevron-down", 11) + g[0] + "</span>" +
+          "</div>" +
+          g[1].map(function (c) { return row(c[0], c[1], c[2], c[3]); }).join("") +
+          "</div>";
+      });
+      el.outerHTML = html + "</nav>";
+    }
+
+    // ---- threads --------------------------------------------------------------
+    var T = {
+      q: { a: ["AK", 2], ch: "wings", title: "5m or 6m as a one-wing quiver for Dublin Bay? 82 kg, 95 L board", pre: "Cian M: Not cowardly at all. The 5.5 is the most-ridden size in the country for a reason.", tags: ["Question", "Sizing"], by: "Aoife K", n: 24, when: "4 min ago", who: [["CM", 4], ["NR", 3], ["TB", 0]], unread: 2 },
+      rev: { a: ["CM", 4], ch: "wings", title: "Unit D/LAB 4.5 after 30 sessions: an honest review", pre: "Stiffer than the standard Unit and you feel it in the gusts. The canopy has held its shape, but the price…", tags: ["Review"], by: "Cian M", n: 41, when: "1 h ago", who: [["SO", 2], ["AK", 2], ["PD", 3]], photo: 1 },
+      rep: { a: ["SO", 0], ch: "wings", title: "Leading-edge pinhole, fixed on the beach at Rush. Photos inside", pre: "Tear-Aid Type A, an alcohol wipe and ten minutes. Here is exactly what I carry in the van now.", tags: ["Repair"], by: "Sorcha O", n: 12, when: "3 h ago", who: [["TB", 0], ["NR", 3]], photo: 2, unread: 5 },
+      ach: { a: ["PD", 3], ch: "wings", title: "Strike V4 or Flux for gusty westerlies off Achill?", pre: "Keel lake is fine, it’s the open-sea days that catch me out. Which one depowers more cleanly?", tags: ["Question"], by: "Pádraig D", n: 18, when: "Yesterday", who: [["CM", 4], ["SO", 0]] },
+      han: { a: ["NR", 3], ch: "wings", title: "Hard handles or a boom? My shoulder is sore after long sessions", pre: "Two hours at Tramore on Sunday and my front shoulder was done. Is this technique, or the handles?", tags: ["Question"], by: "Niamh R", n: 33, when: "Yesterday", who: [["CM", 4], ["AK", 2], ["TB", 0]] },
+      rel: { a: ["TB", 0], ch: "wings", title: "2027 wings: what has been announced so far", pre: "Keeping a running list in the first post. Add what you see and I’ll fold it in.", tags: ["New release"], by: "Tomás B", n: 57, when: "2 days ago", who: [["PD", 3], ["SO", 0], ["NR", 3]] },
+      sat: { a: ["SO", 0], ch: "sessions", title: "Saturday: SW 22 to 28 at Dollymount, low water 14:10. Who’s in?", pre: "Tomás B: I’ll be there from 12. Bringing the 4m and the spare pump.", tags: ["Dublin"], by: "Sorcha O", n: 16, when: "12 min ago", who: [["TB", 0], ["AK", 2], ["CM", 4]], unread: 4 },
+      gyb: { a: ["NR", 3], ch: "technique", title: "First foiling gybes: what finally made it click for you?", pre: "Forty attempts, four made. I keep stalling the foil as I switch hands.", tags: ["Question", "Gybes"], by: "Niamh R", n: 29, when: "2 h ago", who: [["CM", 4], ["PD", 3]] },
+      bra: { a: ["PD", 3], ch: "trip-reports", title: "Brandon Bay long weekend: three spots, four days, one broken mast", pre: "Scraggane on the flood was the best flat water I’ve had in Ireland. Notes on each spot, parking and tides inside.", tags: ["Kerry"], by: "Pádraig D", n: 22, when: "5 h ago", who: [["SO", 0], ["AK", 2]], photo: 1 },
+      foi: { a: ["TB", 0], ch: "foils", title: "Axis ART 999 or Armstrong HA 880 for light-wind bay riding?", pre: "85 kg, mostly 12 to 18 knots in Malahide estuary. Pump and glide matter more to me than top speed.", tags: ["Question"], by: "Tomás B", n: 14, when: "Yesterday", who: [["CM", 4], ["NR", 3]] }
+    };
+    T.blast = { a: ["PD", 3], ch: "meetups", title: "Autumn meet-up: Rush South, Saturday 4 October", pre: "Low water 13:20, so on the water from 10. Chipper afterwards. Reply if you are coming.", tags: ["Dublin"], by: "Pádraig D", n: 3, when: "1 h ago", who: [["SO", 0], ["NR", 3]], unread: 3 };
+    var WHY = { blast: "You follow this channel", q: "You started this", sat: "You replied", gyb: "You replied" };
+    var SETS = { following: ["blast", "q", "sat", "gyb"], home: ["sat", "q", "gyb", "rev", "bra", "foi"], wings: ["q", "rev", "rep", "ach", "han", "rel"] };
+
+    function threadRow(t, showChannel, compact) {
+      var meta = (showChannel ? '<span class="cm-channel-chip">' + ic("hash", 12) + t.ch + "</span>" : "") +
+        t.tags.map(function (x) { return '<span class="f5-chip">' + x + "</span>"; }).join("") +
+        (t.why ? '<span class="cm-helpful">' + ic("bell", 13) + t.why + "</span>" : "") +
+        (t.answered ? '<span class="cm-helpful">' + ic("badge-check", 14) + "Answered</span>" : "") +
+        '<span class="cm-meta">' + t.by + (compact ? " · " + t.n + " replies · " + t.when : "") + "</span>";
+      var main = '<div class="cm-thread__main"><h3 class="cm-thread__title">' + (t.unread ? '<span class="cm-unread-dot" aria-hidden="true"></span>' : "") + "<span>" + t.title + "</span></h3>" +
+        '<p class="cm-thread__preview">' + t.pre + '</p><div class="cm-thread__meta">' + meta +
+        (compact && t.unread ? '<span class="cm-count">' + t.unread + " new</span>" : "") + "</div></div>";
+      if (compact) return '<a class="cm-thread" href="#"' + (t.unread ? ' data-unread="true"' : "") + ">" + av(t.a[0], t.a[1], "sm") + main + "</a>";
+      return '<a class="cm-thread" href="#"' + (t.unread ? ' data-unread="true"' : "") + ">" + av(t.a[0], t.a[1]) + main +
+        (t.photo ? '<span class="cm-thread__thumb">' + photo(t.photo) + "</span>" : "<span></span>") +
+        '<div class="cm-thread__stats"><span class="cm-row cm-row--tight">' + (t.unread ? '<span class="cm-count">' + t.unread + " new</span>" : "") +
+        '<span class="cm-thread__replies">' + ic("message", 14) + t.n + "</span></span>" +
+        '<span class="cm-avatars">' + t.who.map(function (w) { return av(w[0], w[1], "xs"); }).join("") + "</span>" +
+        '<span class="cm-meta">' + t.when + "</span></div></a>";
+    }
+    function threads(el) {
+      var set = el.dataset.set, compact = el.dataset.compact === "true";
+      var pinned = set === "wings"
+        ? '<a class="cm-thread cm-thread--pinned" href="#">' + ic("pin", 16) + '<span><span class="cm-strong">Read first: how to ask a sizing question</span> <span class="cm-muted">' + (compact ? "" : "· weight, board volume, usual spot") + '</span></span><span class="f5-chip">Pinned</span></a>'
+        : "";
+      el.innerHTML = pinned + SETS[set].slice(0, compact ? 5 : 6).map(function (k) {
+        var t = Object.assign({}, T[k], { why: set === "following" ? WHY[k] : null });
+        return threadRow(t, set !== "wings", compact);
+      }).join("");
+    }
+
+    function channelMain(el) {
+      el.innerHTML =
+        '<div class="cm-head"><div class="cm-head__text"><h1 class="cm-title cm-title--channel">' + ic("hash", 24) + "wings</h1>" +
+        "<p>Hand wings: sizing, ranges, reviews, new releases and repairs.</p>" +
+        '<p class="cm-meta">412 threads · 640 following</p></div>' +
+        '<div class="cm-head__actions"><button class="f5-button f5-button--pill f5-button--sm" aria-pressed="false">' + ic("bell", 15) + "<span>Follow channel</span></button></div></div>" +
+        '<div class="cm-controls"><div class="cm-tags" role="group" aria-label="Filter by tag">' +
+        ["All", "Question", "Review", "Sizing", "Repair", "New release"].map(function (x, i) { return '<button class="f5-button f5-button--pill" aria-pressed="' + (i === 0) + '">' + x + "</button>"; }).join("") +
+        '</div><span class="cm-meta">Most recent activity first</span></div>' + '<div class="cm-pane cm-threads" data-slot="threads" data-set="wings"></div>';
+    }
+
+    // ---- asides -----------------------------------------------------------------
+    function blowing() {
+      var spots = [["Dollymount", "WSW · gusts 26 · 2 threads", 19, "k15"], ["Rush South", "SW · gusts 24 · 1 thread", 17, "k15"], ["Keel, Achill", "W · gusts 34 · 1 thread", 27, "k25"], ["Tramore", "SW · gusts 15 · 1 thread", 11, "k10"]];
+      return '<section class="cm-pane cm-pane--pad cm-stack"><div class="cm-aside__head"><h2 class="cm-lead">Blowing now</h2><a class="cm-link cm-meta" href="#">Wind map</a></div><ul class="cm-spots">' +
+        spots.map(function (s) {
+          return '<li class="cm-spot"><span class="cm-spot__swatch" style="background:var(--sem-color-wind-' + s[3] + ')" aria-hidden="true"></span><span class="cm-stack cm-stack--tight"><span class="cm-strong">' + s[0] + '</span><span class="cm-meta">' + s[1] + '</span></span><span class="cm-spot__reading">' + s[2] + " <small>kn</small></span></li>";
+        }).join("") + '</ul><p class="cm-meta">Spots members linked to threads in the last two days. <a class="cm-link" href="#">Set a home spot</a> to see yours first.</p></section>';
+    }
+    function people(title, list) {
+      return '<section class="cm-pane cm-pane--pad cm-stack"><div class="cm-aside__head"><h2 class="cm-lead">' + title + '</h2></div><ul class="cm-people">' +
+        list.map(function (p) { return '<li class="cm-person">' + av(p[0], p[1], "sm") + '<span class="cm-person__name">' + p[2] + "</span>" + (p[3] ? '<span class="f5-chip">' + p[3] + "</span>" : "") + "</li>"; }).join("") + "</ul></section>";
+    }
+    function aside(el) {
+      var kind = el.dataset.kind, html = '<aside class="cm-aside">';
+      if (kind === "home") {
+        html += blowing() + people('<span class="cm-inline"><span class="cm-live" aria-hidden="true"></span>Here now · 23</span>', [["CM", 4, "Cian M", "Coach"], ["SO", 0, "Sorcha O", "Team"], ["TB", 0, "Tomás B"], ["NR", 3, "Niamh R"], ["PD", 3, "Pádraig D", "Achill local"]]);
+      } else if (kind === "channel") {
+        html += '<section class="cm-pane cm-pane--pad cm-pane--sunken cm-stack"><h2 class="cm-lead">Before you post</h2><ul class="cm-guide">' +
+          ["Sizing questions: give your weight, board volume and usual spot.", "Selling a wing? That’s what the Market is for.", "Reviews: say how many sessions, and in what wind."].map(function (x) { return "<li>" + ic("check", 14) + "<span>" + x + "</span></li>"; }).join("") + "</ul></section>" +
+          blowing() + people("Most helpful in wings", [["CM", 4, "Cian M", "Coach"], ["SO", 0, "Sorcha O", "Team"], ["TB", 0, "Tomás B"]]);
+      } else {
+        html += '<section class="cm-pane cm-pane--pad cm-stack"><h2 class="cm-lead">Notify me</h2><div class="f5-segmented f5-segmented--stack">' +
+          '<button class="f5-segmented__item" aria-pressed="true">Every reply</button><button class="f5-segmented__item" aria-pressed="false">Mentions only</button><button class="f5-segmented__item" aria-pressed="false">Nothing</button></div>' +
+          '<p class="cm-meta">You follow threads you start or reply to.</p></section>' +
+          people("In this thread · 9", [["AK", 2, "Aoife K", "Started it"], ["CM", 4, "Cian M", "Coach"], ["NR", 3, "Niamh R"], ["TB", 0, "Tomás B"]]) +
+          '<section class="cm-pane cm-pane--pad cm-stack"><h2 class="cm-lead">Related threads</h2><ul class="cm-stack">' +
+          [["Is a 3m worth owning in Ireland, or is 4m small enough?", "29 replies"], ["What size wing for a 70 kg beginner?", "46 replies · answered"], ["Bigger foil or bigger wing for light days?", "38 replies"]].map(function (r) { return '<li class="cm-stack cm-stack--tight"><a class="cm-strong" href="#">' + r[0] + '</a><span class="cm-meta">' + r[1] + "</span></li>"; }).join("") + "</ul></section>";
+      }
+      el.outerHTML = html + "</aside>";
+    }
+
+    function phoneChannels(el) {
+      var last = { announcements: "Autumn meet-up: Rush, 4 October", general: "Hi from Galway, six sessions in", wings: "5m or 6m as a one-wing quiver…", boards: "Downsizing from 95 L to 75 L", foils: "ART 999 or HA 880 for light wind?", "gear-help": "Pump gauge reading low?", "spots-and-conditions": "Bull Wall car park closed Sunday", technique: "First foiling gybes: what made it click?", "trip-reports": "Brandon Bay long weekend", sessions: "Saturday: SW 22 to 28 at Dollymount" };
+      el.outerHTML = GROUPS.slice(0, 3).map(function (g) {
+        return '<div class="cm-stack" style="gap:var(--sem-space-gap)"><span class="cm-eyebrow" style="padding-left:var(--sem-space-gap-tight)">' + g[0] + '</span><div class="cm-pane">' +
+          g[1].map(function (c) {
+            return '<a class="cm-chanrow" href="#"' + (c[2] ? ' data-unread="true"' : "") + '><span class="cm-chanrow__icon">' + ic(c[1], 16) + '</span><span class="cm-chanrow__text"><span class="cm-chanrow__name">' + c[0] + '</span><span class="cm-meta">' + last[c[0]] + "</span></span>" +
+              (c[2] ? '<span class="cm-count">' + c[2] + "</span>" : '<span class="cm-muted">' + ic("chevron-right", 16) + "</span>") + "</a>";
+          }).join("") + "</div></div>";
+      }).join("");
+    }
+
+    var fill = { header: header, rail: rail, "channel-main": channelMain, aside: aside, "phone-channels": phoneChannels };
+    Object.keys(fill).forEach(function (k) {
+      document.querySelectorAll('[data-slot="' + k + '"]').forEach(fill[k]);
+    });
+    document.querySelectorAll('[data-slot="threads"]').forEach(threads);
+    document.querySelectorAll("[data-clone]").forEach(function (el) {
+      el.innerHTML = document.querySelector('[data-shot="' + el.dataset.clone + '"]').innerHTML;
+    });
+    document.querySelectorAll("[data-photo]").forEach(function (el) { el.innerHTML = photo(+el.dataset.photo); });
+    document.querySelectorAll("i-c").forEach(function (el) { el.outerHTML = ic(el.getAttribute("n"), +el.getAttribute("s")); });
+  })();
+</script>
+
