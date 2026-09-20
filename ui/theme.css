@@ -51,7 +51,13 @@
 @source "../market/web";
 @source "../community/web";
 
-@theme {
+/*
+ * `static`: every value below is written into `:root`, used by a utility class
+ * or not. Without it Tailwind emits only the ones a scanned class asks for, and
+ * the map's stylesheets — which are not scanned, and read the theme through
+ * plain `var()` — would find half of it missing.
+ */
+@theme static {
   --color-*: initial;
   --text-*: initial;
   --radius-*: initial;
@@ -126,6 +132,12 @@
   --color-wind-k50: #be334f;
   --color-wind-k60: #923d98;
   --color-wind-k65: #724297;
+
+  /* Two marks that say what they are rather than which palette they came from,
+     so the palette does not move them: the dashed line the map and the dock
+     both draw at the present hour, and the gust cap on a candle. */
+  --color-now-marker: #bf6546;
+  --color-gust: #e0803a;
 
   /* ---- type ------------------------------------------------------------ */
 
