@@ -70,6 +70,8 @@ export const userInputSchema = z.object({
     .or(z.literal("").transform(() => null)),
   contactWhatsapp: z.boolean().optional().default(false),
   bio: optionalText(USER_LIMITS.bioMax),
+  // No default: the marketplace's profile form never sends it, and must not reset it.
+  autoFollow: z.boolean().optional(),
 });
 
 export type UserInputParsed = z.infer<typeof userInputSchema>;

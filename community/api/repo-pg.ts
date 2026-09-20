@@ -1,10 +1,12 @@
 import type { PendingQuery, Row, TransactionSql } from "postgres";
 import type { Db } from "../../market/api/src/db.js";
 import {
+  NOTIFICATION_ACTORS,
   PhotoKeyTakenError,
   ReplyTargetError,
   ThreadClosedError,
   excerpt,
+  mentionLine,
   pageLimit,
   redact,
   searchTerms,
@@ -20,8 +22,11 @@ import {
   type Member,
   type Message,
   type MessagePhoto,
+  type Notification,
+  type Reaction,
   type Tag,
   type Thread,
+  type ThreadRef,
 } from "../shared/types.js";
 import { encodeCursor } from "../shared/validate.js";
 
@@ -74,6 +79,7 @@ interface ThreadRow extends MemberCols<"a">, MemberCols<"l"> {
   created_at: Date;
   last_read_seq: number | null;
   follow_level: string | null;
+  why?: string | null;
 }
 
 interface MessageRow extends MemberCols<"a">, MemberCols<"r"> {
@@ -93,6 +99,30 @@ interface MessageRow extends MemberCols<"a">, MemberCols<"r"> {
   r_author_id: string | null;
   my_reactions: string[] | null;
   as_staff: boolean;
+}
+
+interface ThreadRefRow {
+  id: string;
+  slug: string;
+  title: string;
+  channel_id: string;
+  channel_slug: string;
+  channel_name: string;
+}
+
+interface NotificationRow {
+  id: string;
+  kind: string;
+  thread_id: string | null;
+  message_id: string | null;
+  actor_ids: string[];
+  count: number;
+  emoji: string | null;
+  read_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+  m_seq: number | null;
+  m_body: string | null;
 }
 
 interface PhotoDbRow {
@@ -236,8 +266,29 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
 
   // ---- threads -------------------------------------------------------------
 
-  const threadSelect = (viewerId: string | null) => sql`
+  /** Started it, wrote in it, or pressed Follow; with no row of their own it is the channel's doing. */
+  const whyFollowed = (viewerId: string) => sql`
+    case when fo.level is null then 'channel'
+         when t.author_id = ${viewerId} then 'started'
+         when exists (select 1 from community_messages wm
+                      where wm.thread_id = t.id and wm.author_id = ${viewerId}
+                        and wm.status = 'visible') then 'replied'
+         else 'followed' end`;
+
+  /**
+   * What the Following feed holds: the threads the viewer follows at any
+   * level but `none`, and what started in a channel after they followed it.
+   */
+  const followedBy = (viewerId: string) => sql`
+    (fo.level is distinct from 'none' and (fo.level is not null or exists (
+       select 1 from community_follows cf
+       where cf.user_id = ${viewerId} and cf.target_type = 'channel'
+         and cf.target_id = t.channel_id and cf.level <> 'none'
+         and cf.created_at <= t.created_at)))`;
+
+  const threadSelect = (viewerId: string | null, withWhy = false) => sql`
     select t.*, c.slug as channel_slug, c.name as channel_name,
+           ${viewerId && withWhy ? sql`${whyFollowed(viewerId)} as why,` : sql``}
            a.handle as a_handle, a.display_name as a_display_name,
            a.avatar_url as a_avatar_url, a.role as a_role,
            l.handle as l_handle, l.display_name as l_display_name,
@@ -347,6 +398,7 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
         lastReadSeq: r.last_read_seq,
         unread: r.last_seq - (r.last_read_seq ?? -1),
         following: r.follow_level as Thread["following"],
+        ...(r.why ? { why: r.why as Thread["why"] } : {}),
       };
     });
   }
@@ -551,6 +603,174 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     return true;
   }
 
+  // ---- follows and the bell ------------------------------------------------
+
+  /** A new row's id, made in the statement that fans it out. Hex, so it has the shape of newId(). */
+  const freshId = (tx: TransactionSql) =>
+    tx`substr(replace(gen_random_uuid()::text, '-', ''), 1, 16)`;
+
+  /** Starting or replying follows the thread, unless the author switched that off or has a row already. */
+  const autoFollow = (
+    tx: TransactionSql,
+    authorId: string,
+    threadId: string,
+    at: Date,
+  ) => tx`
+    insert into community_follows (user_id, target_type, target_id, level, source, created_at)
+    select u.id, 'thread', ${threadId}, 'all', 'auto', ${at}
+    from users u where u.id = ${authorId} and u.auto_follow
+    on conflict do nothing`;
+
+  const mutedBy = (
+    tx: TransactionSql,
+    userId: PendingQuery<Row[]>,
+    threadId: string,
+  ) => tx`
+    exists (select 1 from community_follows mf
+            where mf.user_id = ${userId} and mf.target_type = 'thread'
+              and mf.target_id = ${threadId} and mf.level = 'none')`;
+
+  /**
+   * Who a new message tells, in the transaction that saves it. The people it
+   * names get a row of their own; then the thread's followers at level `all`
+   * (a reply) or the channel's (a new thread) get theirs, minus the author,
+   * whoever was just named and whoever muted the thread. Replies fold into
+   * the one unread row the partial unique index allows.
+   */
+  async function fanOut(
+    tx: TransactionSql,
+    m: { id: string; threadId: string; authorId: string },
+    rest: { kind: "reply" } | { kind: "thread"; channelId: string },
+    at: Date,
+  ) {
+    await tx`
+      insert into community_notifications
+        (id, user_id, kind, thread_id, message_id, actor_id, actor_ids, created_at, updated_at)
+      select ${freshId(tx)}, mn.user_id, 'mention', ${m.threadId}, ${m.id},
+             ${m.authorId}, array[${m.authorId}]::text[], ${at}, ${at}
+      from community_mentions mn
+      where mn.message_id = ${m.id} and mn.user_id <> ${m.authorId}
+        and not ${mutedBy(tx, tx`mn.user_id`, m.threadId)}`;
+    const target =
+      rest.kind === "reply"
+        ? tx`f.target_type = 'thread' and f.target_id = ${m.threadId} and f.level = 'all'`
+        : tx`f.target_type = 'channel' and f.target_id = ${rest.channelId} and f.level <> 'none'`;
+    await tx`
+      insert into community_notifications
+        (id, user_id, kind, thread_id, message_id, actor_id, actor_ids, created_at, updated_at)
+      select ${freshId(tx)}, f.user_id, ${rest.kind}, ${m.threadId}, ${m.id},
+             ${m.authorId}, array[${m.authorId}]::text[], ${at}, ${at}
+      from community_follows f
+      where ${target} and f.user_id <> ${m.authorId}
+        and not exists (select 1 from community_mentions mn
+                        where mn.message_id = ${m.id} and mn.user_id = f.user_id)
+        and not ${mutedBy(tx, tx`f.user_id`, m.threadId)}
+      on conflict (user_id, thread_id) where read_at is null and kind = 'reply'
+      do update set
+        count = community_notifications.count + 1,
+        actor_id = excluded.actor_id,
+        actor_ids = excluded.actor_ids
+          || array_remove(community_notifications.actor_ids, excluded.actor_id),
+        message_id = excluded.message_id,
+        updated_at = excluded.updated_at`;
+  }
+
+  /** What the bell shows and counts: nothing of a removed thread, no mention or reaction of a removed message. */
+  const shown = () => sql`
+    (t.id is null or t.status <> 'removed')
+    and (n.kind not in ('mention', 'reaction') or m.status = 'visible')`;
+
+  const notificationFrom = () => sql`
+    from community_notifications n
+    left join community_threads t on t.id = n.thread_id
+    left join community_messages m on m.id = n.message_id`;
+
+  async function threadRefs(ids: string[]): Promise<Map<string, ThreadRef>> {
+    if (!ids.length) return new Map();
+    const rows = await sql<ThreadRefRow[]>`
+      select t.id, t.slug, t.title, c.id as channel_id,
+             c.slug as channel_slug, c.name as channel_name
+      from community_threads t join community_channels c on c.id = t.channel_id
+      where t.id in ${sql(ids)}`;
+    return new Map(
+      rows.map((r) => [
+        r.id,
+        {
+          id: r.id,
+          slug: r.slug,
+          title: r.title,
+          channel: {
+            id: r.channel_id,
+            slug: r.channel_slug,
+            name: r.channel_name,
+          },
+        },
+      ]),
+    );
+  }
+
+  /** The threads, the people and the names a quoted line needs, one query each for the whole page. */
+  async function hydrateNotifications(
+    rows: NotificationRow[],
+    userId: string,
+  ): Promise<Notification[]> {
+    if (!rows.length) return [];
+    const shownActors = (r: NotificationRow) =>
+      r.actor_ids.slice(0, NOTIFICATION_ACTORS);
+    const actorIds = [...new Set(rows.flatMap(shownActors))];
+    const quoted = rows
+      .filter((r) => r.kind === "mention" && r.message_id)
+      .map((r) => r.message_id!);
+    const [refs, actorRows, nameRows] = await Promise.all([
+      threadRefs([...new Set(rows.flatMap((r) => r.thread_id ?? []))]),
+      actorIds.length
+        ? sql<MemberRow[]>`
+            select u.id as owner_id, u.id as user_id,
+                   u.handle as u_handle, u.display_name as u_display_name,
+                   u.avatar_url as u_avatar_url, u.role as u_role
+            from users u where u.id in ${sql(actorIds)}`
+        : [],
+      quoted.length
+        ? sql<{ owner_id: string; user_id: string; display_name: string }[]>`
+            select mn.message_id as owner_id, u.id as user_id, u.display_name
+            from community_mentions mn join users u on u.id = mn.user_id
+            where mn.message_id in ${sql(quoted)}`
+        : [],
+    ]);
+    const actors = new Map(
+      actorRows.map((a) => [a.user_id, toMember(a.user_id, a, "u")]),
+    );
+    const names = groupBy(nameRows);
+
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind as Notification["kind"],
+      thread: (r.thread_id && refs.get(r.thread_id)) || null,
+      messageId: r.message_id,
+      seq: r.m_seq,
+      actors: shownActors(r).flatMap((id) => actors.get(id) ?? []),
+      actorCount: r.actor_ids.length,
+      count: r.count,
+      emoji: r.emoji as Reaction | null,
+      excerpt:
+        r.kind === "mention" && r.m_body != null
+          ? mentionLine(
+              r.m_body,
+              userId,
+              new Map(
+                (names.get(r.message_id!) ?? []).map((u) => [
+                  u.user_id,
+                  u.display_name,
+                ]),
+              ),
+            )
+          : null,
+      readAt: r.read_at ? iso(r.read_at) : null,
+      createdAt: iso(r.created_at),
+      updatedAt: iso(r.updated_at),
+    }));
+  }
+
   /** Lock the channel, then count in a statement of its own, so the count sees every commit. */
   async function recountFollowers(tx: TransactionSql, channelId: string) {
     await tx`select 1 from community_channels where id = ${channelId} for update`;
@@ -589,6 +809,8 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
           ? sql`t.channel_id = ${query.channelId}`
           : sql`c.status = 'active'`,
       );
+      if (query.following)
+        conditions.push(viewerId ? followedBy(viewerId) : sql`false`);
       if (query.tagId)
         conditions.push(sql`exists (
           select 1 from community_thread_tags tt
@@ -614,7 +836,7 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
       }
       const where = conditions.reduce((a, b) => sql`${a} and ${b}`);
       const rows = await sql<ThreadRow[]>`
-        ${threadSelect(viewerId)}
+        ${threadSelect(viewerId, query.following)}
         where ${where}
         order by ${pinnedFirst ? sql`t.pinned desc,` : sql``} t.last_message_at desc, t.id
         limit ${limit + 1}`;
@@ -668,6 +890,13 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
           set thread_count = thread_count + 1,
               last_message_at = greatest(last_message_at, ${at})
           where id = ${input.channelId}`;
+        await autoFollow(tx, input.authorId, input.id, at);
+        await fanOut(
+          tx,
+          { id: input.messageId, threadId: input.id, authorId: input.authorId },
+          { kind: "thread", channelId: input.channelId },
+          at,
+        );
       });
       return (await oneThread(input.id, input.authorId))!;
     },
@@ -728,6 +957,8 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
           update community_channels
           set last_message_at = greatest(last_message_at, ${at})
           where id = ${t.channel_id}`;
+        await autoFollow(tx, input.authorId, input.threadId, at);
+        await fanOut(tx, input, { kind: "reply" }, at);
       });
       return (await oneMessage(input.id, input.authorId))!;
     },
@@ -772,6 +1003,7 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     },
 
     async setReaction(messageId, userId, emoji, on) {
+      const at = now();
       const found = await sql.begin(async (tx) => {
         const locked = await tx`
           select 1 from community_messages m
@@ -779,11 +1011,33 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
           where m.id = ${messageId} and m.status = 'visible' and t.status <> 'removed'
           for no key update of m`;
         if (!locked.length) return false;
-        if (on)
-          await tx`
+        if (on) {
+          const fresh = await tx`
             insert into community_reactions (message_id, user_id, emoji)
-            values (${messageId}, ${userId}, ${emoji}) on conflict do nothing`;
-        else
+            values (${messageId}, ${userId}, ${emoji}) on conflict do nothing
+            returning 1`;
+          // The row counts people, so the same person reacting again adds nothing.
+          if (fresh.length)
+            await tx`
+              insert into community_notifications
+                (id, user_id, kind, thread_id, message_id, actor_id, actor_ids, emoji, created_at, updated_at)
+              select ${freshId(tx)}, m.author_id, 'reaction', m.thread_id, m.id,
+                     ${userId}, array[${userId}]::text[], ${emoji}, ${at}, ${at}
+              from community_messages m
+              where m.id = ${messageId} and m.author_id <> ${userId}
+                and not exists (select 1 from community_follows mf
+                                where mf.user_id = m.author_id and mf.target_type = 'thread'
+                                  and mf.target_id = m.thread_id and mf.level = 'none')
+              on conflict (user_id, message_id) where read_at is null and kind = 'reaction'
+              do update set
+                count = community_notifications.count
+                  + (excluded.actor_id <> all (community_notifications.actor_ids))::integer,
+                actor_id = excluded.actor_id,
+                actor_ids = excluded.actor_ids
+                  || array_remove(community_notifications.actor_ids, excluded.actor_id),
+                emoji = excluded.emoji,
+                updated_at = excluded.updated_at`;
+        } else
           await tx`
             delete from community_reactions
             where message_id = ${messageId} and user_id = ${userId} and emoji = ${emoji}`;
@@ -800,13 +1054,20 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     },
 
     async markRead(userId, threadId, seq) {
-      await sql`
-        insert into community_reads (user_id, thread_id, last_read_seq, updated_at)
-        select ${userId}, t.id, least(greatest(${Math.trunc(seq)}::integer, 0), t.last_seq), ${now()}
-        from community_threads t where t.id = ${threadId}
-        on conflict (user_id, thread_id) do update set
-          last_read_seq = greatest(community_reads.last_read_seq, excluded.last_read_seq),
-          updated_at = excluded.updated_at`;
+      const at = now();
+      await sql.begin(async (tx) => {
+        await tx`
+          insert into community_reads (user_id, thread_id, last_read_seq, updated_at)
+          select ${userId}, t.id, least(greatest(${Math.trunc(seq)}::integer, 0), t.last_seq), ${at}
+          from community_threads t where t.id = ${threadId}
+          on conflict (user_id, thread_id) do update set
+            last_read_seq = greatest(community_reads.last_read_seq, excluded.last_read_seq),
+            updated_at = excluded.updated_at`;
+        await tx`
+          update community_notifications set read_at = ${at}
+          where user_id = ${userId} and thread_id = ${threadId}
+            and read_at is null and kind <> 'report'`;
+      });
     },
 
     async markChannelSeen(userId, channelId) {
@@ -817,16 +1078,17 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     },
 
     async setFollow(userId, targetType, targetId, level, source) {
+      const at = now();
       await sql.begin(async (tx) => {
         if (source === "auto")
           await tx`
-            insert into community_follows (user_id, target_type, target_id, level, source)
-            values (${userId}, ${targetType}, ${targetId}, ${level}, 'auto')
+            insert into community_follows (user_id, target_type, target_id, level, source, created_at)
+            values (${userId}, ${targetType}, ${targetId}, ${level}, 'auto', ${at})
             on conflict do nothing`;
         else
           await tx`
-            insert into community_follows (user_id, target_type, target_id, level, source)
-            values (${userId}, ${targetType}, ${targetId}, ${level}, 'manual')
+            insert into community_follows (user_id, target_type, target_id, level, source, created_at)
+            values (${userId}, ${targetType}, ${targetId}, ${level}, 'manual', ${at})
             on conflict (user_id, target_type, target_id) do update set
               level = excluded.level, source = excluded.source`;
         if (targetType === "channel") await recountFollowers(tx, targetId);
@@ -840,6 +1102,94 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
           where user_id = ${userId} and target_type = ${targetType} and target_id = ${targetId}`;
         if (targetType === "channel") await recountFollowers(tx, targetId);
       });
+    },
+
+    async listMentions(userId, cursor, limit) {
+      const size = pageLimit(limit);
+      const at = cursor ? new Date(cursor.lastMessageAt) : null;
+      const rows = await sql<MessageRow[]>`
+        ${messageSelect(userId)}
+        join community_mentions mn on mn.message_id = m.id and mn.user_id = ${userId}
+        where m.author_id <> ${userId} and m.status = 'visible' and t.status <> 'removed'
+          ${
+            cursor
+              ? sql`and (m.created_at < ${at}
+                         or (m.created_at = ${at} and m.id > ${cursor.id}))`
+              : sql``
+          }
+        order by m.created_at desc, m.id
+        limit ${size + 1}`;
+      const page = rows.slice(0, size);
+      const last = page[page.length - 1];
+      const [items, refs] = await Promise.all([
+        hydrateMessages(page, userId),
+        threadRefs([...new Set(page.map((r) => r.thread_id))]),
+      ]);
+      return {
+        items: items.map((message) => ({
+          message,
+          thread: refs.get(message.threadId)!,
+        })),
+        nextCursor:
+          rows.length > size
+            ? encodeCursor({
+                lastMessageAt: iso(last.created_at),
+                id: last.id,
+              })
+            : null,
+      };
+    },
+
+    async countNotifications(userId) {
+      // The inner limit is the cap, as it is for a channel's unread.
+      const [row] = await sql<{ n: string }[]>`
+        select count(*) as n from (
+          select 1 ${notificationFrom()}
+          where n.user_id = ${userId} and n.read_at is null
+            and n.kind <> 'reaction' and ${shown()}
+          limit 99) x`;
+      return num(row.n);
+    },
+
+    async listNotifications(userId, cursor, limit) {
+      const size = pageLimit(limit);
+      const at = cursor ? new Date(cursor.lastMessageAt) : null;
+      const rows = await sql<NotificationRow[]>`
+        select n.*, m.seq as m_seq, m.body as m_body
+        ${notificationFrom()}
+        where n.user_id = ${userId} and ${shown()}
+          ${
+            cursor
+              ? sql`and (n.updated_at < ${at}
+                         or (n.updated_at = ${at} and n.id > ${cursor.id}))`
+              : sql``
+          }
+        order by n.updated_at desc, n.id
+        limit ${size + 1}`;
+      const page = rows.slice(0, size);
+      const last = page[page.length - 1];
+      return {
+        items: await hydrateNotifications(page, userId),
+        nextCursor:
+          rows.length > size
+            ? encodeCursor({
+                lastMessageAt: iso(last.updated_at),
+                id: last.id,
+              })
+            : null,
+      };
+    },
+
+    async markNotificationsRead(userId, which) {
+      const chosen =
+        "all" in which
+          ? sql`true`
+          : "ids" in which
+            ? sql`id in ${sql(which.ids)}`
+            : sql`thread_id = ${which.threadId} and kind <> 'report'`;
+      await sql`
+        update community_notifications set read_at = ${now()}
+        where user_id = ${userId} and read_at is null and ${chosen}`;
     },
 
     async addReport(report) {
