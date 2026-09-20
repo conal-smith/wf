@@ -134,6 +134,11 @@ export interface MetaPayload extends Meta {
   reactions: readonly Reaction[];
   limits: typeof LIMITS;
   auth: "clerk" | "dev";
+  /**
+   * Everyone with a row in users. Home shows it only once there are enough of
+   * them. Optional to the reader: a page can outlive the API it was built for.
+   */
+  memberCount?: number;
 }
 
 export interface MessagePhoto {
