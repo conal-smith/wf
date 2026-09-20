@@ -110,6 +110,17 @@ export function Link({
 
 /** The search parameter that asks for the new-thread dialog. */
 export const NEW_THREAD = "new";
+/** The one that narrows a channel to a tag, and the one that carries a search. */
+export const TAG = "tag";
+export const QUERY = "q";
+
+/** The URL the dialog was opened over: the same one, no longer asking for it. */
+export function withoutNewThread(pathname: string, search: URLSearchParams) {
+  const rest = new URLSearchParams(search);
+  rest.delete(NEW_THREAD);
+  const q = rest.toString();
+  return q ? `${pathname}?${q}` : pathname;
+}
 
 export const paths = {
   home: (params?: URLSearchParams) => {
@@ -119,7 +130,9 @@ export const paths = {
   following: () => `${BASE}/following`,
   mentions: () => `${BASE}/mentions`,
   notifications: () => `${BASE}/notifications`,
-  channel: (slug: string) => `${BASE}/c/${slug}`,
+  /** A tag narrows a channel's list, and rides in the URL so a link keeps it. */
+  channel: (slug: string, tagId?: string | null) =>
+    tagId ? `${BASE}/c/${slug}?${TAG}=${tagId}` : `${BASE}/c/${slug}`,
   thread: (id: string, slug?: string | null) =>
     slug ? `${BASE}/t/${id}/${slug}` : `${BASE}/t/${id}`,
   member: (handle: string) => `${BASE}/u/${handle}`,
