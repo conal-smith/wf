@@ -31,6 +31,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
+import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
 import { useMarketAuth } from "./auth";
 import { Link, paths } from "./router";
 import {
@@ -716,12 +717,5 @@ export function SaveButton({
   );
 }
 
-export function usePageTitle(title: string) {
-  useEffect(() => {
-    const previous = document.title;
-    document.title = `${title} — wingfoil.ie Market`;
-    return () => {
-      document.title = previous;
-    };
-  }, [title]);
-}
+export const usePageTitle = (title: string) =>
+  useSitePageTitle(title, "Market");

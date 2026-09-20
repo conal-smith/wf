@@ -11,24 +11,38 @@ import {
 } from "../components";
 import { COUNTIES, type Profile, type ProfileInput } from "../../shared/types";
 import { issuesByField, profileInputSchema } from "../../shared/validate";
+import { userInputSchema } from "../../../site/shared/validate";
 
 interface Props {
-  profile: Profile | null;
+  profile: Profile;
   onSaved: (profile: Profile) => void;
   submitLabel?: string;
+  /** Selling needs a way to reach you; nothing else on the site does. */
+  requireContact?: boolean;
 }
 
-/** Create or edit the seller profile. Used inline before a first listing and on the account page. */
-export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
+/** Edit your profile. Used inline before a first listing, where contact is asked for, and on the account page. */
+export default function ProfileForm({
+  profile,
+  onSaved,
+  submitLabel,
+  requireContact = false,
+}: Props) {
   const api = useApi();
   const auth = useMarketAuth();
   const [form, setForm] = useState({
-    displayName: profile?.displayName ?? auth.identity.name ?? "",
-    county: profile?.county ?? "",
-    contactEmail: profile?.contactEmail ?? auth.identity.email ?? "",
-    contactPhone: profile?.contactPhone ?? "",
-    contactWhatsapp: profile?.contactWhatsapp ?? false,
-    bio: profile?.bio ?? "",
+    displayName: profile.displayName,
+    handle: profile.handle,
+    county: profile.county ?? "",
+    // Offered only where contact is being asked for, never slipped into a plain save.
+    contactEmail:
+      profile.contactEmail ??
+      (requireContact && !profile.contactPhone
+        ? (auth.identity.email ?? "")
+        : ""),
+    contactPhone: profile.contactPhone ?? "",
+    contactWhatsapp: profile.contactWhatsapp,
+    bio: profile.bio ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -41,18 +55,22 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
   const submit = async () => {
     const input: ProfileInput = {
       displayName: form.displayName,
+      handle: form.handle,
       county: (form.county || null) as ProfileInput["county"],
       contactEmail: form.contactEmail || null,
       contactPhone: form.contactPhone || null,
       contactWhatsapp: form.contactWhatsapp,
       bio: form.bio || null,
     };
-    const check = profileInputSchema.safeParse(input);
+    const check = (
+      requireContact ? profileInputSchema : userInputSchema
+    ).safeParse(input);
     if (!check.success) return setErrors(issuesByField(check.error));
     setErrors({});
     setBusy(true);
     try {
       const result = await api.saveProfile(input);
+      setForm((f) => ({ ...f, handle: result.handle }));
       setSaved(true);
       onSaved(result);
     } catch (e) {
@@ -107,9 +125,26 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
           </Select>
         </Field>
       </div>
+      <Field
+        label="Handle"
+        hint="how people mention you; lowercase letters, numbers and hyphens"
+        error={errors.handle}
+        htmlFor="mk-p-handle"
+      >
+        <TextInput
+          id="mk-p-handle"
+          value={form.handle}
+          onChange={(e) => set({ handle: e.target.value })}
+          maxLength={30}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+      </Field>
       <div className="mk-form__row">
         <Field
           label="Contact email"
+          hint={requireContact ? undefined : "optional until you sell"}
           error={errors.contactEmail}
           htmlFor="mk-p-email"
         >
@@ -172,9 +207,7 @@ export default function ProfileForm({ profile, onSaved, submitLabel }: Props) {
           className="f5-button f5-button--primary f5-button--lg"
           disabled={busy}
         >
-          {busy
-            ? "Saving…"
-            : (submitLabel ?? (profile ? "Save profile" : "Create profile"))}
+          {busy ? "Saving…" : (submitLabel ?? "Save profile")}
         </button>
       </div>
     </form>

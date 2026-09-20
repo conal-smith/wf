@@ -1,7 +1,8 @@
 /**
- * The HTTP surface. Everything lives under /api/market so the same routes
- * work behind a same-origin proxy in development and on their own Railway
- * domain in production.
+ * The HTTP surface. The marketplace lives under /api/market, the community
+ * under /api/community and the site's own routes (/api/me) beside them, so
+ * the same routes work behind a same-origin proxy in development and on their
+ * own Railway domain in production.
  */
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -14,9 +15,21 @@ import {
   type AuthVariables,
   type Verifier,
 } from "./auth.js";
+import { fail } from "./errors.js";
 import { ID_PATTERN, newId } from "./ids.js";
 import type { PhotoRow, Repo } from "./repo.js";
 import { keyBelongsTo, type Storage } from "./storage.js";
+import type { Hub } from "../../../community/api/hub.js";
+import type { Limiter } from "../../../community/api/limits.js";
+import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
+import { createCommunityRouter } from "../../../community/api/router.js";
+import {
+  blockSuspended,
+  createSiteRouter,
+  meHandlers,
+} from "../../../site/api/router.js";
+import { ensureUser, type People } from "../../../site/api/users.js";
+import { hasContact } from "../../../site/shared/types.js";
 import {
   CATEGORIES,
   CONDITIONS,
@@ -34,48 +47,48 @@ import {
   listingInputSchema,
   parseListingQuery,
   presignRequestSchema,
-  profileInputSchema,
   reviewInputSchema,
 } from "../../shared/validate.js";
 
 export interface AppDeps {
   repo: Repo;
+  /** The forum's own persistence seam, beside the marketplace's. */
+  community: CommunityRepo;
+  /** The site's `users` table and where a new row's name comes from. */
+  people: People;
   verify: Verifier;
   storage: Storage;
   storagePrefix: string;
   corsOrigins: string[] | "*";
   authMode: "clerk" | "dev";
+  /** The clock the community measures its edit window on. Tests move it. */
+  now?: () => Date;
+  /** Where the community announces a committed write to its open threads. */
+  hub?: Hub;
+  /** The community's rate limits. Left out, the real ones; see community/api/limits.ts. */
+  limiter?: Limiter;
 }
 
 type Env = { Variables: AuthVariables };
 
 const JSON_LIMIT = 64 * 1024;
 
-function fail(
-  status: 400 | 403 | 404 | 409 | 413,
-  error: string,
-  message: string,
-  details?: unknown,
-): never {
-  throw new HTTPException(status, {
-    res: Response.json({ error, message, details }, { status }),
-  });
-}
-
 export function createApp(deps: AppDeps) {
-  const { repo, storage } = deps;
+  const { repo, people, storage } = deps;
   const app = new Hono<Env>();
 
-  app.use(
-    "/api/market/*",
-    cors({
-      origin: deps.corsOrigins === "*" ? "*" : deps.corsOrigins,
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Authorization", "Content-Type"],
-      maxAge: 600,
-    }),
-  );
-  app.use("/api/market/*", optionalAuth(deps.verify));
+  for (const path of ["/api/market/*", "/api/community/*", "/api/me"]) {
+    app.use(
+      path,
+      cors({
+        origin: deps.corsOrigins === "*" ? "*" : deps.corsOrigins,
+        allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowHeaders: ["Authorization", "Content-Type"],
+        maxAge: 600,
+      }),
+    );
+    app.use(path, optionalAuth(deps.verify));
+  }
 
   app.onError((err, c) => {
     if (err instanceof HTTPException) return err.getResponse();
@@ -101,6 +114,7 @@ export function createApp(deps: AppDeps) {
   );
 
   const r = new Hono<Env>();
+  r.use("*", blockSuspended(people.users));
 
   r.get("/health", (c) => c.json({ ok: true }));
 
@@ -212,20 +226,29 @@ export function createApp(deps: AppDeps) {
     await Promise.allSettled(keys.map((k) => storage.delete(k)));
   }
 
+  /**
+   * Publishing a listing is the one thing on the site that needs a way to
+   * reach you, so this is where it is asked for, not when the row is made.
+   */
+  function requireContact(
+    seller: { contactEmail: string | null; contactPhone: string | null } | null,
+  ) {
+    if (!seller || !hasContact(seller)) {
+      fail(
+        409,
+        "contact_required",
+        "Add an email or a phone number to your profile first, so buyers can reach you.",
+      );
+    }
+  }
+
   r.post(
     "/listings",
     requireAuth,
     bodyLimit({ maxSize: JSON_LIMIT }),
     async (c) => {
       const userId = c.var.userId!;
-      const profile = await repo.getProfile(userId);
-      if (!profile) {
-        fail(
-          409,
-          "profile_required",
-          "Set up your seller profile before you list something.",
-        );
-      }
+      requireContact(await ensureUser(people, userId));
       if (
         (await repo.countActiveBySeller(userId)) >=
         LIMITS.activeListingsPerSeller
@@ -252,6 +275,7 @@ export function createApp(deps: AppDeps) {
     async (c) => {
       const userId = c.var.userId!;
       const current = await ownedListing(c.req.param("id"), userId);
+      requireContact(await people.users.getUser(userId));
       const { photos, ...fields } = listingInputSchema.parse(
         await c.req.json(),
       );
@@ -303,7 +327,7 @@ export function createApp(deps: AppDeps) {
   r.get("/listings/:id/contact", requireAuth, async (c) => {
     const userId = c.var.userId!;
     const listing = await visibleListing(c.req.param("id"), userId);
-    const profile = await repo.getProfile(listing.seller.id);
+    const profile = await people.users.getUser(listing.seller.id);
     if (!profile) fail(404, "not_found", "The seller's profile is gone.");
     if (listing.seller.id !== userId)
       await repo.recordEnquiry(userId, listing.id);
@@ -336,8 +360,6 @@ export function createApp(deps: AppDeps) {
     if (existing) return { canReview: true, reason: "ok", existing };
     if (!(await repo.hasEnquired(userId, listing.id)))
       return { canReview: false, reason: "no-enquiry", existing: null };
-    if (!(await repo.getProfile(userId)))
-      return { canReview: false, reason: "profile-required", existing: null };
     return { canReview: true, reason: "ok", existing: null };
   }
 
@@ -367,6 +389,8 @@ export function createApp(deps: AppDeps) {
         fail(403, status.reason, messages[status.reason]);
       }
       const input = reviewInputSchema.parse(await c.req.json());
+      // The review names its reviewer, so the reviewer needs a row by now.
+      await ensureUser(people, userId);
       const review = await repo.upsertReview(
         newId(),
         listing.seller.id,
@@ -382,8 +406,7 @@ export function createApp(deps: AppDeps) {
 
   r.get("/sellers/:id", async (c) => {
     const page = await repo.getSellerPage(c.req.param("id"), c.var.userId);
-    if (!page)
-      fail(404, "not_found", "That seller has no marketplace profile.");
+    if (!page) fail(404, "not_found", "There is no such seller.");
     return c.json(page);
   });
 
@@ -404,14 +427,19 @@ export function createApp(deps: AppDeps) {
 
   // ---- me -----------------------------------------------------------------
 
+  // The marketplace's account page wants your row and your listings in one
+  // answer. The row itself is the site's: GET reads it the way /api/me does
+  // and PUT is /api/me's own handler under this path.
+  const me = meHandlers(people);
+
   r.get("/me", requireAuth, async (c) => {
     const userId = c.var.userId!;
-    const profile = await repo.getProfile(userId);
+    const profile = await ensureUser(people, userId);
     const [listings, saved, enquiries, reviewsGiven] = await Promise.all([
-      profile ? repo.listBySeller(userId) : Promise.resolve([] as Listing[]),
+      repo.listBySeller(userId),
       repo.listSaved(userId),
-      profile ? repo.enquiryCounts(userId) : Promise.resolve({}),
-      profile ? repo.reviewsGiven(userId) : Promise.resolve([]),
+      repo.enquiryCounts(userId),
+      repo.reviewsGiven(userId),
     ]);
     const payload: MePayload = {
       profile,
@@ -423,10 +451,7 @@ export function createApp(deps: AppDeps) {
     return c.json(payload);
   });
 
-  r.put("/me", requireAuth, bodyLimit({ maxSize: JSON_LIMIT }), async (c) => {
-    const input = profileInputSchema.parse(await c.req.json());
-    return c.json(await repo.upsertProfile(c.var.userId!, input));
-  });
+  r.put("/me", requireAuth, bodyLimit({ maxSize: JSON_LIMIT }), me.put);
 
   // ---- uploads ------------------------------------------------------------
 
@@ -477,5 +502,18 @@ export function createApp(deps: AppDeps) {
   }
 
   app.route("/api/market", r);
+  app.route(
+    "/api/community",
+    createCommunityRouter({
+      repo: deps.community,
+      people,
+      storage,
+      authMode: deps.authMode,
+      now: deps.now,
+      hub: deps.hub,
+      limiter: deps.limiter,
+    }),
+  );
+  app.route("/api", createSiteRouter(people));
   return app;
 }

@@ -1,7 +1,8 @@
 /**
  * An in-memory Repo with the same semantics as the Postgres one. It backs the
  * unit tests and `MARKET_DB=memory`, which lets the whole marketplace run on
- * a laptop with no database. Nothing survives a restart.
+ * a laptop with no database. Nothing survives a restart. People live in the
+ * site's memory users repo, handed in so both see the same rows.
  */
 import {
   histogram,
@@ -14,15 +15,12 @@ import {
   LIMITS,
   type Listing,
   type ListingQuery,
-  type Profile,
   type Review,
   type SellerPage,
   type SellerSummary,
 } from "../../shared/types.js";
-import type {
-  ProfileInputParsed,
-  ReviewInputParsed,
-} from "../../shared/validate.js";
+import type { ReviewInputParsed } from "../../shared/validate.js";
+import type { MemoryUsersRepo } from "../../../site/api/repo-memory.js";
 
 interface Stored {
   listing: Omit<Listing, "photos" | "seller" | "saved" | "isOwner">;
@@ -40,9 +38,11 @@ interface StoredReview {
   createdAt: string;
 }
 
-export function memoryRepo(now: () => Date = () => new Date()): Repo {
+export function memoryRepo(
+  users: MemoryUsersRepo,
+  now: () => Date = () => new Date(),
+): Repo {
   const listings = new Map<string, Stored>();
-  const profiles = new Map<string, Profile>();
   const saved = new Map<string, string[]>(); // userId -> listingIds in save order
   const enquiries = new Set<string>(); // `${userId}\n${listingId}`
   const reviews = new Map<string, StoredReview>(); // `${reviewerId}\n${listingId}`
@@ -51,8 +51,8 @@ export function memoryRepo(now: () => Date = () => new Date()): Repo {
     [...reviews.values()].filter((r) => r.sellerId === sellerId);
 
   const seller = (id: string): SellerSummary => {
-    const p = profiles.get(id);
-    if (!p) throw new Error(`No profile for ${id}`);
+    const p = users.peek(id);
+    if (!p) throw new Error(`No user ${id}`);
     const rs = sellerReviews(id);
     const soldCount = [...listings.values()].filter(
       (s) => s.sellerId === id && s.listing.status === "sold",
@@ -99,7 +99,7 @@ export function memoryRepo(now: () => Date = () => new Date()): Repo {
     comment: r.comment,
     reviewer: {
       id: r.reviewerId,
-      displayName: profiles.get(r.reviewerId)?.displayName ?? "",
+      displayName: users.peek(r.reviewerId)?.displayName ?? "",
     },
     createdAt: r.createdAt,
   });
@@ -234,30 +234,8 @@ export function memoryRepo(now: () => Date = () => new Date()): Repo {
       ).length;
     },
 
-    async getProfile(userId) {
-      return profiles.get(userId) ?? null;
-    },
-
-    async upsertProfile(userId, input: ProfileInputParsed) {
-      const at = now().toISOString();
-      const existing = profiles.get(userId);
-      const profile: Profile = {
-        id: userId,
-        displayName: input.displayName,
-        county: input.county ?? null,
-        contactEmail: input.contactEmail ?? null,
-        contactPhone: input.contactPhone ?? null,
-        contactWhatsapp: input.contactWhatsapp ?? false,
-        bio: input.bio ?? null,
-        createdAt: existing?.createdAt ?? at,
-        updatedAt: at,
-      };
-      profiles.set(userId, profile);
-      return profile;
-    },
-
     async getSellerPage(sellerId, viewerId): Promise<SellerPage | null> {
-      const p = profiles.get(sellerId);
+      const p = users.peek(sellerId);
       if (!p) return null;
       const mine = [...listings.values()].filter(
         (s) => s.sellerId === sellerId,

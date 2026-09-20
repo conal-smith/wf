@@ -1,0 +1,242 @@
+/*
+ * The theme: the one place a design value is written down.
+ *
+ * Every colour, type step, radius, shadow, duration, layer and control height
+ * the utility classes can produce is declared in the @theme block below, and
+ * nowhere else. `bg-card text-ink rounded-surface` resolves from here; a class
+ * that names a value this file does not hold resolves to nothing. `npm run
+ * ui:lint` closes the two doors that are left: arbitrary values in a class
+ * string, and colour literals outside this file.
+ *
+ * Imported once, from src/main.tsx, so every bundle on the origin shares it.
+ *
+ * What is deliberately absent:
+ *
+ * - The reset. Only the theme and the utilities are imported. The map's
+ *   stylesheets were written without one and would move under it, so it stays
+ *   out until they hold no literals of their own.
+ * - The stock palette, type scale, radii, shadows and font stacks. They are
+ *   cleared first, so `bg-red-500` or `text-lg` produce no CSS at all. The
+ *   spacing scale is kept, with its step pinned at 4px.
+ *
+ * The utilities are not in a cascade layer. The site's own small reset
+ * (src/styles.css: `button { background: none }`, `a { color: inherit }`,
+ * `h1, h2, p { margin: 0 }`) is unlayered, and an unlayered rule beats every
+ * layered one whatever its specificity, so in a layer `bg-accent` never reached
+ * a button and `mt-4` never reached a paragraph. Out of a layer a class beats
+ * an element, as it does everywhere else in the site's CSS. Nothing that is
+ * there today changes, because no element carries a utility class yet.
+ *
+ * One rule in that reset still outranks a plain variant:
+ * `button:enabled:hover` sets a background, and an element and two
+ * pseudo-classes beat a class and one. The kit writes a hover
+ * `not-disabled:hover:…`, which outranks it in turn and reads the same on a
+ * link, which is never disabled (ui/tv.ts). The reset's other two states,
+ * `button:focus-visible` (and the same on a link and an input, the map's
+ * ring) and `button:disabled` (a fade), are an element and one pseudo-class:
+ * a plain `focus-visible:…` or `disabled:…` already beats them, and the kit
+ * answers both, with its own ring and with `disabled:opacity-100`.
+ */
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" source(none);
+
+/*
+ * Class names are read from the directories that are written in utilities,
+ * and from nowhere else. The map's own sources are left unscanned: a bare word
+ * there such as `hidden` or `grid` would otherwise become a rule that lands on
+ * its markup.
+ */
+@source "../ui";
+@source "../market/web";
+@source "../community/web";
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+  /* The wildcards above stop short of these: `--font-*` leaves the stock
+     weights, and `--shadow-*` and `--text-*` leave three families of stock
+     shadows drawn in black. */
+  --font-weight-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  /* Cleared because the kit restates them below: a blur, a measure or an
+     animation is a design value like any other. */
+  --blur-*: initial;
+  --container-*: initial;
+  --animate-*: initial;
+
+  /* One step is 4px. The stock base is a quarter rem, and the root font size
+     here is 14px (src/styles.css), which would make a step 3.5px. */
+  --spacing: 4px;
+
+  /* ---- colour: Atlantic ------------------------------------------------ */
+
+  /* Grounds and surfaces. `solid` is a fill only: `border-solid` and
+     `outline-solid` already mean the line style, and keep meaning it. */
+  --color-ground: #f4f6fa;
+  --color-sea: #9db0cc;
+  --color-card: #fff;
+  --color-solid: #eef2f9;
+  --color-glass: #eef2f9db;
+  --color-sunken: #e1e8f3;
+  --color-inverse: #0b2545;
+  --color-scrim: #0a1f3c73;
+
+  /* Lines. */
+  --color-line: #0a1f3c1a;
+  --color-line-strong: #7488a6;
+
+  /* Text. */
+  --color-ink: #0a1f3c;
+  --color-ink-2: #1f3a5c;
+  --color-ink-muted: #4a607c;
+  --color-ink-disabled: #7488a6;
+  --color-ink-inverse: #fff;
+
+  /* Action: one filled action per view takes the accent. */
+  --color-accent: #1463ff;
+  --color-accent-hover: #0d4fd1;
+  --color-accent-ink: #fff;
+  --color-quiet: #0b2545;
+  --color-focus: #0b2545;
+
+  /* Status. Warm means now or degraded, never decoration. */
+  --color-ok: #3c8a72;
+  --color-warn: #854d31;
+  --color-warn-ground: #fff4e8;
+  --color-now: #a8442e;
+
+  /* Wind speed, in knots. These mean wind and nothing else. */
+  --color-wind-k00: #355897;
+  --color-wind-k05: #2a76b8;
+  --color-wind-k09: #2e97be;
+  --color-wind-k10: #209e78;
+  --color-wind-k15: #32a74f;
+  --color-wind-k20: #5bb437;
+  --color-wind-k25: #92c134;
+  --color-wind-k30: #bfcc3a;
+  --color-wind-k35: #e8be30;
+  --color-wind-k40: #ea862d;
+  --color-wind-k45: #dd4e38;
+  --color-wind-k50: #be334f;
+  --color-wind-k60: #923d98;
+  --color-wind-k65: #724297;
+
+  /* ---- type ------------------------------------------------------------ */
+
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* A step carries its own line height, and its weight and tracking where it
+     has one: `text-title` is the whole step, not only a size. */
+  --text-eyebrow: 9px;
+  --text-eyebrow--line-height: 1.5;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 1.1px;
+  --text-caption: 10px;
+  --text-caption--line-height: 1.5;
+  --text-label: 11px;
+  --text-label--line-height: 1.3;
+  --text-label--font-weight: 600;
+  --text-body: 12px;
+  --text-body--line-height: 1.5;
+  --text-prose: 14px;
+  --text-prose--line-height: 1.5;
+  --text-lead: 17px;
+  --text-lead--line-height: 1.3;
+  --text-lead--font-weight: 600;
+  --text-title: 25px;
+  --text-title--line-height: 1.3;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.7px;
+  --text-reading: 48px;
+  --text-reading--line-height: 1.3;
+
+  /* ---- shape and depth ------------------------------------------------- */
+
+  --radius-control: 12px;
+  --radius-surface: 20px;
+  --radius-pill: 24px;
+  --radius-dialog: 30px;
+  --radius-full: 9999px;
+
+  --shadow-control: 0px 1px 5px #0a1f3c1f;
+  --shadow-marker: 0px 3px 12px #0a1f3c2e;
+  --shadow-surface: 0px 10px 40px #0a1f3c33;
+  --shadow-dock: 0px -4px 24px #0a1f3c33;
+
+  /* Glass sits over the moving map; the scrim sits behind a dialog. */
+  --blur-glass: 28px;
+  --blur-scrim: 5px;
+
+  /* Measures, as `max-w-dialog`: the widths a dialog and a line of reading
+     take when the viewport leaves them the room. */
+  --container-dialog: 420px;
+  --container-dialog-wide: 640px;
+  --container-reading: 44ch;
+  /* A message's measure, as `max-w-measure`: what a line of conversation runs to. */
+  --container-measure: 68ch;
+  /* The page measure every content section shares, as `max-w-page`. */
+  --container-page: 1200px;
+
+  /* A section's two columns, as `grid-cols-shell`: the rail, then the page. */
+  --grid-template-columns-shell: 236px minmax(0, 1fr);
+
+  /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
+     written in the stock breakpoints' unit so the two sort together; a media
+     query reads the browser's 16px, not the root's 14. */
+  --breakpoint-rail: 56.25rem;
+
+  /* ---- motion and layers ----------------------------------------------- */
+
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 250ms;
+
+  --z-index-popover: 6;
+  --z-index-panel: 15;
+  --z-index-header: 20;
+  --z-index-dialog: 30;
+
+  /* A placeholder breathing while its content loads, and a dialog arriving. */
+  --animate-pulse: pulse 1s ease-in-out infinite alternate;
+  --animate-dialog-in: dialog-in 150ms ease both;
+
+  @keyframes pulse {
+    from {
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /* ---- controls -------------------------------------------------------- */
+
+  /* Heights, as named spacing: `h-control-md`, `min-h-touch`. A tap target is
+     never shorter than touch. */
+  --spacing-control-sm: 30px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 46px;
+  --spacing-touch: 44px;
+}
+
+/* The one media feature the kit reads that has no variant of its own: glass
+   goes solid for a reader who has asked for less transparency. */
+@custom-variant reduced-transparency {
+  @media (prefers-reduced-transparency: reduce) {
+    @slot;
+  }
+}

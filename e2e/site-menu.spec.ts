@@ -1,17 +1,19 @@
 import { expect, test, type Page } from "./fixtures";
 
 /**
- * The one menu that crosses between the two apps on this origin.
+ * The one menu that crosses between the three apps on this origin.
  *
- * The marketplace API is not running in this suite, so nothing here touches a
- * listing: the assertions are the header, the menu and the browse page's own
- * chrome, all of which have to render whether or not `/api` answers.
+ * The API is not running in this suite, so nothing here touches a listing or a
+ * thread: the assertions are the header, the menu and each page's own chrome,
+ * all of which have to render whether or not `/api` answers.
  */
 
 const trigger = (page: Page) => page.getByRole("button", { name: "Site menu" });
 const panel = (page: Page) => page.getByRole("navigation", { name: "Site" });
 const row = (page: Page, name: string) =>
   panel(page).getByRole("link", { name });
+// The same rows in the same order, whichever bundle drew them.
+const SECTIONS = ["Wind map", "Marketplace", "Community"];
 
 test("on the map the menu opens by keyboard and Escape closes only the menu", async ({
   page,
@@ -32,10 +34,16 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "true");
   await expect(trigger(page)).toHaveAttribute("aria-controls", /.+/);
   await expect(panel(page)).toBeVisible();
+  await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   await expect(row(page, "Wind map")).toBeFocused();
   await expect(row(page, "Wind map")).toHaveAttribute("aria-current", "page");
   await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
   await expect(row(page, "Marketplace")).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(row(page, "Community")).toHaveAttribute("href", "/community");
+  await expect(row(page, "Community")).not.toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -109,6 +117,7 @@ test("the menu carries the reader between the map and the marketplace", async ({
   ).toBeVisible();
 
   await trigger(page).click();
+  await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
   await expect(row(page, "Marketplace")).toHaveAttribute(
     "aria-current",
     "page",
@@ -139,6 +148,42 @@ test("a direct load of a marketplace URL renders the marketplace and its menu", 
     "page",
   );
   await expect(row(page, "Wind map")).toHaveAttribute("href", "/");
+});
+
+test("the menu carries the reader into the community and back out of it", async ({
+  page,
+}) => {
+  await page.goto("/market");
+  await trigger(page).click();
+  await row(page, "Community").click();
+
+  await page.waitForURL("**/community");
+  await expect(
+    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
+  ).toBeVisible();
+
+  await trigger(page).click();
+  await expect(panel(page).getByRole("link")).toHaveText(SECTIONS);
+  await expect(panel(page).locator('[aria-current="page"]')).toHaveText([
+    "Community",
+  ]);
+  await expect(row(page, "Marketplace")).toHaveAttribute("href", "/market");
+
+  await row(page, "Wind map").click();
+  await page.waitForURL((url) => url.pathname === "/");
+  await expect(page.locator(".site-header")).toBeVisible();
+});
+
+test("a direct load of a community URL renders the community and its menu", async ({
+  page,
+}) => {
+  // The same fallback, for the third bundle: no /community/c/wings on disk.
+  await page.goto("/community/c/wings");
+  await expect(
+    page.getByRole("link", { name: "wingfoil.ie Community, home" }),
+  ).toBeVisible();
+  await trigger(page).click();
+  await expect(row(page, "Community")).toHaveAttribute("aria-current", "page");
 });
 
 test("at 390px the menu shares the header row without wrapping or scrolling", async ({

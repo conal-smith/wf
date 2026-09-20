@@ -5,50 +5,66 @@
     "color": {
       "teal": {
         "$type": "color",
-        "$description": "The one hue this product is built from (OKLab h=215deg), stepped evenly in perceptual lightness. Step 800 reproduces the historical --ink #173d49; step 400 reproduces the historical sea #83afb9.",
+        "$description": "The one neutral family this product is built from. Since the Atlantic ruling of 2026-09-20 it holds the navy ramp, step for step; the family and its step names are kept so every alias keeps resolving. Near-black navy at the text end, a near-neutral ground at the light end.",
         "50": {
-          "$value": "#f1fafc",
-          "$description": "Lightest wash. Dialog insets and pressed-pill grounds."
+          "$value": "#f4f6fa",
+          "$description": "Lightest wash. The content ground; dialog insets and pressed-pill grounds."
         },
         "100": {
-          "$value": "#e6f4f8",
+          "$value": "#eef2f9",
           "$description": "Panel ground. The opaque stand-in for the glass gradient."
         },
         "200": {
-          "$value": "#d1e6ec",
+          "$value": "#e1e8f3",
           "$description": "Sunken ground: table header bands, track fills."
         },
         "300": {
-          "$value": "#afcdd5",
+          "$value": "#c3cfe2",
           "$description": "Hairlines and dividers at full opacity; disabled fills."
         },
         "400": {
-          "$value": "#82aab4",
+          "$value": "#9db0cc",
           "$description": "The sea. Map ground behind the tiles."
         },
         "500": {
-          "$value": "#568996",
-          "$description": "3.50:1 on the panel ground. UI strokes and icons only, never text."
+          "$value": "#7488a6",
+          "$description": "3.22:1 on the panel ground. UI strokes and icons only, never text."
         },
         "600": {
-          "$value": "#346a76",
-          "$description": "5.46:1 on the panel ground. The floor for body text and the resting action colour."
+          "$value": "#4a607c",
+          "$description": "5.75:1 on the panel ground. The floor for body text."
         },
         "700": {
-          "$value": "#20525d",
-          "$description": "7.81:1. Emphasised text and the hovered action fill."
+          "$value": "#1f3a5c",
+          "$description": "10.29:1. Emphasised text."
+        },
+        "750": {
+          "$value": "#0b2545",
+          "$description": "13.70:1. The inverse navy: the inverse surface, quiet actions and the focus ring. White on it is 15.39:1."
         },
         "800": {
-          "$value": "#163f49",
-          "$description": "10.29:1. Primary text."
+          "$value": "#0a1f3c",
+          "$description": "14.68:1. Primary text, and the base every shadow is tinted with."
         },
         "900": {
-          "$value": "#103138",
+          "$value": "#081830",
           "$description": "Dark-mode panel ground."
         },
         "950": {
-          "$value": "#0a2126",
-          "$description": "Dark-mode page ground and the base every shadow is tinted with."
+          "$value": "#050f20",
+          "$description": "Dark-mode page ground."
+        }
+      },
+      "blue": {
+        "$type": "color",
+        "$description": "The accent. The one saturated family in the structural palette, and it has one job: the filled action. Never text on a ground, never decoration.",
+        "500": {
+          "$value": "#1463ff",
+          "$description": "The filled action at rest. White on it is 4.93:1."
+        },
+        "600": {
+          "$value": "#0d4fd1",
+          "$description": "The filled action, hovered. White on it is 6.87:1."
         }
       },
       "white": {
@@ -93,31 +109,31 @@
       },
       "ink": {
         "$type": "color",
-        "$description": "Alpha inks tinted with teal.950, for shadows, scrims and hairlines. A shadow is never neutral black in this system.",
+        "$description": "Alpha inks tinted with teal.800, for shadows, scrims and hairlines. A shadow is never neutral black in this system.",
         "a08": {
-          "$value": "#0a212614",
+          "$value": "#0a1f3c14",
           "$description": "Hairline between rows."
         },
         "a12": {
-          "$value": "#0a21261f",
+          "$value": "#0a1f3c1f",
           "$description": "Resting shadow of a small control."
         },
         "a20": {
-          "$value": "#0a212633",
+          "$value": "#0a1f3c33",
           "$description": "Shadow of a floating panel."
         },
         "a30": {
-          "$value": "#0a21264d",
+          "$value": "#0a1f3c4d",
           "$description": "Shadow of the dock and of a lifted marker."
         },
         "a45": {
-          "$value": "#0a212673",
+          "$value": "#0a1f3c73",
           "$description": "Dialog scrim."
         }
       },
       "warm": {
         "$type": "color",
-        "$description": "The only hue family outside the teal ramp. Reserved for the now-marker and for degraded states; it is never decorative.",
+        "$description": "The only hue family outside the neutral ramp and the accent. Reserved for the now-marker and for degraded states; it is never decorative.",
         "100": {
           "$value": "#fff4e8",
           "$description": "Warning ground."
@@ -491,7 +507,7 @@
     },
     "shadow": {
       "$type": "shadow",
-      "$description": "Four elevations, all tinted with teal.950. A shadow says how far a thing floats above the map, and nothing else.",
+      "$description": "Four elevations, all tinted with teal.800. A shadow says how far a thing floats above the map, and nothing else.",
       "sm": {
         "$value": {
           "color": "{ref.color.ink.a12}",
@@ -657,14 +673,14 @@
       "surface": {
         "$type": "color",
         "glass": {
-          "$value": "#e6f4f8db",
+          "$value": "#eef2f9db",
           "$description": "The glass a floating surface is made of. Pairs with sem.effect.blur.glass; falls back to surface.solid where transparency is reduced or backdrop-filter is unsupported.",
           "$extensions": {
             "com.multicode": {
               "role": "surface",
               "use": "Panels, the dock, pills, popovers.",
               "modes": {
-                "light": "#e6f4f8db",
+                "light": "#eef2f9db",
                 "dark": "#103138db"
               }
             }
@@ -727,14 +743,14 @@
           }
         },
         "inverse": {
-          "$value": "{ref.color.teal.700}",
+          "$value": "{ref.color.teal.750}",
           "$description": "A surface that flips the text on it to inverse.",
           "$extensions": {
             "com.multicode": {
               "role": "surface",
               "use": "The active marker; a selected segment.",
               "modes": {
-                "light": "{ref.color.teal.700}",
+                "light": "{ref.color.teal.750}",
                 "dark": "{ref.color.teal.300}"
               }
             }
@@ -800,7 +816,7 @@
         "$type": "color",
         "primary": {
           "$value": "{ref.color.teal.800}",
-          "$description": "Everything read at length. 10.29:1 on the panel ground.",
+          "$description": "Everything read at length. 14.68:1 on the panel ground.",
           "$extensions": {
             "com.multicode": {
               "role": "text",
@@ -814,7 +830,7 @@
         },
         "secondary": {
           "$value": "{ref.color.teal.700}",
-          "$description": "Supporting text that is still prose. 7.81:1.",
+          "$description": "Supporting text that is still prose. 10.29:1.",
           "$extensions": {
             "com.multicode": {
               "role": "text",
@@ -828,7 +844,7 @@
         },
         "muted": {
           "$value": "{ref.color.teal.600}",
-          "$description": "The quietest text the system permits. 5.46:1 on the panel ground, and the floor: nothing readable is lighter than this.",
+          "$description": "The quietest text the system permits. 5.75:1 on the panel ground, and the floor: nothing readable is lighter than this.",
           "$extensions": {
             "com.multicode": {
               "role": "text",
@@ -872,28 +888,28 @@
       "action": {
         "$type": "color",
         "bg": {
-          "$value": "{ref.color.teal.600}",
+          "$value": "{ref.color.blue.500}",
           "$description": "The filled action. There is one per view.",
           "$extensions": {
             "com.multicode": {
               "role": "action",
               "use": "Play, and the single primary button in an error state.",
               "modes": {
-                "light": "{ref.color.teal.600}",
+                "light": "{ref.color.blue.500}",
                 "dark": "{ref.color.teal.400}"
               }
             }
           }
         },
         "bgHover": {
-          "$value": "{ref.color.teal.700}",
+          "$value": "{ref.color.blue.600}",
           "$description": "The filled action, hovered.",
           "$extensions": {
             "com.multicode": {
               "role": "action",
               "use": "Hover and active on a filled action.",
               "modes": {
-                "light": "{ref.color.teal.700}",
+                "light": "{ref.color.blue.600}",
                 "dark": "{ref.color.teal.300}"
               }
             }
@@ -901,7 +917,7 @@
         },
         "fg": {
           "$value": "{ref.color.white.full}",
-          "$description": "The label on a filled action. 6.05:1 on action.bg.",
+          "$description": "The label on a filled action. 4.93:1 on action.bg.",
           "$extensions": {
             "com.multicode": {
               "role": "action",
@@ -914,14 +930,14 @@
           }
         },
         "quiet": {
-          "$value": "{ref.color.teal.700}",
+          "$value": "{ref.color.teal.750}",
           "$description": "An action with no fill until it is touched.",
           "$extensions": {
             "com.multicode": {
               "role": "action",
               "use": "Ghost and icon buttons at rest.",
               "modes": {
-                "light": "{ref.color.teal.700}",
+                "light": "{ref.color.teal.750}",
                 "dark": "{ref.color.teal.200}"
               }
             }
@@ -942,14 +958,14 @@
           }
         },
         "focus": {
-          "$value": "{ref.color.teal.700}",
+          "$value": "{ref.color.teal.750}",
           "$description": "The focus ring. One colour, every control, both modes.",
           "$extensions": {
             "com.multicode": {
               "role": "focus",
               "use": "outline on :focus-visible. Never removed, never restyled per component.",
               "modes": {
-                "light": "{ref.color.teal.700}",
+                "light": "{ref.color.teal.750}",
                 "dark": "{ref.color.teal.200}"
               }
             }
