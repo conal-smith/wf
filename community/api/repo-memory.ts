@@ -894,7 +894,21 @@ export function memoryRepo(
     },
 
     async addReport(report) {
-      reports.push({ ...report, createdAt: now().toISOString() });
+      const m = messages.get(report.messageId);
+      if (!m) throw new Error(`No message ${report.messageId}`);
+      const at = now().toISOString();
+      reports.push({ ...report, createdAt: at });
+      for (const { id } of users.staff())
+        notify(
+          {
+            userId: id,
+            kind: "report",
+            threadId: m.threadId,
+            messageId: m.id,
+            actorId: report.reporterId,
+          },
+          at,
+        );
     },
 
     async countReportsBy(reporterId, since) {
@@ -914,7 +928,10 @@ export function memoryRepo(
 
     async countMessagesBy(authorId) {
       return [...messages.values()].filter(
-        (m) => m.authorId === authorId && m.status === "visible",
+        (m) =>
+          m.authorId === authorId &&
+          m.status === "visible" &&
+          !inRemovedThread(m),
       ).length;
     },
 

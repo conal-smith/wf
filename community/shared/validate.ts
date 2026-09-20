@@ -8,10 +8,11 @@ import {
   FOLLOW_LEVELS,
   LIMITS,
   REACTIONS,
+  REPORT_REASONS,
   type Reaction,
   type ThreadCursor,
 } from "./types.js";
-import { trimmed } from "../../site/shared/validate.js";
+import { optionalText, trimmed } from "../../site/shared/validate.js";
 
 /** The shape of newId() in market/api/src/ids.ts, which cannot be imported into a browser. */
 export const ID_SHAPE = /^[0-9a-hjkmnp-tv-z]{16}$/;
@@ -26,6 +27,11 @@ export function mentionIds(body: string): string[] {
   const ids = new Set<string>();
   for (const match of body.matchAll(MENTION_PATTERN)) ids.add(match[1]);
   return [...ids];
+}
+
+/** What a new member's body may not carry yet. Only these two schemes ever render as a link. */
+export function hasLink(body: string): boolean {
+  return /https?:\/\//i.test(body);
 }
 
 export function isReaction(emoji: string): emoji is Reaction {
@@ -96,6 +102,27 @@ export const notificationsReadSchema = z.union([
   z.strictObject({ threadId: id }),
   z.strictObject({ all: z.literal(true) }),
 ]);
+
+/** POST /messages/:id/report. */
+export const reportInputSchema = z.object({
+  reason: z.enum(REPORT_REASONS),
+  note: optionalText(LIMITS.reportNoteMax),
+});
+
+/** POST /threads/:id/lock: the reason is shown to everyone who opens the thread. */
+export const lockInputSchema = z.object({
+  reason: trimmed(LIMITS.modReasonMax).min(1, "Say why the thread is locked"),
+});
+
+/** POST /threads/:id/remove: the reason goes in the log and nowhere else. */
+export const removeInputSchema = z.object({
+  reason: optionalText(LIMITS.modReasonMax),
+});
+
+/** PUT /users/:id/suspend: a moment to come, or null to lift it. */
+export const suspendInputSchema = z.object({
+  until: z.iso.datetime().nullable(),
+});
 
 /** A title as the decoration in a thread's URL: lowercase words joined by hyphens. */
 export function slugifyTitle(title: string): string {

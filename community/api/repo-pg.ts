@@ -1193,10 +1193,20 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     },
 
     async addReport(report) {
-      await sql`
-        insert into community_reports (id, reporter_id, message_id, reason, note, created_at)
-        values (${report.id}, ${report.reporterId}, ${report.messageId},
-                ${report.reason}, ${report.note}, ${now()})`;
+      const at = now();
+      await sql.begin(async (tx) => {
+        await tx`
+          insert into community_reports (id, reporter_id, message_id, reason, note, created_at)
+          values (${report.id}, ${report.reporterId}, ${report.messageId},
+                  ${report.reason}, ${report.note}, ${at})`;
+        await tx`
+          insert into community_notifications
+            (id, user_id, kind, thread_id, message_id, actor_id, actor_ids, created_at, updated_at)
+          select ${freshId(tx)}, u.id, 'report', m.thread_id, m.id,
+                 ${report.reporterId}, array[${report.reporterId}]::text[], ${at}, ${at}
+          from users u, community_messages m
+          where u.role = 'staff' and m.id = ${report.messageId}`;
+      });
     },
 
     async countReportsBy(reporterId, since) {
@@ -1240,8 +1250,9 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
 
     async countMessagesBy(authorId) {
       const [row] = await sql<{ n: string }[]>`
-        select count(*) as n from community_messages
-        where author_id = ${authorId} and status = 'visible'`;
+        select count(*) as n from community_messages m
+        join community_threads t on t.id = m.thread_id
+        where m.author_id = ${authorId} and m.status = 'visible' and t.status <> 'removed'`;
       return num(row.n);
     },
 

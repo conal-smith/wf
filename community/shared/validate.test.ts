@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { LIMITS, REACTIONS } from "./types";
+import { LIMITS, REACTIONS, REPORT_REASONS } from "./types";
 import {
   ID_SHAPE,
   decodeCursor,
   encodeCursor,
+  hasLink,
   isReaction,
+  lockInputSchema,
   mentionIds,
   messageEditSchema,
   messageInputSchema,
+  removeInputSchema,
+  reportInputSchema,
   slugifyTitle,
+  suspendInputSchema,
   threadInputSchema,
 } from "./validate";
 import { ID_PATTERN, newId } from "../../market/api/src/ids";
@@ -27,6 +32,10 @@ describe("constants", () => {
       pageSize: 30,
       newMemberHours: 24,
       newMemberMessages: 3,
+      newMemberThreadsPerDay: 3,
+      reportsPerDay: 5,
+      reportNoteMax: 500,
+      modReasonMax: 200,
     });
   });
 
@@ -174,5 +183,66 @@ describe("slugifyTitle", () => {
     expect(slugifyTitle("???")).toBe("thread");
     expect(slugifyTitle("word ".repeat(40)).length).toBeLessThanOrEqual(60);
     expect(slugifyTitle("word ".repeat(40))).not.toMatch(/-$/);
+  });
+});
+
+describe("hasLink", () => {
+  it("finds the two schemes that render as a link, and nothing else", () => {
+    expect(hasLink("See https://example.com/wings")).toBe(true);
+    expect(hasLink("see HTTP://EXAMPLE.COM")).toBe(true);
+    expect(hasLink("[a shop](https://example.com)")).toBe(true);
+    expect(hasLink("It is on example.com, or www.example.com")).toBe(false);
+    expect(hasLink("http and https are both schemes")).toBe(false);
+    expect(hasLink("")).toBe(false);
+  });
+});
+
+describe("the safety floor's inputs", () => {
+  it("a report is one of the reasons and an optional note", () => {
+    expect(REPORT_REASONS).toContain("other");
+    expect(reportInputSchema.parse({ reason: "spam" })).toEqual({
+      reason: "spam",
+    });
+    expect(
+      reportInputSchema.parse({ reason: "other", note: "  Third time.  " }),
+    ).toEqual({ reason: "other", note: "Third time." });
+    expect(reportInputSchema.parse({ reason: "abuse", note: " " }).note).toBe(
+      null,
+    );
+    expect(reportInputSchema.safeParse({ reason: "rude" }).success).toBe(false);
+    expect(reportInputSchema.safeParse({ note: "No reason" }).success).toBe(
+      false,
+    );
+    expect(
+      reportInputSchema.safeParse({
+        reason: "spam",
+        note: "x".repeat(LIMITS.reportNoteMax + 1),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("a lock needs its reason; a removal may have one", () => {
+    expect(lockInputSchema.parse({ reason: " Run its course " })).toEqual({
+      reason: "Run its course",
+    });
+    expect(lockInputSchema.safeParse({ reason: " " }).success).toBe(false);
+    expect(lockInputSchema.safeParse({}).success).toBe(false);
+    expect(
+      lockInputSchema.safeParse({ reason: "x".repeat(LIMITS.modReasonMax + 1) })
+        .success,
+    ).toBe(false);
+    expect(removeInputSchema.parse({})).toEqual({});
+    expect(removeInputSchema.parse({ reason: "Advertising" })).toEqual({
+      reason: "Advertising",
+    });
+  });
+
+  it("a suspension runs until a moment, or null lifts it", () => {
+    expect(suspendInputSchema.parse({ until: null })).toEqual({ until: null });
+    expect(
+      suspendInputSchema.parse({ until: "2026-02-01T00:00:00.000Z" }).until,
+    ).toBe("2026-02-01T00:00:00.000Z");
+    for (const until of ["next week", "2026-02-01", 5, undefined])
+      expect(suspendInputSchema.safeParse({ until }).success).toBe(false);
   });
 });

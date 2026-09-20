@@ -6,11 +6,14 @@
  */
 import { Hono } from "hono";
 import { memoryHub } from "./hub.js";
+import { createLimiter } from "./limits.js";
 import type { CommunityDeps, Env } from "./handlers/context.js";
 import { eventRoutes } from "./handlers/events.js";
 import { followRoutes } from "./handlers/follow.js";
+import { moderationRoutes } from "./handlers/moderation.js";
 import { notificationRoutes } from "./handlers/notifications.js";
 import { readRoutes } from "./handlers/read.js";
+import { reportRoutes } from "./handlers/reports.js";
 import { uploadRoutes } from "./handlers/uploads.js";
 import { writeRoutes } from "./handlers/write.js";
 import { blockSuspended } from "../../site/api/router.js";
@@ -20,9 +23,15 @@ export type { CommunityDeps };
 export function createCommunityRouter(deps: CommunityDeps) {
   const r = new Hono<Env>();
   r.use("*", blockSuspended(deps.people.users));
-  const live = { ...deps, hub: deps.hub ?? memoryHub() };
+  const live = {
+    ...deps,
+    hub: deps.hub ?? memoryHub(),
+    limiter: deps.limiter ?? createLimiter(deps.now),
+  };
   readRoutes(r, deps);
   writeRoutes(r, live);
+  reportRoutes(r, live);
+  moderationRoutes(r, live);
   followRoutes(r, deps);
   notificationRoutes(r, deps);
   uploadRoutes(r, deps);

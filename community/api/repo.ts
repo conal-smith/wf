@@ -76,7 +76,7 @@ export interface NewReport {
 export interface ModLogEntry {
   id: string;
   actorId: string;
-  /** What was done: pin, unpin, lock, unlock, remove, suspend. */
+  /** What was done: pin, unpin, lock, unlock, remove, suspend, unsuspend. */
   action: string;
   targetType: "thread" | "message" | "user";
   targetId: string;
@@ -228,13 +228,19 @@ export interface Repo {
     which: NotificationSelector,
   ): Promise<void>;
 
+  /**
+   * Saves the report and, with it, a `report` row in the bell of everyone
+   * whose role is staff, the reporter included if they are one. Reports never
+   * fold: two on one message are two rows. Muting the thread does not stop
+   * them: a report is work to do, not the thread's news.
+   */
   addReport(report: NewReport): Promise<void>;
   countReportsBy(reporterId: string, since: Date): Promise<number>;
   addModLog(entry: ModLogEntry): Promise<void>;
   /** Newest first. */
   listModLog(limit: number): Promise<ModLogRow[]>;
 
-  /** Visible messages by this person, opening posts included. */
+  /** Visible messages by this person, opening posts included. What stands in a removed thread is not counted: nobody can see it. */
   countMessagesBy(authorId: string): Promise<number>;
   /** Threads this person started since `since`, removed ones included. */
   countThreadsBy(authorId: string, since: Date): Promise<number>;

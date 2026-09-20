@@ -49,7 +49,11 @@ function fakeStorage(): Storage {
   };
 }
 
-function harness(storage: Storage = fakeStorage()) {
+/**
+ * `rateLimits` off, the default, swaps in a limiter that never refuses: the
+ * clock below moves a second per write, which the real one would call a flood.
+ */
+function harness(storage: Storage = fakeStorage(), rateLimits = false) {
   // The repos' clock moves a second per reading, so activity sorts the way it happened.
   let at = Date.parse("2026-01-01T00:00:00.000Z");
   const tick = () => new Date((at += 1000));
@@ -65,6 +69,7 @@ function harness(storage: Storage = fakeStorage()) {
     corsOrigins: "*",
     authMode: "dev",
     now: () => new Date(at),
+    limiter: rateLimits ? undefined : { take() {} },
   });
   const call = async (
     method: string,
@@ -86,7 +91,11 @@ function harness(storage: Storage = fakeStorage()) {
             : JSON.stringify(body),
     });
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null };
+    return {
+      status: res.status,
+      headers: res.headers,
+      body: text ? JSON.parse(text) : null,
+    };
   };
   /** A staff member. Nothing in the API makes one, so the row is written here. */
   const makeStaff = async (name: string) => {
@@ -199,7 +208,9 @@ describe("community API: reading", () => {
   });
 
   it("pages the feed by cursor, most recent activity first", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const made: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 5; i++)
       made.push((await startThread("aoife", { title: `Thread ${i}` })).id);
@@ -235,7 +246,9 @@ describe("community API: reading", () => {
   });
 
   it("lists a channel's threads pinned first, then by last activity, and by tag", async () => {
-    const { call, repo, startThread, reply } = harness();
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const wings = SEED_CHANNELS.find((c) => c.slug === "wings")!;
     const [question, review] = wings.tags;
     const a = await startThread(
@@ -272,7 +285,9 @@ describe("community API: reading", () => {
   });
 
   it("pages a channel's threads by cursor with the pinned ones on the first page", async () => {
-    const { call, repo, startThread } = harness();
+    const { call, repo, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const made: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 2; i++)
       made.push((await startThread("aoife", { title: `Thread ${i}` })).id);
@@ -420,7 +435,9 @@ describe("community API: reading", () => {
   });
 
   it("pages search results by cursor", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     for (let i = 0; i < LIMITS.pageSize + 3; i++)
       await startThread("aoife", { title: `Downwind run ${i}` });
     const one = (await call("GET", "/search?q=downwind")).body as ThreadPage;
@@ -1738,7 +1755,9 @@ describe("community API: notifications", () => {
   });
 
   it("pages the list by cursor and refuses one it did not make", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     const ids: string[] = [];
     for (let i = 0; i < LIMITS.pageSize + 2; i++) {
       const t = await startThread("aoife", { title: `Thread number ${i}` });
@@ -1831,7 +1850,9 @@ describe("community API: reading position and the rail", () => {
   });
 
   it("caps a channel's unread at 99", async () => {
-    const { call, startThread } = harness();
+    const { call, makeStaff, startThread } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("aoife");
     await call("PUT", "/channels/general/follow", { on: true }, "brian");
     for (let i = 0; i < 101; i++)
       await startThread("aoife", { title: `Thread number ${i}` }, "wings");
@@ -1856,7 +1877,9 @@ describe("community API: the Following and Mentions feeds", () => {
   });
 
   it("lists followed threads and new threads in followed channels, each with why", async () => {
-    const { call, startThread, reply } = harness();
+    const { call, makeStaff, startThread, reply } = harness();
+    // Staff are never new, so three threads a day is not where this stops.
+    await makeStaff("brian");
     const follow = (threadId: string, level: string) =>
       call("PUT", `/threads/${threadId}/follow`, { level }, "aoife");
     const started = await startThread("aoife", { title: "Aoife started this" });
@@ -1993,5 +2016,742 @@ describe("community API: new members and mentions", () => {
     expect((await mention("ciara")).body.error).toBe("mentions_not_yet");
     await makeStaff("sorcha");
     expect((await mention("sorcha")).status).toBe(201);
+  });
+});
+
+describe("community API: rate limits", () => {
+  const REFUSED = {
+    error: "rate_limited",
+    message: expect.any(String),
+    retryAfter: expect.any(Number),
+  };
+
+  it("takes a message every three seconds, and the wait it names is the wait", async () => {
+    const { call, startThread, wait } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const say = (user: string) =>
+      call("POST", `/threads/${thread.id}/messages`, { body: "Again" }, user);
+    expect((await say("brian")).status).toBe(201);
+    const r = await say("brian");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual(REFUSED);
+    expect(r.body.retryAfter).toBeGreaterThanOrEqual(1);
+    expect(r.body.retryAfter).toBeLessThanOrEqual(3);
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+    // Someone else is not held up, and the refused one was not saved.
+    expect((await say("ciara")).status).toBe(201);
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.thread.lastSeq,
+    ).toBe(2);
+    wait(r.body.retryAfter * 1000);
+    expect((await say("brian")).status).toBe(201);
+  });
+
+  it("spends nothing on a message that was refused for another reason", async () => {
+    const { call, startThread } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const path = `/threads/${thread.id}/messages`;
+    expect((await call("POST", path, { body: "" }, "brian")).status).toBe(400);
+    expect(
+      (await call("POST", path, { body: "See https://example.com" }, "brian"))
+        .body.error,
+    ).toBe("links_not_yet");
+    expect((await call("POST", path, { body: "Hello" }, "brian")).status).toBe(
+      201,
+    );
+  });
+
+  it("takes five threads an hour", async () => {
+    const { call, makeStaff, wait } = harness(fakeStorage(), true);
+    // Staff are never new, so this is the bucket and not the new member's three a day.
+    await makeStaff("sorcha");
+    const start = (user: string) =>
+      call(
+        "POST",
+        "/channels/general/threads",
+        { title: "Another one", body: "And another." },
+        user,
+      );
+    for (let i = 0; i < 5; i++)
+      expect((await start("sorcha")).status).toBe(201);
+    const r = await start("sorcha");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual(REFUSED);
+    // A token comes back every twelve minutes; a few seconds of this one have run.
+    expect(r.body.retryAfter).toBeGreaterThan(11 * 60);
+    expect(r.body.retryAfter).toBeLessThanOrEqual(12 * 60);
+    expect((await start("aoife")).status).toBe(201);
+    wait(r.body.retryAfter * 1000);
+    expect((await start("sorcha")).status).toBe(201);
+    expect((await start("sorcha")).status).toBe(429);
+    expect((await call("GET", "/feed")).body.items).toHaveLength(7);
+  });
+
+  it("takes sixty reactions a minute", async () => {
+    const { call, startThread, wait } = harness(fakeStorage(), true);
+    const thread = await startThread("aoife");
+    const opening = (await call("GET", `/threads/${thread.id}`)).body
+      .opening as Message;
+    // On her own message, so nobody is told and the clock stands still.
+    const toggle = (i: number, user = "aoife") =>
+      call("PUT", react(opening.id, "🤙"), { on: i % 2 === 0 }, user);
+    for (let i = 0; i < 60; i++) expect((await toggle(i)).status).toBe(200);
+    const r = await toggle(60);
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual({ ...REFUSED, retryAfter: 1 });
+    // The sixty-first changed nothing: the sixtieth took it off.
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.opening.reactions,
+    ).toEqual({});
+    wait(60 * 1000);
+    for (let i = 0; i < 60; i++) expect((await toggle(i)).status).toBe(200);
+    expect((await toggle(60)).status).toBe(429);
+  });
+});
+
+describe("community API: new members, links and threads", () => {
+  it("refuses a link until the third message stands on an account a day old", async () => {
+    const { call, startThread, reply, wait } = harness();
+    const thread = await startThread("aoife");
+    const link = (body: string, path = `/threads/${thread.id}/messages`) =>
+      call("POST", path, { title: "Have a look", body }, "brian");
+
+    let r = await link("My shop: https://example.com/wings");
+    expect(r.status).toBe(400);
+    expect(r.body).toMatchObject({
+      error: "links_not_yet",
+      message: expect.any(String),
+    });
+    expect((await link("HTTP://EXAMPLE.COM")).body.error).toBe("links_not_yet");
+    expect(
+      (await link("https://example.com", "/channels/general/threads")).body
+        .error,
+    ).toBe("links_not_yet");
+    // Only a scheme makes a link, so this is just words.
+    await reply(thread.id, "It is on example.com somewhere", "brian");
+
+    // A day on, the account is old enough and the count is what is left.
+    wait(LIMITS.newMemberHours * 60 * 60 * 1000);
+    expect((await link("https://example.com")).body.error).toBe(
+      "links_not_yet",
+    );
+    await reply(thread.id, "Two", "brian");
+    expect((await link("https://example.com")).body.error).toBe(
+      "links_not_yet",
+    );
+    const third = await reply(thread.id, "Three", "brian");
+
+    // The third message standing ends it, for links, mentions and edits alike.
+    expect((await link("Here: https://example.com <@dev_aoife>")).status).toBe(
+      201,
+    );
+    r = await call(
+      "PUT",
+      `/messages/${third.id}`,
+      { body: "Three, and https://example.com" },
+      "brian",
+    );
+    expect(r.status).toBe(200);
+    expect(
+      (await link("https://example.com", "/channels/general/threads")).status,
+    ).toBe(201);
+    // Nothing of the refused ones was kept.
+    const stream = (await call("GET", `/threads/${thread.id}/messages`))
+      .body as MessagePage;
+    expect(stream.items.map((m) => m.body)).toEqual([
+      "Is the car park open at low tide?",
+      "It is on example.com somewhere",
+      "Two",
+      "Three, and https://example.com",
+      "Here: https://example.com <@dev_aoife>",
+    ]);
+  });
+
+  it("refuses a link edited in by a new member", async () => {
+    const { call, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    const mine = await reply(thread.id, "Nothing to see", "brian");
+    const r = await call(
+      "PUT",
+      `/messages/${mine.id}`,
+      { body: "Actually: https://example.com" },
+      "brian",
+    );
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("links_not_yet");
+    expect(
+      (await call("GET", `/threads/${thread.id}/messages?after=0`)).body
+        .items[0],
+    ).toMatchObject({ body: "Nothing to see", editedAt: null });
+  });
+
+  it("makes a member new again when staff remove the thread their messages stood in", async () => {
+    const { call, makeStaff, startThread, wait } = harness();
+    await makeStaff("sorcha");
+    const advert = await startThread("brian", { title: "Wings, cheap" });
+    for (const body of ["Still for sale", "Still for sale, anyone?"])
+      await call("POST", `/threads/${advert.id}/messages`, { body }, "brian");
+    wait((LIMITS.newMemberHours + 1) * 60 * 60 * 1000);
+    const thread = await startThread("aoife");
+    const link = () =>
+      call(
+        "POST",
+        `/threads/${thread.id}/messages`,
+        { body: "My shop: https://example.com/wings" },
+        "brian",
+      );
+    expect((await link()).status).toBe(201);
+    await call("POST", `/threads/${advert.id}/remove`, undefined, "sorcha");
+    // One message of his can still be seen, so the link waits again.
+    expect((await link()).body.error).toBe("links_not_yet");
+  });
+
+  it("takes three threads a day from a new member, until midnight", async () => {
+    const { call, startThread, settle, wait } = harness();
+    const start = (user: string) =>
+      call(
+        "POST",
+        "/channels/general/threads",
+        { title: "One more thread", body: "Words." },
+        user,
+      );
+    const made: Thread[] = [];
+    for (let i = 0; i < LIMITS.newMemberThreadsPerDay; i++)
+      made.push(await startThread("ciara"));
+    const r = await start("ciara");
+    expect(r.status).toBe(429);
+    // The wait is a day, and the words say so.
+    expect(r.body).toMatchObject({
+      error: "rate_limited",
+      message: expect.stringContaining("tomorrow"),
+    });
+    // The clock started at midnight, so the wait is the day less the seconds gone.
+    expect(r.body.retryAfter).toBeGreaterThan(24 * 60 * 60 - 60);
+    expect(r.body.retryAfter).toBeLessThan(24 * 60 * 60);
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+
+    // Removing one does not hand the place back: two messages stand, three threads were started.
+    const opening = (await call("GET", `/threads/${made[0].id}`)).body
+      .opening as Message;
+    await call("DELETE", `/messages/${opening.id}`, undefined, "ciara");
+    expect((await start("ciara")).status).toBe(429);
+
+    // Midnight: still new, with two messages standing, and the day's count is back to nothing.
+    wait(r.body.retryAfter * 1000);
+    for (let i = 0; i < LIMITS.newMemberThreadsPerDay; i++)
+      expect((await start("ciara")).status).toBe(201);
+    // A minute on the account is a day old with five standing: no longer new, so no longer counted.
+    wait(60 * 1000);
+    expect((await start("ciara")).status).toBe(201);
+
+    // Someone who was never new today is not counted either.
+    await settle("dara");
+    for (let i = 0; i <= LIMITS.newMemberThreadsPerDay; i++)
+      expect((await start("dara")).status).toBe(201);
+  });
+});
+
+describe("community API: reports", () => {
+  type Call = ReturnType<typeof harness>["call"];
+  const bell = async (call: Call, user: string) =>
+    (await call("GET", "/notifications", undefined, user))
+      .body as NotificationPage;
+  const count = async (call: Call, user: string) =>
+    (await call("GET", "/notifications/count", undefined, user)).body.count;
+
+  it("saves a report and puts one row in the bell of everyone on the team", async () => {
+    const { call, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    await makeStaff("site");
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing, link in bio.", "brian");
+    const path = `/messages/${advert.id}/report`;
+
+    // Ciara has written nothing yet: reporting is what makes her row.
+    const r = await call(
+      "POST",
+      path,
+      { reason: "spam", note: "  Same line in three threads.  " },
+      "ciara",
+    );
+    expect(r.status).toBe(201);
+    expect(r.body).toEqual({ id: expect.stringMatching(ID_PATTERN) });
+
+    for (const staff of ["sorcha", "site"]) {
+      const rows = (await bell(call, staff)).items;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        kind: "report",
+        thread: { id: thread.id },
+        messageId: advert.id,
+        seq: 1,
+        actors: [{ id: "dev_ciara" }],
+        count: 1,
+        readAt: null,
+      });
+      expect(await count(call, staff)).toBe(1);
+    }
+    // Nobody else is told, the reported member least of all.
+    for (const member of ["aoife", "brian", "ciara"])
+      expect(
+        (await bell(call, member)).items.filter((n) => n.kind === "report"),
+      ).toEqual([]);
+
+    // A second report of the same message is a second row, and reading the thread clears neither.
+    expect(
+      (await call("POST", path, { reason: "abuse" }, "aoife")).status,
+    ).toBe(201);
+    await call("PUT", `/threads/${thread.id}/read`, { seq: 1 }, "sorcha");
+    await call("PUT", "/notifications/read", { threadId: thread.id }, "sorcha");
+    expect(await count(call, "sorcha")).toBe(2);
+  });
+
+  it("refuses a report with no session, no such reason, or nothing left to report", async () => {
+    const { call, repo, startThread, reply } = harness();
+    const thread = await startThread("aoife");
+    const mine = await reply(thread.id, "Said in haste.", "brian");
+    const path = `/messages/${mine.id}/report`;
+    expect((await call("POST", path, { reason: "spam" })).status).toBe(401);
+    for (const body of [
+      { reason: "rude" },
+      { note: "No reason given" },
+      { reason: "spam", note: "x".repeat(LIMITS.reportNoteMax + 1) },
+      "not json",
+    ]) {
+      const r = await call("POST", path, body, "ciara");
+      expect([body, r.status, r.body.error]).toEqual([body, 400, "invalid"]);
+    }
+    expect(
+      (
+        await call(
+          "POST",
+          `/messages/${UNKNOWN_ID}/report`,
+          { reason: "spam" },
+          "ciara",
+        )
+      ).status,
+    ).toBe(404);
+    await call("DELETE", `/messages/${mine.id}`, undefined, "brian");
+    expect((await call("POST", path, { reason: "spam" }, "ciara")).status).toBe(
+      404,
+    );
+    // None of those was saved, or counted against her.
+    expect(await repo.countReportsBy("dev_ciara", new Date(0))).toBe(0);
+  });
+
+  it("takes five a day from one reporter, and the next day five more", async () => {
+    const { call, makeStaff, startThread, reply, wait } = harness(
+      fakeStorage(),
+      true,
+    );
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing.", "brian");
+    const report = (user: string) =>
+      call("POST", `/messages/${advert.id}/report`, { reason: "spam" }, user);
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report("ciara")).status).toBe(201);
+    const r = await report("ciara");
+    expect(r.status).toBe(429);
+    expect(r.body).toEqual({
+      error: "rate_limited",
+      message: expect.any(String),
+      retryAfter: expect.any(Number),
+    });
+    expect(r.headers.get("Retry-After")).toBe(String(r.body.retryAfter));
+    // Counted from the table over the calendar day, and the clock started at midnight.
+    expect(r.body.retryAfter).toBeGreaterThan(24 * 60 * 60 - 60);
+    expect(r.body.retryAfter).toBeLessThan(24 * 60 * 60);
+    expect((await report("dara")).status).toBe(201);
+    expect(await count(call, "sorcha")).toBe(LIMITS.reportsPerDay + 1);
+
+    // Midnight, and a minute: the bucket fills over a rolling day, from her fifth.
+    wait(r.body.retryAfter * 1000 + 60 * 1000);
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report("ciara")).status).toBe(201);
+    expect((await report("ciara")).status).toBe(429);
+  });
+
+  it("still counts the day's reports when the process has forgotten them", async () => {
+    // The limiter that never refuses stands in for a restart: only the table is left.
+    const { call, startThread, reply, wait } = harness();
+    const thread = await startThread("aoife");
+    const advert = await reply(thread.id, "Buy my wing.", "brian");
+    const report = () =>
+      call(
+        "POST",
+        `/messages/${advert.id}/report`,
+        { reason: "spam" },
+        "ciara",
+      );
+    for (let i = 0; i < LIMITS.reportsPerDay; i++)
+      expect((await report()).status).toBe(201);
+    const r = await report();
+    expect([r.status, r.body.error]).toEqual([429, "rate_limited"]);
+    expect(r.body.message).toContain("tomorrow");
+    wait(r.body.retryAfter * 1000);
+    expect((await report()).status).toBe(201);
+  });
+});
+
+describe("community API: what staff can do", () => {
+  const FAR = "2099-01-01T00:00:00.000Z";
+
+  it("answers a member 403 on every staff route, changes nothing and logs nothing", async () => {
+    const { app, call, repo, users, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const message = await reply(
+      thread.id,
+      "Mine to remove, not yours.",
+      "brian",
+    );
+    const routes: [string, string, unknown?][] = [
+      ["POST", `/threads/${thread.id}/pin`],
+      ["POST", `/threads/${thread.id}/unpin`],
+      ["POST", `/threads/${thread.id}/lock`, { reason: "Because I say so" }],
+      ["POST", `/threads/${thread.id}/unlock`],
+      ["POST", `/threads/${thread.id}/remove`, { reason: "Do not like it" }],
+      ["DELETE", `/messages/${message.id}`],
+      ["PUT", "/users/dev_brian/suspend", { until: FAR }],
+      ["PUT", "/users/dev_sorcha/suspend", { until: FAR }],
+    ];
+    for (const [method, path, body] of routes) {
+      // The thread's own author is a member like any other; so is someone with no row yet.
+      for (const member of ["aoife", "ciara"]) {
+        const r = await call(method, path, body, member);
+        expect([path, r.status, r.body.error]).toEqual([
+          path,
+          403,
+          "forbidden",
+        ]);
+      }
+      expect([path, (await call(method, path, body)).status]).toEqual([
+        path,
+        401,
+      ]);
+    }
+    expect(await repo.listModLog(100)).toEqual([]);
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.thread,
+    ).toMatchObject({ status: "open", pinned: false, lockedReason: null });
+    expect(
+      (await call("GET", `/threads/${thread.id}/messages`)).body.items[1],
+    ).toMatchObject({ status: "visible", body: "Mine to remove, not yours." });
+    expect(users.peek("dev_brian")!.suspendedUntil).toBeNull();
+    // The role is only ever written by hand: a profile that asks for it is a profile, and no more.
+    const me = await app.request("/api/me", {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer dev:aoife",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ displayName: "Aoife", role: "staff" }),
+    });
+    expect(await me.json()).toMatchObject({
+      displayName: "Aoife",
+      role: "member",
+    });
+    expect(
+      (await call("POST", `/threads/${thread.id}/pin`, undefined, "aoife"))
+        .status,
+    ).toBe(403);
+    expect(await repo.listModLog(100)).toEqual([]);
+  });
+
+  it("pins and unpins a thread, each with a row in the log", async () => {
+    const { call, repo, makeStaff, startThread } = harness();
+    await makeStaff("sorcha");
+    const old = await startThread("aoife", { title: "The older one" });
+    const recent = await startThread("brian", { title: "The newer one" });
+    const ids = async () =>
+      (
+        (await call("GET", "/channels/general/threads")).body as ThreadPage
+      ).items.map((t) => t.id);
+
+    let r = await call("POST", `/threads/${old.id}/pin`, undefined, "sorcha");
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ id: old.id, pinned: true });
+    // As the caller sees it, like any other read of a thread.
+    expect(r.body).toHaveProperty("following");
+    expect(await ids()).toEqual([old.id, recent.id]);
+    r = await call("POST", `/threads/${old.id}/unpin`, undefined, "sorcha");
+    expect(r.body).toMatchObject({ id: old.id, pinned: false });
+    expect(await ids()).toEqual([recent.id, old.id]);
+
+    expect(
+      (await call("POST", `/threads/${UNKNOWN_ID}/pin`, undefined, "sorcha"))
+        .status,
+    ).toBe(404);
+    expect(
+      (await repo.listModLog(10)).map((row) => [
+        row.actorId,
+        row.action,
+        row.targetType,
+        row.targetId,
+        row.reason,
+      ]),
+    ).toEqual([
+      ["dev_sorcha", "unpin", "thread", old.id, null],
+      ["dev_sorcha", "pin", "thread", old.id, null],
+    ]);
+  });
+
+  it("locks a thread with a reason people see, and unlocks it", async () => {
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const lock = (body: unknown) =>
+      call("POST", `/threads/${thread.id}/lock`, body, "sorcha");
+    for (const body of [{}, { reason: "  " }, "not json"])
+      expect([body, (await lock(body)).status]).toEqual([body, 400]);
+    expect(
+      (await lock({ reason: "x".repeat(LIMITS.modReasonMax + 1) })).status,
+    ).toBe(400);
+    expect(await repo.listModLog(10)).toEqual([]);
+
+    let r = await lock({ reason: " Run its course. " });
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({
+      status: "locked",
+      lockedReason: "Run its course.",
+    });
+    // Signed out too: the reason is part of the thread.
+    expect(
+      (await call("GET", `/threads/${thread.id}`)).body.thread,
+    ).toMatchObject({ status: "locked", lockedReason: "Run its course." });
+    r = await call(
+      "POST",
+      `/threads/${thread.id}/messages`,
+      { body: "One more thing" },
+      "brian",
+    );
+    expect(r.status).toBe(409);
+    expect(r.body).toMatchObject({
+      error: "locked",
+      message: "This thread is locked: Run its course.",
+    });
+
+    r = await call("POST", `/threads/${thread.id}/unlock`, undefined, "sorcha");
+    expect(r.body).toMatchObject({ status: "open", lockedReason: null });
+    await reply(thread.id, "One more thing", "brian");
+    expect(
+      (await repo.listModLog(10)).map((row) => [row.action, row.reason]),
+    ).toEqual([
+      ["unlock", null],
+      ["lock", "Run its course."],
+    ]);
+  });
+
+  it("removes a thread: gone for everyone else, still there for staff", async () => {
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const message = await reply(thread.id, "Said before it went.", "brian");
+    const kept = await startThread("aoife", { title: "Nothing wrong here" });
+
+    // No body at all is no reason; a reason goes in the log and nowhere else.
+    expect(
+      (await call("POST", `/threads/${kept.id}/remove`, "{", "sorcha")).status,
+    ).toBe(400);
+    let r = await call(
+      "POST",
+      `/threads/${thread.id}/remove`,
+      { reason: "An advert from start to finish" },
+      "sorcha",
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ id: thread.id, status: "removed" });
+
+    for (const viewer of [undefined, "aoife", "brian"]) {
+      for (const path of [
+        `/threads/${thread.id}`,
+        `/threads/${thread.id}/messages`,
+      ])
+        expect([
+          viewer,
+          path,
+          (await call("GET", path, undefined, viewer)).status,
+        ]).toEqual([viewer, path, 404]);
+      expect(
+        (
+          (await call("GET", "/feed", undefined, viewer)).body as ThreadPage
+        ).items.map((t) => t.id),
+      ).toEqual([kept.id]);
+    }
+    r = await call("GET", `/threads/${thread.id}`, undefined, "sorcha");
+    expect(r.status).toBe(200);
+    expect(r.body.thread.status).toBe("removed");
+    expect(
+      (await call("GET", `/threads/${thread.id}/messages`, undefined, "sorcha"))
+        .body.items[1],
+    ).toMatchObject({ id: message.id, body: "Said before it went." });
+
+    // Nothing more is done to a removed thread, by anyone.
+    for (const action of ["pin", "unpin", "unlock", "remove"])
+      expect([
+        action,
+        (
+          await call(
+            "POST",
+            `/threads/${thread.id}/${action}`,
+            undefined,
+            "sorcha",
+          )
+        ).status,
+      ]).toEqual([action, 404]);
+    expect(
+      (
+        await call(
+          "POST",
+          `/threads/${thread.id}/lock`,
+          { reason: "Too late" },
+          "sorcha",
+        )
+      ).status,
+    ).toBe(404);
+
+    expect(
+      (await call("POST", `/threads/${kept.id}/remove`, undefined, "sorcha"))
+        .status,
+    ).toBe(200);
+    expect(
+      (await repo.listModLog(10)).map((row) => [
+        row.action,
+        row.targetType,
+        row.targetId,
+        row.reason,
+      ]),
+    ).toEqual([
+      ["remove", "thread", kept.id, null],
+      ["remove", "thread", thread.id, "An advert from start to finish"],
+    ]);
+  });
+
+  it("removes anyone's message: it reads as removed, with no body, to everyone but staff", async () => {
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    const thread = await startThread("aoife");
+    const rude = await reply(
+      thread.id,
+      "Something nobody should read.",
+      "brian",
+    );
+    const own = await reply(thread.id, "Thinking aloud.", "sorcha");
+    await call("PUT", react(rude.id, "👀"), { on: true }, "aoife");
+
+    const r = await call("DELETE", `/messages/${rude.id}`, undefined, "sorcha");
+    expect(r.status).toBe(200);
+    // Staff get it back as they see it: removed, and still whole.
+    expect(r.body).toMatchObject({
+      status: "removed",
+      body: "Something nobody should read.",
+    });
+    for (const viewer of [undefined, "aoife", "brian"]) {
+      const seen = (
+        (await call("GET", `/threads/${thread.id}/messages`, undefined, viewer))
+          .body as MessagePage
+      ).items[1];
+      expect(seen).toMatchObject({
+        id: rude.id,
+        seq: 1,
+        status: "removed",
+        body: "",
+        photos: [],
+        mentions: [],
+        reactions: {},
+      });
+    }
+    expect(
+      (await call("GET", `/threads/${thread.id}/messages`, undefined, "sorcha"))
+        .body.items[1],
+    ).toMatchObject({
+      status: "removed",
+      body: "Something nobody should read.",
+      reactions: { "👀": 1 },
+    });
+
+    // Again changes nothing and logs nothing; staff removing their own is not moderation.
+    await call("DELETE", `/messages/${rude.id}`, undefined, "sorcha");
+    await call("DELETE", `/messages/${own.id}`, undefined, "sorcha");
+    expect(
+      (await repo.listModLog(10)).map((row) => [
+        row.actorId,
+        row.action,
+        row.targetType,
+        row.targetId,
+      ]),
+    ).toEqual([["dev_sorcha", "remove", "message", rude.id]]);
+  });
+
+  it("suspends a member until a date: every write is 403, reading goes on, and null lifts it", async () => {
+    const { call, repo, makeStaff, startThread, reply } = harness();
+    await makeStaff("sorcha");
+    await makeStaff("site");
+    const thread = await startThread("aoife");
+    const message = await reply(thread.id, "Before", "brian");
+    const suspend = (id: string, body: unknown, user = "sorcha") =>
+      call("PUT", `/users/${id}/suspend`, body, user);
+
+    for (const body of [
+      {},
+      { until: "next week" },
+      // The harness clock reads 2026: this moment has been.
+      { until: "2025-06-01T00:00:00.000Z" },
+    ])
+      expect([body, (await suspend("dev_brian", body)).status]).toEqual([
+        body,
+        400,
+      ]);
+    expect((await suspend("dev_nobody", { until: FAR })).status).toBe(404);
+    expect((await suspend("not a user id", { until: FAR })).status).toBe(404);
+    // Suspended staff could write nothing, the lifting of it included.
+    let r = await suspend("dev_site", { until: FAR });
+    expect([r.status, r.body.error]).toEqual([403, "forbidden"]);
+    expect(await repo.listModLog(10)).toEqual([]);
+
+    r = await suspend("dev_brian", { until: FAR });
+    expect(r.status).toBe(200);
+    // Not the row: that holds contact details.
+    expect(r.body).toEqual({ id: "dev_brian", suspendedUntil: FAR });
+
+    const writes: [string, string, unknown?][] = [
+      ["POST", "/channels/general/threads", { title: "Let me in", body: "Hi" }],
+      ["POST", `/threads/${thread.id}/messages`, { body: "After" }],
+      ["PUT", `/messages/${message.id}`, { body: "Edited" }],
+      ["DELETE", `/messages/${message.id}`],
+      ["PUT", react(message.id, "👍"), { on: true }],
+      ["POST", `/messages/${message.id}/report`, { reason: "other" }],
+      ["PUT", `/threads/${thread.id}/follow`, { level: "all" }],
+      ["PUT", "/channels/general/follow", { on: true }],
+      ["PUT", `/threads/${thread.id}/read`, { seq: 1 }],
+      ["PUT", "/notifications/read", { all: true }],
+      ["POST", "/uploads", { contentType: "image/jpeg" }],
+    ];
+    for (const [method, path, body] of writes) {
+      const w = await call(method, path, body, "brian");
+      expect([path, w.status, w.body.error]).toEqual([path, 403, "suspended"]);
+    }
+    expect(
+      (await call("GET", `/threads/${thread.id}`, undefined, "brian")).status,
+    ).toBe(200);
+    // Nobody else is held up.
+    await reply(thread.id, "Carrying on", "aoife");
+
+    r = await suspend("dev_brian", { until: null });
+    expect(r.body).toEqual({ id: "dev_brian", suspendedUntil: null });
+    await reply(thread.id, "After", "brian");
+    expect(
+      (await repo.listModLog(10)).map((row) => [
+        row.actorId,
+        row.action,
+        row.targetType,
+        row.targetId,
+        row.reason,
+      ]),
+    ).toEqual([
+      ["dev_sorcha", "unsuspend", "user", "dev_brian", null],
+      ["dev_sorcha", "suspend", "user", "dev_brian", `Until ${FAR}`],
+    ]);
   });
 });
