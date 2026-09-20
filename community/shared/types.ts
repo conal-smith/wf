@@ -15,6 +15,9 @@ export const LIMITS = {
   /** How long an author may edit their own message. Deleting has no window. */
   editWindowMin: 30,
   pageSize: 30,
+  /** A member is new for this long, and until this many of their messages stand. */
+  newMemberHours: 24,
+  newMemberMessages: 3,
 } as const;
 
 /** The fixed twelve. A reaction outside this list is refused. */
@@ -55,6 +58,19 @@ export type FollowLevel = (typeof FOLLOW_LEVELS)[number];
 
 export const FOLLOW_SOURCES = ["auto", "manual"] as const;
 export type FollowSource = (typeof FOLLOW_SOURCES)[number];
+
+/**
+ * Why a thread is in the Following feed. `followed` is the Follow button on a
+ * thread the viewer never wrote in; `channel` is a new thread in a channel
+ * they follow.
+ */
+export const FOLLOW_REASONS = [
+  "started",
+  "replied",
+  "followed",
+  "channel",
+] as const;
+export type FollowReason = (typeof FOLLOW_REASONS)[number];
 
 export const NOTIFICATION_KINDS = [
   "reply",
@@ -160,6 +176,8 @@ export interface Thread {
   unread?: number;
   /** Null when the viewer has no follow row for the thread. */
   following?: FollowLevel | null;
+  /** Only on the Following feed. */
+  why?: FollowReason;
 }
 
 /** The message a reply points at, as the quoted line above it. */
@@ -193,7 +211,11 @@ export interface Message {
   myReactions?: Reaction[];
 }
 
-/** Thread lists page by (last activity, id), never by offset: a reply moves a thread. */
+/**
+ * Thread lists page by (last activity, id), never by offset: a reply moves a
+ * thread. The Mentions page and the bell page the same way and reuse the
+ * shape, with `lastMessageAt` holding the row's own time.
+ */
 export interface ThreadCursor {
   /** Set on channel lists, where pinned threads come first. */
   pinned?: boolean;
@@ -207,6 +229,8 @@ export interface ThreadQuery {
   tagId?: string;
   /** Words to find in titles and message bodies. */
   q?: string;
+  /** Only what the viewer follows, each with its `why`. Nothing without a viewer. */
+  following?: boolean;
   cursor?: ThreadCursor | null;
   limit?: number;
 }
@@ -237,6 +261,60 @@ export interface ThreadView {
   /** Around the viewer's last read; from the top for anyone who has not opened it. */
   messages: MessagePage;
 }
+
+/** Enough of a thread to name it and link to it. */
+export interface ThreadRef {
+  id: string;
+  slug: string;
+  title: string;
+  channel: { id: string; slug: string; name: string };
+}
+
+/** A row of the Mentions page: the message, and the thread it sits in. */
+export interface MentionItem {
+  message: Message;
+  thread: ThreadRef;
+}
+
+export interface MentionPage {
+  /** Newest first. */
+  items: MentionItem[];
+  nextCursor: string | null;
+}
+
+/** A row of the bell. Replies fold per thread and reactions per message; the rest stand alone. */
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  thread: ThreadRef | null;
+  /** The message to land on: the newest one folded into the row. */
+  messageId: string | null;
+  seq: number | null;
+  /** Up to three of the people behind the row, most recent first. */
+  actors: Member[];
+  /** Everyone behind the row, the ones not in `actors` included. */
+  actorCount: number;
+  /** How many events the row holds: 4 for "4 new replies". */
+  count: number;
+  /** The latest reaction, on a reaction row. */
+  emoji: Reaction | null;
+  /** The line that names the viewer, on a mention row, with each token as its @name. */
+  excerpt: string | null;
+  readAt: string | null;
+  createdAt: string;
+  /** When the row last took an event. The list sorts on it. */
+  updatedAt: string;
+}
+
+export interface NotificationPage {
+  /** Most recently changed first. */
+  items: Notification[];
+  nextCursor: string | null;
+}
+
+/** PUT /notifications/read takes exactly one of these. */
+export type NotificationSelector =
+  { ids: string[] } | { threadId: string } | { all: true };
 
 export interface ThreadInput {
   title: string;

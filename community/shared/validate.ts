@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import {
+  FOLLOW_LEVELS,
   LIMITS,
   REACTIONS,
   type Reaction,
@@ -78,6 +79,23 @@ export const messageEditSchema = z.object({ body });
 export type MessageEditParsed = z.infer<typeof messageEditSchema>;
 
 export const reactionInputSchema = z.object({ on: z.boolean() });
+
+/** PUT /threads/:id/follow. `none` mutes the thread; it does not forget it. */
+export const threadFollowSchema = z.object({ level: z.enum(FOLLOW_LEVELS) });
+
+export const channelFollowSchema = z.object({ on: z.boolean() });
+
+/** PUT /threads/:id/read: the highest seq the reader has seen. */
+export const readInputSchema = z.object({
+  seq: z.number().int().min(0).max(999_999_999),
+});
+
+/** PUT /notifications/read: some rows by id, one thread's, or all of them. */
+export const notificationsReadSchema = z.union([
+  z.strictObject({ ids: z.array(id).min(1).max(100) }),
+  z.strictObject({ threadId: id }),
+  z.strictObject({ all: z.literal(true) }),
+]);
 
 /** A title as the decoration in a thread's URL: lowercase words joined by hyphens. */
 export function slugifyTitle(title: string): string {

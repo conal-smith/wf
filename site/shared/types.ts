@@ -80,11 +80,13 @@ export interface User {
   contactEmail: string | null;
   contactPhone: string | null;
   contactWhatsapp: boolean;
+  /** Starting or replying to a community thread follows it. On until switched off. */
+  autoFollow: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-/** What PUT /api/me accepts. A handle left out keeps the one you have. */
+/** What PUT /api/me accepts. A handle or autoFollow left out keeps the one you have. */
 export interface UserInput {
   displayName: string;
   handle?: string;
@@ -93,6 +95,7 @@ export interface UserInput {
   contactPhone?: string | null;
   contactWhatsapp?: boolean;
   bio?: string | null;
+  autoFollow?: boolean;
 }
 
 /** Whether buyers have any way to reach this person: the gate on publishing a listing. */
