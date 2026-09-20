@@ -8,8 +8,14 @@ import { compileTheme, holds } from "../../ui/theme.testkit";
 import { SEED_CATEGORIES, SEED_CHANNELS } from "../api/seed";
 import type { Channel } from "../shared/types";
 import { accentNewThread, shellStyles } from "./CommunityApp";
+import { newThreadStyles } from "./components/NewThreadDialog";
+import { tagPillsStyles } from "./components/TagPills";
+import { threadListStyles } from "./components/ThreadList";
+import { threadRowStyles } from "./components/ThreadRow";
 import { headerStyles } from "./Header";
 import { railGroups, type ChannelsState } from "./hooks";
+import { channelStyles } from "./pages/Channel";
+import { homeStyles } from "./pages/Home";
 import { Rail, railCurrent, railStyles } from "./Rail";
 import { matchRoute } from "./router";
 
@@ -22,7 +28,17 @@ import { matchRoute } from "./router";
 const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 
-const RECIPES = { headerStyles, railStyles, shellStyles };
+const RECIPES = {
+  channelStyles,
+  headerStyles,
+  homeStyles,
+  newThreadStyles,
+  railStyles,
+  shellStyles,
+  tagPillsStyles,
+  threadListStyles,
+  threadRowStyles,
+};
 
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
 
@@ -215,6 +231,7 @@ describe("S5: the header", () => {
 const ready = (channels: Channel[]): ChannelsState => ({
   status: "ready",
   groups: railGroups(SEED_CATEGORIES, channels),
+  memberCount: null,
 });
 
 const rail = (state: ChannelsState, pathname: string) =>
@@ -392,8 +409,10 @@ describe("S3 and S4: the shell around a route", () => {
     expect(out).toContain("Back to the community");
   });
 
-  it("a known URL holds an empty main column for its page", async () => {
-    const out = await shellAs(null, "/community");
-    expect(out).toMatch(/<main id="community-main" class="[^"]*"><\/main>/);
+  it("a known URL whose page has not arrived holds an empty main column", async () => {
+    const out = await shellAs(null, "/community/u/aoife");
+    expect(out).toMatch(
+      /<main id="community-main" class="[^"]*"><a [^>]*>.*?<span>Channels<\/span><\/a><\/main>/,
+    );
   });
 });
