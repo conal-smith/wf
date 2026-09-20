@@ -12,6 +12,11 @@ import postgres from "postgres";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { memoryHub, pgHub, type Hub } from "./hub";
 import { memoryRepo } from "./repo-memory";
+import {
+  afterQuery,
+  followThread,
+  type EventSourceLike,
+} from "../shared/followThread";
 import { LIVE, type LiveEvent } from "../shared/live";
 import type { Message, MessagePage, Thread } from "../shared/types";
 import { createApp } from "../../market/api/src/app";
@@ -392,6 +397,56 @@ describe("GET /threads/:id/events", () => {
     const res = await events(thread.id);
     expect(res.status).toBe(200);
     await reading(res).cancel();
+  });
+});
+
+describe("the browser's follower, on these routes", () => {
+  it("is handed a reply, and the opening post when it is edited", async () => {
+    const { call, startThread, reply, events } = harness();
+    const thread = await startThread();
+    const stream = reading(await events(thread.id));
+    const source: EventSourceLike = {
+      readyState: 1,
+      onopen: null,
+      onmessage: null,
+      onerror: null,
+      close: () => void stream.cancel(),
+    };
+    const got: Message[] = [];
+    const stop = followThread({
+      open: () => source,
+      fetchAfter: (seq) =>
+        call<MessagePage>(
+          "GET",
+          `/threads/${thread.id}/messages${afterQuery(seq)}`,
+        ),
+      lastSeq: 0,
+      onMessages: (messages) => got.push(...messages),
+    });
+    /** Hands the follower the stream's next data line containing `wanted`. */
+    const hear = async (wanted: string) => {
+      const lines = (await stream.until(wanted)).split("\n");
+      const line = lines.filter((l) => l.startsWith("data: ")).at(-1)!;
+      source.onmessage!({ data: line.slice(6) });
+    };
+
+    const message = await reply(thread.id);
+    await hear(message.id);
+    await eventually(() => got.length === 1);
+    expect(got[0]).toMatchObject({ id: message.id, seq: 1 });
+
+    // The opening post is seq 0, and the API refuses after=-1.
+    const first = await call<MessagePage>(
+      "GET",
+      `/threads/${thread.id}/messages`,
+    );
+    await call("PUT", `/messages/${first.items[0].id}`, {
+      body: "Is it open at high tide?",
+    });
+    await hear('"edit"');
+    await eventually(() => got.length === 2);
+    expect(got[1]).toMatchObject({ seq: 0, body: "Is it open at high tide?" });
+    stop();
   });
 });
 
