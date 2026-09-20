@@ -245,6 +245,10 @@ export function memoryRepo(
     return t;
   };
 
+  /** A removed thread is gone to its members: nothing in it changes. */
+  const inRemovedThread = (m: StoredMessage) =>
+    threads.get(m.threadId)?.status === "removed";
+
   /** The counters a thread carries, recounted from its messages. */
   const recount = (t: StoredThread) => {
     const seen = visible(t.id);
@@ -472,7 +476,7 @@ export function memoryRepo(
 
     async editMessage(id, body, mentionIds) {
       const m = messages.get(id);
-      if (!m || m.status === "removed") return null;
+      if (!m || m.status === "removed" || inRemovedThread(m)) return null;
       m.body = body;
       m.mentionIds = mentioned(mentionIds);
       m.editedAt = now().toISOString();
@@ -498,7 +502,7 @@ export function memoryRepo(
 
     async setReaction(messageId, userId, emoji, on) {
       const m = messages.get(messageId);
-      if (!m || m.status === "removed") return null;
+      if (!m || m.status === "removed" || inRemovedThread(m)) return null;
       const who = m.reactions.get(emoji) ?? new Set<string>();
       if (on) who.add(userId);
       else who.delete(userId);

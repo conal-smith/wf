@@ -718,10 +718,13 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
 
     async editMessage(id, body, mentionIds) {
       const authorId = await sql.begin(async (tx) => {
+        // A removed thread is gone to its members: nothing in it changes.
         const [m] = await tx<{ author_id: string }[]>`
-          update community_messages set body = ${body}, edited_at = ${now()}
-          where id = ${id} and status = 'visible'
-          returning author_id`;
+          update community_messages m set body = ${body}, edited_at = ${now()}
+          from community_threads t
+          where m.id = ${id} and m.status = 'visible'
+            and t.id = m.thread_id and t.status <> 'removed'
+          returning m.author_id`;
         if (!m) return null;
         await replaceMentions(tx, id, mentionIds);
         return m.author_id;
@@ -755,8 +758,10 @@ export function pgRepo(sql: Db, now: () => Date = () => new Date()): Repo {
     async setReaction(messageId, userId, emoji, on) {
       const found = await sql.begin(async (tx) => {
         const locked = await tx`
-          select 1 from community_messages
-          where id = ${messageId} and status = 'visible' for no key update`;
+          select 1 from community_messages m
+          join community_threads t on t.id = m.thread_id
+          where m.id = ${messageId} and m.status = 'visible' and t.status <> 'removed'
+          for no key update of m`;
         if (!locked.length) return false;
         if (on)
           await tx`

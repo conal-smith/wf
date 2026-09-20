@@ -938,6 +938,27 @@ function contract(name: string, backend: () => Backend) {
         expect((await repo.getChannel("wings", null))!.threadCount).toBe(0);
       });
 
+      it("changes nothing inside a removed thread, whose replies are still visible rows", async () => {
+        const t = await start(aoife, "Taken down");
+        const m = await reply(cian, t.id, "Said before it went.");
+        await repo.setThreadStatus(t.id, "removed", null);
+
+        expect(
+          await repo.editMessage(m.id, "Said after it went.", []),
+        ).toBeNull();
+        expect(await repo.setReaction(m.id, niamh, "👍", true)).toBeNull();
+        expect(await repo.getMessage(m.id, staff)).toMatchObject({
+          body: "Said before it went.",
+          editedAt: null,
+          reactions: {},
+        });
+
+        await repo.setThreadStatus(t.id, "open", null);
+        expect(
+          await repo.editMessage(m.id, "Said once it was back.", []),
+        ).toMatchObject({ body: "Said once it was back." });
+      });
+
       it("locks with a reason and drops the reason when it reopens", async () => {
         const t = await start(aoife, "Locking");
         expect(
@@ -1214,6 +1235,56 @@ describe.skipIf(!url)("Postgres", () => {
       expect(def("community_notifications_unread")).toContain(
         "WHERE (read_at IS NULL)",
       );
+    });
+
+    // No repo method archives a channel: it is a row edited by hand, so only
+    // this run can reach it.
+    it("takes an archived channel out of the rail and the feed, and still resolves it", async () => {
+      await backend.reset();
+      const aoife = await backend.addUser("aoife");
+      const id = (slug: string) =>
+        SEED_CHANNELS.find((c) => c.slug === slug)!.id;
+      const start = (channelId: string, title: string) =>
+        backend.repo.createThread({
+          id: newId(),
+          messageId: newId(),
+          channelId,
+          authorId: aoife,
+          title,
+          slug: "a-thread",
+          spotId: null,
+          tagIds: [],
+          body: "Opening post.",
+          photos: [],
+          mentionIds: [],
+        });
+      await start(id("wings"), "Still in the feed");
+      await start(id("foils"), "Out of the feed");
+      const titles = async (query: Parameters<Repo["listThreads"]>[0]) =>
+        (await backend.repo.listThreads(query, null)).items.map((t) => t.title);
+
+      await sql`update community_channels set status = 'archived' where id = ${id("foils")}`;
+      try {
+        const slugs = (await backend.repo.getMeta()).channels.map(
+          (c) => c.slug,
+        );
+        expect(slugs).toHaveLength(9);
+        expect(slugs).not.toContain("foils");
+        expect(
+          (await backend.repo.listChannels(aoife)).map((c) => c.slug),
+        ).toEqual(slugs);
+        expect(await backend.repo.getChannel("foils", null)).toMatchObject({
+          status: "archived",
+          threadCount: 1,
+        });
+        expect(await titles({})).toEqual(["Still in the feed"]);
+        expect(await titles({ q: "feed" })).toEqual(["Still in the feed"]);
+        expect(await titles({ channelId: id("foils") })).toEqual([
+          "Out of the feed",
+        ]);
+      } finally {
+        await sql`update community_channels set status = 'active' where id = ${id("foils")}`;
+      }
     });
 
     it("holds its vocabularies and uniqueness in the database itself", async () => {
