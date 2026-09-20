@@ -8,9 +8,17 @@ import { compileTheme, holds } from "../../ui/theme.testkit";
 import { SEED_CATEGORIES, SEED_CHANNELS } from "../api/seed";
 import type { Channel } from "../shared/types";
 import { accentNewThread, shellStyles } from "./CommunityApp";
+import { bodyStyles } from "./components/Body";
+import { composerStyles } from "./components/Composer";
+import { followMenuStyles } from "./components/FollowMenu";
+import { messageStyles } from "./components/Message";
+import { streamStyles } from "./components/MessageStream";
+import { popoverStyles } from "./components/Popover";
+import { reactionStyles } from "./components/Reactions";
 import { headerStyles } from "./Header";
 import { railGroups, type ChannelsState } from "./hooks";
 import { Rail, railCurrent, railStyles } from "./Rail";
+import { threadStyles } from "./pages/Thread";
 import { matchRoute } from "./router";
 
 /**
@@ -22,7 +30,19 @@ import { matchRoute } from "./router";
 const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 
-const RECIPES = { headerStyles, railStyles, shellStyles };
+const RECIPES = {
+  bodyStyles,
+  composerStyles,
+  followMenuStyles,
+  headerStyles,
+  messageStyles,
+  popoverStyles,
+  railStyles,
+  reactionStyles,
+  shellStyles,
+  streamStyles,
+  threadStyles,
+};
 
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
 
@@ -291,6 +311,17 @@ describe("S6: the rail", () => {
       );
   });
 
+  // The thread's page says which channel it is in once it has loaded.
+  it("lights a thread's channel once the thread has said which it is", () => {
+    const route = matchRoute("/community/t/abc123/5m-or-6m");
+    expect(railCurrent(route)).toBeNull();
+    expect(railCurrent(route, "wings")).toBe(
+      railCurrent(matchRoute("/community/c/wings")),
+    );
+    // Only a thread borrows a channel: nothing else is lit by one left over.
+    expect(railCurrent(matchRoute("/community/u/aoife"), "wings")).toBeNull();
+  });
+
   const withUnread = (counts: Record<string, number>) =>
     SEED_CHANNELS.map((c) => ({ ...c, unread: counts[c.slug] ?? 0 }));
 
@@ -390,6 +421,15 @@ describe("S3 and S4: the shell around a route", () => {
     ];
     expect(filled.map((m) => m[1])).toEqual(["/community"]);
     expect(out).toContain("Back to the community");
+  });
+
+  it("a thread's URL is the thread's page, whose way back is its own", async () => {
+    const out = await shellAs("aoife", "/community/t/abc123/5m-or-6m");
+    expect(out).toContain("Loading the thread…");
+    // Back to its channel, from the page, not back to the channels from here.
+    expect(out).not.toContain("<span>Channels</span>");
+    // Reply will be this view's filled action: nothing in the shell is.
+    expect(out).not.toContain("bg-accent ");
   });
 
   it("a known URL holds an empty main column for its page", async () => {
