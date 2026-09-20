@@ -125,6 +125,7 @@ describe("ui/theme.css: blur, measures and animation", () => {
     ["max-w-dialog", "--container-dialog", "420px"],
     ["max-w-dialog-wide", "--container-dialog-wide", "640px"],
     ["max-w-reading", "--container-reading", "44ch"],
+    ["max-w-measure", "--container-measure", "68ch"],
     ["max-w-page", "--container-page", "1200px"],
     [
       "grid-cols-shell",

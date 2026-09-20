@@ -183,6 +183,8 @@
   --container-dialog: 420px;
   --container-dialog-wide: 640px;
   --container-reading: 44ch;
+  /* A message's measure, as `max-w-measure`: what a line of conversation runs to. */
+  --container-measure: 68ch;
   /* The page measure every content section shares, as `max-w-page`. */
   --container-page: 1200px;
 

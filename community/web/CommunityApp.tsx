@@ -8,7 +8,7 @@
  * and every other page stands alone with a way back to them.
  */
 import { ArrowLeft, Compass } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SiteAuthProvider } from "../../shared/web/auth";
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import { Button, Empty } from "../../ui";
@@ -23,6 +23,7 @@ import {
 } from "./hooks";
 import { canStartThread, Channel } from "./pages/Channel";
 import { Home } from "./pages/Home";
+import { ThreadPage } from "./pages/Thread";
 import { Rail, railCurrent } from "./Rail";
 import {
   BASE,
@@ -84,6 +85,8 @@ function Shell() {
   const open =
     route.page === "channel" ? findChannel(channels.state, route.slug) : null;
   const role = useViewerRole(open?.postPolicy === "staff");
+  // A thread's channel is known once its page has loaded, and told to the rail.
+  const [threadChannel, setThreadChannel] = useState<string | null>(null);
   const styles = shellStyles({ railIsPage: home });
 
   return (
@@ -105,10 +108,11 @@ function Shell() {
             className={styles.rail()}
             state={channels.state}
             reload={channels.reload}
-            current={railCurrent(route)}
+            current={railCurrent(route, threadChannel)}
           />
           <main id="community-main" className={styles.main()}>
-            {!home && (
+            {/* A thread's way back is its own, to its channel. */}
+            {!home && route.page !== "thread" && (
               <Button
                 {...routed(paths.home())}
                 size="sm"
@@ -120,6 +124,7 @@ function Shell() {
             )}
             <Page
               route={route}
+              onThreadChannel={setThreadChannel}
               channels={channels.state}
               onPosted={channels.reload}
               role={role}
@@ -136,9 +141,11 @@ function Shell() {
 /** The pages arrive with their own items; the shell holds their place. */
 function Page({
   route,
+  onThreadChannel,
   ...page
 }: {
   route: Route;
+  onThreadChannel: (slug: string | null) => void;
   channels: ChannelsState;
   onPosted: () => void;
   role: ReturnType<typeof useViewerRole>;
@@ -150,6 +157,11 @@ function Page({
       return <Home {...page} />;
     case "channel":
       return <Channel key={route.slug} slug={route.slug} {...page} />;
+    case "thread":
+      // Keyed, so another thread is another page: nothing of the last one stays.
+      return (
+        <ThreadPage key={route.id} id={route.id} onChannel={onThreadChannel} />
+      );
     case "not-found":
       return <NotFound />;
     default:
