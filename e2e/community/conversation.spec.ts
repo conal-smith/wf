@@ -28,13 +28,18 @@ const stay = (page: Page) =>
 const stayed = (page: Page) =>
   page.evaluate(() => (window as { stayed?: boolean }).stayed === true);
 
-/** Steps the bell's clock a minute on and waits for the count it then asks for. */
-async function nextCount(page: Page) {
+/**
+ * Steps the bell's clock a minute on, waits for the count it then asks for and
+ * answers with it. The number is the API's own: a bell that still reads
+ * "Notifications" may only not have drawn the answer yet, so a step that
+ * expects silence holds the answer to it as well as the bell.
+ */
+async function nextCount(page: Page): Promise<number> {
   const counted = page.waitForResponse(
     /\/api\/community\/notifications\/count/,
   );
   await page.clock.fastForward(MINUTE);
-  await counted;
+  return (await (await counted).json()).count;
 }
 
 test("a thread, a reply that arrives live, the bell, a mention, and a thread set to nothing", async ({
@@ -114,7 +119,7 @@ test("a thread, a reply that arrives live, the bell, a mention, and a thread set
 
     // The bell asks once a minute. Until the minute passes it has not heard.
     await expect(bell(aoife)).toHaveAccessibleName("Notifications");
-    await nextCount(aoife);
+    expect(await nextCount(aoife)).toBe(1);
     await expect(bell(aoife)).toHaveAccessibleName("Notifications, 1 unread");
   });
 
@@ -141,7 +146,7 @@ test("a thread, a reply that arrives live, the bell, a mention, and a thread set
     await expect(message(cian, "marked on the chart")).toContainText("@aoife");
 
     await expect(message(aoife, "marked on the chart")).toBeAttached();
-    await nextCount(aoife);
+    expect(await nextCount(aoife)).toBe(2);
     await expect(bell(aoife)).toHaveAccessibleName("Notifications, 2 unread");
 
     await bell(aoife).click();
@@ -173,7 +178,7 @@ test("a thread, a reply that arrives live, the bell, a mention, and a thread set
     await sendReply(cian, "Low water is half four tomorrow.");
     // It still arrives: the thread is open. It is the bell that stays quiet.
     await expect(message(aoife, "half four tomorrow")).toBeAttached();
-    await nextCount(aoife);
+    expect(await nextCount(aoife)).toBe(0);
     await expect(bell(aoife)).toHaveAccessibleName("Notifications");
     expect(await stayed(aoife)).toBe(true);
   });
