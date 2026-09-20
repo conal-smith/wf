@@ -8,7 +8,8 @@ import { readSample } from "./sample";
  *
  * The API is not running in this suite, so the thread is answered here in the
  * API's own shapes. The weather is not answered: it is the staged sample the
- * site serves, read here for what the card should say.
+ * site serves, read here for what the card should say. The one test that moves
+ * the clock answers a run of its own, so it can say what each hour holds.
  */
 
 const KNOTS = 1.94384449;
@@ -198,6 +199,55 @@ test("without the forecast the card is still the name and the link", async ({
   );
   await page.goto("/community/t/t_spot/5m-or-6m");
   await expect(card(page)).toContainText("Dollymount, Co. Dublin");
+  await expect(card(page)).toContainText("Forecast on the wind map");
+  await expect(card(page)).not.toContainText("kn");
+});
+
+test("the reading keeps up with the clock on a thread left open, and stands down past the run", async ({
+  page,
+}) => {
+  await answerApi(page);
+  // Two hours of a run, three hours apart: a westerly that builds, with its gust.
+  const at = (hours: number) =>
+    new Date(SAMPLE_CLOCK.getTime() + hours * 3600000).toISOString();
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({
+      json: {
+        spotForecasts: {
+          dollymount: [
+            {
+              hour: 0,
+              validTime: at(0),
+              u: 19 / KNOTS,
+              v: 0,
+              gust: 26 / KNOTS,
+            },
+            {
+              hour: 3,
+              validTime: at(3),
+              u: 31 / KNOTS,
+              v: 0,
+              gust: 40 / KNOTS,
+            },
+          ],
+        },
+      },
+    }),
+  );
+  // A controlled clock, so three hours can pass without waiting for them.
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/community/t/t_spot/5m-or-6m");
+  await expect(card(page)).toContainText("W · gusting 26 kn");
+  await expect(card(page)).toContainText("19 kn now");
+  await expect(card(page).locator(".bg-wind-k15")).toHaveCount(1);
+
+  await page.clock.fastForward("03:00:00");
+  await expect(card(page)).toContainText("W · gusting 40 kn");
+  await expect(card(page)).toContainText("31 kn now");
+  await expect(card(page).locator(".bg-wind-k30")).toHaveCount(1);
+
+  // Two hours past the run's last hour there is no "now" to give.
+  await page.clock.fastForward("02:00:00");
   await expect(card(page)).toContainText("Forecast on the wind map");
   await expect(card(page)).not.toContainText("kn");
 });

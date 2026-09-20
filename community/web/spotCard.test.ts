@@ -222,11 +222,18 @@ describe("S3: the swatch takes the ramp, the number stays in ink", () => {
 
 describe("a thread with a spot shows the card; one without shows nothing", () => {
   it("draws nothing without a spot, and nothing before the spot is known", () => {
-    expect(html(createElement(SpotCard, { spotId: null }))).toBe("");
-    expect(html(createElement(SpotCard, { spotId: "dollymount" }))).toBe("");
+    const now = new Date(T0);
+    expect(html(createElement(SpotCard, { spotId: null, now }))).toBe("");
+    expect(html(createElement(SpotCard, { spotId: "dollymount", now }))).toBe(
+      "",
+    );
   });
 
-  const opening = (attached: ReactElement | undefined, seq = 0) =>
+  const opening = (
+    attached: ReactElement | undefined,
+    seq = 0,
+    status: "visible" | "removed" = "visible",
+  ) =>
     html(
       createElement(Message, {
         message: {
@@ -243,7 +250,7 @@ describe("a thread with a spot shows the card; one without shows nothing", () =>
           body: "Most of my days are 14 to 22 knots.",
           replyTo: null,
           reactions: {},
-          status: "visible",
+          status,
           editedAt: null,
           createdAt: "2026-09-19T08:00:00Z",
           photos: [],
@@ -283,5 +290,15 @@ describe("a thread with a spot shows the card; one without shows nothing", () =>
     });
     expect(opening(card, 3)).not.toContain("?spot=");
     expect(opening(undefined)).not.toContain("?spot=");
+  });
+
+  it("goes with a removed opening post, as its reactions do", () => {
+    const card = createElement(SpotCardView, {
+      spot: dollymount,
+      reading: null,
+    });
+    const markup = opening(card, 0, "removed");
+    expect(markup).toContain("This message was removed.");
+    expect(markup).not.toContain("?spot=");
   });
 });

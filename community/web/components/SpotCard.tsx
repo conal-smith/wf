@@ -9,7 +9,7 @@
  * Without it the card is the name and the link, which is all it has to be.
  */
 import { ChevronRight, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { forecastUrl } from "../../../force5/src/urls";
 import {
   KNOTS,
@@ -188,17 +188,27 @@ export function SpotCardView({ spot, reading }: SpotCardViewProps) {
   );
 }
 
+/** One spot's hours, as the manifest holds them. */
+type SpotSeries = Manifest["spotForecasts"][string];
+
 /**
  * The spot behind an id, and its wind once the spot is known. Both files are
  * the map's own. An id the list does not hold finds nothing, and a manifest
  * that cannot be had costs the card its reading and nothing else.
+ *
+ * The hours are kept and the reading is taken from them at `now`: a thread is
+ * a page left open, and "now" on it has to move with the clock, or stand down
+ * once the run has stopped covering it.
  */
-export function useSpotCard(spotId: string | null): {
+export function useSpotCard(
+  spotId: string | null,
+  now: number,
+): {
   spot: Spot | null;
   reading: SpotReading | null;
 } {
   const [spot, setSpot] = useState<Spot | null>(null);
-  const [reading, setReading] = useState<SpotReading | null>(null);
+  const [series, setSeries] = useState<SpotSeries | null>(null);
 
   useEffect(() => {
     setSpot(null);
@@ -220,7 +230,7 @@ export function useSpotCard(spotId: string | null): {
 
   const knownId = spot?.id ?? null;
   useEffect(() => {
-    setReading(null);
+    setSeries(null);
     if (!knownId) return;
     let current = true;
     // The model the map opens on, asked for as the map asks: never a stale copy.
@@ -228,7 +238,8 @@ export function useSpotCard(spotId: string | null): {
       .then((reply) => (reply.ok ? reply.json() : null))
       .then(
         (manifest: Manifest | null) => {
-          if (current && manifest) setReading(readingNow(manifest, knownId));
+          if (current && manifest)
+            setSeries(manifest.spotForecasts?.[knownId] ?? null);
         },
         () => {},
       );
@@ -237,11 +248,26 @@ export function useSpotCard(spotId: string | null): {
     };
   }, [knownId]);
 
+  const reading = useMemo(
+    () =>
+      knownId && series
+        ? readingNow({ spotForecasts: { [knownId]: series } }, knownId, now)
+        : null,
+    [knownId, series, now],
+  );
+
   return { spot, reading };
 }
 
 /** Nothing for a thread without a spot, and nothing for a spot the map no longer lists. */
-export function SpotCard({ spotId }: { spotId: string | null }) {
-  const { spot, reading } = useSpotCard(spotId);
+export function SpotCard({
+  spotId,
+  now,
+}: {
+  spotId: string | null;
+  /** The page's clock, so the reading keeps up with it. */
+  now: Date;
+}) {
+  const { spot, reading } = useSpotCard(spotId, now.getTime());
   return spot ? <SpotCardView spot={spot} reading={reading} /> : null;
 }

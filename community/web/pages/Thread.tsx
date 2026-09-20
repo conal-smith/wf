@@ -401,7 +401,7 @@ function Conversation({
         message={stream.opening}
         opening
         marked={marked === 0}
-        attached={<SpotCard spotId={thread.spotId} />}
+        attached={<SpotCard spotId={thread.spotId} now={now} />}
       />
 
       <MessageStream
