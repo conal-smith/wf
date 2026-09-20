@@ -1,11 +1,12 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: normal
 risk: low
 epic: community-forum
 iteration: 2
+updated: 2026-09-20T22:29:43.853Z
 ---
 
 # Capture a visual baseline of the map
@@ -81,3 +82,4 @@ LOG:
   display options dialog is clipped by its own scroll at both widths, so the swatches below
   ECMWF ENS and GEFS are in no shot — model hues, which D12 holds untouched. `.legend*` in
   styles.css is drawn by nothing in src/ and cannot be shot at all.
+- 2026-09-20 integrator: merged ce8b380 into community-forum-2; npm test 1148 pass, build, market:api:build, ui:lint green. test:e2e is re-run once both baselines are merged.
