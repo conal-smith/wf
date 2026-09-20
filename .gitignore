@@ -28,3 +28,6 @@ public/weather/
 # Generated tide predictions; nothing marine is bundled yet.
 public/marine/
 *.tsbuildinfo
+
+# SprintEngine Studio workspace files (plugin.json, marketplace.json): app-owned, per machine.
+.sprintengine/
