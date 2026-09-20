@@ -13,7 +13,7 @@ import { WindMap, Force5Brand, SiteMenu } from "../force5/src";
 import ForecastDock from "./ForecastDock";
 import ModelPicker from "./ModelPicker";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
-import { ridingLocations } from "./locations";
+import { ridingLocations, spotFromSearch } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
@@ -134,12 +134,16 @@ export default function App() {
         if (controller.signal.aborted) return;
         const validated = validateManifest(m);
         setManifest(validated);
-        setSpots(ridingLocations(s));
+        const places = ridingLocations(s);
+        setSpots(places);
         setSelectedTime(
           validated.frames[nearestFrame(validated.frames)].validTime,
         );
+        // A link that names a spot opens on it; any other opens where it always has.
         setPoint(
-          s.find((spot: Spot) => spot.id === initialPoint.id) || initialPoint,
+          spotFromSearch(location.search, places) ||
+            s.find((spot: Spot) => spot.id === initialPoint.id) ||
+            initialPoint,
         );
       })
       .catch((e) => {
