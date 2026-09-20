@@ -7,6 +7,7 @@ export default defineConfig({
       "tests/**/*.test.ts",
       "market/**/*.test.ts",
       "site/**/*.test.ts",
+      "community/**/*.test.ts",
     ],
   },
 });
