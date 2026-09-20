@@ -17,6 +17,8 @@ COPY design ./design
 # It also reads the site's user types, and the auth bridge and fetch core every section shares.
 COPY site/shared ./site/shared
 COPY shared ./shared
+# src/main.tsx imports the Tailwind theme, which also names the directories scanned for classes.
+COPY ui ./ui
 COPY public ./public
 RUN npm run build
 
