@@ -10,6 +10,7 @@ import { createLimiter } from "./limits.js";
 import type { CommunityDeps, Env } from "./handlers/context.js";
 import { eventRoutes } from "./handlers/events.js";
 import { followRoutes } from "./handlers/follow.js";
+import { moderationRoutes } from "./handlers/moderation.js";
 import { notificationRoutes } from "./handlers/notifications.js";
 import { readRoutes } from "./handlers/read.js";
 import { reportRoutes } from "./handlers/reports.js";
@@ -30,6 +31,7 @@ export function createCommunityRouter(deps: CommunityDeps) {
   readRoutes(r, deps);
   writeRoutes(r, live);
   reportRoutes(r, live);
+  moderationRoutes(r, live);
   followRoutes(r, deps);
   notificationRoutes(r, deps);
   uploadRoutes(r, deps);
