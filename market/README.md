@@ -30,8 +30,10 @@ market/
 - **Listings** with up to 8 photos (resized in the browser to ≤1600px JPEG and
   uploaded straight to object storage), title, description, category,
   condition, brand, size, year, price in EUR or GBP, county and town.
-- **Accounts** via Clerk. A seller profile (display name, county, contact email
-  and/or phone, WhatsApp opt-in, bio) is required before the first listing.
+- **Accounts** via Clerk. One `users` row per account serves the whole site
+  (`site/`): it is made the first time anything needs it, with a name, picture
+  and handle to start from. A contact email or phone is asked for only when
+  you publish a listing.
 - **Contact reveal**: signed-in buyers ask for the seller's details on a
   listing. That is recorded as an enquiry, which the seller sees as a count on
   each listing.
@@ -133,9 +135,11 @@ domain>`. The static host must rewrite `/market/*` to `index.html` (the same
      and refresh under `/market` 404s.
 
 5. **Clerk**: create an application, enable the sign-in methods you want, add
-   `wingfoil.ie` as an allowed origin. Nothing else: the API only ever reads
-   the `sub` claim of the session token, and the profile stores what the
-   member types, not what Clerk holds.
+   `wingfoil.ie` as an allowed origin. The API reads the `sub` claim of the
+   session token and, once per person, asks Clerk for a name and picture to
+   start their `users` row from (this needs `CLERK_SECRET_KEY`; with only
+   `CLERK_JWT_KEY` the row starts as "Member"). After that the row holds what
+   the member types, not what Clerk holds.
 
 ## API
 
@@ -150,7 +154,7 @@ All routes are under `/api/market`. Authenticated routes take
 | GET     | `/meta`                                                                       |            | categories, conditions, counties, limits                    |
 | GET     | `/listings?q&category&county&condition&minPriceCents&maxPriceCents&sort&page` | optional   | browse active listings                                      |
 | GET     | `/listings/:id`                                                               | optional   | one listing; removed ones only for the owner                |
-| POST    | `/listings`                                                                   | required   | create (needs a profile; max 20 live per seller)            |
+| POST    | `/listings`                                                                   | required   | create (409 `contact_required` without an email or phone)   |
 | PUT     | `/listings/:id`                                                               | owner      | edit; the photo array is the full desired set               |
 | POST    | `/listings/:id/status`                                                        | owner      | `{ status: active \| sold \| removed }`                     |
 | GET     | `/listings/:id/contact`                                                       | required   | seller contact; records an enquiry                          |
@@ -159,9 +163,14 @@ All routes are under `/api/market`. Authenticated routes take
 | PUT     | `/listings/:id/review`                                                        | required   | `{ rating 1–5, comment? }`, create or update                |
 | GET     | `/sellers/:id`                                                                | optional   | public seller page with stats, listings, reviews            |
 | GET     | `/me`                                                                         | required   | profile, own listings, saved, enquiry counts, reviews given |
-| PUT     | `/me`                                                                         | required   | create or update the profile                                |
+| PUT     | `/me`                                                                         | required   | the same handler as the site's `PUT /api/me`                |
 | POST    | `/uploads`                                                                    | required   | `{ contentType, byteLength }` → presigned PUT               |
 | PUT/GET | `/uploads/*`                                                                  | signed URL | local storage driver only                                   |
+
+Beside `/api/market`, the same process serves the site's own `GET /api/me`
+and `PUT /api/me` (`site/api/router.ts`): your `users` row, whichever section
+you are in. Every write route answers 403 `suspended` while the caller's
+`suspended_until` is in the future.
 
 Photo flow: the browser resizes, calls `POST /uploads`, `PUT`s the bytes to
 the returned URL, then includes `{ key, width, height }` in the listing. The
@@ -172,10 +181,12 @@ lifecycle rule on the bucket prefix is the cheap fix.
 
 ## Data model
 
-Tables are prefixed `market_` so the database can be shared.
+Tables are prefixed `market_` so the database can be shared. The one
+exception is `users`, which belongs to the whole site.
 
-- `market_profiles` – one per Clerk user who has set up selling. Contact
-  details live here and are only served through the contact endpoint.
+- `users` – one per Clerk account: handle, display name, avatar, county, bio,
+  role, `suspended_until`, and nullable contact details that are only served
+  through the contact endpoint and to their owner.
 - `market_listings` – the listing; `status` is `active | sold | removed`.
   A removed listing keeps its row (reviews still point at it) but is hidden.
 - `market_listing_photos` – ordered photos with their storage key and URL.
