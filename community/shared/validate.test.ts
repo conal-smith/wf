@@ -25,6 +25,8 @@ describe("constants", () => {
       mentionsPerMessage: 5,
       editWindowMin: 30,
       pageSize: 30,
+      newMemberHours: 24,
+      newMemberMessages: 3,
     });
   });
 
