@@ -152,6 +152,9 @@ export default function Gallery() {
         <Row label="tone">
           <Chip>Wings</Chip>
           <Chip tone="warn">Forecast is 9 hours old</Chip>
+          {/* Glass is for a badge over a photograph; here it stands on the
+              gallery's own ground, which shows the hairline and little else. */}
+          <Chip tone="glass">Saved</Chip>
         </Row>
         <Row label="eyebrow">
           <Chip eyebrow>New</Chip>
@@ -297,6 +300,11 @@ export default function Gallery() {
             aria-label="Search, busy"
             defaultValue="foil mast"
             busy
+          />
+          <SearchField
+            aria-label="Search gear, the page's own"
+            placeholder="Search by brand, model or size"
+            size="hero"
           />
         </Row>
       </Section>
