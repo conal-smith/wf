@@ -141,6 +141,21 @@ describe("ui/theme.css: blur, measures and animation", () => {
       "--grid-template-columns-cards",
       "repeat(auto-fill, minmax(240px, 1fr))",
     ],
+    [
+      "grid-cols-detail",
+      "--grid-template-columns-detail",
+      "minmax(0, 3fr) minmax(320px, 2fr)",
+    ],
+    [
+      "grid-cols-specs",
+      "--grid-template-columns-specs",
+      "repeat(auto-fill, minmax(150px, 1fr))",
+    ],
+    [
+      "grid-cols-meter",
+      "--grid-template-columns-meter",
+      "auto minmax(0, 1fr) auto",
+    ],
   ])("%s reads %s, which is %s", (name, variable, value) => {
     const css = build([name]);
     expect(css).toContain(selector(name));

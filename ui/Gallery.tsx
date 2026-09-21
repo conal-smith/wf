@@ -135,6 +135,21 @@ export default function Gallery() {
             Current link
           </Button>
         </Row>
+        <Row label="pressed, worded">
+          <Button
+            variant="pill"
+            size="lg"
+            pressed={saved ? "worded" : false}
+            onClick={() => setSaved(!saved)}
+          >
+            <Heart
+              size={16}
+              fill={saved ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+            {saved ? "Saved" : "Save"}
+          </Button>
+        </Row>
       </Section>
 
       <Section title="Link">
@@ -198,6 +213,9 @@ export default function Gallery() {
           </Pane>
           <Pane kind="sunken" className="min-w-72 flex-1">
             <p className="m-0">Pane, sunken</p>
+          </Pane>
+          <Pane standing className="min-w-72 flex-1">
+            <p className="m-0">Pane, standing</p>
           </Pane>
           <div className="min-w-72 flex-1 rounded-surface bg-sea p-5">
             <Surface>
