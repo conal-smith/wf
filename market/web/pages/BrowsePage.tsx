@@ -59,11 +59,14 @@ export const browseStyles = tv({
     head: "flex min-h-control-md flex-wrap items-center justify-between gap-x-5 gap-y-2",
     count: "m-0 text-lead",
     active: "flex flex-auto flex-wrap items-center gap-x-2 gap-y-1",
-    // A removable filter: the chip is the button.
+    // A removable filter: the chip is the button. It is the one control on
+    // this page the kit has no part for, so it carries the kit's own coarse
+    // minimum by hand — a filter is taken off with a thumb as often as the
+    // rail chip beside it is put on.
     token: [
       "inline-flex h-control-sm items-center gap-1 rounded-full border-0 bg-sunken pr-2 pl-3",
       "font-sans text-body font-semibold text-ink-2 cursor-pointer",
-      "transition-colors duration-fast",
+      "transition-colors duration-fast pointer-coarse:min-h-touch",
       "not-disabled:hover:bg-line-strong not-disabled:hover:text-ink-inverse",
       RING,
     ],

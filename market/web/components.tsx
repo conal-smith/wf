@@ -104,7 +104,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 export const headerStyles = tv({
   slots: {
-    base: "sticky top-0 z-header py-3",
+    // The bar sits clear of a notch: the top inset is the larger of the two.
+    base: "sticky top-0 z-header pt-safe-3 pb-3",
     // A card, not glass: there is no map under it to show through, and white
     // reads as lifted where glass over the content ground reads as disabled.
     bar: [
@@ -782,7 +783,8 @@ export function ConfirmDialog({
 export const footerStyles = tv({
   slots: {
     base: [
-      "mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line py-6",
+      // The last row on the page, so its foot clears a home bar.
+      "mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line pt-6 pb-safe-6",
       // A phone has no room for two ends of a row, so they become two rows.
       "max-wide:flex-col max-wide:items-start",
     ],
