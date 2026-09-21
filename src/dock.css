@@ -358,9 +358,11 @@
 .model-gust-line {
   stroke-dasharray: 3 3;
 }
+/* The three marks below are drawn over the band's own wind colour, so they take
+   the ink that reads against a coloured ground, not the card surface's white. */
 .median-line {
   fill: none;
-  stroke: var(--color-card);
+  stroke: var(--color-ink-inverse);
   stroke-width: 1.4;
   opacity: 0.75;
 }
@@ -373,7 +375,7 @@
 }
 .chart-arrow {
   fill: none;
-  stroke: var(--color-card);
+  stroke: var(--color-ink-inverse);
   stroke-width: 1.4;
   stroke-linecap: round;
 }
@@ -383,7 +385,7 @@
   opacity: 0.55;
 }
 .candle-body {
-  stroke: var(--color-card);
+  stroke: var(--color-ink-inverse);
   stroke-width: 1;
   stroke-opacity: 0.7;
 }
@@ -434,11 +436,10 @@
   font-size: 9px;
   color: var(--color-ink-muted);
 }
+/* The ramp's low-wind blue, on the wave arrow: the same value it always had. */
 .wave-arrow {
   flex: none;
-  color: var(
-    --color-wind-k05
-  ); /* the ramp's low-wind blue, on the wave arrow */
+  color: var(--color-wind-k05);
   opacity: 0.85;
 }
 

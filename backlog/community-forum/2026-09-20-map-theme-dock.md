@@ -182,3 +182,66 @@ LOG:
   in a browser: color-mix with `calc(22% * var(--rain-tint, 0))` computes to the
   same alpha the rgb() did at tint 0.5 and 1, and to fully transparent when the
   variable is unset.
+- 2026-09-21 reviewer: signed off, with one role fixed and one question left
+  open. What I looked at.
+  S5: the two files tokenised with every colour value replaced by a placeholder
+  come out as the same 816 declarations in the same order, one token apart (the
+  rain cell, which changed form). Built CSS: 1008 top-level rules on each side,
+  the same 71 of them differing, every one a colour.
+  S1: sampled 39 of the 89 against the rule's selector and what it draws. Three
+  were wrong: .median-line, .chart-arrow and .candle-body draw a white mark over
+  the band's own wind colour and took --color-card, a surface role. The kit does
+  this as `bg-warn text-ink-inverse` (ui/Button.tsx:34), so they are
+  --color-ink-inverse now; both are #fff, so no pixel moves. The rest hold,
+  including the two readings of #4f737c (sun times as ink-2, eyebrows as
+  ink-muted) and the alphas kept for state or depth.
+  @theme static: the only effect on the built CSS is eleven more declarations in
+  :root (+321 bytes) — --color-gust, --color-now, --color-now-marker,
+  --color-ok, --font-weight-medium, the four shadows and the two text-reading
+  steps. Nothing removed, no value changed, no rule added, and MarketApp's CSS
+  is byte-identical (same content hash) before and after. No Preflight: neither
+  bundle holds a `*,::after,::before` rule. The comment says why.
+  S2/S3: no hex outside ui/theme.css. Read ten alphas back out of the browser:
+  12/14/20/24% of ink, 52/66/77% of card, 72% of ink-inverse, 33% of the scrim
+  (0.1488 against the literal's 0.1490) — each the literal's own alpha to the
+  rounded percent. --color-now-marker and --color-gust are the pre-existing
+  literals unchanged and duplicate nothing in the theme (--color-now is #a8442e,
+  --color-warn #854d31).
+  D12: PALETTE and modelHue are not in the diff at all. In the shots, every
+  pixel that sits exactly on the continuous wind ramp is unchanged — 3278 of
+  them in dock-grid-1440, 10029 in dock-candles-1440, 3278 in dock-blend-1440,
+  0 changed in each; so are all 386 #bf6546 now-marker pixels and all 477
+  #a8442e ones. The gust cap has no opaque pixel (opacity .72), so I inverted
+  it: predicting each cap pixel's new value from an unchanged #e0803a over the
+  ground that moved under it lands within 1/255 on 81 of 82.
+  S4: recomputed 39 text pairs and 14 marks myself, over the dock's real ground
+  (src/styles.css --glass, a gradient of #ffffffdb to #edf7f4c9, over .map-panel
+  #b8d0d7 — the note above calls this "solid at 85%" and "--color-sea", which is
+  the sibling's file, not this one). Nothing below 4.5:1; the floor is 5.46:1
+  (ink-muted on the darker gradient stop) and the four stepped-up pairs land at
+  5.46 to 9.78. .wave-arrow is 4.06:1 as a glyph. No non-text mark is weaker
+  than it was by more than 0.3, and the switch track and the cloud bars are
+  stronger.
+  Shots: re-shot all 36 at 4413/8913, compare says "36 shots - 0 identical, 36
+  colour only, 0 over 1.00%". Opened all 36 overlays and both widths of every
+  dock PNG. No edge moved anywhere. The only new edges are the pressed pill and
+  the pressed unit button, whose white goes from 88%/48% to opaque card, and
+  they are in the same place at the same size. Re-shot PNGs restored.
+  The unproven surfaces, reached in a throwaway spec (not committed): .row-tip,
+  .chart-hover-card (which also shows .chart-cursor and .wave-band), and
+  .map-reach-chip at rest and hovered — all legible and Atlantic. The rain tint
+  read back identical to the old rgb() at 0.5 and at 1, and transparent unset.
+  .observed-spark, .tide-fill and .tide-stroke have no fixture data; their
+  variables are in :root, so they resolve, but note that the tide underlay is
+  much fainter under the Atlantic sea (stroke 1.29:1 -> 1.13:1) — worth a look
+  when there is tide data.
+  Left for the integrator, not changed here: the 5 kn blue reaches .wave-arrow,
+  .rain-cell, .observed-spark and .wave-band as var(--color-wind-k05), and none
+  of those four is wind. D12 and the file's own comments say the tie to the ramp
+  was deliberate, so it stays, but if the epic's "wind colours mean wind speed
+  only" is to hold literally, these want a name of their own at the same value.
+  Also: the inventory says 51 distinct; it is 50 distinct colour values, 51 if
+  the rgb() form is counted apart from the hex of the same colour.
+  Gates, all green: npm test 1160 passed; npm run build; npm run
+  market:api:build; npm run ui:lint; PREVIEW_PORT=4413 PORT=8913 npm run
+  test:e2e 85 passed.
