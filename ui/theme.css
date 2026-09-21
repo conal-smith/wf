@@ -217,6 +217,12 @@
   --grid-template-columns-shell: 236px minmax(0, 1fr);
   --grid-template-columns-cards: repeat(auto-fill, minmax(240px, 1fr));
 
+  /* A row of form fields, as `grid-cols-fields`: as many as fit, and one per
+     line once a field would be narrower than it can be read in. A grid of
+     thumbnails, as `grid-cols-tiles`: the same idea at a photograph's size. */
+  --grid-template-columns-fields: repeat(auto-fit, minmax(180px, 1fr));
+  --grid-template-columns-tiles: repeat(auto-fill, minmax(132px, 1fr));
+
   /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
      written in the stock breakpoints' unit so the two sort together; a media
      query reads the browser's 16px, not the root's 14. */
