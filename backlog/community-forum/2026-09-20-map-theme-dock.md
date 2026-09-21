@@ -1,12 +1,13 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: normal
 risk: high
 epic: community-forum
 iteration: 2
 dependsOn: map-visual-baseline, tw-setup-theme
+updated: 2026-09-21T00:10:53.702Z
 ---
 
 # Replace colour literals with theme variables in src/dock.css
@@ -245,3 +246,4 @@ LOG:
   Gates, all green: npm test 1160 passed; npm run build; npm run
   market:api:build; npm run ui:lint; PREVIEW_PORT=4413 PORT=8913 npm run
   test:e2e 85 passed.
+- 2026-09-21 integrator: merged into community-forum-2 (styles-compact then dock, 831ff0c; ui/theme.css and tests/ui-theme.test.ts conflicted on the now-marker block and took the dock side, which adds --color-gust). On the merged branch: npm test 1160 pass, build, market:api:build, ui:lint green, test:e2e 85 pass. Map baseline re-shot once with both items in (36 files, 0 resized; structure over 1% on 34 is all new edges from the darker ground behind the hidden canvas, gone <= 0.86%, as the styles-compact reviewer proved by reverting the ground) and committed as the new reference.
