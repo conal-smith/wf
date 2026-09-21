@@ -165,8 +165,8 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
       "sr-only",
     ].map((name) => `mk-${name}`);
     for (const name of gone)
-      // The block and the parts of it, `.mk-card`, `.mk-card__media` and
-      // `.mk-card--skeleton`, since most of what was converted was a part. Not
+      // The block and the parts of it, the card's `__media` and `--skeleton` as
+      // much as the card, since most of what was converted was a part. Not
       // a different name that merely begins the same way: `.mk-page-head` is
       // another item's and stays, as does `.mk-skeleton` beside
       // `.mk-skeleton__line`.
