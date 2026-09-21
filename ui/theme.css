@@ -213,9 +213,16 @@
   --container-form: 760px;
 
   /* A section's two columns, as `grid-cols-shell`: the rail, then the page.
-     A grid of cards, as `grid-cols-cards`: as many 240px columns as fit. */
+     A grid of cards, as `grid-cols-cards`: as many 240px columns as fit.
+     A detail page's two columns, as `grid-cols-detail`: what is being read,
+     and the panel of facts and actions that stands beside it. A list of short
+     label-and-value pairs, as `grid-cols-specs`: as many as fit across. A row
+     of labelled bars, as `grid-cols-meter`: the label, the bar, the number. */
   --grid-template-columns-shell: 236px minmax(0, 1fr);
   --grid-template-columns-cards: repeat(auto-fill, minmax(240px, 1fr));
+  --grid-template-columns-detail: minmax(0, 3fr) minmax(320px, 2fr);
+  --grid-template-columns-specs: repeat(auto-fill, minmax(150px, 1fr));
+  --grid-template-columns-meter: auto minmax(0, 1fr) auto;
 
   /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
      written in the stock breakpoints' unit so the two sort together; a media
