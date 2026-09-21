@@ -1,12 +1,13 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: high
 epic: community-forum
 iteration: 2
 dependsOn: ui-kit, market-visual-baseline
+updated: 2026-09-21T01:13:32.584Z
 ---
 
 # Convert the marketplace shell and browse page to Tailwind
@@ -186,3 +187,4 @@ STATE (anchors re-verified 2026-09-21, before this item's own edits):
   shots:compare - 25 colour only, 18 resized and 6 moved, all of it the
   tap-target minimum and the body colour under the footer, both accounted for
   above. The re-shot PNGs are not committed; the integrator re-shoots.
+- 2026-09-21 integrator: merged into community-forum-2; reworded one comment in market/web/shell.test.ts that held the class names the ACCEPT grep forbids (9d9448f). On the merged branch: npm test 1212 pass, build, market:api:build, ui:lint green, ACCEPT grep clean. Market baseline re-shot (49: 25 colour only, 18 resized and 6 moved at 390, all the ruled 44px tap targets, as the reviewer counted) and committed as the reference for the two items that follow. test:e2e follows in the next LOG line.
