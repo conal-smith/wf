@@ -32,6 +32,10 @@ import {
 } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
+import { Button, Chip, Skeleton } from "../../ui";
+import { buttonStyles } from "../../ui/Button";
+import { linkStyles } from "../../ui/Link";
+import { RING, tv } from "../../ui/tv";
 import { useMarketAuth } from "./auth";
 import { Link, paths } from "./router";
 import {
@@ -98,35 +102,75 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 // ---- header ----------------------------------------------------------------
 
+export const headerStyles = tv({
+  slots: {
+    // The bar sits clear of a notch: the top inset is the larger of the two.
+    base: "sticky top-0 z-header pt-safe-3 pb-3",
+    // A card, not glass: there is no map under it to show through, and white
+    // reads as lifted where glass over the content ground reads as disabled.
+    bar: [
+      "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card py-1 pr-2 pl-3 shadow-marker",
+      // The site menu now starts the bar. Below the label breakpoint the bar's
+      // own insets pay for it rather than a label being squeezed onto two
+      // lines: a round control needs less inset than a word does anyway.
+      "max-wide:gap-1 max-wide:px-1",
+    ],
+    brand: [
+      "inline-flex items-center gap-2 rounded-control font-sans text-lead whitespace-nowrap text-ink no-underline",
+      RING,
+    ],
+    domain: "font-normal text-ink-muted",
+    actions: "ml-auto flex items-center gap-1",
+    // The word beside the icon, where the row is wide enough to hold it.
+    label: "hidden wide:inline",
+    user: "inline-flex items-center px-2",
+    name: "hidden items-center px-2 text-body text-ink-muted wide:inline-flex",
+    // Only where the bar has room: at 390px these eight pixels are the
+    // difference between "Sign in" on one line and on two.
+    sell: "wide:px-3",
+  },
+});
+
 /**
  * `accentSell` fills the Sell button. A view gets one filled action, so the
  * shell passes it only on pages that have no primary of their own.
  */
 export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   const auth = useMarketAuth();
+  const styles = headerStyles();
   return (
-    <header className="mk-header">
-      <div className="f5-surface f5-surface--pill mk-header__bar">
+    <header className={styles.base()}>
+      <div className={styles.bar()}>
         <SiteMenu current="market" size="sm" />
         <Link
           to={paths.browse()}
-          className="mk-brand"
+          className={styles.brand()}
           aria-label="wingfoil.ie Market, home"
         >
           <Wind size={22} aria-hidden="true" />
           <span>
-            wingfoil<span className="mk-brand__domain">.ie</span>
+            wingfoil<span className={styles.domain()}>.ie</span>
           </span>
-          <span className="f5-chip f5-chip--eyebrow">Market</span>
+          <Chip eyebrow>Market</Chip>
         </Link>
         {/*
           The wind map is reached through the site menu at the start of the bar,
           not a button of its own here: one control per destination. The footer
           link stays — it is at the other end of the page, not beside it.
         */}
-        <nav className="mk-header__actions" aria-label="Marketplace">
+        <nav className={styles.actions()} aria-label="Marketplace">
+          {/*
+            The kit's Button is an anchor when it is given an href, but the
+            marketplace's router takes a link over through its own <Link>. So a
+            link that looks like a button wears the recipe's classes instead:
+            one styling, either element.
+          */}
           <Link
-            className={`f5-button f5-button--sm ${accentSell ? "f5-button--primary mk-header__sell" : "f5-button--pill"}`}
+            className={buttonStyles({
+              variant: accentSell ? "primary" : "pill",
+              size: "sm",
+              className: accentSell ? styles.sell() : undefined,
+            })}
             to={paths.sell()}
           >
             <PlusCircle size={15} aria-hidden="true" />
@@ -135,26 +179,24 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
           {auth.signedIn ? (
             <>
               <Link
-                className="f5-button f5-button--pill f5-button--sm"
+                className={buttonStyles({ variant: "pill", size: "sm" })}
                 to={paths.me()}
               >
                 <UserRound size={15} aria-hidden="true" />
-                <span className="mk-header__label">My listings</span>
+                <span className={styles.label()}>My listings</span>
               </Link>
               {auth.provider === "clerk" ? (
-                <span className="mk-header__user">
+                <span className={styles.user()}>
                   <UserButton />
                 </span>
               ) : (
-                <span className="mk-header__user mk-meta mk-header__label">
-                  {auth.identity.name}
-                </span>
+                <span className={styles.name()}>{auth.identity.name}</span>
               )}
             </>
           ) : (
-            <button
-              type="button"
-              className="f5-button f5-button--pill f5-button--sm"
+            <Button
+              variant="pill"
+              size="sm"
               onClick={auth.signIn}
               disabled={auth.provider === "none" || !auth.loaded}
               title={
@@ -165,7 +207,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             >
               <LogIn size={15} aria-hidden="true" />
               <span>Sign in</span>
-            </button>
+            </Button>
           )}
         </nav>
       </div>
@@ -295,6 +337,67 @@ export function Avatar({
 
 // ---- listing card ------------------------------------------------------------
 
+/** As many 240px columns as fit, two on a phone; dimmed while it is replaced. */
+export const listingGridStyles = tv({
+  base: [
+    "grid grid-cols-cards gap-5 transition-opacity duration-fast",
+    "aria-busy:opacity-60 max-wide:grid-cols-2 max-wide:gap-3",
+  ],
+});
+
+export const listingCardStyles = tv({
+  slots: {
+    card: [
+      "group relative flex flex-col overflow-hidden rounded-surface border border-line bg-card",
+      "text-ink no-underline shadow-control max-wide:rounded-control",
+    ],
+    media:
+      "relative grid aspect-4/3 place-items-center overflow-hidden bg-sunken text-line-strong",
+    // Sold is said by the badge as well as by the colour draining out of it.
+    image: "block size-full object-cover group-data-sold:grayscale",
+    noPhoto: "flex min-w-0 flex-col items-center gap-1",
+    badge: "absolute top-3 left-3",
+    count: "absolute right-3 bottom-3",
+    body: "flex flex-1 flex-col gap-1 p-3",
+    price: "m-0 text-lead text-ink",
+    // The prose step at the tight leading, and never more than two lines.
+    title: "m-0 line-clamp-2 text-prose leading-tight font-normal",
+    meta: "mt-auto flex items-center justify-between gap-2 pt-2 text-body text-ink-muted",
+    where: "flex min-w-0 items-center gap-1",
+    place: "truncate",
+    rating: "inline-flex items-center gap-1 text-ink-2",
+    quiet: "m-0 text-body text-ink-muted",
+    hidden: "sr-only",
+    // The three lines of a placeholder, as long as what they stand for.
+    linePrice: "w-2/5",
+    lineTitle: "w-17/20",
+    lineMeta: "w-3/5",
+  },
+  variants: {
+    /**
+     * A card that is a link lifts under the pointer and pushes into its cover
+     * a little; a placeholder does neither. Both stand still for a reader who
+     * has asked for less movement.
+     */
+    linked: {
+      true: {
+        card: [
+          "transition duration-base motion-reduce:transition-none",
+          "not-disabled:hover:shadow-surface motion-safe:not-disabled:hover:-translate-y-1",
+          RING,
+        ],
+        image: [
+          "transition duration-base motion-reduce:transition-none",
+          "motion-safe:group-hover:scale-104",
+        ],
+      },
+    },
+    /** The shape of what is loading, breathing where the cover will be. */
+    loading: { true: { media: "animate-pulse motion-reduce:animate-none" } },
+  },
+  defaultVariants: { linked: true },
+});
+
 export function ListingCard({
   listing,
   showStatus = false,
@@ -306,15 +409,17 @@ export function ListingCard({
   const where = listing.town
     ? `${listing.town}, ${listing.county}`
     : listing.county;
+  const styles = listingCardStyles();
   return (
     <Link
       to={paths.listing(listing.id)}
-      className="mk-card"
-      data-status={listing.status}
+      className={styles.card()}
+      data-sold={listing.status === "sold" ? "" : undefined}
     >
-      <div className="mk-card__media">
+      <div className={styles.media()}>
         {cover ? (
           <img
+            className={styles.image()}
             src={cover.url}
             alt=""
             loading="lazy"
@@ -323,49 +428,50 @@ export function ListingCard({
             height={cover.height ?? undefined}
           />
         ) : (
-          <span className="mk-stack--tight" style={{ alignItems: "center" }}>
+          <span className={styles.noPhoto()}>
             <ImageIcon size={28} aria-hidden="true" />
-            <span className="mk-meta">No photo</span>
+            <span className={styles.quiet()}>No photo</span>
           </span>
         )}
         {showStatus && listing.status !== "active" ? (
-          <span className="f5-chip f5-chip--glass mk-card__badge">
+          <Chip tone="glass" className={styles.badge()}>
             {listing.status === "sold" ? "Sold" : "Removed"}
-          </span>
+          </Chip>
         ) : listing.saved ? (
-          <span className="f5-chip f5-chip--glass mk-card__badge">
+          <Chip tone="glass" className={styles.badge()}>
             <Heart size={10} fill="currentColor" aria-hidden="true" /> Saved
-          </span>
+          </Chip>
         ) : null}
         {listing.photos.length > 1 && (
-          <span className="f5-chip f5-chip--glass mk-card__count">
+          <Chip tone="glass" className={styles.count()}>
             <Camera size={10} aria-hidden="true" />
-            <span className="mk-sr-only">Photos:</span> {listing.photos.length}
-          </span>
+            <span className={styles.hidden()}>Photos:</span>{" "}
+            {listing.photos.length}
+          </Chip>
         )}
       </div>
-      <div className="mk-card__body">
-        <p className="mk-lead">
+      <div className={styles.body()}>
+        <p className={styles.price()}>
           {formatPrice(listing.priceCents, listing.currency)}
         </p>
-        <h3 className="mk-card__title">{listing.title}</h3>
-        <div className="mk-card__meta mk-meta">
-          <span className="mk-card__where">
+        <h3 className={styles.title()}>{listing.title}</h3>
+        <div className={styles.meta()}>
+          <span className={styles.where()}>
             <MapPin size={12} aria-hidden="true" />
-            <span>{where}</span>
+            <span className={styles.place()}>{where}</span>
           </span>
           {listing.seller.ratingCount > 0 && (
             <span
-              className="mk-card__rating"
+              className={styles.rating()}
               title={`Seller rated ${listing.seller.ratingAvg?.toFixed(1)} from ${listing.seller.ratingCount} review${listing.seller.ratingCount === 1 ? "" : "s"}`}
             >
               <Star size={11} fill="currentColor" aria-hidden="true" />
-              <span className="mk-sr-only">Seller rating</span>
+              <span className={styles.hidden()}>Seller rating</span>
               {listing.seller.ratingAvg?.toFixed(1)}
             </span>
           )}
         </div>
-        <p className="mk-meta">
+        <p className={styles.quiet()}>
           {conditionLabel(listing.condition)} · {relativeAge(listing.createdAt)}
         </p>
       </div>
@@ -384,7 +490,7 @@ export function ListingGrid({
   busy?: boolean;
 }) {
   return (
-    <div className="mk-grid" aria-busy={busy}>
+    <div className={listingGridStyles()} aria-busy={busy}>
       {listings.map((l) => (
         <ListingCard key={l.id} listing={l} showStatus={showStatus} />
       ))}
@@ -393,15 +499,20 @@ export function ListingGrid({
 }
 
 export function GridSkeleton({ count = 8 }: { count?: number }) {
+  const styles = listingCardStyles({ linked: false, loading: true });
   return (
-    <div className="mk-grid" aria-busy="true" aria-label="Loading listings">
+    <div
+      className={listingGridStyles()}
+      aria-busy="true"
+      aria-label="Loading listings"
+    >
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="mk-card mk-card--skeleton" aria-hidden="true">
-          <div className="mk-card__media" />
-          <div className="mk-card__body">
-            <span className="mk-skeleton__line" style={{ width: "40%" }} />
-            <span className="mk-skeleton__line" style={{ width: "85%" }} />
-            <span className="mk-skeleton__line" style={{ width: "60%" }} />
+        <div key={i} className={styles.card()} aria-hidden="true">
+          <div className={styles.media()} />
+          <div className={styles.body()}>
+            <Skeleton className={styles.linePrice()} />
+            <Skeleton className={styles.lineTitle()} />
+            <Skeleton className={styles.lineMeta()} />
           </div>
         </div>
       ))}
@@ -669,18 +780,34 @@ export function ConfirmDialog({
 
 // ---- footer ------------------------------------------------------------------
 
+export const footerStyles = tv({
+  slots: {
+    base: [
+      // The last row on the page, so its foot clears a home bar.
+      "mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line pt-6 pb-safe-6",
+      // A phone has no room for two ends of a row, so they become two rows.
+      "max-wide:flex-col max-wide:items-start",
+    ],
+    note: "m-0 text-body text-ink-muted",
+    links: "flex flex-wrap gap-x-5 gap-y-2 text-body text-ink-muted",
+  },
+});
+
 export function MarketFooter() {
+  const styles = footerStyles();
+  // In a list of nothing but links, ink alone says "link": no underlines.
+  const link = linkStyles({ plain: true });
   return (
-    <footer className="mk-footer">
-      <p className="mk-meta">© {new Date().getFullYear()} wingfoil.ie</p>
-      <nav className="mk-footer__links mk-meta" aria-label="Footer">
-        <Link className="mk-link mk-link--plain" to={paths.browse()}>
+    <footer className={styles.base()}>
+      <p className={styles.note()}>© {new Date().getFullYear()} wingfoil.ie</p>
+      <nav className={styles.links()} aria-label="Footer">
+        <Link className={link} to={paths.browse()}>
           Browse gear
         </Link>
-        <Link className="mk-link mk-link--plain" to={paths.sell()}>
+        <Link className={link} to={paths.sell()}>
           Sell your gear
         </Link>
-        <a className="mk-link mk-link--plain" href="/">
+        <a className={link} href="/">
           Back to the wind map
         </a>
       </nav>
