@@ -6,17 +6,23 @@
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
-  color: #173d49;
-  background: #83afb9;
+  color: var(--color-ink);
+  background: var(--color-ground);
   font-synthesis: none;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
-  --ink: #173d49;
-  --muted: #506a74;
-  --line: #486f8126;
-  --glass: linear-gradient(135deg, #ffffffdb, #edf7f4c9);
+  --ink: var(--color-ink);
+  --muted: var(--color-ink-muted);
+  --line: var(--color-line);
+  --glass: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-card) 86%, transparent),
+    color-mix(in srgb, var(--color-solid) 79%, transparent)
+  );
   --glass-shadow:
-    0 10px 40px #123c4b1c, inset 0 1px 0 #fff9, inset 0 -1px 0 #fff4;
+    0 10px 40px color-mix(in srgb, var(--color-ink) 11%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-card) 60%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--color-card) 27%, transparent);
 }
 * {
   box-sizing: border-box;
@@ -49,7 +55,7 @@ button:disabled {
   cursor: default;
 }
 button:enabled:hover {
-  background-color: #ffffff40;
+  background-color: color-mix(in srgb, var(--color-card) 25%, transparent);
 }
 a {
   color: inherit;
@@ -58,7 +64,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid #176b91;
+  outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
 h1,
@@ -83,7 +89,7 @@ button svg {
 .legend,
 .info-dialog {
   background: var(--glass);
-  border: 1px solid #ffffffa8;
+  border: 1px solid color-mix(in srgb, var(--color-card) 66%, transparent);
   box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   backdrop-filter: blur(28px) saturate(1.45);
@@ -100,7 +106,7 @@ button svg {
   overflow: hidden;
 }
 .map-panel {
-  background: #b8d0d7;
+  background: var(--color-sea);
 }
 .map-canvas,
 .particle-canvas {
@@ -145,7 +151,7 @@ button svg {
   align-items: center;
   gap: 7px;
   text-decoration: none;
-  color: #194d48;
+  color: var(--color-ink);
   letter-spacing: -0.9px;
   font-family: Manrope, sans-serif;
   font-size: 21px;
@@ -157,12 +163,12 @@ button svg {
 }
 .brand-domain {
   font-weight: 500;
-  color: #557871;
+  color: var(--color-ink-muted);
 }
 .prototype-tag {
   font-size: 8px;
   font-weight: 650;
-  color: #536f70;
+  color: var(--color-ink-muted);
   letter-spacing: 1.2px;
 }
 .search-panel {
@@ -176,7 +182,7 @@ button svg {
   height: 50px;
   padding: 0 14px;
   border-radius: 25px;
-  color: #4c6973;
+  color: var(--color-ink-muted);
 }
 .search-box input {
   width: 100%;
@@ -188,7 +194,7 @@ button svg {
   font-size: 13px;
 }
 .search-box input::placeholder {
-  color: #526f7a;
+  color: var(--color-ink-muted);
 }
 .search-box input:focus-visible {
   outline-offset: 6px;
@@ -213,7 +219,7 @@ button svg {
   justify-content: space-between;
   font-size: 10px;
   letter-spacing: 1.15px;
-  color: #516a71;
+  color: var(--color-ink-muted);
   font-weight: 600;
 }
 .search-results .section-label {
@@ -233,10 +239,10 @@ button svg {
   border-radius: 14px;
 }
 .spot-row:hover {
-  background: #fff8;
+  background: color-mix(in srgb, var(--color-card) 53%, transparent);
 }
 .spot-row > svg {
-  color: #567c82;
+  color: var(--color-ink-muted);
 }
 .spot-row-name {
   flex: 1;
@@ -246,7 +252,7 @@ button svg {
 .spot-row-name small {
   display: block;
   margin-top: 4px;
-  color: #526e78;
+  color: var(--color-ink-muted);
   font-size: 10px;
   font-weight: 400;
 }
@@ -256,7 +262,7 @@ button svg {
 }
 .spot-row-wind small {
   font-size: 10px;
-  color: #526e78;
+  color: var(--color-ink-muted);
 }
 .empty-spots {
   padding: 14px;
@@ -285,7 +291,7 @@ button svg {
 .map-title-chip > span {
   font-size: 9px;
   letter-spacing: 0.8px;
-  color: #44656c;
+  color: var(--color-ink-muted);
 }
 .map-title-chip i {
   width: 1px;
@@ -318,7 +324,7 @@ button svg {
   border-radius: 12px;
 }
 .model-select select:focus-visible {
-  outline: 3px solid #176b91;
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 .model-select select:disabled {
@@ -350,7 +356,7 @@ button svg {
   font-size: 12px;
 }
 .layers-button.pressed {
-  background: #e7f6f1ee;
+  background: color-mix(in srgb, var(--color-sunken) 93%, transparent);
 }
 .map-instruction {
   position: absolute;
@@ -362,14 +368,16 @@ button svg {
   border-radius: 18px;
   padding: 7px 11px;
   font-size: 10px;
-  color: #365e68;
+  /* The hint sits on the water with no surface under it, so it takes the
+     darker ink step: muted reads 2.9:1 there. */
+  color: var(--color-ink-2);
   pointer-events: none;
 }
 .map-instruction > span {
   display: inline-block;
   width: 5px;
   height: 5px;
-  background: #438d7e;
+  background: var(--color-ok);
   margin-right: 5px;
   border-radius: 50%;
 }
@@ -387,10 +395,10 @@ button svg {
   width: 36px;
   height: 38px;
   border-radius: 50%;
-  color: #365f6e;
+  color: var(--color-ink-muted);
 }
 .map-navigation button + button {
-  border-top: 1px solid #ffffff70;
+  border-top: 1px solid color-mix(in srgb, var(--color-card) 44%, transparent);
 }
 .sea-label {
   position: absolute;
@@ -399,7 +407,9 @@ button svg {
   font-size: 11px;
   line-height: 2.4;
   letter-spacing: 5px;
-  color: #234e6470;
+  /* Faded, but it is still a word on the water: 44% of the ink read 2.3:1 on
+     the sea, 75% reads 4.5:1. */
+  color: color-mix(in srgb, var(--color-ink) 75%, transparent);
   font-style: italic;
   text-align: center;
   pointer-events: none;
@@ -412,28 +422,28 @@ button svg {
   min-width: 34px;
   height: 32px;
   padding: 0 8px;
-  background: #f6fffee6;
-  border: 1px solid #fff;
-  box-shadow: 0 3px 12px #153d4833;
+  background: color-mix(in srgb, var(--color-card) 90%, transparent);
+  border: 1px solid var(--color-card);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--color-ink) 20%, transparent);
   border-radius: 16px;
   font-size: 12px;
   font-weight: 650;
-  color: #235f63;
+  color: var(--color-ink);
   font-variant-numeric: tabular-nums;
 }
 .spot-marker.active {
-  background: #205e65;
-  color: white;
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
   box-shadow:
-    0 0 0 4px #ffffff60,
-    0 4px 15px #123c4b3d;
+    0 0 0 4px color-mix(in srgb, var(--color-card) 38%, transparent),
+    0 4px 15px color-mix(in srgb, var(--color-ink) 24%, transparent);
 }
 .point-marker {
   width: 17px;
   height: 17px;
-  background: #fff;
-  border: 4px solid #266878;
-  box-shadow: 0 0 0 5px #ffffff60;
+  background: var(--color-card);
+  border: 4px solid var(--color-inverse);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-card) 38%, transparent);
   border-radius: 50%;
 }
 .maplibregl-control-container {
@@ -447,8 +457,12 @@ button svg {
 }
 .maplibregl-ctrl-attrib {
   font-size: 9px !important;
-  background: #eff8f0d9 !important;
-  color: #345763 !important;
+  background: color-mix(
+    in srgb,
+    var(--color-solid) 85%,
+    transparent
+  ) !important;
+  color: var(--color-ink-muted) !important;
   border-radius: 12px !important;
 }
 .maplibregl-ctrl-bottom-right {
@@ -474,7 +488,7 @@ button svg {
 }
 .model-info {
   font-size: 10px;
-  color: #345767;
+  color: var(--color-ink-muted);
   pointer-events: auto;
   padding: 8px 12px;
   border-radius: 20px;
@@ -491,7 +505,7 @@ button svg {
   letter-spacing: 1px;
   font-weight: 600;
   margin-bottom: 5px;
-  color: #345767;
+  color: var(--color-ink-muted);
   display: flex;
   justify-content: space-between;
 }
@@ -517,7 +531,7 @@ button svg {
   display: flex;
   justify-content: space-between;
   font-size: 8px;
-  color: #345767;
+  color: var(--color-ink-muted);
   margin-top: 4px;
 }
 .timeline {
@@ -543,22 +557,22 @@ button svg {
   padding-left: 10px;
   margin-left: 4px;
   border-left: 1px solid var(--line);
-  color: #1d6371;
+  color: var(--color-ink);
 }
 .timeline-date-dot {
   width: 5px;
   height: 5px;
-  background: #308a80;
+  background: var(--color-ok);
   border-radius: 50%;
 }
 .timeline-cadence {
   margin-left: auto;
-  color: #506c77;
+  color: var(--color-ink-muted);
   font-size: 10px;
 }
 .now-button {
-  border: 1px solid #ffffff9c;
-  background: #ffffff52;
+  border: 1px solid color-mix(in srgb, var(--color-card) 61%, transparent);
+  background: color-mix(in srgb, var(--color-card) 32%, transparent);
   border-radius: 16px;
   font-size: 10px;
   min-height: 30px;
@@ -573,12 +587,12 @@ button svg {
   height: 33px;
   width: 33px;
   flex: 0 0 33px;
-  color: white;
-  background: #245f6b;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
   border-radius: 50%;
 }
 .play-button:enabled:hover {
-  background: #174b59;
+  background: var(--color-accent-hover);
 }
 .play-button svg {
   width: 12px;
@@ -588,7 +602,7 @@ button svg {
   height: 33px;
   width: 24px;
   padding: 0;
-  color: #446b7c;
+  color: var(--color-ink-muted);
   border-radius: 50%;
 }
 .slider-track {
@@ -601,49 +615,49 @@ button svg {
   height: 6px;
   appearance: none;
   display: block;
-  background: #567e843d;
+  background: color-mix(in srgb, var(--color-ink) 24%, transparent);
   border-radius: 4px;
   cursor: pointer;
-  accent-color: #256373;
+  accent-color: var(--color-accent);
 }
 .slider-track input::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
-  border: 3px solid white;
-  background: #246578;
+  border: 3px solid var(--color-card);
+  background: var(--color-accent);
   border-radius: 50%;
-  box-shadow: 0 1px 8px #12495d55;
+  box-shadow: 0 1px 8px color-mix(in srgb, var(--color-ink) 33%, transparent);
 }
 .slider-track input::-moz-range-thumb {
   width: 10px;
   height: 10px;
-  border: 3px solid white;
-  background: #246578;
+  border: 3px solid var(--color-card);
+  background: var(--color-accent);
   border-radius: 50%;
 }
 .time-ticks {
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: #4a6a74;
+  color: var(--color-ink-muted);
   margin-top: 7px;
 }
 .timeline-days {
   margin: 8px 0 0;
-  border-top: 1px solid #486f8120;
+  border-top: 1px solid var(--color-line);
   display: flex;
   justify-content: space-around;
 }
 .timeline-days button {
   font-size: 10px;
-  color: #446670;
+  color: var(--color-ink-muted);
   padding: 9px 10px 8px;
   border-bottom: 2px solid transparent;
 }
 .timeline-days button.active {
-  border-color: #306b76;
-  color: #194e60;
+  border-color: var(--color-accent);
+  color: var(--color-ink);
   font-weight: 650;
 }
 .forecast-sheet {
@@ -668,7 +682,7 @@ button svg {
   font-size: 9px;
   letter-spacing: 1.1px;
   font-weight: 550;
-  color: #4c6e78;
+  color: var(--color-ink-muted);
 }
 .sheet-place h2 {
   font-size: 25px;
@@ -681,7 +695,7 @@ button svg {
 }
 .sheet-coordinates {
   font-size: 10px;
-  color: #4d6c78;
+  color: var(--color-ink-muted);
 }
 .sheet-current {
   display: flex;
@@ -703,14 +717,14 @@ button svg {
   font-weight: 450;
   letter-spacing: 0;
   margin-left: 7px;
-  color: #4b6c78;
+  color: var(--color-ink-muted);
 }
 .sheet-current-meta {
   display: flex;
   flex-direction: column;
   gap: 9px;
   font-size: 11px;
-  color: #365e6c;
+  color: var(--color-ink-muted);
 }
 .sheet-current-meta > span {
   display: flex;
@@ -733,21 +747,22 @@ button svg {
   display: block;
   margin-top: 5px;
   font-size: 10px;
-  color: #526f79;
+  color: var(--color-ink-muted);
 }
 .sheet-close {
   align-self: flex-start;
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #ffffff65;
-  color: #4c6c77;
+  background: color-mix(in srgb, var(--color-card) 40%, transparent);
+  color: var(--color-ink-muted);
 }
 .forecast-scroll {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
-  scrollbar-color: #72939466 transparent;
+  scrollbar-color: color-mix(in srgb, var(--color-line-strong) 40%, transparent)
+    transparent;
   position: relative;
   padding-bottom: 6px;
 }
@@ -774,16 +789,16 @@ button svg {
   left: 0;
   text-align: left;
   padding-left: 23px;
-  background: #e9f3f1;
+  background: var(--color-sunken);
   z-index: 1;
-  color: #496773;
+  color: var(--color-ink-muted);
   font-size: 11px;
 }
 .forecast-table th:first-child small {
   float: right;
   padding-left: 8px;
   font-size: 9px;
-  color: #567781;
+  color: var(--color-ink-muted);
 }
 .forecast-table thead th:first-child {
   font-size: 9px;
@@ -810,24 +825,28 @@ button svg {
 .forecast-table thead button small {
   font-size: 9px;
   font-weight: 450;
-  color: #4b6c78;
+  color: var(--color-ink-muted);
 }
 .forecast-table td.selected-hour,
 .forecast-table th.selected-hour {
-  background-color: #8abcca36;
+  background-color: color-mix(in srgb, var(--color-accent) 21%, transparent);
   box-shadow:
-    inset 1px 0 #447c8b28,
-    inset -1px 0 #447c8b28;
+    inset 1px 0 color-mix(in srgb, var(--color-accent) 16%, transparent),
+    inset -1px 0 color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 .forecast-table thead button[aria-pressed="true"] {
-  color: #115d75;
+  /* The pressed hour is also the selected column, which tints itself with the
+     accent, so the accent on top of it reads 4.4:1 (S4). The state is already
+     carried by the weight, the tint and the rule below, so the label takes the
+     ink step. */
+  color: var(--color-ink);
   font-weight: 700;
-  box-shadow: inset 0 -2px #33869a;
+  box-shadow: inset 0 -2px var(--color-accent);
 }
 .forecast-table .wind-cell {
   background-image: linear-gradient(
     0deg,
-    #559ba638 var(--wind-fill),
+    color-mix(in srgb, var(--color-sea) 22%, transparent) var(--wind-fill),
     transparent var(--wind-fill)
   );
   font-weight: 600;
@@ -837,12 +856,12 @@ button svg {
   align-items: center;
   gap: 5px;
   font-size: 9px;
-  color: #376a79;
+  color: var(--color-ink-muted);
 }
 .sheet-loading {
   font-size: 10px;
   padding: 5px 23px 9px;
-  color: #446775;
+  color: var(--color-ink-muted);
 }
 .sheet-loading button {
   text-decoration: underline;
@@ -872,13 +891,13 @@ button svg {
   font-size: 12px;
 }
 .layers-panel input {
-  accent-color: #277785;
+  accent-color: var(--color-accent);
   width: 18px;
   height: 18px;
   cursor: pointer;
 }
 .layers-panel p {
-  color: #526e79;
+  color: var(--color-ink-muted);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -895,7 +914,7 @@ button svg {
   display: flex;
   padding: 3px;
   border-radius: 15px;
-  background: #567b821c;
+  background: color-mix(in srgb, var(--color-ink) 11%, transparent);
 }
 .unit-control button {
   font-size: 11px;
@@ -903,8 +922,8 @@ button svg {
   border-radius: 12px;
 }
 .unit-control button[aria-pressed="true"] {
-  background: #fff9;
-  box-shadow: 0 1px 5px #20424a19;
+  background: color-mix(in srgb, var(--color-card) 60%, transparent);
+  box-shadow: 0 1px 5px color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 .map-loading,
 .map-error {
@@ -912,8 +931,8 @@ button svg {
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #edf7f5ed;
-  border: 1px solid #fff;
+  background: color-mix(in srgb, var(--color-solid) 93%, transparent);
+  border: 1px solid var(--color-card);
   border-radius: 23px;
   padding: 22px;
   box-shadow: var(--glass-shadow);
@@ -938,7 +957,7 @@ button svg {
   left: 24px;
   max-width: calc(100% - 100px);
   padding: 10px 15px;
-  background: #f5fbf2ed;
+  background: color-mix(in srgb, var(--color-solid) 93%, transparent);
   z-index: 8;
   display: flex;
   align-items: center;
@@ -948,14 +967,14 @@ button svg {
   box-shadow: var(--glass-shadow);
 }
 .frame-status.is-error {
-  color: #854d31;
-  background: #fff4e8;
+  color: var(--color-warn);
+  background: var(--color-warn-ground);
 }
 .spinner {
   width: 13px;
   height: 13px;
-  border: 2px solid #c0d4d4;
-  border-top-color: #286a7a;
+  border: 2px solid color-mix(in srgb, var(--color-ink) 25%, transparent);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -969,9 +988,9 @@ button svg {
   max-width: calc(100% - 340px);
   padding: 4px 8px;
   border-radius: 14px;
-  background: #eef8f0dc;
+  background: color-mix(in srgb, var(--color-solid) 86%, transparent);
   font-size: 9px;
-  color: #345663;
+  color: var(--color-ink-muted);
 }
 .site-footer > span {
   display: flex;
@@ -989,12 +1008,12 @@ button svg {
 .status-dot {
   width: 5px;
   height: 5px;
-  background: #3c8a72;
+  background: var(--color-ok);
   border-radius: 50%;
   flex-shrink: 0;
 }
 .status-dot.warning {
-  background: #bb6c23;
+  background: var(--color-warn);
 }
 .info-dialog {
   width: min(600px, calc(100% - 32px));
@@ -1005,7 +1024,7 @@ button svg {
   line-height: 1.75;
 }
 .info-dialog::backdrop {
-  background: #14344270;
+  background: var(--color-scrim);
   -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
 }
@@ -1016,7 +1035,7 @@ button svg {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #fff5;
+  background: color-mix(in srgb, var(--color-card) 33%, transparent);
 }
 .info-dialog > .force5-logo {
   margin-bottom: 18px;
@@ -1030,10 +1049,10 @@ button svg {
 .info-dialog p {
   font-size: 12px;
   margin: 14px 0;
-  color: #3c5d6a;
+  color: var(--color-ink-muted);
 }
 .info-dialog dl {
-  background: #ffffff40;
+  background: color-mix(in srgb, var(--color-card) 25%, transparent);
   border-radius: 16px;
   padding: 10px 17px;
   margin: 20px 0;
@@ -1046,7 +1065,7 @@ button svg {
   font-size: 11px;
 }
 .info-dialog dt {
-  color: #506e79;
+  color: var(--color-ink-muted);
 }
 .info-dialog dd {
   margin: 0;
@@ -1055,14 +1074,14 @@ button svg {
 .info-dialog > small {
   display: block;
   margin-top: 18px;
-  color: #4e6e7a;
+  color: var(--color-ink-muted);
   font-size: 10px;
 }
 .spot-note {
   display: flex;
   gap: 10px;
   padding: 12px;
-  background: #ffffff40;
+  background: color-mix(in srgb, var(--color-card) 25%, transparent);
   border-radius: 12px;
 }
 .source-links {
@@ -1084,13 +1103,13 @@ button svg {
   justify-content: center;
   align-items: center;
   gap: 20px;
-  background: #e6f1ef;
+  background: var(--color-ground);
   padding: 24px;
   text-align: center;
 }
 .primary-button {
-  background: #245f6b;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
   padding: 12px 22px;
   border-radius: 22px;
 }
@@ -1438,7 +1457,7 @@ button svg {
 }
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --glass: #edf5f3;
+    --glass: var(--color-solid);
   }
   .glass,
   .map-title-chip,
@@ -1455,6 +1474,6 @@ button svg {
 }
 @supports not (backdrop-filter: blur(1px)) {
   :root {
-    --glass: #edf5f3;
+    --glass: var(--color-solid);
   }
 }
