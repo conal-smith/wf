@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { buttonStyles } from "../../ui/Button";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
@@ -164,9 +165,14 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
       "sr-only",
     ].map((name) => `mk-${name}`);
     for (const name of gone)
-      // The name itself, not one that merely begins with it: `.mk-page-head`
-      // is another item's and stays.
-      expect(css, name).not.toMatch(new RegExp(`\\.${name}(?![\\w-])`));
+      // The block and the parts of it, `.mk-card`, `.mk-card__media` and
+      // `.mk-card--skeleton`, since most of what was converted was a part. Not
+      // a different name that merely begins the same way: `.mk-page-head` is
+      // another item's and stays, as does `.mk-skeleton` beside
+      // `.mk-skeleton__line`.
+      expect(css, name).not.toMatch(
+        new RegExp(`\\.${name}(?:__[\\w-]+|--[\\w-]+)?(?![\\w-])`),
+      );
     // `.mk-root` is kept as a scope, with nothing of its own left to draw.
     expect(css).toContain(".mk-root h1");
     expect(css).not.toMatch(/^\.mk-root \{/m);
@@ -186,6 +192,23 @@ describe("S2: the shell's measures", () => {
     const root = shellStyles().root().split(" ");
     for (const name of ["min-h-dvh", "flex", "flex-col", "bg-ground"])
       expect(root).toContain(name);
+  });
+
+  /*
+   * A notch in landscape and a home bar at the foot. market.css wrote three
+   * `max(…, env(safe-area-inset-*))` and they are three utilities now, so the
+   * gutter, the sticky header's top and the last row's foot are all the larger
+   * of the two. Nothing else on these pages faces a device edge.
+   */
+  it("keeps every edge that faces the device clear of it", () => {
+    const page = shellStyles().page().split(" ");
+    expect(page).toContain("px-safe-6");
+    expect(page).toContain("max-wide:px-safe-3");
+    expect(page).not.toContain("px-6");
+    expect(page).not.toContain("max-wide:px-3");
+
+    expect(headerStyles().base().split(" ")).toContain("pt-safe-3");
+    expect(footerStyles().base()).toContain("pb-safe-6");
   });
 });
 
@@ -235,6 +258,21 @@ describe("S3: what a phone drops, at 720px", () => {
     const grid = listingGridStyles().split(" ");
     expect(grid).toContain("grid-cols-cards");
     expect(grid).toContain("max-wide:grid-cols-2");
+  });
+
+  /*
+   * A thumb, not a pointer. The kit's own controls carry the minimum, so the
+   * rail's chips and the toggle already have it; the removable filter is the
+   * one control on this page that ui/ has no part for, and it is asked for
+   * here so that it does not stay 30px beside a 44px chip.
+   */
+  it("gives every control a reader taps 44px, the kit's and its own", () => {
+    expect(browseStyles().token()).toContain("pointer-coarse:min-h-touch");
+    expect(buttonStyles({ variant: "pill" })).toContain(
+      "pointer-coarse:min-h-touch",
+    );
+    // The toggle says 44 outright, as market.css did, rather than by minimum.
+    expect(browseStyles().toggle()).toContain("max-wide:h-touch");
   });
 
   it("stacks the footer's two ends", () => {

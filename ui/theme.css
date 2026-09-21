@@ -280,3 +280,41 @@
     display: none;
   }
 }
+
+/*
+ * The three edges a notch or a home bar eats into. Each is the inset the
+ * design asks for or the one the device reports, whichever is the larger, so
+ * `px-safe-6` is `px-6` on every screen but the one that needs more. The step
+ * is the spacing scale's, as it is on `px-6`, and only the edges that face the
+ * device take one: a gutter, the top of a sticky header, the foot of a page.
+ *
+ * Written here rather than in a recipe because `env()` cannot be a class, and
+ * as three functional utilities rather than one fixed pair because the value
+ * belongs where a reader of the recipe can see it. The design system says the
+ * same thing of its edge inset: always combined with the matching
+ * `env(safe-area-inset-*)`.
+ */
+@utility px-safe-* {
+  padding-left: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-left)
+  );
+  padding-right: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-right)
+  );
+}
+
+@utility pt-safe-* {
+  padding-top: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-top)
+  );
+}
+
+@utility pb-safe-* {
+  padding-bottom: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-bottom)
+  );
+}
