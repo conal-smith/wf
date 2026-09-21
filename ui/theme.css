@@ -133,11 +133,12 @@
   --color-wind-k60: #923d98;
   --color-wind-k65: #724297;
 
-  /* A mark that says what it is rather than which palette it came from, so the
-     palette does not move it: the dashed line the map draws at the present
-     hour, at the value it has always drawn (D12: the now marker is not
-     re-themed). */
+  /* Two marks that say what they are rather than which palette they came from,
+     so the palette does not move them: the dashed line the map and the dock
+     both draw at the present hour, and the gust cap on a candle, at the values
+     they have always had (D12). */
   --color-now-marker: #bf6546;
+  --color-gust: #e0803a;
 
   /* ---- type ------------------------------------------------------------ */
 
