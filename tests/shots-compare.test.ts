@@ -133,8 +133,15 @@ describe("the PNG codec", () => {
     );
     expect([shot.width, shot.height, shot.channels]).toEqual([1440, 1000, 3]);
     expect(shot.data.length).toBe(1440 * 1000 * 3);
-    // The map's own ground, away from anything the map draws over it.
-    expect([...shot.data.subarray(0, 3)]).toEqual([0xb8, 0xd0, 0xd7]);
+    // The map's own ground, away from anything the map draws over it. Two
+    // values pass: `.map-panel` draws `--color-sea` now, so the shot holds the
+    // teal one until the map items land and the integrator re-shoots, and the
+    // navy one after. The second can go once the baseline is navy; what this
+    // test is about is the codec, not the palette.
+    expect([
+      [0xb8, 0xd0, 0xd7],
+      [0x9d, 0xb0, 0xcc],
+    ]).toContainEqual([...shot.data.subarray(0, 3)]);
   });
 });
 
