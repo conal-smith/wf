@@ -81,6 +81,8 @@ const COLOURS: Record<string, string> = {
   warn: "#854d31",
   "warn-ground": "#fff4e8",
   now: "#a8442e",
+  // A mark the palette does not move: the dashed line at the present hour. D12.
+  "now-marker": "#bf6546",
 };
 
 // S7: size, line height, then weight and tracking where the step has one.
