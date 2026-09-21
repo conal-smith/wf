@@ -27,11 +27,15 @@ export const buttonStyles = tv({
         "disabled:bg-transparent disabled:shadow-none",
         HOVER,
       ],
-      link: "font-normal underline underline-offset-4 decoration-line-strong not-disabled:hover:text-ink not-disabled:hover:decoration-current",
+      // A hover names its own background even where it wants none: the site's
+      // reset lays 25% white behind `button:enabled:hover`, and a variant that
+      // stays quiet about it is the one place that white gets through.
+      link: "font-normal underline underline-offset-4 decoration-line-strong not-disabled:hover:bg-transparent not-disabled:hover:text-ink not-disabled:hover:decoration-current",
       // The destructive answer in a ConfirmDialog, and nowhere else: warm
-      // means degraded, and what it confirms cannot be taken back.
+      // means degraded, and what it confirms cannot be taken back. It lifts
+      // under the pointer and keeps its fill, rather than being washed out.
       danger:
-        "rounded-full bg-warn text-ink-inverse not-disabled:hover:shadow-marker disabled:bg-sunken",
+        "rounded-full bg-warn text-ink-inverse not-disabled:hover:bg-warn not-disabled:hover:shadow-marker disabled:bg-sunken",
     },
     size: {
       sm: "h-control-sm px-2",
