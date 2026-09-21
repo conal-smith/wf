@@ -93,6 +93,20 @@
   --color-inverse: #0b2545;
   --color-scrim: #0a1f3c73;
 
+  /* The basemap's own two fills, painted over the third-party style from TS
+     (force5/src/WindMap.tsx). `sea` above is a different job: it is the ground
+     the map floats on, what shows in a tile gap or an overscroll, and it stays
+     a step darker so the basemap reads as something laid on top of it. Land is
+     the one value the Atlantic ramp does not hold — the warm off-white the map
+     has always drawn, kept at its own value so the coast still reads. */
+  --color-basemap-water: #c3cfe2;
+  --color-basemap-land: #f0f1e8;
+
+  /* The bar a forecast cell paints behind its number, at 22%: a quantity, not
+     water. The same step as `sea`, and named apart from it so that moving the
+     ground behind the map never moves the wind grid's bars with it. */
+  --color-wash: #9db0cc;
+
   /* Lines. */
   --color-line: #0a1f3c1a;
   --color-line-strong: #7488a6;
