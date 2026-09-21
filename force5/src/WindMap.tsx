@@ -113,7 +113,13 @@ export default function WindMap({
     if (!container.current) return;
     // Once, with the map: the theme cannot move under a map that is already up.
     const basemap = basemapColours(getComputedStyle(document.documentElement));
-    if (import.meta.env.DEV && !(basemap.land && basemap.water))
+    // The dev server's mode, not the env's `DEV` flag: that one follows
+    // NODE_ENV, so a shell exporting NODE_ENV=development ships this warning in
+    // a built bundle (src/main.tsx makes the same distinction for the gallery).
+    if (
+      import.meta.env.MODE === "development" &&
+      !(basemap.land && basemap.water)
+    )
       console.warn(
         "The basemap keeps the provider's colours: ui/theme.css is not on the document.",
       );

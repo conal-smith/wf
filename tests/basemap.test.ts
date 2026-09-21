@@ -71,4 +71,23 @@ describe("the basemap's colours", () => {
     expect(paint).toContain("basemap.water");
     expect(paint).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
+
+  // The warning is for a developer who forgot the import, and a build must not
+  // carry it. `import.meta.env.DEV` follows NODE_ENV, so a machine that exports
+  // NODE_ENV=development ships it — measured, before this was the mode check:
+  // the string was in dist/assets/index-*.js. The mode is "production" for
+  // `vite build` whatever the shell says, which is why src/main.tsx guards the
+  // kit gallery the same way.
+  it("keeps its missing-theme warning out of a build", () => {
+    const source = readFileSync(
+      resolve(ROOT, "force5/src/WindMap.tsx"),
+      "utf8",
+    );
+    const warning = source.slice(
+      0,
+      source.indexOf("ui/theme.css is not on the document"),
+    );
+    expect(warning).toMatch(/import\.meta\.env\.MODE === "development"/);
+    expect(source).not.toMatch(/import\.meta\.env\.DEV/);
+  });
 });

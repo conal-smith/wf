@@ -135,3 +135,75 @@ LOG:
   colours are not in it, and the wash the split renamed is not drawn in the compact
   layout: nothing this item changes is inside a shot. No re-shoot needed. Re-shot PNGs
   restored with `git checkout -- e2e/map/__baseline__`.
+- 2026-09-21 reviewer: S1, proved on a build rather than in dev. `dist/index.html` carries
+  the theme as a parser-inserted `<link rel="stylesheet">` and the bundle as a module
+  script; the parser runs deferred scripts only once no stylesheet is blocking them, so
+  the mount effect cannot beat the theme onto the document, whichever tag is written
+  first. Checked against a slow stylesheet rather than argued: the e2e site, built and
+  served on 4415 with every `.css` response held back four seconds, still reports
+  `--color-basemap-water: #c3cfe2` on `:root` and still paints the map `#f0f1e8` 24.6% /
+  `#c3cfe2` 17.8% of the frame — wind colours off, canvas VISIBLE. Unthrottled the same
+  frame is 26.3% / 22.6%, which is the item's own measurement. With the stylesheets
+  aborted the variable is `""`, no paint property is set and nothing throws: the
+  provider's own water, which is what basemap.ts promises instead of a fallback hex.
+- 2026-09-21 reviewer: the tests bite. Five mutations, each red: `--color-basemap-land`
+  read as the water, `read()` returning "" for everything, the theme's water moved back
+  to #b8d0d7, a hex written back into WindMap's paint block, and index.html's
+  theme-color left at the old ground.
+- 2026-09-21 reviewer: the hex is not a duplicate of a variable. ui/theme.css holds no
+  ramp-step names at all — every semantic colour restates its own literal, there is no
+  `var()` anywhere in the @theme block, and the pin test asserts emitted values plus the
+  exact set of `--color-*`, so an alias would fail it rather than pass. #c3cfe2 is the
+  ramp's step 300, and the test the item added checks it against
+  design/foundations/tokens.css rather than against a third copy of the hex.
+  `--color-wash` restating `--color-sea`'s value is the split, not a copy to collapse.
+- 2026-09-21 reviewer: fixed one thing. The missing-theme warning was behind
+  `import.meta.env.DEV`, which follows NODE_ENV — src/main.tsx says exactly that where it
+  guards the kit gallery. Built on a machine with NODE_ENV=development exported, the
+  string "The basemap keeps the provider's colours" was in `dist/assets/index-*.js`; with
+  the shell clean it is dropped. It is now `import.meta.env.MODE === "development"`, which
+  is "production" for `vite build` whatever the shell says, and tests/basemap.test.ts
+  holds it there.
+- 2026-09-21 reviewer: the split's two sides, by grep. `--color-sea` is read at
+  src/styles.css:109 (`.map-panel`, the ground behind the map) and src/dock.css:588,594
+  (the tide fill and its stroke) — water in all three; `--color-wash` at src/styles.css:849
+  alone. No other reader in any file. The 36-identical compare says nothing drawn moved.
+- 2026-09-21 reviewer: D13 agreed, on my own light field and my own eyes. The field was
+  remade as the LOG describes — `.e2e` staged fresh, every u, v and gust scaled by 0.38,
+  fastest wind cell 8.6 kn (gusts reach 12.6, and the sample gust row prints "–"), built
+  and served at 4415, clock pinned to SAMPLE_CLOCK, canvas visible, at 1440 and 390.
+  Measured in CIELAB (CIEDE2000), which sRGB distance only stands in for: Play is
+  rgb(20,99,255); the nearest colour the ramp can produce anywhere in 0-65 kn is dE 9.8
+  (sRGB 84) at 3.6 kn, and the nearest wind cell actually on screen is dE 16.2 at 1440
+  and dE 19.0 at 390 (sRGB 109 and 119, which is the item's 107/118). A whole knot
+  between neighbouring cells in that row is worth a median dE 0.41 at 1440 and 0.68 at
+  390. So the accent is 25 to 45 knots' worth of colour away from the nearest reading,
+  where one knot is under half a just-noticeable difference. Looking rather than
+  measuring: at both widths Play is the only saturated mark in a frame of soft k05 blues,
+  it is a disc on the glass dock rather than on the water, and no wind mark is a disc.
+  It reads as the button that runs the forecast. The filled action stays accent.
+- 2026-09-21 reviewer: the selected hour, isolated. Measured by removing `selected-hour`
+  from the live cell and re-reading the same pixels, which is tighter than comparing two
+  cells that happen to print the same integer: the cell's body is rgb(100,157,206) at
+  1440 and rgb(110,161,207) at 390 with the class and without it — a move of 0.0, not
+  1.0. `.app-shell` is `app-shell compact-layout sheet-open` in the running build at both
+  widths, the selected wind cell's computed `background-color` is exactly its
+  `--wind-colour` (`rgba(42, 119, 184, 0.65)`), and the selection is carried by the two
+  inset accent edges. The claim holds; nothing to rule on.
+- 2026-09-21 reviewer: the second OPEN is exact and true — `background-image` computes to
+  `none` on a wind cell in the running build, so the 22% bar is drawn by nothing. It asks
+  the owner one thing (whether the rule should exist), names the file and line, and does
+  not dress a deletion up as a colour question. The first OPEN, the scrubber thumb, is
+  `input::-webkit-slider-thumb` at src/styles.css:623: accent fill, 3px card-coloured
+  ring, untouched by this item and correctly outside D13.
+- 2026-09-21 reviewer: the evidence. The three PNGs are 97 KB, 417 KB and 173 KB
+  (1440x176, 1440x1000, 390x844); the only third-party name in any of them is the
+  basemap's own required attribution line. My own shots reproduce them frame for frame.
+- 2026-09-21 reviewer: gates, re-run here. npm test 57 files, 1171 passed, 75 skipped
+  (one more than the item's run: the mode-guard case above). npm run build.
+  npm run market:api:build. npm run ui:lint clean, 82 files, probe 7 cases.
+  PREVIEW_PORT=4415 PORT=8915 npm run test:e2e: 85 passed in 4.5m.
+  PREVIEW_PORT=4415 PORT=8915 npm run map:shots then
+  npm run shots:compare -- e2e/map/__baseline__: "36 shots - 36 identical", and the
+  re-shot PNGs restored with `git checkout -- e2e/map/__baseline__`. D12 held: the diff
+  touches no wind step, no model hue and neither now-marker value.
