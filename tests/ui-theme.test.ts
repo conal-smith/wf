@@ -65,6 +65,12 @@ const COLOURS: Record<string, string> = {
   sunken: "#e1e8f3",
   inverse: "#0b2545",
   scrim: "#0a1f3c73",
+  // The basemap's two fills, and the bar a forecast cell draws behind its
+  // number. The wash is `sea`'s value under a name of its own: it is a
+  // quantity, not water.
+  "basemap-water": "#c3cfe2",
+  "basemap-land": "#f0f1e8",
+  wash: "#9db0cc",
   line: "#0a1f3c1a",
   "line-strong": "#7488a6",
   ink: "#0a1f3c",
@@ -245,6 +251,35 @@ describe("ui/theme.css: the values", () => {
       expect(variable(css, `--color-wind-${step}`), step).toBe(hex);
   });
 
+  // Plan 13.2: the basemap's water moves onto the neutral ramp, a step lighter
+  // than the ground the map floats on, so the two are read off the ramp rather
+  // than compared to a hex written here a third time.
+  it("puts the basemap's water on the ramp, a step above the ground behind the map", () => {
+    const css = build(["bg-basemap-water", "bg-sea"]);
+    expect(variable(css, "--color-basemap-water")).toBe(neutralStep(300));
+    expect(variable(css, "--color-sea")).toBe(neutralStep(400));
+  });
+
+  // The wind grid's bars were drawn with `--color-sea` while the two happened
+  // to be one value, which would have moved them the day the water moved.
+  it("keeps the forecast cell's wash off the water", () => {
+    const styles = readFileSync(resolve(ROOT, "src/styles.css"), "utf8");
+    expect(styles).toMatch(
+      /\.forecast-table \.wind-cell \{[^}]*var\(--color-wash\)/,
+    );
+    expect(styles).not.toMatch(
+      /\.forecast-table \.wind-cell \{[^}]*var\(--color-sea\)/,
+    );
+  });
+
+  // index.html cannot read a CSS variable, so the browser chrome's colour is
+  // written out there. This is the only thing holding the copy to the original.
+  it("is the colour index.html hands the browser chrome", () => {
+    const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
+    const meta = html.match(/<meta name="theme-color" content="([^"]+)"/);
+    expect(meta?.[1]).toBe(variable(build(["bg-ground"]), "--color-ground"));
+  });
+
   it.each(Object.entries(TYPE))(
     "type step %s",
     (name, [size, leading, weight, tracking]) => {
@@ -354,6 +389,23 @@ describe("ui/theme.css: the values", () => {
     }
   });
 });
+
+/**
+ * A step of the neutral ramp in the generated design tokens. The family kept
+ * its old name through the palette swap so that every alias stayed on its own
+ * step (tests/atlantic-tokens.test.ts).
+ */
+function neutralStep(step: number): string {
+  const tokens = readFileSync(
+    resolve(ROOT, "design/foundations/tokens.css"),
+    "utf8",
+  );
+  const match = tokens.match(
+    new RegExp(`--ref-color-teal-${step}: (#[0-9a-f]+);`),
+  );
+  if (!match) throw new Error(`the ramp has no step ${step}`);
+  return match[1];
+}
 
 /** `[step, hex]` for each `--sem-color-wind-*` in the generated design tokens. */
 function windRamp(): [string, string][] {

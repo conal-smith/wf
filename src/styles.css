@@ -846,7 +846,7 @@ button svg {
 .forecast-table .wind-cell {
   background-image: linear-gradient(
     0deg,
-    color-mix(in srgb, var(--color-sea) 22%, transparent) var(--wind-fill),
+    color-mix(in srgb, var(--color-wash) 22%, transparent) var(--wind-fill),
     transparent var(--wind-fill)
   );
   font-weight: 600;
