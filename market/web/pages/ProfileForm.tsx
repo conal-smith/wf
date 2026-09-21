@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Button, Checkbox } from "../../../ui";
+import { tv } from "../../../ui/tv";
 import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
@@ -8,10 +10,18 @@ import {
   TextArea,
   TextInput,
   errorMessage,
+  sharedStyles,
 } from "../components";
 import { COUNTIES, type Profile, type ProfileInput } from "../../shared/types";
 import { issuesByField, profileInputSchema } from "../../shared/validate";
 import { userInputSchema } from "../../../site/shared/validate";
+
+export const profileFormStyles = tv({
+  slots: {
+    /** The line about who can see a contact detail, under the fields. */
+    note: "m-0 text-body text-ink-muted",
+  },
+});
 
 interface Props {
   profile: Profile;
@@ -81,24 +91,27 @@ export default function ProfileForm({
     }
   };
 
+  const shared = sharedStyles();
+  const styles = profileFormStyles();
+
   return (
     <form
-      className="mk-form"
+      className={shared.form()}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <div className="mk-form__row">
+      <div className={shared.formRow()}>
         <Field
           label="Display name"
           hint="shown on your listings"
           error={errors.displayName}
-          htmlFor="mk-p-name"
+          htmlFor="profile-name"
         >
           <TextInput
-            id="mk-p-name"
+            id="profile-name"
             value={form.displayName}
             onChange={(e) => set({ displayName: e.target.value })}
             maxLength={40}
@@ -109,10 +122,10 @@ export default function ProfileForm({
           label="Home county"
           hint="optional"
           error={errors.county}
-          htmlFor="mk-p-county"
+          htmlFor="profile-county"
         >
           <Select
-            id="mk-p-county"
+            id="profile-county"
             value={form.county}
             onChange={(e) => set({ county: e.target.value })}
           >
@@ -129,10 +142,10 @@ export default function ProfileForm({
         label="Handle"
         hint="how people mention you; lowercase letters, numbers and hyphens"
         error={errors.handle}
-        htmlFor="mk-p-handle"
+        htmlFor="profile-handle"
       >
         <TextInput
-          id="mk-p-handle"
+          id="profile-handle"
           value={form.handle}
           onChange={(e) => set({ handle: e.target.value })}
           maxLength={30}
@@ -141,15 +154,15 @@ export default function ProfileForm({
           spellCheck={false}
         />
       </Field>
-      <div className="mk-form__row">
+      <div className={shared.formRow()}>
         <Field
           label="Contact email"
           hint={requireContact ? undefined : "optional until you sell"}
           error={errors.contactEmail}
-          htmlFor="mk-p-email"
+          htmlFor="profile-email"
         >
           <TextInput
-            id="mk-p-email"
+            id="profile-email"
             type="email"
             value={form.contactEmail}
             onChange={(e) => set({ contactEmail: e.target.value })}
@@ -160,10 +173,10 @@ export default function ProfileForm({
           label="Phone"
           hint="optional"
           error={errors.contactPhone}
-          htmlFor="mk-p-phone"
+          htmlFor="profile-phone"
         >
           <TextInput
-            id="mk-p-phone"
+            id="profile-phone"
             type="tel"
             value={form.contactPhone}
             onChange={(e) => set({ contactPhone: e.target.value })}
@@ -172,43 +185,37 @@ export default function ProfileForm({
           />
         </Field>
       </div>
-      <label className="mk-check">
-        <input
-          type="checkbox"
-          checked={form.contactWhatsapp}
-          disabled={!form.contactPhone}
-          onChange={(e) => set({ contactWhatsapp: e.target.checked })}
-        />
-        <span>Buyers can WhatsApp this number</span>
-      </label>
+      <Checkbox
+        checked={form.contactWhatsapp}
+        disabled={!form.contactPhone}
+        onChange={(e) => set({ contactWhatsapp: e.target.checked })}
+      >
+        Buyers can WhatsApp this number
+      </Checkbox>
       <Field
         label="About you"
         hint="optional, shown on your seller page"
         error={errors.bio}
-        htmlFor="mk-p-bio"
+        htmlFor="profile-bio"
       >
         <TextArea
-          id="mk-p-bio"
+          id="profile-bio"
           value={form.bio}
           onChange={(e) => set({ bio: e.target.value })}
           maxLength={400}
           placeholder="Where you ride, what you tend to sell, how you like to hand over gear."
         />
       </Field>
-      <p className="mk-meta">
+      <p className={styles.note()}>
         Only signed-in members can see your contact details, and only when they
         ask for them on a listing.
       </p>
       {errors._ && <Notice kind="warn">{errors._}</Notice>}
       {saved && <Notice>Profile saved.</Notice>}
-      <div className="mk-form__actions">
-        <button
-          type="submit"
-          className="f5-button f5-button--primary f5-button--lg"
-          disabled={busy}
-        >
+      <div className={shared.formActions()}>
+        <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? "Saving…" : (submitLabel ?? "Save profile")}
-        </button>
+        </Button>
       </div>
     </form>
   );
