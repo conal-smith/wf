@@ -1,12 +1,13 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: s
 criticality: normal
 risk: normal
 epic: community-forum
 iteration: 2
 dependsOn: map-theme-styles-compact, map-theme-dock
+updated: 2026-09-21T01:26:49.315Z
 ---
 
 # Basemap water colour and the accent check
@@ -207,3 +208,4 @@ LOG:
   npm run shots:compare -- e2e/map/__baseline__: "36 shots - 36 identical", and the
   re-shot PNGs restored with `git checkout -- e2e/map/__baseline__`. D12 held: the diff
   touches no wind step, no model hue and neither now-marker value.
+- 2026-09-21 integrator: merged into community-forum-2, no conflicts. On the merged branch: npm test 1223 pass, build, market:api:build, ui:lint green. test:e2e was 85 pass on the reviewed branch; the merged branch gets its full run at final integration, when no other agent is loading the machine. Note for retire-force5-bundle: tests/ui-theme.test.ts reads design/foundations/tokens.css, which that item deletes.
