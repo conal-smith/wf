@@ -127,7 +127,7 @@ describe("S8: Tailwind and ui/ only", () => {
       expect(read(file), file).not.toMatch(/className="/);
   });
 
-  it("holds no stylesheet, and imports none, nor anything from design/", () => {
+  it("holds no stylesheet, and imports none, nor anything from the design bundle", () => {
     expect(sources.filter((f) => /\.(css|scss|less)$/.test(f))).toEqual([]);
     for (const file of code) {
       expect(read(file), file).not.toMatch(/import\s+["'][^"']+\.css["']/);

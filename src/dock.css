@@ -2,7 +2,7 @@
  * Forecast dock: toolbar, shared time header, blend and candle charts, glyph
  * rows and the display filter.
  *
- * Written against design/foundations/principles.md. The rules that matter here:
+ * Written against docs/DESIGN_PRINCIPLES.md. The rules that matter here:
  *   - one accent per view: Play keeps it, everything else is quiet until hover;
  *   - structure is surfaces and hairlines, never boxes;
  *   - no glass inside glass: the filter is a solid raised surface;

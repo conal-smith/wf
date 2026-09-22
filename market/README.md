@@ -203,10 +203,13 @@ the community forum epic): every design value comes from `ui/theme.css`, and
 each page keeps its recipes beside what it draws (`browseStyles` in
 `pages/BrowsePage.tsx`, `listingStyles`, `sellerStyles`, `sellStyles`,
 `meStyles`, and the shared ones in `components.tsx`). There is no product
-stylesheet; `market/web/shell.test.ts` asserts there is none. The one piece of
-the Force5 bundle still on these pages is the site menu in the header, which
-is force5's and brings its own stylesheet (`force5/src/siteMenu.css`); the
-header asks it to stand on a card (`ground="content"`) rather than on glass.
+stylesheet; `market/web/shell.test.ts` asserts there is none. The site menu in
+the header is force5's (`force5/src/SiteMenu.tsx`) and is drawn from the same
+kit and theme; the header asks it to stand on a card (`ground="content"`),
+which gives it the card pill and a solid panel rather than glass. The rules
+the theme cannot hold (one filled action per view, what warm and the wind
+colours mean, the ceilings) are in
+[`docs/DESIGN_PRINCIPLES.md`](../docs/DESIGN_PRINCIPLES.md).
 
 ## Not yet built
 

@@ -884,7 +884,7 @@ describe("sell/me S3: the account's tabs", () => {
   it("keeps the count inside the tab, as a number", () => {
     const count = meStyles().count().split(" ");
     expect(count).toContain("text-caption");
-    // At the tab's own leading and weight, as design/'s segmented drew it:
+    // At the tab's own leading and weight, as the design bundle's segmented drew it:
     // a caption-sized number in the muted ink, and nothing else about it.
     expect(count).toContain("leading-tight");
     expect(count).not.toContain("font-normal");
