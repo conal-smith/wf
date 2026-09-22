@@ -16,7 +16,11 @@ import {
   ListingGrid,
   listingGridStyles,
   MarketFooter,
+  RatingPicker,
   ratingStyles,
+  SaveButton,
+  SellerRating,
+  Stars,
 } from "./components";
 import { shellStyles } from "./MarketApp";
 import { browseStyles } from "./pages/BrowsePage";
@@ -177,8 +181,12 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
       "pages/ListingPage.tsx",
       "pages/SellerPage.tsx",
     ];
+    // Quoted, or a string in braces, or a string handed to a recipe as its
+    // className: `className={"f5-button"}` is the same literal as the first.
+    const literal =
+      /className(?:=|:\s*|=\{\s*)(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g;
     const literals = files.flatMap((file) =>
-      [...read(file).matchAll(/className="([^"]*)"/g)].map((m) => m[1]),
+      [...read(file).matchAll(literal)].map((m) => m[1] ?? m[2] ?? m[3]),
     );
     expect(literals).toEqual([
       "mk-empty__actions",
@@ -194,6 +202,15 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
       card("active", { saved: true }),
       html(createElement(ListingGrid, { listings: [] })),
       html(createElement(GridSkeleton, { count: 1 })),
+      // The rating's three faces and the save toggle, which the listing and
+      // seller pages draw and components.tsx declares beside parts it keeps.
+      html(createElement(Stars, { value: 3 })),
+      html(createElement(Stars, { value: null })),
+      html(createElement(RatingPicker, { value: 2, onChange: () => {} })),
+      html(createElement(SellerRating, { seller: sellerOf(0) })),
+      html(createElement(SellerRating, { seller: sellerOf(4) })),
+      html(createElement(SaveButton, { saved: true, onToggle: () => {} })),
+      html(createElement(SaveButton, { saved: false, onToggle: () => {} })),
     ];
     for (const out of rendered) {
       expect(out).not.toMatch(/class="[^"]*\bmk-/);
@@ -651,6 +668,13 @@ function listingOf(status: Listing["status"], over: Partial<Listing>): Listing {
     ...over,
   };
 }
+
+/** The seller on that listing, rated this many times (0: not yet rated). */
+const sellerOf = (ratingCount: number) => ({
+  ...listingOf("active", {}).seller,
+  ratingAvg: ratingCount ? 4.5 : null,
+  ratingCount,
+});
 
 const card = (status: Listing["status"], over: Partial<Listing> = {}) =>
   html(createElement(ListingCard, { listing: listingOf(status, over) }));
