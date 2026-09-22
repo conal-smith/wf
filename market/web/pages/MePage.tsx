@@ -60,9 +60,13 @@ export const meStyles = tv({
      * A row of words rather than a row of controls, as the browse rail's chips
      * are: the body step, and the taller track market.css drew for them.
      */
-    tab: "h-8.5 px-3 text-body font-semibold no-underline",
-    /** How many are saved, in the tab that holds them. Not a badge: a number. */
-    count: "text-caption font-normal text-ink-muted",
+    tab: "h-8.5 px-3 text-body leading-tight font-semibold no-underline",
+    /**
+     * How many are saved, in the tab that holds them: the caption step at the
+     * tab's own leading and weight, in the muted ink. Not the kit's Count,
+     * which is a filled badge for what has not been read yet.
+     */
+    count: "text-caption leading-tight text-ink-muted",
 
     // ---- my listings --------------------------------------------------------
 
