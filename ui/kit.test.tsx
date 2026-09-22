@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { avatarStyles } from "./Avatar";
 import { buttonStyles } from "./Button";
+import { checkboxStyles } from "./Checkbox";
 import { chipStyles } from "./Chip";
 import { controlStyles } from "./control";
 import { countStyles } from "./Count";
@@ -26,6 +27,7 @@ import { RING, RING_WITHIN } from "./tv";
 const {
   Avatar,
   Button,
+  Checkbox,
   Chip,
   ConfirmDialog,
   Count,
@@ -49,6 +51,7 @@ const {
 const RECIPES = {
   avatarStyles,
   buttonStyles,
+  checkboxStyles,
   chipStyles,
   controlStyles,
   countStyles,
@@ -139,7 +142,7 @@ describe("the kit is styled only from the theme", () => {
       expect(read(file), file).not.toMatch(/className="/);
   });
 
-  it("imports nothing from design/, and no stylesheet", () => {
+  it("imports nothing from the design bundle, and no stylesheet", () => {
     for (const file of sources) {
       expect(read(file), file).not.toMatch(/from\s+["'][^"']*design\//);
       expect(read(file), file).not.toMatch(/import\s+["'][^"']+\.css["']/);
@@ -148,12 +151,13 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the nineteen components, by name", () => {
+  it("is the twenty components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
         "Avatar",
         "Button",
+        "Checkbox",
         "Chip",
         "ConfirmDialog",
         "Count",
@@ -180,14 +184,15 @@ describe("S2: what ui/ exports", () => {
       "Button",
       buttonStyles,
       "variant",
-      ["quiet", "primary", "pill", "link", "danger"],
+      ["quiet", "primary", "pill", "raised", "link", "danger"],
     ],
     ["Button", buttonStyles, "size", ["sm", "md", "lg"]],
     ["Button", buttonStyles, "icon", ["true"]],
-    ["Button", buttonStyles, "pressed", ["true"]],
-    ["Chip", chipStyles, "tone", ["neutral", "warn"]],
+    ["Button", buttonStyles, "pressed", ["true", "worded"]],
+    ["Chip", chipStyles, "tone", ["neutral", "warn", "glass"]],
     ["Chip", chipStyles, "eyebrow", ["true"]],
     ["Pane", paneStyles, "kind", ["card", "sunken"]],
+    ["Pane", paneStyles, "standing", ["true"]],
     ["Avatar", avatarStyles, "size", ["sm", "md", "lg"]],
   ] as const)("%s has %s: %j", (_, recipe, variant, values) => {
     const variants = (recipe as unknown as { variants: Record<string, object> })
@@ -223,11 +228,20 @@ describe("S3: the content ground is the default", () => {
     expect(chipStyles({ tone: "warn" })).toContain("bg-warn-ground text-warn");
   });
 
-  it("only Surface is glass", () => {
+  // Glass is for what is laid over something else that is worth seeing: the
+  // moving map, or a photograph. A Surface is the first; a Chip's `glass` tone
+  // is the second, and a badge on a listing's cover is the only thing that
+  // asks for it. Nothing else in the kit may reach for it, and a chip's own
+  // default stays sunken (above).
+  it("only Surface and a glass Chip are glass", () => {
     for (const [name, recipe] of Object.entries(RECIPES)) {
       const glass = classesOf(recipe as Recipe).some((c) => /glass/.test(c));
-      expect(glass, name).toBe(name === "surfaceStyles");
+      expect(glass, name).toBe(
+        name === "surfaceStyles" || name === "chipStyles",
+      );
     }
+    expect(chipStyles({ tone: "glass" })).toContain("bg-glass");
+    expect(chipStyles()).not.toContain("glass");
   });
 });
 
@@ -237,6 +251,7 @@ describe("S4: states", () => {
       "quiet",
       "primary",
       "pill",
+      "raised",
       "link",
       "danger",
     ] as const)
@@ -282,11 +297,38 @@ describe("S4: states", () => {
       expect(item).toContain(name);
   });
 
+  /*
+   * The one exception, and it is not a hole: a toggle whose label changes with
+   * it — Save becomes Saved, its heart filled in — has said so in words and in
+   * a mark before the box is asked. Filling it as well would put a second
+   * filled control on a view that is allowed one.
+   */
+  it("a worded toggle keeps its quiet box, and still says pressed", () => {
+    const worded = buttonStyles({ variant: "pill", pressed: "worded" });
+    expect(worded).toBe(buttonStyles({ variant: "pill" }));
+    for (const name of ["bg-inverse", "font-bold", "text-ink-inverse"])
+      expect(worded).not.toContain(name);
+    expect(html(<Button pressed="worded">Saved</Button>)).toContain(
+      'aria-pressed="true"',
+    );
+  });
+
+  // A pane that is the page's own box rather than one of a column of them.
+  it("a standing pane lifts off the ground and takes the wider inset", () => {
+    const standing = paneStyles({ standing: true }).split(" ");
+    for (const name of ["p-6", "shadow-control", "max-wide:p-5"])
+      expect(standing).toContain(name);
+    expect(standing).not.toContain("p-5");
+    expect(paneStyles().split(" ")).toContain("p-5");
+    expect(paneStyles()).not.toContain("shadow-control");
+  });
+
   it("hover and disabled are written for every button", () => {
     for (const variant of [
       "quiet",
       "primary",
       "pill",
+      "raised",
       "link",
       "danger",
     ] as const) {
@@ -298,6 +340,24 @@ describe("S4: states", () => {
     }
   });
 
+  /*
+   * The reset's `button:enabled:hover` lays 25% white behind anything that does
+   * not name a background of its own, so every variant names one — including
+   * the two whose answer is "the one it already has". `link` is a box the size
+   * of its words and would take a white patch behind them; `danger` would take
+   * one over the warm fill it is drawn in.
+   */
+  it.each([
+    ["quiet", "not-disabled:hover:bg-sunken"],
+    ["primary", "not-disabled:hover:bg-accent-hover"],
+    ["pill", "not-disabled:hover:bg-sunken"],
+    ["raised", "not-disabled:hover:bg-card/55"],
+    ["link", "not-disabled:hover:bg-transparent"],
+    ["danger", "not-disabled:hover:bg-warn"],
+  ] as const)("%s names the background its hover has", (variant, name) => {
+    expect(buttonStyles({ variant }).split(" ")).toContain(name);
+  });
+
   // The epic's tap-target rule: 44px on a touch device, whatever the size.
   it("every control is a touch target under pointer: coarse", () => {
     for (const size of ["sm", "md", "lg"] as const) {
@@ -307,7 +367,7 @@ describe("S4: states", () => {
       expect(icon, size).toContain("pointer-coarse:min-h-touch");
       expect(icon, size).toContain("pointer-coarse:min-w-touch");
     }
-    for (const size of ["md", "lg"] as const)
+    for (const size of ["md", "lg", "hero"] as const)
       expect(searchFieldStyles({ size }).base().split(" "), size).toContain(
         "pointer-coarse:min-h-touch",
       );
@@ -322,6 +382,16 @@ describe("S4: states", () => {
     const link = buttonStyles({ variant: "link" }).split(" ");
     expect(link).toContain("pointer-coarse:min-h-0");
     expect(link).not.toContain("pointer-coarse:min-h-touch");
+    // ...but it is still a thumb's target: a touch-tall band over the words.
+    for (const name of [
+      "relative",
+      "pointer-coarse:before:absolute",
+      "pointer-coarse:before:inset-x-0",
+      "pointer-coarse:before:top-1/2",
+      "pointer-coarse:before:h-touch",
+      "pointer-coarse:before:-translate-y-1/2",
+    ])
+      expect(link, name).toContain(name);
   });
 
   it("says pressed to a screen reader too", () => {
@@ -341,7 +411,13 @@ describe("S5: one filled control", () => {
       .filter(([, recipe]) => classesOf(recipe as Recipe).includes("bg-accent"))
       .map(([name]) => name);
     expect(holders).toEqual(["buttonStyles"]);
-    for (const variant of ["quiet", "pill", "link", "danger"] as const)
+    for (const variant of [
+      "quiet",
+      "pill",
+      "raised",
+      "link",
+      "danger",
+    ] as const)
       expect(buttonStyles({ variant }), variant).not.toContain("bg-accent");
     expect(buttonStyles({ variant: "primary" })).toContain("bg-accent");
   });
@@ -641,6 +717,14 @@ describe("the components, rendered", () => {
     expect(html(<Surface role="region" />)).toContain("backdrop-blur-glass");
   });
 
+  // Glass over the map is one glass: the Surface saturates what is behind it
+  // by exactly what the map's own chrome does, so a panel beside it matches.
+  it("Surface saturates the map behind it as the map's glass does", () => {
+    const map = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
+    expect(map).toMatch(/backdrop-filter: blur\(28px\) saturate\(1\.45\);/);
+    expect(surfaceStyles().split(" ")).toContain("backdrop-saturate-145");
+  });
+
   it("Avatar draws initials, or the photo with no second telling", () => {
     expect(initials("Aoife Ní Bhriain")).toBe("AB");
     expect(initials("  conor ")).toBe("C");
@@ -718,6 +802,23 @@ describe("the components, rendered", () => {
     expect(wrong).toMatch(/role="alert">Give it a title</);
   });
 
+  /*
+   * The measures the design bundle always drew these at, which the marketplace's
+   * forms were laid out from and are held to (market-tw-sell-me): a label at
+   * the label leading (1.3, not a paragraph's 1.5), a text area three large
+   * controls tall, and an empty state's icon well a large control and a gap
+   * across. Each is a box that moves every field or line under it.
+   */
+  it("Field, TextArea and Empty keep the design bundle's measures", () => {
+    const field = fieldStyles();
+    expect(field.label().split(" ")).toContain("leading-tight");
+    expect(field.hint().split(" ")).toContain("leading-tight");
+    expect(controlStyles({ kind: "area" }).input().split(" ")).toContain(
+      "min-h-34.5",
+    );
+    expect(emptyStyles().icon().split(" ")).toContain("size-14.5");
+  });
+
   it("TextInput, TextArea and Select keep the native element", () => {
     const input = html(<TextInput prefix="€" active placeholder="0" />);
     expect(input).toContain("€");
@@ -732,6 +833,37 @@ describe("the components, rendered", () => {
     expect(select).toMatch(/<select /);
     expect(select).toContain("appearance-none");
     expect(select).toMatch(/<svg [^>]*aria-hidden="true"/);
+  });
+
+  /*
+   * The tick is what says checked: a mark that is there or is not, which no
+   * colour is needed to read. So the fill under it is the kit's ink and never
+   * the accent — the accent is the one filled action on a view, and this is
+   * not it. The whole row is the label, and the label is part of the target.
+   */
+  it("Checkbox is a native box, named, and not drawn in the accent", () => {
+    const markup = html(
+      <Checkbox checked readOnly>
+        Buyers can message this number
+      </Checkbox>,
+    );
+    expect(markup).toMatch(/^<label /);
+    expect(markup).toMatch(/<input [^>]*type="checkbox"/);
+    expect(markup).toContain("Buyers can message this number");
+    const classes = checkboxStyles();
+    expect(classes.input().split(" ")).toContain("accent-inverse");
+    expect(classes.input()).not.toContain("accent-accent");
+    // A row a thumb has to find, and one ring, the kit's.
+    expect(classes.base().split(" ")).toContain("min-h-touch");
+    expect(classes.input()).toContain(RING);
+  });
+
+  it("Checkbox says disabled through the whole row", () => {
+    const markup = html(
+      <Checkbox disabled>Buyers can message this number</Checkbox>,
+    );
+    expect(markup).toMatch(/<input [^>]*disabled=""/);
+    expect(checkboxStyles().base()).toContain("has-disabled:text-ink-disabled");
   });
 
   it("Segmented is a named group with exactly one pressed", () => {

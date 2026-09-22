@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "tailwindcss";
 import { beforeAll, describe, expect, it } from "vitest";
+import { PALETTE } from "../force5/src/weather";
 
 /**
  * `ui/theme.css` is the only place a design value is written down, so what it
@@ -65,6 +66,12 @@ const COLOURS: Record<string, string> = {
   sunken: "#e1e8f3",
   inverse: "#0b2545",
   scrim: "#0a1f3c73",
+  // The basemap's two fills, and the bar a forecast cell draws behind its
+  // number. The wash is `sea`'s value under a name of its own: it is a
+  // quantity, not water.
+  "basemap-water": "#c3cfe2",
+  "basemap-land": "#f0f1e8",
+  wash: "#9db0cc",
   line: "#0a1f3c1a",
   "line-strong": "#7488a6",
   ink: "#0a1f3c",
@@ -81,6 +88,10 @@ const COLOURS: Record<string, string> = {
   warn: "#854d31",
   "warn-ground": "#fff4e8",
   now: "#a8442e",
+  // Two marks the palette does not move: the dashed line at the present hour,
+  // and the gust cap on a candle. D12.
+  "now-marker": "#bf6546",
+  gust: "#e0803a",
 };
 
 // S7: size, line height, then weight and tracking where the step has one.
@@ -218,7 +229,7 @@ describe("ui/theme.css: the values", () => {
     expect(declared.sort()).toEqual(expected.sort());
   });
 
-  it("copies the wind ramp verbatim from the design tokens", () => {
+  it("copies the wind ramp verbatim from the PALETTE that paints the map", () => {
     const ramp = windRamp();
     expect(ramp.map(([step]) => step)).toEqual([
       "k00",
@@ -239,6 +250,35 @@ describe("ui/theme.css: the values", () => {
     const css = build(ramp.map(([step]) => `bg-wind-${step}`));
     for (const [step, hex] of ramp)
       expect(variable(css, `--color-wind-${step}`), step).toBe(hex);
+  });
+
+  // Plan 13.2: the basemap's water moves onto the neutral ramp, a step lighter
+  // than the ground the map floats on, so the two are read off the ramp rather
+  // than compared to a hex written here a third time.
+  it("puts the basemap's water on the ramp, a step above the ground behind the map", () => {
+    const css = build(["bg-basemap-water", "bg-sea"]);
+    expect(variable(css, "--color-basemap-water")).toBe(neutralStep(300));
+    expect(variable(css, "--color-sea")).toBe(neutralStep(400));
+  });
+
+  // The wind grid's bars were drawn with `--color-sea` while the two happened
+  // to be one value, which would have moved them the day the water moved.
+  it("keeps the forecast cell's wash off the water", () => {
+    const styles = readFileSync(resolve(ROOT, "src/styles.css"), "utf8");
+    expect(styles).toMatch(
+      /\.forecast-table \.wind-cell \{[^}]*var\(--color-wash\)/,
+    );
+    expect(styles).not.toMatch(
+      /\.forecast-table \.wind-cell \{[^}]*var\(--color-sea\)/,
+    );
+  });
+
+  // index.html cannot read a CSS variable, so the browser chrome's colour is
+  // written out there. This is the only thing holding the copy to the original.
+  it("is the colour index.html hands the browser chrome", () => {
+    const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
+    const meta = html.match(/<meta name="theme-color" content="([^"]+)"/);
+    expect(meta?.[1]).toBe(variable(build(["bg-ground"]), "--color-ground"));
   });
 
   it.each(Object.entries(TYPE))(
@@ -351,14 +391,39 @@ describe("ui/theme.css: the values", () => {
   });
 });
 
-/** `[step, hex]` for each `--sem-color-wind-*` in the generated design tokens. */
+/**
+ * The navy ramp as the Atlantic ruling lists it (plan 13.1, and the ruling of
+ * 2026-09-20 in docs/DESIGN_PRINCIPLES.md), step by step. The theme names the
+ * steps it uses by role; this is what those roles are steps of.
+ */
+const NAVY: Record<number, string> = {
+  50: "#f4f6fa",
+  100: "#eef2f9",
+  200: "#e1e8f3",
+  300: "#c3cfe2",
+  400: "#9db0cc",
+  500: "#7488a6",
+  600: "#4a607c",
+  700: "#1f3a5c",
+  800: "#0a1f3c",
+  900: "#081830",
+  950: "#050f20",
+};
+function neutralStep(step: number): string {
+  const hex = NAVY[step];
+  if (!hex) throw new Error(`the ramp has no step ${step}`);
+  return hex;
+}
+
+/**
+ * `[step, hex]` for each wind band, read from `PALETTE` in
+ * force5/src/weather.ts: the ramp that actually paints the map, the forecast
+ * cells and the wind fills, which the theme's `--color-wind-*` must copy.
+ */
 function windRamp(): [string, string][] {
-  const tokens = readFileSync(
-    resolve(ROOT, "design/foundations/tokens.css"),
-    "utf8",
-  );
-  const root = tokens.slice(0, tokens.indexOf("}"));
-  return [...root.matchAll(/--sem-color-wind-(k\d+): (#[0-9a-f]+);/g)].map(
-    (m) => [m[1], m[2]],
-  );
+  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  return PALETTE.map(([knots, [r, g, b]]) => [
+    `k${String(knots).padStart(2, "0")}`,
+    `#${hex(r)}${hex(g)}${hex(b)}`,
+  ]);
 }

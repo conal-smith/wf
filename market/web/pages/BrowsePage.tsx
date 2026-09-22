@@ -1,5 +1,8 @@
-import { Search, SearchX, SlidersHorizontal, X } from "lucide-react";
+import { SearchX, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button, SearchField, Select, TextInput } from "../../../ui";
+import { buttonStyles } from "../../../ui/Button";
+import { RING, tv } from "../../../ui/tv";
 import { useApi } from "../api";
 import {
   Empty,
@@ -7,10 +10,9 @@ import {
   ListingGrid,
   LoadError,
   Pager,
-  Select,
-  TextInput,
   categoryLabel,
   conditionLabel,
+  sharedStyles,
   useAsync,
   usePageTitle,
 } from "../components";
@@ -26,6 +28,61 @@ import {
   parseListingQuery,
   parsePriceInput,
 } from "../../shared/validate";
+
+export const browseStyles = tv({
+  slots: {
+    hero: "flex flex-col gap-5 pt-3 max-wide:gap-3 max-wide:pt-0",
+    title: "m-0 text-title text-balance text-ink",
+    search: "w-full max-w-dialog-wide",
+    rail: [
+      "flex flex-wrap gap-2",
+      // One line of categories that scrolls, bleeding to the screen edge so
+      // the cut-off chip says there is more.
+      "max-wide:-mx-3 max-wide:flex-nowrap max-wide:overflow-x-auto max-wide:scrollbar-none max-wide:px-3 max-wide:py-1",
+    ],
+    // Shorter and plainer than a pill elsewhere: a rail of them is a line of
+    // words, not a row of raised controls.
+    chip: "h-8.5 px-3 text-body font-semibold shadow-none",
+    filters: "flex flex-wrap items-center gap-2",
+    // The way in to the filters on a phone, and nothing at all above it.
+    toggle: [
+      "hidden",
+      "max-wide:inline-flex max-wide:h-touch max-wide:flex-1 max-wide:shrink",
+      "max-wide:rounded-control max-wide:border-line-strong max-wide:text-prose max-wide:shadow-none",
+    ],
+    panel:
+      "flex flex-auto flex-wrap items-center gap-2 max-wide:order-3 max-wide:hidden max-wide:basis-full",
+    select: "grow-0 shrink basis-50",
+    price: "flex items-center gap-1 text-ink-muted",
+    priceField: "w-28 max-wide:w-auto max-wide:flex-1",
+    sort: "ml-auto inline-flex items-center gap-2 max-wide:ml-0 max-wide:flex-1",
+    sortField: "min-w-43 max-wide:min-w-0 max-wide:flex-1",
+    head: "flex min-h-control-md flex-wrap items-center justify-between gap-x-5 gap-y-2",
+    count: "m-0 text-lead",
+    active: "flex flex-auto flex-wrap items-center gap-x-2 gap-y-1",
+    // A removable filter: the chip is the button. It is the one control on
+    // this page the kit has no part for, so it carries the kit's own coarse
+    // minimum by hand — a filter is taken off with a thumb as often as the
+    // rail chip beside it is put on.
+    token: [
+      "inline-flex h-control-sm items-center gap-1 rounded-full border-0 bg-sunken pr-2 pl-3",
+      "font-sans text-body font-semibold text-ink-2 cursor-pointer",
+      "transition-colors duration-fast pointer-coarse:min-h-touch",
+      "not-disabled:hover:bg-line-strong not-disabled:hover:text-ink-inverse",
+      RING,
+    ],
+  },
+  variants: {
+    // Below the toggle's breakpoint the folded filters unfold into a pane of
+    // their own, under the row that opened them.
+    open: {
+      true: {
+        panel:
+          "max-wide:grid max-wide:grid-cols-1 max-wide:gap-3 max-wide:rounded-surface max-wide:bg-sunken max-wide:p-3",
+      },
+    },
+  },
+});
 
 export default function BrowsePage() {
   usePageTitle("Second-hand wingfoil gear");
@@ -70,6 +127,7 @@ export default function BrowsePage() {
   };
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const styles = browseStyles({ open: filtersOpen });
 
   const active = Boolean(
     query.q ||
@@ -141,83 +199,83 @@ export default function BrowsePage() {
 
   return (
     <>
-      <section className="mk-hero" aria-labelledby="mk-browse-title">
-        <h1 className="mk-title" id="mk-browse-title">
+      <section className={styles.hero()} aria-labelledby="browse-title">
+        <h1 className={styles.title()} id="browse-title">
           Second-hand wingfoil gear, across Ireland
         </h1>
         <form
-          className="f5-search mk-search"
+          className={styles.search()}
           role="search"
           onSubmit={(e) => {
             e.preventDefault();
             update({ q: text || undefined });
           }}
         >
-          <Search size={20} aria-hidden="true" />
-          <input
-            type="search"
+          <SearchField
+            size="hero"
             enterKeyHint="search"
             aria-label="Search listings"
             placeholder="Search by brand, model or size"
             value={text}
             onChange={(e) => setText(e.target.value)}
-          />
-          {text && (
-            <button
-              type="button"
-              className="f5-button f5-button--icon"
-              aria-label="Clear search"
-              onClick={() => setText("")}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          )}
+          >
+            {text && (
+              <Button
+                icon
+                aria-label="Clear search"
+                onClick={() => setText("")}
+              >
+                <X size={16} aria-hidden="true" />
+              </Button>
+            )}
+          </SearchField>
         </form>
       </section>
 
-      <div className="mk-rail" role="group" aria-label="Category">
-        <button
-          type="button"
-          className="f5-button f5-button--pill"
-          aria-pressed={!query.category}
+      <div className={styles.rail()} role="group" aria-label="Category">
+        <Button
+          variant="pill"
+          className={styles.chip()}
+          pressed={!query.category}
           onClick={() => update({ category: undefined })}
         >
           All gear
-        </button>
+        </Button>
         {CATEGORIES.map((c) => (
-          <button
+          <Button
             key={c.id}
-            type="button"
-            className="f5-button f5-button--pill"
-            aria-pressed={query.category === c.id}
+            variant="pill"
+            className={styles.chip()}
+            pressed={query.category === c.id}
             title={c.hint}
             onClick={() =>
               update({ category: query.category === c.id ? undefined : c.id })
             }
           >
             {c.label}
-          </button>
+          </Button>
         ))}
       </div>
 
-      <div className="mk-filters" data-open={filtersOpen}>
-        <button
-          type="button"
-          className="f5-button f5-button--pill mk-filters__toggle"
+      <div className={styles.filters()}>
+        <Button
+          variant="pill"
+          className={styles.toggle()}
           aria-expanded={filtersOpen}
-          aria-controls="mk-filters-panel"
+          aria-controls="browse-filters"
           onClick={() => setFiltersOpen((o) => !o)}
         >
           <SlidersHorizontal size={16} aria-hidden="true" />
           Filters{folded ? ` (${folded})` : ""}
-        </button>
+        </Button>
         <div
-          className="mk-filters__panel"
-          id="mk-filters-panel"
+          className={styles.panel()}
+          id="browse-filters"
           role="group"
           aria-label="Filters"
         >
           <Select
+            className={styles.select()}
             aria-label="County"
             active={Boolean(query.county)}
             value={query.county ?? ""}
@@ -235,6 +293,7 @@ export default function BrowsePage() {
             ))}
           </Select>
           <Select
+            className={styles.select()}
             aria-label="Condition"
             active={Boolean(query.condition)}
             value={query.condition ?? ""}
@@ -252,8 +311,9 @@ export default function BrowsePage() {
               </option>
             ))}
           </Select>
-          <div className="mk-price-range" role="group" aria-label="Price">
+          <div className={styles.price()} role="group" aria-label="Price">
             <TextInput
+              className={styles.priceField()}
               aria-label="Minimum price in euro"
               prefix="€"
               inputMode="numeric"
@@ -266,6 +326,7 @@ export default function BrowsePage() {
             />
             <span aria-hidden="true">–</span>
             <TextInput
+              className={styles.priceField()}
               aria-label="Maximum price in euro"
               prefix="€"
               inputMode="numeric"
@@ -278,8 +339,9 @@ export default function BrowsePage() {
             />
           </div>
         </div>
-        <div className="mk-sort">
+        <div className={styles.sort()}>
           <Select
+            className={styles.sortField()}
             aria-label="Sort by"
             value={query.sort}
             onChange={(e) =>
@@ -294,19 +356,19 @@ export default function BrowsePage() {
       </div>
 
       {!result.error && (
-        <div className="mk-results-head">
-          <h2 className="mk-results-head__count" aria-live="polite">
+        <div className={styles.head()}>
+          <h2 className={styles.count()} aria-live="polite">
             {total == null
               ? "Loading listings…"
               : `${total.toLocaleString("en-IE")} listing${total === 1 ? "" : "s"}`}
           </h2>
           {tokens.length > 0 && (
-            <div className="mk-results-head__active">
+            <div className={styles.active()}>
               {tokens.map((t) => (
                 <button
                   key={t.key}
                   type="button"
-                  className="mk-token"
+                  className={styles.token()}
                   aria-label={`Remove filter: ${t.label}`}
                   onClick={t.remove}
                 >
@@ -315,13 +377,9 @@ export default function BrowsePage() {
                 </button>
               ))}
               {tokens.length > 1 && (
-                <button
-                  type="button"
-                  className="f5-button f5-button--link"
-                  onClick={clearAll}
-                >
+                <Button variant="link" onClick={clearAll}>
                   Clear all
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -340,23 +398,23 @@ export default function BrowsePage() {
         <Empty
           title={active ? "Nothing matches that search" : "No listings yet"}
           icon={<SearchX size={24} aria-hidden="true" />}
+          className={sharedStyles().emptyPane()}
         >
           <p>
             {active
               ? "Try a broader search, or take a filter off."
               : "Be the first to list something you no longer ride."}
           </p>
-          <div className="mk-empty__actions">
+          <div className={sharedStyles().emptyActions()}>
             {active ? (
-              <button
-                type="button"
-                className="f5-button f5-button--pill"
-                onClick={clearAll}
-              >
+              <Button variant="pill" onClick={clearAll}>
                 Clear all filters
-              </button>
+              </Button>
             ) : (
-              <Link to={paths.sell()} className="f5-button f5-button--pill">
+              <Link
+                to={paths.sell()}
+                className={buttonStyles({ variant: "pill" })}
+              >
                 List your gear
               </Link>
             )}

@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { compileTheme, declared, holds, selector } from "./theme.testkit";
+import { UI, compileTheme, declared, holds, selector } from "./theme.testkit";
 import {
   DISABLED,
   HOVER,
@@ -14,6 +16,9 @@ let build: (names: string[]) => string;
 beforeAll(async () => {
   build = await compileTheme();
 });
+
+/** Compiled CSS on one line: a declaration keeps the line breaks it was written with. */
+const flat = (css: string) => css.replace(/\s+/g, " ");
 
 describe("ui/tv.ts: the merge knows the theme's names", () => {
   // The merge reads an unknown `text-…` as a colour. If the theme gains a type
@@ -107,6 +112,24 @@ describe("ui/tv.ts: the shared states", () => {
     );
     expect(css).toContain(`${selector("disabled:opacity-100")}:disabled {`);
   });
+
+  // The kit's hover holds itself to a device that can hover; the reset's wash
+  // has to as well, or on a phone a tapped button keeps the wash in place of
+  // the fill the kit named for it: a primary's accent under white words.
+  it("lays the reset's hover wash only where the kit's hover reaches", () => {
+    const css = build([HOVER]);
+    const kit = css.indexOf(`${selector(HOVER)}:not(:disabled):hover {`);
+    expect(kit).toBeGreaterThan(-1);
+    expect(css.lastIndexOf("@media (hover: hover)", kit)).toBeGreaterThan(-1);
+
+    const reset = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
+    const washes = [...reset.matchAll(/^(\s*)button:enabled:hover \{/gm)];
+    expect(washes).toHaveLength(1);
+    const at = washes[0].index!;
+    const guard = reset.lastIndexOf("@media (hover: hover) {", at);
+    expect(guard, "inside @media (hover: hover)").toBeGreaterThan(-1);
+    expect(reset.slice(guard, at)).not.toContain("}");
+  });
 });
 
 // The kit needed three families the theme did not yet state. They are cleared
@@ -127,10 +150,46 @@ describe("ui/theme.css: blur, measures and animation", () => {
     ["max-w-reading", "--container-reading", "44ch"],
     ["max-w-measure", "--container-measure", "68ch"],
     ["max-w-page", "--container-page", "1200px"],
+    ["max-w-form", "--container-form", "760px"],
     [
       "grid-cols-shell",
       "--grid-template-columns-shell",
       "236px minmax(0, 1fr)",
+    ],
+    [
+      "grid-cols-cards",
+      "--grid-template-columns-cards",
+      "repeat(auto-fill, minmax(240px, 1fr))",
+    ],
+    [
+      "grid-cols-detail",
+      "--grid-template-columns-detail",
+      "minmax(0, 3fr) minmax(320px, 2fr)",
+    ],
+    [
+      "grid-cols-specs",
+      "--grid-template-columns-specs",
+      "repeat(auto-fill, minmax(150px, 1fr))",
+    ],
+    [
+      "grid-cols-meter",
+      "--grid-template-columns-meter",
+      "auto minmax(0, 1fr) auto",
+    ],
+    [
+      "grid-cols-profile",
+      "--grid-template-columns-profile",
+      "minmax(0, 3fr) minmax(260px, 2fr)",
+    ],
+    [
+      "grid-cols-fields",
+      "--grid-template-columns-fields",
+      "repeat(auto-fit, minmax(180px, 1fr))",
+    ],
+    [
+      "grid-cols-tiles",
+      "--grid-template-columns-tiles",
+      "repeat(auto-fill, minmax(132px, 1fr))",
     ],
   ])("%s reads %s, which is %s", (name, variable, value) => {
     const css = build([name]);
@@ -149,6 +208,67 @@ describe("ui/theme.css: blur, measures and animation", () => {
     );
   });
 
+  // 720px, the marketplace's second breakpoint, in the same unit as the rail's.
+  it("a row makes room for its words at 720px and stops below it", () => {
+    const css = build(["wide:inline", "max-wide:hidden"]);
+    expect(css).toMatch(/@media \(width >= 45rem\) \{\s*\.wide\\:inline \{/);
+    expect(css).toMatch(/@media \(width < 45rem\) \{\s*\.max-wide\\:hidden \{/);
+  });
+
+  // The design system's three, restated: the stock `tight` was 1.25, and a
+  // card's title takes the prose size at 1.3. Every other stock name is gone.
+  it.each([
+    ["leading-tight", "--leading-tight", "1.3"],
+    ["leading-normal", "--leading-normal", "1.5"],
+    ["leading-loose", "--leading-loose", "1.75"],
+  ])("%s reads %s, which is %s", (name, variable, value) => {
+    const css = build([name]);
+    expect(css).toContain(selector(name));
+    expect(css).toContain(`${variable}: ${value};`);
+  });
+
+  // `leading-none` and `leading-<step>` are Tailwind's own arithmetic and stay;
+  // the named ones come from the theme, which now holds three.
+  it.each(["leading-snug", "leading-relaxed"])("%s produces no CSS", (name) => {
+    expect(build([name])).not.toContain(selector(name));
+  });
+
+  it("hides a sideways row's scrollbar in both spellings", () => {
+    const css = flat(build(["scrollbar-none"]));
+    expect(css).toContain(".scrollbar-none {");
+    expect(css).toContain("scrollbar-width: none;");
+    expect(css).toContain("&::-webkit-scrollbar { display: none; }");
+  });
+
+  /*
+   * A notch or a home bar, which `env()` states and no class can. Each of
+   * these is the spacing step it names or the device's own inset, whichever
+   * is the larger, so it is the plain utility on every screen but the one
+   * that needs more. market.css wrote the same three maxima before the
+   * marketplace was converted.
+   */
+  it.each([
+    ["px-safe-6", ["padding-left", "padding-right"], 6, ["left", "right"]],
+    ["pt-safe-3", ["padding-top"], 3, ["top"]],
+    ["pb-safe-6", ["padding-bottom"], 6, ["bottom"]],
+  ])(
+    "%s is the larger of the step and the device's inset",
+    (name, sides, step, edges) => {
+      const css = flat(build([name]));
+      expect(css).toContain(selector(name));
+      sides.forEach((side, i) => {
+        expect(css).toContain(
+          `${side}: max( calc(var(--spacing) * ${step}), env(safe-area-inset-${edges[i]}) );`,
+        );
+      });
+    },
+  );
+
+  // A step the scale cannot hold is not an inset at all: it comes to nothing.
+  it.each(["px-safe-half", "pt-safe-x"])("%s produces no CSS", (name) => {
+    expect(build([name])).not.toContain(selector(name));
+  });
+
   it("a placeholder pulses and a dialog arrives, and both can be declined", () => {
     const css = build([
       "animate-pulse",
@@ -159,6 +279,19 @@ describe("ui/theme.css: blur, measures and animation", () => {
     expect(css).toContain("@keyframes dialog-in");
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\) \{\s*\.motion-reduce\\:animate-none \{\s*animation: none;/,
+    );
+  });
+
+  // The site menu's panel, at the bundle's own 150ms, dropping by one tight
+  // gap (4px) from the trigger it hangs from.
+  it("a menu drops from its trigger, at the fast duration", () => {
+    const css = build(["animate-menu-in"]);
+    expect(css).toContain("--animate-menu-in: menu-in 150ms ease both;");
+    expect(css).toMatch(
+      /\.animate-menu-in \{\s*animation: var\(--animate-menu-in\);/,
+    );
+    expect(css).toMatch(
+      /@keyframes menu-in \{\s*from \{\s*opacity: 0;\s*transform: translateY\(-4px\);\s*\}\s*\}/,
     );
   });
 

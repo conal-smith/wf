@@ -50,8 +50,17 @@
 @source "../ui";
 @source "../market/web";
 @source "../community/web";
+/* The site menu, which every bundle draws, is written in utilities too. Its
+   one file, not force5/src: that is the map's own code, and unscanned. */
+@source "../force5/src/SiteMenu.tsx";
 
-@theme {
+/*
+ * `static`: every value below is written into `:root`, used by a utility class
+ * or not. Without it Tailwind emits only the ones a scanned class asks for, and
+ * the map's stylesheets — which are not scanned, and read the theme through
+ * plain `var()` — would find half of it missing.
+ */
+@theme static {
   --color-*: initial;
   --text-*: initial;
   --radius-*: initial;
@@ -61,6 +70,7 @@
      weights, and `--shadow-*` and `--text-*` leave three families of stock
      shadows drawn in black. */
   --font-weight-*: initial;
+  --leading-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
@@ -86,6 +96,20 @@
   --color-sunken: #e1e8f3;
   --color-inverse: #0b2545;
   --color-scrim: #0a1f3c73;
+
+  /* The basemap's own two fills, painted over the third-party style from TS
+     (force5/src/WindMap.tsx). `sea` above is a different job: it is the ground
+     the map floats on, what shows in a tile gap or an overscroll, and it stays
+     a step darker so the basemap reads as something laid on top of it. Land is
+     the one value the Atlantic ramp does not hold — the warm off-white the map
+     has always drawn, kept at its own value so the coast still reads. */
+  --color-basemap-water: #c3cfe2;
+  --color-basemap-land: #f0f1e8;
+
+  /* The bar a forecast cell paints behind its number, at 22%: a quantity, not
+     water. The same step as `sea`, and named apart from it so that moving the
+     ground behind the map never moves the wind grid's bars with it. */
+  --color-wash: #9db0cc;
 
   /* Lines. */
   --color-line: #0a1f3c1a;
@@ -127,6 +151,13 @@
   --color-wind-k60: #923d98;
   --color-wind-k65: #724297;
 
+  /* Two marks that say what they are rather than which palette they came from,
+     so the palette does not move them: the dashed line the map and the dock
+     both draw at the present hour, and the gust cap on a candle, at the values
+     they have always had (D12). */
+  --color-now-marker: #bf6546;
+  --color-gust: #e0803a;
+
   /* ---- type ------------------------------------------------------------ */
 
   --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -161,6 +192,13 @@
   --text-reading: 48px;
   --text-reading--line-height: 1.3;
 
+  /* The three leadings, for the few places a step's own is not the one wanted:
+     a card's title takes the prose size at the tight leading. `leading-none`
+     is Tailwind's own and needs nothing here. */
+  --leading-tight: 1.3;
+  --leading-normal: 1.5;
+  --leading-loose: 1.75;
+
   /* ---- shape and depth ------------------------------------------------- */
 
   --radius-control: 12px;
@@ -185,16 +223,42 @@
   --container-reading: 44ch;
   /* A message's measure, as `max-w-measure`: what a line of conversation runs to. */
   --container-measure: 68ch;
-  /* The page measure every content section shares, as `max-w-page`. */
+  /* The page measure every content section shares, as `max-w-page`, and what
+     a form runs to inside it, as `max-w-form`: a column of fields is read
+     like a paragraph, not spread across the whole page. */
   --container-page: 1200px;
+  --container-form: 760px;
 
-  /* A section's two columns, as `grid-cols-shell`: the rail, then the page. */
+  /* A section's two columns, as `grid-cols-shell`: the rail, then the page.
+     A grid of cards, as `grid-cols-cards`: as many 240px columns as fit.
+     A detail page's two columns, as `grid-cols-detail`: what is being read,
+     and the panel of facts and actions that stands beside it. A list of short
+     label-and-value pairs, as `grid-cols-specs`: as many as fit across. A row
+     of labelled bars, as `grid-cols-meter`: the label, the bar, the number.
+     A profile's head, as `grid-cols-profile`: the same three to two, on the
+     lower floor a summary beside a name needs, not the detail panel's. */
   --grid-template-columns-shell: 236px minmax(0, 1fr);
+  --grid-template-columns-cards: repeat(auto-fill, minmax(240px, 1fr));
+  --grid-template-columns-detail: minmax(0, 3fr) minmax(320px, 2fr);
+  --grid-template-columns-specs: repeat(auto-fill, minmax(150px, 1fr));
+  --grid-template-columns-meter: auto minmax(0, 1fr) auto;
+  --grid-template-columns-profile: minmax(0, 3fr) minmax(260px, 2fr);
+
+  /* A row of form fields, as `grid-cols-fields`: as many as fit, and one per
+     line once a field would be narrower than it can be read in. A grid of
+     thumbnails, as `grid-cols-tiles`: the same idea at a photograph's size. */
+  --grid-template-columns-fields: repeat(auto-fit, minmax(180px, 1fr));
+  --grid-template-columns-tiles: repeat(auto-fill, minmax(132px, 1fr));
 
   /* Where those two columns stop fitting, as `rail:` and `max-rail:`. 900px,
      written in the stock breakpoints' unit so the two sort together; a media
      query reads the browser's 16px, not the root's 14. */
   --breakpoint-rail: 56.25rem;
+
+  /* Where a row has the room to write words beside its controls, as `wide:`
+     and `max-wide:`: the marketplace's header labels, its gutter, its filter
+     row and its grid all turn here. 720px, in the same unit. */
+  --breakpoint-wide: 45rem;
 
   /* ---- motion and layers ----------------------------------------------- */
 
@@ -206,9 +270,11 @@
   --z-index-header: 20;
   --z-index-dialog: 30;
 
-  /* A placeholder breathing while its content loads, and a dialog arriving. */
+  /* A placeholder breathing while its content loads, a dialog arriving, and
+     a panel dropping from the control that opened it. */
   --animate-pulse: pulse 1s ease-in-out infinite alternate;
   --animate-dialog-in: dialog-in 150ms ease both;
+  --animate-menu-in: menu-in 150ms ease both;
 
   @keyframes pulse {
     from {
@@ -220,6 +286,14 @@
     from {
       opacity: 0;
       transform: translateY(8px);
+    }
+  }
+
+  /* Down from above by one tight gap: it hangs from its trigger. */
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
     }
   }
 
@@ -239,4 +313,52 @@
   @media (prefers-reduced-transparency: reduce) {
     @slot;
   }
+}
+
+/* A row that scrolls sideways inside a page that does not: the cut-off item at
+   its edge already says there is more, and a bar drawn over it would only eat
+   into the row. Two spellings, because no browser reads both. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * The three edges a notch or a home bar eats into. Each is the inset the
+ * design asks for or the one the device reports, whichever is the larger, so
+ * `px-safe-6` is `px-6` on every screen but the one that needs more. The step
+ * is the spacing scale's, as it is on `px-6`, and only the edges that face the
+ * device take one: a gutter, the top of a sticky header, the foot of a page.
+ *
+ * Written here rather than in a recipe because `env()` cannot be a class, and
+ * as three functional utilities rather than one fixed pair because the value
+ * belongs where a reader of the recipe can see it. The design system says the
+ * same thing of its edge inset: always combined with the matching
+ * `env(safe-area-inset-*)`.
+ */
+@utility px-safe-* {
+  padding-left: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-left)
+  );
+  padding-right: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-right)
+  );
+}
+
+@utility pt-safe-* {
+  padding-top: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-top)
+  );
+}
+
+@utility pb-safe-* {
+  padding-bottom: max(
+    calc(var(--spacing) * --value(integer)),
+    env(safe-area-inset-bottom)
+  );
 }

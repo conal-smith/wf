@@ -3,6 +3,7 @@ import * as maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Minus, Plus, RotateCcw } from "lucide-react";
+import { basemapColours } from "./basemap";
 import { coverageCamera } from "./camera";
 import SpotPopup from "./SpotPopup";
 import {
@@ -110,6 +111,18 @@ export default function WindMap({
 
   useEffect(() => {
     if (!container.current) return;
+    // Once, with the map: the theme cannot move under a map that is already up.
+    const basemap = basemapColours(getComputedStyle(document.documentElement));
+    // The dev server's mode, not the env's `DEV` flag: that one follows
+    // NODE_ENV, so a shell exporting NODE_ENV=development ships this warning in
+    // a built bundle (src/main.tsx makes the same distinction for the gallery).
+    if (
+      import.meta.env.MODE === "development" &&
+      !(basemap.land && basemap.water)
+    )
+      console.warn(
+        "The basemap keeps the provider's colours: ui/theme.css is not on the document.",
+      );
     let map: maplibregl.Map;
     let pointClick: number | undefined;
     const cancelPointClick = () => window.clearTimeout(pointClick);
@@ -155,10 +168,10 @@ export default function WindMap({
       const style = map.getStyle() as StyleSpecification;
       if (!import.meta.env.VITE_BASEMAP_STYLE_URL) {
         for (const layer of style.layers) {
-          if (layer.type === "background")
-            map.setPaintProperty(layer.id, "background-color", "#f0f1e8");
-          if (layer.id === "water")
-            map.setPaintProperty(layer.id, "fill-color", "#b8d0d7");
+          if (layer.type === "background" && basemap.land)
+            map.setPaintProperty(layer.id, "background-color", basemap.land);
+          if (layer.id === "water" && basemap.water)
+            map.setPaintProperty(layer.id, "fill-color", basemap.water);
           if (layer.type === "symbol")
             map.setLayoutProperty(layer.id, "visibility", "none");
         }

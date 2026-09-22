@@ -75,22 +75,22 @@
 .spot-popout .maplibregl-popup-content {
   padding: 0;
   border-radius: 16px;
-  background: #edf6f2f2;
-  border: 1px solid #ffffffc9;
+  background: color-mix(in srgb, var(--color-solid) 95%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-card) 79%, transparent);
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  box-shadow: 0 5px 24px #183f4a30;
+  box-shadow: 0 5px 24px color-mix(in srgb, var(--color-ink) 19%, transparent);
   overflow: hidden;
 }
 .spot-popout.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
 .spot-popout.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
 .spot-popout.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: #edf6f2f2;
+  border-top-color: color-mix(in srgb, var(--color-solid) 95%, transparent);
 }
 .spot-popout.maplibregl-popup-anchor-top .maplibregl-popup-tip,
 .spot-popout.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
 .spot-popout.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: #edf6f2f2;
+  border-bottom-color: color-mix(in srgb, var(--color-solid) 95%, transparent);
 }
 .spot-popout-card {
   position: relative;
@@ -98,11 +98,11 @@
   max-height: min(270px, calc(100dvh - var(--dock-height) - 110px));
   overflow-y: auto;
   padding: 14px;
-  color: #244e5a;
+  color: var(--color-ink);
 }
 .spot-popout-type {
   padding-right: 26px;
-  color: #567680;
+  color: var(--color-ink-muted);
   font-size: 10px;
 }
 .spot-popout-card h3 {
@@ -118,7 +118,7 @@
 }
 .spot-popout-coordinates {
   font-size: 10px;
-  color: #567680;
+  color: var(--color-ink-muted);
 }
 .spot-popout-links {
   display: flex;
@@ -131,7 +131,9 @@
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  color: #1b626a;
+  /* The accent's darker step: at 11px on the popup the accent itself reads
+     4.3:1. */
+  color: var(--color-accent-hover);
 }
 .spot-popout-close {
   position: absolute;
@@ -143,12 +145,12 @@
   border-radius: 50%;
 }
 .spot-popout-close:focus-visible {
-  outline: 2px solid #245f6b;
+  outline: 2px solid var(--color-focus);
   outline-offset: -3px;
 }
 @media (prefers-reduced-transparency: reduce) {
   .spot-popout .maplibregl-popup-content {
-    background: #edf6f2;
+    background: var(--color-solid);
     backdrop-filter: none;
   }
 }
@@ -170,20 +172,20 @@
   width: 23px;
   height: 23px;
   font-size: 15px;
-  background: #eef6eff2;
-  color: #245f6b;
+  background: color-mix(in srgb, var(--color-solid) 95%, transparent);
+  color: var(--color-ink);
 }
 .compact-layout .spot-marker[data-kind="operator"] {
   border-radius: 6px;
 }
 .compact-layout .spot-marker[data-kind="area"] {
   border-style: dashed;
-  background: #edf6efba;
+  background: color-mix(in srgb, var(--color-solid) 73%, transparent);
 }
 .compact-layout .spot-marker.active {
   z-index: 5;
-  background: #245f6b;
-  color: white;
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
 }
 .compact-layout .frame-status {
   top: 62px;
@@ -203,8 +205,8 @@
   backdrop-filter: blur(28px) saturate(1.45);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   box-shadow:
-    0 -4px 24px #183f4a24,
-    inset 0 1px #fff9;
+    0 -4px 24px color-mix(in srgb, var(--color-ink) 14%, transparent),
+    inset 0 1px color-mix(in srgb, var(--color-card) 60%, transparent);
   pointer-events: auto;
   max-height: 70dvh;
   overflow-y: auto;
@@ -329,7 +331,7 @@
   top: 0;
   bottom: 0;
   width: 0;
-  border-left: 2px dashed #bf6546;
+  border-left: 2px dashed var(--color-now-marker);
   z-index: 2;
   pointer-events: none;
 }
@@ -340,12 +342,12 @@
   transform: translateX(-50%);
   padding: 2px 6px;
   border-radius: 5px;
-  background: #a8442e;
-  color: white;
+  background: var(--color-now);
+  color: var(--color-ink-inverse);
   font-size: 10px;
   line-height: 15px;
   font-weight: 600;
-  box-shadow: 0 1px 3px #203e3c20;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-ink) 13%, transparent);
 }
 .compact-layout .forecast-table th:first-child {
   min-width: var(--forecast-label-width);
@@ -360,7 +362,7 @@
   padding-left: 3px;
 }
 .compact-layout .forecast-table .forecast-day-groups th:first-child {
-  background: #e3eeee;
+  background: var(--color-sunken);
 }
 .compact-layout .forecast-table .wind-cell {
   background-image: none;
@@ -373,7 +375,7 @@
   height: 30px;
   text-align: left;
   font-size: 11px;
-  background: #d9eae784;
+  background: color-mix(in srgb, var(--color-sunken) 52%, transparent);
   border-right: 1px solid var(--line);
 }
 .compact-layout .forecast-day-groups th:not(:first-child) span {
@@ -386,8 +388,8 @@
 }
 .compact-layout .forecast-table .selected-hour {
   box-shadow:
-    inset 2px 0 #2465785c,
-    inset -1px 0 #24657836;
+    inset 2px 0 color-mix(in srgb, var(--color-accent) 36%, transparent),
+    inset -1px 0 color-mix(in srgb, var(--color-accent) 21%, transparent);
 }
 .compact-layout.sheet-open .timeline {
   grid-template-columns: auto minmax(0, 1fr);
@@ -416,9 +418,9 @@
   font-size: 12px;
   border-radius: 22px;
   background: var(--glass);
-  border: 1px solid #ffffffa6;
+  border: 1px solid color-mix(in srgb, var(--color-card) 65%, transparent);
   backdrop-filter: blur(20px);
-  box-shadow: 0 2px 8px #153b4420;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-ink) 13%, transparent);
 }
 .map-model-picker summary::-webkit-details-marker {
   display: none;
@@ -428,7 +430,7 @@
   font-size: 10px;
 }
 .map-model-picker summary:focus-visible {
-  outline: 2px solid #245f6b;
+  outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
 .map-model-picker[open] summary > svg {
@@ -446,8 +448,8 @@
   line-height: 16px;
   padding: 1px 5px;
   border-radius: 4px;
-  color: #284a55;
-  background: #eef6f0da;
+  color: var(--color-ink-muted);
+  background: color-mix(in srgb, var(--color-solid) 85%, transparent);
 }
 .map-credits a {
   color: inherit;
@@ -462,10 +464,10 @@
   width: 222px;
   padding: 5px;
   border-radius: 16px;
-  background: #edf6f2f5;
+  background: color-mix(in srgb, var(--color-solid) 96%, transparent);
   backdrop-filter: blur(24px);
-  box-shadow: 0 4px 24px #183f4a30;
-  border: 1px solid #fff9;
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--color-ink) 19%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-card) 60%, transparent);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -486,12 +488,12 @@
   margin-left: auto;
 }
 .compact-layout .model-options button[aria-pressed="true"] {
-  color: #fff;
-  background: #245f6b;
+  color: var(--color-ink-inverse);
+  background: var(--color-inverse);
 }
 .compact-layout .model-info {
   background: var(--glass);
-  border: 1px solid #fff9;
+  border: 1px solid color-mix(in srgb, var(--color-card) 60%, transparent);
   backdrop-filter: blur(20px);
   padding: 0;
   width: 36px;
@@ -509,7 +511,7 @@
   margin: 0;
   padding: 2px 6px;
   font-size: 9px;
-  background: #edf6f2ed;
+  background: color-mix(in srgb, var(--color-solid) 93%, transparent);
   border: 0;
   max-width: none;
   white-space: nowrap;
@@ -603,7 +605,7 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   .compact-layout .map-footer {
-    background: #edf5f3;
+    background: var(--color-solid);
     backdrop-filter: none;
   }
 }

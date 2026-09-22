@@ -5,9 +5,12 @@ export const fieldStyles = tv({
   slots: {
     // `group/field` is what lets the control inside read `data-invalid`.
     base: "group/field grid min-w-0 content-start gap-2",
+    // A label's leading, not a paragraph's: the body step at the design
+    // system's label line height (1.3), which is what a field label has always
+    // been drawn at. The hint sits on the same line and keeps it.
     label:
-      "flex items-baseline justify-between gap-2 font-sans text-body font-semibold text-ink-2",
-    hint: "text-right text-body font-normal text-ink-muted",
+      "flex items-baseline justify-between gap-2 font-sans text-body leading-tight font-semibold text-ink-2",
+    hint: "text-right text-body leading-tight font-normal text-ink-muted",
     error: "font-sans text-body text-warn",
   },
 });
