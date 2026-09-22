@@ -109,7 +109,7 @@ describe("the two grounds", () => {
         .split(" ")
         .sort();
     const cases = [
-      [{ current: "map", size: "md" }, "raised", "md"],
+      [{ current: "map", size: "md", ground: "map" }, "raised", "md"],
       [{ current: "market", size: "sm", ground: "content" }, "pill", "sm"],
     ] as const;
     for (const [props, variant, size] of cases) {
@@ -117,7 +117,7 @@ describe("the two grounds", () => {
         variant,
         size,
         icon: true,
-        className: siteMenuStyles({ ground: props.ground ?? "map" }).trigger(),
+        className: siteMenuStyles({ ground: props.ground }).trigger(),
       });
       expect(classOf(html(props)), variant).toEqual(kit.split(" ").sort());
     }
