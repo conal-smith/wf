@@ -485,7 +485,7 @@ describe("S1: the listing's two columns, and the panel that stays in view", () =
   });
 
   /*
-   * Three to two at the same breakpoint, but on the floor .mk-seller-head had.
+   * Three to two at the same breakpoint, but on the floor the old head rule had.
    * The detail panel's 320 binds from 900 to about 920 wide, where the head's
    * second column is 311-319px; 260 never binds there, as it never did.
    */
