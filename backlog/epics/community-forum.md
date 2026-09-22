@@ -6,7 +6,7 @@ criticality: high
 risk: high
 mockups: backlog/mockups/2026-09-20-community-atlantic.html
 dependenciesPlanned: true
-updated: 2026-09-20T20:47:15.744Z
+updated: 2026-09-22T22:12:13.284Z
 ---
 
 # Community forum, on Tailwind and the Atlantic palette
@@ -49,6 +49,6 @@ CHILDREN, iteration 1 (`->` then, `|` parallel; edges = each item's dependsOn):
 - UI: tw-setup-theme -> ui-kit. Any time: atlantic-tokens-interim.
 - API: site-users -> community-schema-repo -> community-api-core -> (community-follow-notify -> community-safety | community-live). Also site-users -> shared-web-extract.
 - WEB, after ui-kit, shared-web-extract, community-api-core: community-web-shell -> (community-web-feed -> community-web-following | community-web-thread -> community-spot-card) -> community-e2e.
-Iteration 2: the nine items marked `iteration: 2`.
+Iteration 2: the nine items marked `iteration: 2`, all completed and merged (retire-force5-bundle last, 2026-09-22). The epic stays in progress: community-web-feed (iteration 1) awaits the owner's by-eye check against the mockup.
 
 HOT FILES (one child at a time): package.json, package-lock.json, vite.config.ts, tsconfig.json, vitest.config.ts, src/main.tsx, force5/src/siteNav.ts, market/api/src/{app,index,db}.ts, market/web/{auth.tsx,api.ts,components.tsx}, community/api/{router,repo*}.ts, community/shared/types.ts, community/web/CommunityApp.tsx.
