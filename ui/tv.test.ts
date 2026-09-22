@@ -156,6 +156,11 @@ describe("ui/theme.css: blur, measures and animation", () => {
       "--grid-template-columns-meter",
       "auto minmax(0, 1fr) auto",
     ],
+    [
+      "grid-cols-profile",
+      "--grid-template-columns-profile",
+      "minmax(0, 3fr) minmax(260px, 2fr)",
+    ],
   ])("%s reads %s, which is %s", (name, variable, value) => {
     const css = build([name]);
     expect(css).toContain(selector(name));

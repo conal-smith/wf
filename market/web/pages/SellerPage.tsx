@@ -20,9 +20,10 @@ import { relativeAge } from "../../shared/validate";
 
 export const sellerStyles = tv({
   slots: {
-    // The seller, and the breakdown of their rating beside them. The same two
-    // columns the listing page's detail takes, and the same breakpoint.
-    head: "grid min-w-0 items-start gap-6 rail:grid-cols-detail",
+    // The seller, and the breakdown of their rating beside them: three to two
+    // at the listing's breakpoint, but on the profile's 260px floor, not the
+    // detail panel's 320, which would take 8px off the name at 900 wide.
+    head: "grid min-w-0 items-start gap-6 rail:grid-cols-profile",
     who: "flex min-w-0 items-start gap-3",
     column: "flex min-w-0 flex-col gap-5",
     tight: "flex min-w-0 flex-col gap-1",

@@ -484,8 +484,15 @@ describe("S1: the listing's two columns, and the panel that stays in view", () =
     expect(fill).not.toContain("whitespace-nowrap");
   });
 
-  it("gives the seller's head the same two columns", () => {
-    expect(sellerStyles().head().split(" ")).toContain("rail:grid-cols-detail");
+  /*
+   * Three to two at the same breakpoint, but on the floor .mk-seller-head had.
+   * The detail panel's 320 binds from 900 to about 920 wide, where the head's
+   * second column is 311-319px; 260 never binds there, as it never did.
+   */
+  it("gives the seller's head its own floor, not the detail panel's", () => {
+    const head = sellerStyles().head().split(" ");
+    expect(head).toContain("rail:grid-cols-profile");
+    expect(head).not.toContain("rail:grid-cols-detail");
   });
 });
 
