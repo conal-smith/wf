@@ -496,6 +496,17 @@ describe("S1: the listing's two columns, and the panel that stays in view", () =
   });
 });
 
+describe("the seller's tabs", () => {
+  // The track clips what overflows it, so the ring goes inside the tab.
+  it("draws the ring inside the tab, where the track cannot clip it", () => {
+    const tab = sellerStyles().tab().split(" ");
+    expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
+    expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
+    expect(tab).toContain("not-disabled:focus-visible:outline-3");
+    expect(sellerStyles().tabs().split(" ")).toContain("overflow-x-auto");
+  });
+});
+
 describe("S2: the gallery", () => {
   it("shows the whole photograph, four to three, never cropped", () => {
     const styles = listingStyles();
