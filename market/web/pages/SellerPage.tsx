@@ -57,7 +57,11 @@ export const sellerStyles = tv({
       // The chosen one is lifted off the track: fill and shadow, not colour.
       "aria-pressed:bg-card aria-pressed:text-ink aria-pressed:shadow-control",
       "not-disabled:aria-pressed:hover:bg-card",
+      // The ring is drawn inside the tab, as the segmented track always drew
+      // it: the track scrolls sideways, so a ring outside would be cut off
+      // along its top and bottom edges.
       RING,
+      "not-disabled:focus-visible:-outline-offset-2",
     ],
 
     // ---- the reviews
