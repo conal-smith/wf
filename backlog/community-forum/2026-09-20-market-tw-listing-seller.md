@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: completed
 difficulty: m
 criticality: high
 risk: high
@@ -26,8 +26,8 @@ TOUCH: market/web/pages/ListingPage.tsx, market/web/pages/SellerPage.tsx, market
 AVOID: Touching SellPage, MePage, ProfileForm (sibling market-tw-sell-me). Behaviour changes.
 GATES: npm run ui:lint; npm test; market:shots compare.
 ACCEPT:
-- [ ] Listing and seller shots differ from baseline in colour only.
-- [ ] grep finds no `mk-detail`, `mk-gallery`, `mk-thumb`, `mk-specs`, `mk-seller`, `mk-stars`, `mk-histogram`, `mk-review` in market/web.
+- [x] Listing and seller shots differ from baseline in colour only. 1240: structure <= 0.22% (the Remove listing underline). 390: colour only but the ruled tap targets (a) and the share button (b), see LOG.
+- [x] grep finds no `mk-detail`, `mk-gallery`, `mk-thumb`, `mk-specs`, `mk-seller`, `mk-stars`, `mk-histogram`, `mk-review` in market/web. Clean but for `.mk-review`, which MePage (market-tw-sell-me) read; it goes with market.css in that item's S5.
 REFS: D7.
 LOG:
 - 2026-09-22 agent: anchors re-verified against b891ab0. ListingPage.tsx 598 and SellerPage.tsx 226 lines, exact. The sign-in gate sits at :225, :238 and :402-415, not :227, :240, :404-415. market.css drifted when shell-browse deleted its rules: the detail, seller and rating rules are :256-557, not :671-969, and the <900 block is :1032-1047, not :1483-1498. Stars :227, RatingPicker :259, SellerRating :301, SaveButton :820 in components.tsx.
@@ -55,3 +55,4 @@ LOG:
 - 2026-09-22 reviewer: kit additions checked. Pane `standing`, Button `pressed="worded"` and grid-cols-detail/-specs/-meter/-profile are each pinned in ui/tv.test.ts or ui/kit.test.tsx and each used. `standing` and `worded` are in the Gallery. The implementer's "no new ui/theme.css value in this change" refers to 54fd8d2 alone; b891ab0 added three and pinned them.
 - 2026-09-22 reviewer: ACCEPT grep. Clean but for `.mk-review` at market.css:278-293 and MePage.tsx:334, which is market-tw-sell-me's (AVOID), as the implementer says. The integrator deletes those three rules on merge.
 - 2026-09-22 reviewer: SIGN-OFF. S1-S5 are built, tested and measured against f0befa4, and the two faults found are fixed. Gates on 0baab78: npm run ui:lint clean (83 files, probe 7). npm test: 57 files, 1237 pass, 75 skipped. npm run build and npm run market:api:build green. market:shots then shots:compare: 49 shots, 27 identical, 12 colour only, 0 over 1.00%, 10 resized. All 11 listing and seller shots at 1240 are at structure <= 0.22%, and the 0.22% on listing-owner is the Remove listing underline (overlay looked at). The 10 resized are the 390 listing and seller shots, all of them deltas (a) and (b). Re-shot PNGs restored, not committed. test:e2e not re-run by me.
+- 2026-09-22 integrator: merged into community-forum-2 (--no-ff, no conflicts). On the merged branch: npm test 1248 pass, 75 skipped (58 files); npm run build and npm run market:api:build green; npm run ui:lint clean (83 files, probe 7). The `.mk-review` rules stay until market-tw-sell-me's S5 deletes market.css; the re-shot baseline is taken once, after that item.
