@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { Field, TextInput } from "../../ui";
 import { buttonStyles } from "../../ui/Button";
+import { checkboxStyles } from "../../ui/Checkbox";
+import { controlStyles } from "../../ui/control";
+import { segmentedStyles } from "../../ui/Segmented";
+import { fieldStyles } from "../../ui/Field";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
@@ -16,16 +21,21 @@ import {
   ListingGrid,
   listingGridStyles,
   MarketFooter,
+  PageSkeleton,
   RatingPicker,
   ratingStyles,
   SaveButton,
   SellerRating,
+  sharedStyles,
   Stars,
 } from "./components";
 import { shellStyles } from "./MarketApp";
 import { browseStyles } from "./pages/BrowsePage";
 import { gated, listingStyles } from "./pages/ListingPage";
+import { meStyles } from "./pages/MePage";
+import { profileFormStyles } from "./pages/ProfileForm";
 import { sellerStyles } from "./pages/SellerPage";
+import { sellStyles } from "./pages/SellPage";
 
 /**
  * The marketplace shell, its header and footer, the listing card and the
@@ -40,13 +50,16 @@ import { sellerStyles } from "./pages/SellerPage";
 const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 
-/** The files this conversion has reached, and every recipe they declare. */
+/** The files converted so far, and every recipe they declare. */
 const CONVERTED = [
   "MarketApp.tsx",
   "components.tsx",
   "pages/BrowsePage.tsx",
   "pages/ListingPage.tsx",
+  "pages/MePage.tsx",
+  "pages/ProfileForm.tsx",
   "pages/SellerPage.tsx",
+  "pages/SellPage.tsx",
 ];
 const RECIPES = {
   browseStyles,
@@ -55,21 +68,24 @@ const RECIPES = {
   listingCardStyles,
   listingGridStyles,
   listingStyles,
+  meStyles,
+  profileFormStyles,
   ratingStyles,
   sellerStyles,
+  sellStyles,
+  sharedStyles,
   shellStyles,
 };
 
 /*
- * What is left of market.css in converted markup, and why. Each one is a hook
- * on a piece another item owns; the list empties as those items land, and the
- * stylesheet goes with the last of them (D7).
+ * What is left of market.css in converted markup, and why. One hook remains:
  *
- * - `mk-root`   the shell's root, which scopes the rules the unconverted pages
- *               still read and carries `data-mode="light"` for design/'s tokens.
- * - `mk-empty__actions`  the row of actions inside `Empty`, which browse and
- *               the not-found page draw and four other pages draw with them.
- * - `mk-skeleton`  the shape a page waits behind, which four pages draw.
+ * - `mk-root`   the shell's root, which scopes what is left of market.css and
+ *               carries `data-mode="light"` for design/'s tokens.
+ * - `mk-skeleton`  the shape the listing and seller pages wait behind, which
+ *               the sell and account pages draw as the kit's PageSkeleton.
+ *
+ * Both go with market.css (D7).
  */
 
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
@@ -91,9 +107,8 @@ const read = (file: string) => readFileSync(resolve(WEB, file), "utf8");
  * are greps over market/web for several of them and a test that spelt them
  * out would be the thing they found.
  *
- * The review row is not here: MePage draws the same one and market-tw-sell-me
- * converts it. The avatar and the skeleton are the other two the listing and
- * seller pages still reach through a component another item owns.
+ * The avatar and the skeleton are not here: the listing and seller pages still
+ * reach them, and they go with market.css.
  */
 const GONE = [
   // the shell and browse (market-tw-shell-browse)
@@ -129,6 +144,23 @@ const GONE = [
   "histogram",
   "stat",
   "stats",
+  // the sell and account pages (market-tw-sell-me): the fields, the uploader,
+  // the account's list rows and tabs, the review row, the notice, the empty
+  // state, the pager and the dialog.
+  "page-head",
+  "form__row",
+  "field",
+  "check",
+  "photos",
+  "photo",
+  "list",
+  "item",
+  "tabs",
+  "review",
+  "notice",
+  "empty",
+  "pager",
+  "dialog",
 ].map((name) => `mk-${name}`);
 
 describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
@@ -169,18 +201,12 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
 
   /*
    * A class written straight into markup would slip past the check above.
-   * components.tsx still holds the pieces market-tw-sell-me owns (the fields,
-   * the dialog, the pager, the face beside a name), so it is asked of what the
-   * converted components render rather than of the file; the four whole files
-   * are asked of their source.
+   * components.tsx still holds the face beside a name, so it is asked of what
+   * the converted components render rather than of the file; every whole file
+   * that has been converted is asked of its source.
    */
   it("writes no class outside a recipe, but the hooks it names", () => {
-    const files = [
-      "MarketApp.tsx",
-      "pages/BrowsePage.tsx",
-      "pages/ListingPage.tsx",
-      "pages/SellerPage.tsx",
-    ];
+    const files = CONVERTED.filter((file) => file !== "components.tsx");
     // Quoted, or a string in braces, or a string handed to a recipe as its
     // className: `className={"f5-button"}` is the same literal as the first.
     const literal =
@@ -188,12 +214,7 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
     const literals = files.flatMap((file) =>
       [...read(file).matchAll(literal)].map((m) => m[1] ?? m[2] ?? m[3]),
     );
-    expect(literals).toEqual([
-      "mk-empty__actions",
-      "mk-empty__actions",
-      "mk-skeleton",
-      "mk-skeleton",
-    ]);
+    expect(literals).toEqual(["mk-skeleton", "mk-skeleton"]);
   });
 
   it("draws nothing of the old stylesheet in the markup it renders", () => {
@@ -223,6 +244,7 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
           onToggle: () => {},
         }),
       ),
+      html(createElement(PageSkeleton)),
     ];
     for (const out of rendered) {
       expect(out).not.toMatch(/class="[^"]*\bmk-/);
@@ -233,16 +255,10 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
   /*
    * The stylesheet losing a rule is only half of it: a name left in a page
    * would draw nothing and read as converted. This is the items' own ACCEPT
-   * grep, run over the three files that were converted into Tailwind.
+   * grep, run over every file that was converted into Tailwind.
    */
   it("leaves none of those names in the markup either", () => {
-    const source = [
-      "components.tsx",
-      "pages/ListingPage.tsx",
-      "pages/SellerPage.tsx",
-    ]
-      .map(read)
-      .join("\n");
+    const source = CONVERTED.map(read).join("\n");
     for (const name of GONE)
       expect(source, name).not.toMatch(
         new RegExp(`${name}(?:__[\\w-]+|--[\\w-]+)?(?![\\w-])`),
@@ -272,8 +288,62 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
     // `.mk-root` is kept as a scope, with nothing of its own left to draw.
     expect(css).toContain(".mk-root h1");
     expect(css).not.toMatch(/^\.mk-root \{/m);
-    // The search field component went with the one field that used it.
+    // The search field component went with the one field that used it, and
+    // the surface with the dialog, which was the last thing here to be one.
     expect(css).not.toContain("search-field/component.css");
+    expect(css).not.toContain("surface/component.css");
+    // The coarse-pointer field sizes went with the fields: the kit's control
+    // carries `pointer-coarse:text-lead` itself.
+    expect(css).not.toContain("pointer: coarse");
+  });
+
+  /*
+   * What is left, and who reads it. Both pages that still do are another
+   * item's; when they are converted this list is empty and the file goes.
+   */
+  it("keeps only what the listing and seller pages still read", () => {
+    const css = read("market.css");
+    // The hyphen is inside the character class rather than before it: a
+    // hyphen followed by a bracket is what the style lint reads as an
+    // arbitrary value, wherever on the line it finds one.
+    const left = [...css.matchAll(/\.(mk[\w-]+)/g)].map((m) => m[1]);
+    const pages = ["pages/ListingPage.tsx", "pages/SellerPage.tsx"].map(read);
+    // components.tsx still draws the stars, the rating picker and the avatar
+    // for those two pages and for nothing else.
+    const readers = [...pages, read("components.tsx"), read("MarketApp.tsx")];
+    const orphans = [...new Set(left)].filter(
+      (name) =>
+        !readers.some((source) => new RegExp(`\\b${name}\\b`).test(source)),
+    );
+    // With every page converted, what is left is the shared helpers each item
+    // kept for the other, which neither reads now: the typography, the panes,
+    // the stacks and rows, the divider, the section head and the form. They
+    // are named so that the deletion that follows does not have to wonder.
+    expect(orphans.sort()).toEqual(
+      [
+        "body",
+        "divider",
+        "eyebrow",
+        "form",
+        "form__actions",
+        "lead",
+        "link",
+        "link--plain",
+        "meta",
+        "muted",
+        "pane",
+        "pane--sunken",
+        "prose",
+        "row",
+        "row--between",
+        "row--tight",
+        "section-head",
+        "stack",
+        "stack--loose",
+        "stack--tight",
+        "title",
+      ].map((name) => `mk-${name}`),
+    );
   });
 });
 
@@ -795,3 +865,221 @@ describe("S6: the footer", () => {
     expect(out).toContain("no-underline");
   });
 });
+
+/*
+ * What follows is the second conversion's: the sell and account pages. Its S
+ * lines are numbered from its own item file, so they are named for it.
+ */
+
+describe("sell/me S1: a field is the kit's, and wrong is never colour alone", () => {
+  it("draws the label, the control and the message from ui/", () => {
+    const out = html(
+      createElement(Field, {
+        label: "Title",
+        hint: "optional",
+        htmlFor: "listing-title",
+        children: createElement(TextInput, { id: "listing-title" }),
+      }),
+    );
+    expect(out).not.toMatch(/class="[^"]*\bmk-/);
+    expect(out).toMatch(/<label class="[^"]*" for="listing-title"/);
+    expect(out).toMatch(/<input [^>]*id="listing-title"/);
+  });
+
+  /*
+   * S1, and the epic's own rule: a field that is wrong says so three times
+   * over — a warm border, a warm ground, and the message underneath, which
+   * carries `role="alert"` so it reaches a screen reader as well.
+   */
+  it("says wrong in the border, the ground and the words", () => {
+    const out = html(
+      createElement(Field, {
+        label: "Price",
+        error: "Enter a price like 450",
+        htmlFor: "p",
+        children: createElement(TextInput, { id: "p" }),
+      }),
+    );
+    expect(out).toContain('data-invalid=""');
+    expect(out).toMatch(/role="alert">Enter a price like 450</);
+    const box = controlStyles().box();
+    expect(box).toContain("group-data-invalid/field:border-warn");
+    expect(box).toContain("group-data-invalid/field:bg-warn-ground");
+    expect(fieldStyles().error()).toContain("text-warn");
+  });
+
+  // Two and three fields to a line, and one to a line once a field would be
+  // too narrow to read what is in it. The measure is the theme's, not a page's.
+  it("lays a row of fields out from the theme", () => {
+    expect(sharedStyles().formRow().split(" ")).toContain("grid-cols-fields");
+  });
+
+  /*
+   * The checkbox was the one control on these pages drawn in the action
+   * colour. The kit answers it now, and the answer is not a hue: the tick is
+   * the state. The rest of that ruling is in ui/kit.test.tsx.
+   */
+  it("draws the one checkbox from the kit, and not in the accent", () => {
+    expect(read("pages/ProfileForm.tsx")).toMatch(/<Checkbox/);
+    expect(checkboxStyles().input()).toContain("accent-inverse");
+  });
+});
+
+describe("sell/me S2: the photo uploader", () => {
+  const styles = sellStyles();
+
+  it("lays the tiles out at a photograph's ratio, from the theme", () => {
+    expect(styles.tiles().split(" ")).toContain("grid-cols-tiles");
+    expect(styles.tile().split(" ")).toContain("aspect-4/3");
+    expect(styles.add().split(" ")).toContain("aspect-4/3");
+  });
+
+  it("marks the tile you add with as an outline, not a tile", () => {
+    const add = styles.add().split(" ");
+    expect(add).toContain("border-dashed");
+    expect(add).toContain("border-2");
+    expect(add).toContain("bg-ground");
+  });
+
+  // An upload still on its way is dimmed, and says so with an attribute
+  // rather than by being drawn a different colour.
+  it("dims a tile whose upload has not landed", () => {
+    expect(styles.image()).toContain("group-data-busy:opacity-50");
+    expect(styles.tile().split(" ")).toContain("group");
+  });
+
+  it("puts the cover badge and the tools on glass over the photograph", () => {
+    expect(styles.badge().split(" ")).toEqual(["absolute", "top-1", "left-1"]);
+    expect(styles.tool()).toContain("bg-glass");
+    // Glass is a choice a reader can decline, here as everywhere else.
+    expect(styles.tool()).toContain("reduced-transparency:bg-solid");
+    expect(styles.tools()).toContain("absolute");
+  });
+});
+
+describe("sell/me S3: the account's tabs", () => {
+  it("is the kit's Segmented, worn by links that are real URLs", () => {
+    const source = read("pages/MePage.tsx");
+    expect(source).toContain("segmentedStyles().item(");
+    expect(source).toMatch(/<Link[\s\S]*?role="tab"/);
+  });
+
+  it("scrolls sideways rather than wrapping onto a second line", () => {
+    const tabs = meStyles().tabs().split(" ");
+    expect(tabs).toContain("overflow-x-auto");
+    expect(tabs).toContain("scrollbar-none");
+  });
+
+  // A scrolling track clips past its padding, so the ring is drawn inside.
+  it("draws the ring inside a tab, where the scrolling track cannot cut it", () => {
+    const tab = segmentedStyles()
+      .item({ className: meStyles().tab() })
+      .split(" ");
+    expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
+    expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
+    expect(tab).toContain("not-disabled:focus-visible:outline-3");
+    expect(tab).toContain("not-disabled:focus-visible:outline-focus");
+  });
+
+  /*
+   * The number of saved listings, inside the tab that holds them: the plain
+   * number market.css drew, and not the kit's Count, which is a filled badge
+   * for what has not been read yet and would be a new mark on this page.
+   */
+  it("keeps the count inside the tab, as a number", () => {
+    const count = meStyles().count().split(" ");
+    expect(count).toContain("text-caption");
+    // At the tab's own leading and weight, as design/'s segmented drew it:
+    // a caption-sized number in the muted ink, and nothing else about it.
+    expect(count).toContain("leading-tight");
+    expect(count).not.toContain("font-normal");
+    expect(meStyles().tab().split(" ")).toContain("leading-tight");
+    expect(read("pages/MePage.tsx")).toContain(
+      "<small className={styles.count",
+    );
+  });
+
+  it("is the same inset ring the seller page's own tabs draw", () => {
+    for (const tab of [meStyles().tab(), sellerStyles().tab()])
+      expect(tab.split(" ")).toContain(
+        "not-disabled:focus-visible:-outline-offset-2",
+      );
+  });
+});
+
+describe("sell/me S4: the whole-page sign-in gate", () => {
+  it("is one Empty, drawn by the kit", async () => {
+    const out = await mePageAs(null);
+    expect(out).toContain("Sign in to see your account");
+    expect(out).toContain(
+      "Your listings, saved gear and reviews all live here",
+    );
+    // The kit's Empty is a pane with a round icon well above its title.
+    expect(out).toMatch(/<span class="[^"]*rounded-full[^"]*" aria-hidden/);
+    expect(out).not.toMatch(/class="[^"]*\bmk-/);
+    expect(out).not.toMatch(/class="[^"]*\bf5-/);
+  });
+
+  /*
+   * The one action on it is the kit's filled one, and there is exactly one.
+   * It cannot be rendered here: this build has no identity provider, so the
+   * gate offers no way in — the same thing the baseline shots record. So the
+   * count is taken from what the page writes.
+   */
+  it("offers one filled action, and only where there is a way in", () => {
+    const source = read("pages/MePage.tsx");
+    expect(source.match(/variant="primary"/g)).toHaveLength(1);
+    expect(source).toContain('auth.provider !== "none"');
+    expect(source).toContain('<Button variant="primary" size="lg"');
+  });
+
+  // The sell page gates the same way, in a pane rather than an empty state:
+  // it is a step in a flow, not a list with nothing in it.
+  it("and the sell page's gate draws nothing of the old stylesheet", async () => {
+    const out = await sellPageAs(null);
+    expect(out).toContain("Sell your gear");
+    expect(out).not.toMatch(/class="[^"]*\bmk-/);
+    expect(out).not.toMatch(/class="[^"]*\bf5-/);
+  });
+});
+
+/**
+ * A page rendered with no session.
+ *
+ * Two things stand in the way of asking a whole page for its markup here.
+ * The session is chosen when the auth module loads, so each case loads it
+ * afresh, as the header's cases above do. And `useAsync` begins every page
+ * loading and only settles in an effect, which never runs without a DOM, so
+ * every page would answer with its skeleton: it is settled to "nothing to
+ * fetch" here, which is what a signed-out reader's is. Everything else — the
+ * gate itself, the kit under it — is the real thing.
+ */
+async function pageAs(module: string, devUser: string | null, props: object) {
+  vi.resetModules();
+  vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "");
+  vi.stubEnv("VITE_MARKET_DEV_USER", devUser ?? "");
+  vi.doMock("./components", async () => ({
+    ...(await vi.importActual<typeof import("./components")>("./components")),
+    useAsync: () => ({
+      data: null,
+      error: null,
+      loading: false,
+      reload: () => {},
+      setData: () => {},
+    }),
+  }));
+  const { MarketAuthProvider } = await import("./auth");
+  const Page = (await import(module)).default;
+  const out = html(
+    createElement(MarketAuthProvider, {
+      children: createElement(Page, props),
+    }),
+  );
+  vi.doUnmock("./components");
+  return out;
+}
+
+const mePageAs = (devUser: string | null) =>
+  pageAs("./pages/MePage", devUser, { tab: "listings" });
+const sellPageAs = (devUser: string | null) =>
+  pageAs("./pages/SellPage", devUser, {});

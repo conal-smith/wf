@@ -27,11 +27,15 @@ export const buttonStyles = tv({
         "disabled:bg-transparent disabled:shadow-none",
         HOVER,
       ],
-      link: "font-normal underline underline-offset-4 decoration-line-strong not-disabled:hover:text-ink not-disabled:hover:decoration-current",
+      // A hover names its own background even where it wants none: the site's
+      // reset lays 25% white behind `button:enabled:hover`, and a variant that
+      // stays quiet about it is the one place that white gets through.
+      link: "font-normal underline underline-offset-4 decoration-line-strong not-disabled:hover:bg-transparent not-disabled:hover:text-ink not-disabled:hover:decoration-current",
       // The destructive answer in a ConfirmDialog, and nowhere else: warm
-      // means degraded, and what it confirms cannot be taken back.
+      // means degraded, and what it confirms cannot be taken back. It lifts
+      // under the pointer and keeps its fill, rather than being washed out.
       danger:
-        "rounded-full bg-warn text-ink-inverse not-disabled:hover:shadow-marker disabled:bg-sunken",
+        "rounded-full bg-warn text-ink-inverse not-disabled:hover:bg-warn not-disabled:hover:shadow-marker disabled:bg-sunken",
     },
     size: {
       sm: "h-control-sm px-2",
@@ -55,10 +59,19 @@ export const buttonStyles = tv({
     { icon: true, size: "sm", class: "w-control-sm" },
     { icon: true, size: "md", class: "w-control-md" },
     { icon: true, size: "lg", class: "w-control-lg" },
-    // A link in running text: no box of its own, whatever size was asked for.
+    /*
+     * A link in running text: no box of its own, whatever size was asked for.
+     * A thumb still gets a touch-tall target: on a coarse pointer an invisible
+     * band the height of touch is laid across the words, centred on them, so
+     * the target grows and nothing around it moves.
+     */
     {
       variant: "link",
-      class: "h-auto rounded-control p-0 pointer-coarse:min-h-0",
+      class: [
+        "relative h-auto rounded-control p-0 pointer-coarse:min-h-0",
+        "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:top-1/2",
+        "pointer-coarse:before:h-touch pointer-coarse:before:-translate-y-1/2",
+      ],
     },
   ],
   defaultVariants: { variant: "quiet", size: "md" },

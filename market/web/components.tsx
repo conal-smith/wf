@@ -5,13 +5,9 @@
 import { UserButton } from "@clerk/clerk-react";
 import {
   AlertTriangle,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Heart,
   Camera,
   Image as ImageIcon,
-  Info,
   LogIn,
   MapPin,
   PlusCircle,
@@ -21,20 +17,14 @@ import {
   UserRound,
   Wind,
 } from "lucide-react";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type InputHTMLAttributes,
-  type ReactNode,
-  type SelectHTMLAttributes,
-  type TextareaHTMLAttributes,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
-import { Button, Chip, Skeleton } from "../../ui";
+import { Button, Chip, Empty, Skeleton } from "../../ui";
 import { buttonStyles } from "../../ui/Button";
 import { linkStyles } from "../../ui/Link";
+import { paneStyles } from "../../ui/Pane";
+import { skeletonStyles } from "../../ui/Skeleton";
 import { RING, tv } from "../../ui/tv";
 import { useMarketAuth } from "./auth";
 import { Link, paths } from "./router";
@@ -554,51 +544,87 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
   );
 }
 
-// ---- notices -----------------------------------------------------------------
+// ---- the kit's own, under the names the pages already call them -------------
 
-export function Notice({
-  kind = "info",
-  children,
-}: {
-  kind?: "info" | "warn";
-  children: ReactNode;
-}) {
+/*
+ * A field, a notice, an empty state, a pager and a modal question are the
+ * kit's, not the marketplace's: ui/ draws each of them the way the rest of the
+ * site draws it. They are handed on from here rather than imported page by
+ * page so that the pages read as they always did, and so the one import that
+ * has to change when a piece moves is this one.
+ */
+export {
+  ConfirmDialog,
+  Empty,
+  Field,
+  Notice,
+  Pager,
+  Select,
+  TextArea,
+  TextInput,
+} from "../../ui";
+
+// ---- the pieces the pages share that the kit has no part for ----------------
+
+export const sharedStyles = tv({
+  slots: {
+    /*
+     * The marketplace's content pane: the kit's Pane, at the page inset rather
+     * than a panel's, and lifted off the content ground as every other box on
+     * these pages is. The phone takes the panel inset back, there being less
+     * page to spend.
+     */
+    pane: "p-6 shadow-control max-wide:p-5",
+    /*
+     * The same pane under an empty state, which brings a generous inset of its
+     * own on a wide screen and so is given only the lift. A phone takes the
+     * pane's inset back here too: there is not room for both.
+     */
+    emptyPane: "shadow-control max-wide:p-5",
+    /*
+     * The row of ways out of an empty state. Inside `Empty`'s own body, which
+     * is a centred column, so this only has to lay its own buttons out — and
+     * stand a little further off than the sentence above it.
+     */
+    emptyActions: "mt-2 flex flex-wrap justify-center gap-2",
+    /** The whole page, while there is nothing of it to draw yet. */
+    skeleton: "min-h-69",
+    /** A column of fields, read down. */
+    form: "grid gap-5",
+    /*
+     * Fields that belong together, side by side while each still has the room
+     * to be read in, and one to a line once they do not.
+     */
+    formRow: "grid grid-cols-fields gap-x-3 gap-y-5",
+    /** What a form is answered with, and whatever is said beside it. */
+    formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
+  },
+});
+
+/**
+ * The kit's Pane worn by an element of the page's own choosing — a <section>,
+ * a <li> — with the marketplace's inset and whatever that element lays out
+ * inside it. The component would be a <div>, and these boxes are not.
+ */
+export const pane = (...classes: string[]) =>
+  paneStyles({ className: classes.join(" ") });
+
+/**
+ * A page that has not arrived. It says it is busy itself: there is nothing
+ * under it to carry that, which is what the kit's Skeleton expects of its
+ * holder.
+ */
+export function PageSkeleton() {
+  const styles = sharedStyles();
   return (
     <div
-      className={`mk-notice ${kind === "warn" ? "mk-notice--warn" : ""}`}
-      role={kind === "warn" ? "alert" : "status"}
-    >
-      {kind === "warn" ? (
-        <AlertTriangle size={16} aria-hidden="true" />
-      ) : (
-        <Info size={16} aria-hidden="true" />
-      )}
-      <div>{children}</div>
-    </div>
-  );
-}
-
-export function Empty({
-  title,
-  icon,
-  kind = "info",
-  children,
-}: {
-  title: string;
-  icon?: ReactNode;
-  kind?: "info" | "warn";
-  children?: ReactNode;
-}) {
-  return (
-    <div
-      className={`mk-empty mk-pane ${kind === "warn" ? "mk-empty--warn" : ""}`}
-    >
-      <span className="mk-empty__icon" aria-hidden="true">
-        {icon ?? <ImageIcon size={24} />}
-      </span>
-      <p className="mk-lead">{title}</p>
-      {children}
-    </div>
+      className={skeletonStyles({
+        shape: "block",
+        className: styles.skeleton(),
+      })}
+      aria-busy="true"
+      aria-label="Loading"
+    />
   );
 }
 
@@ -614,201 +640,26 @@ export function LoadError({
   onRetry?: () => void;
   children?: ReactNode;
 }) {
+  const styles = sharedStyles();
   return (
     <div role="alert">
-      <Empty kind="warn" title={title} icon={<AlertTriangle size={24} />}>
+      <Empty
+        kind="warn"
+        title={title}
+        icon={<AlertTriangle size={24} />}
+        className={styles.emptyPane()}
+      >
         <p>{message}</p>
-        <div className="mk-empty__actions">
+        <div className={styles.emptyActions()}>
           {onRetry && (
-            <button
-              type="button"
-              className="f5-button f5-button--pill"
-              onClick={onRetry}
-            >
+            <Button variant="pill" onClick={onRetry}>
               <RotateCw size={15} aria-hidden="true" /> Try again
-            </button>
+            </Button>
           )}
           {children}
         </div>
       </Empty>
     </div>
-  );
-}
-
-export function Pager({
-  page,
-  pageSize,
-  total,
-  onPage,
-}: {
-  page: number;
-  pageSize: number;
-  total: number;
-  onPage: (p: number) => void;
-}) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return null;
-  return (
-    <nav className="mk-pager" aria-label="Pages">
-      <button
-        type="button"
-        className="f5-button f5-button--pill"
-        disabled={page <= 1}
-        onClick={() => onPage(page - 1)}
-      >
-        <ChevronLeft size={16} aria-hidden="true" /> Previous
-      </button>
-      <span className="mk-meta" aria-current="page">
-        Page {page} of {pages}
-      </span>
-      <button
-        type="button"
-        className="f5-button f5-button--pill"
-        disabled={page >= pages}
-        onClick={() => onPage(page + 1)}
-      >
-        Next <ChevronRight size={16} aria-hidden="true" />
-      </button>
-    </nav>
-  );
-}
-
-// ---- form fields -------------------------------------------------------------
-
-interface FieldProps {
-  label: ReactNode;
-  hint?: ReactNode;
-  error?: string;
-  htmlFor?: string;
-  children: ReactNode;
-}
-
-export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
-  return (
-    <div className="mk-field" data-invalid={Boolean(error)}>
-      <label className="mk-field__label" htmlFor={htmlFor}>
-        {label} {hint && <small>{hint}</small>}
-      </label>
-      {children}
-      {error && (
-        <span className="mk-meta mk-field__error" role="alert">
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function TextInput({
-  prefix,
-  active,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & {
-  prefix?: ReactNode;
-  active?: boolean;
-}) {
-  return (
-    <div className="mk-field__control" data-active={active || undefined}>
-      {prefix && <span className="mk-field__prefix">{prefix}</span>}
-      <input {...props} />
-    </div>
-  );
-}
-
-export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <div className="mk-field__control">
-      <textarea {...props} />
-    </div>
-  );
-}
-
-export function Select({
-  active,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & {
-  /** A filter that is narrowing the results, as opposed to sitting at "any". */
-  active?: boolean;
-}) {
-  return (
-    <div
-      className="mk-field__control mk-field__control--select"
-      data-active={active || undefined}
-    >
-      <select {...props} />
-      <ChevronDown size={16} aria-hidden="true" />
-    </div>
-  );
-}
-
-// ---- confirm dialog ----------------------------------------------------------
-
-/**
- * A modal question with one destructive answer. Native <dialog>, so focus is
- * trapped, Escape cancels and the page behind is inert without any of that
- * being written here.
- */
-export function ConfirmDialog({
-  open,
-  title,
-  children,
-  confirmLabel,
-  busy = false,
-  onConfirm,
-  onCancel,
-}: {
-  open: boolean;
-  title: string;
-  children?: ReactNode;
-  confirmLabel: string;
-  busy?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
-  }, [open]);
-  return (
-    <dialog
-      ref={ref}
-      className="f5-surface f5-surface--dialog mk-dialog"
-      aria-labelledby="mk-dialog-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        if (!busy) onCancel();
-      }}
-      onClick={(e) => {
-        if (e.target === ref.current && !busy) onCancel();
-      }}
-    >
-      <h2 className="mk-lead" id="mk-dialog-title">
-        {title}
-      </h2>
-      {children && <div className="mk-muted">{children}</div>}
-      <div className="mk-dialog__actions">
-        <button
-          type="button"
-          className="f5-button f5-button--pill"
-          disabled={busy}
-          onClick={onCancel}
-          autoFocus
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="f5-button f5-button--primary f5-button--danger"
-          disabled={busy}
-          onClick={onConfirm}
-        >
-          {confirmLabel}
-        </button>
-      </div>
-    </dialog>
   );
 }
 

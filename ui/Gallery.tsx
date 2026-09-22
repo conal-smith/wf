@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 import {
   Avatar,
   Button,
+  Checkbox,
   Chip,
   ConfirmDialog,
   Count,
@@ -53,6 +54,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 export default function Gallery() {
   const [saved, setSaved] = useState(true);
+  const [whatsapp, setWhatsapp] = useState(true);
   const [notify, setNotify] = useState<"all" | "mentions" | "none">("mentions");
   const [sort, setSort] = useState<"latest" | "unread">("latest");
   const [page, setPage] = useState(2);
@@ -301,6 +303,23 @@ export default function Gallery() {
             <TextArea id="g-nobody" />
           </Field>
         </div>
+      </Section>
+
+      <Section title="Checkbox">
+        <Row label="off, on, and disabled either way">
+          <Checkbox
+            checked={whatsapp}
+            onChange={(event) => setWhatsapp(event.target.checked)}
+          >
+            Buyers can message this number
+          </Checkbox>
+          <Checkbox defaultChecked={false} disabled>
+            Add a phone number first
+          </Checkbox>
+          <Checkbox defaultChecked disabled>
+            On, and not yours to turn off
+          </Checkbox>
+        </Row>
       </Section>
 
       <Section title="SearchField">
