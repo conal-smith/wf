@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buttonStyles } from "../../ui/Button";
+import { surfaceStyles } from "../../ui/Surface";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import { SiteMenu, siteMenuStyles } from "./SiteMenu";
 
@@ -93,6 +94,98 @@ describe("the two grounds", () => {
     const panel = siteMenuStyles({ ground: "content" }).panel().split(" ");
     expect(panel).toContain("bg-solid");
     expect(panel).toContain("backdrop-filter-none");
+  });
+
+  /*
+   * The trigger is the kit's own button, not one that looks like it: every
+   * class of the kit's variant, its hover included, and only the menu's hit
+   * band on top. On the marketplace that hover is the one its header
+   * neighbours have (ruled a colour-only alignment in review, 2026-09-22).
+   */
+  it("draws the trigger as exactly the kit's button on each ground, hover and ring included", () => {
+    const classOf = (markup: string) =>
+      markup
+        .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
+        .split(" ")
+        .sort();
+    const cases = [
+      [{ current: "map", size: "md" }, "raised", "md"],
+      [{ current: "market", size: "sm", ground: "content" }, "pill", "sm"],
+    ] as const;
+    for (const [props, variant, size] of cases) {
+      const kit = buttonStyles({
+        variant,
+        size,
+        icon: true,
+        className: siteMenuStyles({ ground: props.ground ?? "map" }).trigger(),
+      });
+      expect(classOf(html(props)), variant).toEqual(kit.split(" ").sort());
+    }
+    const onCard = classOf(
+      html({ current: "market", size: "sm", ground: "content" }),
+    );
+    expect(onCard).toContain("not-disabled:hover:bg-sunken");
+    expect(onCard).toContain("border-line");
+    expect(onCard).toContain("not-disabled:focus-visible:outline-focus");
+    const onGlass = classOf(html({ current: "map" }));
+    expect(onGlass).toContain("not-disabled:hover:bg-card/55");
+    expect(onGlass).toContain("not-disabled:focus-visible:outline-focus");
+  });
+
+  /*
+   * The panel is a Surface with the menu's placement on it. Drawn only when
+   * open, so the composition the component writes is asked for here: glass
+   * that goes solid for a reader who asks, drops in and holds still for one
+   * who asks that, and on the card is solid with no blur left at all.
+   */
+  it("composes the panel from the Surface: glass on the map, solid on the card, both declinable", () => {
+    const panel = (ground: "map" | "content") =>
+      surfaceStyles({ className: siteMenuStyles({ ground }).panel() }).split(
+        " ",
+      );
+    for (const ground of ["map", "content"] as const) {
+      const classes = panel(ground);
+      for (const name of [
+        "animate-menu-in",
+        "motion-reduce:animate-none",
+        "reduced-transparency:bg-solid",
+        "reduced-transparency:backdrop-filter-none",
+        "absolute",
+        "top-full",
+        "mt-2",
+        "p-1",
+      ])
+        expect(classes, `${ground} ${name}`).toContain(name);
+      expect(classes, ground).not.toContain("p-5");
+    }
+    expect(panel("map")).toContain("bg-glass");
+    expect(panel("map")).toContain("backdrop-blur-glass");
+    expect(panel("content")).toContain("bg-solid");
+    expect(panel("content")).not.toContain("bg-glass");
+    expect(SOURCE).toContain("surfaceStyles({ className: styles.panel() })");
+  });
+
+  /*
+   * The merge keeps the Surface's blur beside `backdrop-filter-none` (they are
+   * different properties to it), so on the card it is the stylesheet's order
+   * that takes the blur off: at one class each, the later rule wins. Asked of
+   * the compiled theme, so a reorder shows up here and not on a phone.
+   */
+  it("takes the blur off the card's panel by the order the theme compiles in", async () => {
+    const classes = surfaceStyles({
+      className: siteMenuStyles({ ground: "content" }).panel(),
+    }).split(" ");
+    const css = (await compileTheme())(classes);
+    const at = (name: string) => {
+      const index = css.search(
+        new RegExp(`\\.${name.replace(/[^\w-]/g, "\\\\$&")} \\{`),
+      );
+      expect(index, name).toBeGreaterThan(-1);
+      return index;
+    };
+    const none = at("backdrop-filter-none");
+    expect(none).toBeGreaterThan(at("backdrop-blur-glass"));
+    expect(none).toBeGreaterThan(at("backdrop-saturate-145"));
   });
 
   it("raises the section you are in, and keeps it raised under the pointer on glass only", () => {
