@@ -37,10 +37,6 @@ market/api/dist
 !src/**
 !force5/src/**
 !force5/assets/**
-# The marketplace stylesheet imports the design system's tokens and component CSS.
-!design/
-!design/*/
-!design/*/*.css
 # Never build from a local install, build output, cache or credential file.
 **/node_modules
 dist

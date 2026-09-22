@@ -142,7 +142,7 @@ describe("the kit is styled only from the theme", () => {
       expect(read(file), file).not.toMatch(/className="/);
   });
 
-  it("imports nothing from design/, and no stylesheet", () => {
+  it("imports nothing from the design bundle, and no stylesheet", () => {
     for (const file of sources) {
       expect(read(file), file).not.toMatch(/from\s+["'][^"']*design\//);
       expect(read(file), file).not.toMatch(/import\s+["'][^"']+\.css["']/);
@@ -803,13 +803,13 @@ describe("the components, rendered", () => {
   });
 
   /*
-   * The measures design/ has always drawn these at, which the marketplace's
+   * The measures the design bundle always drew these at, which the marketplace's
    * forms were laid out from and are held to (market-tw-sell-me): a label at
    * the label leading (1.3, not a paragraph's 1.5), a text area three large
    * controls tall, and an empty state's icon well a large control and a gap
    * across. Each is a box that moves every field or line under it.
    */
-  it("Field, TextArea and Empty keep design/'s measures", () => {
+  it("Field, TextArea and Empty keep the design bundle's measures", () => {
     const field = fieldStyles();
     expect(field.label().split(" ")).toContain("leading-tight");
     expect(field.hint().split(" ")).toContain("leading-tight");

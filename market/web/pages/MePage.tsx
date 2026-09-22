@@ -65,7 +65,7 @@ export const meStyles = tv({
       /*
        * The one ring, drawn inside the tab: the track scrolls, so it clips
        * whatever lies past its 4px of padding, and a ring 2px clear of the tab
-       * reaches 5px out and was cut flat on every side (design/'s segmented
+       * reaches 5px out and was cut flat on every side (the design bundle's segmented
        * drew it inset for the same reason).
        */
       "not-disabled:focus-visible:-outline-offset-2",
