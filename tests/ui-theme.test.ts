@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "tailwindcss";
 import { beforeAll, describe, expect, it } from "vitest";
+import { PALETTE } from "../force5/src/weather";
 
 /**
  * `ui/theme.css` is the only place a design value is written down, so what it
@@ -228,7 +229,7 @@ describe("ui/theme.css: the values", () => {
     expect(declared.sort()).toEqual(expected.sort());
   });
 
-  it("copies the wind ramp verbatim from the design tokens", () => {
+  it("copies the wind ramp verbatim from the PALETTE that paints the map", () => {
     const ramp = windRamp();
     expect(ramp.map(([step]) => step)).toEqual([
       "k00",
@@ -391,30 +392,38 @@ describe("ui/theme.css: the values", () => {
 });
 
 /**
- * A step of the neutral ramp in the generated design tokens. The family kept
- * its old name through the palette swap so that every alias stayed on its own
- * step (tests/atlantic-tokens.test.ts).
+ * The navy ramp as the Atlantic ruling lists it (plan 13.1, and the ruling of
+ * 2026-09-20 in docs/DESIGN_PRINCIPLES.md), step by step. The theme names the
+ * steps it uses by role; this is what those roles are steps of.
  */
+const NAVY: Record<number, string> = {
+  50: "#f4f6fa",
+  100: "#eef2f9",
+  200: "#e1e8f3",
+  300: "#c3cfe2",
+  400: "#9db0cc",
+  500: "#7488a6",
+  600: "#4a607c",
+  700: "#1f3a5c",
+  800: "#0a1f3c",
+  900: "#081830",
+  950: "#050f20",
+};
 function neutralStep(step: number): string {
-  const tokens = readFileSync(
-    resolve(ROOT, "design/foundations/tokens.css"),
-    "utf8",
-  );
-  const match = tokens.match(
-    new RegExp(`--ref-color-teal-${step}: (#[0-9a-f]+);`),
-  );
-  if (!match) throw new Error(`the ramp has no step ${step}`);
-  return match[1];
+  const hex = NAVY[step];
+  if (!hex) throw new Error(`the ramp has no step ${step}`);
+  return hex;
 }
 
-/** `[step, hex]` for each `--sem-color-wind-*` in the generated design tokens. */
+/**
+ * `[step, hex]` for each wind band, read from `PALETTE` in
+ * force5/src/weather.ts: the ramp that actually paints the map, the forecast
+ * cells and the wind fills, which the theme's `--color-wind-*` must copy.
+ */
 function windRamp(): [string, string][] {
-  const tokens = readFileSync(
-    resolve(ROOT, "design/foundations/tokens.css"),
-    "utf8",
-  );
-  const root = tokens.slice(0, tokens.indexOf("}"));
-  return [...root.matchAll(/--sem-color-wind-(k\d+): (#[0-9a-f]+);/g)].map(
-    (m) => [m[1], m[2]],
-  );
+  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  return PALETTE.map(([knots, [r, g, b]]) => [
+    `k${String(knots).padStart(2, "0")}`,
+    `#${hex(r)}${hex(g)}${hex(b)}`,
+  ]);
 }
