@@ -39,9 +39,16 @@ export const buttonStyles = tv({
       lg: "h-control-lg px-5 text-prose font-semibold",
     },
     icon: { true: "rounded-full p-0 pointer-coarse:min-w-touch" },
-    // Raised and filled as well as recoloured, and heavier: never colour alone.
     pressed: {
+      // Raised and filled as well as recoloured, and heavier: never colour alone.
       true: "border-transparent bg-inverse font-bold text-ink-inverse shadow-control not-disabled:hover:bg-inverse disabled:bg-sunken",
+      /*
+       * A toggle that renames itself when it goes on — Save becomes Saved, the
+       * heart beside it filled in — has already said so twice, in the word and
+       * in the mark. It keeps its quiet box, so that being on does not put a
+       * second filled control on a view that already has the one it is allowed.
+       */
+      worded: "",
     },
   },
   compoundVariants: [
@@ -62,8 +69,11 @@ type ButtonVariants = VariantProps<typeof buttonStyles>;
 interface Shared {
   variant?: ButtonVariants["variant"];
   size?: ButtonVariants["size"];
-  /** A toggle that is on. Omit it on a button that is not a toggle. */
-  pressed?: boolean;
+  /**
+   * A toggle that is on. `"worded"` for one whose own label and icon say so,
+   * which keeps its quiet box. Omit it on a button that is not a toggle.
+   */
+  pressed?: boolean | "worded";
   children?: ReactNode;
 }
 
@@ -107,7 +117,7 @@ export function Button(props: ButtonProps) {
       type="button"
       {...rest}
       className={classes}
-      aria-pressed={pressed}
+      aria-pressed={pressed === undefined ? undefined : pressed !== false}
     />
   );
 }

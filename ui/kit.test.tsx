@@ -184,10 +184,11 @@ describe("S2: what ui/ exports", () => {
     ],
     ["Button", buttonStyles, "size", ["sm", "md", "lg"]],
     ["Button", buttonStyles, "icon", ["true"]],
-    ["Button", buttonStyles, "pressed", ["true"]],
+    ["Button", buttonStyles, "pressed", ["true", "worded"]],
     ["Chip", chipStyles, "tone", ["neutral", "warn", "glass"]],
     ["Chip", chipStyles, "eyebrow", ["true"]],
     ["Pane", paneStyles, "kind", ["card", "sunken"]],
+    ["Pane", paneStyles, "standing", ["true"]],
     ["Avatar", avatarStyles, "size", ["sm", "md", "lg"]],
   ] as const)("%s has %s: %j", (_, recipe, variant, values) => {
     const variants = (recipe as unknown as { variants: Record<string, object> })
@@ -289,6 +290,32 @@ describe("S4: states", () => {
     const item = segmentedStyles().item();
     for (const name of ["aria-pressed:bg-card", "aria-pressed:shadow-control"])
       expect(item).toContain(name);
+  });
+
+  /*
+   * The one exception, and it is not a hole: a toggle whose label changes with
+   * it — Save becomes Saved, its heart filled in — has said so in words and in
+   * a mark before the box is asked. Filling it as well would put a second
+   * filled control on a view that is allowed one.
+   */
+  it("a worded toggle keeps its quiet box, and still says pressed", () => {
+    const worded = buttonStyles({ variant: "pill", pressed: "worded" });
+    expect(worded).toBe(buttonStyles({ variant: "pill" }));
+    for (const name of ["bg-inverse", "font-bold", "text-ink-inverse"])
+      expect(worded).not.toContain(name);
+    expect(html(<Button pressed="worded">Saved</Button>)).toContain(
+      'aria-pressed="true"',
+    );
+  });
+
+  // A pane that is the page's own box rather than one of a column of them.
+  it("a standing pane lifts off the ground and takes the wider inset", () => {
+    const standing = paneStyles({ standing: true }).split(" ");
+    for (const name of ["p-6", "shadow-control", "max-wide:p-5"])
+      expect(standing).toContain(name);
+    expect(standing).not.toContain("p-5");
+    expect(paneStyles().split(" ")).toContain("p-5");
+    expect(paneStyles()).not.toContain("shadow-control");
   });
 
   it("hover and disabled are written for every button", () => {

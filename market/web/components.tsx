@@ -224,6 +224,29 @@ export const conditionLabel = (id: string) =>
 
 // ---- stars -------------------------------------------------------------------
 
+/**
+ * The three ways a rating is drawn: read back as five marks, summarised beside
+ * them, and picked. S3 gives all three the one pair of colours — the accent
+ * for what has been earned, the strong line for what has not — and a star is
+ * filled as well as recoloured, so none of them is said in colour alone.
+ */
+export const ratingStyles = tv({
+  slots: {
+    marks: "inline-flex items-center gap-0.5 text-accent",
+    empty: "text-line-strong",
+    summary: "flex flex-wrap items-center gap-1",
+    quiet: "text-body text-ink-muted",
+    picker: "inline-flex gap-1",
+    // Under the pointer a star is lit, and a lit star draws no box: the run
+    // of filled marks is what answers the hover, as it always did.
+    star: "text-line-strong not-disabled:hover:bg-transparent",
+  },
+  variants: {
+    /** Earned, or about to be: under the pointer the whole run lights up. */
+    lit: { true: { star: "text-accent" } },
+  },
+});
+
 export function Stars({
   value,
   size = 14,
@@ -232,9 +255,10 @@ export function Stars({
   size?: number;
 }) {
   const v = value ?? 0;
+  const styles = ratingStyles();
   return (
     <span
-      className="mk-stars"
+      className={styles.marks()}
       role="img"
       aria-label={value == null ? "Not yet rated" : `${v} out of 5`}
     >
@@ -249,7 +273,12 @@ export function Stars({
             aria-hidden="true"
           />
         ) : (
-          <Star key={n} size={size} data-empty="true" aria-hidden="true" />
+          <Star
+            key={n}
+            className={styles.empty()}
+            size={size}
+            aria-hidden="true"
+          />
         ),
       )}
     </span>
@@ -267,33 +296,37 @@ export function RatingPicker({
   const labels = ["", "Poor", "Fair", "Good", "Very good", "Excellent"];
   return (
     <div
-      className="mk-rating-pick"
+      className={ratingStyles().picker()}
       role="radiogroup"
       aria-label="Rating"
       onMouseLeave={() => setHover(0)}
     >
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          role="radio"
-          aria-checked={value === n}
-          aria-pressed={n <= value}
-          data-lit={hover ? n <= hover : undefined}
-          aria-label={`${n} star${n === 1 ? "" : "s"}: ${labels[n]}`}
-          className="f5-button f5-button--icon f5-button--sm"
-          onMouseEnter={() => setHover(n)}
-          onFocus={() => setHover(n)}
-          onBlur={() => setHover(0)}
-          onClick={() => onChange(n)}
-        >
-          <Star
-            size={22}
-            fill={n <= (hover || value) ? "currentColor" : "none"}
-            aria-hidden="true"
-          />
-        </button>
-      ))}
+      {[1, 2, 3, 4, 5].map((n) => {
+        const lit = n <= (hover || value);
+        return (
+          <Button
+            key={n}
+            icon
+            size="sm"
+            role="radio"
+            aria-checked={value === n}
+            aria-label={`${n} star${n === 1 ? "" : "s"}: ${labels[n]}`}
+            // The colour is the mark's, not the control's: a radio is not a
+            // toggle, so the box stays quiet and the star says the rating.
+            className={ratingStyles({ lit }).star()}
+            onMouseEnter={() => setHover(n)}
+            onFocus={() => setHover(n)}
+            onBlur={() => setHover(0)}
+            onClick={() => onChange(n)}
+          >
+            <Star
+              size={22}
+              fill={lit ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+          </Button>
+        );
+      })}
     </div>
   );
 }
@@ -305,12 +338,13 @@ export function SellerRating({
   seller: SellerSummary;
   size?: number;
 }) {
+  const styles = ratingStyles();
   if (!seller.ratingCount)
-    return <span className="mk-meta">No ratings yet</span>;
+    return <span className={styles.quiet()}>No ratings yet</span>;
   return (
-    <span className="mk-row" style={{ gap: "var(--sem-space-gap-tight)" }}>
+    <span className={styles.summary()}>
       <Stars value={seller.ratingAvg} size={size} />
-      <span className="mk-meta">
+      <span className={styles.quiet()}>
         {seller.ratingAvg?.toFixed(1)} ({seller.ratingCount})
       </span>
     </span>
@@ -827,10 +861,12 @@ export function SaveButton({
   onToggle: () => void;
 }) {
   return (
-    <button
-      type="button"
-      className="f5-button f5-button--pill f5-button--lg"
-      aria-pressed={saved}
+    <Button
+      variant="pill"
+      size="lg"
+      // Saved says so in the word and in the filled heart beside it, so the
+      // box stays quiet and never rivals the view's one filled action.
+      pressed={saved ? "worded" : false}
       disabled={busy}
       onClick={onToggle}
     >
@@ -840,7 +876,7 @@ export function SaveButton({
         aria-hidden="true"
       />
       {saved ? "Saved" : "Save"}
-    </button>
+    </Button>
   );
 }
 
