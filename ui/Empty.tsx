@@ -6,7 +6,8 @@ import { tv, type VariantProps } from "./tv";
 export const emptyStyles = tv({
   slots: {
     base: "grid justify-items-center gap-3 px-6 py-16 text-center font-sans text-prose text-ink-muted",
-    icon: "grid size-14 place-items-center rounded-full",
+    // A large control and a gap across, as design/ draws the well.
+    icon: "grid size-14.5 place-items-center rounded-full",
     title: "m-0 text-lead text-ink",
     body: "grid max-w-reading justify-items-center gap-3",
   },

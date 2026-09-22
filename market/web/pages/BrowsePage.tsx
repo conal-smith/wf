@@ -12,6 +12,7 @@ import {
   Pager,
   categoryLabel,
   conditionLabel,
+  sharedStyles,
   useAsync,
   usePageTitle,
 } from "../components";
@@ -397,14 +398,14 @@ export default function BrowsePage() {
         <Empty
           title={active ? "Nothing matches that search" : "No listings yet"}
           icon={<SearchX size={24} aria-hidden="true" />}
+          className={sharedStyles().emptyPane()}
         >
           <p>
             {active
               ? "Try a broader search, or take a filter off."
               : "Be the first to list something you no longer ride."}
           </p>
-          {/* Empty's own row of actions, which the item that converts it takes. */}
-          <div className="mk-empty__actions">
+          <div className={sharedStyles().emptyActions()}>
             {active ? (
               <Button variant="pill" onClick={clearAll}>
                 Clear all filters

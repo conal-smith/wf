@@ -1,15 +1,21 @@
 /*
- * Marketplace product CSS. Consumes the Force5 bundle: tokens first, then the
- * components it reuses. Every colour, space, radius, type step and duration
- * below is a --sem-* token; the handful of layout measures the system does
- * not tokenise (column widths, breakpoints, aspect ratios) are marked.
+ * What is left of the marketplace's product CSS: the rules the listing page
+ * and the seller page still read, and nothing else. Every other page is
+ * Tailwind and ui/ now, and the rules they drew have gone with them.
+ *
+ * The item that converts those two pages takes the rest of this file, the
+ * `@import`s above it, the `.mk-root` scope and the `data-mode` beside it
+ * (MarketApp.tsx), and this file itself (D7, D8).
+ *
+ * Every colour, space, radius, type step and duration below is a --sem-*
+ * token; the handful of layout measures the system does not tokenise (column
+ * widths, breakpoints, aspect ratios) are marked.
  *
  * The marketplace is a content page, not chrome over the map: it stands on
  * --sem-color-bg-content and its panes and cards are --sem-color-surface-card
  * (see the ruling of 2026-09-17 in design/foundations/principles.md).
  */
 @import "../../design/foundations/tokens.css";
-@import "../../design/surface/component.css";
 @import "../../design/button/component.css";
 @import "../../design/chip/component.css";
 @import "../../design/segmented/component.css";
@@ -241,19 +247,10 @@
   flex-wrap: wrap;
 }
 
-.mk-page-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sem-space-gap);
-}
-
-/* ---- what the converted pages left behind --------------------------------- */
-
 /*
- * The face beside a name, and a review in a list. Both were drawn on the
- * listing and seller pages, which are Tailwind now; these two are still here
- * because `Avatar` has no size of its own in ui/ yet and MePage draws the
- * same review row. They go with the pages that still read them (D7).
+ * The face beside a name, drawn on the listing and seller pages, which are
+ * Tailwind now; it is still here because `Avatar` has no size of its own in
+ * ui/ yet. It goes with market.css (D7).
  */
 .mk-avatar {
   display: inline-grid;
@@ -275,256 +272,11 @@
   font-size: var(--sem-text-title-font-size);
 }
 
-.mk-review {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sem-space-gap);
-  padding: var(--sem-space-pad-surface) 0;
-  border-top: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
-}
-
-.mk-review:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.mk-review:last-child {
-  padding-bottom: 0;
-}
-
-/* ---- my listings ---------------------------------------------------------- */
-
-.mk-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sem-space-gap-loose);
-  padding: 0;
-  list-style: none;
-}
-
-.mk-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sem-space-gap-loose) var(--sem-space-pad-surface);
-  padding: var(--sem-space-pad-control);
-  padding-right: var(--sem-space-pad-surface);
-}
-
-.mk-item__main {
-  flex: 1 1 280px; /* ds-lint-allow: flex basis is layout */
-  display: flex;
-  align-items: center;
-  gap: var(--sem-space-pad-control);
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  border-radius: var(--sem-radius-control);
-}
-
-.mk-item__main:focus-visible {
-  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
-  outline-offset: var(--sem-stroke-focus-offset);
-}
-
-.mk-item__thumb {
-  flex: 0 0 auto;
-  width: 88px; /* ds-lint-allow: thumbnail size, not a tokenised scale */
-  aspect-ratio: 4 / 3; /* ds-lint-allow: an image ratio */
-  display: grid;
-  place-items: center;
-  border-radius: var(--sem-radius-control);
-  background: var(--sem-color-surface-sunken);
-  color: var(--sem-color-border-strong);
-  overflow: hidden;
-}
-
-.mk-item__thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.mk-item__title {
-  font-weight: var(--sem-text-label-font-weight);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mk-tabs {
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  align-self: flex-start;
-}
-
-.mk-tabs .f5-segmented__item {
-  height: calc(var(--sem-control-height-sm) + var(--sem-space-gap-tight));
-  padding: 0 var(--sem-space-pad-control);
-  border-radius: var(--sem-radius-round);
-  font-size: var(--sem-text-body-font-size);
-  text-decoration: none;
-}
-
-.mk-tabs .f5-segmented__item[aria-pressed="true"] {
-  background: var(--sem-color-surface-card);
-}
-
-.mk-tabs .f5-segmented__item > small {
-  margin-left: 0;
-}
-
 /* ---- forms --------------------------------------------------------------- */
 
 .mk-form {
   display: grid;
   gap: var(--sem-space-pad-surface);
-}
-
-.mk-form__row {
-  display: grid;
-  gap: var(--sem-space-pad-surface) var(--sem-space-pad-control);
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(180px, 1fr)
-  ); /* ds-lint-allow: field width is layout */
-}
-
-.mk-field {
-  display: grid;
-  gap: var(--sem-space-gap);
-  min-width: 0;
-  align-content: start;
-}
-
-.mk-field__label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sem-space-gap);
-  font-family: var(--sem-text-label-font-family);
-  font-size: var(--sem-text-body-font-size);
-  font-weight: var(--sem-text-label-font-weight);
-  line-height: var(--sem-text-label-line-height);
-  color: var(--sem-color-text-secondary);
-}
-
-.mk-field__label small {
-  font-size: inherit;
-  font-weight: var(--sem-text-body-font-weight);
-  color: var(--sem-color-text-muted);
-  text-align: right;
-}
-
-.mk-field__control {
-  display: flex;
-  align-items: center;
-  gap: var(--sem-space-gap);
-  min-height: var(--sem-control-height-touch);
-  padding: 0 var(--sem-space-pad-control);
-  border: var(--sem-stroke-hairline) solid var(--sem-color-border-strong);
-  border-radius: var(--sem-radius-control);
-  background: var(--sem-color-surface-card);
-  color: var(--sem-color-text-primary);
-  transition:
-    border-color var(--sem-effect-duration-fast) ease,
-    box-shadow var(--sem-effect-duration-fast) ease;
-}
-
-.mk-field__control:hover {
-  border-color: var(--sem-color-text-muted);
-}
-
-.mk-field__control:focus-within {
-  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
-  outline-offset: var(--sem-stroke-focus-offset);
-}
-
-.mk-field[data-invalid="true"] .mk-field__control {
-  border-color: var(--sem-color-status-warn-fg);
-  background: var(--sem-color-status-warn-bg);
-}
-
-.mk-field__control input,
-.mk-field__control select,
-.mk-field__control textarea {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 0;
-}
-
-.mk-field__control input,
-.mk-field__control select {
-  align-self: stretch;
-}
-
-.mk-field__control ::placeholder {
-  color: var(--sem-color-text-muted);
-  opacity: 1; /* ds-lint-allow: Firefox dims placeholders by default; this restores the token */
-}
-
-.mk-field__control textarea {
-  resize: vertical;
-  min-height: calc(var(--sem-control-height-lg) * 3);
-  padding: var(--sem-space-pad-control) 0;
-  line-height: var(--sem-text-prose-line-height);
-}
-
-.mk-field__control select {
-  appearance: none;
-  cursor: pointer;
-  padding-right: var(--sem-space-inset);
-  text-overflow: ellipsis;
-}
-
-.mk-field__control--select {
-  position: relative;
-}
-
-.mk-field__control--select > svg {
-  position: absolute;
-  right: var(--sem-space-pad-control);
-  pointer-events: none;
-  color: var(--sem-color-text-muted);
-}
-
-/* A filter that is doing something says so without being read. */
-.mk-field__control[data-active="true"] {
-  border-color: var(--sem-color-action-bg);
-  box-shadow: inset 0 0 0 var(--sem-stroke-hairline) var(--sem-color-action-bg);
-}
-
-.mk-field__prefix {
-  color: var(--sem-color-text-muted);
-  font-weight: var(--sem-text-label-font-weight);
-}
-
-.mk-field__error {
-  color: var(--sem-color-status-warn-fg);
-}
-
-.mk-check {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sem-space-gap);
-  min-height: var(--sem-control-height-touch);
-  cursor: pointer;
-}
-
-.mk-check input {
-  width: var(--sem-space-pad-surface);
-  height: var(--sem-space-pad-surface);
-  accent-color: var(--sem-color-action-bg);
-  margin: 0;
 }
 
 .mk-form__actions {
@@ -534,205 +286,7 @@
   align-items: center;
 }
 
-/* ---- photo uploader ------------------------------------------------------ */
-
-.mk-photos {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(132px, 1fr)
-  ); /* ds-lint-allow: tile width is layout */
-  gap: var(--sem-space-gap-loose);
-}
-
-.mk-photo {
-  position: relative;
-  aspect-ratio: 4 / 3; /* ds-lint-allow: an image ratio, the same one the cards crop to */
-  border-radius: var(--sem-radius-control);
-  background: var(--sem-color-surface-sunken);
-  overflow: hidden;
-}
-
-.mk-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.mk-photo[data-busy="true"] img {
-  opacity: 0.5; /* ds-lint-allow: an in-flight upload is dimmed; opacity is not a tokenised scale */
-}
-
-.mk-photo__tools {
-  position: absolute;
-  inset: auto var(--sem-space-gap-tight) var(--sem-space-gap-tight);
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sem-space-gap-tight);
-}
-
-.mk-root .mk-photo__tools .f5-button {
-  background: var(--sem-color-surface-glass);
-  border: var(--sem-stroke-hairline) solid var(--sem-color-border-glass);
-  -webkit-backdrop-filter: blur(var(--sem-effect-blur-scrim));
-  backdrop-filter: blur(var(--sem-effect-blur-scrim));
-}
-
-.mk-photo__cover {
-  position: absolute;
-  top: var(--sem-space-gap-tight);
-  left: var(--sem-space-gap-tight);
-}
-
-.mk-photo--add {
-  display: grid;
-  place-items: center;
-  border: var(--sem-stroke-emphasis) dashed var(--sem-color-border-strong);
-  background: var(--sem-color-bg-content);
-  color: var(--sem-color-text-muted);
-  cursor: pointer;
-  text-align: center;
-  padding: var(--sem-space-gap);
-  transition:
-    background-color var(--sem-effect-duration-fast) ease,
-    color var(--sem-effect-duration-fast) ease;
-}
-
-.mk-photo--add > span {
-  align-items: center;
-}
-
-.mk-photo--add:hover,
-.mk-photo--add[data-over="true"] {
-  background: var(--sem-color-surface-sunken);
-  color: var(--sem-color-text-primary);
-}
-
-.mk-photo--add:focus-within {
-  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
-  outline-offset: var(--sem-stroke-focus-offset);
-}
-
-.mk-photo--add input {
-  position: absolute;
-  inset: 0;
-  opacity: 0; /* ds-lint-allow: visually hidden native file input */
-  cursor: pointer;
-}
-
-/* ---- notices, empty states, pager, dialog ---------------------------------- */
-
-.mk-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sem-space-gap-loose);
-  padding: var(--sem-space-pad-control) var(--sem-space-pad-surface);
-  border-radius: var(--sem-radius-control);
-  background: var(--sem-color-surface-sunken);
-  color: var(--sem-color-text-secondary);
-}
-
-.mk-notice--warn {
-  background: var(--sem-color-status-warn-bg);
-  color: var(--sem-color-status-warn-fg);
-}
-
-.mk-notice > svg {
-  flex-shrink: 0;
-  margin-top: var(--sem-stroke-emphasis);
-}
-
-.mk-empty {
-  display: grid;
-  justify-items: center;
-  gap: var(--sem-space-gap-loose);
-  padding: calc(var(--sem-space-pad-dialog) * 2) var(--sem-space-inset);
-  text-align: center;
-}
-
-.mk-empty > p:not(.mk-lead) {
-  max-width: 44ch; /* ds-lint-allow: a reading measure, not a tokenised scale */
-  color: var(--sem-color-text-muted);
-}
-
-.mk-empty__icon {
-  display: grid;
-  place-items: center;
-  width: calc(var(--sem-control-height-lg) + var(--sem-space-gap-loose));
-  height: calc(var(--sem-control-height-lg) + var(--sem-space-gap-loose));
-  border-radius: var(--sem-radius-round);
-  background: var(--sem-color-surface-sunken);
-  color: var(--sem-color-text-muted);
-}
-
-.mk-empty--warn .mk-empty__icon {
-  background: var(--sem-color-status-warn-bg);
-  color: var(--sem-color-status-warn-fg);
-}
-
-.mk-empty__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--sem-space-gap);
-  margin-top: var(--sem-space-gap);
-}
-
-.mk-pager {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--sem-space-pad-control);
-  padding-top: var(--sem-space-gap);
-}
-
-.mk-dialog {
-  width: min(
-    100% - var(--sem-space-pad-dialog),
-    420px
-  ); /* ds-lint-allow: a dialog measure, not a tokenised scale */
-  margin: auto;
-  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
-  background: var(--sem-color-surface-card);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-.mk-dialog::backdrop {
-  background: var(--sem-color-surface-scrim);
-  -webkit-backdrop-filter: blur(var(--sem-effect-blur-scrim));
-  backdrop-filter: blur(var(--sem-effect-blur-scrim));
-}
-
-.mk-dialog[open] {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sem-space-gap-loose);
-  animation: mk-dialog-in var(--sem-effect-duration-fast) ease both;
-}
-
-.mk-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--sem-space-gap);
-  margin-top: var(--sem-space-gap-loose);
-}
-
-/* The one destructive confirmation is the view's accent, in the warm family:
-   warm means degraded, and deleting a listing and its photos is that. */
-.mk-root .mk-dialog .f5-button--danger {
-  background: var(--sem-color-status-warn-fg);
-  color: var(--sem-color-text-inverse);
-}
-
-@keyframes mk-dialog-in {
-  from {
-    opacity: 0; /* ds-lint-allow: opacity is not a tokenised scale */
-    transform: translateY(var(--sem-space-gap));
-  }
-}
+/* ---- skeleton ------------------------------------------------------------ */
 
 .mk-skeleton {
   border-radius: var(--sem-radius-surface);
@@ -753,41 +307,15 @@
 
 /* ---- responsive ---------------------------------------------------------- */
 
-/*
- * iOS zooms the page when a focused field's text is under 16px. The scale has
- * no 16, so on a touch device fields take the next step up rather than the
- * page jumping under the reader's thumb.
- */
-@media (pointer: coarse) {
-  .mk-root .mk-field__control input,
-  .mk-root .mk-field__control select,
-  .mk-root .mk-field__control textarea {
-    font-size: var(--sem-text-lead-font-size);
-  }
-}
-
 @media (max-width: 719px) {
   /* ds-lint-allow: breakpoint */
   .mk-pane {
     padding: var(--sem-space-pad-surface);
   }
-  .mk-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  .mk-item {
-    padding: var(--sem-space-pad-control);
-  }
-  .mk-item__thumb {
-    width: 72px; /* ds-lint-allow: thumbnail size, not a tokenised scale */
-  }
-  .mk-dialog__actions .f5-button {
-    flex: 1 1 auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mk-skeleton,
-  .mk-dialog[open] {
+  .mk-skeleton {
     transition: none;
     animation: none;
   }

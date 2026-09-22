@@ -1,15 +1,21 @@
 import { ArrowLeft, ArrowRight, Camera, X } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { Button, Chip } from "../../../ui";
+import { buttonStyles } from "../../../ui/Button";
+import { RING_WITHIN, tv } from "../../../ui/tv";
 import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
   Field,
   LoadError,
   Notice,
+  PageSkeleton,
   Select,
   TextArea,
   TextInput,
   errorMessage,
+  pane,
+  sharedStyles,
   useAsync,
   usePageTitle,
 } from "../components";
@@ -32,6 +38,61 @@ import {
   listingInputSchema,
   parsePriceInput,
 } from "../../shared/validate";
+
+export const sellStyles = tv({
+  slots: {
+    /** Every section of the form, down the page. */
+    page: "flex min-w-0 flex-col gap-6",
+    /** What a pane holds, when it is one thing after another. */
+    stack: "flex min-w-0 flex-col gap-5",
+    /** A heading and whatever explains it. */
+    head: "flex flex-col gap-2",
+    step: "m-0 text-eyebrow text-ink-muted uppercase",
+    title: "m-0 text-title text-balance text-ink",
+    lead: "m-0 text-lead text-ink",
+    quiet: "m-0 text-ink-muted",
+    meta: "m-0 text-body text-ink-muted",
+    /** What is wrong with the photographs, which are not a field. */
+    error: "m-0 font-sans text-body text-warn",
+    divider: "m-0 border-0 border-t border-line",
+    /** Who the listing will go out under, beside the button that publishes it. */
+    signature: "text-body text-ink-muted",
+
+    // ---- the photo uploader -------------------------------------------------
+
+    /** As many tiles as fit, at a photograph's size. */
+    tiles: "grid grid-cols-tiles gap-3",
+    tile: "group relative aspect-4/3 overflow-hidden rounded-control bg-sunken",
+    /** An upload still on its way is dimmed until it has landed. */
+    image: "block size-full object-cover group-data-busy:opacity-50",
+    badge: "absolute top-1 left-1",
+    tools: "absolute inset-x-1 bottom-1 flex justify-between gap-1",
+    reorder: "flex items-center gap-1",
+    /*
+     * The tools lie on the photograph, so they are glass, as every other mark
+     * over a picture in this kit is. ui/ has no glass Button — one page wanting
+     * one is not yet a variant — so the recipe says it here, in the kit's own
+     * words, including the way out of it for a reader who has declined
+     * transparency.
+     */
+    tool: [
+      "border border-card/70 bg-glass backdrop-blur-scrim",
+      "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
+    ],
+    /** The way to add more, in the shape of what it will become. */
+    add: [
+      "relative grid aspect-4/3 cursor-pointer place-items-center overflow-hidden",
+      "rounded-control border-2 border-line-strong border-dashed bg-ground p-2",
+      "text-center text-ink-muted transition-colors duration-fast",
+      // A label, not a button, so the site's reset never reaches this hover.
+      "hover:bg-sunken hover:text-ink data-over:bg-sunken data-over:text-ink",
+      RING_WITHIN,
+    ],
+    addLabel: "flex flex-col items-center gap-1",
+    /** The native file input, over the whole tile and invisible on it. */
+    addInput: "absolute inset-0 cursor-pointer opacity-0",
+  },
+});
 
 interface PhotoItem extends PhotoInput {
   /** Local key for React; ids and storage keys are both unique so either serves. */
@@ -105,18 +166,19 @@ export default function SellPage({ editId }: { editId?: string }) {
     [api, editId],
   );
 
+  const styles = sellStyles();
+  const shared = sharedStyles();
+
   if (!auth.loaded || me.loading || (editId && existing.loading)) {
-    return (
-      <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
-    );
+    return <PageSkeleton />;
   }
 
   if (!auth.signedIn) {
     return (
-      <section className="mk-pane mk-stack">
-        <div className="mk-page-head">
-          <h1 className="mk-title">Sell your gear</h1>
-          <p className="mk-muted">
+      <section className={pane(shared.pane(), styles.stack())}>
+        <div className={styles.head()}>
+          <h1 className={styles.title()}>Sell your gear</h1>
+          <p className={styles.quiet()}>
             Sign in so buyers can reach you and so you can manage your listings
             later.
           </p>
@@ -127,14 +189,10 @@ export default function SellPage({ editId }: { editId?: string }) {
             is unset), so listings cannot be created.
           </Notice>
         ) : (
-          <div className="mk-form__actions">
-            <button
-              type="button"
-              className="f5-button f5-button--primary f5-button--lg"
-              onClick={auth.signIn}
-            >
+          <div className={shared.formActions()}>
+            <Button variant="primary" size="lg" onClick={auth.signIn}>
               Sign in to continue
-            </button>
+            </Button>
           </div>
         )}
       </section>
@@ -160,11 +218,11 @@ export default function SellPage({ editId }: { editId?: string }) {
   // 409 contact_required without one), so it is asked for here and not before.
   if (!hasContact(me.data.profile)) {
     return (
-      <section className="mk-pane mk-stack mk-stack--loose">
-        <div className="mk-page-head">
-          <p className="mk-eyebrow">Step 1 of 2</p>
-          <h1 className="mk-title">First, how buyers reach you</h1>
-          <p className="mk-muted">
+      <section className={pane(shared.pane(), styles.page())}>
+        <div className={styles.head()}>
+          <p className={styles.step()}>Step 1 of 2</p>
+          <h1 className={styles.title()}>First, how buyers reach you</h1>
+          <p className={styles.quiet()}>
             Buyers see your name and county on every listing, and your contact
             details when they ask for them.
           </p>
@@ -257,10 +315,12 @@ function ListingForm({
   };
 
   const category = CATEGORIES.find((c) => c.id === form.category);
+  const styles = sellStyles();
+  const shared = sharedStyles();
 
   return (
     <form
-      className="mk-stack mk-stack--loose"
+      className={styles.page()}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -271,23 +331,26 @@ function ListingForm({
         <div>
           <Link
             to={paths.listing(existing.id)}
-            className="f5-button f5-button--sm"
+            className={buttonStyles({ size: "sm" })}
           >
             <ArrowLeft size={15} aria-hidden="true" /> Back to listing
           </Link>
         </div>
       )}
-      <div className="mk-page-head">
-        {!existing && <p className="mk-eyebrow">Step 2 of 2</p>}
-        <h1 className="mk-title">
+      <div className={styles.head()}>
+        {!existing && <p className={styles.step()}>Step 2 of 2</p>}
+        <h1 className={styles.title()}>
           {existing ? "Edit listing" : "What are you selling?"}
         </h1>
       </div>
 
-      <section className="mk-pane mk-form" aria-label="Photos">
-        <div className="mk-page-head">
-          <h2 className="mk-lead">Photos</h2>
-          <p className="mk-meta">
+      <section
+        className={pane(shared.pane(), shared.form())}
+        aria-label="Photos"
+      >
+        <div className={styles.head()}>
+          <h2 className={styles.lead()}>Photos</h2>
+          <p className={styles.meta()}>
             Up to {LIMITS.photosPerListing}. The first is the cover. Show the
             whole item, any damage, and the size label.
           </p>
@@ -297,32 +360,35 @@ function ListingForm({
           onChange={(photos) => set({ photos })}
         />
         {errors.photos && (
-          <p className="mk-meta mk-field__error" role="alert">
+          <p className={styles.error()} role="alert">
             {errors.photos}
           </p>
         )}
       </section>
 
-      <section className="mk-pane mk-form" aria-label="Details">
-        <h2 className="mk-lead">Details</h2>
-        <Field label="Title" error={errors.title} htmlFor="mk-l-title">
+      <section
+        className={pane(shared.pane(), shared.form())}
+        aria-label="Details"
+      >
+        <h2 className={styles.lead()}>Details</h2>
+        <Field label="Title" error={errors.title} htmlFor="listing-title">
           <TextInput
-            id="mk-l-title"
+            id="listing-title"
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
             maxLength={LIMITS.titleMax}
             placeholder="e.g. Duotone Unit 5m 2024, great condition"
           />
         </Field>
-        <div className="mk-form__row">
+        <div className={shared.formRow()}>
           <Field
             label="Category"
             hint={category?.hint}
             error={errors.category}
-            htmlFor="mk-l-category"
+            htmlFor="listing-category"
           >
             <Select
-              id="mk-l-category"
+              id="listing-category"
               value={form.category}
               onChange={(e) => set({ category: e.target.value })}
             >
@@ -336,10 +402,10 @@ function ListingForm({
           <Field
             label="Condition"
             error={errors.condition}
-            htmlFor="mk-l-condition"
+            htmlFor="listing-condition"
           >
             <Select
-              id="mk-l-condition"
+              id="listing-condition"
               value={form.condition}
               onChange={(e) => set({ condition: e.target.value })}
             >
@@ -351,15 +417,15 @@ function ListingForm({
             </Select>
           </Field>
         </div>
-        <div className="mk-form__row">
+        <div className={shared.formRow()}>
           <Field
             label="Brand"
             hint="optional"
             error={errors.brand}
-            htmlFor="mk-l-brand"
+            htmlFor="listing-brand"
           >
             <TextInput
-              id="mk-l-brand"
+              id="listing-brand"
               value={form.brand}
               onChange={(e) => set({ brand: e.target.value })}
               maxLength={LIMITS.brandMax}
@@ -370,10 +436,10 @@ function ListingForm({
             label="Size"
             hint="optional"
             error={errors.sizeLabel}
-            htmlFor="mk-l-size"
+            htmlFor="listing-size"
           >
             <TextInput
-              id="mk-l-size"
+              id="listing-size"
               value={form.sizeLabel}
               onChange={(e) => set({ sizeLabel: e.target.value })}
               maxLength={LIMITS.sizeMax}
@@ -384,10 +450,10 @@ function ListingForm({
             label="Year"
             hint="optional"
             error={errors.year}
-            htmlFor="mk-l-year"
+            htmlFor="listing-year"
           >
             <TextInput
-              id="mk-l-year"
+              id="listing-year"
               inputMode="numeric"
               value={form.year}
               onChange={(e) =>
@@ -397,17 +463,17 @@ function ListingForm({
             />
           </Field>
         </div>
-        <hr className="mk-divider" />
-        <h2 className="mk-lead">Price and location</h2>
-        <div className="mk-form__row">
+        <hr className={styles.divider()} />
+        <h2 className={styles.lead()}>Price and location</h2>
+        <div className={shared.formRow()}>
           <Field
             label="Price"
             hint="0 for free"
             error={errors.priceCents}
-            htmlFor="mk-l-price"
+            htmlFor="listing-price"
           >
             <TextInput
-              id="mk-l-price"
+              id="listing-price"
               inputMode="decimal"
               prefix={form.currency === "GBP" ? "£" : "€"}
               value={form.price}
@@ -418,10 +484,10 @@ function ListingForm({
           <Field
             label="Currency"
             error={errors.currency}
-            htmlFor="mk-l-currency"
+            htmlFor="listing-currency"
           >
             <Select
-              id="mk-l-currency"
+              id="listing-currency"
               value={form.currency}
               onChange={(e) => set({ currency: e.target.value })}
             >
@@ -433,10 +499,10 @@ function ListingForm({
             </Select>
           </Field>
         </div>
-        <div className="mk-form__row">
-          <Field label="County" error={errors.county} htmlFor="mk-l-county">
+        <div className={shared.formRow()}>
+          <Field label="County" error={errors.county} htmlFor="listing-county">
             <Select
-              id="mk-l-county"
+              id="listing-county"
               value={form.county}
               onChange={(e) => set({ county: e.target.value })}
             >
@@ -452,10 +518,10 @@ function ListingForm({
             label="Town or area"
             hint="optional"
             error={errors.town}
-            htmlFor="mk-l-town"
+            htmlFor="listing-town"
           >
             <TextInput
-              id="mk-l-town"
+              id="listing-town"
               value={form.town}
               onChange={(e) => set({ town: e.target.value })}
               maxLength={LIMITS.townMax}
@@ -463,15 +529,15 @@ function ListingForm({
             />
           </Field>
         </div>
-        <hr className="mk-divider" />
+        <hr className={styles.divider()} />
         <Field
           label="Description"
           hint={`${form.description.length}/${LIMITS.descriptionMax}`}
           error={errors.description}
-          htmlFor="mk-l-desc"
+          htmlFor="listing-desc"
         >
           <TextArea
-            id="mk-l-desc"
+            id="listing-desc"
             value={form.description}
             onChange={(e) => set({ description: e.target.value })}
             maxLength={LIMITS.descriptionMax}
@@ -482,16 +548,14 @@ function ListingForm({
       </section>
 
       {errors._ && <Notice kind="warn">{errors._}</Notice>}
-      <div className="mk-form__actions">
-        <button
-          type="submit"
-          className="f5-button f5-button--primary f5-button--lg"
-          disabled={busy}
-        >
+      <div className={shared.formActions()}>
+        <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? "Saving…" : existing ? "Save changes" : "Publish listing"}
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
-        </button>
-        <span className="mk-meta">Listing as {profile.displayName}</span>
+        </Button>
+        <span className={styles.signature()}>
+          Listing as {profile.displayName}
+        </span>
       </div>
     </form>
   );
@@ -509,6 +573,7 @@ function PhotoUploader({
   const [over, setOver] = useState(false);
   const latest = useRef(photos);
   latest.current = photos;
+  const styles = sellStyles();
 
   useEffect(
     () => () =>
@@ -567,62 +632,63 @@ function PhotoUploader({
   };
 
   return (
-    <div className="mk-photos">
+    <div className={styles.tiles()}>
       {photos.map((p, i) => (
-        <div key={p.localId} className="mk-photo" data-busy={p.busy}>
-          <img src={p.url} alt={`Photo ${i + 1}`} />
+        <div
+          key={p.localId}
+          className={styles.tile()}
+          data-busy={p.busy || undefined}
+        >
+          <img className={styles.image()} src={p.url} alt={`Photo ${i + 1}`} />
           {i === 0 && !p.error && (
-            <span className="f5-chip f5-chip--glass f5-chip--eyebrow mk-photo__cover">
+            <Chip tone="glass" eyebrow className={styles.badge()}>
               Cover
-            </span>
+            </Chip>
           )}
           {p.error && (
-            <span
-              className="f5-chip f5-chip--warn mk-photo__cover"
-              role="alert"
-            >
+            <Chip tone="warn" className={styles.badge()} role="alert">
               Failed
-            </span>
+            </Chip>
           )}
-          <div className="mk-photo__tools">
-            <span
-              className="mk-row"
-              style={{ gap: "var(--sem-space-gap-tight)" }}
-            >
-              <button
-                type="button"
-                className="f5-button f5-button--icon f5-button--sm"
+          <div className={styles.tools()}>
+            <span className={styles.reorder()}>
+              <Button
+                icon
+                size="sm"
+                className={styles.tool()}
                 aria-label="Move photo earlier"
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
               >
                 <ArrowLeft size={14} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="f5-button f5-button--icon f5-button--sm"
+              </Button>
+              <Button
+                icon
+                size="sm"
+                className={styles.tool()}
                 aria-label="Move photo later"
                 disabled={i === photos.length - 1}
                 onClick={() => move(i, 1)}
               >
                 <ArrowRight size={14} aria-hidden="true" />
-              </button>
+              </Button>
             </span>
-            <button
-              type="button"
-              className="f5-button f5-button--icon f5-button--sm"
+            <Button
+              icon
+              size="sm"
+              className={styles.tool()}
               aria-label="Remove photo"
               onClick={() => remove(p.localId)}
             >
               <X size={14} aria-hidden="true" />
-            </button>
+            </Button>
           </div>
         </div>
       ))}
       {photos.length < LIMITS.photosPerListing && (
         <label
-          className="mk-photo mk-photo--add"
-          data-over={over}
+          className={styles.add()}
+          data-over={over || undefined}
           onDragOver={(e) => {
             e.preventDefault();
             setOver(true);
@@ -632,6 +698,7 @@ function PhotoUploader({
         >
           <input
             ref={input}
+            className={styles.addInput()}
             type="file"
             accept="image/*"
             multiple
@@ -641,9 +708,9 @@ function PhotoUploader({
               e.target.value = "";
             }}
           />
-          <span className="mk-stack--tight">
+          <span className={styles.addLabel()}>
             <Camera size={22} aria-hidden="true" />
-            <span className="mk-meta">Add photos</span>
+            <span className={styles.meta()}>Add photos</span>
           </span>
         </label>
       )}

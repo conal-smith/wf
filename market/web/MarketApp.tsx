@@ -9,7 +9,7 @@ import { MarketAuthProvider } from "./auth";
 import { Compass } from "lucide-react";
 import { buttonStyles } from "../../ui/Button";
 import { tv } from "../../ui/tv";
-import { Empty, MarketFooter, MarketHeader } from "./components";
+import { Empty, MarketFooter, MarketHeader, sharedStyles } from "./components";
 import BrowsePage from "./pages/BrowsePage";
 import ListingPage from "./pages/ListingPage";
 import MePage from "./pages/MePage";
@@ -95,10 +95,10 @@ function Page({ route }: { route: ReturnType<typeof matchRoute> }) {
         <Empty
           title="That page does not exist"
           icon={<Compass size={24} aria-hidden="true" />}
+          className={sharedStyles().emptyPane()}
         >
           <p>The link may be old, or the listing may have been removed.</p>
-          {/* Empty's own row of actions, which the item that converts it takes. */}
-          <div className="mk-empty__actions">
+          <div className={sharedStyles().emptyActions()}>
             <Link
               to={paths.browse()}
               className={buttonStyles({ variant: "primary" })}
