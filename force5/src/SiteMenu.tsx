@@ -38,9 +38,16 @@ export function SiteMenu({
   current,
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
+  /**
+   * What the menu stands on. Its pill and panel are glass, drawn for chrome
+   * over a moving map; on a content page's card they take the card and the
+   * solid fill instead (siteMenu.css), so nothing there is blurred or lost.
+   */
+  ground = "map",
 }: {
   current: SiteSectionId;
   size?: "sm" | "md";
+  ground?: "map" | "content";
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -90,6 +97,7 @@ export function SiteMenu({
     <div
       className="f5-site-menu"
       data-mode="light"
+      data-ground={ground}
       ref={root}
       // Tabbing past the last row closes the menu rather than leaving it hanging
       // open behind the reader. Not a focus trap: focus is free to leave, and

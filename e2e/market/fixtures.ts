@@ -407,7 +407,7 @@ export const test = base.extend<{ baseline: Baseline; shoot: Shoot }>({
         hasTouch: phone,
         deviceScaleFactor: 1,
         colorScheme: "light",
-        // market.css drops every transition and animation under it, which is
+        // The pages drop every transition and animation under it, which is
         // most of what a screenshot can otherwise catch in flight.
         reducedMotion: "reduce",
       });

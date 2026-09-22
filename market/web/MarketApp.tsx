@@ -4,7 +4,6 @@
  * bundle never pays for it and vice versa.
  */
 import { useEffect } from "react";
-import "./market.css";
 import { MarketAuthProvider } from "./auth";
 import { Compass } from "lucide-react";
 import { buttonStyles } from "../../ui/Button";
@@ -33,15 +32,6 @@ export const shellStyles = tv({
   },
 });
 
-/**
- * What is left of market.css on the shell's root, and nothing else is on it:
- * the pages this item did not convert still read `.mk-root …` rules of their
- * own (the button and chip overrides, the margin reset, the coarse-pointer
- * field sizes), and `data-mode` is what pins the design/ tokens to light
- * while any of them remain. Both go with the last page converted (D7, D8).
- */
-const LEGACY_ROOT = "mk-root";
-
 export default function MarketApp() {
   return (
     <MarketAuthProvider>
@@ -64,7 +54,7 @@ function Shell() {
   const styles = shellStyles({ narrow });
 
   return (
-    <div className={styles.root({ className: LEGACY_ROOT })} data-mode="light">
+    <div className={styles.root()}>
       <div className={styles.page()}>
         <MarketHeader accentSell={accentSell} />
         <main id="market-main" className={styles.main()}>
