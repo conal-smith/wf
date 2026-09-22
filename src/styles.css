@@ -54,8 +54,14 @@ button:disabled {
   opacity: 0.4;
   cursor: default;
 }
-button:enabled:hover {
-  background-color: color-mix(in srgb, var(--color-card) 25%, transparent);
+/* Only where a pointer can hover. The kit's hovers are Tailwind's, which hold
+   themselves to `(hover: hover)`, so on a phone this wash was the one hover
+   left: a tapped button kept a 25% white fill in place of its own (the accent
+   under white words, the glass of a photo tool) until the next tap elsewhere. */
+@media (hover: hover) {
+  button:enabled:hover {
+    background-color: color-mix(in srgb, var(--color-card) 25%, transparent);
+  }
 }
 a {
   color: inherit;

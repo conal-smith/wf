@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { compileTheme, declared, holds, selector } from "./theme.testkit";
+import { UI, compileTheme, declared, holds, selector } from "./theme.testkit";
 import {
   DISABLED,
   HOVER,
@@ -109,6 +111,24 @@ describe("ui/tv.ts: the shared states", () => {
       `${selector("not-disabled:hover:bg-sunken")}:not(:disabled):hover {`,
     );
     expect(css).toContain(`${selector("disabled:opacity-100")}:disabled {`);
+  });
+
+  // The kit's hover holds itself to a device that can hover; the reset's wash
+  // has to as well, or on a phone a tapped button keeps the wash in place of
+  // the fill the kit named for it: a primary's accent under white words.
+  it("lays the reset's hover wash only where the kit's hover reaches", () => {
+    const css = build([HOVER]);
+    const kit = css.indexOf(`${selector(HOVER)}:not(:disabled):hover {`);
+    expect(kit).toBeGreaterThan(-1);
+    expect(css.lastIndexOf("@media (hover: hover)", kit)).toBeGreaterThan(-1);
+
+    const reset = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
+    const washes = [...reset.matchAll(/^(\s*)button:enabled:hover \{/gm)];
+    expect(washes).toHaveLength(1);
+    const at = washes[0].index!;
+    const guard = reset.lastIndexOf("@media (hover: hover) {", at);
+    expect(guard, "inside @media (hover: hover)").toBeGreaterThan(-1);
+    expect(reset.slice(guard, at)).not.toContain("}");
   });
 });
 
