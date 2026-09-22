@@ -209,8 +209,20 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
       html(createElement(RatingPicker, { value: 2, onChange: () => {} })),
       html(createElement(SellerRating, { seller: sellerOf(0) })),
       html(createElement(SellerRating, { seller: sellerOf(4) })),
-      html(createElement(SaveButton, { saved: true, onToggle: () => {} })),
-      html(createElement(SaveButton, { saved: false, onToggle: () => {} })),
+      html(
+        createElement(SaveButton, {
+          saved: true,
+          busy: false,
+          onToggle: () => {},
+        }),
+      ),
+      html(
+        createElement(SaveButton, {
+          saved: false,
+          busy: false,
+          onToggle: () => {},
+        }),
+      ),
     ];
     for (const out of rendered) {
       expect(out).not.toMatch(/class="[^"]*\bmk-/);
