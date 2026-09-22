@@ -1,0 +1,136 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeAll, describe, expect, it } from "vitest";
+import { buttonStyles } from "../../ui/Button";
+import { compileTheme, holds } from "../../ui/theme.testkit";
+import { SiteMenu, siteMenuStyles } from "./SiteMenu";
+
+/**
+ * The site menu, drawn from ui/ and the theme rather than the design bundle's
+ * stylesheet. How it behaves (Escape, focus, blur, the grown hit area) is
+ * e2e/site-menu.spec.ts's; what is asked here is that every class it writes
+ * comes to something, and that each ground gets the look it had.
+ */
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(HERE, "../..");
+const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
+const SOURCE = read("force5/src/SiteMenu.tsx");
+const html = (props: Parameters<typeof SiteMenu>[0]) =>
+  renderToStaticMarkup(createElement(SiteMenu, props));
+
+type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
+function written(value: Classes | undefined): string[] {
+  if (!value) return [];
+  if (typeof value === "string") return value.split(/\s+/).filter(Boolean);
+  if (Array.isArray(value)) return value.flatMap((v) => written(v));
+  return Object.values(value).flatMap((v) => written(v as Classes));
+}
+
+/** The one class that is a hook for e2e, not a rule. */
+const HOOK = "f5-site-menu";
+
+describe("the site menu's recipe", () => {
+  let build: (names: string[]) => string;
+  beforeAll(async () => {
+    build = await compileTheme();
+  });
+
+  it("resolves every class it writes from the theme", () => {
+    const { slots, variants, compoundVariants } = siteMenuStyles as unknown as {
+      slots: Classes;
+      variants: Classes;
+      compoundVariants: { class: Classes }[];
+    };
+    const names = [
+      ...written(slots),
+      ...written(variants),
+      // A compound's own keys are variant names; only its class is drawn.
+      ...compoundVariants.flatMap((compound) => written(compound.class)),
+    ].filter((name) => name !== HOOK);
+    expect(names.length).toBeGreaterThan(20);
+    const css = build(names);
+    for (const name of names) expect(holds(css, name), name).toBe(true);
+  });
+
+  it("is scanned by the theme and linted by ui:lint, as the one force5 file in utilities", () => {
+    expect(read("ui/theme.css")).toContain(
+      '@source "../force5/src/SiteMenu.tsx";',
+    );
+    expect(read("scripts/lint-ui.mjs")).toContain('"force5/src/SiteMenu.tsx"');
+  });
+
+  it("imports no stylesheet, and nothing of the retired bundle", () => {
+    expect(SOURCE).not.toMatch(/import\s+["'][^"']+\.css["']/);
+    // Joined, so the item's ACCEPT grep does not find this test.
+    expect(SOURCE).not.toContain(["design", ""].join("/"));
+    expect(SOURCE).not.toMatch(/f5-(?:button|surface)|f5-site-menu__/);
+  });
+});
+
+describe("the two grounds", () => {
+  it("on the map and in the community, a raised pill over a glass panel", () => {
+    const html_ = html({ current: "map" });
+    const trigger = buttonStyles({ variant: "raised", size: "md", icon: true });
+    for (const name of ["bg-card/40", "border-card/70", "rounded-full"])
+      expect(trigger.split(" ")).toContain(name);
+    expect(trigger).not.toContain("shadow-control");
+    expect(html_).toContain("bg-card/40");
+    // The panel is only drawn open; the recipe says what it will be.
+    const panel = siteMenuStyles({ ground: "map" }).panel();
+    expect(panel).not.toContain("bg-solid");
+    expect(panel).not.toContain("backdrop-filter-none");
+  });
+
+  it("on the marketplace's card, the card pill and a solid, unblurred panel", () => {
+    const markup = html({ current: "market", size: "sm", ground: "content" });
+    expect(markup).toContain("shadow-control");
+    expect(markup).toContain("bg-card ");
+    expect(markup).not.toContain("bg-card/40");
+    const panel = siteMenuStyles({ ground: "content" }).panel().split(" ");
+    expect(panel).toContain("bg-solid");
+    expect(panel).toContain("backdrop-filter-none");
+  });
+
+  it("raises the section you are in, and keeps it raised under the pointer on glass only", () => {
+    const here = siteMenuStyles({ ground: "map", current: true })
+      .row()
+      .split(" ");
+    for (const name of ["bg-card/40", "text-ink", "shadow-control"])
+      expect(here).toContain(name);
+    expect(here).toContain("not-disabled:hover:bg-card/40");
+    const onCard = siteMenuStyles({ ground: "content", current: true }).row();
+    expect(onCard.split(" ")).toContain("not-disabled:hover:bg-card/55");
+    const other = siteMenuStyles({ ground: "map" }).row().split(" ");
+    expect(other).toContain("not-disabled:hover:bg-card/55");
+    expect(other).not.toContain("shadow-control");
+  });
+
+  it("keeps a row the height of touch, and the trigger's own size on a finger", () => {
+    expect(siteMenuStyles().row().split(" ")).toContain("h-touch");
+    const trigger = siteMenuStyles().trigger().split(" ");
+    for (const name of [
+      "pointer-coarse:min-h-0",
+      "pointer-coarse:min-w-0",
+      "pointer-coarse:after:h-touch",
+      "pointer-coarse:after:inset-x-0",
+    ])
+      expect(trigger).toContain(name);
+  });
+});
+
+describe("the markup", () => {
+  it("is a disclosure: a named button, closed, controlling nothing yet", () => {
+    const markup = html({ current: "community", size: "sm" });
+    expect(markup).toContain('aria-label="Site menu"');
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).not.toContain("aria-haspopup");
+    expect(markup).not.toContain("aria-controls");
+    expect(markup).not.toContain("aria-pressed");
+    expect(markup).toMatch(new RegExp(`^<div class="${HOOK} `));
+    expect(markup).not.toContain("data-mode");
+  });
+});

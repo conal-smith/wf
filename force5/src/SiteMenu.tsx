@@ -9,7 +9,11 @@
  *
  * The map imports this through `force5/src`; the marketplace and the community
  * import this file directly, so no bundle picks up another by importing a
- * barrel.
+ * barrel. It reads the kit file by file for the same reason.
+ *
+ * Drawn from ui/ and the theme, like the pages it sits in: ui/theme.css scans
+ * this one file of force5/src (and none of the map's), so its classes resolve
+ * in every bundle.
  */
 import {
   Menu,
@@ -20,7 +24,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import "./siteMenu.css";
+import { Button, buttonStyles } from "../../ui/Button";
+import { surfaceStyles } from "../../ui/Surface";
+import { tv } from "../../ui/tv";
 import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
 
 const ICONS: Record<SiteSectionId, LucideIcon> = {
@@ -28,6 +34,74 @@ const ICONS: Record<SiteSectionId, LucideIcon> = {
   market: Store,
   community: MessagesSquare,
 };
+
+/*
+ * The one hook left on the menu, and it draws nothing: e2e/site-menu.spec.ts
+ * finds the menu by it, to hide it and to ask whether a tap landed on it.
+ */
+const HOOK = "f5-site-menu";
+
+export const siteMenuStyles = tv({
+  slots: {
+    root: `${HOOK} pointer-events-auto relative inline-flex`,
+    /*
+     * An icon button is under the target floor on a finger, and in a header
+     * row its neighbours are inches away along the inline axis. So on a coarse
+     * pointer it keeps its drawn size and its hit area grows DOWN THE BLOCK
+     * AXIS ONLY, to touch, through a band laid across it: an overhang to
+     * either side would swallow taps meant for the brand link beside it.
+     * Padding the inline side out is the parent's job.
+     */
+    trigger: [
+      "relative pointer-coarse:min-h-0 pointer-coarse:min-w-0",
+      "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-1/2",
+      "pointer-coarse:after:h-touch pointer-coarse:after:-translate-y-1/2",
+    ],
+    // Hung below the trigger by a gap, from its leading edge, padded tight so
+    // the rows carry the padding.
+    panel: [
+      "absolute top-full left-0 z-panel mt-2 min-w-max p-1",
+      "animate-menu-in motion-reduce:animate-none",
+    ],
+    list: "m-0 flex list-none flex-col gap-1 p-0",
+    /*
+     * A row is the menu's own: a full-width link the height of touch, icon
+     * then label, which lifts to the raised white under the pointer. One
+     * component asks for it, so it is written here on the quiet button rather
+     * than made a kit variant.
+     */
+    row: "flex h-touch w-full justify-start gap-2 not-disabled:hover:bg-card/55",
+    icon: "shrink-0 text-ink-muted",
+  },
+  variants: {
+    /*
+     * What the menu stands on. Glass over the map, and in the community's
+     * header; on the marketplace's header, which is a card, the trigger is the
+     * card pill its neighbours are and the panel takes the solid fill glass
+     * falls back to, unblurred.
+     */
+    ground: {
+      map: {},
+      content: { panel: "bg-solid backdrop-filter-none" },
+    },
+    /*
+     * The section you are in is raised and filled, as a pressed control is:
+     * elevation and fill, so the state is not said by colour alone. The
+     * machine-readable half is `aria-current="page"`.
+     */
+    current: { true: { row: "bg-card/40 text-ink shadow-control" } },
+  },
+  compoundVariants: [
+    // On glass the section you are in keeps its fill under the pointer; on
+    // the card every row takes the same hover, that one included.
+    {
+      ground: "map",
+      current: true,
+      class: { row: "not-disabled:hover:bg-card/40" },
+    },
+  ],
+  defaultVariants: { ground: "map" },
+});
 
 export function SiteMenu({
   /**
@@ -41,7 +115,7 @@ export function SiteMenu({
   /**
    * What the menu stands on. Its pill and panel are glass, drawn for chrome
    * over a moving map; on a content page's card they take the card and the
-   * solid fill instead (siteMenu.css), so nothing there is blurred or lost.
+   * solid fill instead (`siteMenuStyles`), so nothing there is blurred or lost.
    */
   ground = "map",
 }: {
@@ -93,11 +167,11 @@ export function SiteMenu({
     };
   }, [open]);
 
+  const styles = siteMenuStyles({ ground });
+
   return (
     <div
-      className="f5-site-menu"
-      data-mode="light"
-      data-ground={ground}
+      className={styles.root()}
       ref={root}
       // Tabbing past the last row closes the menu rather than leaving it hanging
       // open behind the reader. Not a focus trap: focus is free to leave, and
@@ -107,12 +181,12 @@ export function SiteMenu({
           setOpen(false);
       }}
     >
-      <button
+      <Button
         ref={trigger}
-        type="button"
-        className={`f5-button f5-button--pill f5-button--icon f5-site-menu__trigger${
-          size === "sm" ? " f5-button--sm" : ""
-        }`}
+        variant={ground === "content" ? "pill" : "raised"}
+        size={size}
+        icon
+        className={styles.trigger()}
         // The label stays put; `aria-expanded` is what says open or closed.
         aria-label="Site menu"
         aria-expanded={open}
@@ -127,25 +201,32 @@ export function SiteMenu({
         ) : (
           <Menu size={size === "sm" ? 15 : 18} aria-hidden="true" />
         )}
-      </button>
+      </Button>
       {open && (
         <nav
           id={panelId}
-          className="f5-surface f5-site-menu__panel"
+          className={surfaceStyles({ className: styles.panel() })}
           aria-label="Site"
         >
-          <ul className="f5-site-menu__list">
+          <ul className={styles.list()}>
             {SITE_SECTIONS.map((section, index) => {
               const Icon = ICONS[section.id];
+              const here = section.id === current;
               return (
                 <li key={section.id}>
                   <a
                     ref={index === 0 ? firstLink : undefined}
-                    className="f5-button f5-site-menu__link"
+                    className={buttonStyles({
+                      className: styles.row({ current: here }),
+                    })}
                     href={section.href}
-                    aria-current={section.id === current ? "page" : undefined}
+                    aria-current={here ? "page" : undefined}
                   >
-                    <Icon size={16} aria-hidden="true" />
+                    <Icon
+                      size={16}
+                      className={styles.icon()}
+                      aria-hidden="true"
+                    />
                     <span>{section.label}</span>
                   </a>
                 </li>
