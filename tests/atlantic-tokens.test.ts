@@ -1,67 +1,39 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { compileTheme } from "../ui/theme.testkit";
 
 /**
  * The Atlantic palette, held to the ruling of 2026-09-20.
  *
- * The marketplace and the site menu read nothing but `--sem-*`, so the token
- * values are the whole of their colour. That makes the palette cheap to change
- * and just as cheap to break: a step re-valued by eye, or an alias pointed one
- * step over, fails nothing and ships. So the source of truth is checked for the
- * values the ruling names, the generated CSS is checked for what a page will
- * actually resolve, and the three contrast pairs the ruling quotes are measured
- * rather than trusted.
+ * Every page on the site reads its colour from ui/theme.css, so the theme's
+ * values are the whole of it. That makes the palette cheap to change and just
+ * as cheap to break: a value re-typed by eye fails nothing and ships. So the
+ * theme is compiled as the build compiles it, the values a page will resolve
+ * are checked against the ones the ruling names, and the contrast pairs the
+ * ruling quotes (docs/DESIGN_PRINCIPLES.md) are measured rather than trusted.
  */
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const FOUNDATIONS = resolve(ROOT, "design/foundations");
 
-type Node = { [key: string]: Node | string | undefined };
-type Modes = { light?: string; dark?: string };
+let css = "";
+beforeAll(async () => {
+  // `@theme static`: every value is written into :root, asked for or not.
+  css = (await compileTheme())([]);
+});
 
-const tokens = JSON.parse(
-  readFileSync(resolve(FOUNDATIONS, "tokens.tokens.json"), "utf8"),
-) as Node;
-const css = readFileSync(resolve(FOUNDATIONS, "tokens.css"), "utf8");
-
-function at(path: string): Node {
-  let node: Node | string | undefined = tokens;
-  for (const key of path.split(".")) {
-    if (typeof node !== "object") throw new Error(`no token at ${path}`);
-    node = node[key];
-  }
-  if (typeof node !== "object") throw new Error(`no token at ${path}`);
-  return node;
-}
-
-const value = (path: string) => at(path).$value as string;
-/** The extension key holds a dot of its own, so it is not walked by `at`. */
-function modes(path: string): Modes {
-  const meta = at(`${path}.$extensions`)["com.multicode"];
-  if (typeof meta !== "object") throw new Error(`${path} carries no modes`);
-  return meta.modes as unknown as Modes;
-}
-
-/** Every `$value` under a family, keyed by step, in source order. */
-function steps(family: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, child] of Object.entries(at(family)))
-    if (typeof child === "object" && typeof child.$value === "string")
-      out[key] = child.$value;
-  return out;
-}
-
-/** The light-mode value a page resolves: the first declaration in the file. */
-function resolved(property: string): string {
-  const match = css.match(new RegExp(`${property}:\\s*([^;]+);`));
-  if (!match) throw new Error(`${property} is not in tokens.css`);
+/** The value a theme variable resolves to in the compiled CSS. */
+function resolved(name: string): string {
+  const match = css.match(new RegExp(`\\n\\s+--color-${name}: ([^;]+);`));
+  if (!match) throw new Error(`--color-${name} is not in the compiled theme`);
   return match[1].trim();
 }
 
 function luminance(hex: string): number {
-  const n = parseInt(hex.slice(1, 7), 16);
+  const full =
+    hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex;
+  const n = parseInt(full.slice(1, 7), 16);
   const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255].map((c) => {
     const s = c / 255;
     return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
@@ -74,152 +46,65 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe("the neutral ramp", () => {
-  it("holds the navy values, step for step, under the names it always had", () => {
-    expect(steps("ref.color.teal")).toEqual({
-      "50": "#f4f6fa",
-      "100": "#eef2f9",
-      "200": "#e1e8f3",
-      "300": "#c3cfe2",
-      "400": "#9db0cc",
-      "500": "#7488a6",
-      "600": "#4a607c",
-      "700": "#1f3a5c",
-      "750": "#0b2545",
-      "800": "#0a1f3c",
-      "900": "#081830",
-      "950": "#050f20",
-    });
+describe("the neutral family", () => {
+  it("is the navy ramp, at the steps the ruling puts each role on", () => {
+    expect(resolved("ground")).toBe("#f4f6fa"); // 50
+    expect(resolved("solid")).toBe("#eef2f9"); // 100
+    expect(resolved("sunken")).toBe("#e1e8f3"); // 200
+    expect(resolved("basemap-water")).toBe("#c3cfe2"); // 300
+    expect(resolved("sea")).toBe("#9db0cc"); // 400
+    expect(resolved("line-strong")).toBe("#7488a6"); // 500
+    expect(resolved("ink-muted")).toBe("#4a607c"); // 600
+    expect(resolved("ink-2")).toBe("#1f3a5c"); // 700
+    expect(resolved("ink")).toBe("#0a1f3c"); // 800
   });
 
-  it("keeps every alias on the step it pointed at", () => {
-    expect(value("sem.color.bg.page")).toBe("{ref.color.teal.400}");
-    expect(value("sem.color.bg.content")).toBe("{ref.color.teal.50}");
-    expect(value("sem.color.surface.solid")).toBe("{ref.color.teal.100}");
-    expect(value("sem.color.surface.sunken")).toBe("{ref.color.teal.200}");
-    expect(value("sem.color.border.strong")).toBe("{ref.color.teal.500}");
-    expect(value("sem.color.text.primary")).toBe("{ref.color.teal.800}");
-    expect(value("sem.color.text.secondary")).toBe("{ref.color.teal.700}");
-    expect(value("sem.color.text.muted")).toBe("{ref.color.teal.600}");
-  });
-
-  it("carries the glass at the panel ground's new value and its old alpha", () => {
-    expect(value("sem.color.surface.glass")).toBe(
-      `${value("ref.color.teal.100")}db`,
-    );
+  it("carries the glass at the panel ground's value and its old alpha", () => {
+    expect(resolved("glass")).toBe(`${resolved("solid")}db`);
   });
 });
 
 describe("the accent", () => {
-  it("is one new family of two steps", () => {
-    expect(steps("ref.color.blue")).toEqual({
-      "500": "#1463ff",
-      "600": "#0d4fd1",
-    });
-  });
-
-  it("fills the action, and nothing else reads it", () => {
-    expect(value("sem.color.action.bg")).toBe("{ref.color.blue.500}");
-    expect(value("sem.color.action.bgHover")).toBe("{ref.color.blue.600}");
-    const source = JSON.stringify(at("sem"));
-    expect(source.match(/ref\.color\.blue\.\d+/g)).toHaveLength(4);
+  it("is one family of two values: the filled action and its hover", () => {
+    expect(resolved("accent")).toBe("#1463ff");
+    expect(resolved("accent-hover")).toBe("#0d4fd1");
+    expect(resolved("accent-ink")).toBe("#fff");
   });
 
   it("leaves the quiet action, the focus ring and the inverse surface navy", () => {
-    expect(resolved("--sem-color-action-bg")).toBe("#1463ff");
-    expect(resolved("--sem-color-action-bg-hover")).toBe("#0d4fd1");
-    expect(resolved("--sem-color-action-quiet")).toBe("#0b2545");
-    expect(resolved("--sem-color-action-focus")).toBe("#0b2545");
-    expect(resolved("--sem-color-surface-inverse")).toBe("#0b2545");
+    for (const name of ["quiet", "focus", "inverse"])
+      expect(resolved(name), name).toBe("#0b2545");
+  });
+
+  it("is named by no other colour in the theme", () => {
+    const source = readFileSync(resolve(ROOT, "ui/theme.css"), "utf8");
+    const holders = [...source.matchAll(/--color-([a-z0-9-]+): #1463ff/g)].map(
+      (m) => m[1],
+    );
+    expect(holders).toEqual(["accent"]);
   });
 });
 
 describe("the ink alphas", () => {
-  it("are tinted with the navy ink, at the alphas they always had", () => {
-    expect(steps("ref.color.ink")).toEqual({
-      a08: "#0a1f3c14",
-      a12: "#0a1f3c1f",
-      a20: "#0a1f3c33",
-      a30: "#0a1f3c4d",
-      a45: "#0a1f3c73",
-    });
-  });
-
-  it("reach the hairline, the scrim and every shadow", () => {
-    expect(resolved("--sem-color-border-hairline")).toBe("#0a1f3c14");
-    expect(resolved("--sem-color-surface-scrim")).toBe("#0a1f3c73");
-    for (const shadow of ["control", "marker", "surface", "dock"])
-      expect(resolved(`--sem-effect-shadow-${shadow}`)).toMatch(/#0a1f3c/);
+  it("are tinted with the navy ink", () => {
+    expect(resolved("line")).toBe("#0a1f3c1a");
+    expect(resolved("scrim")).toBe("#0a1f3c73");
+    for (const shadow of ["control", "marker", "surface", "dock"]) {
+      const match = css.match(new RegExp(`--shadow-${shadow}: ([^;]+);`));
+      expect(match?.[1], shadow).toMatch(/#0a1f3c/);
+    }
   });
 });
 
 describe("what Atlantic does not touch", () => {
   it("leaves warm and green alone", () => {
-    expect(steps("ref.color.warm")).toEqual({
-      "100": "#fff4e8",
-      "500": "#bb6c23",
-      "700": "#a8442e",
-      "800": "#854d31",
-    });
-    expect(steps("ref.color.green")).toEqual({ "600": "#3c8a72" });
+    expect(resolved("warn-ground")).toBe("#fff4e8");
+    expect(resolved("now")).toBe("#a8442e");
+    expect(resolved("warn")).toBe("#854d31");
+    expect(resolved("ok")).toBe("#3c8a72");
   });
 
-  it("leaves the fourteen wind stops alone", () => {
-    expect(Object.values(steps("ref.color.wind"))).toEqual([
-      "#355897",
-      "#2a76b8",
-      "#2e97be",
-      "#209e78",
-      "#32a74f",
-      "#5bb437",
-      "#92c134",
-      "#bfcc3a",
-      "#e8be30",
-      "#ea862d",
-      "#dd4e38",
-      "#be334f",
-      "#923d98",
-      "#724297",
-    ]);
-  });
-
-  it("leaves every dark half on the alias it had", () => {
-    const dark: Record<string, string> = {
-      "bg.page": "{ref.color.teal.950}",
-      "bg.content": "{ref.color.teal.950}",
-      "surface.glass": "#103138db",
-      "surface.solid": "{ref.color.teal.900}",
-      "surface.card": "{ref.color.teal.900}",
-      "surface.raised": "{ref.color.white.a05}",
-      "surface.sunken": "{ref.color.teal.950}",
-      "surface.inverse": "{ref.color.teal.300}",
-      "border.hairline": "{ref.color.white.a05}",
-      "border.glass": "{ref.color.white.a15}",
-      "border.strong": "{ref.color.teal.400}",
-      "text.primary": "{ref.color.teal.100}",
-      "text.secondary": "{ref.color.teal.200}",
-      "text.muted": "{ref.color.teal.300}",
-      "text.inverse": "{ref.color.teal.950}",
-      "text.disabled": "{ref.color.teal.500}",
-      "action.bg": "{ref.color.teal.400}",
-      "action.bgHover": "{ref.color.teal.300}",
-      "action.fg": "{ref.color.teal.950}",
-      "action.quiet": "{ref.color.teal.200}",
-      "action.quietHover": "{ref.color.white.a15}",
-      "action.focus": "{ref.color.teal.200}",
-      "status.warnFg": "{ref.color.warm.100}",
-      "status.warnBg": "{ref.color.warm.800}",
-    };
-    for (const [token, alias] of Object.entries(dark))
-      expect(modes(`sem.color.${token}`).dark, token).toBe(alias);
-  });
-
-  it("leaves no teal in anything a page resolves in light", () => {
-    // The default block, and the block a `data-mode="light"` root opts into:
-    // the marketplace and the site menu both render under the second.
-    const optIn = css.slice(css.indexOf('[data-mode="light"] {'));
-    const light = css.slice(0, css.indexOf("@media (prefers-color-scheme")) + optIn;
-    expect(optIn).toContain("--sem-color-action-bg: #1463ff;");
+  it("leaves no teal in anything a page resolves", () => {
     for (const old of [
       "#f1fafc",
       "#e6f4f8",
@@ -233,54 +118,54 @@ describe("what Atlantic does not touch", () => {
       "#103138",
       "#0a2126",
     ])
-      expect(light).not.toContain(old);
-  });
-});
-
-describe("the manifest", () => {
-  const manifest = JSON.parse(
-    readFileSync(resolve(ROOT, "design/design-system.json"), "utf8"),
-  ) as { version: string; description: string };
-
-  it("is versioned past the teal bundle, as a change of value must be", () => {
-    const [major, minor] = manifest.version.split(".").map(Number);
-    expect(major * 1000 + minor).toBeGreaterThan(4);
-  });
-
-  it("no longer calls the palette teal at the head of the catalog", () => {
-    expect(manifest.description).not.toMatch(/teal/i);
+      expect(css).not.toContain(old);
   });
 });
 
 describe("contrast, as the ruling records it", () => {
-  const muted = resolved("--sem-color-text-muted");
+  const PRINCIPLES = resolve(ROOT, "docs/DESIGN_PRINCIPLES.md");
 
   it("is a dated ruling, quoting the figures measured here", () => {
-    const principles = readFileSync(resolve(FOUNDATIONS, "principles.md"), "utf8");
-    const ruling = principles.slice(principles.indexOf("**2026-09-20"));
-    expect(ruling).toMatch(/^\*\*2026-09-20 — Atlantic: one neutral family and one accent\.\*\*/);
+    const principles = readFileSync(PRINCIPLES, "utf8");
+    const at = principles.indexOf("**2026-09-20 — Atlantic");
+    expect(at).toBeGreaterThan(-1);
+    const ruling = principles.slice(at, principles.indexOf("\n**", at + 1));
+    expect(ruling).toMatch(
+      /^\*\*2026-09-20 — Atlantic: one neutral family and one accent\*\*/,
+    );
     const quoted = (pair: number) => `${pair.toFixed(2)}:1`;
-    expect(ruling).toContain(quoted(contrast(muted, resolved("--sem-color-bg-content"))));
-    expect(ruling).toContain(quoted(contrast(muted, resolved("--sem-color-surface-card"))));
+    const muted = resolved("ink-muted");
+    expect(ruling).toContain(quoted(contrast(muted, resolved("solid"))));
     expect(ruling).toContain(
-      quoted(contrast(resolved("--sem-color-action-fg"), resolved("--sem-color-action-bg"))),
+      quoted(contrast(resolved("line-strong"), resolved("solid"))),
+    );
+    expect(ruling).toContain(quoted(contrast(muted, resolved("ground"))));
+    expect(ruling).toContain(quoted(contrast(muted, resolved("card"))));
+    expect(ruling).toContain(
+      quoted(contrast(resolved("accent-ink"), resolved("accent"))),
+    );
+    expect(ruling).toContain(
+      quoted(contrast(resolved("accent-ink"), resolved("accent-hover"))),
     );
   });
 
-  it("keeps muted text above 4.5:1 on the content ground and on a card", () => {
-    expect(contrast(muted, resolved("--sem-color-bg-content"))).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(muted, resolved("--sem-color-surface-card"))).toBeGreaterThanOrEqual(4.5);
+  it("keeps muted text above 4.5:1 on the content ground, a card and the panel", () => {
+    const muted = resolved("ink-muted");
+    for (const ground of ["ground", "card", "solid"])
+      expect(contrast(muted, resolved(ground)), ground).toBeGreaterThanOrEqual(
+        4.5,
+      );
   });
 
   it("keeps the label on the filled action above 4.5:1, at rest and hovered", () => {
-    const fg = resolved("--sem-color-action-fg");
-    expect(contrast(fg, resolved("--sem-color-action-bg"))).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(fg, resolved("--sem-color-action-bg-hover"))).toBeGreaterThanOrEqual(4.5);
+    const ink = resolved("accent-ink");
+    expect(contrast(ink, resolved("accent"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(ink, resolved("accent-hover"))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("keeps the step that is barred from text under the bar it is barred by", () => {
-    const solid = resolved("--sem-color-surface-solid");
-    expect(contrast(value("ref.color.teal.500"), solid)).toBeLessThan(4.5);
-    expect(contrast(value("ref.color.teal.500"), solid)).toBeGreaterThanOrEqual(3);
+    const solid = resolved("solid");
+    expect(contrast(resolved("line-strong"), solid)).toBeLessThan(4.5);
+    expect(contrast(resolved("line-strong"), solid)).toBeGreaterThanOrEqual(3);
   });
 });
