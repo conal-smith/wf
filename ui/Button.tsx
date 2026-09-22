@@ -52,10 +52,19 @@ export const buttonStyles = tv({
     { icon: true, size: "sm", class: "w-control-sm" },
     { icon: true, size: "md", class: "w-control-md" },
     { icon: true, size: "lg", class: "w-control-lg" },
-    // A link in running text: no box of its own, whatever size was asked for.
+    /*
+     * A link in running text: no box of its own, whatever size was asked for.
+     * A thumb still gets a touch-tall target: on a coarse pointer an invisible
+     * band the height of touch is laid across the words, centred on them, so
+     * the target grows and nothing around it moves.
+     */
     {
       variant: "link",
-      class: "h-auto rounded-control p-0 pointer-coarse:min-h-0",
+      class: [
+        "relative h-auto rounded-control p-0 pointer-coarse:min-h-0",
+        "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:top-1/2",
+        "pointer-coarse:before:h-touch pointer-coarse:before:-translate-y-1/2",
+      ],
     },
   ],
   defaultVariants: { variant: "quiet", size: "md" },
