@@ -27,6 +27,17 @@ export const buttonStyles = tv({
         "disabled:bg-transparent disabled:shadow-none",
         HOVER,
       ],
+      /*
+       * The pill's twin for a control that stands on glass, or on the moving
+       * map: a card fill would be an opaque patch there, and sunken grey a
+       * darker one. The raised white and the glass's own white hairline, no
+       * shadow of its own (the glass it stands on has one), and a whiter
+       * white under the pointer. The site menu's trigger is the one reader.
+       */
+      raised: [
+        "rounded-full border border-card/70 bg-card/40",
+        "not-disabled:hover:bg-card/55 disabled:bg-transparent",
+      ],
       // A hover names its own background even where it wants none: the site's
       // reset lays 25% white behind `button:enabled:hover`, and a variant that
       // stays quiet about it is the one place that white gets through.
