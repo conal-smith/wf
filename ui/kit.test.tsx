@@ -352,6 +352,16 @@ describe("S4: states", () => {
     const link = buttonStyles({ variant: "link" }).split(" ");
     expect(link).toContain("pointer-coarse:min-h-0");
     expect(link).not.toContain("pointer-coarse:min-h-touch");
+    // ...but it is still a thumb's target: a touch-tall band over the words.
+    for (const name of [
+      "relative",
+      "pointer-coarse:before:absolute",
+      "pointer-coarse:before:inset-x-0",
+      "pointer-coarse:before:top-1/2",
+      "pointer-coarse:before:h-touch",
+      "pointer-coarse:before:-translate-y-1/2",
+    ])
+      expect(link, name).toContain(name);
   });
 
   it("says pressed to a screen reader too", () => {
