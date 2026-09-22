@@ -131,7 +131,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   return (
     <header className={styles.base()}>
       <div className={styles.bar()}>
-        <SiteMenu current="market" size="sm" />
+        <SiteMenu current="market" size="sm" ground="content" />
         <Link
           to={paths.browse()}
           className={styles.brand()}
@@ -341,6 +341,22 @@ export function SellerRating({
   );
 }
 
+/*
+ * The face beside a seller's name: one initial on the inverse ground, a large
+ * control tall, or a large control and an inset on the seller's own page. Not
+ * the kit's Avatar, which writes two initials and has neither of these sizes;
+ * a second face in the kit for one page would be more than one page wants.
+ * The steps bring a line height and the title its tracking, where the face
+ * had neither of its own: it took the page's 1.5 and no tracking, and a
+ * single letter sits by both, so both are put back.
+ */
+export const faceStyles = tv({
+  base: "inline-grid size-control-lg shrink-0 place-items-center rounded-full bg-inverse text-lead leading-normal text-ink-inverse",
+  variants: {
+    large: { true: "size-17.5 text-title leading-normal tracking-normal" },
+  },
+});
+
 export function Avatar({
   name,
   large = false,
@@ -350,10 +366,7 @@ export function Avatar({
 }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   return (
-    <span
-      className={`mk-avatar ${large ? "mk-avatar--lg" : ""}`}
-      aria-hidden="true"
-    >
+    <span className={faceStyles({ large })} aria-hidden="true">
       {initial}
     </span>
   );

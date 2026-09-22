@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -13,6 +13,8 @@ import { fieldStyles } from "../../ui/Field";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
+  Avatar,
+  faceStyles,
   footerStyles,
   GridSkeleton,
   headerStyles,
@@ -38,19 +40,40 @@ import { sellerStyles } from "./pages/SellerPage";
 import { sellStyles } from "./pages/SellPage";
 
 /**
- * The marketplace shell, its header and footer, the listing card and the
- * browse page, rendered to markup: there is no DOM under these tests, so what
- * is asked is what a reader is handed and what the class names come to. How it
- * lays out at a width is e2e's question, and the baseline shots' (S1).
+ * The marketplace, rendered to markup: there is no DOM under these tests, so
+ * what is asked is what a reader is handed and what the class names come to.
+ * How it lays out at a width is e2e's question, and the baseline shots' (S1).
  *
- * The pages this conversion has not reached still read market.css, so the
- * checks here name the four files it did rather than the whole directory.
+ * Every page is converted and market.css is gone (D7), so the checks here are
+ * asked of the whole directory.
  */
 
 const WEB = dirname(fileURLToPath(import.meta.url));
 const html = (element: ReactElement) => renderToStaticMarkup(element);
 
-/** The files converted so far, and every recipe they declare. */
+/*
+ * The two prefixes the old stylesheets drew with: the marketplace's own and
+ * the design bundle's. Joined rather than written out, because the item's
+ * ACCEPT line is a grep over market/web for the first, and a test that spelt
+ * it would be the thing it found.
+ */
+const MK = ["mk", ""].join("-");
+const F5 = ["f5", ""].join("-");
+/** A rendered class attribute that names either. */
+const OLD_CLASS = new RegExp(`class="[^"]*\\b(?:${MK}|${F5})`);
+
+/** Every file under market/web, as a path relative to it. */
+function walk(dir = WEB): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    return entry.isDirectory() ? walk(path) : [relative(WEB, path)];
+  });
+}
+const SOURCES = walk().filter((file) => /\.tsx?$/.test(file));
+/** The markup: every source file but the tests. */
+const MARKUP = SOURCES.filter((file) => !/\.test\.tsx?$/.test(file));
+
+/** The files converted, and every recipe they declare. */
 const CONVERTED = [
   "MarketApp.tsx",
   "components.tsx",
@@ -63,6 +86,7 @@ const CONVERTED = [
 ];
 const RECIPES = {
   browseStyles,
+  faceStyles,
   footerStyles,
   headerStyles,
   listingCardStyles,
@@ -77,17 +101,6 @@ const RECIPES = {
   shellStyles,
 };
 
-/*
- * What is left of market.css in converted markup, and why. One hook remains:
- *
- * - `mk-root`   the shell's root, which scopes what is left of market.css and
- *               carries `data-mode="light"` for design/'s tokens.
- * - `mk-skeleton`  the shape the listing and seller pages wait behind, which
- *               the sell and account pages draw as the kit's PageSkeleton.
- *
- * Both go with market.css (D7).
- */
-
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
 
 /** Every class name written anywhere in a recipe, whatever its nesting. */
@@ -100,70 +113,7 @@ function written(value: Classes | undefined): string[] {
 
 const read = (file: string) => readFileSync(resolve(WEB, file), "utf8");
 
-/*
- * Every name the conversion has taken out of the stylesheet, which is also
- * every name it must not have left behind in the markup. The prefix is joined
- * on rather than written into each one, because the items' own ACCEPT lines
- * are greps over market/web for several of them and a test that spelt them
- * out would be the thing they found.
- *
- * The avatar and the skeleton are not here: the listing and seller pages still
- * reach them, and they go with market.css.
- */
-const GONE = [
-  // the shell and browse (market-tw-shell-browse)
-  "header",
-  "footer",
-  "brand",
-  "page",
-  "main",
-  "hero",
-  "search",
-  "rail",
-  "filters",
-  "sort",
-  "price-range",
-  "results-head",
-  "token",
-  "grid",
-  "card",
-  "skeleton__line",
-  "sr-only",
-  // the listing and the seller
-  "detail",
-  "gallery",
-  "thumb",
-  "price",
-  "actions",
-  "specs",
-  "contact",
-  "seller",
-  "seller-head",
-  "stars",
-  "rating-pick",
-  "histogram",
-  "stat",
-  "stats",
-  // the sell and account pages (market-tw-sell-me): the fields, the uploader,
-  // the account's list rows and tabs, the review row, the notice, the empty
-  // state, the pager and the dialog.
-  "page-head",
-  "form__row",
-  "field",
-  "check",
-  "photos",
-  "photo",
-  "list",
-  "item",
-  "tabs",
-  "review",
-  "notice",
-  "empty",
-  "pager",
-  "dialog",
-].map((name) => `mk-${name}`);
-
-describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
+describe("S1: Tailwind and ui/ only, everywhere in the marketplace", () => {
   let build: (names: string[]) => string;
   beforeAll(async () => {
     build = await compileTheme();
@@ -190,7 +140,9 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
     },
   );
 
-  it("checks every recipe those files declare", () => {
+  it("names every file that draws, and checks every recipe they declare", () => {
+    const drawing = MARKUP.filter((file) => /className/.test(read(file)));
+    expect(drawing.sort()).toEqual([...CONVERTED].sort());
     const declared = CONVERTED.flatMap((file) =>
       [...read(file).matchAll(/export const (\w+Styles) = tv\(/g)].map(
         (m) => m[1],
@@ -201,30 +153,24 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
 
   /*
    * A class written straight into markup would slip past the check above.
-   * components.tsx still holds the face beside a name, so it is asked of what
-   * the converted components render rather than of the file; every whole file
-   * that has been converted is asked of its source.
+   * Quoted, or a string in braces, or a string handed to a recipe as its
+   * className: `className={"x"}` is the same literal as `className="x"`.
    */
-  it("writes no class outside a recipe, but the hooks it names", () => {
-    const files = CONVERTED.filter((file) => file !== "components.tsx");
-    // Quoted, or a string in braces, or a string handed to a recipe as its
-    // className: `className={"f5-button"}` is the same literal as the first.
+  it("writes no class outside a recipe", () => {
     const literal =
       /className(?:=|:\s*|=\{\s*)(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g;
-    const literals = files.flatMap((file) =>
+    const literals = MARKUP.flatMap((file) =>
       [...read(file).matchAll(literal)].map((m) => m[1] ?? m[2] ?? m[3]),
     );
-    expect(literals).toEqual(["mk-skeleton", "mk-skeleton"]);
+    expect(literals).toEqual([]);
   });
 
-  it("draws nothing of the old stylesheet in the markup it renders", () => {
+  it("draws nothing of the old stylesheets in the markup it renders", () => {
     const rendered = [
       html(createElement(MarketFooter)),
       card("active", { saved: true }),
       html(createElement(ListingGrid, { listings: [] })),
       html(createElement(GridSkeleton, { count: 1 })),
-      // The rating's three faces and the save toggle, which the listing and
-      // seller pages draw and components.tsx declares beside parts it keeps.
       html(createElement(Stars, { value: 3 })),
       html(createElement(Stars, { value: null })),
       html(createElement(RatingPicker, { value: 2, onChange: () => {} })),
@@ -245,105 +191,50 @@ describe("S1: Tailwind and ui/ only, in the files this item converted", () => {
         }),
       ),
       html(createElement(PageSkeleton)),
+      html(createElement(Avatar, { name: "aoife" })),
+      html(createElement(Avatar, { name: "aoife", large: true })),
     ];
-    for (const out of rendered) {
-      expect(out).not.toMatch(/class="[^"]*\bmk-/);
-      expect(out).not.toMatch(/class="[^"]*\bf5-/);
+    for (const out of rendered) expect(out).not.toMatch(OLD_CLASS);
+  });
+
+  /*
+   * S5: the stylesheet is gone, and nothing in the directory names it, its
+   * prefix, or the design bundle's classes. The site menu is force5's and
+   * brings its own stylesheet; the marketplace only says what it stands on.
+   */
+  it("holds no stylesheet, and no name from the old ones", () => {
+    expect(existsSync(resolve(WEB, "market.css"))).toBe(false);
+    expect(walk().filter((file) => file.endsWith(".css"))).toEqual([]);
+    for (const file of walk()) {
+      expect(read(file), file).not.toContain(MK);
+      expect(read(file), file).not.toContain(F5);
     }
+    expect(read("MarketApp.tsx")).not.toMatch(/import "\.\/[\w.]*\.css"/);
   });
 
-  /*
-   * The stylesheet losing a rule is only half of it: a name left in a page
-   * would draw nothing and read as converted. This is the items' own ACCEPT
-   * grep, run over every file that was converted into Tailwind.
-   */
-  it("leaves none of those names in the markup either", () => {
-    const source = CONVERTED.map(read).join("\n");
-    for (const name of GONE)
-      expect(source, name).not.toMatch(
-        new RegExp(`${name}(?:__[\\w-]+|--[\\w-]+)?(?![\\w-])`),
-      );
+  it("puts no hook and no mode on the shell's root", () => {
+    const app = read("MarketApp.tsx");
+    expect(app).not.toContain("LEGACY_ROOT");
+    expect(app).not.toContain("data-mode");
+    // Nothing but utilities on the root.
+    for (const name of shellStyles().root().split(" "))
+      expect(name).not.toMatch(new RegExp(`^(?:${MK}|${F5})`));
   });
 
-  it("keeps the one hook on the shell's root, and nothing else there", () => {
-    const root = shellStyles().root({ className: "mk-root" });
-    expect(root.split(" ").filter((c) => c.startsWith("mk-"))).toEqual([
-      "mk-root",
-    ]);
-    expect(read("MarketApp.tsx")).toContain('const LEGACY_ROOT = "mk-root"');
-    expect(read("MarketApp.tsx")).toContain('data-mode="light"');
-  });
-
-  it("no longer holds the rules it converted", () => {
-    const css = read("market.css");
-    for (const name of GONE)
-      // The block and the parts of it, the card's `__media` and `--skeleton` as
-      // much as the card, since most of what was converted was a part. Not
-      // a different name that merely begins the same way: `.mk-page-head` is
-      // another item's and stays, as does `.mk-skeleton` beside
-      // `.mk-skeleton__line`.
-      expect(css, name).not.toMatch(
-        new RegExp(`\\.${name}(?:__[\\w-]+|--[\\w-]+)?(?![\\w-])`),
-      );
-    // `.mk-root` is kept as a scope, with nothing of its own left to draw.
-    expect(css).toContain(".mk-root h1");
-    expect(css).not.toMatch(/^\.mk-root \{/m);
-    // The search field component went with the one field that used it, and
-    // the surface with the dialog, which was the last thing here to be one.
-    expect(css).not.toContain("search-field/component.css");
-    expect(css).not.toContain("surface/component.css");
-    // The coarse-pointer field sizes went with the fields: the kit's control
-    // carries `pointer-coarse:text-lead` itself.
-    expect(css).not.toContain("pointer: coarse");
-  });
-
-  /*
-   * What is left, and who reads it. Both pages that still do are another
-   * item's; when they are converted this list is empty and the file goes.
-   */
-  it("keeps only what the listing and seller pages still read", () => {
-    const css = read("market.css");
-    // The hyphen is inside the character class rather than before it: a
-    // hyphen followed by a bracket is what the style lint reads as an
-    // arbitrary value, wherever on the line it finds one.
-    const left = [...css.matchAll(/\.(mk[\w-]+)/g)].map((m) => m[1]);
-    const pages = ["pages/ListingPage.tsx", "pages/SellerPage.tsx"].map(read);
-    // components.tsx still draws the stars, the rating picker and the avatar
-    // for those two pages and for nothing else.
-    const readers = [...pages, read("components.tsx"), read("MarketApp.tsx")];
-    const orphans = [...new Set(left)].filter(
-      (name) =>
-        !readers.some((source) => new RegExp(`\\b${name}\\b`).test(source)),
+  it("stands the site menu on the header's card, not on glass", () => {
+    expect(read("components.tsx")).toContain(
+      '<SiteMenu current="market" size="sm" ground="content" />',
     );
-    // With every page converted, what is left is the shared helpers each item
-    // kept for the other, which neither reads now: the typography, the panes,
-    // the stacks and rows, the divider, the section head and the form. They
-    // are named so that the deletion that follows does not have to wonder.
-    expect(orphans.sort()).toEqual(
-      [
-        "body",
-        "divider",
-        "eyebrow",
-        "form",
-        "form__actions",
-        "lead",
-        "link",
-        "link--plain",
-        "meta",
-        "muted",
-        "pane",
-        "pane--sunken",
-        "prose",
-        "row",
-        "row--between",
-        "row--tight",
-        "section-head",
-        "stack",
-        "stack--loose",
-        "stack--tight",
-        "title",
-      ].map((name) => `mk-${name}`),
+  });
+
+  it("draws the face beside a name at the two sizes it had", () => {
+    expect(faceStyles().split(" ")).toEqual(
+      expect.arrayContaining(["size-control-lg", "text-lead", "bg-inverse"]),
     );
+    expect(faceStyles({ large: true }).split(" ")).toEqual(
+      expect.arrayContaining(["size-17.5", "text-title", "tracking-normal"]),
+    );
+    expect(html(createElement(Avatar, { name: "aoife" }))).toContain(">A<");
   });
 });
 
@@ -726,7 +617,11 @@ describe("S4: the sign-in gate", () => {
   it("says Saved in words and a mark, and keeps its quiet box", async () => {
     const out = await asideAs("fionn", { saved: true });
     expect(out).toMatch(/aria-pressed="true"[^>]*>.*?Saved/s);
-    expect(out).not.toContain("bg-inverse");
+    // The toggle's own tag, not the aside's: the seller's face beside it is
+    // on the inverse ground, and is not a pressed button.
+    const toggle = out.match(/<button[^>]*aria-pressed="true"[^>]*>/)?.[0];
+    expect(toggle).toBeDefined();
+    expect(toggle).not.toContain("bg-inverse");
   });
 });
 
@@ -881,7 +776,7 @@ describe("sell/me S1: a field is the kit's, and wrong is never colour alone", ()
         children: createElement(TextInput, { id: "listing-title" }),
       }),
     );
-    expect(out).not.toMatch(/class="[^"]*\bmk-/);
+    expect(out).not.toMatch(OLD_CLASS);
     expect(out).toMatch(/<label class="[^"]*" for="listing-title"/);
     expect(out).toMatch(/<input [^>]*id="listing-title"/);
   });
@@ -1016,8 +911,7 @@ describe("sell/me S4: the whole-page sign-in gate", () => {
     );
     // The kit's Empty is a pane with a round icon well above its title.
     expect(out).toMatch(/<span class="[^"]*rounded-full[^"]*" aria-hidden/);
-    expect(out).not.toMatch(/class="[^"]*\bmk-/);
-    expect(out).not.toMatch(/class="[^"]*\bf5-/);
+    expect(out).not.toMatch(OLD_CLASS);
   });
 
   /*
@@ -1038,8 +932,7 @@ describe("sell/me S4: the whole-page sign-in gate", () => {
   it("and the sell page's gate draws nothing of the old stylesheet", async () => {
     const out = await sellPageAs(null);
     expect(out).toContain("Sell your gear");
-    expect(out).not.toMatch(/class="[^"]*\bmk-/);
-    expect(out).not.toMatch(/class="[^"]*\bf5-/);
+    expect(out).not.toMatch(OLD_CLASS);
   });
 });
 

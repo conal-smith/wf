@@ -11,3 +11,28 @@
 @import "../../design/surface/component.css";
 @import "../../design/button/component.css";
 @import "../../design/site-menu/component.css";
+
+/*
+ * On a content page (the marketplace's header bar, which is a card) the glass
+ * the bundle draws for the map vanishes: the trigger takes the card surface
+ * and the ink hairline, and the panel the solid fill the surface already ships
+ * as its reduced-transparency fallback. A row under the pointer takes the
+ * quiet hover, the section you are in included. These were market.css's
+ * `.mk-root` overrides, moved here with the stylesheet's deletion; they go
+ * with this file when the menu is drawn from ui/.
+ */
+.f5-site-menu[data-ground="content"] .f5-button--pill {
+  background: var(--sem-color-surface-card);
+  border-color: var(--sem-color-border-hairline);
+  box-shadow: var(--sem-effect-shadow-control);
+}
+
+.f5-site-menu[data-ground="content"] .f5-site-menu__panel {
+  background: var(--sem-color-surface-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.f5-site-menu[data-ground="content"] a.f5-button:hover {
+  background-color: var(--sem-color-action-quiet-hover);
+}

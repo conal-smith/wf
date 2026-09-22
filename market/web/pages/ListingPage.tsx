@@ -25,6 +25,7 @@ import {
   Field,
   LoadError,
   Notice,
+  PageSkeleton,
   RatingPicker,
   SaveButton,
   SellerRating,
@@ -175,8 +176,7 @@ export default function ListingPage({ id }: { id: string }) {
     return (
       <>
         <BackLink />
-        {/* The placeholder is shared with three other pages and stays theirs. */}
-        <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
+        <PageSkeleton />
       </>
     );
 

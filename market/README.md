@@ -7,7 +7,7 @@ cut and holds no money. Sellers build a public history and a star rating from
 the people who actually contacted them.
 
 It is a self-contained package in `market/`, separate from the wind map. The
-two share the Force5 design bundle, the root `package.json`, and one line in
+two share the `ui/` kit and its theme, the root `package.json`, and one line in
 `src/main.tsx` that hands every `/market` URL to this bundle.
 
 ```
@@ -198,15 +198,15 @@ exception is `users`, which belongs to the whole site.
 
 ## Design
 
-The pages consume the Force5 bundle in `design/` and nothing else: tokens via
-`--sem-*` custom properties, and the `surface`, `button`, `chip`, `search-field`
-and `segmented` components. The marketplace added two type steps to the bundle
-(`sem.text.lead`, `sem.text.prose`, ruling dated 2026-09-16 in
-`design/foundations/principles.md`) because a content page needed something
-between 12px body and 25px title. Form fields (`.mk-field`) are product CSS for
-now and are recorded in the bundle's Gaps list as the next component to
-promote. Every non-token literal in `market/web/market.css` is a layout measure
-and carries a `ds-lint-allow` reason.
+The pages are Tailwind and the shared kit in `ui/` and nothing else (D7 of
+the community forum epic): every design value comes from `ui/theme.css`, and
+each page keeps its recipes beside what it draws (`browseStyles` in
+`pages/BrowsePage.tsx`, `listingStyles`, `sellerStyles`, `sellStyles`,
+`meStyles`, and the shared ones in `components.tsx`). There is no product
+stylesheet; `market/web/shell.test.ts` asserts there is none. The one piece of
+the Force5 bundle still on these pages is the site menu in the header, which
+is force5's and brings its own stylesheet (`force5/src/siteMenu.css`); the
+header asks it to stand on a card (`ground="content"`) rather than on glass.
 
 ## Not yet built
 

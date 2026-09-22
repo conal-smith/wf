@@ -11,6 +11,7 @@ import {
   Empty,
   ListingGrid,
   LoadError,
+  PageSkeleton,
   Stars,
   useAsync,
   usePageTitle,
@@ -103,8 +104,7 @@ export default function SellerPage({ id }: { id: string }) {
     return (
       <>
         <Back />
-        {/* The placeholder is shared with three other pages and stays theirs. */}
-        <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
+        <PageSkeleton />
       </>
     );
 
