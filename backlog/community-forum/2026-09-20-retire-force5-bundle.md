@@ -1,6 +1,6 @@
 ---
 type: feature
-status: ready
+status: in_progress
 difficulty: s
 criticality: normal
 risk: normal
