@@ -85,7 +85,7 @@ button svg {
   vertical-align: middle;
 }
 .glass,
-.site-header .f5-site-menu__trigger,
+.site-header .f5-site-menu > button,
 .map-title-chip,
 .layers-button,
 .map-navigation,

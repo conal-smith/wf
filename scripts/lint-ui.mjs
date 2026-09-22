@@ -24,6 +24,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -34,8 +35,10 @@ const SELF = fileURLToPath(import.meta.url);
 const REPO = join(dirname(SELF), "..");
 
 // Where utility classes are written. A directory that does not exist yet is
-// simply not there to lint.
-const DIRS = ["ui", "market/web", "community/web"];
+// simply not there to lint. The site menu is the one file of force5/src that
+// is written in utilities (ui/theme.css scans it and nothing else there), so it
+// is named on its own rather than the map's whole directory.
+const DIRS = ["ui", "market/web", "community/web", "force5/src/SiteMenu.tsx"];
 const EXTENSIONS = new Set([
   ".ts",
   ".tsx",
@@ -72,6 +75,10 @@ function allowReason(line) {
 }
 
 function* walk(dir) {
+  if (statSync(dir).isFile()) {
+    if (EXTENSIONS.has(extname(dir))) yield dir;
+    return;
+  }
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -139,6 +146,12 @@ const PROBES = [
     "a colour function",
     "market/web/probe.ts",
     'export const probe = "rgb(20 99 255)";\n',
+    1,
+  ],
+  [
+    "an arbitrary value in the site menu",
+    "force5/src/SiteMenu.tsx",
+    'export const probe = <i className="p-[13px]" />;\n',
     1,
   ],
   [

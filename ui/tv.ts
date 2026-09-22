@@ -28,7 +28,7 @@ export const THEME_NAMES = {
   blur: ["glass", "scrim"],
   container: ["dialog", "dialog-wide", "reading", "measure", "page", "form"],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
-  animate: ["pulse", "dialog-in"],
+  animate: ["pulse", "dialog-in", "menu-in"],
   "transition-duration": ["fast", "base"],
   "z-index": ["popover", "panel", "header", "dialog"],
 } as const;

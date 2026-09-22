@@ -52,8 +52,8 @@ The [location research](data/locations/README.md) retains 46 sourced records alo
 `/market` is a free second-hand gear marketplace (listings with photos, seller
 profiles, contact reveal, star ratings and seller history) built as a separate
 package in [`market/`](market/README.md): a Hono API on Postgres with Clerk
-sign-in and S3-compatible photo storage, and React pages that consume the Force5
-design bundle. `src/main.tsx` lazy-loads it for `/market` URLs; the map bundle
+sign-in and S3-compatible photo storage, and React pages drawn in Tailwind from
+the shared kit in `ui/` and the theme in `ui/theme.css`. `src/main.tsx` lazy-loads it for `/market` URLs; the map bundle
 is otherwise untouched. Run it locally with `npm run market:api` and
 `VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
 `market/Dockerfile`. See the package README for the full runbook.
@@ -1359,7 +1359,7 @@ twice a model's median cadence. The registry lists models whose adapter is still
 planned with `planned: true` so the dock shows them greyed and labelled "coming"
 instead of hiding them. Model identity hues are permitted on the chart's own lines
 and on its filter swatches, and nowhere else; see the ruling of 2026-09-16 in
-`design/foundations/principles.md`.
+[`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md).
 
 A tide manifest maps every riding location, including the ones with no station
 inside the adapter's distance limit: those are published as `station: null` with a

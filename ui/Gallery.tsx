@@ -31,7 +31,14 @@ import {
   TextInput,
 } from "./index";
 
-const VARIANTS = ["quiet", "primary", "pill", "link", "danger"] as const;
+const VARIANTS = [
+  "quiet",
+  "primary",
+  "pill",
+  "raised",
+  "link",
+  "danger",
+] as const;
 const SIZES = ["sm", "md", "lg"] as const;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
