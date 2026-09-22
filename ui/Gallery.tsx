@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 import {
   Avatar,
   Button,
+  Checkbox,
   Chip,
   ConfirmDialog,
   Count,
@@ -30,7 +31,14 @@ import {
   TextInput,
 } from "./index";
 
-const VARIANTS = ["quiet", "primary", "pill", "link", "danger"] as const;
+const VARIANTS = [
+  "quiet",
+  "primary",
+  "pill",
+  "raised",
+  "link",
+  "danger",
+] as const;
 const SIZES = ["sm", "md", "lg"] as const;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -53,6 +61,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 export default function Gallery() {
   const [saved, setSaved] = useState(true);
+  const [whatsapp, setWhatsapp] = useState(true);
   const [notify, setNotify] = useState<"all" | "mentions" | "none">("mentions");
   const [sort, setSort] = useState<"latest" | "unread">("latest");
   const [page, setPage] = useState(2);
@@ -135,6 +144,21 @@ export default function Gallery() {
             Current link
           </Button>
         </Row>
+        <Row label="pressed, worded">
+          <Button
+            variant="pill"
+            size="lg"
+            pressed={saved ? "worded" : false}
+            onClick={() => setSaved(!saved)}
+          >
+            <Heart
+              size={16}
+              fill={saved ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+            {saved ? "Saved" : "Save"}
+          </Button>
+        </Row>
       </Section>
 
       <Section title="Link">
@@ -152,6 +176,9 @@ export default function Gallery() {
         <Row label="tone">
           <Chip>Wings</Chip>
           <Chip tone="warn">Forecast is 9 hours old</Chip>
+          {/* Glass is for a badge over a photograph; here it stands on the
+              gallery's own ground, which shows the hairline and little else. */}
+          <Chip tone="glass">Saved</Chip>
         </Row>
         <Row label="eyebrow">
           <Chip eyebrow>New</Chip>
@@ -195,6 +222,9 @@ export default function Gallery() {
           </Pane>
           <Pane kind="sunken" className="min-w-72 flex-1">
             <p className="m-0">Pane, sunken</p>
+          </Pane>
+          <Pane standing className="min-w-72 flex-1">
+            <p className="m-0">Pane, standing</p>
           </Pane>
           <div className="min-w-72 flex-1 rounded-surface bg-sea p-5">
             <Surface>
@@ -282,6 +312,23 @@ export default function Gallery() {
         </div>
       </Section>
 
+      <Section title="Checkbox">
+        <Row label="off, on, and disabled either way">
+          <Checkbox
+            checked={whatsapp}
+            onChange={(event) => setWhatsapp(event.target.checked)}
+          >
+            Buyers can message this number
+          </Checkbox>
+          <Checkbox defaultChecked={false} disabled>
+            Add a phone number first
+          </Checkbox>
+          <Checkbox defaultChecked disabled>
+            On, and not yours to turn off
+          </Checkbox>
+        </Row>
+      </Section>
+
       <Section title="SearchField">
         <Row label="size, and busy">
           <SearchField
@@ -297,6 +344,11 @@ export default function Gallery() {
             aria-label="Search, busy"
             defaultValue="foil mast"
             busy
+          />
+          <SearchField
+            aria-label="Search gear, the page's own"
+            placeholder="Search by brand, model or size"
+            size="hero"
           />
         </Row>
       </Section>

@@ -39,7 +39,9 @@ export const controlStyles = tv({
       text: {},
       area: {
         box: "items-start",
-        input: "min-h-32 resize-y py-3 leading-normal",
+        // Three large controls tall before anything is written, as the design
+        // bundle always drew a text area.
+        input: "min-h-34.5 resize-y py-3 leading-normal",
       },
       select: {
         box: "relative",

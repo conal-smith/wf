@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import type { InputHTMLAttributes, Ref } from "react";
+import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { NO_RING, RING_WITHIN, tv, type VariantProps } from "./tv";
 
 export const searchFieldStyles = tv({
@@ -24,10 +24,17 @@ export const searchFieldStyles = tv({
     size: {
       md: { base: "h-control-md" },
       lg: { base: "h-control-lg" },
+      // The search a page is built around rather than a control in a bar:
+      // taller than any other control, lifted off the ground, and open enough
+      // at the leading edge for the icon to stand clear of the words.
+      hero: { base: "h-13.5 gap-3 pr-2 pl-5 shadow-marker" },
     },
   },
   defaultVariants: { size: "lg" },
 });
+
+/** The magnifier, which grows with the box. */
+const ICON = { md: 16, lg: 16, hero: 20 } as const;
 
 export type SearchFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -38,20 +45,24 @@ export type SearchFieldProps = Omit<
     "aria-label": string;
     /** Results are on their way. */
     busy?: boolean;
+    /** What goes after the field, inside the same box: a way to clear it. */
+    children?: ReactNode;
     ref?: Ref<HTMLInputElement>;
   };
 
 export function SearchField({
-  size,
+  size = "lg",
   busy = false,
   className,
+  children,
   ...props
 }: SearchFieldProps) {
   const styles = searchFieldStyles({ size });
   return (
     <div className={styles.base({ className })} aria-busy={busy}>
-      <Search size={16} aria-hidden="true" />
+      <Search size={ICON[size]} aria-hidden="true" />
       <input {...props} type="search" className={styles.input()} />
+      {children}
     </div>
   );
 }

@@ -8,6 +8,11 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "../../../ui";
+import { buttonStyles } from "../../../ui/Button";
+import { linkStyles } from "../../../ui/Link";
+import { segmentedStyles } from "../../../ui/Segmented";
+import { RING, tv } from "../../../ui/tv";
 import { useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
@@ -16,8 +21,11 @@ import {
   ListingGrid,
   LoadError,
   Notice,
+  PageSkeleton,
   Stars,
   errorMessage,
+  pane,
+  sharedStyles,
   useAsync,
   usePageTitle,
 } from "../components";
@@ -33,6 +41,75 @@ const TABS = [
   { id: "profile", label: "Profile" },
 ];
 
+export const meStyles = tv({
+  slots: {
+    /** A heading with one thing to do beside it, on one line while it fits. */
+    sectionHead: "flex flex-wrap items-center justify-between gap-x-5 gap-y-2",
+    title: "m-0 text-title text-balance text-ink",
+    lead: "m-0 text-lead text-ink",
+    meta: "text-body text-ink-muted",
+    quiet: "m-0 text-ink-muted",
+    /*
+     * The four sections of the account, drawn as the kit's Segmented but worn
+     * by links: each one is a URL, so it stays an <a> the router takes over
+     * rather than becoming a button (market/web/router.tsx has no `routed()`).
+     * The track scrolls sideways where four words do not fit.
+     */
+    tabs: "max-w-full gap-0 self-start overflow-x-auto scrollbar-none",
+    /*
+     * A row of words rather than a row of controls, as the browse rail's chips
+     * are: the body step, and the taller track market.css drew for them.
+     */
+    tab: [
+      "h-8.5 px-3 text-body leading-tight font-semibold no-underline",
+      /*
+       * The one ring, drawn inside the tab: the track scrolls, so it clips
+       * whatever lies past its 4px of padding, and a ring 2px clear of the tab
+       * reaches 5px out and was cut flat on every side (the design bundle's segmented
+       * drew it inset for the same reason).
+       */
+      "not-disabled:focus-visible:-outline-offset-2",
+    ],
+    /**
+     * How many are saved, in the tab that holds them: the caption step at the
+     * tab's own leading and weight, in the muted ink. Not the kit's Count,
+     * which is a filled badge for what has not been read yet.
+     */
+    count: "text-caption leading-tight text-ink-muted",
+
+    // ---- my listings --------------------------------------------------------
+
+    stack: "flex min-w-0 flex-col gap-5",
+    list: "m-0 flex list-none flex-col gap-3 p-0",
+    /*
+     * A listing and what can be done to it, side by side until they cannot.
+     * A pane with a control's inset rather than a page's, and a phone takes
+     * the roomier right-hand side back off again.
+     */
+    item: "flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-3 p-3 pr-5 shadow-control max-wide:p-3",
+    /** The whole of the listing is the link to it. */
+    itemMain: [
+      "flex min-w-0 shrink grow basis-70 items-center gap-3",
+      "rounded-control text-ink no-underline",
+      RING,
+    ],
+    thumb:
+      "grid aspect-4/3 w-22 shrink-0 place-items-center overflow-hidden rounded-control bg-sunken text-line-strong max-wide:w-18",
+    thumbImage: "block size-full object-cover",
+    itemText: "flex min-w-0 flex-col gap-1",
+    itemTitle: "truncate font-semibold",
+    itemPrice: "text-ink-muted",
+
+    // ---- reviews given ------------------------------------------------------
+
+    /** One after another down the pane, hairlines between and none at the ends. */
+    review:
+      "flex flex-col gap-2 border-t border-line py-5 first:border-0 first:pt-0 last:pb-0",
+    reviewHead: "flex flex-wrap items-center justify-between gap-2",
+    comment: "m-0 max-w-measure whitespace-pre-wrap wrap-anywhere",
+  },
+});
+
 export default function MePage({ tab }: { tab: string }) {
   usePageTitle("My account");
   const api = useApi();
@@ -43,26 +120,23 @@ export default function MePage({ tab }: { tab: string }) {
   );
   const current = TABS.some((t) => t.id === tab) ? tab : "listings";
 
-  if (!auth.loaded || (me.loading && !me.data))
-    return (
-      <div className="mk-skeleton" aria-busy="true" aria-label="Loading" />
-    );
+  const styles = meStyles();
+  const shared = sharedStyles();
+
+  if (!auth.loaded || (me.loading && !me.data)) return <PageSkeleton />;
   if (!auth.signedIn) {
     return (
       <Empty
         title="Sign in to see your account"
         icon={<UserRound size={24} aria-hidden="true" />}
+        className={shared.emptyPane()}
       >
         <p>Your listings, saved gear and reviews all live here.</p>
         {auth.provider !== "none" && (
-          <div className="mk-empty__actions">
-            <button
-              type="button"
-              className="f5-button f5-button--primary f5-button--lg"
-              onClick={auth.signIn}
-            >
+          <div className={shared.emptyActions()}>
+            <Button variant="primary" size="lg" onClick={auth.signIn}>
               Sign in
-            </button>
+            </Button>
           </div>
         )}
       </Empty>
@@ -80,17 +154,17 @@ export default function MePage({ tab }: { tab: string }) {
 
   return (
     <>
-      <div className="mk-section-head">
-        <h1 className="mk-title">{data.profile.displayName}</h1>
+      <div className={styles.sectionHead()}>
+        <h1 className={styles.title()}>{data.profile.displayName}</h1>
         <Link
           to={paths.seller(data.profile.id)}
-          className="f5-button f5-button--link"
+          className={buttonStyles({ variant: "link" })}
         >
           View your public seller page
         </Link>
       </div>
       <div
-        className="f5-segmented mk-tabs"
+        className={segmentedStyles().base({ className: styles.tabs() })}
         role="tablist"
         aria-label="Account sections"
       >
@@ -101,11 +175,11 @@ export default function MePage({ tab }: { tab: string }) {
             role="tab"
             aria-selected={current === t.id}
             aria-pressed={current === t.id}
-            className="f5-segmented__item"
+            className={segmentedStyles().item({ className: styles.tab() })}
           >
             {t.label}
             {t.id === "saved" && data.saved.length > 0 && (
-              <small>{data.saved.length}</small>
+              <small className={styles.count()}>{data.saved.length}</small>
             )}
           </Link>
         ))}
@@ -120,10 +194,14 @@ export default function MePage({ tab }: { tab: string }) {
           <Empty
             title="Nothing saved yet"
             icon={<Heart size={24} aria-hidden="true" />}
+            className={shared.emptyPane()}
           >
             <p>Tap Save on a listing to keep an eye on it here.</p>
-            <div className="mk-empty__actions">
-              <Link to={paths.browse()} className="f5-button f5-button--pill">
+            <div className={shared.emptyActions()}>
+              <Link
+                to={paths.browse()}
+                className={buttonStyles({ variant: "pill" })}
+              >
                 Browse gear
               </Link>
             </div>
@@ -131,7 +209,7 @@ export default function MePage({ tab }: { tab: string }) {
         ))}
       {current === "reviews" && <ReviewsGiven data={data} />}
       {current === "profile" && (
-        <section className="mk-pane">
+        <section className={pane(shared.pane())}>
           <ProfileForm
             profile={data.profile}
             requireContact={data.listings.some((l) => l.status === "active")}
@@ -157,6 +235,8 @@ function MyListings({
   const [error, setError] = useState("");
 
   const [removing, setRemoving] = useState<Listing | null>(null);
+  const styles = meStyles();
+  const shared = sharedStyles();
 
   const setStatus = async (listing: Listing, status: Listing["status"]) => {
     setBusy(listing.id);
@@ -187,10 +267,14 @@ function MyListings({
       <Empty
         title="You have nothing listed"
         icon={<Tag size={24} aria-hidden="true" />}
+        className={shared.emptyPane()}
       >
         <p>Gear you no longer ride is gear someone else is looking for.</p>
-        <div className="mk-empty__actions">
-          <Link to={paths.sell()} className="f5-button f5-button--primary">
+        <div className={shared.emptyActions()}>
+          <Link
+            to={paths.sell()}
+            className={buttonStyles({ variant: "primary" })}
+          >
             <PlusCircle size={16} aria-hidden="true" /> List something
           </Link>
         </div>
@@ -204,19 +288,24 @@ function MyListings({
   const Row = ({ listing }: { listing: Listing }) => {
     const enquiries = data.enquiries[listing.id] ?? 0;
     return (
-      <li className="mk-pane mk-item">
-        <Link to={paths.listing(listing.id)} className="mk-item__main">
-          <span className="mk-item__thumb">
+      <li className={pane(styles.item())}>
+        <Link to={paths.listing(listing.id)} className={styles.itemMain()}>
+          <span className={styles.thumb()}>
             {listing.photos[0] ? (
-              <img src={listing.photos[0].url} alt="" loading="lazy" />
+              <img
+                className={styles.thumbImage()}
+                src={listing.photos[0].url}
+                alt=""
+                loading="lazy"
+              />
             ) : (
               <ImageIcon size={20} aria-hidden="true" />
             )}
           </span>
-          <span className="mk-stack--tight">
-            <span className="mk-item__title">{listing.title}</span>
-            <span className="mk-meta">
-              <strong className="mk-muted">
+          <span className={styles.itemText()}>
+            <span className={styles.itemTitle()}>{listing.title}</span>
+            <span className={styles.meta()}>
+              <strong className={styles.itemPrice()}>
                 {formatPrice(listing.priceCents, listing.currency)}
               </strong>{" "}
               · Listed {relativeAge(listing.createdAt)}
@@ -224,52 +313,51 @@ function MyListings({
                 ? ` · Sold ${relativeAge(listing.soldAt)}`
                 : ""}
             </span>
-            <span className="mk-meta">
+            <span className={styles.meta()}>
               {enquiries} enquir{enquiries === 1 ? "y" : "ies"}
             </span>
           </span>
         </Link>
-        <span className="mk-form__actions">
+        <span className={shared.formActions()}>
           <Link
             to={paths.edit(listing.id)}
-            className="f5-button f5-button--pill f5-button--sm"
+            className={buttonStyles({ variant: "pill", size: "sm" })}
           >
             <Pencil size={14} aria-hidden="true" /> Edit
           </Link>
           {listing.status === "active" ? (
-            <button
-              type="button"
-              className="f5-button f5-button--pill f5-button--sm"
+            <Button
+              variant="pill"
+              size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "sold")}
             >
               Mark as sold
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              className="f5-button f5-button--pill f5-button--sm"
+            <Button
+              variant="pill"
+              size="sm"
               disabled={busy === listing.id}
               onClick={() => setStatus(listing, "active")}
             >
               Relist
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className="f5-button f5-button--link"
+          <Button
+            variant="link"
             disabled={busy === listing.id}
             onClick={() => setRemoving(listing)}
           >
             Remove
-          </button>
+          </Button>
         </span>
       </li>
     );
   };
 
   return (
-    <div className="mk-stack">
+    <div className={styles.stack()}>
       <ConfirmDialog
         open={removing != null}
         title="Remove this listing?"
@@ -282,28 +370,28 @@ function MyListings({
         will be deleted. This cannot be undone.
       </ConfirmDialog>
       {error && <Notice kind="warn">{error}</Notice>}
-      <div className="mk-section-head">
-        <h2 className="mk-lead">Live ({active.length})</h2>
+      <div className={styles.sectionHead()}>
+        <h2 className={styles.lead()}>Live ({active.length})</h2>
         <Link
           to={paths.sell()}
-          className="f5-button f5-button--pill f5-button--sm"
+          className={buttonStyles({ variant: "pill", size: "sm" })}
         >
           <PlusCircle size={14} aria-hidden="true" /> New listing
         </Link>
       </div>
       {active.length ? (
-        <ul className="mk-list">
+        <ul className={styles.list()}>
           {active.map((l) => (
             <Row key={l.id} listing={l} />
           ))}
         </ul>
       ) : (
-        <p className="mk-muted">Nothing live right now.</p>
+        <p className={styles.quiet()}>Nothing live right now.</p>
       )}
       {sold.length > 0 && (
         <>
-          <h2 className="mk-lead">Sold ({sold.length})</h2>
-          <ul className="mk-list">
+          <h2 className={styles.lead()}>Sold ({sold.length})</h2>
+          <ul className={styles.list()}>
             {sold.map((l) => (
               <Row key={l.id} listing={l} />
             ))}
@@ -315,11 +403,14 @@ function MyListings({
 }
 
 function ReviewsGiven({ data }: { data: MePayload }) {
+  const styles = meStyles();
+  const shared = sharedStyles();
   if (!data.reviewsGiven.length) {
     return (
       <Empty
         title="You have not reviewed anyone yet"
         icon={<Star size={24} aria-hidden="true" />}
+        className={shared.emptyPane()}
       >
         <p>
           After you contact a seller you can rate how the sale went, from their
@@ -329,20 +420,20 @@ function ReviewsGiven({ data }: { data: MePayload }) {
     );
   }
   return (
-    <section className="mk-pane">
+    <section className={pane(shared.pane())}>
       {data.reviewsGiven.map((r) => (
-        <div key={r.id} className="mk-review">
-          <div className="mk-row mk-row--between">
+        <div key={r.id} className={styles.review()}>
+          <div className={styles.reviewHead()}>
             <Stars value={r.rating} />
-            <span className="mk-meta">{relativeAge(r.createdAt)}</span>
+            <span className={styles.meta()}>{relativeAge(r.createdAt)}</span>
           </div>
-          <p className="mk-meta">
+          <p className={styles.meta()}>
             On{" "}
-            <Link to={paths.listing(r.listingId)} className="mk-link">
+            <Link to={paths.listing(r.listingId)} className={linkStyles()}>
               {r.listingTitle}
             </Link>
           </p>
-          {r.comment && <p className="mk-prose">{r.comment}</p>}
+          {r.comment && <p className={styles.comment()}>{r.comment}</p>}
         </div>
       ))}
     </section>

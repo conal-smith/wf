@@ -8,6 +8,7 @@
  */
 export { Avatar, initials, type AvatarProps } from "./Avatar";
 export { Button, type ButtonProps } from "./Button";
+export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { Chip, type ChipProps } from "./Chip";
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { Count, type CountProps } from "./Count";
