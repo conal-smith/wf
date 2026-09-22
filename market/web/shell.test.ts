@@ -8,6 +8,7 @@ import { Field, TextInput } from "../../ui";
 import { buttonStyles } from "../../ui/Button";
 import { checkboxStyles } from "../../ui/Checkbox";
 import { controlStyles } from "../../ui/control";
+import { segmentedStyles } from "../../ui/Segmented";
 import { fieldStyles } from "../../ui/Field";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
@@ -631,6 +632,17 @@ describe("sell/me S3: the account's tabs", () => {
     const tabs = meStyles().tabs().split(" ");
     expect(tabs).toContain("overflow-x-auto");
     expect(tabs).toContain("scrollbar-none");
+  });
+
+  // A scrolling track clips past its padding, so the ring is drawn inside.
+  it("draws the ring inside a tab, where the scrolling track cannot cut it", () => {
+    const tab = segmentedStyles()
+      .item({ className: meStyles().tab() })
+      .split(" ");
+    expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
+    expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
+    expect(tab).toContain("not-disabled:focus-visible:outline-3");
+    expect(tab).toContain("not-disabled:focus-visible:outline-focus");
   });
 
   /*

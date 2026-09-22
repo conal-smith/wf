@@ -60,7 +60,16 @@ export const meStyles = tv({
      * A row of words rather than a row of controls, as the browse rail's chips
      * are: the body step, and the taller track market.css drew for them.
      */
-    tab: "h-8.5 px-3 text-body leading-tight font-semibold no-underline",
+    tab: [
+      "h-8.5 px-3 text-body leading-tight font-semibold no-underline",
+      /*
+       * The one ring, drawn inside the tab: the track scrolls, so it clips
+       * whatever lies past its 4px of padding, and a ring 2px clear of the tab
+       * reaches 5px out and was cut flat on every side (design/'s segmented
+       * drew it inset for the same reason).
+       */
+      "not-disabled:focus-visible:-outline-offset-2",
+    ],
     /**
      * How many are saved, in the tab that holds them: the caption step at the
      * tab's own leading and weight, in the muted ink. Not the kit's Count,
