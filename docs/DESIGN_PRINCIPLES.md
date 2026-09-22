@@ -69,6 +69,11 @@ page with no map behind it a white hairline and a translucent fill vanish, so
 the content ground takes `bg-card` on `bg-ground` instead: the card is lighter
 than its ground, which is what makes it read as lifted without glass.
 
+**Four kinds of surface, told apart by radius and elevation, not colour**: the
+pane (`Surface` over the map, `Pane` on a page), the pill, the dock and the
+dialog (`Dialog`). If a new thing fits none of them, the answer is usually that
+it should not be a surface.
+
 **Never glass on glass.** Two backdrop blurs stacked compound into mud and cost
 a frame. A control inside a glass surface is raised (`variant="raised"`: the
 raised white and the glass's own hairline) or sunken, never a second blur.
@@ -92,6 +97,9 @@ a degraded one.
   wordmark.
 - `prose` is body copy read at length away from the map; `lead` is the one thing
   a card leads with, or a section heading. Neither is display type.
+- A field on a coarse pointer is set at `lead` (`pointer-coarse:text-lead`, as
+  `ui/control.ts` and `SearchField` do): a phone zooms into a focused field
+  whose text is under 16px, and the scale steps from 14 to 17.
 - Four weights: 400, 500, 600, 700 (`font-normal` to `font-bold`). The
   half-steps the product once used are retired; where one was load-bearing,
   round up.
@@ -238,4 +246,7 @@ action, and the second line says it whatever the hue.
 - **`.legend-gradient`'s eight `rgb()` stops** in `src/styles.css` are a stale
   copy of an old wind ramp, in a rule nothing draws. Removing the rule is the
   owner's call (map-theme-styles-compact, OPEN).
-- **Model hues are not theme values.** See the ruling of 2026-09-16.
+- **Model hues are not theme values.** See the ruling of 2026-09-16. Whether
+  they become theme values (a fifth family made official) or stay in
+  `MODEL_CATALOG` beside the model list is undecided; they have not been checked
+  for contrast or for telling apart. Decide before the third ensemble lands.
