@@ -27,3 +27,5 @@ ACCEPT:
 - [ ] `grep -r "design/" src force5 market community ui --include=*.css --include=*.ts --include=*.tsx` returns nothing.
 - [ ] npm run build, npm test, npm run test:e2e pass.
 REFS: D3 D8.
+LOG:
+- 2026-09-22 integrator (market-tw-sell-me): market/web/market.css is deleted, so force5/src/siteMenu.css is the only importer of design/ left in the ACCEPT grep's dirs. When it went, its site-menu overrides moved into siteMenu.css: SiteMenu now takes `ground?: "map" | "content"` (data-ground), and the marketplace header passes `ground="content"` for a card pill (card fill, ink hairline, control shadow), a solid unblurred panel, and the quiet hover on every row. S1 has to keep that look for the marketplace when the menu is drawn from ui/; the 49 market shots and 36 map shots are the check.
