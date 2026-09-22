@@ -50,6 +50,9 @@
 @source "../ui";
 @source "../market/web";
 @source "../community/web";
+/* The site menu, which every bundle draws, is written in utilities too. Its
+   one file, not force5/src: that is the map's own code, and unscanned. */
+@source "../force5/src/SiteMenu.tsx";
 
 /*
  * `static`: every value below is written into `:root`, used by a utility class
@@ -267,9 +270,11 @@
   --z-index-header: 20;
   --z-index-dialog: 30;
 
-  /* A placeholder breathing while its content loads, and a dialog arriving. */
+  /* A placeholder breathing while its content loads, a dialog arriving, and
+     a panel dropping from the control that opened it. */
   --animate-pulse: pulse 1s ease-in-out infinite alternate;
   --animate-dialog-in: dialog-in 150ms ease both;
+  --animate-menu-in: menu-in 150ms ease both;
 
   @keyframes pulse {
     from {
@@ -281,6 +286,14 @@
     from {
       opacity: 0;
       transform: translateY(8px);
+    }
+  }
+
+  /* Down from above by one tight gap: it hangs from its trigger. */
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
     }
   }
 

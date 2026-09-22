@@ -282,6 +282,19 @@ describe("ui/theme.css: blur, measures and animation", () => {
     );
   });
 
+  // The site menu's panel, at the bundle's own 150ms, dropping by one tight
+  // gap (4px) from the trigger it hangs from.
+  it("a menu drops from its trigger, at the fast duration", () => {
+    const css = build(["animate-menu-in"]);
+    expect(css).toContain("--animate-menu-in: menu-in 150ms ease both;");
+    expect(css).toMatch(
+      /\.animate-menu-in \{\s*animation: var\(--animate-menu-in\);/,
+    );
+    expect(css).toMatch(
+      /@keyframes menu-in \{\s*from \{\s*opacity: 0;\s*transform: translateY\(-4px\);\s*\}\s*\}/,
+    );
+  });
+
   it("glass goes solid for a reader who asked for less transparency", () => {
     const css = build(["reduced-transparency:bg-solid"]);
     expect(css).toMatch(
