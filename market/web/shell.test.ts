@@ -639,7 +639,13 @@ describe("sell/me S3: the account's tabs", () => {
    * for what has not been read yet and would be a new mark on this page.
    */
   it("keeps the count inside the tab, as a number", () => {
-    expect(meStyles().count()).toContain("text-caption");
+    const count = meStyles().count().split(" ");
+    expect(count).toContain("text-caption");
+    // At the tab's own leading and weight, as design/'s segmented drew it:
+    // a caption-sized number in the muted ink, and nothing else about it.
+    expect(count).toContain("leading-tight");
+    expect(count).not.toContain("font-normal");
+    expect(meStyles().tab().split(" ")).toContain("leading-tight");
     expect(read("pages/MePage.tsx")).toContain(
       "<small className={styles.count",
     );

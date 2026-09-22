@@ -748,6 +748,23 @@ describe("the components, rendered", () => {
     expect(wrong).toMatch(/role="alert">Give it a title</);
   });
 
+  /*
+   * The measures design/ has always drawn these at, which the marketplace's
+   * forms were laid out from and are held to (market-tw-sell-me): a label at
+   * the label leading (1.3, not a paragraph's 1.5), a text area three large
+   * controls tall, and an empty state's icon well a large control and a gap
+   * across. Each is a box that moves every field or line under it.
+   */
+  it("Field, TextArea and Empty keep design/'s measures", () => {
+    const field = fieldStyles();
+    expect(field.label().split(" ")).toContain("leading-tight");
+    expect(field.hint().split(" ")).toContain("leading-tight");
+    expect(controlStyles({ kind: "area" }).input().split(" ")).toContain(
+      "min-h-34.5",
+    );
+    expect(emptyStyles().icon().split(" ")).toContain("size-14.5");
+  });
+
   it("TextInput, TextArea and Select keep the native element", () => {
     const input = html(<TextInput prefix="€" active placeholder="0" />);
     expect(input).toContain("€");
