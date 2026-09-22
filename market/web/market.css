@@ -67,12 +67,6 @@
   box-shadow: none;
 }
 
-/* A toggle that is on (Save) stays a quiet pill and says so through its icon
-   and label, so it never rivals the primary. */
-.mk-root .f5-button--pill[aria-pressed="true"] {
-  color: var(--sem-color-text-primary);
-}
-
 /* Every pressable thing on these pages is a capsule; the filled action joins
    them rather than being the one rectangle among pills. */
 .mk-root .f5-button--primary {
@@ -253,212 +247,14 @@
   gap: var(--sem-space-gap);
 }
 
-/* ---- detail -------------------------------------------------------------- */
+/* ---- what the converted pages left behind --------------------------------- */
 
-.mk-detail {
-  display: grid;
-  gap: var(--sem-space-inset);
-  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); /* ds-lint-allow: column ratio and floor are layout */
-  grid-template-areas:
-    "gallery aside"
-    "body aside";
-  align-items: start;
-}
-
-.mk-detail__gallery {
-  grid-area: gallery;
-  min-width: 0;
-}
-
-.mk-detail__body {
-  grid-area: body;
-}
-
-.mk-detail__aside {
-  grid-area: aside;
-  position: sticky;
-  /* Clears the sticky header: its bar plus the padding above and below it. */
-  top: calc(
-    var(--sem-control-height-lg) + var(--sem-space-pad-dialog) +
-      var(--sem-space-gap-loose)
-  );
-}
-
-.mk-gallery__main {
-  position: relative;
-  aspect-ratio: 4 / 3; /* ds-lint-allow: an image ratio */
-  border-radius: var(--sem-radius-surface);
-  border: var(--sem-stroke-hairline) solid var(--sem-color-border-hairline);
-  background: var(--sem-color-surface-sunken);
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  color: var(--sem-color-text-muted);
-}
-
-.mk-gallery__main img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.mk-gallery__nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.mk-gallery__nav--prev {
-  left: var(--sem-space-gap-loose);
-}
-
-.mk-gallery__nav--next {
-  right: var(--sem-space-gap-loose);
-}
-
-.mk-root .mk-gallery__nav.f5-button {
-  box-shadow: var(--sem-effect-shadow-marker);
-}
-
-.mk-gallery__count {
-  position: absolute;
-  right: var(--sem-space-gap-loose);
-  bottom: var(--sem-space-gap-loose);
-}
-
-.mk-gallery__thumbs {
-  display: flex;
-  gap: var(--sem-space-gap);
-  margin-top: var(--sem-space-gap-loose);
-  padding: var(--sem-space-gap-tight);
-  margin-inline: calc(-1 * var(--sem-space-gap-tight));
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.mk-thumb {
-  flex: 0 0 auto;
-  width: 76px; /* ds-lint-allow: thumbnail size, not a tokenised scale */
-  height: 57px; /* ds-lint-allow: thumbnail size, 4:3 like the main image */
-  padding: 0;
-  border: 0;
-  border-radius: var(--sem-radius-control);
-  background: var(--sem-color-surface-sunken);
-  overflow: hidden;
-  cursor: pointer;
-  opacity: 0.65; /* ds-lint-allow: unselected thumbnails recede; opacity is not a tokenised scale */
-  transition: opacity var(--sem-effect-duration-fast) ease;
-}
-
-.mk-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.mk-thumb:hover,
-.mk-thumb[aria-pressed="true"] {
-  opacity: 1; /* ds-lint-allow: see above */
-}
-
-.mk-thumb[aria-pressed="true"] {
-  outline: var(--sem-stroke-emphasis) solid var(--sem-color-action-bg);
-  outline-offset: var(--sem-stroke-hairline);
-}
-
-.mk-thumb:focus-visible {
-  opacity: 1; /* ds-lint-allow: see above */
-  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
-  outline-offset: var(--sem-stroke-focus-offset);
-}
-
-.mk-price {
-  font-family: var(--sem-text-title-font-family);
-  font-size: var(--sem-text-title-font-size);
-  font-weight: var(--sem-text-title-font-weight);
-  line-height: var(--sem-text-title-line-height);
-  letter-spacing: var(--sem-text-title-letter-spacing);
-}
-
-.mk-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--sem-space-gap);
-}
-
-.mk-actions > .f5-button--primary {
-  flex: 1 1 auto;
-}
-
-.mk-specs {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(150px, 1fr)
-  ); /* ds-lint-allow: column width is layout */
-  gap: var(--sem-space-pad-surface) var(--sem-space-inset);
-}
-
-.mk-specs > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sem-space-gap-tight);
-  min-width: 0;
-}
-
-.mk-specs dd {
-  font-weight: var(--sem-text-label-font-weight);
-  overflow-wrap: anywhere;
-}
-
-.mk-contact {
-  display: grid;
-  gap: var(--sem-space-gap-loose);
-}
-
-.mk-contact a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sem-space-gap);
-  overflow-wrap: anywhere;
-}
-
-/* ---- seller card and ratings ---------------------------------------------- */
-
-.mk-seller {
-  display: flex;
-  align-items: center;
-  gap: var(--sem-space-gap-loose);
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  border-radius: var(--sem-radius-control);
-}
-
-.mk-seller:focus-visible {
-  outline: var(--sem-stroke-focus-width) solid var(--sem-color-action-focus);
-  outline-offset: var(--sem-stroke-focus-offset);
-}
-
-.mk-seller__chevron {
-  margin-left: auto;
-  color: var(--sem-color-text-muted);
-  transition: transform var(--sem-effect-duration-fast) ease;
-}
-
-a.mk-seller:hover .mk-seller__chevron {
-  transform: translateX(var(--sem-space-gap-tight));
-}
-
-.mk-seller-head {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); /* ds-lint-allow: column ratio and floor are layout */
-  gap: var(--sem-space-inset);
-  align-items: start;
-}
-
+/*
+ * The face beside a name, and a review in a list. Both were drawn on the
+ * listing and seller pages, which are Tailwind now; these two are still here
+ * because `Avatar` has no size of its own in ui/ yet and MePage draws the
+ * same review row. They go with the pages that still read them (D7).
+ */
 .mk-avatar {
   display: inline-grid;
   place-items: center;
@@ -479,54 +275,6 @@ a.mk-seller:hover .mk-seller__chevron {
   font-size: var(--sem-text-title-font-size);
 }
 
-.mk-stars {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sem-stroke-emphasis);
-  color: var(--sem-color-action-bg);
-}
-
-.mk-stars svg[data-empty="true"] {
-  color: var(--sem-color-border-strong);
-}
-
-.mk-rating-pick {
-  display: inline-flex;
-  gap: var(--sem-space-gap-tight);
-}
-
-.mk-rating-pick .f5-button {
-  color: var(--sem-color-border-strong);
-}
-
-.mk-rating-pick .f5-button[aria-pressed="true"],
-.mk-rating-pick .f5-button[data-lit="true"] {
-  color: var(--sem-color-action-bg);
-  background: none;
-  box-shadow: none;
-}
-
-.mk-histogram {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--sem-space-gap) var(--sem-space-gap-loose);
-}
-
-.mk-histogram__bar {
-  height: var(--sem-space-gap);
-  border-radius: var(--sem-radius-round);
-  background: var(--sem-color-surface-sunken);
-  overflow: hidden;
-}
-
-.mk-histogram__fill {
-  display: block;
-  height: 100%;
-  background: var(--sem-color-action-bg);
-  border-radius: inherit;
-}
-
 .mk-review {
   display: flex;
   flex-direction: column;
@@ -542,17 +290,6 @@ a.mk-seller:hover .mk-seller__chevron {
 
 .mk-review:last-child {
   padding-bottom: 0;
-}
-
-.mk-stat {
-  display: grid;
-  gap: var(--sem-space-gap-tight);
-}
-
-.mk-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sem-space-pad-surface) var(--sem-space-pad-dialog);
 }
 
 /* ---- my listings ---------------------------------------------------------- */
@@ -1029,30 +766,12 @@ a.mk-seller:hover .mk-seller__chevron {
   }
 }
 
-@media (max-width: 899px) {
-  /* ds-lint-allow: breakpoint */
-  .mk-detail {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "gallery"
-      "aside"
-      "body";
-  }
-  .mk-detail__aside {
-    position: static;
-  }
-  .mk-seller-head {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 719px) {
   /* ds-lint-allow: breakpoint */
   .mk-pane {
     padding: var(--sem-space-pad-surface);
   }
-  .mk-tabs::-webkit-scrollbar,
-  .mk-gallery__thumbs::-webkit-scrollbar {
+  .mk-tabs::-webkit-scrollbar {
     display: none;
   }
   .mk-item {
@@ -1068,8 +787,7 @@ a.mk-seller:hover .mk-seller__chevron {
 
 @media (prefers-reduced-motion: reduce) {
   .mk-skeleton,
-  .mk-dialog[open],
-  .mk-seller__chevron {
+  .mk-dialog[open] {
     transition: none;
     animation: none;
   }
