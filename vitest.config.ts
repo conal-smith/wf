@@ -9,6 +9,8 @@ export default defineConfig({
       "site/**/*.test.ts",
       "shared/**/*.test.ts",
       "community/**/*.test.ts",
+      "mcp/**/*.test.ts",
+      "ai/**/*.test.ts",
       "ui/**/*.test.{ts,tsx}",
     ],
   },

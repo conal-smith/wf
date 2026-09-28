@@ -1,8 +1,9 @@
 /**
  * The sections of wingfoil.ie, and which one a URL belongs to.
  *
- * There are three apps on one origin — the wind map, the second-hand gear
- * marketplace and the community — and `src/main.tsx` picks between them from
+ * There are four apps on one origin — the wind map, the second-hand gear
+ * marketplace, the community and the page that adds the forecast to an AI
+ * assistant — and `src/main.tsx` picks between them from
  * the pathname at load time. That single fact is why this module exists twice
  * over: it is what the entry point matches on, and it is what the shared site
  * menu marks as the current section, so the two can never disagree about where
@@ -19,7 +20,7 @@
  * and the community each import it, and none drags another along.
  */
 
-export type SiteSectionId = "map" | "market" | "community";
+export type SiteSectionId = "map" | "market" | "community" | "ai";
 
 export interface SiteSection {
   id: SiteSectionId;
@@ -33,6 +34,7 @@ export const SITE_SECTIONS: readonly SiteSection[] = [
   { id: "map", href: "/", label: "Wind map" },
   { id: "market", href: "/market", label: "Marketplace" },
   { id: "community", href: "/community", label: "Community" },
+  { id: "ai", href: "/ai", label: "Use with AI" },
 ];
 
 /** `/market` and everything under it — but not `/marketplace-of-ideas`. */
@@ -47,4 +49,11 @@ const COMMUNITY_PATH = /^\/community(\/|$)/;
 
 export function isCommunityPath(pathname: string): boolean {
   return COMMUNITY_PATH.test(pathname);
+}
+
+/** `/ai` and everything under it — but not `/aid` or `/air`. */
+const AI_PATH = /^\/ai(\/|$)/;
+
+export function isAiPath(pathname: string): boolean {
+  return AI_PATH.test(pathname);
 }

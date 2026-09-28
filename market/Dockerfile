@@ -9,6 +9,9 @@ RUN npm ci --no-audit --no-fund
 COPY market/ ./market/
 COPY site/ ./site/
 COPY community/ ./community/
+COPY mcp/ ./mcp/
+# The MCP server reuses the map's unit and sunrise maths; both are dependency-free.
+COPY force5/src/units.ts force5/src/sun.ts ./force5/src/
 RUN npx tsc -p market/api/tsconfig.json
 
 FROM node:22-slim

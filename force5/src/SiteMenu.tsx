@@ -16,6 +16,7 @@
  * in every bundle.
  */
 import {
+  Bot,
   Menu,
   MessagesSquare,
   Store,
@@ -33,6 +34,7 @@ const ICONS: Record<SiteSectionId, LucideIcon> = {
   map: Wind,
   market: Store,
   community: MessagesSquare,
+  ai: Bot,
 };
 
 /*

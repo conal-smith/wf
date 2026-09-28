@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { SITE_SECTIONS, isCommunityPath, isMarketPath } from "./siteNav";
+import {
+  SITE_SECTIONS,
+  isAiPath,
+  isCommunityPath,
+  isMarketPath,
+} from "./siteNav";
 
 describe("isMarketPath", () => {
   it("claims /market and everything under it", () => {
@@ -49,17 +54,29 @@ describe("isCommunityPath", () => {
   });
 });
 
+describe("isAiPath", () => {
+  it("claims /ai and everything under it, and nothing that starts with the letters", () => {
+    expect(isAiPath("/ai")).toBe(true);
+    expect(isAiPath("/ai/")).toBe(true);
+    expect(isAiPath("/air")).toBe(false);
+    expect(isAiPath("/aid")).toBe(false);
+    expect(isAiPath("/")).toBe(false);
+    expect(isAiPath("/community/ai")).toBe(false);
+  });
+});
+
 describe("SITE_SECTIONS", () => {
   it("links with absolute paths, because crossing sections is a page load", () => {
     for (const section of SITE_SECTIONS)
       expect(section.href.startsWith("/")).toBe(true);
   });
 
-  it("offers exactly the three sections the entry point branches on", () => {
+  it("offers exactly the four sections the entry point branches on", () => {
     expect(SITE_SECTIONS).toEqual([
       { id: "map", href: "/", label: "Wind map" },
       { id: "market", href: "/market", label: "Marketplace" },
       { id: "community", href: "/community", label: "Community" },
+      { id: "ai", href: "/ai", label: "Use with AI" },
     ]);
   });
 
@@ -67,6 +84,7 @@ describe("SITE_SECTIONS", () => {
     for (const section of SITE_SECTIONS) {
       expect(isMarketPath(section.href)).toBe(section.id === "market");
       expect(isCommunityPath(section.href)).toBe(section.id === "community");
+      expect(isAiPath(section.href)).toBe(section.id === "ai");
     }
   });
 });

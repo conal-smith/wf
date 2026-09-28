@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   SITE_SECTIONS,
+  isAiPath,
   isCommunityPath,
   isMarketPath,
 } from "../force5/src/siteNav";
@@ -38,7 +39,10 @@ describe("the SPA fallback", () => {
   it("names only paths the entry point branches on", () => {
     for (const [from] of rules) {
       const path = from.replace(/\*$/, "anything");
-      expect(isMarketPath(path) || isCommunityPath(path), from).toBe(true);
+      expect(
+        isMarketPath(path) || isCommunityPath(path) || isAiPath(path),
+        from,
+      ).toBe(true);
     }
   });
 
