@@ -18,7 +18,7 @@ const row = (page: Page, name: string) =>
  */
 const headerBar = (page: Page) => page.getByRole("banner").locator("> div");
 // The same rows in the same order, whichever bundle drew them.
-const SECTIONS = ["Wind map", "Marketplace", "Community"];
+const SECTIONS = ["Wind map", "Marketplace", "Community", "Use with AI"];
 
 test("on the map the menu opens by keyboard and Escape closes only the menu", async ({
   page,

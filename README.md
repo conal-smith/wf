@@ -58,6 +58,20 @@ is otherwise untouched. Run it locally with `npm run market:api` and
 `VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
 `market/Dockerfile`. See the package README for the full runbook.
 
+## AI assistants (MCP)
+
+The forecast is also an MCP server, so Claude, ChatGPT, Cursor, VS Code and
+command-line agents can read it. `mcp/api/` serves it at `/api/mcp` from the
+same API process as the marketplace: public, read-only, stateless Streamable
+HTTP. Its tools are `list_spots`, `get_spot_forecast` (a consensus of every live
+wind model per hour, with agreement, waves, weather, tides, sea temperature and
+daylight), `find_wind` (spots ranked by hours in a wind range) and
+`forecast_sources`. It reads the published bundles and nothing else: set
+`FORECAST_BASE_URL` to the site root in production; in development it reads
+`public/`. `/ai` (`ai/web/`) is the page that hands it out, with one-click
+install links for Claude, Cursor and VS Code and the lines to paste for the
+rest.
+
 ## Run it yourself on one machine
 
 The [local deployment guide](deploy/local/README.md) sets up the whole site on a single

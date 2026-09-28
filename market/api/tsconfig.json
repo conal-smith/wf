@@ -20,11 +20,14 @@
     "../../site/api",
     "../../site/shared",
     "../../community/api",
-    "../../community/shared"
+    "../../community/shared",
+    "../../mcp/api"
   ],
   "exclude": [
     "src/**/*.test.ts",
     "../../site/**/*.test.ts",
-    "../../community/**/*.test.ts"
+    "../../community/**/*.test.ts",
+    "../../mcp/**/*.test.ts",
+    "../../mcp/api/testing.ts"
   ]
 }

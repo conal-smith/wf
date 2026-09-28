@@ -1,6 +1,7 @@
 /**
  * The HTTP surface. The marketplace lives under /api/market, the community
- * under /api/community and the site's own routes (/api/me) beside them, so
+ * under /api/community, the forecast for AI assistants under /api/mcp and the
+ * site's own routes (/api/me) beside them, so
  * the same routes work behind a same-origin proxy in development and on their
  * own Railway domain in production.
  */
@@ -23,6 +24,8 @@ import type { Hub } from "../../../community/api/hub.js";
 import type { Limiter } from "../../../community/api/limits.js";
 import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
 import { createCommunityRouter } from "../../../community/api/router.js";
+import { createMcpRouter } from "../../../mcp/api/server.js";
+import type { ForecastSource } from "../../../mcp/api/source.js";
 import {
   blockSuspended,
   createSiteRouter,
@@ -67,6 +70,11 @@ export interface AppDeps {
   hub?: Hub;
   /** The community's rate limits. Left out, the real ones; see community/api/limits.ts. */
   limiter?: Limiter;
+  /**
+   * Where the MCP endpoint reads the published forecast. Left out, /api/mcp
+   * is not mounted.
+   */
+  forecast?: ForecastSource;
 }
 
 type Env = { Variables: AuthVariables };
@@ -514,6 +522,8 @@ export function createApp(deps: AppDeps) {
       limiter: deps.limiter,
     }),
   );
+  if (deps.forecast)
+    app.route("/api/mcp", createMcpRouter({ source: deps.forecast }));
   app.route("/api", createSiteRouter(people));
   return app;
 }

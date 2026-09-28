@@ -12,6 +12,12 @@ export interface Config {
   production: boolean;
   publicUrl: string;
   corsOrigins: string[] | "*";
+  /**
+   * The site root the MCP endpoint reads published forecasts from
+   * (FORECAST_BASE_URL, e.g. https://wingfoil.ie/). Null reads the checkout's
+   * `public/` in development and leaves /api/mcp off in production.
+   */
+  forecastBaseUrl: string | null;
   db: { mode: DbMode; url: string | null };
   auth: {
     mode: AuthMode;
@@ -93,11 +99,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
 
+  const forecastBaseUrl = env.FORECAST_BASE_URL?.trim() || null;
+  if (forecastBaseUrl && !/^https?:\/\//.test(forecastBaseUrl)) {
+    throw new Error("FORECAST_BASE_URL must be an http(s) URL");
+  }
+
   return {
     port,
     production,
     publicUrl,
     corsOrigins,
+    forecastBaseUrl,
     db: { mode: dbMode, url: dbUrl },
     auth: {
       mode: authMode,

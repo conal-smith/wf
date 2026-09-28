@@ -38,7 +38,13 @@ const REPO = join(dirname(SELF), "..");
 // simply not there to lint. The site menu is the one file of force5/src that
 // is written in utilities (ui/theme.css scans it and nothing else there), so it
 // is named on its own rather than the map's whole directory.
-const DIRS = ["ui", "market/web", "community/web", "force5/src/SiteMenu.tsx"];
+const DIRS = [
+  "ui",
+  "market/web",
+  "community/web",
+  "ai/web",
+  "force5/src/SiteMenu.tsx",
+];
 const EXTENSIONS = new Set([
   ".ts",
   ".tsx",
