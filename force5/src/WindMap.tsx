@@ -371,6 +371,9 @@ export default function WindMap({
     );
   }, [frame, ready, showWind]);
 
+  // The markers are made once per set of spots and then written to in place:
+  // rebuilding every one of them on each frame or selection stalled the camera
+  // for a frame or two once the map held more than a hundred places.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -379,22 +382,10 @@ export default function WindMap({
     if (!showSpots) return;
     for (const spot of spots) {
       const button = document.createElement("button");
-      const wind = frame ? sample(frame, spot.lon, spot.lat) : null;
-      button.className = `spot-marker ${selected.id === spot.id ? "active" : ""}`;
+      // Before the marker is made: it adds classes of its own to the element.
+      button.className = "spot-marker";
       button.dataset.spotId = spot.id;
       button.dataset.kind = spot.kind || "spot";
-      button.setAttribute(
-        "aria-label",
-        `${spot.name}${wind ? `, ${Math.round(convert(speed(wind), units))} ${units}` : ""}`,
-      );
-      const symbol = { operator: "⌂", club: "⚑", area: "◇" }[
-        spot.kind as "operator" | "club" | "area"
-      ];
-      button.textContent =
-        symbol || (wind ? `${Math.round(convert(speed(wind), units))}` : "•");
-      button.title = `${spot.name}${spot.kind && spot.kind !== "spot" ? ` · ${spot.kind}` : ""}${wind ? ` · ${Math.round(convert(speed(wind), units))} ${units}` : ""}`;
-      if (spot.kind && spot.kind !== "spot")
-        button.setAttribute("aria-label", button.title);
       button.onclick = (event) => {
         event.stopPropagation();
         latest.current.onSelect(spot);
@@ -409,6 +400,28 @@ export default function WindMap({
       markers.current.forEach((marker) => marker.remove());
       markers.current = [];
     };
+  }, [ready, spots, showSpots]);
+
+  useEffect(() => {
+    if (!ready || !showSpots) return;
+    spots.forEach((spot, index) => {
+      const button = markers.current[index]?.getElement();
+      if (!button) return;
+      const wind = frame ? sample(frame, spot.lon, spot.lat) : null;
+      button.classList.toggle("active", selected.id === spot.id);
+      button.setAttribute(
+        "aria-label",
+        `${spot.name}${wind ? `, ${Math.round(convert(speed(wind), units))} ${units}` : ""}`,
+      );
+      const symbol = { operator: "⌂", club: "⚑", area: "◇" }[
+        spot.kind as "operator" | "club" | "area"
+      ];
+      button.textContent =
+        symbol || (wind ? `${Math.round(convert(speed(wind), units))}` : "•");
+      button.title = `${spot.name}${spot.kind && spot.kind !== "spot" ? ` · ${spot.kind}` : ""}${wind ? ` · ${Math.round(convert(speed(wind), units))} ${units}` : ""}`;
+      if (spot.kind && spot.kind !== "spot")
+        button.setAttribute("aria-label", button.title);
+    });
   }, [ready, spots, frame, selected, units, showSpots]);
 
   useEffect(() => {

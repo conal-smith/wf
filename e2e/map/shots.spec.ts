@@ -59,7 +59,7 @@ async function hideBasemap(page: Page) {
 async function openMap(page: Page) {
   await hideBasemap(page);
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
@@ -323,7 +323,7 @@ for (const { width, height } of [
         route.fulfill({ status: 503, body: "Unavailable" }),
       );
       await page.goto("/");
-      await expect(page.locator(".spot-marker")).toHaveCount(25, {
+      await expect(page.locator(".spot-marker")).toHaveCount(146, {
         timeout: 30000,
       });
       await page.getByLabel("Choose forecast model", { exact: true }).click();

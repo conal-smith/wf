@@ -21,7 +21,7 @@ test("ECMWF 15-day mobile outlook follows mixed-cadence scrubbing and returns to
     new Date(Date.parse(ecmwf.runTime) + 14 * 3600000),
   );
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);

@@ -64,6 +64,11 @@ export interface Point {
   aliases?: string[];
   website?: string;
   sports?: string[];
+  /**
+   * The bearing the shore looks out to sea along, in degrees, where it is clear
+   * enough to rate against; null or absent means rate on the wind alone.
+   */
+  facing?: number | null;
   locationSources?: {
     name: string;
     url: string;

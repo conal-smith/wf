@@ -173,5 +173,852 @@
     "county": "Donegal",
     "lat": 55.151,
     "lon": -8.1514
+  },
+  {
+    "id": "doogort",
+    "name": "Doogort — Achill",
+    "county": "Mayo",
+    "lat": 54.012,
+    "lon": -10.0207
+  },
+  {
+    "id": "dooniver",
+    "name": "Dooniver Beach — Achill",
+    "county": "Mayo",
+    "lat": 54.0016,
+    "lon": -9.9391
+  },
+  {
+    "id": "keel-lake",
+    "name": "Keel Lake — Achill",
+    "county": "Mayo",
+    "lat": 53.9825,
+    "lon": -10.0585
+  },
+  {
+    "id": "aghleam",
+    "name": "Aghleam",
+    "county": "Mayo",
+    "lat": 54.11442,
+    "lon": -10.1227
+  },
+  {
+    "id": "belmullet",
+    "name": "Belmullet",
+    "county": "Mayo",
+    "lat": 54.224,
+    "lon": -10.0561
+  },
+  {
+    "id": "elly-bay",
+    "name": "Elly Bay",
+    "county": "Mayo",
+    "lat": 54.1605,
+    "lon": -10.0909
+  },
+  {
+    "id": "elly-beach",
+    "name": "Elly Beach",
+    "county": "Mayo",
+    "lat": 54.1543,
+    "lon": -10.1028
+  },
+  {
+    "id": "trawmore-bay",
+    "name": "Trawmore Bay — Claggan",
+    "county": "Mayo",
+    "lat": 54.1732,
+    "lon": -9.9564
+  },
+  {
+    "id": "bertra",
+    "name": "Bertra Beach",
+    "county": "Mayo",
+    "lat": 53.7915,
+    "lon": -9.6568
+  },
+  {
+    "id": "carrownisky",
+    "name": "Carrownisky Strand",
+    "county": "Mayo",
+    "lat": 53.7353,
+    "lon": -9.8946
+  },
+  {
+    "id": "dogs-bay",
+    "name": "Dog's Bay & Gurteen — Roundstone",
+    "county": "Galway",
+    "lat": 53.37881,
+    "lon": -9.96352
+  },
+  {
+    "id": "spanish-point",
+    "name": "Spanish Point",
+    "county": "Clare",
+    "lat": 52.8421,
+    "lon": -9.4328
+  },
+  {
+    "id": "easkey",
+    "name": "Easkey",
+    "county": "Sligo",
+    "lat": 54.2936,
+    "lon": -8.9595
+  },
+  {
+    "id": "enniscrone",
+    "name": "Enniscrone",
+    "county": "Sligo",
+    "lat": 54.2116,
+    "lon": -9.1109
+  },
+  {
+    "id": "dunmoran",
+    "name": "Dunmoran Strand",
+    "county": "Sligo",
+    "lat": 54.2647,
+    "lon": -8.7324
+  },
+  {
+    "id": "west-of-dunmoran",
+    "name": "West of Dunmoran",
+    "county": "Sligo",
+    "lat": 54.286713,
+    "lon": -8.895136
+  },
+  {
+    "id": "strandhill",
+    "name": "Strandhill",
+    "county": "Sligo",
+    "lat": 54.2715,
+    "lon": -8.6072
+  },
+  {
+    "id": "rosses-point",
+    "name": "Rosses Point",
+    "county": "Sligo",
+    "lat": 54.3122,
+    "lon": -8.5705
+  },
+  {
+    "id": "lissadell",
+    "name": "Lissadell",
+    "county": "Sligo",
+    "lat": 54.3433,
+    "lon": -8.5899
+  },
+  {
+    "id": "streedagh",
+    "name": "Streedagh Beach",
+    "county": "Sligo",
+    "lat": 54.4082,
+    "lon": -8.5391
+  },
+  {
+    "id": "streedagh-lagoon",
+    "name": "Streedagh Lagoon",
+    "county": "Sligo",
+    "lat": 54.4039,
+    "lon": -8.5593
+  },
+  {
+    "id": "portnoo",
+    "name": "Portnoo",
+    "county": "Donegal",
+    "lat": 54.8414,
+    "lon": -8.445
+  },
+  {
+    "id": "bloody-foreland",
+    "name": "Bloody Foreland",
+    "county": "Donegal",
+    "lat": 55.1555,
+    "lon": -8.2871
+  },
+  {
+    "id": "dunfanaghy",
+    "name": "Dunfanaghy Lagoon",
+    "county": "Donegal",
+    "lat": 55.1848,
+    "lon": -7.9625
+  },
+  {
+    "id": "downings",
+    "name": "Downings — Trá Beg",
+    "county": "Donegal",
+    "lat": 55.192392,
+    "lon": -7.831621
+  },
+  {
+    "id": "portsalon",
+    "name": "Portsalon — Ballymastocker Bay",
+    "county": "Donegal",
+    "lat": 55.20317,
+    "lon": -7.62228
+  },
+  {
+    "id": "portstewart",
+    "name": "Portstewart Strand",
+    "county": "Derry",
+    "lat": 55.169899,
+    "lon": -6.7454
+  },
+  {
+    "id": "whiterocks",
+    "name": "Whiterocks",
+    "county": "Antrim",
+    "lat": 55.2062,
+    "lon": -6.6125
+  },
+  {
+    "id": "portballintrae",
+    "name": "Bushfoot — Portballintrae",
+    "county": "Antrim",
+    "lat": 55.220501,
+    "lon": -6.5352
+  },
+  {
+    "id": "browns-bay",
+    "name": "Browns Bay — Larne",
+    "county": "Antrim",
+    "lat": 54.852501,
+    "lon": -5.7682
+  },
+  {
+    "id": "lough-neagh-antrim",
+    "name": "Lough Neagh — Antrim",
+    "county": "Antrim",
+    "lat": 54.714901,
+    "lon": -6.24
+  },
+  {
+    "id": "oxford-island",
+    "name": "Lough Neagh — Oxford Island",
+    "county": "Armagh",
+    "lat": 54.496899,
+    "lon": -6.3828
+  },
+  {
+    "id": "millisle",
+    "name": "Millisle",
+    "county": "Down",
+    "lat": 54.6017,
+    "lon": -5.5231
+  },
+  {
+    "id": "kearney",
+    "name": "Kearney",
+    "county": "Down",
+    "lat": 54.3825,
+    "lon": -5.4841
+  },
+  {
+    "id": "newcastle",
+    "name": "Newcastle — Dundrum Bay",
+    "county": "Down",
+    "lat": 54.209,
+    "lon": -5.8901
+  },
+  {
+    "id": "cranfield",
+    "name": "Cranfield",
+    "county": "Down",
+    "lat": 54.036301,
+    "lon": -6.0293
+  },
+  {
+    "id": "warrenpoint",
+    "name": "Warrenpoint",
+    "county": "Down",
+    "lat": 54.097599,
+    "lon": -6.2498
+  },
+  {
+    "id": "carlingford",
+    "name": "Carlingford",
+    "county": "Louth",
+    "lat": 54.040298,
+    "lon": -6.1755
+  },
+  {
+    "id": "greenore",
+    "name": "Greenore",
+    "county": "Louth",
+    "lat": 54.0319,
+    "lon": -6.1305
+  },
+  {
+    "id": "giles-quay",
+    "name": "Gyles Quay",
+    "county": "Louth",
+    "lat": 53.9851,
+    "lon": -6.2361
+  },
+  {
+    "id": "annagassan",
+    "name": "Annagassan",
+    "county": "Louth",
+    "lat": 53.8795,
+    "lon": -6.3376
+  },
+  {
+    "id": "clogherhead",
+    "name": "Clogherhead",
+    "county": "Louth",
+    "lat": 53.7873,
+    "lon": -6.2357
+  },
+  {
+    "id": "termonfeckin",
+    "name": "Termonfeckin",
+    "county": "Louth",
+    "lat": 53.7575,
+    "lon": -6.2479
+  },
+  {
+    "id": "bettystown",
+    "name": "Bettystown",
+    "county": "Meath",
+    "lat": 53.6999,
+    "lon": -6.2431
+  },
+  {
+    "id": "laytown",
+    "name": "Laytown",
+    "county": "Meath",
+    "lat": 53.6807,
+    "lon": -6.2368
+  },
+  {
+    "id": "gormanston",
+    "name": "Gormanston",
+    "county": "Meath",
+    "lat": 53.6635,
+    "lon": -6.23
+  },
+  {
+    "id": "skerries",
+    "name": "Skerries",
+    "county": "Dublin",
+    "lat": 53.5799,
+    "lon": -6.1047
+  },
+  {
+    "id": "rush-north",
+    "name": "Rush North Beach",
+    "county": "Dublin",
+    "lat": 53.5269,
+    "lon": -6.0861
+  },
+  {
+    "id": "rush-south",
+    "name": "Rush South Beach",
+    "county": "Dublin",
+    "lat": 53.5164,
+    "lon": -6.0968
+  },
+  {
+    "id": "donabate",
+    "name": "Donabate",
+    "county": "Dublin",
+    "lat": 53.4753,
+    "lon": -6.1198
+  },
+  {
+    "id": "low-rock",
+    "name": "Low Rock — Malahide",
+    "county": "Dublin",
+    "lat": 53.4488,
+    "lon": -6.1357
+  },
+  {
+    "id": "portmarnock",
+    "name": "Portmarnock — Velvet Strand",
+    "county": "Dublin",
+    "lat": 53.4321,
+    "lon": -6.124
+  },
+  {
+    "id": "burrow-beach",
+    "name": "Burrow Beach — Sutton",
+    "county": "Dublin",
+    "lat": 53.393,
+    "lon": -6.1059
+  },
+  {
+    "id": "bull-island-north",
+    "name": "North Bull Island — Sutton end",
+    "county": "Dublin",
+    "lat": 53.3815,
+    "lon": -6.1161
+  },
+  {
+    "id": "poolbeg",
+    "name": "Poolbeg",
+    "county": "Dublin",
+    "lat": 53.3372,
+    "lon": -6.1864
+  },
+  {
+    "id": "sandymount",
+    "name": "Sandymount Strand",
+    "county": "Dublin",
+    "lat": 53.3284,
+    "lon": -6.2083
+  },
+  {
+    "id": "seapoint",
+    "name": "Seapoint",
+    "county": "Dublin",
+    "lat": 53.2956,
+    "lon": -6.151
+  },
+  {
+    "id": "killiney",
+    "name": "Killiney Beach",
+    "county": "Dublin",
+    "lat": 53.2587,
+    "lon": -6.1118
+  },
+  {
+    "id": "bray",
+    "name": "Bray Beach",
+    "county": "Wicklow",
+    "lat": 53.2024,
+    "lon": -6.0971
+  },
+  {
+    "id": "greystones",
+    "name": "Greystones",
+    "county": "Wicklow",
+    "lat": 53.143942,
+    "lon": -6.054052
+  },
+  {
+    "id": "brittas-bay",
+    "name": "Brittas Bay",
+    "county": "Wicklow",
+    "lat": 52.8835,
+    "lon": -6.0567
+  },
+  {
+    "id": "kilmuckridge",
+    "name": "Kilmuckridge",
+    "county": "Wexford",
+    "lat": 52.5346,
+    "lon": -6.2115
+  },
+  {
+    "id": "curracloe",
+    "name": "Curracloe",
+    "county": "Wexford",
+    "lat": 52.3885,
+    "lon": -6.3632
+  },
+  {
+    "id": "the-burrow",
+    "name": "The Burrow — Rosslare",
+    "county": "Wexford",
+    "lat": 52.3093,
+    "lon": -6.3888
+  },
+  {
+    "id": "rosslare",
+    "name": "Rosslare Strand",
+    "county": "Wexford",
+    "lat": 52.2745,
+    "lon": -6.386
+  },
+  {
+    "id": "st-margarets",
+    "name": "St Margaret's Beach",
+    "county": "Wexford",
+    "lat": 52.2353,
+    "lon": -6.3218
+  },
+  {
+    "id": "ladys-island-lake",
+    "name": "Lady's Island Lake",
+    "county": "Wexford",
+    "lat": 52.184205845,
+    "lon": -6.398410302
+  },
+  {
+    "id": "kilmore-quay",
+    "name": "Kilmore Quay",
+    "county": "Wexford",
+    "lat": 52.1781,
+    "lon": -6.5964
+  },
+  {
+    "id": "cullenstown",
+    "name": "Cullenstown",
+    "county": "Wexford",
+    "lat": 52.213497,
+    "lon": -6.69754
+  },
+  {
+    "id": "duncannon",
+    "name": "Duncannon",
+    "county": "Wexford",
+    "lat": 52.219,
+    "lon": -6.9262
+  },
+  {
+    "id": "dungarvan",
+    "name": "Dungarvan",
+    "county": "Waterford",
+    "lat": 52.0835,
+    "lon": -7.6085
+  },
+  {
+    "id": "red-barn",
+    "name": "Red Barn — Youghal",
+    "county": "Cork",
+    "lat": 51.9369,
+    "lon": -7.852
+  },
+  {
+    "id": "ballycotton",
+    "name": "Ballycotton — Ballynamona",
+    "county": "Cork",
+    "lat": 51.8476,
+    "lon": -8.0171
+  },
+  {
+    "id": "cobh",
+    "name": "Cobh — Cork Harbour",
+    "county": "Cork",
+    "lat": 51.8515,
+    "lon": -8.2823
+  },
+  {
+    "id": "cork-harbour",
+    "name": "Cork Harbour — lower",
+    "county": "Cork",
+    "lat": 51.79113,
+    "lon": -8.25755
+  },
+  {
+    "id": "garrettstown",
+    "name": "Garrettstown",
+    "county": "Cork",
+    "lat": 51.6439,
+    "lon": -8.5796
+  },
+  {
+    "id": "coolmaine",
+    "name": "Coolmaine",
+    "county": "Cork",
+    "lat": 51.6515,
+    "lon": -8.6735
+  },
+  {
+    "id": "owenahincha",
+    "name": "Owenahincha",
+    "county": "Cork",
+    "lat": 51.562732,
+    "lon": -8.993862
+  },
+  {
+    "id": "glandore",
+    "name": "Glandore Harbour",
+    "county": "Cork",
+    "lat": 51.56548,
+    "lon": -9.12109
+  },
+  {
+    "id": "schull",
+    "name": "Schull",
+    "county": "Cork",
+    "lat": 51.522643,
+    "lon": -9.5443
+  },
+  {
+    "id": "bantry-bay",
+    "name": "Bantry Bay",
+    "county": "Cork",
+    "lat": 51.678357,
+    "lon": -9.472784
+  },
+  {
+    "id": "waterville",
+    "name": "Waterville — Ballinskelligs Bay",
+    "county": "Kerry",
+    "lat": 51.831349,
+    "lon": -10.197416
+  },
+  {
+    "id": "rossbeigh",
+    "name": "Rossbeigh",
+    "county": "Kerry",
+    "lat": 52.0853,
+    "lon": -9.9699
+  },
+  {
+    "id": "inch",
+    "name": "Inch Beach",
+    "county": "Kerry",
+    "lat": 52.1412,
+    "lon": -9.9801
+  },
+  {
+    "id": "ventry",
+    "name": "Ventry",
+    "county": "Kerry",
+    "lat": 52.1308,
+    "lon": -10.3677
+  },
+  {
+    "id": "smerwick",
+    "name": "Smerwick Harbour",
+    "county": "Kerry",
+    "lat": 52.1812,
+    "lon": -10.4077
+  },
+  {
+    "id": "fermoyle",
+    "name": "Fermoyle",
+    "county": "Kerry",
+    "lat": 52.2439,
+    "lon": -10.1343
+  },
+  {
+    "id": "kilcummin",
+    "name": "Kilcummin",
+    "county": "Kerry",
+    "lat": 52.244724,
+    "lon": -10.102261
+  },
+  {
+    "id": "gowlane",
+    "name": "Gowlane",
+    "county": "Kerry",
+    "lat": 52.2488,
+    "lon": -10.0861
+  },
+  {
+    "id": "stradbally",
+    "name": "Stradbally — Castlegregory",
+    "county": "Kerry",
+    "lat": 52.255051,
+    "lon": -10.070493
+  },
+  {
+    "id": "aughacasla",
+    "name": "Aughacasla",
+    "county": "Kerry",
+    "lat": 52.2476,
+    "lon": -9.9897
+  },
+  {
+    "id": "scraggane",
+    "name": "Scraggane Bay",
+    "county": "Kerry",
+    "lat": 52.3056,
+    "lon": -10.0208
+  },
+  {
+    "id": "garrywilliam-point",
+    "name": "Garrywilliam Point",
+    "county": "Kerry",
+    "lat": 52.3072,
+    "lon": -10.0575
+  },
+  {
+    "id": "banna",
+    "name": "Banna Strand",
+    "county": "Kerry",
+    "lat": 52.339,
+    "lon": -9.8358
+  },
+  {
+    "id": "mullaghmore",
+    "name": "Mullaghmore",
+    "county": "Sligo",
+    "lat": 54.460146,
+    "lon": -8.435357
+  },
+  {
+    "id": "aghada",
+    "name": "Aghada — Cork Harbour",
+    "county": "Cork",
+    "lat": 51.843838,
+    "lon": -8.211937
+  },
+  {
+    "id": "annascaul",
+    "name": "Annascaul river mouth",
+    "county": "Kerry",
+    "lat": 52.135411,
+    "lon": -10.050387
+  },
+  {
+    "id": "blessington",
+    "name": "Blessington Lakes",
+    "county": "Wicklow",
+    "lat": 53.133332,
+    "lon": -6.485281
+  },
+  {
+    "id": "broadmeadows-south",
+    "name": "Broadmeadows Estuary — south shore",
+    "county": "Dublin",
+    "lat": 53.455732,
+    "lon": -6.167536
+  },
+  {
+    "id": "bunbeg",
+    "name": "Bunbeg Beach",
+    "county": "Donegal",
+    "lat": 55.0708,
+    "lon": -8.319212
+  },
+  {
+    "id": "cahore",
+    "name": "Cahore",
+    "county": "Wexford",
+    "lat": 52.561952,
+    "lon": -6.195259
+  },
+  {
+    "id": "carrickfinn",
+    "name": "Carrickfinn Beach",
+    "county": "Donegal",
+    "lat": 55.038825,
+    "lon": -8.346896
+  },
+  {
+    "id": "clonea",
+    "name": "Clonea Strand",
+    "county": "Waterford",
+    "lat": 52.10039,
+    "lon": -7.534561
+  },
+  {
+    "id": "cunnamore",
+    "name": "Cunnamore Pier",
+    "county": "Cork",
+    "lat": 51.503801,
+    "lon": -9.424811
+  },
+  {
+    "id": "dooey",
+    "name": "Dooey Beach",
+    "county": "Donegal",
+    "lat": 54.873424,
+    "lon": -8.381921
+  },
+  {
+    "id": "dun-laoghaire",
+    "name": "Dún Laoghaire Harbour",
+    "county": "Dublin",
+    "lat": 53.295952,
+    "lon": -6.133118
+  },
+  {
+    "id": "dunmore-east",
+    "name": "Dunmore East",
+    "county": "Waterford",
+    "lat": 52.143602,
+    "lon": -6.995544
+  },
+  {
+    "id": "east-ferry",
+    "name": "East Ferry — Cork Harbour",
+    "county": "Cork",
+    "lat": 51.866634,
+    "lon": -8.21228
+  },
+  {
+    "id": "glin",
+    "name": "Glin — Shannon Estuary",
+    "county": "Limerick",
+    "lat": 52.574642,
+    "lon": -9.281216
+  },
+  {
+    "id": "liscannor",
+    "name": "Liscannor",
+    "county": "Clare",
+    "lat": 52.943673,
+    "lon": -9.372711
+  },
+  {
+    "id": "mannin-bay",
+    "name": "Mannin Bay",
+    "county": "Galway",
+    "lat": 53.441893,
+    "lon": -10.064117
+  },
+  {
+    "id": "marble-hill",
+    "name": "Marble Hill",
+    "county": "Donegal",
+    "lat": 55.177397,
+    "lon": -7.900972
+  },
+  {
+    "id": "mountcharles",
+    "name": "Mountcharles Pier",
+    "county": "Donegal",
+    "lat": 54.6391,
+    "lon": -8.188953
+  },
+  {
+    "id": "murvagh",
+    "name": "Murvagh Beach",
+    "county": "Donegal",
+    "lat": 54.600679,
+    "lon": -8.16284
+  },
+  {
+    "id": "oysterhaven",
+    "name": "Oysterhaven",
+    "county": "Cork",
+    "lat": 51.701722,
+    "lon": -8.438202
+  },
+  {
+    "id": "port-arthur",
+    "name": "Port Arthur",
+    "county": "Donegal",
+    "lat": 55.101822,
+    "lon": -8.316531
+  },
+  {
+    "id": "portrush",
+    "name": "Portrush",
+    "county": "Antrim",
+    "lat": 55.206206,
+    "lon": -6.639519
+  },
+  {
+    "id": "tracht",
+    "name": "Traught Beach — Kinvara",
+    "county": "Galway",
+    "lat": 53.171884,
+    "lon": -8.985786
+  },
+  {
+    "id": "tyrella",
+    "name": "Tyrella",
+    "county": "Down",
+    "lat": 54.251587,
+    "lon": -5.742416
+  },
+  {
+    "id": "lough-derg-killaloe",
+    "name": "Lough Derg — Killaloe",
+    "county": "Clare",
+    "lat": 52.83971,
+    "lon": -8.46768
+  },
+  {
+    "id": "white-strand-kerry",
+    "name": "White Strand — Cahersiveen",
+    "county": "Kerry",
+    "lat": 51.94445,
+    "lon": -10.275607
   }
 ]
