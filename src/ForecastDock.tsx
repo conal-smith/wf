@@ -36,6 +36,7 @@ import DisplayFilter, { type RowOffer } from "./DisplayFilter";
 import ForecastHeader, { type ModelBand } from "./ForecastHeader";
 import ForecastSheet from "./ForecastSheet";
 import RowLabel from "./RowLabel";
+import StarsRows, { BestWindow, STARS_HELP, WING_HELP } from "./StarsRows";
 import WeatherGlyph from "./WeatherGlyph";
 import {
   PLOT_PAD_BOTTOM,
@@ -64,6 +65,7 @@ import {
 import { usePointSeries } from "./usePointSeries";
 import { bridgeableGapHours, candlesOver } from "../force5/src/blend";
 import { dayNights } from "../force5/src/sun";
+import { bestWindow, rateHour, type HourRating } from "../force5/src/stars";
 import {
   columnSources,
   framePosition,
@@ -196,6 +198,8 @@ const WindSeaGlyph = () => (
 );
 
 const ROW_HELP: Record<RowKey, string> = {
+  stars: STARS_HELP,
+  wing: WING_HELP,
   blend:
     "Every selected model on one chart. The band is where the models put the wind; the white line is the middle of them.",
   waveOverlay:
@@ -555,6 +559,48 @@ export default function ForecastDock({
   );
 
   /**
+   * The stars for every column, from the same blend the chart draws: its
+   * median wind and gust, its mean direction and how far the models agree. The
+   * dark columns come back null, and so does any column the blend cannot reach.
+   */
+  const facing = point.facing ?? null;
+  const ratings = useMemo(
+    (): (HourRating | null)[] =>
+      columns.map((column, at) => {
+        const stats = blend.stats[at];
+        const time = Date.parse(column.validTime);
+        return rateHour(
+          {
+            windKn:
+              stats?.median === null || stats?.median === undefined
+                ? null
+                : convert(stats.median, "kn"),
+            gustKn:
+              stats?.gust.median === null || stats?.gust.median === undefined
+                ? null
+                : convert(stats.gust.median, "kn"),
+            from: blend.directions[at] ?? null,
+            agreement: stats?.agreement ?? null,
+            daylight: !nights.some(
+              (night) =>
+                time >= night.from.getTime() && time < night.to.getTime(),
+            ),
+          },
+          { facing },
+          prefs.rider,
+        );
+      }),
+    [columns, blend, nights, facing, prefs.rider],
+  );
+  const best = useMemo(() => {
+    // Only what is still ahead: a window that closed this morning sells nothing.
+    const ahead = ratings.map((rating, at) =>
+      Date.parse(columns[at].validTime) + 3600000 >= now ? rating : null,
+    );
+    return bestWindow(ahead);
+  }, [ratings, columns, now]);
+
+  /**
    * Which run answers for each column: the map model wherever it has a frame,
    * the column's own owner past that. Everything a cell says — the value, the
    * gust window, the tooltip — follows from this one list.
@@ -802,6 +848,17 @@ export default function ForecastDock({
     : undefined;
 
   const rowOffers: Record<RowKey, RowOffer> = {
+    stars: {
+      label: "Stars",
+      unavailable: blend.stats.length ? undefined : "riding places only",
+    },
+    // The wing sits in every star's tooltip and in the best window already;
+    // the row is for the reader who wants it per hour, and the dock's height
+    // budget has room for one new row by default, not two.
+    wing: {
+      label: "Wing size",
+      unavailable: blend.stats.length ? undefined : "riding places only",
+    },
     blend: { label: "Model blend" },
     waveOverlay: { label: "Wave band on the chart", unavailable: waveOffer },
     wind: { label: "Wind (median)" },
@@ -1158,6 +1215,15 @@ export default function ForecastDock({
             {toolbarCaption}
           </small>
         </div>
+        {rowShown("stars") && best && ratings[best.from] && (
+          <BestWindow
+            window={best}
+            rating={ratings[best.from]!}
+            from={columns[best.from].validTime}
+            to={columns[best.to].validTime}
+            onShow={() => selectColumn(best.from)}
+          />
+        )}
         <div className="dock-views" role="group" aria-label="Forecast view">
           {VIEWS.map((entry) => {
             const disabled = entry !== "table" && !!chartUnavailable;
@@ -1466,6 +1532,17 @@ export default function ForecastDock({
                       </tr>
                     )}
                   </tbody>
+                )}
+                {(rowShown("stars") || rowShown("wing")) && (
+                  <StarsRows
+                    showStars={rowShown("stars")}
+                    columns={columns}
+                    ratings={ratings}
+                    selected={selected}
+                    rider={prefs.rider}
+                    facing={facing}
+                    showWing={rowShown("wing")}
+                  />
                 )}
                 {showMarine && (
                   <tbody className="marine-rows" ref={marine}>
