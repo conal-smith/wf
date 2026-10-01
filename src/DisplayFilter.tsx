@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MODEL_CATALOG,
   modelHue,
@@ -6,12 +6,26 @@ import {
 } from "../force5/src/manifests";
 import {
   ROW_KEYS,
+  parseRider,
   rowOn,
   setRow as setRowPref,
   type Prefs,
   type RowKey,
 } from "../force5/src/prefs";
 import { UNITS, type Units } from "../force5/src/units";
+import {
+  ESTIMATE_WEIGHT_KG,
+  MAX_WEIGHT_KG,
+  MIN_WEIGHT_KG,
+  SKILLS,
+  type Rider,
+} from "../force5/src/stars";
+
+const SKILL_LABEL: Record<Rider["skill"], string> = {
+  beginner: "Learning",
+  intermediate: "Riding",
+  advanced: "Advanced",
+};
 
 export interface RowOffer {
   label: string;
@@ -70,6 +84,15 @@ export default function DisplayFilter({
         ? [...new Set([...prefs.blendModels, id])]
         : prefs.blendModels.filter((entry) => entry !== id),
     });
+  // Both fields keep what the reader is typing ("5." on the way to "5.5"); the
+  // stored rider only ever holds what parses, through the same validation a
+  // stored value gets on load.
+  const [weightText, setWeightText] = useState(
+    prefs.rider.weightKg === null ? "" : String(prefs.rider.weightKg),
+  );
+  const [wingsText, setWingsText] = useState(prefs.rider.wings.join(", "));
+  const setRider = (rider: Partial<Rider>) =>
+    onChange({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
   const planned = MODEL_CATALOG.filter(
     (entry) => entry.planned && entry.kind === "wind",
   );
@@ -136,6 +159,65 @@ export default function DisplayFilter({
           </button>
         ))}
       </div>
+      <h2>Your riding</h2>
+      <div className="filter-rider">
+        <label className="rider-field">
+          <span>Weight</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            data-rider="weight"
+            min={MIN_WEIGHT_KG}
+            max={MAX_WEIGHT_KG}
+            placeholder={String(ESTIMATE_WEIGHT_KG)}
+            value={weightText}
+            onChange={(event) => {
+              setWeightText(event.target.value);
+              const value = event.target.valueAsNumber;
+              setRider({ weightKg: Number.isFinite(value) ? value : null });
+            }}
+          />
+          <small>kg</small>
+        </label>
+        <div className="filter-units" role="group" aria-label="Riding level">
+          {SKILLS.map((skill) => (
+            <button
+              key={skill}
+              data-skill={skill}
+              aria-pressed={prefs.rider.skill === skill}
+              onClick={() => setRider({ skill })}
+            >
+              {SKILL_LABEL[skill]}
+            </button>
+          ))}
+        </div>
+        <label className="rider-field">
+          <span>Wings you own</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            data-rider="wings"
+            placeholder="e.g. 4, 5.5"
+            value={wingsText}
+            onChange={(event) => {
+              setWingsText(event.target.value);
+              setRider({
+                wings: (event.target.value.match(/\d+(?:\.\d+)?/g) ?? []).map(
+                  Number,
+                ),
+              });
+            }}
+          />
+          <small>m²</small>
+        </label>
+      </div>
+      <p className="filter-note">
+        The stars and the wing row are rated for this rider.{" "}
+        {prefs.rider.weightKg === null
+          ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
+          : ""}{" "}
+        Saved on this device only.
+      </p>
       <h2>Models in the blend</h2>
       <div className="filter-models">
         {models.map((model) => (

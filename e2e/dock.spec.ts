@@ -132,7 +132,7 @@ test("the blend draws every model that covers the spot, and candles share its ax
     new Date(Date.parse(harmonie.runTime) + 8 * 3600000),
   );
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay");
@@ -379,6 +379,52 @@ test("display choices survive a reload", async ({ page }) => {
   ).not.toBeChecked();
 });
 
+test("the stars rate daylight hours for the rider, and follow their weight", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/");
+  await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
+  const label = page.locator(".stars-row").first().getByRole("button", {
+    name: "Stars",
+  });
+  // Until the reader gives a weight, the row says it is an estimate.
+  await expect(label).toContainText("~80 kg");
+  expect(
+    await page.locator(".stars-cell .stars-glyphs").count(),
+  ).toBeGreaterThan(0);
+  // A dark column is left empty rather than rated zero.
+  expect(await page.locator(".stars-cell:empty").count()).toBeGreaterThan(0);
+  // The wing row is off until asked for: the dock has room for one new row.
+  await expect(page.locator(".wing-row")).toHaveCount(0);
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('input[data-row="wing"]').check();
+  await page.getByLabel("Close display options").click();
+  const before = await page.locator(".wing-row td").allTextContents();
+
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('input[data-rider="weight"]').fill("100");
+  await page.locator('[data-skill="beginner"]').click();
+  await page.getByLabel("Close display options").click();
+  await expect(label).toContainText("100 kg");
+  // A heavier learner takes a bigger wing for the same wind, column by column.
+  const after = await page.locator(".wing-row td").allTextContents();
+  const both = before
+    .map((cell, at) => [Number(cell), Number(after[at])])
+    .filter(([was, now]) => was > 0 && now > 0);
+  expect(both.length).toBeGreaterThan(0);
+  expect(both.every(([was, now]) => now >= was)).toBe(true);
+  expect(both.some(([was, now]) => now > was)).toBe(true);
+
+  await page.reload();
+  await expect(label).toContainText("100 kg", { timeout: 30000 });
+  await page.getByLabel("Display options", { exact: true }).click();
+  await page.locator('input[data-row="stars"]').uncheck();
+  await page.locator('input[data-row="wing"]').uncheck();
+  await page.getByLabel("Close display options").click();
+  await expect(page.locator(".stars-rows")).toHaveCount(0);
+});
+
 test("the filter is reachable and dismissable from the keyboard", async ({
   page,
 }) => {
@@ -417,7 +463,7 @@ test("an arbitrary map point falls back to the table and says why", async ({
   await expect(page.locator(".blend-chart")).toBeVisible({ timeout: 30000 });
   // The markers are the signal that the map has finished its opening move; a
   // click before that lands on a different place than the one aimed at.
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await page
@@ -1317,7 +1363,7 @@ test("a bare point reads every third hour of an hourly run first", async ({
     await route.continue();
   });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator(".blend-chart")).toBeVisible();
