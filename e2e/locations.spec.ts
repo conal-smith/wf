@@ -5,7 +5,7 @@ test("public riding places are on the map and the Blast alias finds Kilcrea with
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator('.spot-marker[data-kind="operator"]')).toHaveCount(
@@ -17,14 +17,18 @@ test("public riding places are on the map and the Blast alias finds Kilcrea with
   await page.getByLabel("Open spot search").click();
   for (const alias of ["Blast", "Kilcrea", "Donabate"]) {
     await search.fill(alias);
-    await expect(page.locator(".spot-row")).toHaveCount(1);
-    await expect(page.locator(".spot-row")).toContainText(
-      "Kilcrea — Malahide Estuary",
+    // Donabate is also a beach of its own on the far side of the peninsula,
+    // so that alias finds both; the estuary is still the one Blast names.
+    const rows = page
+      .locator(".spot-row")
+      .filter({ hasText: "Kilcrea — Malahide Estuary" });
+    await expect(rows).toHaveCount(1);
+    await expect(page.locator(".spot-row")).toHaveCount(
+      alias === "Donabate" ? 2 : 1,
     );
-    await expect(page.locator(".spot-row")).not.toContainText(
-      "School / operator",
-    );
+    await expect(rows).not.toContainText("School / operator");
   }
+  await search.fill("Kilcrea");
   await page.locator(".spot-row").click();
   const blast = page.locator('[data-spot-id="kilcrea"]');
   await expect(blast).toHaveClass(/active/);

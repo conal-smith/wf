@@ -29,7 +29,7 @@ class CatalogueTests(unittest.TestCase):
     def test_the_default_catalogue_is_every_riding_location(self):
         spots = load_spots()
         self.assertEqual(spots_file(), RIDING_LOCATIONS_FILE)
-        self.assertEqual(len(spots), 25)
+        self.assertEqual(len(spots), 146)
         original = json.loads(ORIGINAL_SPOTS_FILE.read_text())
         by_id = {spot["id"]: spot for spot in spots}
         for spot in original:
@@ -74,7 +74,7 @@ class AdapterSeriesTests(unittest.TestCase):
         manifest = json.loads((self.root / manifest_path).read_text())
         series = manifest["spotForecasts"]
         self.assertEqual(sorted(series), sorted(spot["id"] for spot in self.spots))
-        self.assertEqual(len(series), 25)
+        self.assertEqual(len(series), 146)
         for spot in self.spots:
             self.assertEqual(len(series[spot["id"]]), len(hours))
             for index, hour in enumerate(hours):
@@ -118,7 +118,7 @@ class AdapterSeriesTests(unittest.TestCase):
             (self.root / "unused").write_bytes(b"fake")
             fetch_harmonie.main()
         manifest = json.loads((self.root / "public/weather/harmonie.json").read_text())
-        self.assertEqual(len(manifest["spotForecasts"]), 25)
+        self.assertEqual(len(manifest["spotForecasts"]), 146)
         for spot in self.spots:
             for index, hour in enumerate(hours):
                 entry = manifest["spotForecasts"][spot["id"]][index]
