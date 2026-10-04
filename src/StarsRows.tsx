@@ -102,6 +102,9 @@ export function ratingTitle(rating: HourRating): string {
   return [
     `${starsText(rating)} · ${SESSION_LABEL[rating.session]}`,
     rating.shore ? SHORE_LABEL[rating.shore] : null,
+    rating.liftKn >= 1
+      ? `rides like ${Math.round(rating.rideKn)} kn with the gusts`
+      : null,
     wing,
     ...rating.reasons,
   ]

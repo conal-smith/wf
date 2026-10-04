@@ -20,15 +20,32 @@ Stars never exceed potential, so the faded stars are always the upside a
 kinder direction, a steadier breeze or better model agreement would have given.
 Solid and faded differ by shape (filled against outline) as well as by tone.
 
-### Potential: the wind against the rider's band
+### Rideable wind: the mean, lifted toward the gusts
 
-Each level has a band of mean wind, in knots, for an 80 kg rider:
+On a foil a gust is a free pump and a lull is glide, so a rider uses part of
+the gap between mean and gust. The rating reads
+
+```
+rideable = mean + share × fade × min(gust − mean, mean)
+```
+
+where the share is 0.2 learning, 0.3 riding and 0.35 advanced (a learner still
+falls off in the lulls), and `fade` runs from 1 at the floor to 0 at the top of
+the sweet spot: the lift matters on a light day, when gusts are what get you
+foiling, and not on a strong one, where a gust is only more power. A 9 kn mean
+gusting 17 rides like 11.4 kn for an intermediate; 20 gusting 30 like 20.4.
+The tooltip says "rides like N kn with the gusts" whenever the lift is a knot
+or more.
+
+### Potential: the rideable wind against the rider's band
+
+Each level has a band of wind, in knots, for an 80 kg rider:
 
 | Level    | Floor | Sweet spot | Ceiling |
 | -------- | ----- | ---------- | ------- |
 | Learning | 12    | 14–20      | 24      |
-| Riding   | 11    | 14–24      | 30      |
-| Advanced | 9     | 13–28      | 35      |
+| Riding   | 10    | 14–24      | 30      |
+| Advanced | 8     | 13–28      | 35      |
 
 A heavier rider needs more wind to get going — a wing's power rises with the
 square of the wind, so the floor moves with the square root of the weight — and
@@ -40,17 +57,37 @@ at the ceiling, falling to none six knots past it.
 
 Each deduction is a sentence in the cell's tooltip, so a rider can argue with it.
 
-| Condition                                                                       | Riding / Advanced | Learning    |
-| ------------------------------------------------------------------------------- | ----------------- | ----------- |
-| Offshore (wind from within 30° of straight off the beach)                       | capped at 1       | capped at 0 |
-| Cross-offshore                                                                  | −1.5              | −3          |
-| Onshore                                                                         | −1                | −1          |
-| Cross-shore                                                                     | —                 | −0.5        |
-| Gust factor over 1.35 / 1.5 / 1.7                                               | −0.5 / −1 / −1.5  | ×1.5        |
-| Models disagree (spread ≥ 8 kn) / some spread                                   | −1 / −0.25        | same        |
-| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                | −1          |
+| Condition                                                                       | Riding / Advanced | Learning             |
+| ------------------------------------------------------------------------------- | ----------------- | -------------------- |
+| Offshore (wind from within 30° of straight off the beach)                       | capped at 1       | capped at 0          |
+| Cross-offshore                                                                  | −1.5 / −1 (adv.)  | −3                   |
+| Onshore                                                                         | −1                | −1                   |
+| Cross-shore                                                                     | —                 | −0.5                 |
+| Gusts above the rider's ceiling                                                 | −1                | −1                   |
+| Gust factor over 1.7 with the mean already in the sweet spot                    | −0.5              | —                    |
+| Gust factor over 1.35 / 1.5 / 1.7, at any speed                                 | —                 | −0.75 / −1.5 / −2.25 |
+| Models disagree (spread ≥ 8 kn) / some spread                                   | −1 / −0.25        | same                 |
+| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                | −1                   |
 
 Dark hours are not rated: the cell stays empty rather than showing a zero.
+
+### Why v2 (October 2026)
+
+The first version read the mean wind alone and took up to 1.5 stars for any
+gust factor over 1.35, at any speed. Irish coastal winds are nearly always that
+gusty in the models, so "Gusty" was the deduction on 1,657 of the daylight hours
+rated on 4 October 2026, and a light, gusty day scored nothing: the whole of
+Dublin Bay sat at zero stars (9 kn gusting 17, cross-shore) while riders were
+out on big wings. Replaying the published runs through both versions
+(`.scratch`-style replay over every riding place, daylight only):
+
+| Best hour of the day, intermediate (spots at 0 / 1 / 2 / 3 / 4 / 5 ★) | v1                          | v2                         |
+| --------------------------------------------------------------------- | --------------------------- | -------------------------- |
+| Sat 4 Oct, SW 15–21 kn west, 8–11 kn east                             | 30 / 22 / 36 / 21 / 27 / 10 | 2 / 21 / 10 / 34 / 34 / 45 |
+| Mon 6 Oct, N 6–14 kn                                                  | 126 / 16 / 2 / 2 / 0 / 0    | 44 / 54 / 26 / 15 / 6 / 1  |
+
+A light day still reads as light, and offshore is still capped; what changed is
+that a gusty 9–12 kn day is now "drills" at two stars instead of nothing.
 
 ### The shore
 

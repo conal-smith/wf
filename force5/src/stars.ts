@@ -7,6 +7,8 @@
 //   potential  what the wind alone is worth to this rider (the faded stars)
 //   stars      what is left once the spot and the forecast have their say:
 //              the shore angle, the gusts and whether the models agree (solid)
+// Both read the rideable wind: the mean lifted part of the way to the gusts,
+// because on a foil the gusts get you up and you glide through the lulls.
 // `stars` never exceeds `potential`, so the faded stars are always the upside a
 // better direction or a steadier breeze would have delivered.
 
@@ -38,12 +40,44 @@ export const MAX_WEIGHT_KG = 160;
 export const MIN_WING_M2 = 1.5;
 export const MAX_WING_M2 = 10;
 
+const clamp = (value: number, low: number, high: number) =>
+  Math.min(high, Math.max(low, value));
+
 /** Mean-wind band, in knots, for an 80 kg rider of each level. */
 const BANDS: Record<Skill, WindBand> = {
   beginner: { min: 12, sweetLow: 14, sweetHigh: 20, max: 24 },
-  intermediate: { min: 11, sweetLow: 14, sweetHigh: 24, max: 30 },
-  advanced: { min: 9, sweetLow: 13, sweetHigh: 28, max: 35 },
+  intermediate: { min: 10, sweetLow: 14, sweetHigh: 24, max: 30 },
+  advanced: { min: 8, sweetLow: 13, sweetHigh: 28, max: 35 },
 };
+
+/**
+ * How much of the gap between mean and gust a rider can use. Once up on the
+ * foil, a gust is a free pump and a lull is glide, so a 10 kn mean gusting 18
+ * rides nearer 13; a beginner still falling off in the lulls gets less of it.
+ */
+const GUST_SHARE: Record<Skill, number> = {
+  beginner: 0.2,
+  intermediate: 0.3,
+  advanced: 0.35,
+};
+
+/**
+ * The mean wind lifted toward the gusts by the share this rider can use. The
+ * lift matters on a light day, when the gusts are what get you foiling; it
+ * fades out toward the top of the sweet spot, where a gust is only more power.
+ */
+export function rideableWind(
+  windKn: number,
+  gustKn: number | null,
+  rider: Rider,
+): number {
+  if (gustKn === null || gustKn <= windKn) return windKn;
+  const { min, sweetHigh } = windBand(rider);
+  const fade = clamp((sweetHigh - windKn) / (sweetHigh - min), 0, 1);
+  return (
+    windKn + GUST_SHARE[rider.skill] * fade * Math.min(gustKn - windKn, windKn)
+  );
+}
 
 export interface WindBand {
   /** Below this the rider cannot stay on the foil for long. */
@@ -188,6 +222,10 @@ export const SESSION_LABEL: Record<SessionKind, string> = {
 };
 
 export interface HourRating {
+  /** The rideable wind the hour was rated on, in knots. */
+  rideKn: number;
+  /** How much of that the gusts added to the mean. */
+  liftKn: number;
   /** Whole stars, 0–5, after the spot and the forecast have their say. */
   stars: number;
   /** Whole stars, 0–5, for the wind alone. Never below `stars`. */
@@ -199,8 +237,6 @@ export interface HourRating {
   reasons: string[];
 }
 
-const clamp = (value: number, low: number, high: number) =>
-  Math.min(high, Math.max(low, value));
 const ramp = (x: number, x0: number, x1: number, y0: number, y1: number) =>
   y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
 
@@ -246,7 +282,8 @@ export function rateHour(
   if (hour.windKn === null || !hour.daylight) return null;
   const band = windBand(rider);
   const beginner = rider.skill === "beginner";
-  const base = windScore(hour.windKn, band);
+  const rideKn = rideableWind(hour.windKn, hour.gustKn, rider);
+  const base = windScore(rideKn, band);
   const wing = pickWing(rider, hour.windKn);
   const reasons: string[] = [];
   let score = base;
@@ -260,7 +297,7 @@ export function rateHour(
     cap = beginner ? 0 : 1;
     reasons.push("Offshore wind: it blows you away from the beach.");
   } else if (angle === "cross-off") {
-    score -= beginner ? 3 : 1.5;
+    score -= beginner ? 3 : rider.skill === "advanced" ? 1 : 1.5;
     reasons.push("Cross-offshore: a drift downwind takes you out, not in.");
   } else if (angle === "onshore") {
     score -= 1;
@@ -271,14 +308,25 @@ export function rateHour(
   }
 
   if (hour.gustKn !== null && hour.windKn > 0) {
+    const gust = Math.round(hour.gustKn);
+    const mean = Math.round(hour.windKn);
     const factor = hour.gustKn / hour.windKn;
-    const penalty =
-      factor > 1.7 ? 1.5 : factor > 1.5 ? 1 : factor > 1.35 ? 0.5 : 0;
-    if (penalty) {
-      score -= beginner ? penalty * 1.5 : penalty;
-      reasons.push(
-        `Gusty: gusts ${Math.round(hour.gustKn)} kn on a ${Math.round(hour.windKn)} kn mean.`,
-      );
+    if (hour.gustKn > band.max) {
+      // Gusts past what any wing in the bag can hold down.
+      score -= 1;
+      reasons.push(`Gusts to ${gust} kn: more than you will want to hold.`);
+    } else if (beginner) {
+      // Still learning: every lull is a fall, so gustiness costs at any speed.
+      const penalty =
+        factor > 1.7 ? 1.5 : factor > 1.5 ? 1 : factor > 1.35 ? 0.5 : 0;
+      if (penalty) {
+        score -= penalty * 1.5;
+        reasons.push(`Gusty: gusts ${gust} kn on a ${mean} kn mean.`);
+      }
+    } else if (factor > 1.7 && hour.windKn >= band.sweetLow) {
+      // Already powered, and the gusts come in hard on top.
+      score -= 0.5;
+      reasons.push(`Gusty: gusts ${gust} kn on a ${mean} kn mean.`);
     }
   }
 
@@ -304,9 +352,11 @@ export function rateHour(
   const potential = Math.round(base);
   const stars = clamp(Math.round(Math.min(score, cap)), 0, potential);
   return {
+    rideKn,
+    liftKn: rideKn - hour.windKn,
     stars,
     potential,
-    session: angle === "offshore" ? "offshore" : session(hour.windKn, band),
+    session: angle === "offshore" ? "offshore" : session(rideKn, band),
     shore: angle,
     wing,
     reasons,
