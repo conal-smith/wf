@@ -48,6 +48,32 @@ Features:
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged), plus 121 places read from four public spot guides on 30 September 2026. The public map and search show 146 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
 
+## Opening film
+
+A first visit to the map on a desktop opens with a short film instead of the
+map: flat evening water in a breeze, an island and a coast of cliffs, three
+riders overtaking the lens (pink wing, then green, then orange), the camera
+rising over fifty more, then turning to the sunset as `wingfoil.ie` and the
+three ways in (wind map, marketplace, community) come up. It is three.js,
+built entirely in code: a planar-mirror water shader with wind ripples and
+drifting gust patches but no swell, a Preetham sky with clouds, a Skellig-like
+island with sea stacks and islands fading into the haze, and riders posed by
+two-bone IK, backlit with rim light and glowing sailcloth. The lens is a film
+camera's: true per-object motion blur (the scene is posed a 1/40 s shutter
+earlier, so it is exact at any frame rate), light shafts and flare from the
+sun, auto-exposure, bloom, chromatic fringe and grain. Titles decode into
+place, and an optional sound toggle plays procedural wind, water, a whoosh as
+each rider passes and a chord for the sunset. Everything is in [`intro/`](intro/): `scene/` is
+the film, `web/` the frame around it and the rule for when it plays.
+
+It plays once, and only on `/`; it never plays on a phone or tablet, for a
+reader who prefers reduced motion, without WebGL 2, or under automation, so
+the e2e suite and the map's baselines are untouched. Skip it with the button
+or Escape. The map is not mounted while it plays and mounts as the menu comes
+up, and three.js is a lazy chunk (~170 kB gzipped) that nobody else downloads.
+For review: `/?intro` plays it regardless, `/?intro=17` starts 17 s in, and
+`/?intro=17&freeze` holds that frame.
+
 ## Marketplace
 
 `/market` is a free second-hand gear marketplace (listings with photos, seller
