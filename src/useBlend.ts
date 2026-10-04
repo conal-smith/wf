@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
+  perModelLines,
   type BlendInput,
   type HourStats,
 } from "../force5/src/blend";
@@ -324,6 +325,11 @@ export interface Blend {
   /** One line per deterministic model and per ensemble member. */
   lines: BlendInput[];
   stats: HourStats[];
+  /**
+   * The same statistics with each ensemble counted once, as its member mean:
+   * the consensus the stars rate, and the one the forecast server reports.
+   */
+  consensus: HourStats[];
   /** Mean bearing per axis hour across the contributing models. */
   directions: (number | null)[];
   /** Models that actually contributed a line, in registry order. */
@@ -334,6 +340,7 @@ export interface Blend {
 const EMPTY: Blend = {
   lines: [],
   stats: [],
+  consensus: [],
   directions: [],
   contributing: [],
   manifests: [],
@@ -371,6 +378,7 @@ export function useBlend(
     return {
       lines,
       stats: blendStats(lines, axis),
+      consensus: blendStats(perModelLines(lines), axis),
       directions: meanDirections(
         usable.map((manifest) =>
           axisVectors(spotSeries(manifest, spotId)!, axis),
