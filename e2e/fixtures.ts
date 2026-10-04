@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -26,3 +26,34 @@ export const test = base.extend<{ page: Page }>({
 
 export { expect } from "@playwright/test";
 export type { Locator, Page } from "@playwright/test";
+
+/**
+ * Wait until the page draws at frame rate: the longest of ten frames under
+ * 50 ms. For a gesture that is judged on timing — a double-click inside the
+ * map's single-click wait, a camera said to be at rest because two readings
+ * a quarter-second apart agree — right after load, while the page is still
+ * reading every model's manifest and placing every riding place's marker.
+ */
+export async function steadyFrames(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            new Promise<number>((resolve) => {
+              const times: number[] = [];
+              const tick = (time: number) => {
+                times.push(time);
+                if (times.length < 11) requestAnimationFrame(tick);
+                else
+                  resolve(
+                    Math.max(...times.slice(1).map((t, i) => t - times[i])),
+                  );
+              };
+              requestAnimationFrame(tick);
+            }),
+        ),
+      { timeout: 30000 },
+    )
+    .toBeLessThan(50);
+}

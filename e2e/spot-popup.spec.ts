@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, steadyFrames, test } from "./fixtures";
 
 for (const width of [390, 1440]) {
   test(`spot popout opens, follows selection, and closes independently at ${width}px`, async ({
@@ -6,7 +6,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(25, {
+    await expect(page.locator(".spot-marker")).toHaveCount(146, {
       timeout: 30000,
     });
     await expect(page.locator(".spot-popout-card")).toHaveCount(0);
@@ -60,6 +60,7 @@ for (const width of [390, 1440]) {
     // Wait for the camera that opened the popout to land first: the fit happens
     // when it does, and a pan begun before that would be undone by it — which
     // would make this test pass for the wrong reason, or fail for one.
+    await steadyFrames(page);
     const pinBefore = await restingX();
     // The keyboard pan is a reader's gesture like any other, and it lands
     // wherever the markers happen to be.

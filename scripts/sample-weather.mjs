@@ -626,10 +626,20 @@ function waveBundle(model, spots, runMs, grid) {
   const prefix = `${model.id}-${run}-${hours[hours.length - 1]}h-v1`;
   const names = Object.keys(WAVE_VARIABLES);
   const mask = new Array(grid.width * grid.height).fill(false);
+  // A cell another location reads from stays water: one masked corner is
+  // enough to mask a location, and with 146 places on a coarse sample grid a
+  // neighbour can share a corner (Kinvara shares one with Rusheen).
+  const shared = new Set(
+    spots
+      .filter((spot) => WAVE_COVERAGE[spot.id] !== "masked")
+      .flatMap((spot) => maskCells(grid, spot)),
+  );
   for (const [id, treatment] of Object.entries(WAVE_COVERAGE)) {
     if (treatment !== "masked") continue;
     const spot = spots.find((entry) => entry.id === id);
-    if (spot) for (const index of maskCells(grid, spot)) mask[index] = true;
+    if (spot)
+      for (const index of maskCells(grid, spot))
+        if (!shared.has(index)) mask[index] = true;
   }
   // Only the deliberately masked locations may lose their series to the mask.
   const resolved = new Map(

@@ -5,6 +5,7 @@ import {
   ridingLocations,
   spotFromSearch,
 } from "../src/locations";
+import type { Spot } from "../force5/src/weather";
 
 const bundles = ["failte-ireland", "openstreetmap", "web-research"].map(
   (name) => JSON.parse(readFileSync(`data/locations/${name}.json`, "utf8")),
@@ -16,7 +17,7 @@ describe("saved Irish wind-sport coordinates", () => {
     const spots = ridingLocations(
       JSON.parse(readFileSync("public/spots.json", "utf8")),
     );
-    expect(spots).toHaveLength(25);
+    expect(spots).toHaveLength(146);
     expect(spots.every((s) => s.kind === "spot" && !s.website)).toBe(true);
     expect(spots.find((s) => s.id === "kilcrea")).toMatchObject({
       name: "Kilcrea — Malahide Estuary",
@@ -44,8 +45,8 @@ describe("saved Irish wind-sport coordinates", () => {
   it("retains all collected research records while preserving original forecast IDs and coordinates", () => {
     const original = JSON.parse(readFileSync("public/spots.json", "utf8"));
     const merged = mergeLocations(original);
-    expect(merged).toHaveLength(52);
-    expect(new Set(merged.map((s) => s.id)).size).toBe(52);
+    expect(merged).toHaveLength(173);
+    expect(new Set(merged.map((s) => s.id)).size).toBe(173);
     for (const spot of original)
       expect(merged.find((s) => s.id === spot.id)).toMatchObject(spot);
     for (const row of records)
@@ -128,5 +129,68 @@ describe("saved Irish wind-sport coordinates", () => {
       )
       .sort();
     expect(csv.slice(1).sort()).toEqual(expected);
+  });
+});
+
+const guides = JSON.parse(
+  readFileSync("data/locations/spot-guides.json", "utf8"),
+);
+const facing = JSON.parse(
+  readFileSync("data/locations/shore-facing.json", "utf8"),
+);
+
+describe("riding places read from the spot guides", () => {
+  const spots = ridingLocations(
+    JSON.parse(readFileSync("public/spots.json", "utf8")),
+  );
+  it("adds over a hundred places, each a unique id the map did not already hold", () => {
+    expect(guides.records).toHaveLength(121);
+    const ids = guides.records.map((record: { id: string }) => record.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const record of [...bundles.flatMap((b) => b.records)])
+      expect(ids).not.toContain(record.id);
+  });
+  it("keeps every place on the island, backed by a wind-sport listing, with its sources", () => {
+    for (const record of guides.records) {
+      expect(record.lat).toBeGreaterThan(51);
+      expect(record.lat).toBeLessThan(56);
+      expect(record.lon).toBeGreaterThan(-11);
+      expect(record.lon).toBeLessThan(-5);
+      expect(["IE", "UK-NI"]).toContain(record.jurisdiction);
+      expect(record.kind).toBe("spot");
+      expect(record.launchVerified).toBe(false);
+      expect(record.sports.length).toBeGreaterThan(0);
+      expect(record.listings.length).toBeGreaterThan(0);
+      for (const listing of record.listings)
+        expect(new URL(listing.url).protocol).toBe("https:");
+      // The coordinate is one of the listed pins, never an invented one.
+      expect(
+        record.listings.some(
+          (listing: { lat: number; lon: number }) =>
+            listing.lat === record.lat && listing.lon === record.lon,
+        ),
+      ).toBe(true);
+    }
+  });
+  it("puts no new pin on top of a place already on the map", () => {
+    const km = (a: Spot, b: Spot) => {
+      const rad = Math.PI / 180;
+      const x = (b.lon - a.lon) * rad * Math.cos(((a.lat + b.lat) / 2) * rad);
+      const y = (b.lat - a.lat) * rad;
+      return Math.hypot(x, y) * 6371;
+    };
+    for (let i = 0; i < spots.length; i++)
+      for (let j = i + 1; j < spots.length; j++)
+        expect(km(spots[i], spots[j])).toBeGreaterThan(0.9);
+  });
+  it("gives every public place a shore facing entry, published only where it is clear", () => {
+    for (const spot of spots) {
+      const place = facing.places[spot.id];
+      expect(place).toBeDefined();
+      expect(place.facing === null || place.strength >= 0.15).toBe(true);
+      expect(spot.facing).toBe(
+        spot.id in facing.overrides ? facing.overrides[spot.id] : place.facing,
+      );
+    }
   });
 });

@@ -387,15 +387,23 @@ class LayoutTest(unittest.TestCase):
         self.assertTrue(all(meteofrance.sample(grid, values, s["lon"], s["lat"]) is not None
                             for s in spots))
 
-    def test_the_three_north_coast_spots_fall_outside_the_arome_box(self):
+    def test_the_north_coast_spots_fall_outside_the_arome_box(self):
+        # AROME stops short of the north coast: west Donegal to the Causeway
+        # Coast is read from the other models in the blend.
+        north_coast = [
+            "bloody-foreland", "browns-bay", "bunbeg", "carrickfinn", "dooey",
+            "downings", "dunfanaghy", "fi-pollan-bay", "marble-hill",
+            "port-arthur", "portballintrae", "portnoo", "portrush", "portsalon",
+            "portstewart", "web-benone-strand", "web-magheraroarty",
+            "whiterocks",
+        ]
         grid = self.layout(AROME, 1121, 717, -12.0, 55.4)["grid"]
         values = [0.0] * (grid["width"] * grid["height"])
         spots = json.loads((Path(meteofrance.__file__).resolve().parents[2]
                             / "public" / "riding-locations.json").read_text())
         inside, outside = meteofrance.coverage(spots, grid, values)
-        self.assertEqual(sorted(outside),
-                         ["fi-pollan-bay", "web-benone-strand", "web-magheraroarty"])
-        self.assertEqual(len(inside), len(spots) - 3)
+        self.assertEqual(sorted(outside), north_coast)
+        self.assertEqual(len(inside), len(spots) - len(north_coast))
 
     def test_an_unexpected_domain_is_refused(self):
         with self.assertRaisesRegex(ValueError, "Unexpected ARPEGE domain"):

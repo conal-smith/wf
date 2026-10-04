@@ -3,6 +3,7 @@ import {
   PREFS_KEY,
   defaultPrefs,
   loadPrefs,
+  parseRider,
   rowOn,
   savePrefs,
   setRow,
@@ -34,6 +35,8 @@ describe("display preferences", () => {
     expect(prefs.view).toBe("blend");
     expect(prefs.units).toBe("kn");
     expect(prefs.rows).toEqual({
+      stars: true,
+      wing: false,
       blend: true,
       waveOverlay: false,
       wind: false,
@@ -54,6 +57,22 @@ describe("display preferences", () => {
     expect(prefs.blendModels).toEqual(windModels().map((model) => model.id));
     expect(prefs.blendModels).toContain("ecmwf-ens");
     expect(prefs.blendModels).not.toContain("ukv");
+  });
+  it("rates for the estimated rider until the reader says otherwise", () => {
+    expect(defaultPrefs().rider).toEqual({
+      weightKg: null,
+      skill: "intermediate",
+      wings: [],
+    });
+  });
+  it("keeps a stored rider only where each field is a real person's or a real wing's", () => {
+    expect(
+      parseRider({ weightKg: 72.4, skill: "advanced", wings: [6, 4, 4, 5.5] }),
+    ).toEqual({ weightKg: 72, skill: "advanced", wings: [4, 5.5, 6] });
+    expect(
+      parseRider({ weightKg: 900, skill: "pro", wings: [0.2, "5", 30, 3] }),
+    ).toEqual({ weightKg: null, skill: "intermediate", wings: [3] });
+    expect(parseRider("heavy")).toEqual(defaultPrefs().rider);
   });
   it("starts with no row touched by hand", () => {
     expect(defaultPrefs().touchedRows).toEqual([]);
