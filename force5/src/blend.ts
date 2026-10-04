@@ -187,6 +187,45 @@ export function blendInputs(
   return inputs;
 }
 
+/**
+ * One line per model: an ensemble's members collapse to their mean, hour by
+ * hour. The blend's ribbon keeps every member, but a consensus that counts them
+ * one by one lets 56 coarse ensemble members outvote the fine-grid models that
+ * see the coast, and lets a single stray member read as disagreement.
+ */
+export function perModelLines(inputs: readonly BlendInput[]): BlendInput[] {
+  const groups = new Map<string, BlendInput[]>();
+  for (const input of inputs) {
+    const key =
+      input.memberIndex === undefined ? `${input.model}#det` : input.model;
+    groups.set(key, [...(groups.get(key) ?? []), input]);
+  }
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const meanAt = (
+      pick: (input: BlendInput) => (number | null)[],
+      at: number,
+    ) => {
+      const values = group
+        .map((input) => pick(input)[at])
+        .filter(
+          (v): v is number => typeof v === "number" && Number.isFinite(v),
+        );
+      return values.length
+        ? values.reduce((sum, v) => sum + v, 0) / values.length
+        : null;
+    };
+    const hours = group[0].speed.length;
+    return {
+      model: group[0].model,
+      speed: Array.from({ length: hours }, (_, at) =>
+        meanAt((i) => i.speed, at),
+      ),
+      gust: Array.from({ length: hours }, (_, at) => meanAt((i) => i.gust, at)),
+    };
+  });
+}
+
 /** Linear-interpolated order statistic (the numpy/Excel default definition). */
 export function quantile(sorted: readonly number[], q: number): number {
   const position = (sorted.length - 1) * q;

@@ -559,15 +559,16 @@ export default function ForecastDock({
   );
 
   /**
-   * The stars for every column, from the same blend the chart draws: its
-   * median wind and gust, its mean direction and how far the models agree. The
-   * dark columns come back null, and so does any column the blend cannot reach.
+   * The stars for every column, from the blend's per-model consensus (each
+   * ensemble counted once, as the forecast server does): its median wind and
+   * gust, its mean direction and how far the models agree. The dark columns
+   * come back null, and so does any column the blend cannot reach.
    */
   const facing = point.facing ?? null;
   const ratings = useMemo(
     (): (HourRating | null)[] =>
       columns.map((column, at) => {
-        const stats = blend.stats[at];
+        const stats = blend.consensus[at];
         const time = Date.parse(column.validTime);
         return rateHour(
           {
