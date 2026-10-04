@@ -87,7 +87,7 @@ test("Now opens centred between timestamps and remains independent of scrubbing"
       return Math.abs(p.line - p.a);
     })
     .toBeLessThan(1);
-  await expect(page.locator(".spot-marker")).toHaveCount(25, {
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);

@@ -2,8 +2,19 @@
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
 import { windModels } from "./manifests";
+import {
+  DEFAULT_RIDER,
+  MAX_WEIGHT_KG,
+  MAX_WING_M2,
+  MIN_WEIGHT_KG,
+  MIN_WING_M2,
+  SKILLS,
+  type Rider,
+} from "./stars";
 
 export type RowKey =
+  | "stars"
+  | "wing"
   | "blend"
   | "waveOverlay"
   | "wind"
@@ -36,9 +47,13 @@ export interface Prefs {
   /** Models feeding the blend, separate from the single map model. */
   blendModels: string[];
   view: ForecastView;
+  /** Who the stars are rated for: weight, level and the wings they own. */
+  rider: Rider;
 }
 
 export const ROW_KEYS: readonly RowKey[] = [
+  "stars",
+  "wing",
   "blend",
   "waveOverlay",
   "wind",
@@ -75,6 +90,8 @@ export const PREFS_KEY = "force5.prefs.v1";
  */
 export const defaultPrefs = (): Prefs => ({
   rows: {
+    stars: true,
+    wing: false,
     blend: true,
     waveOverlay: false,
     wind: false,
@@ -96,6 +113,7 @@ export const defaultPrefs = (): Prefs => ({
   units: "kn",
   blendModels: windModels().map((model) => model.id),
   view: "blend",
+  rider: DEFAULT_RIDER,
 });
 
 /**
@@ -144,6 +162,39 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
   return rows;
 }
 
+/**
+ * A stored rider, field by field: a weight or a wing outside what a person or a
+ * wing can be is dropped rather than rated, and a missing weight stays missing so
+ * the dock can say the stars assume the estimate.
+ */
+export function parseRider(value: unknown): Rider {
+  if (!value || typeof value !== "object") return DEFAULT_RIDER;
+  const raw = value as Record<string, unknown>;
+  const weight = raw.weightKg;
+  const wings = Array.isArray(raw.wings) ? raw.wings : [];
+  return {
+    weightKg:
+      typeof weight === "number" &&
+      weight >= MIN_WEIGHT_KG &&
+      weight <= MAX_WEIGHT_KG
+        ? Math.round(weight)
+        : null,
+    skill: SKILLS.includes(raw.skill as Rider["skill"])
+      ? (raw.skill as Rider["skill"])
+      : DEFAULT_RIDER.skill,
+    wings: [
+      ...new Set(
+        wings.filter(
+          (size): size is number =>
+            typeof size === "number" &&
+            size >= MIN_WING_M2 &&
+            size <= MAX_WING_M2,
+        ),
+      ),
+    ].sort((a, b) => a - b),
+  };
+}
+
 /** Stored preferences merged over the defaults; anything invalid is ignored. */
 export function loadPrefs(
   storage: PrefsStorage | null = browserStorage(),
@@ -174,6 +225,7 @@ export function loadPrefs(
         stored.view && VIEWS.includes(stored.view)
           ? stored.view
           : defaults.view,
+      rider: parseRider(stored.rider),
     };
   } catch {
     return defaults;

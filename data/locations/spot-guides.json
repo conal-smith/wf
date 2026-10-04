@@ -1,0 +1,4916 @@
+{
+  "schemaVersion": 1,
+  "source": "Public wind-sport spot guides, read in a browser",
+  "retrievedAt": "2026-09-30",
+  "licence": "mixed-see-records",
+  "sources": [
+    {
+      "site": "kitejungle",
+      "url": "https://kitejungle.com/kite-places/ireland",
+      "what": "Map markers of the Ireland kite spot list (89 spots)."
+    },
+    {
+      "site": "kite-and-windsurfing-guide",
+      "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/ireland",
+      "what": "Map markers on the six Irish regional pages (82 spots)."
+    },
+    {
+      "site": "irish-windsurfing-association",
+      "url": "https://windsurfing.ie/locations",
+      "what": "Map markers of the association's locations page (89 locations, of which operators, a hotel and a surf-only break were left out)."
+    },
+    {
+      "site": "wisuki",
+      "url": "https://wisuki.com/country/ie/ireland",
+      "what": "Map locations of the Ireland page; used only where another source or the evidence link shows wind sports."
+    }
+  ],
+  "note": "Names, coordinates and sport tags transcribed from the map markers of public spot guides. No descriptions, photos or safety advice copied. The guides state no open licence, so these are factual references, not a relicensed catalogue. Where guides disagree about a position the first sport-backed listing supplies the coordinate and every listing is kept. Spots within about a kilometre of an existing riding place were merged into it rather than added.",
+  "records": [
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "doogort",
+      "name": "Doogort — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.012,
+      "lon": -10.0207,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/achill-island-doogort",
+      "licence": "not-stated",
+      "aliases": ["Dugort", "Achill"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Achill Island Doogort",
+          "url": "https://kitejungle.com/kite-places/ireland/achill-island-doogort",
+          "lat": 54.012,
+          "lon": -10.0207,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Doogort",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 54.013199,
+          "lon": -9.9961,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dooniver",
+      "name": "Dooniver Beach — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.0016,
+      "lon": -9.9391,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/achill-island-dooniver-beach",
+      "licence": "not-stated",
+      "aliases": ["Bullsmouth", "Achill"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Achill Island Dooniver Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/achill-island-dooniver-beach",
+          "lat": 54.0016,
+          "lon": -9.9391,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "keel-lake",
+      "name": "Keel Lake — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.9825,
+      "lon": -10.0585,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lake",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/achill-island-keel-lake",
+      "licence": "not-stated",
+      "aliases": ["Achill"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Achill Island Keel Lake",
+          "url": "https://kitejungle.com/kite-places/ireland/achill-island-keel-lake",
+          "lat": 53.9825,
+          "lon": -10.0585,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://mayo-ireland.ie/en/towns-villages/achill-island/achill-island-watersports.html",
+          "sports": ["windsurfing", "kitesurfing"],
+          "what": "Achill guide says Keel Lake is popular with windsurfers and kitesurfers"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aghleam",
+      "name": "Aghleam",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.11442,
+      "lon": -10.1227,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/aghleam",
+      "licence": "not-stated",
+      "aliases": ["Blacksod", "Mullet"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Aghleam",
+          "url": "https://kitejungle.com/kite-places/ireland/aghleam",
+          "lat": 54.11442,
+          "lon": -10.1227,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Aghleam",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 54.114452,
+          "lon": -10.120064,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Aghleam",
+          "url": "https://wisuki.com/spot/1913",
+          "lat": 54.121525,
+          "lon": -10.128074,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "belmullet",
+      "name": "Belmullet",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.224,
+      "lon": -10.0561,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/belmullet",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Belmullet",
+          "url": "https://kitejungle.com/kite-places/ireland/belmullet",
+          "lat": 54.224,
+          "lon": -10.0561,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Belmullet",
+          "url": "https://wisuki.com/spot/1915",
+          "lat": 54.225452,
+          "lon": -10.063619,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "elly-bay",
+      "name": "Elly Bay",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1605,
+      "lon": -10.0909,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/elly-bay",
+      "licence": "not-stated",
+      "aliases": ["Barnagh", "Mullet"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Elly Bay",
+          "url": "https://kitejungle.com/kite-places/ireland/elly-bay",
+          "lat": 54.1605,
+          "lon": -10.0909,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Elly Bay",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 54.162201,
+          "lon": -10.0873,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Belmullet",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.160826,
+          "lon": -10.091629,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "elly-beach",
+      "name": "Elly Beach",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1543,
+      "lon": -10.1028,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/elly-beach",
+      "licence": "not-stated",
+      "aliases": ["Barnagh", "Mullet"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Elly Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/elly-beach",
+          "lat": 54.1543,
+          "lon": -10.1028,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Elly Beach",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 54.1595,
+          "lon": -10.0981,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Elly Beach",
+          "url": "https://wisuki.com/spot/1920",
+          "lat": 54.156686,
+          "lon": -10.107732,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "trawmore-bay",
+      "name": "Trawmore Bay — Claggan",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1732,
+      "lon": -9.9564,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/trawmore-bay-claggan",
+      "licence": "not-stated",
+      "aliases": ["Claggan"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Trawmore Bay Claggan",
+          "url": "https://kitejungle.com/kite-places/ireland/trawmore-bay-claggan",
+          "lat": 54.1732,
+          "lon": -9.9564,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bertra",
+      "name": "Bertra Beach",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.7915,
+      "lon": -9.6568,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/bertra-beach",
+      "licence": "not-stated",
+      "aliases": ["Clew Bay", "Westport"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Bertra Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/bertra-beach",
+          "lat": 53.7915,
+          "lon": -9.6568,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Clew Bay, Bertra Strand",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 53.787899,
+          "lon": -9.665,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Bertra Strand",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.791424,
+          "lon": -9.658012,
+          "sports": ["windsurfing"],
+          "disciplines": ["kona"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bertra Beach",
+          "url": "https://wisuki.com/spot/1917",
+          "lat": 53.791227,
+          "lon": -9.66176,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carrownisky",
+      "name": "Carrownisky Strand",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.7353,
+      "lon": -9.8946,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/carrownisky",
+      "licence": "not-stated",
+      "aliases": ["Louisburgh"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Carrownisky",
+          "url": "https://kitejungle.com/kite-places/ireland/carrownisky",
+          "lat": 53.7353,
+          "lon": -9.8946,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Carrownisky Strand",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 53.735699,
+          "lon": -9.8944,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Carrownisky / Louisburgh",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.735563,
+          "lon": -9.893886,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Carrownisky",
+          "url": "https://wisuki.com/spot/1916",
+          "lat": 53.732407,
+          "lon": -9.905469,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dogs-bay",
+      "name": "Dog's Bay & Gurteen — Roundstone",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.37881,
+      "lon": -9.96352,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/dogs-bay",
+      "licence": "not-stated",
+      "aliases": ["Roundstone", "Gurteen Bay", "Errisbeg"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Dogs Bay",
+          "url": "https://kitejungle.com/kite-places/ireland/dogs-bay",
+          "lat": 53.37881,
+          "lon": -9.96352,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kitejungle",
+          "name": "Gurteen Bay",
+          "url": "https://kitejungle.com/kite-places/ireland/gurteen-bay",
+          "lat": 53.378,
+          "lon": -9.9578,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Roundstone - Dogs Bay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.380986,
+          "lon": -9.963268,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Roundstone - Gurteen Bay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.381671,
+          "lon": -9.952485,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "speed"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "spanish-point",
+      "name": "Spanish Point",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.8421,
+      "lon": -9.4328,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/spanish-point",
+      "licence": "not-stated",
+      "aliases": ["Miltown Malbay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Spanish Point",
+          "url": "https://kitejungle.com/kite-places/ireland/spanish-point",
+          "lat": 52.8421,
+          "lon": -9.4328,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Spanish Point",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 52.842266,
+          "lon": -9.431542,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Spanish Point",
+          "url": "https://wisuki.com/spot/7219",
+          "lat": 52.838846,
+          "lon": -9.437375,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "easkey",
+      "name": "Easkey",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2936,
+      "lon": -8.9595,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/easkey",
+      "licence": "not-stated",
+      "aliases": ["Easky"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Easkey",
+          "url": "https://kitejungle.com/kite-places/ireland/easkey",
+          "lat": 54.2936,
+          "lon": -8.9595,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Easky",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.292284,
+          "lon": -8.955402,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Easky",
+          "url": "https://wisuki.com/spot/1870",
+          "lat": 54.296783,
+          "lon": -8.974463,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "enniscrone",
+      "name": "Enniscrone",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2116,
+      "lon": -9.1109,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/enniscrone",
+      "licence": "not-stated",
+      "aliases": ["Inishcrone", "Killala Bay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Enniscrone",
+          "url": "https://kitejungle.com/kite-places/ireland/enniscrone",
+          "lat": 54.2116,
+          "lon": -9.1109,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Enniscrone",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.212502,
+          "lon": -9.1003,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Enniscrone",
+          "url": "https://wisuki.com/spot/1860",
+          "lat": 54.212885,
+          "lon": -9.121096,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunmoran",
+      "name": "Dunmoran Strand",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2647,
+      "lon": -8.7324,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/dunmoran",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Dunmoran",
+          "url": "https://kitejungle.com/kite-places/ireland/dunmoran",
+          "lat": 54.2647,
+          "lon": -8.7324,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Dunmoran Strand",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.263302,
+          "lon": -8.7276,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Dunmoran",
+          "url": "https://wisuki.com/spot/1859",
+          "lat": 54.269417,
+          "lon": -8.748424,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "west-of-dunmoran",
+      "name": "West of Dunmoran",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.286713,
+      "lon": -8.895136,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+      "licence": "not-stated",
+      "aliases": ["Aughris"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "West of Dunmoran",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.286713,
+          "lon": -8.895136,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "strandhill",
+      "name": "Strandhill",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2715,
+      "lon": -8.6072,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/strandhill",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Strandhill",
+          "url": "https://kitejungle.com/kite-places/ireland/strandhill",
+          "lat": 54.2715,
+          "lon": -8.6072,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Strandhill",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.270683,
+          "lon": -8.609028,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Strandhill",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.267931,
+          "lon": -8.611221,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rosses-point",
+      "name": "Rosses Point",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.3122,
+      "lon": -8.5705,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/rosses-point",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Rosses Point",
+          "url": "https://kitejungle.com/kite-places/ireland/rosses-point",
+          "lat": 54.3122,
+          "lon": -8.5705,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Rosses Point",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.308399,
+          "lon": -8.572,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lissadell",
+      "name": "Lissadell",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.3433,
+      "lon": -8.5899,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/lissadell",
+      "licence": "not-stated",
+      "aliases": ["Drumcliff Bay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Lissadell",
+          "url": "https://kitejungle.com/kite-places/ireland/lissadell",
+          "lat": 54.3433,
+          "lon": -8.5899,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "streedagh",
+      "name": "Streedagh Beach",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.4082,
+      "lon": -8.5391,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/streedagh-beach",
+      "licence": "not-stated",
+      "aliases": ["Grange"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Streedagh Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/streedagh-beach",
+          "lat": 54.4082,
+          "lon": -8.5391,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Streedagh",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.405743,
+          "lon": -8.551311,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "streedagh-lagoon",
+      "name": "Streedagh Lagoon",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.4039,
+      "lon": -8.5593,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lagoon",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/streedagh-lagoon",
+      "licence": "not-stated",
+      "aliases": ["Grange"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Streedagh Lagoon",
+          "url": "https://kitejungle.com/kite-places/ireland/streedagh-lagoon",
+          "lat": 54.4039,
+          "lon": -8.5593,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portnoo",
+      "name": "Portnoo",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.8414,
+      "lon": -8.445,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/portnoo",
+      "licence": "not-stated",
+      "aliases": ["Narin"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Portnoo",
+          "url": "https://kitejungle.com/kite-places/ireland/portnoo",
+          "lat": 54.8414,
+          "lon": -8.445,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Portnoo",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 54.841618,
+          "lon": -8.440646,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Portnoo",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.839553,
+          "lon": -8.445911,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Portnoo",
+          "url": "https://wisuki.com/spot/1864",
+          "lat": 54.843719,
+          "lon": -8.442545,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bloody-foreland",
+      "name": "Bloody Foreland",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1555,
+      "lon": -8.2871,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/bloody-foreland-head",
+      "licence": "not-stated",
+      "aliases": ["Brinlack", "Gweedore"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Bloody Foreland Head",
+          "url": "https://kitejungle.com/kite-places/ireland/bloody-foreland-head",
+          "lat": 55.1555,
+          "lon": -8.2871,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Bloody Foreland",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/donegal-leitrim-sligo",
+          "lat": 55.147598,
+          "lon": -8.289295,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bloody Foreland",
+          "url": "https://wisuki.com/spot/1857",
+          "lat": 55.15633,
+          "lon": -8.291305,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunfanaghy",
+      "name": "Dunfanaghy Lagoon",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1848,
+      "lon": -7.9625,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lagoon",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/dunfanaghy-lagoon",
+      "licence": "not-stated",
+      "aliases": ["Dunfanaghy", "Killahoey"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Dunfanaghy Lagoon",
+          "url": "https://kitejungle.com/kite-places/ireland/dunfanaghy-lagoon",
+          "lat": 55.1848,
+          "lon": -7.9625,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Dunfanaghy",
+          "url": "https://wisuki.com/spot/1863",
+          "lat": 55.186485,
+          "lon": -7.947172,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "downings",
+      "name": "Downings — Trá Beg",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.192392,
+      "lon": -7.831621,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Rosapenna", "Sheephaven Bay", "Trá Beg"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Downings",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.192392,
+          "lon": -7.831621,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Trá More (Downings)",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.182249,
+          "lon": -7.825441,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Rosapenna",
+          "url": "https://wisuki.com/spot/1865",
+          "lat": 55.17555,
+          "lon": -7.832703,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://boards.co.uk/news/2578-downings-celebrates-25th-anniversary.html",
+          "sports": ["windsurfing"],
+          "what": "Downings hosts Ireland's longest-running windsurfing competition, running since 1984"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portsalon",
+      "name": "Portsalon — Ballymastocker Bay",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.20317,
+      "lon": -7.62228,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Ballymastocker", "Lough Swilly"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Portsalon",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.20317,
+          "lon": -7.62228,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Portsalon",
+          "url": "https://wisuki.com/spot/6198",
+          "lat": 55.200851,
+          "lon": -7.615896,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.windsurfing.ie/locations",
+          "sports": ["windsurfing"],
+          "what": "Irish Windsurfing Association lists Portsalon as a wave windsurfing location"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portstewart",
+      "name": "Portstewart Strand",
+      "county": "Derry",
+      "jurisdiction": "UK-NI",
+      "lat": 55.169899,
+      "lon": -6.7454,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Portstewart",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 55.169899,
+          "lon": -6.7454,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Portstewart",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.172398,
+          "lon": -6.728954,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "whiterocks",
+      "name": "Whiterocks",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.2062,
+      "lon": -6.6125,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Portrush"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Whiterocks",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 55.2062,
+          "lon": -6.6125,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portballintrae",
+      "name": "Bushfoot — Portballintrae",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.220501,
+      "lon": -6.5352,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Bushmills", "Bushfoot", "Portballintrae"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Bushmills / Bushfoot / Portballintrae",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 55.220501,
+          "lon": -6.5352,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "browns-bay",
+      "name": "Browns Bay — Larne",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 54.852501,
+      "lon": -5.7682,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Larne", "Islandmagee"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Larne, Browns Bay",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.852501,
+          "lon": -5.7682,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lough-neagh-antrim",
+      "name": "Lough Neagh — Antrim",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 54.714901,
+      "lon": -6.24,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lake",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Antrim"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Lough Neagh, Antrim",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.714901,
+          "lon": -6.24,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "oxford-island",
+      "name": "Lough Neagh — Oxford Island",
+      "county": "Armagh",
+      "jurisdiction": "UK-NI",
+      "lat": 54.496899,
+      "lon": -6.3828,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lake",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Lurgan", "Craigavon"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Lough Neagh, Oxford Island",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.496899,
+          "lon": -6.3828,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "millisle",
+      "name": "Millisle",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.6017,
+      "lon": -5.5231,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Ards Peninsula"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Millisle",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.6017,
+          "lon": -5.5231,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kearney",
+      "name": "Kearney",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.3825,
+      "lon": -5.4841,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Portaferry", "Ards Peninsula"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Kearney",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.3825,
+          "lon": -5.4841,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "newcastle",
+      "name": "Newcastle — Dundrum Bay",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.209,
+      "lon": -5.8901,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Murlough", "Dundrum Bay"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Newcastle",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.209,
+          "lon": -5.8901,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cranfield",
+      "name": "Cranfield",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.036301,
+      "lon": -6.0293,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Carlingford Lough", "Kilkeel"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Cranfield",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.036301,
+          "lon": -6.0293,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "warrenpoint",
+      "name": "Warrenpoint",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.097599,
+      "lon": -6.2498,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+      "licence": "not-stated",
+      "aliases": ["Carlingford Lough"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Warrenpoint",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/northern-ireland",
+          "lat": 54.097599,
+          "lon": -6.2498,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carlingford",
+      "name": "Carlingford",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 54.040298,
+      "lon": -6.1755,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+      "licence": "not-stated",
+      "aliases": ["Carlingford Lough"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Carlingford",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 54.040298,
+          "lon": -6.1755,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "greenore",
+      "name": "Greenore",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 54.0319,
+      "lon": -6.1305,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/greenore",
+      "licence": "not-stated",
+      "aliases": ["Carlingford Lough"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Greenore",
+          "url": "https://kitejungle.com/kite-places/ireland/greenore",
+          "lat": 54.0319,
+          "lon": -6.1305,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Greenore",
+          "url": "https://wisuki.com/spot/1875",
+          "lat": 54.0323,
+          "lon": -6.129053,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "giles-quay",
+      "name": "Gyles Quay",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.9851,
+      "lon": -6.2361,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/giles-quay",
+      "licence": "not-stated",
+      "aliases": ["Giles Quay", "Dundalk Bay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Giles Quay",
+          "url": "https://kitejungle.com/kite-places/ireland/giles-quay",
+          "lat": 53.9851,
+          "lon": -6.2361,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Dundalk, Giles Quay",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 54.006168,
+          "lon": -6.291458,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Cooley Point / Giles Quay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.987285,
+          "lon": -6.24341,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Giles Quay",
+          "url": "https://wisuki.com/spot/1880",
+          "lat": 53.984072,
+          "lon": -6.23514,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "annagassan",
+      "name": "Annagassan",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.8795,
+      "lon": -6.3376,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/annagassan",
+      "licence": "not-stated",
+      "aliases": ["Annagassin", "Dundalk Bay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Annagassan",
+          "url": "https://kitejungle.com/kite-places/ireland/annagassan",
+          "lat": 53.8795,
+          "lon": -6.3376,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Annagassin",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.877201,
+          "lon": -6.3134,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Annagassin",
+          "url": "https://wisuki.com/spot/1871",
+          "lat": 53.881589,
+          "lon": -6.333157,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "clogherhead",
+      "name": "Clogherhead",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.7873,
+      "lon": -6.2357,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/clogherhead",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Clogherhead",
+          "url": "https://kitejungle.com/kite-places/ireland/clogherhead",
+          "lat": 53.7873,
+          "lon": -6.2357,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "termonfeckin",
+      "name": "Termonfeckin",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.7575,
+      "lon": -6.2479,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/termonfeckin",
+      "licence": "not-stated",
+      "aliases": ["Baltray", "Drogheda"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Termonfeckin",
+          "url": "https://kitejungle.com/kite-places/ireland/termonfeckin",
+          "lat": 53.7575,
+          "lon": -6.2479,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Drogheda",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.759602,
+          "lon": -6.2481,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Drogheda",
+          "url": "https://wisuki.com/spot/1878",
+          "lat": 53.755127,
+          "lon": -6.243689,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bettystown",
+      "name": "Bettystown",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6999,
+      "lon": -6.2431,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/bettystown",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Bettystown",
+          "url": "https://kitejungle.com/kite-places/ireland/bettystown",
+          "lat": 53.6999,
+          "lon": -6.2431,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Bettystown",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.698898,
+          "lon": -6.2429,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bettystown",
+          "url": "https://wisuki.com/spot/1892",
+          "lat": 53.699739,
+          "lon": -6.238417,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "laytown",
+      "name": "Laytown",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6807,
+      "lon": -6.2368,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/laytown-beach",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Laytown Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/laytown-beach",
+          "lat": 53.6807,
+          "lon": -6.2368,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "gormanston",
+      "name": "Gormanston",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6635,
+      "lon": -6.23,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/gormanstown-beach",
+      "licence": "not-stated",
+      "aliases": ["Gormanstown"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Gormanstown Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/gormanstown-beach",
+          "lat": 53.6635,
+          "lon": -6.23,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kitejungle",
+          "name": "Gormanstown",
+          "url": "https://kitejungle.com/kite-places/ireland/gormanstown",
+          "lat": 53.6434,
+          "lon": -6.2187,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "skerries",
+      "name": "Skerries",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5799,
+      "lon": -6.1047,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/skerries-south",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Skerries South",
+          "url": "https://kitejungle.com/kite-places/ireland/skerries-south",
+          "lat": 53.5799,
+          "lon": -6.1047,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kitejungle",
+          "name": "Skerries North",
+          "url": "https://kitejungle.com/kite-places/ireland/skerries-north",
+          "lat": 53.5818,
+          "lon": -6.1104,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Skerries",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.572399,
+          "lon": -6.1003,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Skerries",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.576652,
+          "lon": -6.103474,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rush-north",
+      "name": "Rush North Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5269,
+      "lon": -6.0861,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/rush-north",
+      "licence": "not-stated",
+      "aliases": ["Rush"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Rush North",
+          "url": "https://kitejungle.com/kite-places/ireland/rush-north",
+          "lat": 53.5269,
+          "lon": -6.0861,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Rush North",
+          "url": "https://wisuki.com/spot/6265",
+          "lat": 53.527339,
+          "lon": -6.082211,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rush-south",
+      "name": "Rush South Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5164,
+      "lon": -6.0968,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/rush-south",
+      "licence": "not-stated",
+      "aliases": ["Rush", "Portrane"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Rush South",
+          "url": "https://kitejungle.com/kite-places/ireland/rush-south",
+          "lat": 53.5164,
+          "lon": -6.0968,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Rush, Portrane",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.5182,
+          "lon": -6.0918,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Rush",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.51606,
+          "lon": -6.097541,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Rush South",
+          "url": "https://wisuki.com/spot/1889",
+          "lat": 53.511709,
+          "lon": -6.092477,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "donabate",
+      "name": "Donabate",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4753,
+      "lon": -6.1198,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/donabate",
+      "licence": "not-stated",
+      "aliases": ["Portrane"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Donabate",
+          "url": "https://kitejungle.com/kite-places/ireland/donabate",
+          "lat": 53.4753,
+          "lon": -6.1198,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Donabate",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.476799,
+          "lon": -6.1165,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "low-rock",
+      "name": "Low Rock — Malahide",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4488,
+      "lon": -6.1357,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/low-rock",
+      "licence": "not-stated",
+      "aliases": ["Malahide"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Low Rock",
+          "url": "https://kitejungle.com/kite-places/ireland/low-rock",
+          "lat": 53.4488,
+          "lon": -6.1357,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Low Rock, Malahide Beach",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.445999,
+          "lon": -6.1299,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Low Rock",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.444602,
+          "lon": -6.127549,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portmarnock",
+      "name": "Portmarnock — Velvet Strand",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4321,
+      "lon": -6.124,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/portmarnock",
+      "licence": "not-stated",
+      "aliases": ["Velvet Strand"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Portmarnock",
+          "url": "https://kitejungle.com/kite-places/ireland/portmarnock",
+          "lat": 53.4321,
+          "lon": -6.124,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Portmarnock",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.434898,
+          "lon": -6.1223,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "burrow-beach",
+      "name": "Burrow Beach — Sutton",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.393,
+      "lon": -6.1059,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/sutton-burron-beach",
+      "licence": "not-stated",
+      "aliases": ["Sutton", "Howth"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Sutton – Burrow Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/sutton-burron-beach",
+          "lat": 53.393,
+          "lon": -6.1059,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Burrow Beach",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.392171,
+          "lon": -6.096648,
+          "sports": ["windsurfing"],
+          "disciplines": ["speed"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Burrow Beach",
+          "url": "https://wisuki.com/spot/1874",
+          "lat": 53.394396,
+          "lon": -6.102933,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bull-island-north",
+      "name": "North Bull Island — Sutton end",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3815,
+      "lon": -6.1161,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/north-bull-island-sutton",
+      "licence": "not-stated",
+      "aliases": ["Bull Island", "Sutton"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "North Bull Island Sutton",
+          "url": "https://kitejungle.com/kite-places/ireland/north-bull-island-sutton",
+          "lat": 53.3815,
+          "lon": -6.1161,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Sutton",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.3764,
+          "lon": -6.1018,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bull Island",
+          "url": "https://wisuki.com/spot/1893",
+          "lat": 53.377959,
+          "lon": -6.114624,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "poolbeg",
+      "name": "Poolbeg",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3372,
+      "lon": -6.1864,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/poolbeg",
+      "licence": "not-stated",
+      "aliases": ["Shelly Banks", "Ringsend"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Poolbeg",
+          "url": "https://kitejungle.com/kite-places/ireland/poolbeg",
+          "lat": 53.3372,
+          "lon": -6.1864,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Poolbeg",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.338699,
+          "lon": -6.1822,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Pigeonhouse",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.340278,
+          "lon": -6.179295,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Poolbeg",
+          "url": "https://wisuki.com/spot/1879",
+          "lat": 53.336195,
+          "lon": -6.182259,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "sandymount",
+      "name": "Sandymount Strand",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3284,
+      "lon": -6.2083,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/sandymount-beach",
+      "licence": "not-stated",
+      "aliases": ["Sandymount"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Sandymount Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/sandymount-beach",
+          "lat": 53.3284,
+          "lon": -6.2083,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Sandymount",
+          "url": "https://wisuki.com/spot/1887",
+          "lat": 53.328521,
+          "lon": -6.206495,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "seapoint",
+      "name": "Seapoint",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.2956,
+      "lon": -6.151,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/seapoint",
+      "licence": "not-stated",
+      "aliases": ["Monkstown", "Blackrock"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Seapoint",
+          "url": "https://kitejungle.com/kite-places/ireland/seapoint",
+          "lat": 53.2956,
+          "lon": -6.151,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Seapoint",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.295601,
+          "lon": -6.1509,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Salthill",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.296029,
+          "lon": -6.150541,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Seapoint",
+          "url": "https://wisuki.com/spot/9403",
+          "lat": 53.29821,
+          "lon": -6.15732,
+          "sports": []
+        },
+        {
+          "site": "wisuki",
+          "name": "Monkstown",
+          "url": "https://wisuki.com/spot/1890",
+          "lat": 53.297322,
+          "lon": -6.152915,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "killiney",
+      "name": "Killiney Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.2587,
+      "lon": -6.1118,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/killiney-beach",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Killiney Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/killiney-beach",
+          "lat": 53.2587,
+          "lon": -6.1118,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Killiney Beach",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.2589,
+          "lon": -6.1119,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Killiney Beach",
+          "url": "https://wisuki.com/spot/1884",
+          "lat": 53.25845,
+          "lon": -6.108556,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bray",
+      "name": "Bray Beach",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.2024,
+      "lon": -6.0971,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/bray-beach",
+      "licence": "not-stated",
+      "aliases": ["Bray"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Bray Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/bray-beach",
+          "lat": 53.2024,
+          "lon": -6.0971,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Bray",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dublin",
+          "lat": 53.201832,
+          "lon": -6.097172,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bray",
+          "url": "https://wisuki.com/spot/1873",
+          "lat": 53.203697,
+          "lon": -6.093601,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "greystones",
+      "name": "Greystones",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.143942,
+      "lon": -6.054052,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/1882",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Greystones",
+          "url": "https://wisuki.com/spot/1882",
+          "lat": 53.143942,
+          "lon": -6.054052,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Greystones",
+          "sports": ["windsurfing"],
+          "what": "Article lists windsurfing among Greystones' marine sports clubs (brief mention)"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "brittas-bay",
+      "name": "Brittas Bay",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 52.8835,
+      "lon": -6.0567,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/brittas-bay",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Brittas Bay",
+          "url": "https://kitejungle.com/kite-places/ireland/brittas-bay",
+          "lat": 52.8835,
+          "lon": -6.0567,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Brittas Bay",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.88662,
+          "lon": -6.055242,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Brittas Bay",
+          "url": "https://wisuki.com/spot/1896",
+          "lat": 52.885175,
+          "lon": -6.049946,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kilmuckridge",
+      "name": "Kilmuckridge",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.5346,
+      "lon": -6.2115,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/kilmuckridge",
+      "licence": "not-stated",
+      "aliases": ["Cahore", "Morriscastle"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Kilmuckridge",
+          "url": "https://kitejungle.com/kite-places/ireland/kilmuckridge",
+          "lat": 52.5346,
+          "lon": -6.2115,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Kilmuckeridge",
+          "url": "https://wisuki.com/spot/1903",
+          "lat": 52.532646,
+          "lon": -6.205594,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "curracloe",
+      "name": "Curracloe",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.3885,
+      "lon": -6.3632,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Curracloe",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.3885,
+          "lon": -6.3632,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "the-burrow",
+      "name": "The Burrow — Rosslare",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.3093,
+      "lon": -6.3888,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/the-burrow",
+      "licence": "not-stated",
+      "aliases": ["Rosslare"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "The Burrow",
+          "url": "https://kitejungle.com/kite-places/ireland/the-burrow",
+          "lat": 52.3093,
+          "lon": -6.3888,
+          "sports": ["kitesurfing"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (kitejungle.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rosslare",
+      "name": "Rosslare Strand",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2745,
+      "lon": -6.386,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/rosslare-beach",
+      "licence": "not-stated",
+      "aliases": ["Rosslare"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Rosslare Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/rosslare-beach",
+          "lat": 52.2745,
+          "lon": -6.386,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Rosslare Strand",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.2757,
+          "lon": -6.386222,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Rosslare",
+          "url": "https://wisuki.com/spot/1906",
+          "lat": 52.275895,
+          "lon": -6.385,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "st-margarets",
+      "name": "St Margaret's Beach",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2353,
+      "lon": -6.3218,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/st-margarets-beach",
+      "licence": "not-stated",
+      "aliases": ["Carnsore"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "St Margarets Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/st-margarets-beach",
+          "lat": 52.2353,
+          "lon": -6.3218,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "St Margaret’s Beach",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.200001,
+          "lon": -6.3512,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Saint-Margaret's Beach",
+          "url": "https://wisuki.com/spot/1907",
+          "lat": 52.233269,
+          "lon": -6.321627,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ladys-island-lake",
+      "name": "Lady's Island Lake",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.184205845,
+      "lon": -6.398410302,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lagoon",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/ladies-island-lake",
+      "licence": "not-stated",
+      "aliases": ["Ladies Island Lake"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Ladies Island Lake",
+          "url": "https://kitejungle.com/kite-places/ireland/ladies-island-lake",
+          "lat": 52.184205845,
+          "lon": -6.398410302,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Lady's Island Lake",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.1842,
+          "lon": -6.3976,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Our Lady's Island Lake E",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.183853,
+          "lon": -6.397777,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "freestyle", "speed"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Our Lady's Island Lake S",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.185826,
+          "lon": -6.405416,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "freestyle", "speed"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Our Lady's Island Lake W",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.18897,
+          "lon": -6.417622,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "freestyle", "speed"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Ladies Island Lake",
+          "url": "https://wisuki.com/spot/1905",
+          "lat": 52.17827,
+          "lon": -6.393969,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kilmore-quay",
+      "name": "Kilmore Quay",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.1781,
+      "lon": -6.5964,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/kilmore-quay",
+      "licence": "not-stated",
+      "aliases": ["Ballyteige"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Kilmore Quay",
+          "url": "https://kitejungle.com/kite-places/ireland/kilmore-quay",
+          "lat": 52.1781,
+          "lon": -6.5964,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Kilmore Quay",
+          "url": "https://wisuki.com/spot/6264",
+          "lat": 52.175567,
+          "lon": -6.600217,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cullenstown",
+      "name": "Cullenstown",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.213497,
+      "lon": -6.69754,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Bannow Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Cullenstown",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.213497,
+          "lon": -6.69754,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Cullenstown Beach",
+          "url": "https://wisuki.com/spot/9397",
+          "lat": 52.214043,
+          "lon": -6.719878,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.windsurfing.ie/locations",
+          "sports": ["windsurfing"],
+          "what": "Irish Windsurfing Association lists Cullenstown as a slalom and wave spot"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "duncannon",
+      "name": "Duncannon",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.219,
+      "lon": -6.9262,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/duncannon",
+      "licence": "not-stated",
+      "aliases": ["Waterford Harbour"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Duncannon",
+          "url": "https://kitejungle.com/kite-places/ireland/duncannon",
+          "lat": 52.219,
+          "lon": -6.9262,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Duncannon",
+          "url": "https://wisuki.com/spot/6263",
+          "lat": 52.216893,
+          "lon": -6.928988,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dungarvan",
+      "name": "Dungarvan",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.0835,
+      "lon": -7.6085,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/dungarvan",
+      "licence": "not-stated",
+      "aliases": ["Cunnigar", "Abbeyside"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Dungarvan",
+          "url": "https://kitejungle.com/kite-places/ireland/dungarvan",
+          "lat": 52.0835,
+          "lon": -7.6085,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Dungarvan",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 52.077599,
+          "lon": -7.6079,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Dungarvan",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.087444,
+          "lon": -7.610264,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "speed"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Dungarvan",
+          "url": "https://wisuki.com/spot/1910",
+          "lat": 52.085994,
+          "lon": -7.607731,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "red-barn",
+      "name": "Red Barn — Youghal",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.9369,
+      "lon": -7.852,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/red-barn",
+      "licence": "not-stated",
+      "aliases": ["Youghal"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Red Barn",
+          "url": "https://kitejungle.com/kite-places/ireland/red-barn",
+          "lat": 51.9369,
+          "lon": -7.852,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Red Barn",
+          "url": "https://wisuki.com/spot/6255",
+          "lat": 51.935832,
+          "lon": -7.848759,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ballycotton",
+      "name": "Ballycotton — Ballynamona",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8476,
+      "lon": -8.0171,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/ballycotton",
+      "licence": "not-stated",
+      "aliases": ["Ballynamona", "Ardnahinch"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Ballycotton",
+          "url": "https://kitejungle.com/kite-places/ireland/ballycotton",
+          "lat": 51.8476,
+          "lon": -8.0171,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kitejungle",
+          "name": "Ballynamona",
+          "url": "https://kitejungle.com/kite-places/ireland/ballynamona",
+          "lat": 51.8437,
+          "lon": -8.0214,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Ballycotton, Cork",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 51.830898,
+          "lon": -8.0132,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Ballycotton",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.829837,
+          "lon": -8.008175,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Ballycotton",
+          "url": "https://wisuki.com/spot/1894",
+          "lat": 51.843478,
+          "lon": -8.01596,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cobh",
+      "name": "Cobh — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8515,
+      "lon": -8.2823,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/cobh-island",
+      "licence": "not-stated",
+      "aliases": ["Cork Harbour", "Great Island"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Cobh Island",
+          "url": "https://kitejungle.com/kite-places/ireland/cobh-island",
+          "lat": 51.8515,
+          "lon": -8.2823,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Cobh",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 51.8573,
+          "lon": -8.2663,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Cobh",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.848717,
+          "lon": -8.292618,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "kona"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cork-harbour",
+      "name": "Cork Harbour — lower",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.79113,
+      "lon": -8.25755,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/1899",
+      "licence": "not-stated",
+      "aliases": ["Crosshaven", "Cork Harbour"],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Cork Harbour",
+          "url": "https://wisuki.com/spot/1899",
+          "lat": 51.79113,
+          "lon": -8.25755,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://purecork.ie/things-to-do/funkytown-adventure-centre",
+          "sports": ["kitesurfing"],
+          "what": "Adventure centre beside Fountainstown beach offers kite surfing"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "garrettstown",
+      "name": "Garrettstown",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6439,
+      "lon": -8.5796,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/garretstown",
+      "licence": "not-stated",
+      "aliases": ["Garretstown", "Old Head"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Garretstown",
+          "url": "https://kitejungle.com/kite-places/ireland/garretstown",
+          "lat": 51.6439,
+          "lon": -8.5796,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Garretstown",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 51.641899,
+          "lon": -8.5696,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Garylucas",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.640713,
+          "lon": -8.569679,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Garretstown",
+          "url": "https://wisuki.com/spot/1900",
+          "lat": 51.641328,
+          "lon": -8.582045,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "coolmaine",
+      "name": "Coolmaine",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6515,
+      "lon": -8.6735,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/coolmaine",
+      "licence": "not-stated",
+      "aliases": ["Courtmacsherry Bay"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Coolmaine",
+          "url": "https://kitejungle.com/kite-places/ireland/coolmaine",
+          "lat": 51.6515,
+          "lon": -8.6735,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Coolmaine",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/the-south--east",
+          "lat": 51.6521,
+          "lon": -8.6739,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Coolmaine",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.645188,
+          "lon": -8.673534,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Courtmacsherry Bay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.639115,
+          "lon": -8.677139,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave", "speed"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Coolmaine",
+          "url": "https://wisuki.com/spot/1898",
+          "lat": 51.643742,
+          "lon": -8.672608,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "owenahincha",
+      "name": "Owenahincha",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.562732,
+      "lon": -8.993862,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/6244",
+      "licence": "not-stated",
+      "aliases": ["Ownahincha", "Rosscarbery"],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Ownahincha",
+          "url": "https://wisuki.com/spot/6244",
+          "lat": 51.562732,
+          "lon": -8.993862,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.discoverireland.ie/cork/owenahincha-beach",
+          "sports": ["kitesurfing"],
+          "what": "Tourism page says the beach is regularly used by kite surfers"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "glandore",
+      "name": "Glandore Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.56548,
+      "lon": -9.12109,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/1901",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Glandore Harbour",
+          "url": "https://wisuki.com/spot/1901",
+          "lat": 51.56548,
+          "lon": -9.12109,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.cork-guide.ie/glandore/",
+          "sports": ["windsurfing"],
+          "what": "Local guide names windsurfing among Glandore Harbour's water activities"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "schull",
+      "name": "Schull",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.522643,
+      "lon": -9.5443,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Schull harbour",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.522643,
+          "lon": -9.5443,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Schull",
+          "url": "https://wisuki.com/spot/1908",
+          "lat": 51.5203,
+          "lon": -9.53985,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.windsurfing.ie/locations",
+          "sports": ["windsurfing"],
+          "what": "Irish Windsurfing Association lists Schull Harbour, best in southerly winds"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bantry-bay",
+      "name": "Bantry Bay",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.678357,
+      "lon": -9.472784,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Bantry"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Bantry Bay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.678357,
+          "lon": -9.472784,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Bantry Bay",
+          "url": "https://wisuki.com/spot/1895",
+          "lat": 51.71283,
+          "lon": -9.46405,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://www.windsurfing.ie/locations",
+          "sports": ["windsurfing"],
+          "what": "Irish Windsurfing Association lists Bantry Bay as a top slalom venue"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "waterville",
+      "name": "Waterville — Ballinskelligs Bay",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 51.831349,
+      "lon": -10.197416,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/7051",
+      "licence": "not-stated",
+      "aliases": ["Ballinskelligs Bay"],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Waterville",
+          "url": "https://wisuki.com/spot/7051",
+          "lat": 51.831349,
+          "lon": -10.197416,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://discoverireland.ie/kerry/skelligs-watersports",
+          "sports": ["windsurfing"],
+          "what": "Watersports operator teaches windsurfing in Ballinskelligs Bay"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rossbeigh",
+      "name": "Rossbeigh",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.0853,
+      "lon": -9.9699,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/rossbeigh",
+      "licence": "not-stated",
+      "aliases": ["Glenbeigh"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Rossbeigh",
+          "url": "https://kitejungle.com/kite-places/ireland/rossbeigh",
+          "lat": 52.0853,
+          "lon": -9.9699,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Rossbeigh",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.054401,
+          "lon": -9.9767,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Rossbeigh",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.056977,
+          "lon": -9.973698,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Rossbeigh",
+          "url": "https://wisuki.com/spot/1847",
+          "lat": 52.054168,
+          "lon": -9.981052,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "inch",
+      "name": "Inch Beach",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1412,
+      "lon": -9.9801,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/inch-beach",
+      "licence": "not-stated",
+      "aliases": ["Inch Strand"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Inch Beach",
+          "url": "https://kitejungle.com/kite-places/ireland/inch-beach",
+          "lat": 52.1412,
+          "lon": -9.9801,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Inch Beach",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.141499,
+          "lon": -9.9824,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Inch",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.141601,
+          "lon": -9.980564,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Inch Reef",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.142233,
+          "lon": -9.992065,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Inch Beach",
+          "url": "https://wisuki.com/spot/1844",
+          "lat": 52.139594,
+          "lon": -9.984884,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ventry",
+      "name": "Ventry",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1308,
+      "lon": -10.3677,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/ventry",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Ventry",
+          "url": "https://kitejungle.com/kite-places/ireland/ventry",
+          "lat": 52.1308,
+          "lon": -10.3677,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Ventry",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.132301,
+          "lon": -10.3639,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Ventry",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.132224,
+          "lon": -10.362425,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "smerwick",
+      "name": "Smerwick Harbour",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1812,
+      "lon": -10.4077,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/smerwick",
+      "licence": "not-stated",
+      "aliases": ["Wine Strand", "Ballydavid"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Smerwick",
+          "url": "https://kitejungle.com/kite-places/ireland/smerwick",
+          "lat": 52.1812,
+          "lon": -10.4077,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Smerwick Harbour",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.176998,
+          "lon": -10.3692,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Smerwick",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.181406,
+          "lon": -10.406713,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Smerwick",
+          "url": "https://wisuki.com/spot/1852",
+          "lat": 52.183149,
+          "lon": -10.40758,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "fermoyle",
+      "name": "Fermoyle",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2439,
+      "lon": -10.1343,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/fermoyle",
+      "licence": "not-stated",
+      "aliases": ["Cloghane"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Fermoyle",
+          "url": "https://kitejungle.com/kite-places/ireland/fermoyle",
+          "lat": 52.2439,
+          "lon": -10.1343,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Fermoyle",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.243706,
+          "lon": -10.124495,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Fermoyle",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.243989,
+          "lon": -10.124245,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kilcummin",
+      "name": "Kilcummin",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.244724,
+      "lon": -10.102261,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Kilcummin",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.244724,
+          "lon": -10.102261,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Kilcummin",
+          "url": "https://wisuki.com/spot/1845",
+          "lat": 52.246751,
+          "lon": -10.103372,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "gowlane",
+      "name": "Gowlane",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2488,
+      "lon": -10.0861,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/gowlane",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Gowlane",
+          "url": "https://kitejungle.com/kite-places/ireland/gowlane",
+          "lat": 52.2488,
+          "lon": -10.0861,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Gowlane",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.24868,
+          "lon": -10.085968,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Goulane",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.248929,
+          "lon": -10.085449,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Gowlane",
+          "url": "https://wisuki.com/spot/1843",
+          "lat": 52.249997,
+          "lon": -10.087351,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "stradbally",
+      "name": "Stradbally — Castlegregory",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.255051,
+      "lon": -10.070493,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+      "licence": "not-stated",
+      "aliases": ["Castlegregory"],
+      "listings": [
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Stradbally",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.255051,
+          "lon": -10.070493,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Stradbally",
+          "url": "https://wisuki.com/spot/1854",
+          "lat": 52.255865,
+          "lon": -10.072378,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 2 spot guides (kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aughacasla",
+      "name": "Aughacasla",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2476,
+      "lon": -9.9897,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/aughacasla",
+      "licence": "not-stated",
+      "aliases": ["Tralee Bay", "Castlegregory"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Aughacasla",
+          "url": "https://kitejungle.com/kite-places/ireland/aughacasla",
+          "lat": 52.2476,
+          "lon": -9.9897,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Aughacasla",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.238499,
+          "lon": -9.9708,
+          "sports": ["kitesurfing", "windsurfing"]
+        }
+      ],
+      "note": "Listed on 2 spot guides (kitejungle.com, kite-and-windsurfing-guide.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "scraggane",
+      "name": "Scraggane Bay",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.3056,
+      "lon": -10.0208,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/candeehy-bay-scraggane",
+      "licence": "not-stated",
+      "aliases": ["Candeehy", "Maharees", "Fahamore"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Candeehy Bay (Scraggane)",
+          "url": "https://kitejungle.com/kite-places/ireland/candeehy-bay-scraggane",
+          "lat": 52.3056,
+          "lon": -10.0208,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Scraggane",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.304821,
+          "lon": -10.024124,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Fahamore",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.30491,
+          "lon": -10.025024,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "garrywilliam-point",
+      "name": "Garrywilliam Point",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.3072,
+      "lon": -10.0575,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/gary-william-point",
+      "licence": "not-stated",
+      "aliases": ["Maharees"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Gary William Point",
+          "url": "https://kitejungle.com/kite-places/ireland/gary-william-point",
+          "lat": 52.3072,
+          "lon": -10.0575,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Garry Williams Point",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/dingle-peninsula",
+          "lat": 52.304901,
+          "lon": -10.0613,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Mossies",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.304333,
+          "lon": -10.062017,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Garrywilliam Point",
+          "url": "https://wisuki.com/spot/1842",
+          "lat": 52.306686,
+          "lon": -10.057993,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 4 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, windsurfing.ie, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "banna",
+      "name": "Banna Strand",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.339,
+      "lon": -9.8358,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["kitesurfing", "windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://kitejungle.com/kite-places/ireland/banna-strand",
+      "licence": "not-stated",
+      "aliases": ["Ardfert"],
+      "listings": [
+        {
+          "site": "kitejungle",
+          "name": "Banna Strand",
+          "url": "https://kitejungle.com/kite-places/ireland/banna-strand",
+          "lat": 52.339,
+          "lon": -9.8358,
+          "sports": ["kitesurfing"]
+        },
+        {
+          "site": "kite-and-windsurfing-guide",
+          "name": "Banna Strand",
+          "url": "https://www.kite-and-windsurfing-guide.com/en/continents/countries/regions/west-coast",
+          "lat": 52.338856,
+          "lon": -9.835164,
+          "sports": ["kitesurfing", "windsurfing"]
+        },
+        {
+          "site": "wisuki",
+          "name": "Banna Beach",
+          "url": "https://wisuki.com/spot/1914",
+          "lat": 52.340218,
+          "lon": -9.840041,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 3 spot guides (kitejungle.com, kite-and-windsurfing-guide.com, wisuki.com). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mullaghmore",
+      "name": "Mullaghmore",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.460146,
+      "lon": -8.435357,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://wisuki.com/spot/6200",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "wisuki",
+          "name": "Mullaghmore",
+          "url": "https://wisuki.com/spot/6200",
+          "lat": 54.460146,
+          "lon": -8.435357,
+          "sports": []
+        }
+      ],
+      "note": "Listed on 1 spot guide (wisuki.com). Access and suitability for wingfoiling have not been checked.",
+      "evidence": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Mullaghmore,_County_Sligo",
+          "sports": ["windsurfing"],
+          "what": "Windsurfers rode huge waves off Mullaghmore Head in March 2012"
+        }
+      ]
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aghada",
+      "name": "Aghada — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.843838,
+      "lon": -8.211937,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Cork Harbour"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Aghada",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.843838,
+          "lon": -8.211937,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "annascaul",
+      "name": "Annascaul river mouth",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.135411,
+      "lon": -10.050387,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Inch"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Annascaul Rivermouth",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.135411,
+          "lon": -10.050387,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "blessington",
+      "name": "Blessington Lakes",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.133332,
+      "lon": -6.485281,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lake",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Poulaphouca", "Blessington"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Blessington",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.133332,
+          "lon": -6.485281,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "kona"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "broadmeadows-south",
+      "name": "Broadmeadows Estuary — south shore",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.455732,
+      "lon": -6.167536,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Malahide", "Malahide Estuary"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Broadmeadows Estuary (S)",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.455732,
+          "lon": -6.167536,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "kona"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bunbeg",
+      "name": "Bunbeg Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.0708,
+      "lon": -8.319212,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Gweedore"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Bunbeg Beach",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.0708,
+          "lon": -8.319212,
+          "sports": ["windsurfing"],
+          "disciplines": ["speed"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cahore",
+      "name": "Cahore",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.561952,
+      "lon": -6.195259,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Cahore",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.561952,
+          "lon": -6.195259,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carrickfinn",
+      "name": "Carrickfinn Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.038825,
+      "lon": -8.346896,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Donegal Airport"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Carrickfinn Beach - Donegal Airport",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.038825,
+          "lon": -8.346896,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "clonea",
+      "name": "Clonea Strand",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.10039,
+      "lon": -7.534561,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Clonea"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Clonea",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.10039,
+          "lon": -7.534561,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cunnamore",
+      "name": "Cunnamore Pier",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.503801,
+      "lon": -9.424811,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Roaringwater Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Cunnamore Pier",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.503801,
+          "lon": -9.424811,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "speed"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dooey",
+      "name": "Dooey Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.873424,
+      "lon": -8.381921,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Lettermacaward"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Dooey",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.873424,
+          "lon": -8.381921,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dun-laoghaire",
+      "name": "Dún Laoghaire Harbour",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.295952,
+      "lon": -6.133118,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Dun Laoghaire"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Dún Laoghaire Harbour",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.295952,
+          "lon": -6.133118,
+          "sports": ["windsurfing"],
+          "disciplines": ["fun-community"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunmore-east",
+      "name": "Dunmore East",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.143602,
+      "lon": -6.995544,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Waterford Harbour"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Dunmore East",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.143602,
+          "lon": -6.995544,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "east-ferry",
+      "name": "East Ferry — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.866634,
+      "lon": -8.21228,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Midleton", "Cork Harbour"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "East Ferry",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.866634,
+          "lon": -8.21228,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "speed"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "glin",
+      "name": "Glin — Shannon Estuary",
+      "county": "Limerick",
+      "jurisdiction": "IE",
+      "lat": 52.574642,
+      "lon": -9.281216,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "estuary",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Shannon Estuary"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Glin",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.574642,
+          "lon": -9.281216,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "fun-community"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "liscannor",
+      "name": "Liscannor",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.943673,
+      "lon": -9.372711,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Liscannor Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Liscannor",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.943673,
+          "lon": -9.372711,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mannin-bay",
+      "name": "Mannin Bay",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.441893,
+      "lon": -10.064117,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Ballyconneely", "Connemara"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Mannin Bay",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.441893,
+          "lon": -10.064117,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "marble-hill",
+      "name": "Marble Hill",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.177397,
+      "lon": -7.900972,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Sheephaven Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Marble Hill",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.177397,
+          "lon": -7.900972,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mountcharles",
+      "name": "Mountcharles Pier",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.6391,
+      "lon": -8.188953,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Donegal Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Mountcharles Pier",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.6391,
+          "lon": -8.188953,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "murvagh",
+      "name": "Murvagh Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.600679,
+      "lon": -8.16284,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Donegal Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Murvagh Beach",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.600679,
+          "lon": -8.16284,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "oysterhaven",
+      "name": "Oysterhaven",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.701722,
+      "lon": -8.438202,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Kinsale"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Oysterhaven",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.701722,
+          "lon": -8.438202,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom", "school"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "port-arthur",
+      "name": "Port Arthur",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.101822,
+      "lon": -8.316531,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Gweedore"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Port Arthur",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.101822,
+          "lon": -8.316531,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portrush",
+      "name": "Portrush",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.206206,
+      "lon": -6.639519,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": [],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Portrush",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 55.206206,
+          "lon": -6.639519,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "tracht",
+      "name": "Traught Beach — Kinvara",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.171884,
+      "lon": -8.985786,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Tracht", "Kinvara"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Tracht",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 53.171884,
+          "lon": -8.985786,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "tyrella",
+      "name": "Tyrella",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.251587,
+      "lon": -5.742416,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Dundrum Bay"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "Tyrella",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 54.251587,
+          "lon": -5.742416,
+          "sports": ["windsurfing"],
+          "disciplines": ["wave", "freestyle"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lough-derg-killaloe",
+      "name": "Lough Derg — Killaloe",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.83971,
+      "lon": -8.46768,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "lake",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Ballycuggeran", "Two Mile Gate", "Killaloe"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "University of Limerick",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 52.83971,
+          "lon": -8.46768,
+          "sports": ["windsurfing"],
+          "disciplines": ["kona", "school"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-09-30",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "white-strand-kerry",
+      "name": "White Strand — Cahersiveen",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 51.94445,
+      "lon": -10.275607,
+      "kind": "spot",
+      "coordinateType": "guide-map-marker",
+      "waterType": "sea",
+      "sports": ["windsurfing"],
+      "sportsEvidence": "spot-guide-listing",
+      "sourceUrl": "https://windsurfing.ie/locations",
+      "licence": "not-stated",
+      "aliases": ["Cahersiveen"],
+      "listings": [
+        {
+          "site": "irish-windsurfing-association",
+          "name": "White Strand",
+          "url": "https://windsurfing.ie/locations",
+          "lat": 51.94445,
+          "lon": -10.275607,
+          "sports": ["windsurfing"],
+          "disciplines": ["slalom"]
+        }
+      ],
+      "note": "Listed on 1 spot guide (windsurfing.ie). Access and suitability for wingfoiling have not been checked."
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 import failte from "../data/locations/failte-ireland.json";
 import osm from "../data/locations/openstreetmap.json";
 import web from "../data/locations/web-research.json";
+import guides from "../data/locations/spot-guides.json";
+import shore from "../data/locations/shore-facing.json";
 import type { Spot } from "../force5/src/weather";
 
 export const locationKindLabel = (kind: Spot["kind"]) =>
@@ -35,11 +37,24 @@ export function ridingLocations(original: Spot[]): Spot[] {
           kind: "spot",
           website: undefined,
           aliases: [...(spot.aliases || []), spot.name],
+          facing: shoreFacing(place.id),
         },
       ];
     if (spot.kind !== "spot") return [];
-    return [{ ...spot, website: undefined }];
+    return [{ ...spot, website: undefined, facing: shoreFacing(spot.id) }];
   });
+}
+
+/**
+ * The seaward bearing the stars rate a place's shore against: a hand
+ * correction where there is one, else the computed facing where it was clear
+ * enough to publish, else null and the place is rated on the wind alone.
+ */
+export function shoreFacing(id: string): number | null {
+  const overrides: Record<string, number | null> = shore.overrides;
+  if (id in overrides) return overrides[id];
+  const places: Record<string, { facing: number | null }> = shore.places;
+  return places[id]?.facing ?? null;
 }
 
 /**
@@ -65,7 +80,12 @@ export function mergeLocations(original: Spot[]): Spot[] {
     ...spot,
     kind: spot.kind || ("spot" as const),
   }));
-  for (const row of [...failte.records, ...osm.records, ...web.records]) {
+  for (const row of [
+    ...failte.records,
+    ...osm.records,
+    ...web.records,
+    ...guides.records,
+  ]) {
     const source = {
       name: row.name,
       url: row.sourceUrl,
@@ -73,11 +93,25 @@ export function mergeLocations(original: Spot[]): Spot[] {
       lat: row.lat,
       lon: row.lon,
     };
+    // A place several guides list keeps every listing, each with its own pin.
+    const sources =
+      "listings" in row
+        ? row.listings.map((listing) => ({
+            name: listing.name,
+            url: listing.url,
+            licence: row.licence,
+            lat: listing.lat,
+            lon: listing.lon,
+          }))
+        : [source];
     const existing = result.find(
       (spot) => spot.id === (existingIds[row.id] || row.id),
     );
     if (existing) {
-      existing.locationSources = [...(existing.locationSources || []), source];
+      existing.locationSources = [
+        ...(existing.locationSources || []),
+        ...sources,
+      ];
       existing.aliases = [...(existing.aliases || []), row.name];
       if ("website" in row && row.website) existing.website = row.website;
       existing.sports = [
@@ -97,7 +131,7 @@ export function mergeLocations(original: Spot[]): Spot[] {
       website: "website" in row && row.website ? row.website : undefined,
       sports: row.sports,
       note: `${locationKindLabel(kind)}. Source-listed coordinate, not a verified launch. ${"note" in row ? row.note : "Access and suitability for wingfoiling have not been checked."}`,
-      locationSources: [source],
+      locationSources: sources,
     });
   }
   return result;
