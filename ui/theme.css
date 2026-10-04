@@ -51,6 +51,7 @@
 @source "../market/web";
 @source "../community/web";
 @source "../ai/web";
+@source "../intro/web";
 /* The site menu, which every bundle draws, is written in utilities too. Its
    one file, not force5/src: that is the map's own code, and unscanned. */
 @source "../force5/src/SiteMenu.tsx";
@@ -97,6 +98,8 @@
   --color-sunken: #e1e8f3;
   --color-inverse: #0b2545;
   --color-scrim: #0a1f3c73;
+  /* The opening film's black: its letterbox, and the dark it fades up from. */
+  --color-film: #000;
 
   /* The basemap's own two fills, painted over the third-party style from TS
      (force5/src/WindMap.tsx). `sea` above is a different job: it is the ground
@@ -192,6 +195,11 @@
   --text-title--letter-spacing: -0.7px;
   --text-reading: 48px;
   --text-reading--line-height: 1.3;
+  /* The name over the opening film's last shot, and nowhere else. */
+  --text-display: 76px;
+  --text-display--line-height: 1;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -2.5px;
 
   /* The three leadings, for the few places a step's own is not the one wanted:
      a card's title takes the prose size at the tight leading. `leading-none`
@@ -265,11 +273,15 @@
 
   --transition-duration-fast: 150ms;
   --transition-duration-base: 250ms;
+  /* The opening film's titles coming up, and the film giving way to the map. */
+  --transition-duration-slow: 900ms;
 
   --z-index-popover: 6;
   --z-index-panel: 15;
   --z-index-header: 20;
   --z-index-dialog: 30;
+  /* The opening film covers everything, dialogs included, until it is done. */
+  --z-index-intro: 40;
 
   /* A placeholder breathing while its content loads, a dialog arriving, and
      a panel dropping from the control that opened it. */
