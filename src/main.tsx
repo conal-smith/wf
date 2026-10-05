@@ -30,8 +30,9 @@ const isCommunity = isCommunityPath(window.location.pathname);
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const isAi = isAiPath(window.location.pathname);
 
-// A riding place's own page, at /spot/<id>: a fifth bundle, split off the same
-// way. It reads the forecast's pure modules and never the map.
+// A riding place's own page, at /spot/<id>, and "How the stars work" at
+// /stars: a fifth bundle, split off the same way (isSpotPath matches both). It
+// reads the forecast's pure modules and never the map.
 const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
 const isSpot = isSpotPath(window.location.pathname);
 

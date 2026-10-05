@@ -460,9 +460,15 @@ function DayBody({
             )}
           </td>
           <td className={s.cell({ className: s.sky() })}>
-            {hour.weather && <SkyGlyph weather={hour.weather} />}
-            {hour.weather?.air_c != null && (
-              <span className={s.air()}>{hour.weather.air_c}°</span>
+            {hour.weather ? (
+              <>
+                <SkyGlyph weather={hour.weather} />
+                {hour.weather.air_c != null && (
+                  <span className={s.air()}>{hour.weather.air_c}°</span>
+                )}
+              </>
+            ) : (
+              <span className={s.muted()}>–</span>
             )}
           </td>
           <td className={s.cell({ className: s.rides() })} data-chance>
