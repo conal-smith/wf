@@ -15,6 +15,7 @@ import {
   type RideStop,
 } from "./chartStyle";
 import { createLights, type LightState, type Lights } from "./lights";
+import { MASK_BOUNDS, MASK_PATH, addIrelandMask } from "./irelandMask";
 import { drawNeatline } from "./neatline";
 import { createWindLayer, type WindLayer, type WindStyle } from "./windLayer";
 import type { Frame, Spot } from "./weather";
@@ -105,8 +106,7 @@ function seaward(spot: Spot, metres = 500): [number, number] {
   const a = (spot.facing * Math.PI) / 180;
   return [
     spot.lon +
-      (metres * Math.sin(a)) /
-        (111320 * Math.cos((spot.lat * Math.PI) / 180)),
+      (metres * Math.sin(a)) / (111320 * Math.cos((spot.lat * Math.PI) / 180)),
     spot.lat + (metres * Math.cos(a)) / 111320,
   ];
 }
@@ -119,7 +119,8 @@ function nearestPlace(map: maplibregl.Map, lon: number, lat: number) {
     for (const f of map.querySourceFeatures("omt", { sourceLayer: "place" })) {
       if (f.geometry.type !== "Point") continue;
       const cls = f.properties?.class;
-      if (!["city", "town", "village", "hamlet", "suburb"].includes(cls)) continue;
+      if (!["city", "town", "village", "hamlet", "suburb"].includes(cls))
+        continue;
       const [x, y] = f.geometry.coordinates;
       const km = Math.hypot(
         (x - lon) * 111.32 * Math.cos((lat * Math.PI) / 180),
@@ -210,10 +211,8 @@ export default function WindMap(props: Props) {
         fitBoundsOptions: { padding: 20 },
         minZoom: 4.5,
         maxZoom: 14,
-        maxBounds: [
-          [-18, 47],
-          [2, 60],
-        ],
+        // Ireland alone: the camera stays over the mask (irelandMask.ts).
+        maxBounds: MASK_BOUNDS,
         pitchWithRotate: false,
         dragRotate: false,
         touchPitch: false,
@@ -262,7 +261,8 @@ export default function WindMap(props: Props) {
     zoomClass();
     let basemapLoaded = false;
     map.on("sourcedata", (event) => {
-      if (event.sourceId === "omt" && event.isSourceLoaded) basemapLoaded = true;
+      if (event.sourceId === "omt" && event.isSourceLoaded)
+        basemapLoaded = true;
     });
     map.on("error", (event) => {
       const source = (event as unknown as { sourceId?: string }).sourceId;
@@ -303,6 +303,14 @@ export default function WindMap(props: Props) {
           washBefore: "relief",
         });
       }
+      // Everything beyond Ireland's waters, in the colour of the open sea.
+      addIrelandMask(
+        map,
+        new URL(`${import.meta.env.BASE_URL}${MASK_PATH}`, window.location.href)
+          .href,
+        colours.tints[colours.tints.length - 1],
+        (at) => windRef.current?.setClip(at),
+      );
       // A tap on the open map reads that point's forecast, after a moment's
       // wait for a second tap: a double tap zooms and picks nothing.
       let pending = 0;
@@ -314,7 +322,11 @@ export default function WindMap(props: Props) {
         if (event.originalEvent.detail > 1) return;
         const { lng, lat } = event.lngLat;
         pending = window.setTimeout(() => {
-          latest.current.onPick({ lon: lng, lat, place: nearestPlace(map, lng, lat) });
+          latest.current.onPick({
+            lon: lng,
+            lat,
+            place: nearestPlace(map, lng, lat),
+          });
         }, 300);
       });
       map.on("dblclick", cancelPick);
@@ -492,7 +504,11 @@ export default function WindMap(props: Props) {
     }
     map.setPaintProperty("places", "text-opacity", spot ? 0.3 : 0.8);
     map.setPaintProperty("water-names", "text-opacity", spot ? 0.35 : 1);
-    map.setLayoutProperty("places-near", "visibility", spot ? "visible" : "none");
+    map.setLayoutProperty(
+      "places-near",
+      "visibility",
+      spot ? "visible" : "none",
+    );
     map.on("zoomend", paint);
     return () => {
       clearTimeout(hide);
@@ -606,7 +622,8 @@ export default function WindMap(props: Props) {
       const bottom = view.bottom - latest.current.bottomInset - 16;
       const left = view.left + 12;
       const right =
-        view.right - (latest.current.phone ? 12 : latest.current.rightInset + 24);
+        view.right -
+        (latest.current.phone ? 12 : latest.current.rightInset + 24);
       const dx =
         card.left < left
           ? card.left - left

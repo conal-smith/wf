@@ -58,6 +58,11 @@ export interface WindLayer {
   setStyle(style: WindStyle): void;
   setStops(stops: readonly RideStop[]): void;
   setPaused(paused: boolean): void;
+  /**
+   * Where the chart hides the sea (force5/src/irelandMask.ts): 0 clear to 1
+   * hidden. The lines stop where it is more than half hidden.
+   */
+  setClip(clip: ((lng: number, lat: number) => number) | null): void;
   /** Particles drawn in the last frame, for tests and the perf probe. */
   readonly drawn: number;
   destroy(): void;
@@ -87,6 +92,7 @@ export function createWindLayer(
   let stops: readonly RideStop[] = [];
   let colours: string[][] = [];
   let paused = false;
+  let clip: ((lng: number, lat: number) => number) | null = null;
   let destroyed = false;
   let width = 0,
     height = 0,
@@ -150,7 +156,11 @@ export function createWindLayer(
         const ll = map.unproject([x * STEP, y * STEP]);
         const w = sample(frame, ll.lng, ll.lat);
         const i = (y * fw + x) * 3;
-        if (!w || !Number.isFinite(w.u + w.v)) {
+        if (
+          !w ||
+          !Number.isFinite(w.u + w.v) ||
+          (clip && clip(ll.lng, ll.lat) > 0.5)
+        ) {
           f[i] = NaN;
           continue;
         }
@@ -190,7 +200,10 @@ export function createWindLayer(
       w11 = ax * ay;
     for (let k = 0; k < 3; k++)
       out[k] =
-        f[i00 + k] * w00 + f[i10 + k] * w10 + f[i01 + k] * w01 + f[i11 + k] * w11;
+        f[i00 + k] * w00 +
+        f[i10 + k] * w10 +
+        f[i01 + k] * w01 +
+        f[i11 + k] * w11;
     return true;
   };
 
@@ -272,7 +285,8 @@ export function createWindLayer(
   let unmasked = "";
   let retries = 0;
   let washTimer = 0;
-  const washSource = () => map.getSource("wind-wash") as ImageSource | undefined;
+  const washSource = () =>
+    map.getSource("wind-wash") as ImageSource | undefined;
 
   /** The sea, as the basemap's water polygons drawn into the image's pixels. */
   const seaMask = (
@@ -362,7 +376,8 @@ export function createWindLayer(
       );
     for (let y = 0; y < h; y++) {
       const lat =
-        (2 * Math.atan(Math.exp(yN + ((yS - yN) * (y + 0.5)) / h)) - Math.PI / 2) *
+        (2 * Math.atan(Math.exp(yN + ((yS - yN) * (y + 0.5)) / h)) -
+          Math.PI / 2) *
         (180 / Math.PI);
       for (let x = 0; x < w; x++) {
         const lng = nw.lng + ((se.lng - nw.lng) * (x + 0.5)) / w;
@@ -472,6 +487,10 @@ export function createWindLayer(
         raf = 0;
         ctx.clearRect(0, 0, width, height);
       } else restart();
+    },
+    setClip(next) {
+      clip = next;
+      restart();
     },
     get drawn() {
       return drawn;
