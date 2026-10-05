@@ -732,45 +732,6 @@ export default function App() {
       ) : (
         <main className="workspace">
           <section className="map-panel" aria-label="Wind chart">
-            <WindMap
-              frame={frame}
-              spots={spots}
-              lights={lights}
-              named={named}
-              lightLabel={lightLabel}
-              selectedId={point?.id ?? null}
-              focusId={focusId}
-              windStyle={windStyle}
-              rideStops={rideStops}
-              layers={layers}
-              reducedMotion={reducedMotion}
-              bottomInset={dockHeight + (phone ? 54 : 0)}
-              rightInset={phone ? 0 : SIDE_INSET}
-              phone={phone}
-              penNote={point && focusId === point.id ? penNote : null}
-              onSelect={(spot) => selectSpot(spot)}
-              onOpenMapClick={clearFocus}
-              onReady={(c) => {
-                controls.current = c;
-                setMapReady(!!c);
-              }}
-              popup={
-                point && popupOpen ? (
-                  <SpotCard
-                    spot={point}
-                    time={column?.time ?? null}
-                    hour={popupHour}
-                    tide={popupTide}
-                    starred={starred.includes(point.id)}
-                    onToggleStar={() => fav.toggle(point.id)}
-                    onClose={() => setPopupOpen(false)}
-                    rider={rider}
-                    units={prefs.units}
-                  />
-                ) : null
-              }
-              onPopupClose={() => setPopupOpen(false)}
-            />
             <MapHead
               spots={spots}
               starred={starred}
@@ -819,6 +780,47 @@ export default function App() {
                 sources={sources}
               />
             }
+            {/* After the boxes: the keys reach the menu, the search and the
+                controls before the lights. */}
+            <WindMap
+              frame={frame}
+              spots={spots}
+              lights={lights}
+              named={named}
+              lightLabel={lightLabel}
+              selectedId={point?.id ?? null}
+              focusId={focusId}
+              windStyle={windStyle}
+              rideStops={rideStops}
+              layers={layers}
+              reducedMotion={reducedMotion}
+              bottomInset={dockHeight + (phone ? 54 : 0)}
+              rightInset={phone ? 0 : SIDE_INSET}
+              phone={phone}
+              penNote={point && focusId === point.id ? penNote : null}
+              onSelect={(spot) => selectSpot(spot)}
+              onOpenMapClick={clearFocus}
+              onReady={(c) => {
+                controls.current = c;
+                setMapReady(!!c);
+              }}
+              popup={
+                point && popupOpen ? (
+                  <SpotCard
+                    spot={point}
+                    time={column?.time ?? null}
+                    hour={popupHour}
+                    tide={popupTide}
+                    starred={starred.includes(point.id)}
+                    onToggleStar={() => fav.toggle(point.id)}
+                    onClose={() => setPopupOpen(false)}
+                    rider={rider}
+                    units={prefs.units}
+                  />
+                ) : null
+              }
+              onPopupClose={() => setPopupOpen(false)}
+            />
             {(status || (loading && frame)) && (
               <div
                 className={`frame-status chart-box${modelError || frameError ? " is-error" : ""}`}

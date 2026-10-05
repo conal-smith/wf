@@ -267,6 +267,8 @@ const StripTable = memo(function StripTable({
                     time={column.time}
                     facing={facing}
                     rider={rider}
+                    size={cw < 60 ? 8.6 : 9.5}
+                    slots="potential"
                   />
                 ) : null,
               )}

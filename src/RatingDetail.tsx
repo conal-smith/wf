@@ -102,12 +102,15 @@ export function HourStars({
   facing,
   rider,
   size = 9.5,
+  slots = "five",
 }: {
   hour: PlaceHour | undefined;
   time: number;
   facing: number | null;
   rider: Rider;
   size?: number;
+  /** "potential" stops at the last faded star, for a narrow cell. */
+  slots?: "five" | "potential";
 }) {
   const r = hour?.rating;
   if (!hour || !r) return null;
@@ -122,7 +125,12 @@ export function HourStars({
         <RatingDetail hour={hour} time={time} facing={facing} rider={rider} />
       }
     >
-      <StarGlyphs stars={r.stars} potential={r.potential} size={size} />
+      <StarGlyphs
+        stars={r.stars}
+        potential={r.potential}
+        size={size}
+        slots={slots}
+      />
     </StarTip>
   );
 }
