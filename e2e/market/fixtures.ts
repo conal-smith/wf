@@ -429,6 +429,11 @@ export const test = base.extend<{ baseline: Baseline; shoot: Shoot }>({
         await pinMemberSince(page);
         await prepare(page);
         await settle(page);
+        // Off the page, so nothing is left under it. A tap or a click leaves
+        // the pressed control hovered, and a full-page shot re-emulates the
+        // window without touch: the kit's mouse-only hover then matches, and
+        // a tapped pill would be shot inked as no phone ever draws it.
+        await page.mouse.move(-10, -10);
         await page.screenshot({
           path: `${BASELINE}/${view}-${width}.png`,
           fullPage: !options.viewportOnly,
