@@ -1,3 +1,9 @@
+// The map's own stylesheets, in its chunk: src/main.tsx lazy-loads this file,
+// and the other sections never ask for MapLibre's CSS or the chart's.
+import "maplibre-gl/dist/maplibre-gl.css";
+import "./map.css";
+import "./dock.css";
+import "./panels.css";
 import {
   lazy,
   Suspense,
@@ -24,11 +30,7 @@ import SidePanel, { type SideTab } from "./SidePanel";
 import SpotCard from "./SpotCard";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
-import {
-  useMarineModels,
-  useModelAvailability,
-  useSpotTide,
-} from "./useBlend";
+import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
 import { usePointSeries } from "./usePointSeries";
 import {
@@ -577,7 +579,11 @@ export default function App() {
     if (fly) controls.current?.flyTo(spot);
   };
   /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
-  const pickPoint = (at: { lon: number; lat: number; place: string | null }) => {
+  const pickPoint = (at: {
+    lon: number;
+    lat: number;
+    place: string | null;
+  }) => {
     const coords = degrees(at.lat, at.lon);
     setPicked({
       lon: at.lon,
@@ -1033,7 +1039,8 @@ export default function App() {
         <Suspense fallback={null}>
           <Companion
             context={{
-              spot: point && !picked ? { id: point.id, name: point.name } : null,
+              spot:
+                point && !picked ? { id: point.id, name: point.name } : null,
               time: selectedTime,
               rider: prefs.rider,
             }}

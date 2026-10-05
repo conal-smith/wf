@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 /**
  * The three apps on this origin must not reach each other.
  *
- * `src/main.tsx` picks the wind map, the marketplace or the community from the
- * pathname and lazy-loads the latter two, so the map never pays for them and
- * they never pay for MapLibre, nor for each other. The shared site menu is the
+ * `src/main.tsx` picks the wind map, the marketplace, the community, the AI
+ * page or the spot page from the pathname and loads each with a dynamic
+ * import, so none pays for another: the map never pays for them, and they
+ * never pay for MapLibre. The shared site menu is the
  * one piece of code all three import, and a single careless
  * `from "../force5/src"` in it — the barrel, which exports `WindMap` — would
  * quietly pull the whole map into the marketplace chunk and the community's.
@@ -170,8 +171,11 @@ describe("the community bundle", () => {
   });
 });
 
-describe("the map bundle", () => {
-  it("reaches the marketplace only through the lazy import in main.tsx", () => {
+describe("the entry point", () => {
+  // src/main.tsx is what every path downloads first, so it carries the base
+  // and the path test and nothing else: each section, the map included, is a
+  // dynamic import of its own.
+  it("reaches the marketplace only through the lazy import", () => {
     const graph = staticGraph("src/main.tsx");
     expect([...graph].filter((m) => m.startsWith("market/web/"))).toEqual([]);
     // The one line that does cross, and it is a dynamic import.
@@ -188,8 +192,42 @@ describe("the map bundle", () => {
     );
   });
 
-  it("still reaches MapLibre, so the check above is about something", () => {
-    expect(staticGraph("src/main.tsx")).toContain("maplibre-gl");
+  // A spot page, /stars and /ai must not download the map's 1.6 MB: the map
+  // is imported, not linked, and only on its own paths.
+  it("does not statically reach the map, MapLibre or the map's app", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect([...graph].filter((m) => m === "src/App.tsx")).toEqual([]);
+    expect(reached("src/main.tsx", "force5/src/index.ts")).toEqual([]);
+    expect(reached("src/main.tsx", "WindMap")).toEqual([]);
+    expect(reached("src/main.tsx", "maplibre-gl")).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /import\("\.\/App"\)/,
+    );
+  });
+
+  it("still reaches the base and the path test, so the check above is about something", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect(graph).toContain("src/styles.css");
+    expect(graph).toContain("ui/theme.css");
+    expect(graph).toContain("force5/src/siteNav.ts");
+  });
+});
+
+describe("the map bundle", () => {
+  const ENTRY = "src/App.tsx";
+
+  it("reaches none of the other sections", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter((m) =>
+        /^(market|community|spot|ai)\//.test(m),
+      ),
+    ).toEqual([]);
+  });
+
+  it("still reaches MapLibre and its stylesheet, so the checks above are about something", () => {
+    const graph = staticGraph(ENTRY);
+    expect(graph).toContain("maplibre-gl");
+    expect(graph).toContain("src/map.css");
   });
 });
 

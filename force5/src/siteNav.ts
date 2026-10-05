@@ -72,6 +72,19 @@ export function isSpotPath(pathname: string): boolean {
   return SPOT_PATH.test(pathname);
 }
 
+/**
+ * Every path that `src/main.tsx` splits off from the map: everything else is
+ * the map's. The build's preload hint for the map's chunk (vite.config.ts)
+ * reads this list, so the hint and the entry point agree on which paths are
+ * the map's; a new section with a bundle of its own goes in it.
+ */
+export const OWN_BUNDLE_PATHS: readonly RegExp[] = [
+  MARKET_PATH,
+  COMMUNITY_PATH,
+  AI_PATH,
+  SPOT_PATH,
+];
+
 /** "How the stars work": the spot bundle's other page. */
 export const STARS_HREF = "/stars";
 
