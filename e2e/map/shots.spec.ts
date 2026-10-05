@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "../fixtures";
+import { sampleStrip } from "../columns";
 
 /**
  * The map's visual baseline: one PNG per state per width, committed.
@@ -171,6 +172,50 @@ for (const { width, height } of [
       await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
       await page.getByRole("slider", { name: "Forecast time" }).fill("12");
       await shoot(page, "dock", width);
+    });
+
+    test("the dock's waves, sky and sea", async ({ page }) => {
+      await openMap(page);
+      if (phone) await page.locator(".dock-grab").click();
+      await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+      await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
+      // Inside the sample's weather run, which starts three days on.
+      const noon = sampleStrip.findIndex((c) => c.date === "2026-09-17" && c.hour >= 12);
+      await page.getByRole("slider", { name: "Forecast time" }).fill(String(noon));
+      await expect(page.locator(".dock tr.tt-sky .weather-cell").first()).toBeVisible();
+      await shoot(page, "dock-more", width);
+    });
+
+    test("a point tapped on the map", async ({ page }) => {
+      await openMap(page);
+      const box = (await page.locator(".maplibregl-canvas").boundingBox())!;
+      const at = await page.evaluate((box) => {
+        for (let y = 300; y < box.height - 360; y += 30)
+          for (let x = 700; x > 120; x -= 30) {
+            // The basemap is hidden here, so what is under the point is the
+            // map's own container, not its canvas.
+            const hit = document.elementFromPoint(box.x + x, box.y + y);
+            if (
+              hit?.closest(".map-canvas") &&
+              !hit.closest(".spot-marker, .maplibregl-marker")
+            )
+              return { x, y };
+          }
+        return { x: 300, y: 300 };
+      }, box);
+      // The tap needs the canvas under it; it is hidden again for the shot.
+      const canvas = page.locator(".maplibregl-canvas");
+      await canvas.evaluate((el) => ((el as HTMLElement).style.visibility = "visible"));
+      await canvas.click({ position: at });
+      await canvas.evaluate((el) => ((el as HTMLElement).style.visibility = ""));
+      await expect(page.locator(".pick-mark")).toHaveCount(1);
+      if (phone) await page.locator(".dock-grab").click();
+      await expect
+        .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
+          timeout: 30000,
+        })
+        .toBeGreaterThan(5);
+      await shoot(page, "point", width);
     });
 
     test("the dock's blend", async ({ page }) => {

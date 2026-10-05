@@ -157,7 +157,13 @@ test("the strip and the slider move together, by swipe, wheel, drag and key", as
     .locator(".dock tr.tt-hour td[data-i]")
     .first()
     .evaluate((td) => td.getBoundingClientRect().width);
-  await wrap.evaluate((el, left) => el.scrollTo({ left }), cw * 20);
+  // Column 20 under the cursor: its offset from the first column's.
+  const to = await wrap.evaluate((el) => {
+    const at = (i: number) =>
+      (el.querySelector(`tr.tt-hour td[data-i="${i}"]`) as HTMLElement).offsetLeft;
+    return at(20) - at(0);
+  });
+  await wrap.evaluate((el, left) => el.scrollTo({ left }), to);
   await expect(slider(page)).toHaveValue("20");
   await expect(
     page.locator('.dock tr.tt-hour td[data-i="20"]'),
@@ -586,4 +592,91 @@ test("a failed background check leaves the forecast alone and says nothing", asy
   await expect(page.locator(".frame-status")).toHaveCount(0);
   await expect(slider(page)).toHaveAttribute("aria-valuetext", showing);
   expect(errors).toEqual([]);
+});
+
+test("the strip runs fifteen days, the coarser far ones in narrower columns", async ({
+  page,
+}) => {
+  await openDock(page);
+  const dates = [...new Set(sampleStrip.map((c) => c.date))];
+  expect(dates).toHaveLength(15);
+  await expect(page.locator(".sc-day")).toHaveCount(15);
+  await slider(page).press("End");
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`^\\w+ \\d\\d:00$`),
+  );
+  const last = page.locator(
+    `.dock tr.tt-hour td[data-i="${sampleStrip.length - 1}"]`,
+  );
+  await expect(last).toHaveClass(/c-sel/);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  const widths = await page
+    .locator(".dock tr.tt-hour td[data-i]")
+    .evaluateAll((tds) => tds.map((td) => td.getBoundingClientRect().width));
+  expect(Math.min(...widths)).toBeLessThan(Math.max(...widths));
+  expect(widths[0]).toBeCloseTo(Math.max(...widths), 0);
+});
+
+test("play steps the cursor and the lights through the hours, and stops at a touch", async ({
+  page,
+}) => {
+  await openDock(page);
+  await slider(page).fill("2");
+  const play = page.getByRole("button", { name: "Play forecast" });
+  await play.click();
+  await expect(
+    page.getByRole("button", { name: "Pause forecast" }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => Number(await slider(page).inputValue()), {
+      timeout: 8000,
+    })
+    .toBeGreaterThan(3);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  const light = await page
+    .locator('[data-spot-id="brandon"]')
+    .getAttribute("aria-label");
+  expect(light).toMatch(/\d\d:00/);
+  // A touch anywhere takes the hours back.
+  await page.locator(".dk-name").click();
+  await expect(play).toBeVisible();
+  const held = await slider(page).inputValue();
+  await page.waitForTimeout(1500);
+  await expect(slider(page)).toHaveValue(held);
+});
+
+test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
+  page,
+}) => {
+  await openDock(page);
+  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+  for (const row of ["waves", "sky", "air", "rain", "sea"])
+    await expect(page.locator(`.dock tr.tt-${row}`)).toHaveCount(1);
+  // The sample's wave run is a short one: a few hours have a sea state.
+  await expect
+    .poll(() => page.locator(".dock tr.tt-waves .wave-cell b").count(), {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(0);
+  await expect(page.locator(".dock tr.tt-waves .wave-cell b").first()).toHaveText(
+    /^\d+\.\d$/,
+  );
+  // The sample's weather run starts three days on: its hours, and dashes before.
+  await expect
+    .poll(() => page.locator(".dock tr.tt-air td").filter({ hasText: /\d+°/ }).count())
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() => page.locator(".dock tr.tt-sky .weather-cell").count())
+    .toBeGreaterThan(0);
+  await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
+    /^(–|\d+(\.\d)?)$/,
+  );
+  await page.reload();
+  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1, {
+    timeout: 30000,
+  });
+  await page.getByRole("button", { name: "Hide waves, sky and sea" }).click();
+  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
 });

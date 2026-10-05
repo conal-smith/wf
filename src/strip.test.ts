@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  columnAtX,
   dayBest,
+  stripGeometry,
   nearestColumn,
   openingColumn,
   stripColumns,
@@ -17,8 +19,8 @@ describe("stripColumns", () => {
   // 5 October 2026 is a Monday in Irish summer time (UTC+1).
   const now = Date.parse("2026-10-05T10:20:00Z");
 
-  it("keeps 07:00–20:00 Irish time for seven days", () => {
-    const strip = stripColumns(hours("2026-10-05T00:00:00Z", 24 * 9), now);
+  it("keeps 07:00–20:00 Irish time, for as many days as it is asked", () => {
+    const strip = stripColumns(hours("2026-10-05T00:00:00Z", 24 * 9), now, 7);
     const days = stripDays(strip);
     expect(days).toHaveLength(7);
     expect(days[0].date).toBe("2026-10-05");
@@ -64,5 +66,24 @@ describe("dayBest", () => {
       to: 2,
       stars: 3,
     });
+  });
+});
+
+describe("stripGeometry", () => {
+  it("narrows the coarse columns, and finds a column by its centre", () => {
+    const strip = stripColumns(
+      [
+        ...hours("2026-10-05T00:00:00Z", 24),
+        ...hours("2026-10-06T00:00:00Z", 8, 3),
+      ],
+      Date.parse("2026-10-05T10:00:00Z"),
+    );
+    const g = stripGeometry(strip, 60, 48);
+    expect(g.w.slice(0, 14).every((w) => w === 60)).toBe(true);
+    expect(g.w.slice(14).every((w) => w === 48)).toBe(true);
+    expect(g.total).toBe(14 * 60 + 5 * 48);
+    expect(columnAtX(g, 0)).toBe(0);
+    expect(columnAtX(g, 14 * 60 + 24)).toBe(14);
+    expect(columnAtX(g, g.total)).toBe(strip.length - 1);
   });
 });

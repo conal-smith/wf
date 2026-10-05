@@ -53,8 +53,12 @@ type Props = {
   named: ReadonlySet<string>;
   lightLabel: (spot: Spot, state: LightState | undefined) => string;
   selectedId: string | null;
-  /** The spot everything else goes quiet around, or null. */
-  focusId: string | null;
+  /** Where everything else goes quiet around (a spot or a tapped point), or null. */
+  focus: { lon: number; lat: number } | null;
+  /** Where the pen rings and writes: the chosen spot or point. */
+  mark: { lon: number; lat: number } | null;
+  /** A point tapped on the open map, marked where it was tapped. */
+  picked: { lon: number; lat: number } | null;
   windStyle: WindStyle;
   rideStops: readonly RideStop[];
   layers: ChartLayers;
@@ -66,8 +70,8 @@ type Props = {
   /** The pen's verdict beside the selected light, or null for none. */
   penNote: string | null;
   onSelect: (spot: Spot) => void;
-  /** A tap on the open map: the page clears its focus and closes the popup. */
-  onOpenMapClick: () => void;
+  /** A tap on the open map, not a light: the point, and the nearest place's name. */
+  onPick: (point: { lon: number; lat: number; place: string | null }) => void;
   onReady: (controls: MapControls | null) => void;
   /** The popup's content, hung on the selected spot, or null for none. */
   popup: ReactNode | null;
@@ -107,6 +111,32 @@ function seaward(spot: Spot, metres = 500): [number, number] {
   ];
 }
 
+/** The nearest town or village to a point, within a few kilometres, or null. */
+function nearestPlace(map: maplibregl.Map, lon: number, lat: number) {
+  let best: string | null = null;
+  let distance = 6;
+  try {
+    for (const f of map.querySourceFeatures("omt", { sourceLayer: "place" })) {
+      if (f.geometry.type !== "Point") continue;
+      const cls = f.properties?.class;
+      if (!["city", "town", "village", "hamlet", "suburb"].includes(cls)) continue;
+      const [x, y] = f.geometry.coordinates;
+      const km = Math.hypot(
+        (x - lon) * 111.32 * Math.cos((lat * Math.PI) / 180),
+        (y - lat) * 110.57,
+      );
+      const name = f.properties?.["name:en"] ?? f.properties?.name;
+      if (km < distance && typeof name === "string") {
+        distance = km;
+        best = name;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return best;
+}
+
 export default function WindMap(props: Props) {
   const {
     frame,
@@ -114,7 +144,9 @@ export default function WindMap(props: Props) {
     lights,
     named,
     selectedId,
-    focusId,
+    focus,
+    mark,
+    picked,
     windStyle,
     rideStops,
     layers,
@@ -271,10 +303,24 @@ export default function WindMap(props: Props) {
           washBefore: "relief",
         });
       }
+      // A tap on the open map reads that point's forecast, after a moment's
+      // wait for a second tap: a double tap zooms and picks nothing.
+      let pending = 0;
+      const cancelPick = () => window.clearTimeout(pending);
       map.on("click", (event) => {
+        cancelPick();
         const target = event.originalEvent.target as HTMLElement | null;
         if (target?.closest(".spot-marker, .maplibregl-popup")) return;
-        latest.current.onOpenMapClick();
+        if (event.originalEvent.detail > 1) return;
+        const { lng, lat } = event.lngLat;
+        pending = window.setTimeout(() => {
+          latest.current.onPick({ lon: lng, lat, place: nearestPlace(map, lng, lat) });
+        }, 300);
+      });
+      map.on("dblclick", cancelPick);
+      map.on("movestart", (event) => {
+        // A drag cancels the tap; the camera's own flights do not.
+        if ((event as { originalEvent?: Event }).originalEvent) cancelPick();
       });
       setReady(true);
       latest.current.onReady({
@@ -386,7 +432,7 @@ export default function WindMap(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const spot = focusId ? spots.find((s) => s.id === focusId) : undefined;
+    const spot = focus;
     map.getContainer().classList.toggle("is-focus", !!spot);
     const radius = () => {
       if (!spot) return 0;
@@ -452,13 +498,13 @@ export default function WindMap(props: Props) {
       clearTimeout(hide);
       map.off("zoomend", paint);
     };
-  }, [ready, focusId, spots]);
+  }, [ready, focus?.lon, focus?.lat]);
 
   // The neatline, and the pen's loop and note, follow the map as it moves.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const spot = selectedId ? spots.find((s) => s.id === selectedId) : null;
+    const spot = mark;
     const svg = pen.current;
     let path: SVGPathElement | null = null;
     let note: SVGTextElement | null = null;
@@ -513,7 +559,22 @@ export default function WindMap(props: Props) {
       map.off("move", queue);
       map.off("resize", queue);
     };
-  }, [ready, selectedId, penNote, spots, bottomInset, phone]);
+  }, [ready, mark?.lon, mark?.lat, penNote, bottomInset, phone]);
+
+  // The point tapped on the open map, marked where it was.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !picked) return;
+    const el = document.createElement("div");
+    el.className = "pick-mark";
+    el.setAttribute("aria-hidden", "true");
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+      .setLngLat([picked.lon, picked.lat])
+      .addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [ready, picked?.lon, picked?.lat]);
 
   // The popup, hung on the selected spot.
   const [holder] = useState(() => document.createElement("div"));

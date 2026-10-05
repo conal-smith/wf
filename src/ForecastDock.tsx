@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Layers3, SlidersHorizontal } from "lucide-react";
+import { ArrowDown, Layers3, SlidersHorizontal } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
@@ -27,18 +27,33 @@ import {
 } from "./glyphs";
 import { candleGroups, modelSupport, niceMax } from "./chart";
 import type { PlaceHour } from "./ratings";
+import WeatherGlyph from "./WeatherGlyph";
 import {
   clock,
+  columnAtX,
   dayBest,
   dayLong,
   dayShort,
   hourLabel,
   irishDate,
+  stripGeometry,
   type DayBest,
   type StripColumn,
   type StripDay,
+  type StripGeometry,
 } from "./strip";
-import { useBlend } from "./useBlend";
+import {
+  useBlend,
+  useSpotSeaTemperature,
+  useSpotWaves,
+  useSpotWeather,
+  type SpotWaves,
+  type SpotWeather,
+  type SeaTemperatureState,
+} from "./useBlend";
+import { presentWeather } from "../force5/src/surface";
+import { variableValue } from "../force5/src/variables";
+import { seaTemperatureText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import type { Prefs } from "../force5/src/prefs";
 import type { Rider } from "../force5/src/stars";
@@ -77,6 +92,17 @@ interface Props {
   onShowOnMap: () => void;
   /** What the map is drawing, for the small print. */
   mapModel: string;
+  /** A point tapped on the map rather than a riding place. */
+  isPoint: boolean;
+  /** Its forecast is still being read out of the map's frames. */
+  pointPending?: boolean;
+  playing: boolean;
+  onTogglePlay: () => void;
+  /** The waves, weather and sea rows, below their own fold. */
+  more: boolean;
+  onMore: (more: boolean) => void;
+  /** The wave and weather manifests, once the rows have been opened. */
+  marine: readonly ModelAvailability[];
 }
 
 const ROWS = {
@@ -88,7 +114,24 @@ const ROWS = {
   wing: 20,
   tide: 40,
   blend: 100,
+  more: 22,
+  waves: 20,
+  sky: 20,
+  air: 20,
+  rain: 20,
+  sea: 20,
 };
+const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
+type MoreRow = (typeof MORE_ROWS)[number];
+const MORE_LABEL: Record<MoreRow, [string, string]> = {
+  waves: ["Waves", "m"],
+  sky: ["Sky", ""],
+  air: ["Air", "°C"],
+  rain: ["Rain", "mm"],
+  sea: ["Sea", "°C"],
+};
+/** Rain, in millimetres over one step, that saturates a cell's tint. */
+const RAIN_FULL_MM = 4;
 /** Star cells' colours on the day slider: magenta by how many. */
 const STAR_TINT = [0.08, 0.16, 0.3, 0.5, 0.72, 0.95];
 
@@ -151,10 +194,16 @@ const StripTable = memo(function StripTable({
   units,
   rider,
   tide,
-  cw,
+  g,
   spacer,
+  spacerEnd,
   now,
   blend,
+  more,
+  waves,
+  weather,
+  sea,
+  isPoint,
 }: {
   spot: Spot;
   columns: readonly StripColumn[];
@@ -163,12 +212,19 @@ const StripTable = memo(function StripTable({
   units: Units;
   rider: Rider;
   tide: SpotTide | null;
-  cw: number;
+  g: StripGeometry;
   spacer: number;
+  spacerEnd: number;
   now: number;
   blend: React.ReactNode | null;
+  more: boolean;
+  waves: SpotWaves;
+  weather: SpotWeather;
+  sea: SeaTemperatureState;
+  isPoint: boolean;
 }) {
   const facing = spot.facing ?? null;
+  const full = Math.max(...g.w, 0);
   const cells = (
     key: string,
     render: (
@@ -203,13 +259,13 @@ const StripTable = memo(function StripTable({
   const speed = (kn: number | null) =>
     kn === null ? "" : Math.round(convert(kn / 1.94384449, units));
   return (
-    <table className="tt" style={{ width: spacer * 2 + columns.length * cw }}>
+    <table className="tt" style={{ width: spacer + spacerEnd + g.total }}>
       <colgroup>
         <col style={{ width: spacer }} />
-        {columns.map((c) => (
-          <col key={c.validTime} style={{ width: cw }} />
+        {columns.map((c, at) => (
+          <col key={c.validTime} style={{ width: g.w[at] }} />
         ))}
-        <col style={{ width: spacer }} />
+        <col style={{ width: spacerEnd }} />
       </colgroup>
       <tbody>
         <tr className="tt-day">
@@ -260,15 +316,16 @@ const StripTable = memo(function StripTable({
           <>
             <tr className="tt-stars">
               {sp}
-              {cells("s", (hour, column) =>
+              {cells("s", (hour, column, at) =>
                 hour?.rating ? (
                   <HourStars
                     hour={hour}
                     time={column.time}
                     facing={facing}
                     rider={rider}
-                    size={cw < 60 ? 8.6 : 9.5}
+                    size={full < 60 ? 8.6 : 9.5}
                     slots="potential"
+                    compact={g.w[at] < full}
                   />
                 ) : null,
               )}
@@ -317,10 +374,21 @@ const StripTable = memo(function StripTable({
         <tr className="tt-tide">
           {sp}
           <td colSpan={columns.length} className="d0">
-            <TideRow tide={tide} columns={columns} days={days} cw={cw} />
+            <TideRow tide={tide} columns={columns} days={days} g={g} />
           </td>
           {sp}
         </tr>
+        {more && (
+          <MoreRows
+            columns={columns}
+            cells={cells}
+            sp={sp}
+            waves={waves}
+            weather={weather}
+            sea={sea}
+            isPoint={isPoint}
+          />
+        )}
       </tbody>
     </table>
   );
@@ -330,25 +398,172 @@ const StripTable = memo(function StripTable({
 function xOf(
   columns: readonly StripColumn[],
   day: StripDay,
-  cw: number,
+  g: StripGeometry,
   t: number,
 ) {
   const a = day.start;
   const b = day.start + day.count - 1;
-  const centre = (i: number) => (i + 0.5) * cw;
+  const centre = (i: number) => g.x[i] + g.w[i] / 2;
   const step = (i: number, j: number) => columns[j].time - columns[i].time;
   if (t <= columns[a].time) {
     const span = day.count > 1 ? step(a, a + 1) : 3600000;
-    return centre(a) - ((columns[a].time - t) / span) * cw;
+    return centre(a) - ((columns[a].time - t) / span) * g.w[a];
   }
   if (t >= columns[b].time) {
     const span = day.count > 1 ? step(b - 1, b) : 3600000;
-    return centre(b) + ((t - columns[b].time) / span) * cw;
+    return centre(b) + ((t - columns[b].time) / span) * g.w[b];
   }
   for (let i = a; i < b; i++)
     if (t <= columns[i + 1].time)
-      return centre(i) + ((t - columns[i].time) / step(i, i + 1)) * cw;
+      return (
+        centre(i) +
+        ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i))
+      );
   return centre(b);
+}
+
+/**
+ * The rows below the fold: the sea, the sky, the air and the rain, one native
+ * step per column (a code or an amount does not survive being interpolated),
+ * and the water's measured temperature where a station is in range.
+ */
+function MoreRows({
+  columns,
+  cells,
+  sp,
+  waves,
+  weather,
+  sea,
+  isPoint,
+}: {
+  columns: readonly StripColumn[];
+  cells: (
+    key: string,
+    render: (hour: PlaceHour | undefined, column: StripColumn, at: number) => React.ReactNode,
+  ) => React.ReactNode;
+  sp: React.ReactNode;
+  waves: SpotWaves;
+  weather: SpotWeather;
+  sea: SeaTemperatureState;
+  isPoint: boolean;
+}) {
+  const span = (key: string, text: string) => (
+    <tr className={`tt-more tt-${key}`} key={key}>
+      {sp}
+      <td colSpan={columns.length} className="d0 more-note">
+        {text}
+      </td>
+      {sp}
+    </tr>
+  );
+  if (isPoint)
+    return (
+      <>
+        {span("waves", "Waves, weather and the sea: riding places only")}
+        {MORE_ROWS.slice(1).map((key) => (
+          <tr className={`tt-more tt-${key}`} key={key}>
+            {sp}
+            <td colSpan={columns.length} className="d0" />
+            {sp}
+          </tr>
+        ))}
+      </>
+    );
+  const set = waves.source?.fields.total ?? null;
+  const fields = weather.source?.fields;
+  const at = (column: number, name: string | null | undefined) =>
+    variableValue(weather.columns[column], name);
+  const row = (key: MoreRow, render: (column: number) => React.ReactNode) => (
+    <tr className={`tt-more tt-${key}`} key={key}>
+      {sp}
+      {cells(key, (_, __, column) => render(column))}
+      {sp}
+    </tr>
+  );
+  const observed = sea.observed;
+  return (
+    <>
+      {waves.source && set
+        ? row("waves", (column) => {
+            const step = waves.columns[column];
+            const height = step ? step.values[set.height] : null;
+            if (typeof height !== "number") return "–";
+            const period = set.period ? step!.values[set.period] : null;
+            const dir = set.direction ? step!.values[set.direction] : null;
+            return (
+              <span
+                className="wave-cell"
+                title={`${height.toFixed(1)} m${typeof period === "number" ? ` at ${Math.round(period)} s` : ""}${typeof dir === "number" ? ` from ${compass(dir)}` : ""}`}
+              >
+                {typeof dir === "number" && (
+                  <ArrowDown
+                    size={11}
+                    strokeWidth={1.6}
+                    style={{ transform: `rotate(${dir}deg)` }}
+                    aria-label={`from ${compass(dir)}`}
+                  />
+                )}
+                <b>{height.toFixed(1)}</b>
+                {typeof period === "number" && <small>{Math.round(period)}s</small>}
+              </span>
+            );
+          })
+        : span("waves", waves.published ? "No wave model reaches this spot" : "Waves: reading…")}
+      {fields
+        ? row("sky", (column) => {
+            const reading = presentWeather(at(column, fields.present));
+            return reading ? (
+              <span title={reading.description}>
+                <WeatherGlyph weather={reading} size={14} />
+              </span>
+            ) : (
+              "–"
+            );
+          })
+        : span("sky", weather.published ? "No weather model reaches this spot" : "Weather: reading…")}
+      {fields
+        ? row("air", (column) => {
+            const value = at(column, fields.air);
+            return value === null ? "–" : `${Math.round(value)}°`;
+          })
+        : span("air", "")}
+      {fields
+        ? row("rain", (column) => {
+            const value = at(column, fields.rain);
+            if (value === null) return "–";
+            return (
+              <span
+                className="rain-cell"
+                style={
+                  {
+                    "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
+                  } as React.CSSProperties
+                }
+              >
+                {value < 0.05 ? "0" : value.toFixed(1)}
+              </span>
+            );
+          })
+        : span("rain", "")}
+      {observed
+        ? (() => {
+            const text = seaTemperatureText(observed);
+            return span("sea", `${text.value} measured · ${text.detail}`);
+          })()
+        : fields?.skin
+          ? row("sea", (column) => {
+              const value = at(column, fields.skin);
+              return value === null ? (
+                "–"
+              ) : (
+                <span className="proxy" title="The model's skin temperature: approximate, not a measurement">
+                  ~{Math.round(value)}°
+                </span>
+              );
+            })
+          : span("sea", sea.loading ? "" : "No sea temperature here")}
+    </>
+  );
 }
 
 /** The tide under the hours: a curve per day, its turns named, in metres. */
@@ -356,15 +571,15 @@ function TideRow({
   tide,
   columns,
   days,
-  cw,
+  g,
 }: {
   tide: SpotTide | null;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
-  cw: number;
+  g: StripGeometry;
 }) {
   const H = ROWS.tide;
-  const width = columns.length * cw;
+  const width = g.total;
   if (!tide)
     return (
       <svg width={width} height={H} className="tide-row" aria-hidden="true">
@@ -394,11 +609,11 @@ function TideRow({
     for (let t = a; t <= b; t += 600000) {
       const h = tideAt(curve, t);
       if (h === null) continue;
-      d += `${d ? "L" : "M"}${xOf(columns, day, cw, t).toFixed(1)} ${y(h).toFixed(1)}`;
+      d += `${d ? "L" : "M"}${xOf(columns, day, g, t).toFixed(1)} ${y(h).toFixed(1)}`;
     }
     if (!d) return;
-    const x0 = xOf(columns, day, cw, a);
-    const x1 = xOf(columns, day, cw, b);
+    const x0 = xOf(columns, day, g, a);
+    const x1 = xOf(columns, day, g, b);
     paths.push(
       <g key={day.date}>
         <path
@@ -408,10 +623,11 @@ function TideRow({
         <path className="tide-line" d={d} />
       </g>,
     );
-    const dayEnd = (day.start + day.count) * cw;
+    const end = day.start + day.count - 1;
+    const dayEnd = g.x[end] + g.w[end];
     for (const event of eventsBetween(curve, a, b)) {
       const t = Date.parse(event.time);
-      const X = xOf(columns, day, cw, t);
+      const X = xOf(columns, day, g, t);
       const Y = y(event.height);
       const high = event.kind === "high";
       const right = X < dayEnd - 130;
@@ -473,14 +689,27 @@ export default function ForecastDock(props: Props) {
     reducedMotion,
     reachable,
     onShowOnMap,
+    isPoint,
+    playing,
+    onTogglePlay,
+    more,
+    onMore,
+    marine,
   } = props;
   const cw = phone ? 52 : 62;
+  // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
+  const g = useMemo(
+    () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
+    [columns, cw, phone],
+  );
+  const centre = (i: number) => (g.x[i] ?? 0) + (g.w[i] ?? cw) / 2;
   const wrap = useRef<HTMLDivElement>(null);
   const scrub = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterButton = useRef<HTMLButtonElement>(null);
-  const spacer = Math.max(0, wrapWidth / 2 - cw / 2);
+  const spacer = Math.max(0, wrapWidth / 2 - (g.w[0] ?? cw) / 2);
+  const spacerEnd = Math.max(0, wrapWidth / 2 - (g.w.at(-1) ?? cw) / 2);
   const column = columns[selected];
   const selectedDay = days.find(
     (d) => selected >= d.start && selected < d.start + d.count,
@@ -490,11 +719,15 @@ export default function ForecastDock(props: Props) {
   // The blend, only while it is the view: the chart reads every member.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
   const blend = useBlend(
-    view === "blend" ? models : [],
+    view === "blend" && !isPoint ? models : [],
     prefs.blendModels,
     spot.id,
     axis,
   );
+  const named = isPoint ? undefined : spot.id;
+  const waves = useSpotWaves(more ? marine : [], named, axis);
+  const weather = useSpotWeather(more ? marine : [], named, axis);
+  const sea = useSpotSeaTemperature(more ? named : undefined);
   const blendNode = useMemo(() => {
     if (view !== "blend") return null;
     if (!blend.lines.length)
@@ -512,9 +745,9 @@ export default function ForecastDock(props: Props) {
     return (
       <Suspense fallback={<p className="blend-empty">Reading the models…</p>}>
         <BlendChart
-          width={columns.length * cw}
+          width={g.total}
           height={ROWS.blend}
-          centres={columns.map((_, i) => (i + 0.5) * cw)}
+          centres={columns.map((_, i) => g.x[i] + g.w[i] / 2)}
           columns={columns}
           groups={candleGroups(axis)}
           support={modelSupport(blend.lines, axis.length)}
@@ -532,7 +765,7 @@ export default function ForecastDock(props: Props) {
     view,
     blend,
     columns,
-    cw,
+    g,
     prefs.units,
     reducedMotion,
     spot.lat,
@@ -563,7 +796,8 @@ export default function ForecastDock(props: Props) {
   const scrollTo = (index: number, smooth: boolean) => {
     const el = wrap.current;
     if (!el) return;
-    const left = index * cw;
+    // The column's centre under the cursor in the middle of the strip.
+    const left = centre(index) - (g.w[0] ?? cw) / 2;
     if (Math.abs(el.scrollLeft - left) < 1) return;
     const animate = smooth && !reducedMotion;
     clearTimeout(scrollEnd.current);
@@ -575,12 +809,13 @@ export default function ForecastDock(props: Props) {
   useLayoutEffect(() => {
     if (fromScroll.current === selected) return;
     scrollTo(selected, !dragging.current);
-  }, [selected, cw, spacer, folded, view]);
-  // A fresh spot opens on the same hour, not wherever the last one was left.
+  }, [selected, g, spacer, folded, view, more]);
+  // A fresh place opens on the same hour, not wherever the last one was left.
+  const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
   useLayoutEffect(() => {
     fromScroll.current = -1;
     scrollTo(selected, false);
-  }, [spot.id]);
+  }, [placeKey]);
 
   const onScroll = () => {
     const going = programmatic.current;
@@ -596,10 +831,7 @@ export default function ForecastDock(props: Props) {
       scrollFrame.current = 0;
       const el = wrap.current;
       if (!el) return;
-      const i = Math.max(
-        0,
-        Math.min(columns.length - 1, Math.round(el.scrollLeft / cw)),
-      );
+      const i = columnAtX(g, el.scrollLeft + (g.w[0] ?? cw) / 2);
       fromScroll.current = i;
       onSelect(i, false);
       clearTimeout(scrollEnd.current);
@@ -708,8 +940,8 @@ export default function ForecastDock(props: Props) {
         columns.map((c) => c.time),
       );
       if (!best || !best.stars) return [];
-      const x0 = spacer + best.from * cw;
-      const x1 = spacer + (best.to + 1) * cw;
+      const x0 = spacer + g.x[best.from];
+      const x1 = spacer + g.x[best.to] + g.w[best.to];
       return [
         {
           key: `${day.date}-${best.from}`,
@@ -724,7 +956,7 @@ export default function ForecastDock(props: Props) {
         },
       ];
     });
-  }, [ratings, days, columns, spacer, cw, now, view]);
+  }, [ratings, days, columns, spacer, g, now, view]);
 
   const tideDot = useMemo(() => {
     if (!tide || !column) return null;
@@ -739,10 +971,10 @@ export default function ForecastDock(props: Props) {
         ? ROWS.blend
         : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing);
     return {
-      x: spacer + (selected + 0.5) * cw,
+      x: spacer + centre(selected),
       y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
     };
-  }, [tide, column, selected, spacer, cw, view]);
+  }, [tide, column, selected, spacer, g, view]);
 
   const label = phone ? 52 : 64;
   return (
@@ -760,15 +992,21 @@ export default function ForecastDock(props: Props) {
         />
       )}
       <div className="dk-head">
-        <StarToggle
-          on={starred}
-          name={spot.name}
-          onToggle={onToggleStar}
-          size={19}
-        />
+        {!isPoint && (
+          <StarToggle
+            on={starred}
+            name={spot.name}
+            onToggle={onToggleStar}
+            size={19}
+          />
+        )}
         <h2 className="dk-name">{spot.name}</h2>
-        <FacingCompass facing={facing} size={20} />
-        {spot.county && <span className="dk-county">{spot.county}</span>}
+        {!isPoint && <FacingCompass facing={facing} size={20} />}
+        {spot.county && (
+          <span className={`dk-county${isPoint ? " is-point" : ""}`}>
+            {spot.county}
+          </span>
+        )}
         <DockBest
           columns={columns}
           hours={hours}
@@ -781,7 +1019,7 @@ export default function ForecastDock(props: Props) {
             aria-label="Show the hours as"
             options={[
               { value: "table", label: "Table" },
-              { value: "blend", label: "Blend" },
+              { value: "blend", label: "Blend", disabled: isPoint },
             ]}
             value={view}
             onChange={onView}
@@ -792,13 +1030,21 @@ export default function ForecastDock(props: Props) {
               alone would give. Dark hours aren&rsquo;t rated.
             </p>
             <p className="ip-fig">{riderLine(prefs.rider)}</p>
-            <p className="ip-small">
-              Wind: the models&rsquo; middle, each counted once
-              {prefs.blendModels.length
-                ? ` (${prefs.blendModels.length} in the blend)`
-                : ""}
-              . The map draws {props.mapModel}.
-            </p>
+            {isPoint ? (
+              <p className="ip-small">
+                A point on the map, not a riding place: rated on the wind
+                alone, with no shore to face. Read from {props.mapModel} alone;
+                the hours it does not reach stay empty.
+              </p>
+            ) : (
+              <p className="ip-small">
+                Wind: the models&rsquo; middle, each counted once
+                {prefs.blendModels.length
+                  ? ` (${prefs.blendModels.length} in the blend)`
+                  : ""}
+                . The map draws {props.mapModel}.
+              </p>
+            )}
             <p className="ip-small">
               {tide
                 ? `Tide: Marine Institute, ${tide.station.name} (${tide.distanceKm.toFixed(1)} km), metres above ${tide.curve.datum}. Prediction only: no surge.`
@@ -834,14 +1080,16 @@ export default function ForecastDock(props: Props) {
           >
             <SlidersHorizontal size={15} strokeWidth={1.5} aria-hidden="true" />
           </button>
-          <Button
-            variant="primary"
-            size="sm"
-            href={spotHref(spot.id)}
-            data-spot-page-link
-          >
-            Spot page →
-          </Button>
+          {!isPoint && (
+            <Button
+              variant="primary"
+              size="sm"
+              href={spotHref(spot.id)}
+              data-spot-page-link
+            >
+              Spot page →
+            </Button>
+          )}
           {!phone && (
             <button
               type="button"
@@ -864,7 +1112,26 @@ export default function ForecastDock(props: Props) {
         </div>
       </div>
 
-      <div className="scrub" ref={scrub}>
+      <div className="scrub-row">
+      <button
+        type="button"
+        className="play"
+        aria-label={playing ? "Pause forecast" : "Play forecast"}
+        aria-pressed={playing}
+        onClick={onTogglePlay}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          {playing ? (
+            <path d="M3 2v8M9 2v8" strokeWidth="2.2" strokeLinecap="round" />
+          ) : (
+            <path d="M3 1.6L10.4 6L3 10.4Z" strokeLinejoin="round" />
+          )}
+        </svg>
+      </button>
+      <div
+        className={`scrub${days.length > 8 ? " many" : ""}`}
+        ref={scrub}
+      >
         <input
           type="range"
           className="scrub-input"
@@ -925,7 +1192,10 @@ export default function ForecastDock(props: Props) {
                 className={`sc-day${d === selectedDayIndex ? " on" : ""}`}
               >
                 <div className="sc-h">
-                  <b>{dayShort(day.noon)}</b>
+                  <b>
+                    {dayShort(day.noon).slice(0, 2)}
+                    <span className="d3">{dayShort(day.noon).slice(2)}</span>
+                  </b>
                   <span className="dt">{Number(day.date.slice(8))}</span>
                   {best && (
                     <>
@@ -991,6 +1261,7 @@ export default function ForecastDock(props: Props) {
           )}
         </div>
       </div>
+      </div>
 
       {reachable && (
         <div className="map-reach" role="status">
@@ -1011,29 +1282,55 @@ export default function ForecastDock(props: Props) {
             className="dk-grid"
             style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
           >
-            <div className="dk-labs" aria-hidden="true">
-              <div style={{ height: ROWS.day }} />
-              <div style={{ height: ROWS.hour }} />
+            <div className="dk-labs">
+              <div aria-hidden="true" style={{ height: ROWS.day }} />
+              <div aria-hidden="true" style={{ height: ROWS.hour }} />
               {view === "blend" ? (
-                <div style={{ height: ROWS.blend }}>
+                <div aria-hidden="true" style={{ height: ROWS.blend }}>
                   Blend<small>{prefs.units}</small>
                 </div>
               ) : (
                 <>
-                  <div style={{ height: ROWS.stars }}>Stars</div>
-                  <div style={{ height: ROWS.wind }}>
+                  <div aria-hidden="true" style={{ height: ROWS.stars }}>Stars</div>
+                  <div aria-hidden="true" style={{ height: ROWS.wind }}>
                     Wind<small>{prefs.units}</small>
                   </div>
-                  <div style={{ height: ROWS.from }}>From</div>
-                  <div style={{ height: ROWS.wing }}>
+                  <div aria-hidden="true" style={{ height: ROWS.from }}>From</div>
+                  <div aria-hidden="true" style={{ height: ROWS.wing }}>
                     Wing<small>m²</small>
                   </div>
                 </>
               )}
-              <div style={{ height: ROWS.tide }}>
+              <div aria-hidden="true" style={{ height: ROWS.tide }}>
                 Tide<small>m</small>
               </div>
+              {more &&
+                MORE_ROWS.map((key) => (
+                  <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
+                    {MORE_LABEL[key][0]}
+                    <small>{MORE_LABEL[key][1]}</small>
+                  </div>
+                ))}
+            <button
+              type="button"
+              className="dk-more"
+              aria-expanded={more}
+              aria-label={more ? "Hide waves, sky and sea" : "Show waves, sky and sea"}
+              onClick={() => onMore(!more)}
+            >
+              {more ? "Less" : "More"}
+              <svg width="10" height="6" viewBox="0 0 14 9" aria-hidden="true">
+                <path
+                  d={more ? "M1 7.5L7 1.5L13 7.5" : "M1 1.5L7 7.5L13 1.5"}
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
             </div>
+
             {view === "table" && (
               // The "?" sits on the Stars label, outside the hidden labels.
               <span
@@ -1068,21 +1365,28 @@ export default function ForecastDock(props: Props) {
                 units={prefs.units}
                 rider={prefs.rider}
                 tide={tide}
-                cw={cw}
+                g={g}
                 spacer={spacer}
+                spacerEnd={spacerEnd}
                 now={now}
                 blend={blendNode}
+                more={more}
+                waves={waves}
+                weather={weather}
+                sea={sea}
+                isPoint={isPoint}
               />
               <svg
                 className="tt-pen"
-                width={spacer * 2 + columns.length * cw}
+                width={spacer + spacerEnd + g.total}
                 height={
                   ROWS.day +
                   ROWS.hour +
                   (view === "blend"
                     ? ROWS.blend
                     : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing) +
-                  ROWS.tide
+                  ROWS.tide +
+                  (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
                 }
                 aria-hidden="true"
               >

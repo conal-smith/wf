@@ -345,3 +345,64 @@ export function offshoreMark(
     return rider.skill === "beginner" ? "struck" : "cross-off";
   return null;
 }
+
+/**
+ * A bare point's columns: no model publishes a series for it, so it is read
+ * from the map model's own frames as they are sampled (src/usePointSeries.ts),
+ * bridging no further than that run's cadence, and rated on the wind alone,
+ * since a point in open water has no shore to face.
+ */
+export function pointHours(
+  frames: readonly { hour: number; validTime: string }[],
+  values: readonly ({ u: number; v: number; gust: number | null } | null | undefined)[],
+  place: Pick<RatedPlace, "lat" | "lon">,
+  axis: readonly string[],
+  rider: Rider,
+): PlaceHour[] {
+  const points = frames.flatMap((frame, index) => {
+    const wind = values[index];
+    return wind ? [{ hour: frame.hour, validTime: frame.validTime, ...wind }] : [];
+  });
+  const at = parsed(frames);
+  const maxGap = 2 * medianStep(at);
+  const light = daylightOn(place, axis);
+  const axisTimes = axis.map((iso) => Date.parse(iso));
+  const known = points.map((p) => Date.parse(p.validTime));
+  return axis.map((_, c) => {
+    const t = axisTimes[c];
+    let windKn: number | null = null;
+    let gustKn: number | null = null;
+    let from: number | null = null;
+    // The sampled steps either side of the column, within the run's cadence.
+    const right = known.findIndex((k) => k >= t);
+    if (right >= 0) {
+      const exact = known[right] === t;
+      const left = exact ? right : right - 1;
+      if (left >= 0 && (exact || (known[right] - known[left]) / HOUR <= maxGap + 1e-9)) {
+        const a = points[left];
+        const b = points[right];
+        const f = exact ? 0 : (t - known[left]) / (known[right] - known[left]);
+        const u = a.u + (b.u - a.u) * f;
+        const v = a.v + (b.v - a.v) * f;
+        windKn = Math.hypot(u, v) * KNOTS;
+        gustKn =
+          a.gust === null || b.gust === null
+            ? null
+            : (a.gust + (b.gust - a.gust) * f) * KNOTS;
+        from = Math.hypot(u, v) >= 0.1 ? direction(u, v) : null;
+      }
+    }
+    return {
+      windKn,
+      gustKn,
+      from,
+      agreement: null,
+      daylight: light[c],
+      rating: rateHour(
+        { windKn, gustKn, from, agreement: null, daylight: light[c] },
+        { facing: null },
+        rider,
+      ),
+    };
+  });
+}
