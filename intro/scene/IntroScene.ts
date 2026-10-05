@@ -36,7 +36,16 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { Sky } from "three/addons/objects/Sky.js";
 import { gradeShader, MotionBlurPass, SceneRenderPass, ShaftPass } from "./post";
 import { cameraPath, sunDirection, sunElevation, SUN_AZIMUTH } from "./camera";
-import { fleet, sampleTrack, simulate, type Track } from "./fleet";
+import {
+  centroidOf,
+  fleet,
+  planSquall,
+  REVIEW_SEED,
+  sampleMotion,
+  sampleTrack,
+  simulateFleet,
+} from "./fleet";
+import { WIND } from "./gust";
 import { hazeUniforms } from "./haze";
 import { buildRider, canopyUniforms } from "./rider";
 import { createTerrain } from "./terrain";
@@ -52,6 +61,11 @@ export interface IntroOptions {
   startAt?: number;
   /** Hold the clock where it starts (for review and screenshots). */
   frozen?: boolean;
+  /**
+   * Who rides and how, and where the squall falls: each showing passes its
+   * own, so no two are quite alike. Review uses REVIEW_SEED.
+   */
+  seed?: number;
 }
 
 export interface IntroHandle {
@@ -212,7 +226,7 @@ export async function startIntro(
 
   // ---- the world ----
   const water = createWater({
-    wind: new Vector2(1, 0.12),
+    wind: WIND,
     reflectionScale: 0.6,
     width: width() * pixelRatio,
     height: height() * pixelRatio,
@@ -220,9 +234,13 @@ export async function startIntro(
   scene.add(water.mesh);
   scene.add(createTerrain());
 
-  const specs = fleet();
+  const seed = options.seed ?? REVIEW_SEED;
+  const specs = fleet(seed);
   const DURATION = 150;
-  const tracks: Track[] = specs.map((s) => simulate(s, DURATION));
+  // Ride it once in the patchwork alone to see where the fleet will be, then
+  // again with the squall planned to come through it there.
+  const squall = planSquall(seed, centroidOf(simulateFleet(specs, 30)));
+  const tracks = simulateFleet(specs, DURATION, squall);
   const riders: Group[] = specs.map((spec) => {
     const r = buildRider(spec.look, spec.pose);
     scene.add(r);
@@ -311,12 +329,14 @@ export async function startIntro(
         0.022 * Math.sin(t * 3.1 + ph) + 0.012 * Math.sin(t * 5.3 + ph * 2),
         p.z,
       );
-      // Banked a touch into the weave, pitching with the pumping of the foil.
-      const turnRate = 0.05 * spec.weave * 0.35 * Math.cos(t * 0.35 + ph);
+      // Leaning into each carve as hard as the speed and the turn ask
+      // (tan bank = v w / g), pitching with the pumping of the foil.
+      const { speed, turn } = sampleMotion(tracks[i], t);
+      const bank = MathUtils.clamp(Math.atan((speed * turn) / 9.81), -0.4, 0.4);
       r.rotation.set(
         0.012 * Math.sin(t * 2.3 + ph),
         -heading,
-        -turnRate * 3 + 0.01 * Math.sin(t * 1.7 + ph),
+        -bank + 0.01 * Math.sin(t * 1.7 + ph),
         "YXZ",
       );
     });
@@ -352,6 +372,7 @@ export async function startIntro(
     bloom.strength = MathUtils.lerp(BLOOM, 0.06, inFrame * skimming);
 
     water.update(t, camera, sun, sunColor);
+    water.setSquall(squall, t);
     wakes.update(t, foam, (height() * pixelRatio) / (2 * Math.tan(MathUtils.degToRad(camera.fov / 2))));
     canopyUniforms.sunDirView.value.copy(sun).transformDirection(camera.matrixWorldInverse);
     skyU.time.value = t;

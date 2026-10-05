@@ -56,26 +56,32 @@ one on it; then one rider overtakes the lens, a silhouette crossing the low
 sun, then two more together (green, then orange), and as the camera lifts ten
 more come through underneath it from behind, before it turns to the sunset as
 `wingfoil.ie` and the three ways in (wind map, marketplace, community) come
-up. It is three.js, built entirely in code: a planar-mirror water shader with
-wind ripples and drifting gust patches but no swell, a Preetham sky with
-clouds, a Skellig-like island with sea stacks and islands fading into the
-haze, and riders posed by two-bone IK on wings shaped like real ones (square
-tips, a taped leading edge, handles down the strut), backlit with rim light
-and glowing sailcloth. The lens is a film camera's: true per-object motion
-blur (the scene is posed a 1/40 s shutter earlier, so it is exact at any frame
-rate), light shafts and flare from the sun, auto-exposure, bloom, chromatic
-fringe and grain. Titles decode into place, and an optional sound toggle plays
-procedural wind, water, a whoosh as each rider passes and a chord for the
-sunset. Everything is in [`intro/`](intro/): `scene/` is the film, `web/` the
-frame around it and the rule for when it plays.
+up. Past the lens the riders ride for themselves: each holds their own line to
+the wind, carves at their own rhythm and pace, steers clear of the others or
+tucks in beside a friend, and goes faster in stronger air, read off the same
+wind field the water draws; a squall you can see on the water comes through
+while the camera looks down, and those it reaches take off. No two showings
+are quite the same. It is three.js, built entirely in code: a planar-mirror
+water shader with wind ripples and drifting gust patches but no swell, a
+Preetham sky with clouds, a Skellig-like island with sea stacks and islands
+fading into the haze, and riders posed by two-bone IK on wings shaped like
+real ones (square tips, a taped leading edge, handles down the strut), backlit
+with rim light and glowing sailcloth. The lens is a film camera's: true
+per-object motion blur (the scene is posed a 1/40 s shutter earlier, so it is
+exact at any frame rate), light shafts and flare from the sun, auto-exposure,
+bloom, chromatic fringe and grain. Titles decode into place, and an optional
+sound toggle plays procedural wind, water, a whoosh as each rider passes and a
+chord for the sunset. Everything is in [`intro/`](intro/): `scene/` is the
+film, `web/` the frame around it and the rule for when it plays.
 
 It plays once, and only on `/`; it never plays on a phone or tablet, for a
 reader who prefers reduced motion, without WebGL 2, or under automation, so
 the e2e suite and the map's baselines are untouched. Skip it with the button
 or Escape. The map is not mounted while it plays and mounts as the menu comes
 up, and three.js is a lazy chunk (~170 kB gzipped) that nobody else downloads.
-For review: `/?intro` plays it regardless, `/?intro=17` starts 17 s in, and
-`/?intro=17&freeze` holds that frame.
+For review: `/?intro` plays it regardless, `&seed=N` replays one showing,
+`/?intro=17` starts 17 s in, and `/?intro=17&freeze` holds that frame (on the
+review seed, so frames compare).
 
 ## Marketplace
 
