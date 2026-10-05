@@ -50,14 +50,14 @@ describe("the worked example's ledger", () => {
       { skill: "intermediate", weightKg: null, wings: [] },
     )!;
     expect(worked.lines[0]).toEqual({
-      what: "Rides like",
-      figure: "12.6 + 0.3 × 0.81 × 6.3 = 14.1 kn",
+      what: "12.6 kn gusting 18.9 rides like",
+      figure: "14.1 kn",
     });
     expect(worked.lines.map((line) => line.what)).toContain(
       "The models differ a little",
     );
     expect(worked.lines.find((line) => line.total)?.figure).toMatch(
-      /→ \d★ solid$/,
+      /, so \d solid$/,
     );
   });
 });

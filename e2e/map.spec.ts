@@ -194,7 +194,7 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   await expect(page.locator(".dock [data-spot-page-link]")).toHaveCount(0);
   await expect(page.locator(".pick-mark")).toHaveCount(1);
   await expect(map).toHaveClass(/is-focus/);
-  // Its hours fill from the map model's frames, rated on the wind alone.
+  // Its hours fill from the map model's frames. No beach, so no stars.
   await expect
     .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
       timeout: 30000,
@@ -203,7 +203,8 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
   await page.getByRole("button", { name: "About these figures" }).click();
   await expect(
     page.getByRole("dialog", { name: "About these figures" }),
-  ).toContainText("rated on the wind alone");
+  ).toContainText("no beach to rate against and no stars");
+  await expect(page.locator(".dock tr.tt-stars")).toHaveCount(0);
   await page.keyboard.press("Escape");
   // A double tap zooms and picks nothing.
   const before = await name.textContent();

@@ -100,7 +100,7 @@ const ratings = (page: Page) =>
     );
 
 const heading = (page: Page) =>
-  page.getByRole("heading", { level: 1, name: /^Brandon Bay:/ });
+  page.getByRole("heading", { level: 1, name: "Brandon Bay", exact: true });
 
 test("a spot page is the week day by day: hours in figures, the pen, the tide and the light", async ({
   page,
@@ -181,10 +181,8 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   await row.press("Enter");
   await expect(more).toHaveCount(0);
 
-  // The pen says each rated day's verdict.
-  await expect(tomorrow.locator("[data-pen-note]")).toHaveText(
-    /^(Go|Worth it|Thin:|Leave it on the roof)/,
-  );
+  // The day is figures, not a verdict in words.
+  await expect(page.locator("[data-pen-note]")).toHaveCount(0);
 
   // Choosing a day takes the page to it.
   await cards.nth(2).click();
@@ -393,10 +391,10 @@ test("How the stars work draws the bands, the shore sectors and a live hour work
   const shore = page.locator("[data-shore-table]");
   for (const range of ["0–30°", "30–70°", "70–110°", "110–150°", "150–180°"])
     await expect(shore).toContainText(range);
-  await expect(shore).toContainText("at most 1★");
+  await expect(shore).toContainText("1 star at most");
   const ledger = page.locator("[data-ledger]");
-  await expect(ledger).toContainText("Rides like");
-  await expect(ledger).toContainText(/Left.*→ \d★ solid/);
+  await expect(ledger).toContainText("rides like");
+  await expect(ledger).toContainText(/Rating.*, so \d solid/);
   // The rider is the page's: a learner's sweet spot is marked as theirs.
   await page
     .getByRole("group", { name: "Riding level" })

@@ -142,9 +142,14 @@ export function Companion({
         {gust.nudging && !gust.open && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -left-1 rounded-full bg-inverse px-2 py-0.5 font-mono text-caption font-semibold text-ink-inverse tabular-nums shadow-control"
+            className="absolute -top-1 -left-1 flex rounded-full bg-inverse px-2 py-1 shadow-control"
           >
-            {nudgeStars}★
+            <StarGlyphs
+              stars={nudgeStars}
+              size={9}
+              slots="potential"
+              tone="inverse"
+            />
           </span>
         )}
       </button>

@@ -1,6 +1,6 @@
 /**
- * A riding place's own page, at /spot/<id>, set as the chart's broadsheet: a
- * headline with the week's verdict, the week in one strip, then day after day
+ * A riding place's own page, at /spot/<id>, set as the chart's broadsheet: the
+ * place's name, the week in one strip, then day after day
  * down the page, every daylight hour a row of figures with the pen round the
  * best of it, and the tide and the light under each day. `src/main.tsx`
  * lazy-loads it, so it never carries the map, MapLibre or the other sections;
@@ -38,7 +38,6 @@ import {
   Notice,
   SectionHeading,
   Skeleton,
-  headlineStyles,
 } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DaySection } from "./DaySection";
@@ -53,7 +52,6 @@ import {
   daySun,
   goodWindArcs,
   groupDays,
-  headlineWhen,
   spotRows,
   tideTurns,
   weekBest,
@@ -288,7 +286,6 @@ function SpotPage({
   forecast: SpotForecast;
 }) {
   const s = styles();
-  const h = headlineStyles();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
@@ -371,18 +368,7 @@ function SpotPage({
 
   return (
     <main className={s.main()} ref={mainRef}>
-      <Headline>
-        {spot.name}
-        <span className={h.mark()}>:</span>{" "}
-        {best ? (
-          <>
-            {headlineWhen(best, now)}{" "}
-            <em className={h.soft()}>on a {best.window.wing} m</em>
-          </>
-        ) : (
-          <em className={h.soft()}>a quiet week</em>
-        )}
-      </Headline>
+      <Headline>{spot.name}</Headline>
       <p className={s.meta()}>
         {facing !== null ? (
           <span className={s.metaItem()} data-shore-summary>

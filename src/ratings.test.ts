@@ -158,11 +158,12 @@ describe("pointHours", () => {
       { u: -8, v: 0, gust: 11 },
     ];
     const axis = ["2026-10-05T11:00:00Z", "2026-10-05T12:30:00Z", "2026-10-05T20:00:00Z"];
-    const out = pointHours(frames, values, { lat: 53, lon: -8 }, axis, DEFAULT_RIDER);
+    const out = pointHours(frames, values, { lat: 53, lon: -8 }, axis);
     expect(out[0].windKn).toBeCloseTo(6 * 1.94384449, 6);
     // Halfway from 11:00 to 13:00, across the hour not sampled yet.
     expect(out[1].windKn).toBeCloseTo(7.5 * 1.94384449, 6);
-    expect(out[1].rating?.shore).toBe(null);
+    // No beach to rate against: a point is never given stars.
+    expect(out.every((hour) => hour.rating === null)).toBe(true);
     // Past the run: nothing, not a borrowed neighbour.
     expect(out[2].windKn).toBe(null);
   });

@@ -237,11 +237,15 @@ export default function SidePanel(props: Props) {
             <dt>
               <KeyLight stars={5} />
             </dt>
-            <dd>5★</dd>
+            <dd>
+              <StarGlyphs stars={5} size={9} />
+            </dd>
             <dt>
               <KeyLight stars={2} />
             </dt>
-            <dd>1–2★ · dashed: none</dd>
+            <dd>
+              <StarGlyphs stars={2} size={9} /> or fewer · dashed: none
+            </dd>
             <dt>
               <KeyLight stars={1} struck />
             </dt>

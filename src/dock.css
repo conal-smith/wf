@@ -163,7 +163,6 @@
 .sc-h .sn {
   display: none;
   margin-left: auto;
-  font: 600 10px var(--font-mono);
 }
 .sc-strip {
   display: grid;
@@ -577,7 +576,7 @@ table.tt {
     display: none;
   }
   .sc-h .sn {
-    display: block;
+    display: flex;
   }
   .sc-flag {
     font-size: 9px;
@@ -642,7 +641,7 @@ table.tt {
   display: none;
 }
 .scrub.many .sc-h .sn {
-  display: block;
+  display: flex;
 }
 .scrub.many .sc-day {
   padding: 3px 5px 5px;
@@ -721,12 +720,6 @@ table.tt {
 }
 .tt .proxy {
   color: var(--color-ink-muted);
-}
-.stars-n {
-  font: 600 11px var(--font-mono);
-}
-.stars-n small {
-  font-size: 9px;
 }
 .dk-county.is-point {
   text-transform: none;

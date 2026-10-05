@@ -680,9 +680,9 @@ export default function App() {
   const pickedHours = useMemo<PlaceHour[] | undefined>(
     () =>
       picked && manifest
-        ? pointHoursFrom(manifest.frames, series.values, picked, axis, rider)
+        ? pointHoursFrom(manifest.frames, series.values, picked, axis)
         : undefined,
-    [picked, manifest, series.values, axis, rider],
+    [picked, manifest, series.values, axis],
   );
   const dockSpot: Spot | null = picked
     ? {
@@ -717,7 +717,7 @@ export default function App() {
       best.from === best.to
         ? clock(strip[best.from].time)
         : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`;
-    return `${best.stars}★ ${span}, ${r.wing.own ?? r.wing.recommended} m`;
+    return `${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m`;
   }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
 
   /* ---- playing through the hours ---- */
