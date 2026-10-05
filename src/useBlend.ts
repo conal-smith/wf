@@ -8,6 +8,7 @@ import {
 } from "../force5/src/blend";
 import {
   availableModels,
+  windModels,
   type AnyManifest,
   type ModelAvailability,
 } from "../force5/src/manifests";
@@ -66,7 +67,14 @@ const sameSweep = (
  * is scrubbing or playing; an unchanged sweep keeps the previous array, so the
  * blend is only recomputed when a model has actually published a new run.
  */
-export function useModelAvailability(busy = false): {
+export function useModelAvailability(
+  busy = false,
+  /**
+   * The models to sweep. The map's dock reads the wind alone, so it leaves
+   * the wave and weather manifests (megabytes of JSON) to the spot page.
+   */
+  entries = windModels(),
+): {
   models: ModelAvailability[];
   resolved: boolean;
 } {
@@ -78,7 +86,7 @@ export function useModelAvailability(busy = false): {
   useEffect(() => {
     const controller = new AbortController();
     const sweep = () =>
-      availableModels(controller.signal)
+      availableModels(controller.signal, entries)
         .then((result) => {
           if (controller.signal.aborted) return;
           setModels((previous) =>

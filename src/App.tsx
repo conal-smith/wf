@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -8,13 +10,13 @@ import {
 } from "react";
 import { X } from "lucide-react";
 import { WindMap } from "../force5/src";
-import type { ChartLayers, MapControls as Controls } from "../force5/src/WindMap";
+import type {
+  ChartLayers,
+  MapControls as Controls,
+} from "../force5/src/WindMap";
 import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
-import {
-  WIND_STYLES,
-  type WindStyle,
-} from "../force5/src/windLayer";
+import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls from "./MapControls";
 import MapHead from "./MapHead";
@@ -37,7 +39,11 @@ import { ridingLocations, spotFromSearch } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
-import { Companion } from "../companion/web/Companion";
+// Gust is a launcher in the corner until he is asked: his code comes once
+// the chart is up, not before it.
+const Companion = lazy(() =>
+  import("../companion/web/Companion").then((m) => ({ default: m.Companion })),
+);
 import type { MapAction } from "../companion/shared/protocol";
 import { parseRider } from "../force5/src/prefs";
 import {
@@ -161,7 +167,10 @@ export default function App() {
   });
   const [layers, setLayers] = useState<ChartLayers>(() => {
     try {
-      return { ...DEFAULT_LAYERS, ...JSON.parse(store.get(LAYERS_KEY) ?? "{}") };
+      return {
+        ...DEFAULT_LAYERS,
+        ...JSON.parse(store.get(LAYERS_KEY) ?? "{}"),
+      };
     } catch {
       return DEFAULT_LAYERS;
     }
@@ -177,6 +186,17 @@ export default function App() {
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [scale, setScale] = useState("");
+  // Gust comes once the chart is drawn and the page has a moment to spare.
+  const [gustDue, setGustDue] = useState(false);
+  useEffect(() => {
+    if (!mapReady || gustDue) return;
+    const idle =
+      window.requestIdleCallback ??
+      ((f: () => void) => window.setTimeout(f, 1200));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const handle = idle(() => setGustDue(true), { timeout: 3000 });
+    return () => cancel(handle);
+  }, [mapReady, gustDue]);
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
@@ -227,7 +247,8 @@ export default function App() {
         setSelectedTime(
           validated.frames[nearestFrame(validated.frames)].validTime,
         );
-        const linked = spotFromSearch(location.search, places) as Spot | undefined;
+        const linked = spotFromSearch(location.search, places) as
+          Spot | undefined;
         setPoint(
           linked ?? places.find((spot) => spot.id === FIRST_SPOT) ?? places[0],
         );
@@ -420,7 +441,10 @@ export default function App() {
       if (controller.signal.aborted) return;
       setManifest(next.manifest);
       setFrame(next.frame);
-      if (Math.abs(Date.parse(next.frame.validTime) - Date.parse(targetTime)) > 3600000)
+      if (
+        Math.abs(Date.parse(next.frame.validTime) - Date.parse(targetTime)) >
+        3600000
+      )
         setModelNotice(
           `${next.manifest.modelName} on the map from ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}.`,
         );
@@ -633,7 +657,12 @@ export default function App() {
   const dayStars = (id: string) => {
     const row = hours.get(id);
     if (!row || !selectedDay) return null;
-    return dayBest(row.map((h) => h.rating), selectedDay)?.stars ?? null;
+    return (
+      dayBest(
+        row.map((h) => h.rating),
+        selectedDay,
+      )?.stars ?? null
+    );
   };
 
   const sources = (
@@ -648,7 +677,11 @@ export default function App() {
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         <li>
           Coast and places: ©{" "}
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+          >
             OpenStreetMap
           </a>
           ,{" "}
@@ -675,14 +708,13 @@ export default function App() {
   const popupHour = point ? pointHours?.[selected] : undefined;
   const popupTide =
     tide.tide && column ? tideAt(tide.tide.curve, column.time) : null;
-  const status =
-    pendingModel
-      ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
-      : modelError || modelNotice
-        ? modelError || modelNotice
-        : frameError
-          ? frameError
-          : null;
+  const status = pendingModel
+    ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
+    : modelError || modelNotice
+      ? modelError || modelNotice
+      : frameError
+        ? frameError
+        : null;
 
   return (
     <div
@@ -767,7 +799,7 @@ export default function App() {
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
-            {(
+            {
               <SidePanel
                 spots={spotById}
                 starred={starred}
@@ -786,13 +818,16 @@ export default function App() {
                 scale={scale}
                 sources={sources}
               />
-            )}
+            }
             {(status || (loading && frame)) && (
               <div
                 className={`frame-status chart-box${modelError || frameError ? " is-error" : ""}`}
                 role="status"
               >
-                <span>{status ?? `Loading ${forecast ? timeLabel(manifest!.frames[requestedIndex].validTime) : "wind"}…`}</span>
+                <span>
+                  {status ??
+                    `Loading ${forecast ? timeLabel(manifest!.frames[requestedIndex].validTime) : "wind"}…`}
+                </span>
                 {pendingModel && (
                   <button
                     onClick={() => {
@@ -867,18 +902,22 @@ export default function App() {
           </section>
         </main>
       )}
-      {!error && (
-        <Companion
-          context={{
-            spot: point ? { id: point.id, name: point.name } : null,
-            time: selectedTime,
-            rider: prefs.rider,
-          }}
-          onAction={companionAction}
-          onRiderSaved={(r) => changePrefs({ ...prefs, rider: parseRider(r) })}
-          launcherBottom={dockHeight + (phone ? 70 : 24)}
-          panelBottom={dockHeight + 12}
-        />
+      {!error && gustDue && (
+        <Suspense fallback={null}>
+          <Companion
+            context={{
+              spot: point ? { id: point.id, name: point.name } : null,
+              time: selectedTime,
+              rider: prefs.rider,
+            }}
+            onAction={companionAction}
+            onRiderSaved={(r) =>
+              changePrefs({ ...prefs, rider: parseRider(r) })
+            }
+            launcherBottom={dockHeight + (phone ? 70 : 24)}
+            panelBottom={dockHeight + 12}
+          />
+        </Suspense>
       )}
     </div>
   );

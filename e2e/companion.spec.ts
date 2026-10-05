@@ -7,15 +7,17 @@ import { expect, test, type Page } from "./fixtures";
  * words between them are scripted.
  */
 
+const launcher = (page: Page) =>
+  page.getByRole("button", { name: /Gust/ }).first();
+
+/** The chart, and Gust in his corner: he comes once the chart is drawn. */
 async function openMap(page: Page) {
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 20000,
   });
+  await expect(launcher(page)).toBeVisible({ timeout: 20000 });
 }
-
-const launcher = (page: Page) =>
-  page.getByRole("button", { name: /Gust/ }).first();
 const panel = (page: Page) => page.getByRole("dialog", { name: "Gust" });
 
 test("Gust answers a suggestion with lookups and a spot card, and shows it on the map", async ({
