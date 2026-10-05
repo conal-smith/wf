@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wingfoil.ie · the chart, four ways</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..800;1,9..144,400..700&family=IBM+Plex+Mono:wght@400;500&family=Kalam:wght@400&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#F3EEE3; --ink:#1A1D21; --muted:rgba(26,29,33,.64); --hair:rgba(26,29,33,.2); --mag:#B0186A; --red:#D43A2C; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:Newsreader,Georgia,serif; font-size:17px; line-height:1.5; }
+  header, main, footer { max-width:1220px; margin:0 auto; padding:0 24px; }
+  header { padding-top:48px; border-bottom:1px solid var(--ink); padding-bottom:20px; }
+  .kicker { font:500 11px/1 "IBM Plex Mono",monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-family:Fraunces,Georgia,serif; font-weight:800; font-size:clamp(34px,5vw,60px); letter-spacing:-.02em; line-height:1.02; margin:12px 0 14px; }
+  h1 i { font-weight:400; color:var(--mag); }
+  header p { max-width:760px; margin:0 0 10px; }
+  .hand { font-family:Kalam,cursive; color:var(--red); }
+  main { display:grid; gap:36px; padding-top:32px; padding-bottom:48px; }
+  article { display:grid; grid-template-columns: 1.35fr 1fr; gap:24px; border-bottom:1px solid var(--hair); padding-bottom:32px; }
+  .shots { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .shots a:first-child { grid-column:1 / -1; }
+  .shots a { display:block; border:1px solid var(--ink); background:#fff; }
+  .shots img { width:100%; display:block; aspect-ratio:16/10; object-fit:cover; object-position:top left; }
+  .shots a:first-child img { aspect-ratio:16/9.4; }
+  .shots a:hover, .shots a:focus-visible { outline:3px solid var(--mag); outline-offset:2px; }
+  .num { font:500 12px "IBM Plex Mono",monospace; letter-spacing:.12em; color:var(--mag); }
+  h2 { font-family:Fraunces,Georgia,serif; font-size:34px; line-height:1.05; margin:6px 0 10px; letter-spacing:-.01em; }
+  .mood { font-style:italic; color:var(--muted); margin:0 0 14px; }
+  dl { margin:0; display:grid; gap:10px; }
+  dt { font:500 11px "IBM Plex Mono",monospace; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  dd { margin:0; }
+  .open { display:inline-block; margin-top:16px; background:var(--ink); color:var(--paper); text-decoration:none; padding:10px 18px; border-radius:999px; font:500 13px "IBM Plex Mono",monospace; letter-spacing:.06em; }
+  .open + .open { background:transparent; color:var(--ink); border:1px solid var(--ink); margin-left:6px; }
+  footer { padding-bottom:64px; color:var(--muted); font-size:15px; }
+  footer h3 { font-family:Fraunces,Georgia,serif; color:var(--ink); font-size:22px; margin:0 0 8px; }
+  @media (max-width:860px) { article { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">wingfoil.ie · design · after direction A</div>
+  <h1>The chart, <i>four ways</i></h1>
+  <p>Four takes on A, the Admiralty chart crossed with a broadsheet. In all four the map is the page: big, and zoomable from all of Ireland down to one beach. It shows the real coast, <strong>real depths</strong> and the <strong>real wind</strong> as moving ink lines, and the red pen still circles things and writes in the margin.</p>
+  <p>The depths are EMODnet's survey (which includes INFOMAR): about 250 m detail round the whole coast, and 115 m in the five featured bays. Tides are the Marine Institute's predictions; the forecast and stars are the real ones for 5–9 October. <span class="hand">no made-up numbers this time</span></p>
+</header>
+<main>
+  <article>
+    <div class="shots">
+      <a href="1-the-chart.html#map"><img src="shots/1-map.jpg" alt="The Chart: Ireland as an Admiralty chart with spot lights and a tide-table dock"></a>
+      <a href="1-the-chart.html#map/brandon"><img src="shots/1-scrub.jpg" alt="Brandon Bay on Tuesday evening with the popup and pen marks"></a>
+      <a href="1-the-chart.html#spot/brandon"><img src="shots/1-spot.jpg" alt="Brandon Bay's spot page over the chart"></a>
+    </div>
+    <div>
+      <div class="num">1</div>
+      <h2>The Chart</h2>
+      <p class="mood">Today's app, redrawn as an Admiralty chart. The closest to something we could ship.</p>
+      <dl>
+        <dt>Map</dt><dd>Full-screen chart. Spots are lights: a ring with the day's stars, and from three stars up a magenta flare flashing once per star, <i>Fl(4)Mg</i>. A title cartouche carries the scale, datum and key.</dd>
+        <dt>Time</dt><dd>The scrubber is set like a tide table, one block per day with its high and low waters. Drag it and the wind lines and every light move with it.</dd>
+        <dt>Dock</dt><dd>The selected spot hour by hour, set in type: stars, wind, wing, sessions and the tide curve. The pen loops the best window and writes the plan in the margin.</dd>
+        <dt>Spot page</dt><dd>A sheet over the chart with a generated headline, the week, the hours, and a depth profile out from the beach showing where a mast touches at low water.</dd>
+      </dl>
+      <a class="open" href="1-the-chart.html#map">Open</a><a class="open" href="1-the-chart.html#spot/brandon">Spot page</a>
+    </div>
+  </article>
+  <article>
+    <div class="shots">
+      <a href="2-chart-and-broadsheet.html#map"><img src="shots/2-signature.jpg" alt="A story in the column with the pen annotating Brandon Bay on the chart"></a>
+      <a href="2-chart-and-broadsheet.html#map"><img src="shots/2-map.jpg" alt="The Almanac column beside a chart of Ireland"></a>
+      <a href="2-chart-and-broadsheet.html#spot/brandon"><img src="shots/2-spot.jpg" alt="Brandon Bay's front page with a chart inset"></a>
+    </div>
+    <div>
+      <div class="num">2</div>
+      <h2>Chart &amp; Broadsheet</h2>
+      <p class="mood">Keeps the newspaper and makes the chart the page. The answer to "but then we lose the paper".</p>
+      <dl>
+        <dt>Layout</dt><dd>The chart takes about 70% of the screen. A narrow column, <i>The Wingfoil Almanac</i>, runs down one side with one story per day and headlines written from the data ("Brandon goes four stars on Tuesday evening").</dd>
+        <dt>The trick</dt><dd>Reading moves the chart. Scroll or hover a paragraph and the chart flies to the places it names. The pen then annotates in order, like someone writing: circle, underline, wind arrow, the window, and the shallows. Click a spot on the chart and the paper scrolls to its story.</dd>
+        <dt>Depth</dt><dd>Water under 1.2 m at the story's hour (charted depth plus the tide) is hatched in red, and the pen says so.</dd>
+        <dt>Phone</dt><dd>The paper becomes the page, with the chart as a sticky band that follows the story you're reading.</dd>
+      </dl>
+      <a class="open" href="2-chart-and-broadsheet.html#map">Open</a><a class="open" href="2-chart-and-broadsheet.html#spot/brandon">Spot page</a>
+    </div>
+  </article>
+  <article>
+    <div class="shots">
+      <a href="3-under-the-keel.html#bay/dollymount"><img src="shots/3-tool.jpg" alt="Dollymount at low water with the shallows hatched red"></a>
+      <a href="3-under-the-keel.html#map"><img src="shots/3-map.jpg" alt="Ireland with the five surveyed bays framed"></a>
+      <a href="3-under-the-keel.html#spot/brandon"><img src="shots/3-spot.jpg" alt="Brandon's tide by wind page with a seabed profile"></a>
+    </div>
+    <div>
+      <div class="num">3</div>
+      <h2>Under the Keel</h2>
+      <p class="mood">The bathymetry as a tool: is there enough water under my foil, and when?</p>
+      <dl>
+        <dt>Setting</dt><dd>Your mast length sits with weight and level; the water you need is the mast plus 45 cm. Weight and level re-rate the stars with the product's own v2 rating.</dd>
+        <dt>Tide</dt><dd>Drag through the week and the bay re-shades live from the survey grid. It cross-hatches red where your foil touches, single hatch where there's no margin, and stipples drying ground. Hover anywhere to read the water there.</dd>
+        <dt>Go</dt><dd>A strip of hours that are three stars or better <i>and</i> deep enough, circled in pen. This week runs into spring tides, so Friday's low water cuts five-star days in two.</dd>
+        <dt>Spot page</dt><dd>Tide against wind across the week, and a cross-section of the seabed out from the launch with your mast drawn to scale.</dd>
+      </dl>
+      <a class="open" href="3-under-the-keel.html#bay/dollymount">Open</a><a class="open" href="3-under-the-keel.html#spot/brandon">Spot page</a>
+    </div>
+  </article>
+  <article>
+    <div class="shots">
+      <a href="4-relief.html#map"><img src="shots/4-map.jpg" alt="Keel's week of wind as a paper ribbon over a stacked-card seabed"></a>
+      <a href="4-relief.html#map"><img src="shots/4-ireland.jpg" alt="Ireland as a relief model in a tray with flags at the spots"></a>
+      <a href="4-relief.html#spot/the-burrow"><img src="shots/4-spot.jpg" alt="The Burrow's spot page with the ribbon, the week's tide and the hours"></a>
+    </div>
+    <div>
+      <div class="num">4</div>
+      <h2>Ireland in Relief</h2>
+      <p class="mood">B's 3D timeline, made of paper and standing on the bathymetry.</p>
+      <dl>
+        <dt>Seabed</dt><dd>Every depth band is a sheet of card stepping down from the coast, with ink edges, like a museum relief model. Ireland sits in a tray, and the vertical exaggeration is stated in the key.</dd>
+        <dt>Ribbon</dt><dd>The selected spot's five days of wind rise out of its bay. Height is wind, twist is direction, the tint deepens to magenta with the stars, a pink skin shows the gusts, and nights are hatched.</dd>
+        <dt>Time</dt><dd>Scrub or "Run the clock": a pin runs along the ribbon and the ink wind lines move below it. The pen circles the best window on the ribbon.</dd>
+        <dt>Camera</dt><dd>A slow fly-in from Ireland to the best bay. Drag to orbit, and one click gives the flat chart.</dd>
+      </dl>
+      <a class="open" href="4-relief.html#map">Open</a><a class="open" href="4-relief.html#spot/the-burrow">Spot page</a>
+    </div>
+  </article>
+</main>
+<footer>
+  <h3>Mixing and matching</h3>
+  <p>These are directions, not products, and the parts move between them. A sensible build would be:</p>
+  <ul>
+    <li>1 as the base (it is the app we have);</li>
+    <li>2's reading-moves-the-chart for the "today" view, and its headlines;</li>
+    <li>3's depth-under-the-foil as a layer and a spot page section, since nobody else gives riders that;</li>
+    <li>4 as the showpiece spot view on desktop.</li>
+  </ul>
+  <p>The depths, wind and tides come from scripts in <code>tools/</code>; the shared map style, wind lines and pen are in <code>chart-kit.js</code>; the brief the four were built to is <code>BRIEF.md</code>.</p>
+</footer>
+</body>
+</html>

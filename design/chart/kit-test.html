@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.js"></script>
+<script src="../directions/data.js"></script><script src="data/wind.js"></script><script src="data/bathy-ireland.js"></script>
+<script src="data/bathy-bays.js"></script><script src="data/soundings.js"></script><script src="data/bathy-grids.js"></script>
+<script src="chart-kit.js"></script>
+<style>html,body,#m{margin:0;height:100%}</style></head><body><div id="m"></div>
+<script>
+const q = new URLSearchParams(location.hash.slice(1));
+const map = WFChart.createMap(document.getElementById("m"), { center: [+q.get("lon") || -8.2, +q.get("lat") || 53.4], zoom: +q.get("z") || 6.2 });
+const wind = WFChart.wind(map, { time: Date.parse("2026-10-06T18:00:00Z") });
+map.on("load", () => { const pen = WFChart.pen(map); pen.circle([-10.05, 52.27], 30); pen.note([-10.05, 52.27], "best Tue 18:00", { offset: [36, -10] }); window.ready = true; });
+map.on("error", (e) => console.error("MAPERR", e.error?.message));
+</script></body></html>
