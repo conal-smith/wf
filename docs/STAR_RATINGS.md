@@ -144,53 +144,85 @@ given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 
 ## In the dock
 
-- The **Stars** row sits under the wind (chart or table) and above the sea
-  rows, on by default. It exists only at riding places, where the blend exists.
-  Each cell's tooltip gives the session, the shore angle, the wing and every
-  reason a star was taken off.
-- The **Wing size** row, per hour, is off by default: the dock has a height
-  budget with room for one new row, and the wing is already in every tooltip
-  and in the best window. Display options turns it on.
-- The toolbar shows the **best window still ahead** — the longest run of two or
-  more columns at the highest level any such run reaches, rated on its weakest
-  column — with its wing; selecting it jumps the timeline there.
+- The **stars** are the dock's first row, over wind, direction, wing and tide,
+  for every hour of the fortnight's strip. Hover or tap them for the chart's
+  box with the session, the shore, the wing and every reason a star came off
+  (`ui/RatingTip.tsx`, the same card as the spot page's); the "?" beside the
+  row leads to [How the stars work](/stars).
+- The **wing** row gives each rated hour's wing, the rider's own if they have
+  one that fits, else the recommended size.
+- The head says the day's **best** stretch still ahead ("Best today
+  13:00–16:00 · ★★★★ · 6.5 m"), and the red pen loops each day's best on the
+  strip. The map's lights read the same stars for the selected hour
+  (`src/ratings.ts`).
 
 ## On the spot page
 
-`/spot/<id>` (`spot/web/`) rates the forecast server's consensus line rather
-than the dock's blend: the median wind and gust of every live model, each
-ensemble once, their vector-mean direction and the same 4 kn / 8 kn agreement
+`/spot/<id>` (`spot/web/`) is the chart's broadsheet for one place, day by
+day. It rates the forecast server's consensus line rather than the dock's
+blend: the median wind and gust of every live model, each ensemble's mean
+once, their vector-mean direction and the same 4 kn / 8 kn agreement
 thresholds (`mcp/api/forecast.ts`), so the stars there are the stars an
 assistant would be given. They can differ from the dock's by a star where the
 dock's blend uses a different set of models (Display options) or columns.
 
-- Rows are hourly for the first 72 hours and every third Irish hour after, where
-  the models themselves step three-hourly.
-- A day card shows the best solid stars of any daylight row, with the most the
-  wind offered as faded stars, and the day's best window.
-- The best window is the same `bestWindow` (two rows or more, rated on the
-  weakest); its end is written as the end of its last row, so "13:00–17:00"
-  covers four hourly rows.
-- The shore line ("Faces WNW · best in SSW–WSW or NNW–NNE winds") lists the
-  compass points whose wind is cross or cross-on to the facing, the two angles
-  the stars do not mark down for anyone.
-- The "Rate for" switch writes the same `rider` in `force5.prefs.v1` that the
-  dock's Display options do, through the same `parseRider` validation.
+- **The headline** is the week's verdict: its best window, most stars first,
+  then the longest, then the soonest ("Brandon Bay: a five-star Friday
+  afternoon on a 5.5 m").
+- **The week strip**, a column a day for seven Irish days: the day's best
+  stars and the hours of its best window. Choosing a day takes the page to it.
+- **Each day** under a header that sticks while its hours scroll: the best
+  stars and window, and the pen's note ("Go 18:00 till dark. Four stars on a
+  6.5 m."; "Leave it on the roof." when no hour earns a star). The window is
+  the longest run of rows at the day's highest solid stars, the earliest of
+  equals; one row will do. The pen loops it in the table.
+- **A row per daylight hour**, the dark folded either side and never rated:
+  the stars, the wind with its gust raised (in the pen's red when it jumps),
+  where it comes from, the sky, and **the chance it rides**. Rows are hourly
+  for the first 72 hours and every third Irish hour after, where the models
+  themselves step three-hourly. Hover or tap the stars for why
+  (`ui/RatingTip.tsx`); tap the row for its second line: the session, the
+  wing, what the gusts make it ride like, waves and rain, the models' and the
+  members' spread drawn on the rider's own scale (`RangeBar.tsx`), and every
+  reason a star came off.
+- **The tide and the light** under each day: a 24-hour curve with the night
+  and twilight behind it, then the high and low waters and first light to last
+  light as two small tables.
+- **Rate for** (Learning / Riding / Advanced, with weight and wings behind a
+  fold) writes the same `rider` in `force5.prefs.v1` as the dock's Display
+  options, through the same `parseRider` validation, and re-rates the page
+  live.
+
+### The chance it rides
+
+The stars are the consensus's verdict; the chance is the ensembles' own
+spread. Where an ensemble publishes its members for the spot (`spotMembers`:
+ECMWF ENS and GEFS), every member is read as its own run, and for each hour the
+chance is the share of members whose rideable wind reaches the rider's floor:
+the member's mean lifted toward its own gust exactly as the stars read an
+hour (`rideableWind`), against `windBand(rider).min` (`rideChance` in
+`mcp/api/forecast.ts`). The ensembles' members are pooled; one that does not
+reach the hour adds none. It is shown as a whole per cent, washed in behind
+the figure, and as a dash where no member reaches the hour.
+
+The page asks for the members themselves (`members: true`), so a change of
+rider re-rates the chance in the browser (`hourChance` in `spot/web/spot.ts`)
+without asking again; an agent's `get_spot_forecast` answers `chance_pct` for
+the skill and weight it is given. The hour's second line gives the members'
+10th to 90th percentile wind beside the models' range, and the members' middle
+80% is the sea-blue bar on its range bar.
 
 ## What would make it better next
 
-1. **Stars on the map.** A small badge per marker for the selected hour would
-   make the whole coast light up on a good day. The ratings are cheap; the cost
-   is reading every place's series, which is the manifest-size question below.
-2. **Rider feedback.** A "rode it: ★★★" check-in from the community spot card
+1. **Rider feedback.** A "rode it: ★★★" check-in from the community spot card
    would give ground truth to tune the bands and deductions against, and is the
    honest way to make the stars better than a formula.
-3. **Alerts.** Follow a place, get the bell when a four-star window with high
+2. **Alerts.** Follow a place, get the bell when a four-star window with high
    agreement appears in the next 48 hours.
-4. **Per-place knowledge.** Tide windows ("works from mid tide up") and known
+3. **Per-place knowledge.** Tide windows ("works from mid tide up") and known
    good directions from local riders, as overrides on the computed facing.
-5. **Waves.** A wave-riding session (cross-off with swell) for advanced riders,
+4. **Waves.** A wave-riding session (cross-off with swell) for advanced riders,
    and a penalty for a heavy shore break for beginners, from the wave rows the
    dock already has.
-6. **The forecast server.** `get_spot_forecast` and `find_wind` could return
+5. **The forecast server.** `get_spot_forecast` and `find_wind` could return
    the stars, so an assistant can answer "where is it five stars on Saturday".
