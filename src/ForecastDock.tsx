@@ -1,5 +1,7 @@
 import {
+  lazy,
   memo,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,8 +13,9 @@ import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { loopPath } from "../ui/penPaths";
-import BlendChart from "./BlendChart";
-import DisplayFilter from "./DisplayFilter";
+// Both only when asked for: the chart's Blend view and the display options.
+const BlendChart = lazy(() => import("./BlendChart"));
+const DisplayFilter = lazy(() => import("./DisplayFilter"));
 import { InfoPop } from "./InfoPop";
 import { HourStars, riderLine } from "./RatingDetail";
 import {
@@ -127,10 +130,8 @@ function DockBest({
     columns.map((c) => c.time),
   );
   const Day = when[0].toUpperCase() + when.slice(1);
-  if (!best)
-    return <span className="dk-best">{Day}: done</span>;
-  if (!best.stars)
-    return <span className="dk-best">{Day}: no stars</span>;
+  if (!best) return <span className="dk-best">{Day}: done</span>;
+  if (!best.stars) return <span className="dk-best">{Day}: no stars</span>;
   const r = ratings[best.from]!;
   return (
     <span className="dk-best">
@@ -170,7 +171,11 @@ const StripTable = memo(function StripTable({
   const facing = spot.facing ?? null;
   const cells = (
     key: string,
-    render: (hour: PlaceHour | undefined, column: StripColumn, at: number) => React.ReactNode,
+    render: (
+      hour: PlaceHour | undefined,
+      column: StripColumn,
+      at: number,
+    ) => React.ReactNode,
   ) =>
     columns.map((column, at) => {
       const hour = hours?.[at];
@@ -180,13 +185,15 @@ const StripTable = memo(function StripTable({
         <td
           key={`${key}-${column.validTime}`}
           data-i={at}
-          className={[
-            night ? "night" : "",
-            column.time + 3600000 <= now ? "past" : "",
-            first ? "d0" : "",
-          ]
-            .filter(Boolean)
-            .join(" ") || undefined}
+          className={
+            [
+              night ? "night" : "",
+              column.time + 3600000 <= now ? "past" : "",
+              first ? "d0" : "",
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
         >
           {render(hour, column, at)}
         </td>
@@ -196,10 +203,7 @@ const StripTable = memo(function StripTable({
   const speed = (kn: number | null) =>
     kn === null ? "" : Math.round(convert(kn / 1.94384449, units));
   return (
-    <table
-      className="tt"
-      style={{ width: spacer * 2 + columns.length * cw }}
-    >
+    <table className="tt" style={{ width: spacer * 2 + columns.length * cw }}>
       <colgroup>
         <col style={{ width: spacer }} />
         {columns.map((c) => (
@@ -311,12 +315,7 @@ const StripTable = memo(function StripTable({
         <tr className="tt-tide">
           {sp}
           <td colSpan={columns.length} className="d0">
-            <TideRow
-              tide={tide}
-              columns={columns}
-              days={days}
-              cw={cw}
-            />
+            <TideRow tide={tide} columns={columns} days={days} cw={cw} />
           </td>
           {sp}
         </tr>
@@ -326,7 +325,12 @@ const StripTable = memo(function StripTable({
 });
 
 /** Where a time falls along the strip, between its columns' centres. */
-function xOf(columns: readonly StripColumn[], day: StripDay, cw: number, t: number) {
+function xOf(
+  columns: readonly StripColumn[],
+  day: StripDay,
+  cw: number,
+  t: number,
+) {
   const a = day.start;
   const b = day.start + day.count - 1;
   const centre = (i: number) => (i + 0.5) * cw;
@@ -377,9 +381,7 @@ function TideRow({
     const first = columns[day.start];
     const last = columns[day.start + day.count - 1];
     const half =
-      day.count > 1
-        ? (columns[day.start + 1].time - first.time) / 2
-        : 1800000;
+      day.count > 1 ? (columns[day.start + 1].time - first.time) / 2 : 1800000;
     const halfEnd =
       day.count > 1
         ? (last.time - columns[day.start + day.count - 2].time) / 2
@@ -425,7 +427,8 @@ function TideRow({
             y={(high ? Y + 13 : Y - 5).toFixed(1)}
             textAnchor={right ? "start" : "end"}
           >
-            {high ? "High" : "Low"} tide {clock(t)} · {event.height.toFixed(1)} m
+            {high ? "High" : "Low"} tide {clock(t)} · {event.height.toFixed(1)}{" "}
+            m
           </text>
         </g>,
       );
@@ -505,23 +508,34 @@ export default function ForecastDock(props: Props) {
       new Date(axis[axis.length - 1]),
     );
     return (
-      <BlendChart
-        width={columns.length * cw}
-        height={ROWS.blend}
-        centres={columns.map((_, i) => (i + 0.5) * cw)}
-        columns={columns}
-        groups={candleGroups(axis)}
-        support={modelSupport(blend.lines, axis.length)}
-        stats={blend.stats}
-        lines={blend.lines}
-        directions={blend.directions}
-        nights={nights}
-        units={prefs.units}
-        max={niceMax(convert(peak, prefs.units))}
-        reducedMotion={reducedMotion}
-      />
+      <Suspense fallback={<p className="blend-empty">Reading the models…</p>}>
+        <BlendChart
+          width={columns.length * cw}
+          height={ROWS.blend}
+          centres={columns.map((_, i) => (i + 0.5) * cw)}
+          columns={columns}
+          groups={candleGroups(axis)}
+          support={modelSupport(blend.lines, axis.length)}
+          stats={blend.stats}
+          lines={blend.lines}
+          directions={blend.directions}
+          nights={nights}
+          units={prefs.units}
+          max={niceMax(convert(peak, prefs.units))}
+          reducedMotion={reducedMotion}
+        />
+      </Suspense>
     );
-  }, [view, blend, columns, cw, prefs.units, reducedMotion, spot.lat, spot.lon]);
+  }, [
+    view,
+    blend,
+    columns,
+    cw,
+    prefs.units,
+    reducedMotion,
+    spot.lat,
+    spot.lon,
+  ]);
 
   useLayoutEffect(() => {
     const el = wrap.current;
@@ -724,11 +738,7 @@ export default function ForecastDock(props: Props) {
         : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing);
     return {
       x: spacer + (selected + 0.5) * cw,
-      y:
-        top +
-        ROWS.tide -
-        6 -
-        ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
+      y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
     };
   }, [tide, column, selected, spacer, cw, view]);
 
@@ -748,7 +758,12 @@ export default function ForecastDock(props: Props) {
         />
       )}
       <div className="dk-head">
-        <StarToggle on={starred} name={spot.name} onToggle={onToggleStar} size={19} />
+        <StarToggle
+          on={starred}
+          name={spot.name}
+          onToggle={onToggleStar}
+          size={19}
+        />
         <h2 className="dk-name">{spot.name}</h2>
         <FacingCompass facing={facing} size={20} />
         {spot.county && <span className="dk-county">{spot.county}</span>}
@@ -771,8 +786,8 @@ export default function ForecastDock(props: Props) {
           />
           <InfoPop label="About these figures">
             <p>
-              Solid stars: the hour as forecast for you. Outlined: what the
-              wind alone would give. Dark hours aren&rsquo;t rated.
+              Solid stars: the hour as forecast for you. Outlined: what the wind
+              alone would give. Dark hours aren&rsquo;t rated.
             </p>
             <p className="ip-fig">{riderLine(prefs.rider)}</p>
             <p className="ip-small">
@@ -800,7 +815,8 @@ export default function ForecastDock(props: Props) {
                       rel="noreferrer"
                       title={`${source.name} · ${source.licence}`}
                     >
-                      Source{spot.locationSources!.length > 1 ? ` ${i + 1}` : ""}
+                      Source
+                      {spot.locationSources!.length > 1 ? ` ${i + 1}` : ""}
                     </a>
                   ))}
               </p>
@@ -879,7 +895,9 @@ export default function ForecastDock(props: Props) {
         />
         <div
           className="sc-days"
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+          }}
           onPointerDown={(event) => {
             dragging.current = true;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -917,7 +935,9 @@ export default function ForecastDock(props: Props) {
                         />
                       </span>
                       {best.stars > 0 && (
-                        <span className="bw">best {shortRange(columns, best)}</span>
+                        <span className="bw">
+                          best {shortRange(columns, best)}
+                        </span>
                       )}
                       <span className="sn">{best.stars}★</span>
                     </>
@@ -925,7 +945,9 @@ export default function ForecastDock(props: Props) {
                 </div>
                 <div
                   className="sc-strip"
-                  style={{ gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))` }}
+                  style={{
+                    gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))`,
+                  }}
                 >
                   {Array.from({ length: day.count }, (_, k) => {
                     const at = day.start + k;
@@ -934,12 +956,14 @@ export default function ForecastDock(props: Props) {
                     return (
                       <i
                         key={at}
-                        className={[
-                          !h || !h.daylight ? "night" : "",
-                          columns[at].time + 3600000 <= now ? "past" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ") || undefined}
+                        className={
+                          [
+                            !h || !h.daylight ? "night" : "",
+                            columns[at].time + 3600000 <= now ? "past" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || undefined
+                        }
                         style={
                           r
                             ? ({
@@ -968,7 +992,11 @@ export default function ForecastDock(props: Props) {
 
       {reachable && (
         <div className="map-reach" role="status">
-          <button type="button" className="map-reach-chip" onClick={onShowOnMap}>
+          <button
+            type="button"
+            className="map-reach-chip"
+            onClick={onShowOnMap}
+          >
             <Layers3 size={13} strokeWidth={1.5} aria-hidden="true" />
             <span>Show {reachable.name} on the map</span>
           </button>
@@ -977,7 +1005,10 @@ export default function ForecastDock(props: Props) {
 
       {!folded && (
         <div className="dk-body">
-          <div className="dk-grid" style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}>
+          <div
+            className="dk-grid"
+            style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
+          >
             <div className="dk-labs" aria-hidden="true">
               <div style={{ height: ROWS.day }} />
               <div style={{ height: ROWS.hour }} />
@@ -1003,7 +1034,10 @@ export default function ForecastDock(props: Props) {
             </div>
             {view === "table" && (
               // The "?" sits on the Stars label, outside the hidden labels.
-              <span className="dk-stars-q" style={{ top: ROWS.day + ROWS.hour }}>
+              <span
+                className="dk-stars-q"
+                style={{ top: ROWS.day + ROWS.hour }}
+              >
                 <StarsHelp />
               </span>
             )}
@@ -1060,7 +1094,12 @@ export default function ForecastDock(props: Props) {
                   />
                 ))}
                 {tideDot && (
-                  <circle className="tide-dot" cx={tideDot.x} cy={tideDot.y} r="3.4" />
+                  <circle
+                    className="tide-dot"
+                    cx={tideDot.x}
+                    cy={tideDot.y}
+                    r="3.4"
+                  />
                 )}
               </svg>
             </div>
@@ -1075,17 +1114,19 @@ export default function ForecastDock(props: Props) {
         </div>
       )}
       {filterOpen && (
-        <DisplayFilter
-          prefs={prefs}
-          onChange={onPrefsChange}
-          models={models.filter((model) => model.entry.kind === "wind")}
-          onClose={() => {
-            setFilterOpen(false);
-            requestAnimationFrame(() =>
-              filterButton.current?.focus({ preventScroll: true }),
-            );
-          }}
-        />
+        <Suspense fallback={null}>
+          <DisplayFilter
+            prefs={prefs}
+            onChange={onPrefsChange}
+            models={models.filter((model) => model.entry.kind === "wind")}
+            onClose={() => {
+              setFilterOpen(false);
+              requestAnimationFrame(() =>
+                filterButton.current?.focus({ preventScroll: true }),
+              );
+            }}
+          />
+        </Suspense>
       )}
     </section>
   );
