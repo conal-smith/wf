@@ -438,7 +438,8 @@ window.WFChart = (() => {
       canvas,
       setTime(ms) { time = ms; restart(); },
       get time() { return time; },
-      stop() { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, w, h); },
+      // Clearing raf matters: restart() only schedules a frame when none is pending.
+      stop() { stopped = true; cancelAnimationFrame(raf); raf = 0; ctx.clearRect(0, 0, w, h); },
       start() { stopped = false; restart(); },
       set(opt) { Object.assign(o, opt); restart(); },
     };
