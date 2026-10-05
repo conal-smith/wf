@@ -20,6 +20,7 @@
  *   data/soundings.js  and, for depthAt, data/bathy-grids.js.
  */
 window.WFChart = (() => {
+  const KIT_URL = document.currentScript?.src ?? location.href;
   const C = {
     paper: "#F3EEE3",
     paper2: "#EDE6D6",
@@ -162,24 +163,43 @@ window.WFChart = (() => {
   }
 
   function chartStyle(opts) {
+    // Depth from the tiled survey (data/bathy.pmtiles: ~250 m to zoom 9, EMODnet's own
+    // ~115 m for the whole coast from zoom 10) when the page loads pmtiles; otherwise
+    // from the older GeoJSON globals (bathy-ireland.js, bathy-bays.js, soundings.js).
+    const tiled = Boolean(window.pmtiles) && opts.bathy !== "geojson";
+    if (tiled && !maplibregl.__wfPmtiles) {
+      maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+      maplibregl.__wfPmtiles = true;
+    }
+    const empty = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
     const B = window.WFBATHY;
     const bays = window.WFBAYS || {};
     const S = window.WFSOUNDINGS || { coarse: [], fine: [] };
-    const bayBands = { type: "FeatureCollection", features: Object.values(bays).flatMap((b) => b.bands.features) };
-    const bayLines = { type: "FeatureCollection", features: Object.values(bays).flatMap((b) => b.lines.features) };
     const lineWidth = ["match", ["get", "depth"], 0, 1.1, 5, 0.9, 10, 0.9, 2, 0.6, 1, 0.5, 3, 0.5, 0.6];
+    const bathy = tiled
+      ? {
+          bathy: { type: "vector", url: "pmtiles://" + new URL("data/bathy.pmtiles", KIT_URL).href, minzoom: 5, maxzoom: 12 },
+          bayBands: empty,
+          bayLines: empty,
+          soundFine: empty,
+        }
+      : {
+          bands: { type: "geojson", data: B.bands, tolerance: 0.3 },
+          lines: { type: "geojson", data: B.lines, tolerance: 0.3 },
+          relief: { type: "geojson", data: B.relief, tolerance: 0.4 },
+          bayBands: { type: "geojson", data: { type: "FeatureCollection", features: Object.values(bays).flatMap((b) => b.bands.features) }, tolerance: 0.2 },
+          bayLines: { type: "geojson", data: { type: "FeatureCollection", features: Object.values(bays).flatMap((b) => b.lines.features) }, tolerance: 0.2 },
+          soundCoarse: { type: "geojson", data: soundingsGeoJSON(S.coarse, "coarse") },
+          soundFine: { type: "geojson", data: soundingsGeoJSON(S.fine, "fine") },
+        };
+    // A layer's source: the tiles' layer when tiled, the matching GeoJSON source otherwise.
+    const from = (geojsonSource, tileLayer) => (tiled ? { source: "bathy", "source-layer": tileLayer } : { source: geojsonSource });
     return {
       version: 8,
       glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
       sources: {
         omt: { type: "vector", url: "https://tiles.openfreemap.org/planet" },
-        bands: { type: "geojson", data: B.bands, tolerance: 0.3 },
-        lines: { type: "geojson", data: B.lines, tolerance: 0.3 },
-        relief: { type: "geojson", data: B.relief, tolerance: 0.4 },
-        bayBands: { type: "geojson", data: bayBands, tolerance: 0.2 },
-        bayLines: { type: "geojson", data: bayLines, tolerance: 0.2 },
-        soundCoarse: { type: "geojson", data: soundingsGeoJSON(S.coarse, "coarse") },
-        soundFine: { type: "geojson", data: soundingsGeoJSON(S.fine, "fine") },
+        ...bathy,
       },
       layers: [
         { id: "land", type: "background", paint: { "background-color": opts.land ?? C.land } },
@@ -187,7 +207,7 @@ window.WFChart = (() => {
         // The survey's shallows are laid over it, darkest nearest the shore;
         // beyond the survey (open ocean, Britain's coast) the sea stays pale.
         { id: "water", type: "fill", source: "omt", "source-layer": "water", paint: { "fill-color": TINTS[TINTS.length - 1][1] } },
-        { id: "bands", type: "fill", source: "bands", paint: { "fill-color": tint } },
+        { id: "bands", type: "fill", ...from("bands", "bands"), paint: { "fill-color": tint } },
         {
           id: "bay-bands", type: "fill", source: "bayBands", minzoom: 8.5,
           paint: { "fill-color": tint, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 8.5, 0, 9.5, 1] },
@@ -195,17 +215,17 @@ window.WFChart = (() => {
         { id: "sand", type: "fill", source: "omt", "source-layer": "landcover", filter: ["==", ["get", "class"], "sand"], paint: { "fill-color": "#EADCB4", "fill-opacity": 0.8 } },
         { id: "wetland", type: "fill", source: "omt", "source-layer": "landcover", filter: ["==", ["get", "class"], "wetland"], paint: { "fill-color": "#C9D3B2", "fill-opacity": 0.6 } },
         {
-          id: "relief", type: "line", source: "relief", minzoom: 6.5,
+          id: "relief", type: "line", ...from("relief", "relief"), minzoom: 6.5,
           paint: { "line-color": C.relief, "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.5, 0.25, 10, 0.45], "line-width": 0.6 },
         },
         // Contours: the shallow ones dashed, as charts draw a line they are less sure of.
         ...[false, true].map((dashed) => ({
-          id: dashed ? "contours-dashed" : "contours", type: "line", source: "lines",
-          filter: dashed ? ["==", ["get", "depth"], 2] : ["!=", ["get", "depth"], 2],
+          id: dashed ? "contours-dashed" : "contours", type: "line", ...from("lines", "contours"),
+          filter: dashed ? ["in", ["get", "depth"], ["literal", [1, 2, 3]]] : ["!", ["in", ["get", "depth"], ["literal", [1, 2, 3]]]],
           paint: {
             "line-color": C.depth,
             "line-width": lineWidth,
-            "line-opacity": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.8, 10, 0.25],
+            "line-opacity": tiled ? ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.8] : ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.8, 10, 0.25],
             ...(dashed ? { "line-dasharray": [3, 2] } : {}),
           },
         })),
@@ -232,8 +252,8 @@ window.WFChart = (() => {
           paint: { "line-color": C.ink, "line-opacity": 0.85, "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.5, 10, 1, 14, 1.6] },
         },
         {
-          id: "contour-labels", type: "symbol", source: "lines", minzoom: 7.5, maxzoom: 10,
-          filter: ["in", ["get", "depth"], ["literal", [5, 10, 20, 50, 100, 200]]],
+          id: "contour-labels", type: "symbol", ...from("lines", "contours"), minzoom: 7.5, maxzoom: tiled ? 24 : 10,
+          filter: ["in", ["get", "depth"], ["literal", tiled ? [2, 5, 10, 20, 30, 50, 100, 200] : [5, 10, 20, 50, 100, 200]]],
           layout: { "symbol-placement": "line", "text-field": ["to-string", ["get", "depth"]], "text-font": FONT, "text-size": 10, "symbol-spacing": 320 },
           paint: { "text-color": C.depth, "text-halo-color": C.paper, "text-halo-width": 2 },
         },
@@ -244,7 +264,7 @@ window.WFChart = (() => {
           paint: { "text-color": C.depth, "text-halo-color": C.paper, "text-halo-width": 2 },
         },
         {
-          id: "soundings", type: "symbol", source: "soundCoarse", minzoom: 7.2, maxzoom: 10,
+          id: "soundings", type: "symbol", ...from("soundCoarse", "soundings"), minzoom: 7.2, maxzoom: tiled ? 24 : 10,
           layout: { "text-field": ["get", "label"], "text-font": FONT, "text-size": 10, "symbol-sort-key": ["get", "rank"], "text-padding": 6 },
           paint: { "text-color": C.ink, "text-opacity": 0.62 },
         },
@@ -363,6 +383,11 @@ window.WFChart = (() => {
       }
       return s;
     };
+    // Each particle keeps its last few positions and its trail is drawn fresh every
+    // frame, older segments fainter. (Fading the canvas instead never quite reaches
+    // zero in 8-bit alpha and leaves a haze wherever particles have been.)
+    const trailLength = () => Math.max(6, Math.min(24, Math.round(Math.log(0.15) / Math.log(o.fade))));
+    const BUCKETS = 4;
     const frame = (now) => {
       raf = 0;
       if (stopped || map.isMoving() || document.hidden) return;
@@ -370,29 +395,41 @@ window.WFChart = (() => {
       if (now - last < 30) return;
       last = now;
       if (!field) build();
-      ctx.globalCompositeOperation = "destination-in";
-      ctx.fillStyle = `rgba(0,0,0,${o.fade})`;
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalCompositeOperation = "source-over";
+      const L = trailLength();
+      for (const p of cloud) {
+        const s = at(p.x, p.y);
+        if (!s || p.age > 70) { Object.assign(p, spawn(), { age: 0, trail: null }); continue; }
+        if (!p.trail) p.trail = [p.x, p.y];
+        p.x += s[0]; p.y += s[1]; p.age++;
+        p.strong = s[2] > 7;
+        p.trail.push(p.x, p.y);
+        if (p.trail.length > (L + 1) * 2) p.trail.splice(0, 2);
+      }
+      ctx.clearRect(0, 0, w, h);
       ctx.lineCap = "round";
-      // Two passes: light air thin and pale, a breeze bolder.
+      // Light air thin and pale, a breeze bolder; each in a few alpha steps along the trail.
       for (const strong of [false, true]) {
-        ctx.beginPath();
-        for (const p of cloud) {
-          const s = at(p.x, p.y);
-          if (!s || p.age > 70) { Object.assign(p, spawn(), { age: 0 }); continue; }
-          if ((s[2] > 7) !== strong) continue;
-          ctx.moveTo(p.x, p.y);
-          p.x += s[0]; p.y += s[1]; p.age++;
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.strokeStyle = `rgba(${o.color},${strong ? o.alpha : o.alpha * 0.6})`;
         ctx.lineWidth = strong ? o.width * 1.4 : o.width;
-        ctx.stroke();
+        for (let k = 0; k < BUCKETS; k++) {
+          ctx.beginPath();
+          for (const p of cloud) {
+            const t = p.trail;
+            if (!t || p.strong !== strong) continue;
+            const n = t.length / 2 - 1;
+            // Segment i (0 oldest) belongs to bucket floor(i / n * BUCKETS).
+            for (let i = Math.floor((k * n) / BUCKETS); i < Math.floor(((k + 1) * n) / BUCKETS); i++) {
+              ctx.moveTo(t[i * 2], t[i * 2 + 1]);
+              ctx.lineTo(t[i * 2 + 2], t[i * 2 + 3]);
+            }
+          }
+          const a = (strong ? o.alpha : o.alpha * 0.6) * ((k + 1) / BUCKETS);
+          ctx.strokeStyle = `rgba(${o.color},${a.toFixed(3)})`;
+          ctx.stroke();
+        }
       }
     };
     const restart = () => { field = null; if (!raf && !stopped) raf = requestAnimationFrame(frame); };
-    map.on("movestart", () => ctx.clearRect(0, 0, w, h));
+    map.on("movestart", () => { ctx.clearRect(0, 0, w, h); cloud.forEach((p) => (p.trail = null)); });
     map.on("moveend", restart);
     map.on("resize", restart);
     document.addEventListener("visibilitychange", restart);
