@@ -3,6 +3,7 @@ import {
   APP_ROUTES,
   SITE_SECTIONS,
   isSpotPath,
+  isStarsPath,
   mapSpotHref,
   spotHref,
   spotIdFromPath,
@@ -102,6 +103,15 @@ describe("isSpotPath", () => {
     expect(isSpotPath("/spot/brandon/")).toBe(true);
   });
 
+  it("claims /stars, the bundle's other page, and isStarsPath tells it apart", () => {
+    expect(isSpotPath("/stars")).toBe(true);
+    expect(isSpotPath("/stars/")).toBe(true);
+    expect(isSpotPath("/starship")).toBe(false);
+    expect(isStarsPath("/stars")).toBe(true);
+    expect(isStarsPath("/spot/brandon")).toBe(false);
+    expect(isStarsPath("/starsign")).toBe(false);
+  });
+
   it("does not claim a path that merely starts with the word", () => {
     expect(isSpotPath("/spots")).toBe(false);
     expect(isSpotPath("/spotify")).toBe(false);
@@ -141,7 +151,13 @@ describe("mapSpotHref", () => {
 });
 
 describe("APP_ROUTES", () => {
-  it("is every section with a bundle of its own, then the spot page", () => {
-    expect(APP_ROUTES).toEqual(["/market", "/community", "/ai", "/spot"]);
+  it("is every section with a bundle of its own, then the spot page and the stars", () => {
+    expect(APP_ROUTES).toEqual([
+      "/market",
+      "/community",
+      "/ai",
+      "/spot",
+      "/stars",
+    ]);
   });
 });

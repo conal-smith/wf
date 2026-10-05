@@ -5,6 +5,10 @@
  * table's horizontal scroller never clips it; it sits below the stars, or
  * above them when there is no room below, and closes on scroll, on Escape
  * and on a tap anywhere else.
+ *
+ * It is the chart's box: paper with its grain, ruled twice in ink. A press on
+ * the stars is theirs alone: it never reaches the row they sit in, which
+ * opens its own second line.
  */
 import {
   useEffect,
@@ -20,16 +24,16 @@ import { RING, tv } from "../../ui/tv";
 const styles = tv({
   slots: {
     trigger: [
-      "-mx-1 inline-flex min-h-control-sm items-center rounded-control border-0 bg-transparent px-1 font-body text-ink",
+      "-mx-1 inline-flex min-h-control-sm items-center rounded-control border-0 bg-transparent px-1 text-ink",
       "cursor-help not-disabled:hover:bg-sunken",
       RING,
     ],
-    card: "pointer-events-auto fixed z-popover rounded-surface border border-line bg-card p-4 text-left shadow-surface",
+    card: "pointer-events-auto fixed z-popover rounded-surface border border-ink bg-card paper-grain p-4 text-left text-ink shadow-surface inset-shadow-frame",
   },
 });
 
 /** The card's width, and how close it may come to the viewport's edges. */
-const WIDTH = 352;
+const WIDTH = 320;
 const MARGIN = 12;
 const GAP = 6;
 /** Long enough to cross from the stars into the card without it closing. */
@@ -143,7 +147,12 @@ export function RatingTip({ label, children, detail }: RatingTipProps) {
           if (event.currentTarget.matches(":focus-visible")) show();
         }}
         onBlur={hideSoon}
-        onClick={() => {
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ")
+            event.stopPropagation();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
           if (pointer.current === "mouse") show();
           else if (open) hide();
           else show();

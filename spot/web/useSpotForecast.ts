@@ -80,8 +80,11 @@ export function useSpotForecast(id: string | null, attempt = 0): SpotState {
           candidates: candidatesFor(spots, id),
         } as const;
       const now = Date.now();
+      // Every member's wind is kept, so the chance it rides is re-rated here
+      // for whichever rider the page is set to, without asking again.
       const forecast = await spotForecast(source(), spot, forecastWindow(now), {
         now,
+        members: true,
       });
       return { kind: "ready", spot, forecast } as const;
     })().then(
