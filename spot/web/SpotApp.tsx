@@ -12,7 +12,6 @@ import {
   Map as MapIcon,
   MapPin,
   RefreshCw,
-  Wind,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
@@ -38,6 +37,7 @@ import {
 import { usePageTitle } from "../../shared/web/usePageTitle";
 import { StarGlyphs } from "../../src/StarsRows";
 import { Button, Chip, Empty, Notice, Pane, Skeleton } from "../../ui";
+import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { RING, tv } from "../../ui/tv";
 import { DayStrip } from "./DayStrip";
 import { DayTable } from "./DayTable";
@@ -63,16 +63,8 @@ import { useSpotForecast } from "./useSpotForecast";
 
 const styles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-safe-6 max-wide:px-safe-3",
-    header: "sticky top-0 z-header py-3",
-    bar: "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card pr-2 pl-3 shadow-marker",
-    brand: [
-      "inline-flex min-w-0 items-center gap-2 rounded-control text-lead whitespace-nowrap text-ink no-underline",
-      RING,
-    ],
-    domain: "font-normal text-ink-muted",
-    barEnd: "ml-auto flex items-center gap-2",
     main: "flex flex-col gap-10 pt-4 pb-12 max-wide:gap-8 max-sm:gap-6 max-sm:pt-1",
     hero: "grid items-start gap-6 rail:grid-cols-detail",
     identity: "flex min-w-0 flex-col gap-4 max-sm:gap-3",
@@ -90,7 +82,7 @@ const styles = tv({
     // A phone folds the rider into one line under the name, so the week is on
     // the first screen; it opens in place.
     riderChip: [
-      "flex min-h-touch w-full items-center gap-2 rounded-pill border border-line bg-card px-4 py-2 text-left font-sans text-body text-ink-2 shadow-control",
+      "flex min-h-touch w-full items-center gap-2 rounded-pill border border-line bg-card px-4 py-2 text-left font-body text-body text-ink-2 shadow-control",
       "cursor-pointer transition-colors duration-fast not-disabled:hover:bg-solid motion-reduce:transition-none",
       RING,
     ],
@@ -149,20 +141,16 @@ export default function SpotApp() {
   return (
     <div className={s.root()}>
       <div className={s.page()}>
-        <header className={s.header()}>
-          <div className={s.bar()}>
+        <Masthead>
             <SiteMenu current="map" size="sm" ground="content" />
             <a
               href="/"
-              className={s.brand()}
+              className={mastheadStyles().brand()}
               aria-label="wingfoil.ie, wind map"
             >
-              <Wind size={22} aria-hidden="true" />
-              <span>
-                wingfoil<span className={s.domain()}>.ie</span>
-              </span>
+              <MastheadMark />
             </a>
-            <span className={s.barEnd()}>
+            <span className={mastheadStyles().actions()}>
               <Button
                 variant="pill"
                 size="sm"
@@ -173,8 +161,7 @@ export default function SpotApp() {
                 <span>Map</span>
               </Button>
             </span>
-          </div>
-        </header>
+        </Masthead>
         {state.kind === "loading" && <Loading />}
         {state.kind === "error" && (
           <main className={s.main()}>

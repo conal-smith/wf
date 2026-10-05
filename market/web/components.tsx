@@ -15,12 +15,12 @@ import {
   Star,
   StarHalf,
   UserRound,
-  Wind,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
 import { Button, Chip, Empty, Skeleton } from "../../ui";
+import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { buttonStyles } from "../../ui/Button";
 import { linkStyles } from "../../ui/Link";
 import { paneStyles } from "../../ui/Pane";
@@ -92,32 +92,17 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 // ---- header ----------------------------------------------------------------
 
+/*
+ * The site's masthead (ui/Masthead.tsx) with the marketplace's own few
+ * actions. The bar's insets and the nameplate step down on a phone, so the
+ * menu, the nameplate and both actions share 390px without a label wrapping.
+ */
 export const headerStyles = tv({
   slots: {
-    // The bar sits clear of a notch: the top inset is the larger of the two.
-    base: "sticky top-0 z-header pt-safe-3 pb-3",
-    // A card, not glass: there is no map under it to show through, and white
-    // reads as lifted where glass over the content ground reads as disabled.
-    bar: [
-      "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card py-1 pr-2 pl-3 shadow-marker",
-      // The site menu now starts the bar. Below the label breakpoint the bar's
-      // own insets pay for it rather than a label being squeezed onto two
-      // lines: a round control needs less inset than a word does anyway.
-      "max-wide:gap-1 max-wide:px-1",
-    ],
-    brand: [
-      "inline-flex items-center gap-2 rounded-control font-sans text-lead whitespace-nowrap text-ink no-underline",
-      RING,
-    ],
-    domain: "font-normal text-ink-muted",
-    actions: "ml-auto flex items-center gap-1",
     // The word beside the icon, where the row is wide enough to hold it.
     label: "hidden wide:inline",
     user: "inline-flex items-center px-2",
     name: "hidden items-center px-2 text-body text-ink-muted wide:inline-flex",
-    // Only where the bar has room: at 390px these eight pixels are the
-    // difference between "Sign in" on one line and on two.
-    sell: "wide:px-3",
   },
 });
 
@@ -128,27 +113,23 @@ export const headerStyles = tv({
 export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   const auth = useMarketAuth();
   const styles = headerStyles();
+  const masthead = mastheadStyles();
   return (
-    <header className={styles.base()}>
-      <div className={styles.bar()}>
+    <Masthead>
         <SiteMenu current="market" size="sm" ground="content" />
         <Link
           to={paths.browse()}
-          className={styles.brand()}
+          className={masthead.brand()}
           aria-label="wingfoil.ie Market, home"
         >
-          <Wind size={22} aria-hidden="true" />
-          <span>
-            wingfoil<span className={styles.domain()}>.ie</span>
-          </span>
-          <Chip eyebrow>Market</Chip>
+          <MastheadMark section="Market" />
         </Link>
         {/*
           The wind map is reached through the site menu at the start of the bar,
           not a button of its own here: one control per destination. The footer
           link stays — it is at the other end of the page, not beside it.
         */}
-        <nav className={styles.actions()} aria-label="Marketplace">
+        <nav className={masthead.actions()} aria-label="Marketplace">
           {/*
             The kit's Button is an anchor when it is given an href, but the
             marketplace's router takes a link over through its own <Link>. So a
@@ -159,7 +140,6 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             className={buttonStyles({
               variant: accentSell ? "primary" : "pill",
               size: "sm",
-              className: accentSell ? styles.sell() : undefined,
             })}
             to={paths.sell()}
           >
@@ -200,8 +180,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             </Button>
           )}
         </nav>
-      </div>
-    </header>
+    </Masthead>
   );
 }
 

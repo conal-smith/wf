@@ -6,13 +6,14 @@
  * One click where a client has an install link (Claude, Cursor, VS Code), the
  * lines to paste where it does not. The endpoint itself is mcp/api/server.ts.
  */
-import { Bot, Check, Copy, ExternalLink, Wind } from "lucide-react";
+import { Bot, Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { API_ROOT } from "../../shared/web/http";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import { Button, Chip, Notice, Pane } from "../../ui";
-import { RING, tv } from "../../ui/tv";
+import { Button, Notice, Pane } from "../../ui";
+import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
+import { tv } from "../../ui/tv";
 import {
   EXAMPLE_PROMPTS,
   claudeCodeCommand,
@@ -26,15 +27,8 @@ import {
 
 const styles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
     page: "mx-auto flex w-full max-w-form flex-1 flex-col px-safe-6 max-wide:px-safe-3",
-    header: "sticky top-0 z-header py-3",
-    bar: "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card pr-2 pl-3 shadow-marker",
-    brand: [
-      "inline-flex min-w-0 items-center gap-2 rounded-control text-lead whitespace-nowrap text-ink no-underline",
-      RING,
-    ],
-    domain: "font-normal text-ink-muted",
     main: "flex flex-col gap-6 pt-3 pb-10",
     intro: "flex flex-col gap-2",
     title: "m-0 text-title",
@@ -97,22 +91,16 @@ export default function AiApp() {
   return (
     <div className={s.root()}>
       <div className={s.page()}>
-        <header className={s.header()}>
-          <div className={s.bar()}>
-            <SiteMenu current="ai" size="sm" ground="content" />
-            <a
-              href="/"
-              className={s.brand()}
-              aria-label="wingfoil.ie, wind map"
-            >
-              <Wind size={22} aria-hidden="true" />
-              <span>
-                wingfoil<span className={s.domain()}>.ie</span>
-              </span>
-              <Chip eyebrow>AI</Chip>
-            </a>
-          </div>
-        </header>
+        <Masthead>
+          <SiteMenu current="ai" size="sm" ground="content" />
+          <a
+            href="/"
+            className={mastheadStyles().brand()}
+            aria-label="wingfoil.ie, wind map"
+          >
+            <MastheadMark section="AI" />
+          </a>
+        </Masthead>
 
         <main className={s.main()}>
           <div className={s.intro()}>
