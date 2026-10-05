@@ -1116,6 +1116,26 @@ describe("the chart's own primitives", () => {
     expect(markup).toMatch(/^<p class="[^"]*font-hand[^"]*text-pen-ink/);
   });
 
+  it("the pen's note takes the attributes it is given, and keeps its classes", () => {
+    const markup = html(
+      <PenNote
+        as="span"
+        size="sm"
+        id="n"
+        data-pen-note
+        aria-live="polite"
+        className="ml-1"
+      >
+        best of the week
+      </PenNote>,
+    );
+    expect(markup).toMatch(/^<span /);
+    expect(markup).toContain('id="n"');
+    expect(markup).toContain('data-pen-note="true"');
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toMatch(/class="[^"]*font-hand[^"]*ml-1/);
+  });
+
   it("the puffin is decoration unless he is named", () => {
     expect(html(<Puffin />)).toContain('aria-hidden="true"');
     const named = html(<Puffin title="The Almanac" />);

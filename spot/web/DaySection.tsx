@@ -211,9 +211,9 @@ export function DaySection(props: DaySectionProps) {
           )}
         </div>
         {note && (
-          <div data-pen-note>
-            <PenNote size="sm">{note}</PenNote>
-          </div>
+          <PenNote size="sm" data-pen-note>
+            {note}
+          </PenNote>
         )}
       </header>
       {shown ? (
