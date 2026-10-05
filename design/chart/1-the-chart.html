@@ -13,7 +13,7 @@
 <script src="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.js"></script>
 <script src="../directions/data.js"></script>
 <script src="data/tides.js"></script>
-<script src="data/models.js"></script>
+<script src="data/hours.js"></script>
 <script src="data/wind.js"></script>
 <script src="data/bathy-ireland.js"></script>
 <script src="data/bathy-bays.js"></script>
@@ -65,27 +65,33 @@ body.on-sheet .maplibregl-ctrl-bottom-left{bottom:4px}
 .maplibregl-ctrl-attrib.maplibregl-compact{background:rgba(243,238,227,.9);font-family:var(--f-body);font-size:11px}
 #neat{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none}
 
-/* ---------- lights ---------- */
+/* ---------- lights: the hour's stars, an arrow downwind ---------- */
 .lt{width:20px;height:20px;cursor:pointer;border-radius:50%}
 .lt svg{position:absolute;left:-20px;top:-20px;width:60px;height:60px;pointer-events:none;overflow:visible;transition:transform .2s}
-.lt .flare{fill:var(--mag);display:none}
-.lt.s3 .flare,.lt.s4 .flare,.lt.s5 .flare{display:block}
+.lt .arr{fill:none;stroke:var(--ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .lt .r1{fill:var(--paper);stroke:var(--ink);stroke-width:1.1}
-.lt .r2{fill:none;stroke:var(--ink);stroke-width:.8}
 .lt .n{font:600 9.5px var(--f-mono);fill:var(--ink)}
-.lt.s0 .r1{stroke:rgba(26,29,33,.45);stroke-dasharray:2 1.6}
-.lt.s0 .n{fill:rgba(26,29,33,.45);font-weight:500}
-.lt.s3 .r1,.lt.s4 .r1,.lt.s5 .r1{fill:var(--ink)}
-.lt.s3 .n,.lt.s4 .n,.lt.s5 .n{fill:var(--paper)}
+.lt .strike{display:none;stroke:var(--red);stroke-width:1.6;stroke-linecap:round}
+.lt.s0 .r1{stroke:rgba(26,29,33,.5);stroke-dasharray:2 1.6}
+.lt.s0 .n{fill:rgba(26,29,33,.5);font-weight:500}
+.lt.s3 .r1,.lt.s4 .r1{fill:var(--ink)}
+.lt.s3 .n,.lt.s4 .n{fill:var(--paper)}
 .lt.s5 .r1{fill:var(--mag);stroke:var(--mag)}
+.lt.s5 .n{fill:var(--paper)}
+.lt.dark .r1{fill:rgba(26,29,33,.12);stroke:rgba(26,29,33,.35)}
+.lt.dark .arr{stroke:rgba(26,29,33,.35)}
+.lt.off .r1{fill:var(--paper)!important;stroke:var(--red)!important;stroke-dasharray:none}
+.lt.off .n{fill:var(--red)!important}
+.lt.off .strike{display:block}
+.lt.off .arr{stroke:var(--red)}
 .lt .lab{position:absolute;left:19px;top:-4px;white-space:nowrap;pointer-events:none;display:none;line-height:1.05;
   text-shadow:0 0 2px #F1EFE6,0 0 3px #F1EFE6,0 0 5px #F1EFE6,0 0 8px #F1EFE6}
 .lt .lab b{font:italic 600 12px var(--f-disp);display:block}
 .lt .lab i{font:500 10px var(--f-mono);font-style:normal;color:var(--mag)}
+.lt.off .lab i{color:var(--red)}
 .lt.feat .lab,.lt.sel .lab,#map.z-hi .lt .lab{display:block}
 body.no-names .lt:not(.sel) .lab{display:none!important}
 #map.z-lo .lt svg{transform:scale(.74)}
-#map.z-lo .lt.s0 .n,#map.z-lo .lt.s1 .n,#map.z-lo .lt.s2 .n{display:none}
 #map.z-lo .lt .lab{left:14px}
 .lt:hover svg,.lt:focus-visible svg{transform:scale(1.18)}
 .lt.sel{z-index:2}
@@ -135,6 +141,7 @@ body.on-sheet #side{opacity:0;pointer-events:none}
 .tabs .when{margin-left:auto;align-self:center;font:500 10px var(--f-mono);letter-spacing:.06em;color:var(--muted)}
 #side h4{display:flex;justify-content:space-between;align-items:center;margin:9px 0 1px;font:500 9.5px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .fvl{list-style:none;margin:0;padding:0}
+.sbest{display:none}
 .fvl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:0 6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--hair)}
 .fv-go{border:0;background:none;text-align:left;cursor:pointer;padding:0;min-width:0}
 .fv-go b{display:block;font:italic 600 15px var(--f-disp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -250,6 +257,7 @@ table.tt{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(
 .dk-pf svg{width:100%;height:100%;overflow:visible;transform-origin:50% 95%;animation:bob 6s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:none}46%{transform:none}50%{transform:translateY(-3px) rotate(-2deg)}54%{transform:none}}
 body.fold .dk-body{display:none}
+.dk-body>div{min-width:0}
 /* the ribbon: an experiment */
 #rib{position:relative;height:150px;display:none;overflow:hidden;touch-action:none;cursor:grab;border-bottom:1px solid var(--hair)}
 #rib:active{cursor:grabbing}
@@ -262,6 +270,7 @@ body.v-ribbon #tt-wrap{display:none}
 #rib-days span{position:absolute;bottom:2px;font:600 11px var(--f-disp);transform:translateX(-50%);pointer-events:none;white-space:nowrap}
 #rib-days span small{font:400 9px var(--f-mono);color:var(--muted);margin-left:3px}
 #rib-guides span{position:absolute;right:4px;font:500 8.5px var(--f-mono);color:var(--muted);transform:translateY(-50%);pointer-events:none}
+#rib-n{position:absolute;transform:translate(-50%,-50%);font:600 9px var(--f-mono);color:var(--red);pointer-events:none}
 #rib-load{position:absolute;inset:0;display:grid;place-items:center;font:italic 13px var(--f-body);color:var(--muted)}
 
 /* ---------- popup ---------- */
@@ -305,36 +314,54 @@ body.on-sheet #sheet{transform:none}
 .dcard .stars{margin:5px 0 3px;display:block}
 .dcard .dl{font:400 10.5px var(--f-mono);color:var(--muted);white-space:nowrap}
 .dcard .dl b{color:var(--ink);font-weight:600}
-.legend{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;font:400 10px var(--f-mono);color:var(--muted);margin:14px 0 4px}
-.legend span{display:inline-flex;gap:5px;align-items:center}
-.sh-tt-wrap{position:relative;overflow-x:auto}
+.week{position:relative}
+/* one block per day: sticky header, hourly rows, then the day's tide and light */
+section.day{position:relative;margin-top:18px}
+.dh{position:sticky;top:0;z-index:4;background:var(--paper);border-bottom:2px solid var(--ink);padding:8px 0 4px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dh1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dh1 b{font:650 19px var(--f-disp)}
+.dh .db{display:inline-flex;gap:5px;align-items:center;font:500 11px var(--f-mono)}
+.dh .wk{font:15px var(--f-hand);color:var(--red);transform:rotate(-2deg)}
+.dh .pn{margin:0;font:16px var(--f-hand);color:var(--red);transform:rotate(-1deg)}
+.dwrap{position:relative}
+.dpen{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
 table.ht{width:100%;border-collapse:collapse;font-family:var(--f-mono);font-feature-settings:"tnum" 1;font-size:12px}
-.ht thead th{font:500 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 4px 4px;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:bottom;position:sticky;top:0;background:var(--paper);z-index:2}
+.ht thead th{font:500 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 3px;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:bottom;background:var(--paper)}
 .ht thead th .q{width:14px;height:14px;font-size:9px}
-.ht td{padding:0 4px;height:26px;border-bottom:1px solid var(--hair);white-space:nowrap;vertical-align:middle}
+.ht td{padding:0 3px;height:34px;border-bottom:1px solid var(--hair);white-space:nowrap;vertical-align:middle}
 .ht tr.hrow{cursor:pointer}
 .ht tr.hrow:hover td{background:rgba(176,24,106,.04)}
-.ht tr.sel td:not(.tide){background:rgba(26,29,33,.07)}
+.ht tr.hrow[aria-expanded=true] td{border-bottom-color:transparent}
+.ht tr.sel td{background:rgba(26,29,33,.07)}
 .ht tr.sel td.t{box-shadow:inset 3px 0 0 var(--ink)}
-.ht tr.past td:not(.tide){opacity:.45}
-.ht td.t{font:600 12.5px var(--f-mono);width:34px}
-.ht td.st{width:66px}
-.ht .kn{font:600 14px var(--f-mono)}
-.ht .g{font-size:10.5px}
+.ht tr.past td{opacity:.45}
+.ht td.t{font:600 13px var(--f-mono);width:30px}
+.ht td.st{width:60px}
+.ht td.w{width:64px}
+.ht .kn{font:600 19px var(--f-mono);letter-spacing:-.02em}
+.ht .gu{font:500 11px var(--f-mono);color:var(--muted);vertical-align:super;margin-left:2px}
+.ht .gu.big{color:var(--red);font-weight:600}
+.ht td.dr svg{vertical-align:middle}
+.ht .cmp{font-size:9.5px;color:var(--muted);margin-left:2px}
+.ht td.wx{width:58px}
+.ht td.wx .air{font:500 13px var(--f-mono);margin-left:4px;vertical-align:middle}
+.ht td.ch{width:48px;text-align:right}
+.pc{display:inline-block;min-width:40px;text-align:center;font:600 11px var(--f-mono);padding:2px 4px;border:1px solid var(--hair);background:linear-gradient(90deg,rgba(176,24,106,.22) var(--c),transparent var(--c))}
 .ht td.wg{font-weight:600;font-size:13px}
-.ht td.tide{padding:0;width:104px;vertical-align:top;border-left:1px solid var(--hair);border-bottom:0}
-.ht td.tide svg{display:block;width:104px;overflow:visible}
-.ht td.rg svg,.ht td.ch svg{display:block}
-.ht td.ch{width:76px}
-.ht td.ch span{display:inline-block;width:30px;text-align:right;margin-right:4px}
-.ht td.ch svg{display:inline-block;vertical-align:middle}
-.ht .dots{letter-spacing:-1px;font-size:9px;color:var(--ink)}
-.ht .dots i{font-style:normal;color:var(--faint)}
-.ht tr.dh td{height:auto;padding:14px 4px 4px;border-bottom:2px solid var(--ink);font:650 18px var(--f-disp);background:none!important;opacity:1!important}
-.ht tr.dh td .mono{font-size:10.5px;color:var(--muted);font-weight:400;margin-left:10px;letter-spacing:.04em}
-.ht tr.dh td .pn{float:right;font:400 16px var(--f-hand);color:var(--red);transform:rotate(-1deg);margin-top:2px}
-.ht tr.nt td{height:22px;font:400 10.5px var(--f-mono);color:var(--muted);background-image:repeating-linear-gradient(135deg,rgba(26,29,33,.06) 0 1px,transparent 1px 4px);border-bottom:0}
+.ht tr.more td{height:auto;padding:4px 3px 9px;border-bottom:1px solid var(--hair)}
+.mo{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font:400 11.5px var(--f-mono);color:var(--muted)}
+.mo b{color:var(--ink);font-weight:600}
+.mo i{font:italic 14px var(--f-disp);color:var(--ink)}
+.mo span{display:inline-flex;gap:5px;align-items:center}
+.mo .rs{flex-basis:100%;font:italic 13px var(--f-body);color:var(--red)}
+.dfoot{margin-top:6px}
+.tide24{display:block;width:100%}
+.dtabs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;max-width:560px}
+table.mini{width:100%;border-collapse:collapse;font-size:13px}
+.mini td{padding:3px 4px;border-bottom:1px solid var(--hair);background:rgba(26,29,33,.035)}
+.mini td.n{font:500 12px var(--f-mono);text-align:right}
 .colo{margin-top:24px;border-top:3px double var(--ink);padding-top:8px;font-size:12px;color:var(--muted)}
+.wide{display:table-cell}
 /* the stars explained */
 .ex{max-width:720px}
 .ex h2{font:600 22px var(--f-disp);margin:26px 0 6px;border-bottom:2px solid var(--ink);padding-bottom:4px}
@@ -384,6 +411,8 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   #tp-yours{display:flex;gap:4px}
   #side .fvl{display:flex;gap:4px}
   #side .fvl li{grid-template-columns:20px auto auto;border:0;border-right:1px solid var(--hair);padding:2px 8px 2px 0;white-space:nowrap}
+  #side .sbest{display:block;align-self:center;font:500 9px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);padding:0 2px}
+  body.key-on #side .sbest{display:none}
   #side .fvl,#side .fvl li{flex:none}
   #side .fvl li{display:flex;gap:4px;align-items:center}
   #side .fv-go{min-width:auto}
@@ -411,17 +440,20 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   .sc-h b{font-size:13px}.sc-h .dt,.sc-h .bw{display:none}
   .sc-h .st{display:none}.sc-h .sn{display:block}
   .sc-flag{font-size:9px}
-  .dk-body{grid-template-columns:1fr;gap:8px}
+  .dk-body{grid-template-columns:minmax(0,1fr);gap:8px}
   table.tt{width:820px}
   .tt th{position:sticky;left:0;background:var(--paper);z-index:1;width:58px}
   .dk-margin{border-left:0;border-top:1px solid var(--hair);padding:8px 0 6px 0;min-height:66px}
   .sh-in{padding:10px 14px 40px}
   #sheet{top:18vh;border-left:0;border-top:3px double var(--ink);transform:translateY(105%)}
   .headline{font-size:32px;margin-top:12px}
-  .week{grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto}
-  table.ht{min-width:860px}
-  .ht thead th{position:static}
-  .ht tr.dh td .pn{float:none;display:block}
+  .week{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .dcard{padding:6px 4px 7px}
+  .dcard .stars{width:52px;height:auto}
+  .dcard .dn{font-size:14px}
+  .wide{display:none!important}
+  .ht td{height:38px}
+  .dh .pn{flex-basis:100%}
   #menu{width:86vw}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -475,14 +507,14 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
     <p class="scale" id="c-scale">SCALE 1 : 2 400 000</p>
     <svg class="scalebar" id="c-bar" width="210" height="22" aria-hidden="true"></svg>
     <dl>
-      <dt><svg width="34" height="34" viewBox="-17 -22 34 34" aria-hidden="true"><path d="M0 -1 C3.4 -6 6 -13 0 -20 C-6 -13 -3.4 -6 0 -1Z" transform="translate(0 -4) rotate(30 0 4)" fill="#B0186A"/><circle r="7.6" fill="#1A1D21"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#F3EEE3">4</text></svg></dt>
-      <dd>Best stars that day. Lit from 3★, one flash per star.</dd>
+      <dt><svg width="34" height="34" viewBox="-17 -17 34 34" aria-hidden="true"><path d="M5.5 -5.5L13 -13M8.2 -13.4L13.6 -13.6L13.4 -8.2" fill="none" stroke="#1A1D21" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle r="7.6" fill="#1A1D21"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#F3EEE3">4</text></svg></dt>
+      <dd>Stars at the hour shown; the arrow blows downwind.</dd>
+      <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#B0186A"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#F3EEE3">5</text></svg></dt>
+      <dd>5★</dd>
       <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1.1"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#1A1D21">2</text></svg></dt>
-      <dd>1–2★</dd>
-      <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#F3EEE3" stroke="rgba(26,29,33,.45)" stroke-width="1.1" stroke-dasharray="2 1.6"/><text y="3.4" text-anchor="middle" style="font:500 9.5px 'IBM Plex Mono';fill:rgba(26,29,33,.45)">0</text></svg></dt>
-      <dd>No stars</dd>
-      <dt><svg width="34" height="26" viewBox="-17 -13 34 26" aria-hidden="true"><circle r="10.5" fill="none" stroke="#1A1D21" stroke-width=".8"/><circle r="7.6" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1.1"/></svg></dt>
-      <dd>Hour by hour</dd>
+      <dd>1–2★ · dashed: none</dd>
+      <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#F3EEE3" stroke="#D43A2C" stroke-width="1.1"/><line x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" stroke="#D43A2C" stroke-width="1.6" stroke-linecap="round"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#D43A2C">1</text></svg></dt>
+      <dd>Offshore or cross-offshore</dd>
       <dt><svg width="34" height="20" viewBox="0 0 34 20" aria-hidden="true"><path d="M3 15 C10 13 16 8 31 5" fill="none" stroke="rgba(26,29,33,.55)" stroke-width="1.4" stroke-linecap="round"/><path d="M5 18 C12 16 18 12 26 10" fill="none" stroke="rgba(26,29,33,.3)" stroke-width="1" stroke-linecap="round"/></svg></dt>
       <dd>Wind, at the hour shown</dd>
       <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><path d="M-14 4 C-10 -9 10 -10 13 3 C11 10 -10 11 -14 4Z" fill="none" stroke="#D43A2C" stroke-width="1.6" stroke-linecap="round"/></svg></dt>
@@ -516,7 +548,7 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   <div class="dk-body">
     <div>
       <div class="tt-wrap" id="tt-wrap"><table class="tt" id="tt"></table><svg id="ttpen" aria-hidden="true"></svg></div>
-      <div id="rib" aria-label="The week as a ribbon: drag to move through time"><div id="rib-load">Drawing the ribbon…</div><div id="rib-guides"></div><div id="rib-days"></div><div id="rib-read"></div></div>
+      <div id="rib" aria-label="The week as a ribbon: drag to move through time"><div id="rib-load">Drawing the ribbon…</div><div id="rib-guides"></div><span id="rib-n">N</span><div id="rib-days"></div><div id="rib-read"></div></div>
     </div>
     <div class="dk-margin"><p id="dk-note" class="hand" aria-live="polite"></p>
       <div class="dk-pf" title="The Almanac's note"><svg viewBox="0 0 120 130" aria-hidden="true"><use href="#puffin-art"/></svg></div>
@@ -533,8 +565,6 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   <button class="ib x" id="menu-x" aria-label="Close the menu">×</button>
   <a class="nameplate" href="#map">wingfoil<span class="ie">.ie</span></a>
   <ul><li><a href="#map">The chart</a></li><li><a href="#stars">How the stars work</a></li></ul>
-  <h3>Hour by hour</h3>
-  <ul id="menu-feat"></ul>
   <h3>Next edition</h3>
   <ul><li><span>Community <small>next edition</small></span></li><li><span>Marketplace <small>next edition</small></span></li></ul>
 </nav>
@@ -571,7 +601,7 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
 <script>
 (() => {
 'use strict';
-const W = window.WF, K = window.WFChart, WM = window.WFMODELS;
+const W = window.WF, K = window.WFChart, WH = window.WFHOURS;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS = 'http://www.w3.org/2000/svg';
 const $ = (s, r = document) => r.querySelector(s);
@@ -620,18 +650,34 @@ const BYID = Object.fromEntries(W.spots.map(s => [s.id, s]));
 const FEAT = new Set(Object.keys(W.featured));
 const nameOf = s => s.name.replace(' — Rosslare', '');
 const F = {};
-for (const [id, f] of Object.entries(W.featured)) {
+const AG = { h: 'high', m: 'moderate', l: 'low' };
+const H0 = Date.parse('2026-10-05T00:00:00Z');
+for (const sp of W.spots) {
+  const src = WH && WH.spots[sp.id]; if (!src) continue;
   const at = DAYS.map(() => ({}));
-  for (const x of f.hours) {
-    const ms = Date.parse(x.time), d = istDay(ms);
-    if (d >= 0) at[d][new Date(ms + 36e5).getUTCHours()] = x;
-  }
-  const ev = (f.tides && f.tides.events || []).map(e => ({ ms: Date.parse(e.time), h: e.height_m, hw: e.tide === 'high' }));
-  const sun = Object.fromEntries((f.sun || []).map(x => [x.date, { rise: x.sunrise.slice(-5), set: x.sunset.slice(-5) }]));
-  F[id] = { ...f, at, ev, sun };
+  const hours = src.hours.map(r => {
+    const ms = H0 + r[0] * 36e5;
+    const x = { i: r[0], ms, time: new Date(ms).toISOString(), daylight: !!r[1],
+      wind: { kn: r[2], gust: r[3], min: r[4], max: r[5], dir: r[6], compass: d2c(r[6]), agreement: AG[r[7]] || null },
+      waves: r[8] != null ? { height_m: r[8], period_s: r[9], dir: r[10] } : null,
+      weather: r[11] != null || r[13] != null ? { air_c: r[11], rain_mm: r[12] ?? 0, cloud_pct: r[13] } : null,
+      rating: r[1] && r[14] != null ? { stars: r[14], potential: r[15], session: WH.sessions[r[16]][1], shore: r[17] != null ? WH.shores[r[17]] : null, wing: r[18], rideKn: r[19], reasons: r[20] || [] } : null,
+      ens: r[21] != null ? { chance: r[21], p10: r[22], p50: r[23], p90: r[24] } : null };
+    const d = istDay(ms); if (d >= 0) at[d][new Date(ms + 36e5).getUTCHours()] = x;
+    return x;
+  });
+  const ev = (src.tides && src.tides.events || []).map(e => ({ ms: Date.parse(e[0]), h: e[2], hw: e[1] === 'h' }));
+  const sun = Object.fromEntries(src.sun.map(x => [x.date, x]));
+  F[sp.id] = { spot: { ...sp, facing: src.facing }, at, hours, ev, sun, tides: src.tides ? { station: src.tides.station, distance_km: src.tides.km } : {} };
+}
+/** Tide height above chart datum, by cosine between the turns; null outside them. */
+function tideH(id, ms) {
+  const t = F[id] && F[id].ev; if (!t || t.length < 2 || ms < t[0].ms || ms > t[t.length - 1].ms) return null;
+  for (let i = 0; i < t.length - 1; i++) if (ms <= t[i + 1].ms) { const f = (ms - t[i].ms) / (t[i + 1].ms - t[i].ms); return t[i].h + (t[i + 1].h - t[i].h) * (1 - Math.cos(Math.PI * f)) / 2; }
+  return null;
 }
 const tidesOn = (id, d) => (F[id] ? F[id].ev.filter(e => istDay(e.ms) === d) : []);
-const tideOK = (id, ms) => { const f = F[id]; return !!(f && f.ev.length && ms >= f.ev[0].ms && ms <= f.ev[f.ev.length - 1].ms); };
+const tideOK = (id, ms) => tideH(id, ms) != null;
 const ratedHours = (id, d) => Array.from({ length: 24 }, (_, h) => h).filter(h => F[id].at[d][h] && F[id].at[d][h].rating);
 
 /** The best window of a day: the longest run of its top-rated hours. Today, from now on unless `all`. */
@@ -676,52 +722,6 @@ function windScore(k) {
 }
 const shoreOf = (from, f) => { const off = Math.abs(((((from - f) % 360) + 540) % 360) - 180); return off < 30 ? 'onshore' : off < 70 ? 'cross-on' : off < 110 ? 'cross' : off < 150 ? 'cross-off' : 'offshore'; };
 
-/* ---------- every model behind the blend, and the ensembles ---------- */
-const mT = s => Date.parse(`2026-${s.slice(0, 5)}T${s.slice(6, 8)}:00:00Z`);
-const MOD = {};
-function modOf(id) {
-  if (id in MOD) return MOD[id];
-  const m = WM && WM.spots && WM.spots[id];
-  if (!m) return (MOD[id] = null);
-  const lines = Object.fromEntries(Object.entries(m.models).map(([k, a]) => [k, a.map(r => ({ ms: mT(r[0]), kn: r[1], g: r[2] }))]));
-  const E = Object.values(m.ensembles || {});
-  const ens = E.length ? E[0].map(row => {
-    const ms = mT(row[0]), w = [], g = [];
-    E.forEach(e => { const r = e.find(x => mT(x[0]) === ms); if (r) { w.push(...r[1]); g.push(...r[2]); } });
-    return { ms, w, g };
-  }) : [];
-  return (MOD[id] = { lines, ens });
-}
-function lineAt(a, ms) {
-  if (!a.length || ms < a[0].ms || ms > a[a.length - 1].ms) return null;
-  let i = 0; while (i < a.length - 1 && a[i + 1].ms < ms) i++;
-  const p = a[i], q = a[Math.min(i + 1, a.length - 1)];
-  if (q.ms - p.ms > 6 * 36e5) return null;
-  const t = q.ms === p.ms ? 0 : (ms - p.ms) / (q.ms - p.ms);
-  return p.kn + (q.kn - p.kn) * t;
-}
-const pctl = (arr, p) => { const s = [...arr].sort((a, b) => a - b); const i = (s.length - 1) * p, lo = Math.floor(i); return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (i - lo); };
-const SC = {};
-/** The spread at an hour: the deterministic models' range, the ensembles' middle 80%, and the share of
- *  members whose wind, lifted by their gusts as the stars do, reaches the rider's band. */
-function statsAt(id, ms) {
-  const key = id + ms; if (key in SC) return SC[key];
-  const m = modOf(id); if (!m) return (SC[key] = null);
-  const vals = Object.values(m.lines).map(a => lineAt(a, ms)).filter(v => v != null);
-  const out = { models: vals.length, lo: vals.length ? Math.min(...vals) : null, hi: vals.length ? Math.max(...vals) : null, n: 0 };
-  const E = m.ens;
-  if (E.length && ms >= E[0].ms && ms <= E[E.length - 1].ms) {
-    let j = 0; while (j < E.length - 1 && E[j + 1].ms < ms) j++;
-    const p = E[j], q = E[Math.min(j + 1, E.length - 1)], t = q.ms === p.ms ? 0 : (ms - p.ms) / (q.ms - p.ms);
-    const w = p.w.map((v, i) => v + (q.w[i] - v) * t), g = p.g.map((v, i) => v + (q.g[i] - v) * t);
-    const ride = w.map((v, i) => rideOf(v, g[i]));
-    const n = ride.length, share = [0, 0, 0, 0];
-    ride.forEach(r => share[r < 10 ? 0 : r < 14 ? 1 : r <= 24 ? 2 : 3]++);
-    Object.assign(out, { n, q10: pctl(w, .1), q90: pctl(w, .9), share: share.map(s => s / n), p10: ride.filter(r => r >= 10).length / n });
-  }
-  return (SC[key] = out);
-}
-
 /* ---------- glyphs ---------- */
 const STAR = 'M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z';
 function starsSVG(stars, potential, size = 12, gap = 2) {
@@ -754,18 +754,6 @@ const redStar = (on, s = 17) => `<svg width="${s}" height="${s}" viewBox="0 0 16
 const tideGlyph = '<svg width="14" height="8" viewBox="0 0 14 8" aria-hidden="true" style="vertical-align:middle"><path d="M0 5 Q3.5 0 7 4 T14 3" fill="none" stroke="#3F6E7E" stroke-width="1.3"/></svg>';
 const PROBC = ['rgba(26,29,33,.14)', 'rgba(176,24,106,.38)', '#B0186A', '#1A1D21'];
 const probBar = (share, w = 34, h = 6) => { let x = 0, g = ''; share.forEach((s, i) => { if (s > 0) g += `<rect x="${x.toFixed(1)}" y="0" width="${(s * w).toFixed(1)}" height="${h}" fill="${PROBC[i]}"/>`; x += s * w; }); return `<svg width="${w}" height="${h}" aria-hidden="true">${g}</svg>`; };
-const FLARE = 'M0 -1 C3.4 -6 6 -13 0 -20 C-6 -13 -3.4 -6 0 -1Z';
-// Lights flash once per star: n flashes in n + 4 seconds.
-document.head.appendChild(Object.assign(document.createElement('style'), { textContent: (() => {
-  let css = '';
-  for (let n = 1; n <= 5; n++) {
-    const T = n + 4; let k = `@keyframes fl${n}{0%{opacity:.28}`;
-    for (let i = 0; i < n; i++) { const a = i / T * 100, b = (i + .32) / T * 100, c = (i + .62) / T * 100; k += `${(a + .01).toFixed(2)}%{opacity:.28}${(a + 2).toFixed(2)}%{opacity:1}${b.toFixed(2)}%{opacity:1}${c.toFixed(2)}%{opacity:.28}`; }
-    css += k + `100%{opacity:.28}}.fl${n}{animation:fl${n} ${T}s infinite both}`;
-  }
-  return css;
-})() }));
-
 /* the product's wind palette, toned for paper */
 const PALETTE = [[0, [53, 88, 151]], [5, [42, 118, 184]], [9, [46, 151, 190]], [10, [32, 158, 120]], [15, [50, 167, 79]], [20, [91, 180, 55]], [25, [146, 193, 52]], [30, [191, 204, 58]], [35, [232, 190, 48]], [40, [234, 134, 45]], [45, [221, 78, 56]], [50, [190, 51, 79]], [60, [146, 61, 152]], [65, [114, 66, 151]]];
 function windColor(kn) {
@@ -837,9 +825,9 @@ function renderYours() {
   const D = 864e5, now = Date.now();
   const seen = Object.entries(YOURS.seen).filter(([id]) => BYID[id] && !isFav(id))
     .map(([id, e]) => ({ id, e, sc: e.n * 0.5 ** ((now - e.last) / D / 10) })).sort((a, b) => b.sc - a.sc).slice(0, 4);
-  $('#tp-yours').innerHTML = `<h4>Starred <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></h4>
+  $('#tp-yours').innerHTML = `<span class="sbest">best ${dayS(S.d)}</span><h4>Starred · best ${dayS(S.d)} <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></h4>
     <ul class="fvl">${YOURS.starred.length ? YOURS.starred.map(id => yourEntry(id)).join('') : '<li class="none">Tap the red star on a spot to keep it here.</li>'}</ul>
-    <h4>You look at</h4>
+    <h4>You look at · best ${dayS(S.d)}</h4>
     <ul class="fvl">${seen.length ? seen.map(x => yourEntry(x.id, x.e)).join('') : '<li class="none">Spots you open show up here.</li>'}</ul>
     <div class="sign">${YOURS.signedIn ? '<span><span class="dot"></span><b>Signed in</b> · every device</span><button class="btn sm" data-sign>Sign out</button>' : '<span>On this device</span><button class="btn sm" data-sign>Sign in</button>'}<button class="ii" data-info="yours" aria-label="About your spots">i</button></div>`;
   $('#side-when').textContent = `${dayS(S.d).toUpperCase()} ${dom(S.d)}`;
@@ -863,7 +851,7 @@ function paintScrub() {
     el.classList.toggle('on', d === S.d);
     const w = windowOf(id, d, true);
     $('.st', el).innerHTML = w ? starsSVG(w.stars, f ? w.pot : w.stars, 9, 1.4) : '';
-    $('.bw', el).textContent = w && w.stars ? hr(w) : '';
+    $('.bw', el).textContent = w && w.stars ? `best ${hr(w)}` : '';
     $('.sn', el).textContent = w ? `${w.stars}★` : '';
     $$('.sc-strip i', el).forEach(c => {
       const h = +c.dataset.h;
@@ -964,7 +952,7 @@ function drawTideRow() {
   const y = h => H - 6 - h / 4.6 * (H - 12);
   const a = Math.max(ev[0].ms, msOf(d, 6) + 18e5), b = Math.min(ev[ev.length - 1].ms, msOf(d, 20) + 18e5);
   let p = '';
-  for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + xOf(ms).toFixed(1) + ' ' + y(K.tideAt(id, ms)).toFixed(1);
+  for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + xOf(ms).toFixed(1) + ' ' + y(tideH(id, ms)).toFixed(1);
   let g = `<line x1="0" x2="${W2}" y1="${y(0)}" y2="${y(0)}" stroke="rgba(95,140,156,.5)" stroke-dasharray="2 3"/>`;
   g += `<path d="${p}L${xOf(b).toFixed(1)} ${H}L${xOf(a).toFixed(1)} ${H}Z" fill="rgba(95,140,156,.16)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.4"/>`;
   for (const e of tidesOn(id, d)) {
@@ -974,7 +962,7 @@ function drawTideRow() {
     g += `<circle cx="${X.toFixed(1)}" cy="${Y.toFixed(1)}" r="2.6" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21" stroke-width="1"/>`;
     g += `<text x="${(X + (right ? 6 : -6)).toFixed(1)}" y="${(e.hw ? Y + 13 : Y - 5).toFixed(1)}" text-anchor="${right ? 'start' : 'end'}" style="font:500 9.5px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}</text>`;
   }
-  if (tNow() >= a && tNow() <= b) g += `<circle cx="${xOf(tNow()).toFixed(1)}" cy="${y(K.tideAt(id, tNow())).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
+  if (tNow() >= a && tNow() <= b) g += `<circle cx="${xOf(tNow()).toFixed(1)}" cy="${y(tideH(id, tNow())).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
   svg.innerHTML = g;
 }
 
@@ -1043,26 +1031,29 @@ function buildMarkers() {
     const el = document.createElement('div');
     el.className = 'lt' + (FEAT.has(s.id) ? ' feat' : '');
     el.tabIndex = 0; el.setAttribute('role', 'button');
-    el.innerHTML = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g transform="rotate(${s.facing ?? 30})"><path class="flare" d="${FLARE}" transform="translate(0 -5.5) scale(1.05)"/></g>${FEAT.has(s.id) ? '<circle class="r2" r="10.6"/>' : ''}<circle class="r1" r="7.6"/><text class="n" y="3.4" text-anchor="middle"></text></svg><span class="lab"><b>${esc(nameOf(s))}</b><i class="ch"></i></span>`;
+    el.innerHTML = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g class="wa"><path class="arr" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="r1" r="7.6"/><line class="strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6"/><text class="n" y="3.4" text-anchor="middle"></text></svg><span class="lab"><b>${esc(nameOf(s))}</b><i class="ch"></i></span>`;
     const go = e => { e.stopPropagation(); e.preventDefault(); selectSpot(s.id, { fly: true, popup: true, user: true }); };
     el.addEventListener('click', go);
     el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); });
     const m = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map);
-    MK[s.id] = { el, m, flare: $('.flare', el), n: $('.n', el), ch: $('.ch', el), delay: ((s.lat * 1000 + s.lon * 777) % 6 + 6) % 6 };
+    MK[s.id] = { el, m, wa: $('.wa', el), n: $('.n', el), ch: $('.ch', el) };
   }
 }
+/** Each light shows the selected hour: its stars, and an arrow blowing downwind. Offshore hours are struck through. */
 function paintMarkers() {
-  for (const s of W.spots) {
-    const k = MK[s.id]; if (!k) continue;
-    const b = s.days[S.d].best, n = b ? b.stars : 0;
-    k.el.classList.remove('s0', 's1', 's2', 's3', 's4', 's5');
-    k.el.classList.add('s' + n);
-    k.el.classList.toggle('sel', s.id === S.spot);
-    k.n.textContent = n;
-    k.flare.setAttribute('class', 'flare' + (n >= 3 && !RM ? ` fl${n}` : ''));
-    k.flare.style.animationDelay = `-${k.delay.toFixed(2)}s`;
-    k.ch.textContent = n ? `${n}★ ${b.at}` : '';
-    k.el.setAttribute('aria-label', `${s.name}, ${s.county}: ${dayL(S.d)} best ${n} star${n === 1 ? '' : 's'}${b ? ` at ${b.at}` : ''}`);
+  for (const sp of W.spots) {
+    const k = MK[sp.id]; if (!k) continue;
+    const x = F[sp.id] && F[sp.id].at[S.d][S.h], r = x && x.rating, n = r ? r.stars : null;
+    const off = !!(r && (r.shore === 'offshore' || r.shore === 'cross-off'));
+    k.el.classList.remove('s0', 's1', 's2', 's3', 's4', 's5', 'dark', 'off');
+    k.el.classList.add(n == null ? 'dark' : 's' + n);
+    k.el.classList.toggle('off', off);
+    k.el.classList.toggle('sel', sp.id === S.spot);
+    k.n.textContent = n == null ? '' : n;
+    if (x) k.wa.setAttribute('transform', `rotate(${(x.wind.dir + 180).toFixed(0)})`);
+    k.wa.style.display = x ? '' : 'none';
+    k.ch.textContent = x ? `${n != null ? n + '★ ' : ''}${x.wind.compass} ${rn(x.wind.kn)}${off ? ' · ' + (r.shore === 'offshore' ? 'offshore' : 'cross-off') : ''}` : '';
+    k.el.setAttribute('aria-label', `${sp.name}, ${sp.county}: ${hh(S.h)} ${n == null ? 'dark' : `${n} star${n === 1 ? '' : 's'}`}${x ? `, ${x.wind.compass} ${rn(x.wind.kn)} knots${r && r.shore ? ', ' + shoreW(r.shore) : ''}` : ''}`);
   }
 }
 function inkMap() {
@@ -1084,7 +1075,7 @@ function popHTML(id) {
     const x = f.at[S.d][S.h], r = x && x.rating;
     body += `<div class="row"><span class="when">${dayS(S.d)} ${hh(S.h)}</span>${r ? `<span data-tip="${id}|${S.d}|${S.h}">${starsSVG(r.stars, r.potential, 13, 2)}</span>` : '<span class="g mono" style="font-size:11px">dark</span>'}<a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></div>`;
     if (x) body += `<div class="ln">${arrowSVG(x.wind.dir)} <b>${rn(x.wind.kn)}</b> g${rn(x.wind.gust)} ${x.wind.compass} ${shoreSVG(x.wind.dir, s.facing, 15)}${r ? ` · <b>${r.wing}</b> m` : ''}</div>`;
-    if (tideOK(id, tNow())) body += `<div class="ln">${tideGlyph} ${K.tideAt(id, tNow()).toFixed(1)} m</div>`;
+    if (tideOK(id, tNow())) body += `<div class="ln">${tideGlyph} ${tideH(id, tNow()).toFixed(1)} m</div>`;
   } else {
     const fw = K.windAt(s.lon, s.lat, tNow());
     body += `<div class="row"><span class="when">${dayS(S.d)} best ${b ? b.at : '—'}</span>${starsSVG(b ? b.stars : 0, b ? b.stars : 0, 13, 2)}<a class="q" href="#stars" aria-label="How the stars work">?</a></div>`;
@@ -1279,7 +1270,7 @@ function setTime(d, h, final, src) {
   else {
     placeHand();
     $$('td[data-h]', tt).forEach(td => td.classList.toggle('c-sel', +td.dataset.h === h));
-    if (hourChanged) drawTideRow();
+    if (hourChanged) { drawTideRow(); paintMarkers(); }
   }
   if (S.sheet && S.sheet !== 'stars') updateSheetSel(dayChanged);
   if (RIB && (src !== 'ribbon' || final)) RIB.to(fOf(), false);
@@ -1409,9 +1400,9 @@ document.addEventListener('pointerdown', e => {
 const runOf = s => { const d = new Date(s.run); return `${DOW[d.getUTCDay()]} ${pad2(d.getUTCHours())}:00 UTC`; };
 const INFO = {
   key: () => `<h5>Sources</h5><ul><li>Depths: EMODnet Bathymetry, ~115 m in the five hour-by-hour bays</li><li>Coast: OpenStreetMap, OpenFreeMap</li><li>Wind: Met Éireann HARMONIE, then ECMWF</li><li>Tides: Marine Institute</li><li>Stars: wingfoil.ie, 80 kg intermediate</li></ul><p class="g" style="margin:6px 0 0">Not for navigation.</p>`,
-  dock: () => { const f = F[S.spot]; return f ? `<p>Solid stars: the hour as forecast for you. Outlined: what the wind alone would give. Dark hours aren't rated.</p><p>Wing and stars for an 80 kg intermediate.</p>${f.tides.station ? `<p class="g">Tide: Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.</p>` : ''}` : `<p>This spot is rated once a day, at its best hour.</p><p class="g">The hourly wind is the model field behind the wind on the chart, without gusts. Hour-by-hour stars, wings and tides cover five spots in this mockup.</p>`; },
+  dock: () => { const f = F[S.spot]; return `<p>Solid stars: the hour as forecast for you. Outlined: what the wind alone would give. Dark hours aren't rated.</p><p>Wing and stars for an 80 kg intermediate.</p><p class="g">${f && f.tides.station ? `Tide: Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.` : 'No tide station near.'}</p>`; },
   yours: () => `<p>Starred spots and the ones you open stay on this device. Signing in keeps them on every device (a mock-up here).</p><p class="g">First visit: a few spots are filled in for the demo.</p>`,
-  sheet: () => { const f = F[S.sheet]; return `<h5>Wind</h5><p>Eight-model blend. The range bar: the dot is the blend, the pink tick its gust, the black bar the six models, the blue bar the middle 80% of 56 ensemble members.</p><p class="g">${WM ? Object.values(WM.sources).map(s => `${esc(s.name)} ${runOf(s)}`).join(' · ') : ''}</p><h5>Rides</h5><p>Share of the 56 ensemble members (ECMWF 25, GEFS 31; 6-hourly, interpolated to the hour) whose wind, lifted by the gusts as the stars do, reaches 10 kn.</p>${f && f.tides.station ? `<h5>Tide</h5><p class="g">Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.</p>` : ''}<p class="g">Sky and air temperature stop at Wed 14:00 in this data. Not for navigation.</p>`; },
+  sheet: () => { const f = F[S.sheet]; return `<h5>Wind</h5><p>Eight-model blend: mean, and gust (red when it jumps). Tap a row for wing, waves, the models' range and why stars came off.</p><h5>Rides</h5><p>Chance from the ensembles that the wind, with the gusts counted as the stars count them, reaches 10 kn for you.</p><h5>Tide</h5><p class="g">${f && f.tides.station ? `Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.` : 'No tide station near.'}</p><p class="g">Sky and air temperature stop at Wed 14:00 in this data. Not for navigation.</p>`; },
 };
 function placePop(el, r) {
   el.classList.add('on');
@@ -1453,7 +1444,6 @@ document.addEventListener('pointerover', e => {
 document.addEventListener('pointerout', e => { if (e.pointerType !== 'touch' && e.target.closest('[data-tip],#tip')) { clearTimeout(tipT); tipT = setTimeout(hideTip, 260); } });
 
 /* menu */
-$('#menu-feat').innerHTML = [...FEAT].map(id => `<li><a href="#spot/${id}">${esc(nameOf(BYID[id]))} <small>${esc(BYID[id].county.toUpperCase())}</small></a></li>`).join('');
 const menu = on => { document.body.classList.toggle('menu-on', on); $('#menu-b').setAttribute('aria-expanded', on); if (on) $('#menu-x').focus(); };
 $('#menu-b').onclick = () => menu(true);
 $('#menu-x').onclick = () => menu(false);
@@ -1462,149 +1452,163 @@ $('#menu').addEventListener('click', e => { if (e.target.closest('a')) menu(fals
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { menu(false); closePopup(); hideTip(); $('#infop').classList.remove('on'); document.body.classList.remove('key-on'); if (S.sheet) location.hash = S.sheet === 'stars' ? S.back : '#map/' + S.sheet; } });
 
 /* ======================================================================
-   THE SPOT PAGE: every hour of the week
+   THE SPOT PAGE: day by day, every hour, for every spot
    ====================================================================== */
+/** A weather glyph: sun, sun and cloud, cloud, or rain. */
+function wxSVG(w, s = 18) {
+  if (!w || w.cloud_pct == null) return '';
+  const c = w.cloud_pct, rain = (w.rain_mm || 0) >= .3;
+  const sun = '<g stroke="#1A1D21" stroke-width="1.1" stroke-linecap="round"><circle cx="0" cy="0" r="3.4" fill="#F3EEE3"/><path d="M0 -6.2V-5M0 5V6.2M-6.2 0H-5M5 0H6.2M-4.4 -4.4L-3.6 -3.6M3.6 3.6L4.4 4.4M-4.4 4.4L-3.6 3.6M3.6 -3.6L4.4 -4.4"/></g>';
+  const cloud = (x, y, k = 1) => `<path transform="translate(${x} ${y}) scale(${k})" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1.1" stroke-linejoin="round"/>`;
+  let g;
+  if (rain) g = cloud(0, -1.5) + '<path d="M-3 4.5L-4 7.5M0.5 4.5L-0.5 7.5M4 4.5L3 7.5" stroke="#5F8C9C" stroke-width="1.2" stroke-linecap="round"/>';
+  else if (c < 25) g = sun;
+  else if (c < 70) g = `<g transform="translate(-2.4 -2.2) scale(.8)">${sun}</g>` + cloud(2, 2.4, .85);
+  else g = cloud(0, 0);
+  const t = `cloud ${rn(c)}%${(w.rain_mm || 0) >= .1 ? `, rain ${w.rain_mm.toFixed(1)} mm` : ''}`;
+  return `<svg width="${s}" height="${s}" viewBox="-9 -9 18 18" role="img" aria-label="${t}" style="vertical-align:middle"><title>${t}</title>${g}</svg>`;
+}
+const bigJump = w => w.gust - w.kn >= 10 || w.gust >= w.kn * 1.6;
+/** The models' range and the ensembles' middle 80%, around the blend and its gust, on the rider's scale. */
 const RX = k => 3 + clamp(k, 0, 30) / 30 * 106;
-function rangeSVG(x, st) {
+function rangeSVG(x) {
+  const w = x.wind, e = x.ens;
   let g = `<rect x="${RX(14).toFixed(1)}" y="0" width="${(RX(24) - RX(14)).toFixed(1)}" height="18" fill="rgba(176,24,106,.08)"/><line x1="${RX(10).toFixed(1)}" x2="${RX(10).toFixed(1)}" y1="2" y2="16" stroke="rgba(176,24,106,.5)" stroke-dasharray="2 2"/>`;
-  let title = `blend ${rn(x.wind.kn)} g${rn(x.wind.gust)} kn`;
-  if (st && st.n) { g += `<rect x="${RX(st.q10).toFixed(1)}" y="5.5" width="${Math.max(1, RX(st.q90) - RX(st.q10)).toFixed(1)}" height="7" rx="1" fill="rgba(95,140,156,.42)"/>`; title += ` · ensembles ${rn(st.q10)}–${rn(st.q90)}`; }
-  if (st && st.models >= 2) { g += `<rect x="${RX(st.lo).toFixed(1)}" y="8" width="${Math.max(1, RX(st.hi) - RX(st.lo)).toFixed(1)}" height="2" fill="#1A1D21" opacity=".7"/>`; title += ` · models ${rn(st.lo)}–${rn(st.hi)}`; }
-  g += `<line x1="${RX(x.wind.gust).toFixed(1)}" x2="${RX(x.wind.gust).toFixed(1)}" y1="3" y2="15" stroke="#C93D72" stroke-width="1.7"/><circle cx="${RX(x.wind.kn).toFixed(1)}" cy="9" r="3" fill="#1A1D21"/>`;
+  let title = `blend ${rn(w.kn)} g${rn(w.gust)} kn`;
+  if (e && e.p10 != null) { g += `<rect x="${RX(e.p10).toFixed(1)}" y="5.5" width="${Math.max(1, RX(e.p90) - RX(e.p10)).toFixed(1)}" height="7" rx="1" fill="rgba(95,140,156,.42)"/>`; title += ` · ensembles ${rn(e.p10)}–${rn(e.p90)}`; }
+  if (w.min != null && w.max != null) { g += `<rect x="${RX(w.min).toFixed(1)}" y="8" width="${Math.max(1, RX(w.max) - RX(w.min)).toFixed(1)}" height="2" fill="#1A1D21" opacity=".7"/>`; title += ` · models ${rn(w.min)}–${rn(w.max)}`; }
+  g += `<line x1="${RX(w.gust).toFixed(1)}" x2="${RX(w.gust).toFixed(1)}" y1="3" y2="15" stroke="#C93D72" stroke-width="1.7"/><circle cx="${RX(w.kn).toFixed(1)}" cy="9" r="3" fill="#1A1D21"/>`;
   return `<svg width="112" height="18" role="img" aria-label="${title}"><title>${title}</title>${g}</svg>`;
 }
-const rangeAxis = () => `<svg width="112" height="20" aria-hidden="true" style="display:block"><rect x="${RX(14)}" y="12" width="${RX(24) - RX(14)}" height="6" fill="rgba(176,24,106,.12)"/>${[0, 10, 14, 24, 30].map(k => `<text x="${RX(k) - (k === 30 ? 4 : 0)}" y="9" text-anchor="middle" style="font:500 8px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${k === 30 ? '30kn' : k}</text><line x1="${RX(k)}" x2="${RX(k)}" y1="12" y2="18" stroke="rgba(26,29,33,.4)"/>`).join('')}</svg>`;
-const DOTS = { high: '●●●', moderate: '●●<i>●</i>', low: '●<i>●●</i>' };
-function hourRow(id, d, h, span) {
-  const f = F[id], s = f.spot, x = f.at[d][h], r = x.rating, st = statsAt(id, x.time ? Date.parse(x.time) : msOf(d, h));
+const chanceCell = e => e && e.chance != null ? `<span class="pc" style="--c:${e.chance}%" title="Chance it rides: 10 kn or more for you, from the ensembles">${e.chance}%</span>` : '<span class="g">—</span>';
+function hourRow(id, d, h) {
+  const f = F[id], x = f.at[d][h], r = x.rating, w = x.wind;
   const sel = d === S.d && h === S.h;
-  const ag = x.wind.agreement;
-  return `<tr class="hrow${isPast(d, h) ? ' past' : ''}${sel ? ' sel' : ''}" data-d="${d}" data-h="${h}">
+  return `<tr class="hrow${isPast(d, h) ? ' past' : ''}${sel ? ' sel' : ''}" data-d="${d}" data-h="${h}" tabindex="0" aria-expanded="false">
     <td class="t">${pad2(h)}</td>
-    <td class="st" data-tip="${id}|${d}|${h}">${starsSVG(r.stars, r.potential, 10.5, 1.6)}</td>
-    <td><span class="kn">${rn(x.wind.kn)}</span> <span class="g">g${rn(x.wind.gust)}</span></td>
-    <td class="rg">${rangeSVG(x, st)}</td>
-    <td class="ch">${st && st.n ? `<span>${rn(st.p10 * 100)}%</span>${probBar(st.share)}` : '<span class="g">—</span>'}</td>
-    <td class="dots" title="Models agree: ${ag}${st && st.models >= 2 ? ` · ${rn(st.lo)}–${rn(st.hi)} kn` : ''}">${DOTS[ag] || ''}</td>
-    <td>${arrowSVG(x.wind.dir, 12)} <span class="g">${x.wind.compass}</span></td>
-    <td>${shoreSVG(x.wind.dir, s.facing, 17)}</td>
-    <td class="wg">${r.wing}</td>
-    <td>${x.waves ? `${x.waves.height_m.toFixed(1)}<span class="g">m</span> ${x.waves.period_s}<span class="g">s</span>` : '—'}</td>
-    <td>${x.weather ? `${oktaSVG(x.weather.cloud_pct)}${x.weather.rain_mm >= .1 ? ` <span style="color:var(--depth)">${x.weather.rain_mm.toFixed(1)}</span>` : ''}` : '<span class="g">—</span>'}</td>
-    <td>${x.weather ? `${x.weather.air_c}°` : '<span class="g">—</span>'}</td>
-    ${span ? `<td class="tide" rowspan="${span}"><svg data-td="${d}"></svg></td>` : ''}
-  </tr>`;
+    <td class="st" data-tip="${id}|${d}|${h}">${starsSVG(r.stars, r.potential, 9.5, 1.4)}</td>
+    <td class="w"><span class="kn">${rn(w.kn)}</span><span class="gu${bigJump(w) ? ' big' : ''}">${rn(w.gust)}</span></td>
+    <td class="dr">${arrowSVG(w.dir, 16)}<span class="cmp">${w.compass}</span></td>
+    <td class="wide rg">${rangeSVG(x)}</td>
+    <td class="wide sh">${shoreSVG(w.dir, f.spot.facing, 18)}</td>
+    <td class="wide wg">${r.wing}<span class="g"> m</span></td>
+    <td class="wide wv">${x.waves ? `${x.waves.height_m.toFixed(1)}<span class="g">m</span> ${x.waves.period_s}<span class="g">s</span>` : '—'}</td>
+    <td class="wx">${x.weather ? `${wxSVG(x.weather)}<span class="air">${x.weather.air_c != null ? x.weather.air_c + '°' : ''}</span>` : '<span class="g">—</span>'}</td>
+    <td class="ch">${chanceCell(x.ens)}</td>
+  </tr>
+  <tr class="more" hidden><td colspan="10"><div class="mo">
+    <span><i>${esc(r.session)}</i> on a <b>${r.wing} m</b></span>
+    <span>rides like <b>${rn(r.rideKn)}</b> kn</span>
+    <span>${shoreSVG(w.dir, f.spot.facing, 16)} ${r.shore ? shoreW(r.shore) : 'facing unknown'}</span>
+    <span>waves ${x.waves ? `<b>${x.waves.height_m.toFixed(1)}</b> m ${x.waves.period_s} s ${arrowSVG(x.waves.dir, 12)}` : '—'}</span>
+    <span>${rangeSVG(x)}</span>
+    <span>models <b>${rn(w.min)}–${rn(w.max)}</b> · ensembles <b>${x.ens ? `${rn(x.ens.p10)}–${rn(x.ens.p90)}` : '—'}</b> kn</span>
+    ${r.reasons.map(t => `<span class="rs">− ${esc(t)}</span>`).join('')}
+  </div></td></tr>`;
 }
-function weekTable(id) {
-  const f = F[id];
-  let rows = '';
-  DAYS.forEach((_, d) => {
-    const hrs = ratedHours(id, d); if (!hrs.length) return;
-    const sun = f.sun[DAYS[d]];
-    rows += `<tr class="dh" data-d="${d}"><td colspan="13">${dayL(d)} ${dom(d)}<span class="mono">☀ ${sun.rise}–${sun.set}</span><span class="pn" id="pn-${d}"></span></td></tr>`;
-    hrs.forEach((h, k) => { rows += hourRow(id, d, h, k === 0 ? hrs.length : 0); });
-    const nxt = d + 1 < DAYS.length ? ratedHours(id, d + 1) : [];
-    if (nxt.length) {
-      const a = msOf(d, hrs[hrs.length - 1]) + 18e5, b = msOf(d + 1, nxt[0]) - 18e5, ns = f.sun[DAYS[d + 1]];
-      const turns = f.ev.filter(e => e.ms > a && e.ms < b).map(e => `${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}`).join(' · ');
-      rows += `<tr class="nt"><td colspan="13">☾ ${sun.set}–${ns.rise}${turns ? ` · ${turns}` : ''}</td></tr>`;
-    }
-  });
-  return `<table class="ht" id="ht"><thead><tr><th>IST</th><th>Stars <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></th><th>Wind</th><th>${rangeAxis()}</th><th title="Chance it rides: 10 kn or more for you">Rides</th><th title="How well the models agree">Sure</th><th>From</th><th title="The wind against the beach">Shore</th><th>Wing</th><th>Waves</th><th>Sky</th><th>Air</th><th>Tide m</th></tr></thead><tbody>${rows}</tbody></table>`;
+const COLS = `<tr><th>IST</th><th>Stars <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></th><th>Wind <span class="g">gust</span></th><th>From</th><th class="wide">${rangeAxis()}</th><th class="wide">Shore</th><th class="wide">Wing</th><th class="wide">Waves</th><th>Sky</th><th title="Chance it rides: 10 kn or more for you">Rides</th></tr>`;
+function rangeAxis() { return `<svg width="112" height="20" aria-hidden="true" style="display:block"><rect x="${RX(14)}" y="12" width="${RX(24) - RX(14)}" height="6" fill="rgba(176,24,106,.12)"/>${[0, 10, 14, 24].map(k => `<text x="${RX(k) + (k === 10 ? -3 : k === 14 ? 3 : 0)}" y="9" text-anchor="middle" style="font:500 8px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${k === 24 ? '24 kn' : k}</text><line x1="${RX(k)}" x2="${RX(k)}" y1="12" y2="18" stroke="rgba(26,29,33,.4)"/>`).join('')}</svg>`; }
+function daySection(id, d, wk) {
+  const f = F[id], hrs = ratedHours(id, d), sun = f.sun[DAYS[d]];
+  const w = windowOf(id, d, true);
+  const tides = tidesOn(id, d);
+  const turns = tides.length ? tides.map(e => `<tr><td>${e.hw ? 'High' : 'Low'}</td><td class="n">${ist(e.ms)}</td><td class="n">${e.h.toFixed(1)} m</td></tr>`).join('') : `<tr><td colspan="3" class="g">${f.ev.length ? 'No turn today' : 'No tide station near'}</td></tr>`;
+  return `<section class="day" data-d="${d}" id="day-${d}">
+    <div class="dh"><div class="dh1"><b>${dayL(d)} ${dom(d)}</b>${w && w.stars ? `<span class="db">${starsSVG(w.stars, w.pot, 10, 1.4)} ${hr(w)}</span>` : '<span class="db g">no stars</span>'}${wk ? '<span class="wk">best of the week</span>' : ''}</div><p class="pn" id="pn-${d}"></p></div>
+    <div class="dwrap"><table class="ht"><thead>${COLS}</thead><tbody>${hrs.map(h => hourRow(id, d, h)).join('')}</tbody></table><svg class="dpen" aria-hidden="true"></svg></div>
+    <div class="dfoot">
+      <svg class="tide24" data-td="${d}" role="img" aria-label="${dayL(d)}'s tide and light"></svg>
+      <div class="dtabs"><table class="mini"><tbody>${turns}</tbody></table>
+      <table class="mini"><tbody><tr><td>First light</td><td class="n">${sun.first}</td></tr><tr><td>Sunrise</td><td class="n">${sun.rise}</td></tr><tr><td>Sunset</td><td class="n">${sun.set}</td></tr><tr><td>Last light</td><td class="n">${sun.last}</td></tr></tbody></table></div>
+    </div>
+  </section>`;
 }
-function drawSheetTides(id) {
-  $$('#ht svg[data-td]').forEach(svg => {
-    const d = +svg.dataset.td, td = svg.parentNode, rows = $$(`#ht tr.hrow[data-d="${d}"]`);
-    const R = td.getBoundingClientRect(), H = R.height, Wd = 104, X0 = 6, X1 = 58;
-    svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`);
-    const cy = rows.map(r => { const b = r.getBoundingClientRect(); return { h: +r.dataset.h, y: b.top + b.height / 2 - R.top, hh: b.height }; });
-    const yOf = ms => {
-      const hf = (ms - msOf(d, 0)) / 36e5;
-      let i = 0; while (i < cy.length - 2 && cy[i + 1].h < hf) i++;
-      const a = cy[i], b = cy[Math.min(i + 1, cy.length - 1)];
-      return a === b ? a.y + (hf - a.h) * a.hh : a.y + (hf - a.h) / (b.h - a.h) * (b.y - a.y);
-    };
-    const x = h => X0 + clamp(h, 0, 5) / 5 * (X1 - X0);
-    const f = F[id], first = msOf(d, cy[0].h) - 18e5, last = msOf(d, cy[cy.length - 1].h) + 18e5;
-    if (!f.ev.length) { svg.innerHTML = ''; return; }
-    const a = Math.max(first, f.ev[0].ms), b = Math.min(last, f.ev[f.ev.length - 1].ms);
-    let p = '';
-    for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + x(K.tideAt(id, ms)).toFixed(1) + ' ' + yOf(ms).toFixed(1);
-    let g = `<line x1="${x(0)}" x2="${x(0)}" y1="0" y2="${H}" stroke="rgba(95,140,156,.6)" stroke-dasharray="2 3"/>`;
-    g += `<path d="${p}L${x(0)} ${yOf(b).toFixed(1)}L${x(0)} ${yOf(a).toFixed(1)}Z" fill="rgba(95,140,156,.16)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.5"/>`;
-    f.ev.filter(e => e.ms >= a && e.ms <= b).forEach(e => {
-      const ex = x(e.h), ey = yOf(e.ms);
-      g += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="2.8" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21"/><text x="${Wd - 2}" y="${(ey - 1).toFixed(1)}" text-anchor="end" style="font:600 9px 'IBM Plex Mono';fill:#1A1D21">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)}</text><text x="${Wd - 2}" y="${(ey + 9).toFixed(1)}" text-anchor="end" style="font:400 9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${e.h.toFixed(1)} m</text>`;
-    });
-    if (d === S.d && tideOK(id, tNow())) g += `<circle cx="${x(K.tideAt(id, tNow())).toFixed(1)}" cy="${yOf(tNow()).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
+/** The day's tide over 24 hours, night shaded, twilight paler, the turns marked. */
+function drawDayTides(id) {
+  $$('#sh-in svg.tide24').forEach(svg => {
+    const d = +svg.dataset.td, f = F[id], sun = f.sun[DAYS[d]];
+    const Wd = svg.clientWidth || svg.parentNode.clientWidth, H = 78, X0 = 4, X1 = Wd - 4, Y0 = 8, Y1 = H - 16;
+    svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+    const mid = msOf(d, 0) + 36e5 - 36e5; // 00:00 IST
+    const day0 = Date.parse(DAYS[d] + 'T00:00:00Z') - 36e5;
+    const x = ms => X0 + (ms - day0) / (24 * 36e5) * (X1 - X0);
+    const at = hm => { const [a, b] = hm.split(':').map(Number); return day0 + (a * 60 + b) * 6e4; };
+    const hmax = Math.max(4.5, ...f.ev.map(e => e.h)) + .3;
+    const y = h => Y1 - h / hmax * (Y1 - Y0);
+    let g = `<rect x="${X0}" y="${Y0}" width="${(x(at(sun.first)) - X0).toFixed(1)}" height="${Y1 - Y0}" fill="rgba(26,29,33,.16)"/><rect x="${x(at(sun.first)).toFixed(1)}" y="${Y0}" width="${(x(at(sun.rise)) - x(at(sun.first))).toFixed(1)}" height="${Y1 - Y0}" fill="rgba(26,29,33,.07)"/><rect x="${x(at(sun.set)).toFixed(1)}" y="${Y0}" width="${(x(at(sun.last)) - x(at(sun.set))).toFixed(1)}" height="${Y1 - Y0}" fill="rgba(26,29,33,.07)"/><rect x="${x(at(sun.last)).toFixed(1)}" y="${Y0}" width="${(X1 - x(at(sun.last))).toFixed(1)}" height="${Y1 - Y0}" fill="rgba(26,29,33,.16)"/>`;
+    for (let hr2 = 0; hr2 <= 24; hr2 += 3) { const X = x(day0 + hr2 * 36e5); g += `<line x1="${X.toFixed(1)}" x2="${X.toFixed(1)}" y1="${Y1}" y2="${Y1 + 3}" stroke="rgba(26,29,33,.5)"/><text x="${clamp(X, X0 + 6, X1 - 6).toFixed(1)}" y="${H - 3}" text-anchor="middle" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${pad2(hr2 % 24)}</text>`; }
+    if (f.ev.length) {
+      let p = '', a = null, b = null;
+      for (let ms = day0; ms <= day0 + 24 * 36e5; ms += 6e5) { const t = tideH(id, ms); if (t == null) continue; if (a == null) a = ms; b = ms; p += (p ? 'L' : 'M') + x(ms).toFixed(1) + ' ' + y(t).toFixed(1); }
+      if (p) {
+        g += `<path d="${p}L${x(b).toFixed(1)} ${Y1}L${x(a).toFixed(1)} ${Y1}Z" fill="rgba(95,140,156,.32)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.6"/>`;
+        tidesOn(id, d).forEach(e => { g += `<circle cx="${x(e.ms).toFixed(1)}" cy="${y(e.h).toFixed(1)}" r="2.8" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21"/>`; });
+      }
+      if (d === S.d && tideOK(id, tNow())) g += `<line x1="${x(tNow()).toFixed(1)}" x2="${x(tNow()).toFixed(1)}" y1="${Y0}" y2="${Y1}" stroke="#B0186A" stroke-width="1.2"/>`;
+    } else g += `<text x="${(X0 + X1) / 2}" y="${(Y0 + Y1) / 2 + 4}" text-anchor="middle" style="font:italic 13px Newsreader;fill:rgba(26,29,33,.6)">No tide station near</text>`;
+    g += `<line x1="${X0}" x2="${X1}" y1="${Y1}" y2="${Y1}" stroke="rgba(26,29,33,.5)"/>`;
     svg.innerHTML = g;
   });
 }
 function inkSheet(id) {
-  const svg = $('#shpen'), wrap = $('#sh-wrap'); if (!svg || !wrap) return;
-  svg.innerHTML = '';
-  svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
-  $$('#ht .pn').forEach(p => { p.textContent = ''; });
-  let R = wrap.getBoundingClientRect();
-  const loop = (d, w, label, delay) => {
-    const a = $(`#ht tr.hrow[data-d="${d}"][data-h="${w.a}"] td.t`), b = $(`#ht tr.hrow[data-d="${d}"][data-h="${w.b}"] td.st`);
-    if (!a || !b) return;
-    const A = a.getBoundingClientRect(), B = b.getBoundingClientRect();
-    const x1 = A.left - R.left + wrap.scrollLeft, x2 = B.right - R.left + wrap.scrollLeft, y1 = A.top - R.top, y2 = B.bottom - R.top;
-    inkPath(svg, K.loopPath((x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2 + 9, (y2 - y1) / 2 + 8, d * 7 + w.a), { dur: 900, delay });
-    if (label) { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x2 + 14); t.setAttribute('y', (y1 + y2) / 2 + 5); t.setAttribute('style', "font:16px Kalam;fill:#D43A2C;paint-order:stroke;stroke:#F3EEE3;stroke-width:4px"); t.textContent = label; svg.appendChild(t); }
-  };
-  const w = windowOf(id, S.d);
-  // the note goes in first: on a phone it takes a line of its own and moves the rows below it
-  if (w && w.stars) { const pn = $(`#pn-${S.d}`); if (pn) pn.textContent = shortNote(id, S.d, w); }
-  R = wrap.getBoundingClientRect();
-  if (w && w.stars) loop(S.d, w, '', 150);
   const bw = bestOfWeek(id);
-  if (bw && bw.stars && !(bw.d === S.d && w && bw.a === w.a)) loop(bw.d, bw, 'best of the week', 500);
+  $$('#sh-in section.day').forEach(sec => {
+    const d = +sec.dataset.d, wrap = $('.dwrap', sec), svg = $('.dpen', sec), w = windowOf(id, d);
+    svg.innerHTML = '';
+    svg.setAttribute('width', wrap.offsetWidth); svg.setAttribute('height', wrap.offsetHeight);
+    const pn = $(`#pn-${d}`); pn.textContent = w && w.stars ? shortNote(id, d, w) : '';
+    if (!w || !w.stars) return;
+    const a = $(`tr.hrow[data-h="${w.a}"] td.t`, sec), b = $(`tr.hrow[data-h="${w.b}"] td.st`, sec);
+    if (!a || !b) return;
+    const R = wrap.getBoundingClientRect(), A = a.getBoundingClientRect(), B = b.getBoundingClientRect();
+    const x1 = A.left - R.left, x2 = B.right - R.left, y1 = A.top - R.top, y2 = B.bottom - R.top;
+    inkPath(svg, K.loopPath((x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2 + 7, (y2 - y1) / 2 + 6, d * 7 + w.a), { dur: 900, delay: 120 });
+  });
 }
 function sheetHead(id) {
-  const s = BYID[id], f = F[id], bw = bestOfWeek(id);
+  const s = BYID[id], bw = bestOfWeek(id);
   if (!bw || !bw.stars) return { head: `${esc(nameOf(s))}<span class="c">:</span> <em>a quiet week</em>`, deck: '' };
   const when = bw.d === NOW_D ? `this ${part(bw.a)}` : `${dayL(bw.d)} ${part(bw.a)}`;
-  const head = `${esc(nameOf(s))}<span class="c">:</span> a ${WORDS[bw.stars]}-star ${when}${bw.wing ? ` <em>on a ${bw.wing}m</em>` : ''}`;
-  let deck = `${bw.compass} ${rn(bw.kn)} g${rn(bw.gust)}`;
-  if (f) { const last = HRS.filter(h => f.at[bw.d][h] && f.at[bw.d][h].rating).pop(); deck += `${bw.shore ? ' · ' + shoreW(bw.shore) : ''} · ${bw.b === last && bw.a !== bw.b ? `${hh(bw.a)} till dark` : range(bw)}`; }
-  else deck += ` · ${hh(bw.a)}`;
-  return { head, deck };
+  return { head: `${esc(nameOf(s))}<span class="c">:</span> a ${WORDS[bw.stars]}-star ${when}${bw.wing ? ` <em>on a ${bw.wing}m</em>` : ''}`, deck: `${bw.compass} ${rn(bw.kn)} g${rn(bw.gust)}${bw.shore ? ' · ' + shoreW(bw.shore) : ''} · ${range(bw)}` };
 }
 function renderSheet() {
   const id = S.sheet, s = BYID[id], f = F[id];
-  const { head, deck } = sheetHead(id);
+  const { head, deck } = sheetHead(id), bw = bestOfWeek(id);
   const cards = DAYS.map((_, i) => {
     const w = windowOf(id, i, true);
-    return `<button class="dcard${i === S.d ? ' on' : ''}" data-d="${i}"><div class="dn">${dayS(i)}<small>${dom(i)}</small></div>${w ? starsSVG(w.stars, f ? w.pot : w.stars, 12, 2) : ''}<div class="dl">${w && w.stars ? `<b>${hr(w)}</b>${w.wing ? ` · ${w.wing} m` : ''}` : '—'}</div></button>`;
+    return `<button class="dcard${i === S.d ? ' on' : ''}" data-d="${i}"><div class="dn">${dayS(i)}<small>${dom(i)}</small></div>${w ? starsSVG(w.stars, w.pot, 11, 1.6) : ''}<div class="dl">${w && w.stars ? `<b>${hr(w)}</b>` : '—'}</div></button>`;
   }).join('');
-  const sun = f && f.sun[DAYS[S.d]];
-  const legend = f ? `<div class="legend"><span>${rangeSVG({ wind: { kn: 13, gust: 19 } }, { n: 1, q10: 9, q90: 15, models: 6, lo: 11, hi: 14 })}</span><span><svg width="8" height="8"><circle cx="4" cy="4" r="3" fill="#1A1D21"/></svg>blend</span><span><svg width="4" height="12"><line x1="2" x2="2" y1="0" y2="12" stroke="#C93D72" stroke-width="1.7"/></svg>gust</span><span><svg width="14" height="4"><rect width="14" height="2" y="1" fill="#1A1D21" opacity=".7"/></svg>models</span><span><svg width="14" height="7"><rect width="14" height="7" fill="rgba(95,140,156,.42)"/></svg>ensembles 80%</span><span><svg width="14" height="8"><rect width="14" height="8" fill="rgba(176,24,106,.12)"/></svg>14–24 kn</span><span>${probBar([.2, .3, .4, .1])} &lt;10 · 10–14 · 14–24 · 24+</span><button class="ii" data-info="sheet" aria-label="About these figures">i</button></div>` : '';
-  const table = f ? `<div class="sh-tt-wrap" id="sh-wrap">${weekTable(id)}<svg id="shpen" aria-hidden="true"></svg></div>`
-    : `<p class="legend" style="font-size:12px">Rated once a day here · hour by hour: ${[...FEAT].map(i => `<a href="#spot/${i}">${esc(nameOf(BYID[i]))}</a>`).join(' · ')}</p>`;
-  $('#sh-in').innerHTML = `<div class="sh-top"><a class="back" href="#map/${id}">← Chart</a>${favBtn(id, true)}<button class="ii" data-info="${f ? 'sheet' : 'dock'}" aria-label="Sources">i</button></div>
+  $('#sh-in').innerHTML = `<div class="sh-top"><a class="back" href="#map/${id}">← Chart</a>${favBtn(id, true)}<button class="ii" data-info="sheet" aria-label="Sources">i</button></div>
     <h1 class="headline">${head}</h1>
-    <div class="meta"><span>${compassSVG(s.facing, 22)}${s.facing != null ? `<b>${FACE8(s.facing)}</b> ${s.facing}°` : ''}</span><span>${esc(s.county.toUpperCase())}</span>${sun ? `<span>☀ ${sun.rise}–${sun.set}</span>` : ''}<span>${esc(deck)}</span></div>
-    <div class="week">${cards}</div>${legend}${table}`;
+    <div class="meta"><span>${compassSVG(s.facing, 20)}${s.facing != null ? `<b>${FACE8(s.facing)}</b> ${s.facing}°` : ''}</span><span>${esc(s.county.toUpperCase())}</span><span>${esc(deck)}</span></div>
+    <div class="week">${cards}</div>
+    ${DAYS.map((_, d) => daySection(id, d, bw && bw.stars && bw.d === d)).join('')}`;
   $$('.dcard', $('#sh-in')).forEach(b => b.addEventListener('click', () => { const nd = +b.dataset.d, ww = windowOf(id, nd, true); setTime(nd, ww ? clamp(ww.a, 7, 20) : S.h, true); scrollSheetTo(nd); }));
-  $$('#ht tr.hrow').forEach(tr => tr.addEventListener('click', () => setTime(+tr.dataset.d, clamp(+tr.dataset.h, 7, 20), true)));
-  if (f) {
-    requestAnimationFrame(() => { drawSheetTides(id); inkSheet(id); });
-    // once the faces have loaded the rows settle; draw the tide and the pen again on the final layout
-    document.fonts.ready.then(() => setTimeout(() => { if (S.sheet === id) { drawSheetTides(id); inkSheet(id); } }, 650));
-  }
+  $$('#sh-in tr.hrow').forEach(tr => {
+    const open = e => {
+      if (e.target.closest('[data-tip],a')) return;
+      const m = tr.nextElementSibling, on = m.hidden;
+      m.hidden = !on; tr.setAttribute('aria-expanded', on);
+      setTime(+tr.dataset.d, clamp(+tr.dataset.h, 7, 20), true);
+      requestAnimationFrame(() => inkSheet(id));
+    };
+    tr.addEventListener('click', open);
+    tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
+  });
+  requestAnimationFrame(() => { drawDayTides(id); inkSheet(id); });
+  document.fonts.ready.then(() => setTimeout(() => { if (S.sheet === id) { drawDayTides(id); inkSheet(id); } }, 500));
 }
 function scrollSheetTo(d) {
-  const dh = $(`#ht tr.dh[data-d="${d}"]`); if (!dh) return;
-  const sh = $('#sheet'), top = dh.getBoundingClientRect().top - sh.getBoundingClientRect().top + sh.scrollTop - 40;
+  const sec = $(`#day-${d}`); if (!sec) return;
+  const sh = $('#sheet'), top = sec.getBoundingClientRect().top - sh.getBoundingClientRect().top + sh.scrollTop - 4;
   sh.scrollTo({ top, behavior: RM ? 'auto' : 'smooth' });
 }
-function updateSheetSel(dayChanged) {
-  $$('#ht tr.hrow').forEach(tr => tr.classList.toggle('sel', +tr.dataset.d === S.d && +tr.dataset.h === S.h));
+function updateSheetSel() {
+  $$('#sh-in tr.hrow').forEach(tr => tr.classList.toggle('sel', +tr.dataset.d === S.d && +tr.dataset.h === S.h));
   $$('.dcard').forEach(c => c.classList.toggle('on', +c.dataset.d === S.d));
-  if (F[S.sheet]) { drawSheetTides(S.sheet); if (dayChanged) inkSheet(S.sheet); }
+  drawDayTides(S.sheet);
 }
+addEventListener('resize', () => { if (S.sheet && S.sheet !== 'stars') { drawDayTides(S.sheet); inkSheet(S.sheet); } });
 
 /* ======================================================================
    HOW THE STARS WORK
@@ -1763,7 +1767,7 @@ function makeRibbon(THREE, host) {
   host.insertBefore(renderer.domElement, host.firstChild);
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(22, 1, .5, 400);
   const KY = .15, RW = 1.4, BASE = .3, XS = 1, D2R = Math.PI / 180;
-  cam.position.set(-2.6, 3.3, 15); cam.lookAt(0, 2.05, 0);
+  cam.position.set(-2.4, 4.6, 15.5); cam.lookAt(0, 1.6, .4);
   const world = new THREE.Group(); scene.add(world);
   const STARC = ['#F7F3EA', '#EADCDF', '#DFBFCD', '#D290B2', '#C2558E', '#B0186A'].map(c => new THREE.Color(c));
   const NIGHT = new THREE.Color('#E6E0D2'), PLAIN = new THREE.Color('#F1ECE1');
@@ -1793,6 +1797,19 @@ function makeRibbon(THREE, host) {
   scene.add(segs([0, 0, 0, 0, top, 0], lineMat(0xD43A2C, .95)));
   const bead = new THREE.Mesh(new THREE.SphereGeometry(.17, 18, 12), new THREE.MeshBasicMaterial({ color: 0xD43A2C }));
   scene.add(bead);
+  // a compass on the ground at the cursor: N away from you, the hour's wind blowing across it
+  const AZ = RW * 1.5, CR = .85, ring = [];
+  for (let k = 0; k < 48; k++) { const a1 = k / 48 * Math.PI * 2, a2 = (k + 1) / 48 * Math.PI * 2; ring.push(Math.sin(a1) * CR, .01, AZ - Math.cos(a1) * CR, Math.sin(a2) * CR, .01, AZ - Math.cos(a2) * CR); }
+  for (let k = 0; k < 4; k++) { const a1 = k * Math.PI / 2; ring.push(Math.sin(a1) * CR, .01, AZ - Math.cos(a1) * CR, Math.sin(a1) * (CR + .14), .01, AZ - Math.cos(a1) * (CR + .14)); }
+  scene.add(segs(ring, lineMat(0xD43A2C, .9)));
+  const needle = segs([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], lineMat(0xD43A2C, 1));
+  scene.add(needle);
+  const setNeedle = dir => {
+    const to = (dir + 180) * D2R, dx = Math.sin(to) * CR * .85, dz = -Math.cos(to) * CR * .85, a = Math.atan2(dz * 2, dx * 2);
+    const tx = dx, tz = AZ + dz;
+    needle.geometry.attributes.position.array.set([-dx, .02, AZ - dz, tx, .02, tz, tx, .02, tz, tx - Math.cos(a - .5) * .22, .02, tz - Math.sin(a - .5) * .22, tx, .02, tz, tx - Math.cos(a + .5) * .22, .02, tz - Math.sin(a + .5) * .22]);
+    needle.geometry.attributes.position.needsUpdate = true;
+  };
   let H = [], i0 = 0, i1 = 119, ctr = [], SUB = 4, cur = 0, target = 0, raf = 0, drag = null, w = 0, h = 0, pph = 30;
   const cr = (p0, p1, p2, p3, t) => .5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
   function build(id) {
@@ -1838,6 +1855,14 @@ function makeRibbon(THREE, host) {
     for (let i = i0; i <= i1; i++) if (H[i] && H[i].h % 3 === 0) posts.push(i * XS, 0, 0, i * XS, BASE + kn[i] * KY, 0);
     for (let i = i0; i <= i1; i++) if ((i + 1) % 24 === 0) foot.push(i * XS + XS, 0, -RW, i * XS + XS, 0, RW);
     [10, 14, 24].forEach(k => guide.push(x0(i0), BASE + k * KY, -RW * 1.2, x0(i1), BASE + k * KY, -RW * 1.2));
+    // downwind arrows on the ground in front of the ribbon: east to the right, north away from you
+    const arr = [];
+    for (let i = i0; i <= i1; i++) if (H[i] && H[i].h % 3 === 0) {
+      const to = (H[i].dir + 180) * D2R, dx = Math.sin(to) * .42, dz = -Math.cos(to) * .42, cx = i * XS, cz = AZ;
+      const bx = cx - dx, bz = cz - dz, tx = cx + dx, tz = cz + dz, a = Math.atan2(tz - bz, tx - bx);
+      arr.push(bx, 0, bz, tx, 0, tz, tx, 0, tz, tx - Math.cos(a - .5) * .2, 0, tz - Math.sin(a - .5) * .2, tx, 0, tz, tx - Math.cos(a + .5) * .2, 0, tz - Math.sin(a + .5) * .2);
+    }
+    world.add(segs(arr, lineMat(0x1A1D21, .9)));
     world.add(segs(posts, lineMat(0x1A1D21, .22)));
     world.add(segs(foot, lineMat(0x1A1D21, .7)));
     world.add(segs(guide, lineMat(0xB0186A, .22)));
@@ -1860,6 +1885,7 @@ function makeRibbon(THREE, host) {
     if (!drag) { const d = target - cur; cur = Math.abs(d) > .003 ? cur + d * .2 : target; }
     world.position.x = -cur * XS;
     bead.position.y = yAt(cur);
+    const hx = H[clamp(Math.round(cur), i0, i1)]; if (hx) setNeedle(hx.dir);
     renderer.render(scene, cam);
     labels(); readout();
     if (!drag && Math.abs(target - cur) > .003) raf = requestAnimationFrame(frame);
@@ -1871,6 +1897,8 @@ function makeRibbon(THREE, host) {
     renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
     const a = proj(new THREE.Vector3(0, BASE, 0)), b = proj(new THREE.Vector3(1, BASE, 0)); pph = Math.max(4, b[0] - a[0]);
     $('#rib-guides').innerHTML = [10, 14, 24].map(k => `<span style="top:${proj(new THREE.Vector3(30, BASE + k * KY, -RW))[1]}px">${k}${k === 24 ? ' kn' : ''}</span>`).join('');
+    const n = proj(new THREE.Vector3(0, 0, AZ - CR - .32));
+    $('#rib-n').style.left = n[0] + 'px'; $('#rib-n').style.top = n[1] + 'px';
     kick();
   }
   new ResizeObserver(resize).observe(host);
