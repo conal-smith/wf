@@ -206,6 +206,29 @@ describe("hour rating", () => {
     )!;
     expect(split.stars).toBe(agreed.stars - 1);
   });
+  it("says so when models that differ a little cost a star, and only then", () => {
+    const rate = (windKn: number, agreement: HourInput["agreement"]) =>
+      rateHour(
+        hour({ windKn, gustKn: windKn, from: 200, agreement }),
+        WEST,
+        DEFAULT_RIDER,
+      )!;
+    const winds = Array.from({ length: 81 }, (_, i) => 8 + i * 0.25);
+    const tipped = winds.find(
+      (kn) => rate(kn, "moderate").stars < rate(kn, "high").stars,
+    );
+    const held = winds.find(
+      (kn) => rate(kn, "moderate").stars === rate(kn, "high").stars,
+    );
+    expect(tipped).toBeDefined();
+    expect(held).toBeDefined();
+    expect(rate(tipped!, "moderate").reasons).toContain(
+      "The models differ a little, enough to hold back a star.",
+    );
+    expect(rate(held!, "moderate").reasons).toEqual(
+      rate(held!, "high").reasons,
+    );
+  });
   it("does not rate the dark or a missing reading", () => {
     expect(rateHour(hour({ daylight: false }), WEST, DEFAULT_RIDER)).toBeNull();
     expect(rateHour(hour({ windKn: null }), WEST, DEFAULT_RIDER)).toBeNull();
