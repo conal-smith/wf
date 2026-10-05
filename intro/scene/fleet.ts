@@ -1,12 +1,13 @@
 /**
  * Who is on the water, and where each of them is at every moment.
  *
- * Three hero riders overtake the camera one by one, left, right, left, in the
- * colours of the brief. Forty-seven more are already out ahead, a scatter of
- * wings towards the island that the camera rises over and then follows
- * towards the sunset. Every track is simulated up front at a fixed step, so
- * the film is the same on every machine and the camera can be aimed at where
- * the fleet will be, rather than chasing it.
+ * The water is empty when the film opens. One rider overtakes the camera on
+ * the sun's side, a silhouette against the glare; then two more go by
+ * together, one either side. As the camera lifts, ten more come through
+ * underneath it from behind, and the thirteen ride on together towards the
+ * sunset. Every track is simulated up front at a fixed step, so the film is
+ * the same on every machine and the camera can be aimed at where the riders
+ * will be, rather than chasing them.
  */
 import { MathUtils, Vector3 } from "three";
 import { seeded } from "./random";
@@ -32,14 +33,16 @@ export interface RiderSpec {
 
 /** The moments the three heroes draw level with the lens, and their offsets. */
 export const HERO_PASSES = [
-  { time: 2.6, x: -3.1 },
-  { time: 5.5, x: 3.7 },
-  { time: 8.4, x: -4.6 },
+  { time: 3.9, x: 3.3 },
+  { time: 7.1, x: -3.4 },
+  { time: 7.6, x: 5.6 },
 ];
 
 /** The camera's ground speed while it skims the water. */
 export const SKIM_SPEED = 4;
 const HERO_SPEED = 11;
+/** The ten behind come up faster, and catch the camera as it lifts. */
+const FOLLOWER_SPEED = 13;
 /** When the whole fleet bears away towards the sun. */
 const TURN_START = 13;
 const TURN_END = 24;
@@ -84,29 +87,22 @@ export function fleet(): RiderSpec[] {
       speed: HERO_SPEED,
       settle: 6.2,
       heading: 0,
-      turn: 0.5,
+      turn: 0.3,
       phase: rand() * 10,
       weave: 0.1,
       hero: true,
     });
   });
 
-  // A few riders in the middle distance, out to the sides, so the low shots
-  // have depth between the heroes and the fleet instead of one band of wings
-  // on the horizon. Then the fleet ahead: spread wide across the bay, none
-  // closer than 9 m to another, and the heroes' lane left clear.
-  const MIDGROUND = [
-    new Vector3(-21, 0, -22),
-    new Vector3(27, 0, -29),
-    new Vector3(-40, 0, -41),
-    new Vector3(15, 0, -52),
-  ];
+  // Ten behind, out of shot until the camera lifts: a loose pack well back
+  // from the lens at the start, none closer than 6 m to another, and none
+  // passing straight under the camera.
   const placed: Vector3[] = [];
-  while (riders.length < 50) {
-    const mid = MIDGROUND[placed.length];
-    const p = mid ?? new Vector3(MathUtils.lerp(-72, 72, rand()), 0, MathUtils.lerp(-40, -128, rand()));
-    if (!mid && Math.abs(p.x) < 14 && p.z > -70) continue;
-    if (!mid && placed.some((q) => q.distanceTo(p) < 8)) continue;
+  while (riders.length < 13) {
+    const p = new Vector3(MathUtils.lerp(-17, 17, rand()), 0, MathUtils.lerp(102, 128, rand()));
+    // The camera lifts a metre or so right of where it skimmed.
+    if (Math.abs(p.x - 1) < 5.5) continue;
+    if (placed.some((q) => q.distanceTo(p) < 6)) continue;
     placed.push(p);
     riders.push({
       look: {
@@ -121,10 +117,10 @@ export function fleet(): RiderSpec[] {
       },
       pose: pose(),
       start: p,
-      speed: 5 + rand() * 1.2,
-      settle: 5.6 + rand() * 1.2,
-      heading: (rand() - 0.5) * 0.16,
-      turn: 0.38 + rand() * 0.2,
+      speed: FOLLOWER_SPEED + rand() * 0.8,
+      settle: 5.8 + rand() * 0.8,
+      heading: (rand() - 0.5) * 0.06,
+      turn: 0.24 + rand() * 0.12,
       phase: rand() * 10,
       weave: 0.4 + rand() * 0.8,
       hero: false,

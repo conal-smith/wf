@@ -6,8 +6,9 @@
  * left (-x), so this is a rider on a reach with the wing on the leeward side:
  * standing across the board, chest to the wing, arms out to its handles and
  * leaning back to windward against the pull, the way a windsurfer hangs off a
- * boom. The wing's canopy is cambered downwind and its tips curve back towards
- * the rider like a kite's arc.
+ * boom. The wing is a real one's shape: a broad hexagon with square-cut tips,
+ * a fat leading-edge tube and a strut with handles down its middle, the
+ * canopy cambered downwind.
  *
  * The limbs are placed by two-bone IK from the hips and shoulders to the feet
  * on the deck and the hands on the handles, so the pose holds together for any
@@ -234,52 +235,87 @@ function tube(points: Vector3[], radius: (t: number) => number, radial = 10): Bu
 
 // ---- the wing ------------------------------------------------------------
 
-// A 5 m² wing: 3.4 m from tip to tip and two metres of chord at the strut,
-// which is an aspect ratio of about 2.3, as the real ones are.
-const HALF_SPAN = 1.7;
-const ARC_MAX = 1.2;
+// A 5 m² wing, drawn from a real one (a 3.5 m² Tribord WNG100, scaled up): a
+// broad hexagon, not a kite. The leading edge runs nearly straight across the
+// middle and sweeps back over the outer half, the tips are cut square, and the
+// trailing edge runs straight from each tip to the foot of the strut. Seen end
+// on, the leading edge is a shallow arc with its tips curled a little towards
+// the rider. 3.1 m from tip to tip and 2.1 m of chord at the strut.
+const HALF_SPAN = 1.55;
+const CHORD = 2.1;
 const APEX_Z = -0.8;
-const SWEEP = 0.55;
-const ARC_DEPTH = 0.32;
-const CHORD = 2.05;
+const ARC_DEPTH = 0.26;
 
-/** The leading edge at span position s in [-1, 1] (-1 the lower tip). */
-function leadingEdge(s: number): Vector3 {
-  const phi = s * ARC_MAX;
-  const back = (1 - Math.cos(phi)) / (1 - Math.cos(ARC_MAX));
-  return new Vector3(-ARC_DEPTH * back, (HALF_SPAN * Math.sin(phi)) / Math.sin(ARC_MAX), APEX_Z + SWEEP * back);
+/** The leading edge's outline: span u in [0, 1], then how far back it is, as a fraction of the centre chord. */
+const NOSE: [number, number][] = [
+  [0, 0],
+  [0.47, 0.04],
+  [0.91, 0.3],
+  [1, 0.76],
+];
+/** Where the leading-edge tube ends and the square-cut tip begins. */
+const TUBE_END = 0.91;
+/** The joints in the tube, where its sections meet under a dark band. */
+const JOINTS = [0, 0.47];
+
+function noseAt(u: number): number {
+  let i = 0;
+  while (i < NOSE.length - 2 && u > NOSE[i + 1][0]) i++;
+  const [u0, a] = NOSE[i];
+  const [u1, b] = NOSE[i + 1];
+  return a + ((b - a) * (u - u0)) / (u1 - u0);
+}
+const tailAt = (u: number) => 1 - 0.24 * u;
+
+/**
+ * A point on the wing at span s in [-1, 1] (-1 the lower tip) and chord t in
+ * [0, 1] (0 the leading edge). The canopy is held flat along the strut and
+ * billows downwind (+x) in the two panels either side of it.
+ */
+function wingPoint(s: number, t: number): Vector3 {
+  const u = Math.abs(s);
+  const front = noseAt(u);
+  const chord = tailAt(u) - front;
+  const arc = ARC_DEPTH * (0.35 * u + 0.65 * u * u);
+  const panel = 0.3 + 0.7 * Math.sin(Math.PI * Math.min(1, u / 0.95));
+  const belly = 0.11 * CHORD * chord * panel * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 - 0.25 * t);
+  return new Vector3(-arc + belly, s * HALF_SPAN, APEX_Z + CHORD * (front + chord * t));
 }
 
-const chordAt = (s: number) => CHORD * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(s), 1.7)), 0.55);
+/** The strut, a hand's breadth to windward of the canopy along the middle. */
+const strutPoint = (t: number) => wingPoint(0, t).add(new Vector3(-0.06, 0, 0));
 
-/** The handles, in wing space: front hand, back hand. */
-const GRIPS = [new Vector3(-0.125, 0, -0.3), new Vector3(-0.125, 0, 0.17)];
+/** Handles along the strut, as chord fractions; the hands hold the two marked. */
+const HANDLES = [0.1, 0.24, 0.46, 0.64];
+const HELD = [1, 2];
+const gripPoint = (t: number) => strutPoint(t).add(new Vector3(-0.085, 0, 0));
 
 function canopy(): BufferGeometry {
-  const ns = 60;
+  // Spanwise stations, with the outline's corners on stations of their own so
+  // the sweep and the square tips stay crisp.
+  const corners = NOSE.slice(1, -1).map(([u]) => u);
+  const stations = [...new Set([
+    ...Array.from({ length: 61 }, (_, i) => (i / 60) * 2 - 1),
+    ...corners,
+    ...corners.map((u) => -u),
+  ])].sort((a, b) => a - b);
   const nt = 14;
   const pos: number[] = [];
   const uv: number[] = [];
   const col: number[] = [];
-  for (let i = 0; i <= ns; i++) {
-    const s = (i / ns) * 2 - 1;
-    const le = leadingEdge(s);
-    const chord = chordAt(s);
+  for (const s of stations) {
     for (let j = 0; j <= nt; j++) {
       const t = j / nt;
-      // Billowed downwind (+x), deepest a third of the way back, and the
-      // trailing edge scalloped between the battens.
-      const belly = 0.14 * chord * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 - 0.25 * t);
-      const scallop = t > 0.85 ? -0.03 * Math.abs(Math.sin(s * Math.PI * 3.5)) * (t - 0.85) / 0.15 : 0;
-      pos.push(le.x + belly, le.y, le.z + chord * t + scallop);
+      const p = wingPoint(s, t);
+      pos.push(p.x, p.y, p.z);
       uv.push(s * 0.5 + 0.5, t);
       // A darker hem along the trailing edge.
-      const shade = t > 0.93 ? 0.55 : 1;
+      const shade = t > 0.95 ? 0.75 : 1;
       col.push(shade, shade, shade);
     }
   }
   const index: number[] = [];
-  for (let i = 0; i < ns; i++)
+  for (let i = 0; i < stations.length - 1; i++)
     for (let j = 0; j < nt; j++) {
       const a = i * (nt + 1) + j;
       const b = a + nt + 1;
@@ -294,31 +330,49 @@ function canopy(): BufferGeometry {
   return g;
 }
 
+/** The leading edge's radius at span u: fat in the middle, slimmer to the tips. */
+const tubeRadius = (u: number) => 0.095 * (1 - 0.4 * Math.pow(u / TUBE_END, 1.5)) + 0.01;
+
 function leadingEdgeTube(): BufferGeometry {
   const pts: Vector3[] = [];
-  for (let i = 0; i <= 40; i++) pts.push(leadingEdge((i / 40) * 2 - 1));
-  return tube(pts, (t) => 0.1 * (1 - 0.62 * Math.pow(Math.abs(t * 2 - 1), 1.6)) + 0.012, 12);
+  for (let i = 0; i <= 40; i++) pts.push(wingPoint(((i / 40) * 2 - 1) * TUBE_END, 0));
+  return tube(pts, (t) => tubeRadius(Math.abs(t * 2 - 1) * TUBE_END), 14);
+}
+
+/** A short sleeve around a tube from a to b, the way the joints are taped. */
+const sleeve = (a: Vector3, b: Vector3, r: number) => tube([a, b], () => r, 14);
+
+/** Dark bands where the tube's sections meet, and on the ends of the tubes. */
+function bands(): BufferGeometry[] {
+  const out: BufferGeometry[] = [];
+  for (const u of JOINTS)
+    for (const s of u ? [u, -u] : [0])
+      out.push(sleeve(wingPoint(s - 0.012, 0), wingPoint(s + 0.012, 0), tubeRadius(Math.abs(s)) + 0.006));
+  for (const s of [TUBE_END, -TUBE_END]) {
+    const end = wingPoint(s, 0);
+    out.push(sleeve(wingPoint(s - Math.sign(s) * 0.03, 0), end, tubeRadius(TUBE_END) + 0.005));
+    out.push(ball(end, tubeRadius(TUBE_END) + 0.004, 1, 0.5, 1));
+  }
+  for (const t of [0.03, 0.97]) out.push(sleeve(strutPoint(t - 0.012), strutPoint(t + 0.012), 0.06 - 0.02 * t));
+  return out;
 }
 
 function strutTube(): BufferGeometry {
   const pts: Vector3[] = [];
-  const z0 = APEX_Z + 0.06;
-  const z1 = APEX_Z + CHORD - 0.08;
-  for (let i = 0; i <= 10; i++) {
-    const t = i / 10;
-    pts.push(new Vector3(-0.045 - 0.03 * Math.sin(Math.PI * t), 0, z0 + (z1 - z0) * t));
-  }
-  return tube(pts, (t) => 0.048 - 0.02 * t, 10);
+  for (let i = 0; i <= 12; i++) pts.push(strutPoint(0.03 + (i / 12) * 0.94));
+  return tube(pts, (t) => 0.055 - 0.02 * t, 10);
 }
 
-function handle(z: number): BufferGeometry {
+/** A hoop of webbing hanging off the strut, open to windward. */
+function handle(t: number): BufferGeometry {
+  const at = strutPoint(t);
   return tube(
     [
-      new Vector3(-0.06, 0, z - 0.085),
-      new Vector3(-0.11, 0, z - 0.06),
-      new Vector3(-0.13, 0, z),
-      new Vector3(-0.11, 0, z + 0.06),
-      new Vector3(-0.06, 0, z + 0.085),
+      at.clone().add(new Vector3(-0.02, 0, -0.085)),
+      at.clone().add(new Vector3(-0.065, 0, -0.06)),
+      at.clone().add(new Vector3(-0.085, 0, 0)),
+      at.clone().add(new Vector3(-0.065, 0, 0.06)),
+      at.clone().add(new Vector3(-0.02, 0, 0.085)),
     ],
     () => 0.016,
     8,
@@ -430,10 +484,10 @@ export function buildRider(look: RiderLook, pose: Pose): Group {
     new Quaternion().setFromEuler(new Euler(pose.pitch, pose.sheet, pose.tilt, "YXZ")),
     new Vector3(1, 1, 1),
   );
-  for (const g of [canopy()]) add(g.applyMatrix4(wingMatrix), canopyMaterial(look.wing));
+  add(canopy().applyMatrix4(wingMatrix), canopyMaterial(look.wing));
   for (const g of [leadingEdgeTube(), strutTube()]) add(g.applyMatrix4(wingMatrix), tubeMat);
-  for (const z of [GRIPS[0].z, GRIPS[1].z]) add(handle(z).applyMatrix4(wingMatrix), gripMat);
-  const grips = GRIPS.map((g) => g.clone().applyMatrix4(wingMatrix));
+  for (const g of [...bands(), ...HANDLES.map(handle)]) add(g.applyMatrix4(wingMatrix), gripMat);
+  const grips = HELD.map((i) => gripPoint(HANDLES[i]).applyMatrix4(wingMatrix));
 
   // Body: hips over the board's centre, hanging back to windward.
   const pelvis = new Vector3(-0.12 - pose.lean * 0.3, deck + 0.86, 0.01);

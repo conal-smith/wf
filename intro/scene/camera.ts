@@ -1,10 +1,11 @@
 /**
  * The shot list, as one continuous move:
  *
- *   0 – 9 s    skimming a hand's breadth above the water towards the island
- *              while three riders overtake: left, right, left;
- *   9 – 17 s   rising and tipping forward until it looks straight down on the
- *              whole fleet, fifty wings on the water;
+ *   0 – 9 s    skimming a hand's breadth above the water towards the island,
+ *              the sun low ahead and to the right: empty water, then one rider
+ *              overtakes, a silhouette against the glare, then two together;
+ *   9 – 14 s   lifting, as ten more come through underneath from behind;
+ *   14 – 17 s  tipping forward until it looks straight down on all thirteen;
  *   17 – 20 s  holding top-down, turning slowly;
  *   20 – 27 s  lifting its head to the horizon and turning to the sun, the
  *              fleet below it bearing away towards the sunset;
@@ -17,7 +18,7 @@
 import { MathUtils, Vector3 } from "three";
 import { SKIM_SPEED, sampleTrack, type Track } from "./fleet";
 
-export const SUN_AZIMUTH = MathUtils.degToRad(35);
+export const SUN_AZIMUTH = MathUtils.degToRad(20);
 /** The direction looking at the sun, on the water plane. */
 const SUNWARD = new Vector3(Math.sin(SUN_AZIMUTH), 0, -Math.cos(SUN_AZIMUTH));
 
@@ -56,11 +57,12 @@ export function cameraPath(tracks: Track[]) {
   const sunYaw = -MathUtils.radToDeg(SUN_AZIMUTH) + 9;
 
   const keys: Key[] = [
-    key(SKIM_END, new Vector3(0, 0.86, -SKIM_SPEED * SKIM_END), 5, 0.8, 0, 44),
-    key(12, new Vector3(1, 7, -62), 2, -14, 0, 46),
-    key(14.5, centroid(14.5).add(new Vector3(0, 40, 28)), -6, -56, 0, 49),
-    key(17, centroid(17).add(new Vector3(0, 74, 6)), -16, -89, 0, 50),
-    key(19.5, centroid(19.5).add(new Vector3(0, 78, 0)), -28, -89, 0, 50),
+    key(SKIM_END, new Vector3(0, 0.86, -SKIM_SPEED * SKIM_END), -3, 0.8, 0, 44),
+    // Low and slow as the ten behind come through under the lens.
+    key(12, new Vector3(1.5, 4.5, -54), -2, -9, 0, 46),
+    key(14.5, centroid(14.5).add(new Vector3(0, 30, 26)), -6, -50, 0, 49),
+    key(17, centroid(17).add(new Vector3(0, 56, 6)), -16, -89, 0, 50),
+    key(19.5, centroid(19.5).add(new Vector3(0, 60, 0)), -28, -89, 0, 50),
     key(22.5, behindSunward(22.5, 55, 42), sunYaw + 2, -30, 0, 44),
     key(26.5, behindSunward(26.5, 72, 17), sunYaw, -6.5, 0, 40),
     key(34, behindSunward(34, 78, 14), sunYaw, -4.5, 0, 40),
@@ -88,7 +90,9 @@ export function cameraPath(tracks: Track[]) {
         0.86 + (0.035 * Math.sin(t * 1.3) + 0.015 * Math.sin(t * 2.9 + 1)) * hand,
         -SKIM_SPEED * t,
       );
-      state.yaw = MathUtils.lerp(7, 5, u) + 0.25 * Math.sin(t * 0.5) * hand;
+      // A little right of the line of travel, so each rider who overtakes on
+      // that side crosses in front of the sun.
+      state.yaw = MathUtils.lerp(-5, -3, u) + 0.25 * Math.sin(t * 0.5) * hand;
       state.pitch = MathUtils.lerp(1.2, 0.8, u) + 0.25 * Math.sin(t * 1.7) * hand;
       state.roll = 0.6 * Math.sin(t * 0.9) * hand;
       state.fov = 44;
