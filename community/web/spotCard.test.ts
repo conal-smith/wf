@@ -11,15 +11,19 @@ import {
 import { ridingLocations, spotFromSearch } from "../../src/locations";
 import { Message } from "./components/Message";
 import type { Spot } from "./components/NewThreadDialog";
+import { DEFAULT_RIDER } from "../../force5/src/stars";
 import {
   SpotCard,
   SpotCardView,
   WIND_STOPS,
+  clock,
   mapSpotHref,
   readingLine,
   readingNow,
   spotCardStyles,
+  spotOutlook,
   windStop,
+  type SpotOutlook,
   type SpotReading,
 } from "./components/SpotCard";
 
@@ -35,6 +39,8 @@ const dollymount: Spot = {
   id: "dollymount",
   name: "Dollymount",
   county: "Dublin",
+  lat: 53.365,
+  lon: -6.135,
 };
 
 const reading = (extra: Partial<SpotReading> = {}): SpotReading => ({
@@ -69,7 +75,14 @@ describe("S1: the name, the county and the way to the map", () => {
     );
     expect(markup).toMatch(/^<a [^>]*href="\/\?spot=dollymount"/);
     expect(markup.match(/<a /g)).toHaveLength(1);
-    expect(markup).toContain("Dollymount, Co. Dublin");
+    // The name in the display face's italic, the county in the mono label.
+    expect(markup).toMatch(
+      /<span class="[^"]*font-display[^"]*italic[^"]*">Dollymount<\/span>/,
+    );
+    expect(markup).toMatch(
+      /<span class="[^"]*uppercase[^"]*">Co. Dublin<\/span>/,
+    );
+    expect(markup).toContain("Chart");
     expect(markup).toContain("Forecast on the wind map");
   });
 
@@ -78,7 +91,11 @@ describe("S1: the name, the county and the way to the map", () => {
       createElement(SpotCardView, { spot: dollymount, reading: reading() }),
     );
     expect(/<a [^>]*>/.exec(markup)?.[0]).toContain("min-h-touch");
-    expect(markup).toContain("WSW · gusting 26 kn");
+    // The wind in figures, the gust raised over it, and the same in words.
+    expect(markup).toMatch(
+      /aria-label="19 knots now, WSW · gusting 26 kn">.*?>19<\/span>.*?>26<\/span>.*?>kn<\/span>/,
+    );
+    expect(markup).toMatch(/>WSW<\/span>/);
     expect(markup).toMatch(/sr-only[^>]*>\. Forecast on the wind map/);
   });
 
@@ -179,6 +196,7 @@ describe("S2: the wind now, from the series the map already publishes", () => {
     );
     expect(markup).not.toContain("bg-wind-");
     expect(markup).not.toContain(" now");
+    expect(markup).not.toContain(">Now<");
   });
 });
 
@@ -215,8 +233,96 @@ describe("S3: the swatch takes the ramp, the number stays in ink", () => {
     );
     expect(markup).not.toMatch(/text-wind-/);
     expect(/<a [^>]*>/.exec(markup)?.[0]).toContain("text-ink");
-    expect(markup).toMatch(/tabular-nums[^>]*>19 </);
+    expect(markup).toMatch(
+      /tabular-nums" role="img"[^>]*><span class="text-figure">19</,
+    );
     expect(markup).not.toContain("style=");
+  });
+});
+
+describe("S4: the stars, as the dock and the spot page rate an hour", () => {
+  // Dublin, 19 September: light from about 06:00 to 19:30 UTC.
+  const DAY0 = Date.parse("2026-09-19T00:00:00Z");
+  /** A day of hours from midnight UTC, each a westerly of the given knots. */
+  const day = (knots: (number | null)[], gust = 1.3) =>
+    knots.map((kn, hour) => ({
+      u: kn === null ? NaN : ms(kn),
+      v: 0,
+      gust: kn === null ? null : ms(kn * gust),
+      hour,
+      validTime: iso(DAY0 + hour * HOUR),
+    }));
+  // Dollymount's shore looks east: a westerly is offshore there, so the
+  // outlooks below are rated as if it faced west, onshore-ish, or not at all.
+  const outlook = (
+    knots: (number | null)[],
+    at: number,
+    facing: number | null = null,
+  ) => spotOutlook(day(knots), dollymount, at, DEFAULT_RIDER, facing);
+
+  it("rates the hour now, and leaves the dark unrated", () => {
+    const steady = Array(24).fill(16);
+    const noon = outlook(steady, DAY0 + 12 * HOUR);
+    expect(noon.now?.stars).toBeGreaterThanOrEqual(4);
+    expect(noon.now!.potential).toBeGreaterThanOrEqual(noon.now!.stars);
+    expect(outlook(steady, DAY0 + 2 * HOUR).now).toBeNull();
+  });
+
+  it("takes the shore into account: an offshore wind is capped", () => {
+    const steady = Array(24).fill(16);
+    // Faces east, the wind is from the west: offshore.
+    const off = outlook(steady, DAY0 + 12 * HOUR, 90);
+    expect(off.now?.stars).toBeLessThanOrEqual(1);
+    expect(off.now?.potential).toBeGreaterThanOrEqual(4);
+  });
+
+  it("finds the best run of what is left of today, on its weakest hour", () => {
+    // Light all day but for 13:00 to 15:59 UTC, which is 14:00 to 17:00 Irish.
+    const knots = Array(24).fill(6);
+    for (const h of [13, 14, 15]) knots[h] = 17;
+    const best = outlook(knots, DAY0 + 9 * HOUR).best;
+    expect(best).not.toBeNull();
+    expect(clock(best!.from)).toBe("14:00");
+    expect(clock(best!.to)).toBe("17:00");
+    expect(best!.stars).toBeGreaterThanOrEqual(4);
+    expect(best!.wing).toBeGreaterThan(0);
+    // Once it has gone by, it is not sold.
+    expect(outlook(knots, DAY0 + 17 * HOUR).best).toBeNull();
+  });
+
+  it("is nothing without a run to rate", () => {
+    expect(spotOutlook([], dollymount, DAY0, DEFAULT_RIDER, null)).toEqual({
+      now: null,
+      best: null,
+    });
+  });
+
+  it("draws the stars now and the best of today, and calls the dark dark", () => {
+    const view = (outlook: SpotOutlook) =>
+      html(
+        createElement(SpotCardView, {
+          spot: dollymount,
+          reading: reading(),
+          outlook,
+        }),
+      );
+    const markup = view({
+      now: { stars: 3, potential: 4 },
+      best: {
+        stars: 4,
+        from: Date.parse("2026-09-19T12:00:00Z"),
+        to: Date.parse("2026-09-19T15:00:00Z"),
+        wing: 5.5,
+      },
+    });
+    expect(markup).toContain('aria-label="3 of 5 stars, 4 on the wind alone"');
+    expect(markup).toContain('aria-label="4 of 5 stars"');
+    expect(markup).toContain(">Best today<");
+    expect(markup).toContain(">13:00–16:00<");
+    expect(markup).toContain('aria-label="on a 5.5 square metre wing"');
+    const dark = view({ now: null, best: null });
+    expect(dark).toContain(">dark<");
+    expect(dark).not.toContain("Best today");
   });
 });
 

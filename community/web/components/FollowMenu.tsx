@@ -3,7 +3,7 @@
  * mentions only, or nothing (D19). `nothing` is a choice that is kept, so a
  * later reply does not follow the thread again.
  */
-import { Bell, BellOff, ChevronDown } from "lucide-react";
+import { Bell, BellOff, BellRing, ChevronDown } from "lucide-react";
 import { tv } from "../../../ui/tv";
 import type { FollowLevel } from "../../shared/types";
 import { Popover, PopoverItem } from "./Popover";
@@ -45,21 +45,22 @@ export interface FollowMenuProps {
 
 export function FollowMenu({ level, busy, onChoose }: FollowMenuProps) {
   const following = level === "all" || level === "mentions";
-  const Icon = level === "none" ? BellOff : Bell;
+  const Icon = level === "none" ? BellOff : following ? BellRing : Bell;
   const styles = followMenuStyles();
   return (
     <Popover
       variant="pill"
       size="sm"
-      // Filled and heavier as well as worded: never colour alone.
-      pressed={following || undefined}
+      // Said in its words and its ringing bell, so it keeps its quiet box:
+      // Reply is this view's one filled action.
+      pressed={following ? "worded" : undefined}
       disabled={busy}
       panelLabel="Notify me about"
       label={
         <>
-          <Icon size={15} aria-hidden="true" />
+          <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
           <span className={styles.words()}>{followLabel(level)}</span>
-          <ChevronDown size={14} aria-hidden="true" />
+          <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" />
         </>
       }
     >

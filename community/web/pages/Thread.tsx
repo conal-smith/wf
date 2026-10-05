@@ -26,13 +26,13 @@ import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
 import {
   Button,
-  Chip,
   ConfirmDialog,
   Empty,
+  Headline,
   Notice,
   Skeleton,
 } from "../../../ui";
-import { tv } from "../../../ui/tv";
+import { MONO_LABEL, tv } from "../../../ui/tv";
 import type {
   Message as MessageData,
   Reaction,
@@ -60,21 +60,25 @@ import { useNow, useThread, useViewer } from "../useThread";
 
 export const threadStyles = tv({
   slots: {
-    base: "relative flex flex-col gap-5 max-rail:gap-3",
-    back: "self-start",
-    head: "flex flex-wrap items-start justify-between gap-3",
-    headText: "grid min-w-0 flex-1 basis-80 gap-2",
-    title: "m-0 text-title text-balance text-ink max-rail:text-lead",
-    metaRow: "flex flex-wrap items-center gap-2",
-    meta: "font-body text-body text-ink-muted",
+    base: "relative flex flex-col gap-5 max-rail:gap-4",
+    head: "grid min-w-0 gap-2",
+    // The way back on the left, what a member does to the thread on the right.
+    top: "flex min-h-control-sm items-center justify-between gap-3",
+    back: "self-center",
+    title: "max-w-measure",
+    // Under the headline, over the double rule: what the thread comes to.
+    metaRow: [
+      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-0 border-b-3 border-double border-ink pb-2",
+      "text-ink-muted tabular-nums",
+      MONO_LABEL,
+    ],
+    flag: "inline-flex items-center gap-1 font-semibold text-ink",
     started: "max-rail:hidden",
-    // On a phone they stand in the way back's row, so the title keeps the width.
-    actions:
-      "flex items-center gap-1 max-rail:absolute max-rail:top-0 max-rail:right-0",
+    actions: "flex items-center gap-1",
     status: "sr-only",
     loading: "grid gap-3",
     // The reply slot stays in reach while the stream scrolls behind it.
-    dock: "sticky bottom-0 z-panel flex flex-col items-stretch gap-2 bg-linear-to-t from-ground from-70% to-transparent pt-4 pb-3",
+    dock: "sticky bottom-0 z-panel flex flex-col items-stretch gap-2",
     arrivals: "flex justify-center",
     pill: "shadow-marker",
     dismiss: "mt-1",
@@ -129,7 +133,7 @@ export function ThreadPage({ id, onChannel }: ThreadPageProps) {
     return (
       <Empty
         title="That thread does not exist"
-        icon={<Compass size={24} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p>The link may be old, or the thread may have been removed.</p>
         <Button {...routed(paths.home())} variant="primary">
@@ -374,15 +378,6 @@ function Conversation({
 
   return (
     <article className={styles.base()}>
-      <Button
-        {...routed(paths.channel(thread.channel.slug))}
-        size="sm"
-        className={styles.back()}
-      >
-        <ArrowLeft size={15} aria-hidden="true" />
-        <span>{thread.channel.name}</span>
-      </Button>
-
       <ThreadHead
         thread={thread}
         now={now}
@@ -444,7 +439,7 @@ function Conversation({
               className={styles.pill()}
               onClick={() => void data.reachEnd().then(toEnd)}
             >
-              <ArrowDown size={14} aria-hidden="true" />
+              <ArrowDown size={14} strokeWidth={1.5} aria-hidden="true" />
               <span>{arrived} new</span>
             </Button>
           )}
@@ -574,89 +569,116 @@ export function ThreadHead({
   const canReport = signedIn && !mine;
   const locked = thread.status === "locked";
 
+  const parts = [
+    thread.pinned && (
+      <span key="pinned" className={styles.flag()}>
+        <Pin size={11} strokeWidth={1.5} aria-hidden="true" />
+        Pinned
+      </span>
+    ),
+    locked && (
+      <span key="locked" className={styles.flag()}>
+        <Lock size={11} strokeWidth={1.5} aria-hidden="true" />
+        Locked
+      </span>
+    ),
+    ...thread.tags.map((tag) => <span key={tag.id}>{tag.label}</span>),
+    <span key="counts">{meta.counts}</span>,
+  ].filter(Boolean);
+
   return (
     <header className={styles.head()}>
-      <div className={styles.headText()}>
-        <h1 className={styles.title()}>{thread.title}</h1>
-        <div className={styles.metaRow()}>
-          {thread.pinned && (
-            <Chip>
-              <Pin size={11} aria-hidden="true" />
-              Pinned
-            </Chip>
-          )}
-          {locked && (
-            <Chip>
-              <Lock size={11} aria-hidden="true" />
-              Locked
-            </Chip>
-          )}
-          {thread.tags.map((tag) => (
-            <Chip key={tag.id}>{tag.label}</Chip>
-          ))}
-          <span className={styles.meta()}>
-            {meta.counts}
-            <span className={styles.started()}> · {meta.started}</span>
-          </span>
-        </div>
-      </div>
-      <div className={styles.actions()}>
-        {signedIn && (
-          <FollowMenu
-            level={thread.following}
-            busy={working}
-            onChoose={onFollow}
-          />
-        )}
+      <div className={styles.top()}>
         <Button
-          variant="pill"
-          size="sm"
-          icon
-          aria-label={copied ? "Link copied" : "Copy link"}
-          onClick={copy}
+          {...routed(paths.channel(thread.channel.slug))}
+          variant="link"
+          className={styles.back()}
         >
-          {copied ? (
-            <Check size={15} aria-hidden="true" />
-          ) : (
-            <LinkIcon size={15} aria-hidden="true" />
-          )}
+          <ArrowLeft size={14} strokeWidth={1.5} aria-hidden="true" />
+          <span>{thread.channel.name}</span>
         </Button>
-        <span className={styles.status()} role="status">
-          {copied ? "Link copied" : ""}
-        </span>
-        {(canReport || viewer.staff) && (
-          <Popover
+        <div className={styles.actions()}>
+          {signedIn && (
+            <FollowMenu
+              level={thread.following}
+              busy={working}
+              onChoose={onFollow}
+            />
+          )}
+          <Button
             variant="pill"
             size="sm"
             icon
-            aria-label="More"
-            panelLabel="Thread actions"
-            disabled={working}
-            label={<MoreHorizontal size={15} aria-hidden="true" />}
+            aria-label={copied ? "Link copied" : "Copy link"}
+            onClick={copy}
           >
-            {(close) => {
-              const item = (label: string, act: () => void) => (
-                <PopoverItem
-                  key={label}
-                  onClick={() => {
-                    close();
-                    act();
-                  }}
-                >
-                  {label}
-                </PopoverItem>
-              );
-              return [
-                canReport && item("Report…", onReport),
-                // Staff act in place (D21). The API is what holds them to it.
-                viewer.staff && item(thread.pinned ? "Unpin" : "Pin", onPin),
-                viewer.staff && item(locked ? "Unlock" : "Lock…", onLock),
-                viewer.staff && item("Remove thread…", onRemove),
-              ];
-            }}
-          </Popover>
-        )}
+            {copied ? (
+              <Check size={15} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <LinkIcon size={15} strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </Button>
+          <span className={styles.status()} role="status">
+            {copied ? "Link copied" : ""}
+          </span>
+          {(canReport || viewer.staff) && (
+            <Popover
+              variant="pill"
+              size="sm"
+              icon
+              aria-label="More"
+              panelLabel="Thread actions"
+              disabled={working}
+              label={
+                <MoreHorizontal
+                  size={15}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+              }
+            >
+              {(close) => {
+                const item = (label: string, act: () => void) => (
+                  <PopoverItem
+                    key={label}
+                    onClick={() => {
+                      close();
+                      act();
+                    }}
+                  >
+                    {label}
+                  </PopoverItem>
+                );
+                return [
+                  canReport && item("Report…", onReport),
+                  // Staff act in place (D21). The API is what holds them to it.
+                  viewer.staff && item(thread.pinned ? "Unpin" : "Pin", onPin),
+                  viewer.staff && item(locked ? "Unlock" : "Lock…", onLock),
+                  viewer.staff && item("Remove thread…", onRemove),
+                ];
+              }}
+            </Popover>
+          )}
+        </div>
       </div>
+      <Headline className={styles.title()}>{thread.title}</Headline>
+      <p className={styles.metaRow()}>
+        {parts.flatMap((part, i) =>
+          i
+            ? [
+                <span key={`dot-${i}`} aria-hidden="true">
+                  ·
+                </span>,
+                part,
+              ]
+            : [part],
+        )}
+        {/* When it began is the least of it: a phone leaves it to the post. */}
+        <span className={styles.started()}>
+          <span aria-hidden="true">· </span>
+          {meta.started}
+        </span>
+      </p>
     </header>
   );
 }

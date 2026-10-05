@@ -8,7 +8,7 @@
  * edited here; it is sent back as it came, because that PUT resets what it is
  * not sent.
  */
-import { CloudOff, Compass, MessagesSquare, Pencil } from "lucide-react";
+import { CloudOff, Compass, Pencil } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
@@ -28,6 +28,8 @@ import {
   Field,
   Notice,
   Pane,
+  Puffin,
+  SectionHeading,
   Select,
   Skeleton,
   TextArea,
@@ -37,18 +39,18 @@ import { RING, tv } from "../../../ui/tv";
 import type { MemberProfile } from "../../shared/types";
 import { ApiRequestError, useApi } from "../api";
 import { MembersOnly } from "../components/MembersOnly";
+import { PageHead } from "../components/PageHead";
 import { ThreadList } from "../components/ThreadList";
 import { useMember } from "../hooks";
 import { ME, SETTINGS_ID, navigate, paths, routed } from "../router";
 
 export const profileStyles = tv({
   slots: {
-    head: "flex items-start gap-5 max-rail:gap-3",
-    text: "grid min-w-0 flex-1 gap-2",
-    name: "m-0 flex flex-wrap items-center gap-2 text-title text-ink",
-    meta: "m-0 text-body text-ink-muted",
-    bio: "m-0 max-w-reading text-prose whitespace-pre-line text-ink-2",
-    section: "m-0 text-lead text-ink",
+    head: "flex items-end gap-5 max-rail:gap-3",
+    face: "shrink-0 max-rail:size-control-lg max-rail:text-lead",
+    text: "min-w-0 flex-1",
+    name: "inline-flex flex-wrap items-center gap-2",
+    bio: "m-0 max-w-reading font-body text-prose whitespace-pre-line text-ink-2 italic",
     form: "grid gap-5",
     pair: "grid gap-5 rail:grid-cols-2",
     actions: "flex flex-wrap items-center justify-end gap-2",
@@ -60,14 +62,15 @@ export const profileStyles = tv({
       RING,
     ],
     settingText: "grid min-w-0 gap-1",
-    settingTitle: "text-prose font-semibold text-ink",
-    settingHint: "text-body text-ink-muted",
-    state:
-      "flex shrink-0 items-center gap-2 text-body font-semibold text-ink-2",
+    settingTitle: "font-display text-prose font-semibold text-ink",
+    settingHint: "text-body text-ink-muted italic",
+    state: [
+      "flex shrink-0 items-center gap-2 font-mono text-label text-ink-2 uppercase",
+    ],
     track:
-      "inline-flex h-6 w-11 items-center rounded-full border border-line-strong bg-sunken px-0.5 transition-colors duration-fast",
+      "inline-flex h-6 w-11 items-center rounded-full border border-ink bg-sunken px-0.5 transition-colors duration-fast",
     thumb:
-      "size-4.5 rounded-full bg-card shadow-control transition-transform duration-fast motion-reduce:transition-none",
+      "size-4.5 rounded-full border border-ink bg-card shadow-control transition-transform duration-fast motion-reduce:transition-none",
     loading: "grid gap-3",
     short: "w-1/3",
     hidden: "sr-only",
@@ -76,7 +79,7 @@ export const profileStyles = tv({
     // On is the thumb across, a filled track and the word: never colour alone.
     on: {
       true: {
-        track: "border-transparent bg-inverse",
+        track: "bg-inverse",
         thumb: "translate-x-5",
       },
     },
@@ -241,7 +244,7 @@ function Member({ handle }: ProfileProps) {
     return (
       <Empty
         title="That member does not exist"
-        icon={<Compass size={24} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p>The link may be old, or they may have changed their handle.</p>
         <Button {...routed(paths.home())} variant="pill">
@@ -254,7 +257,7 @@ function Member({ handle }: ProfileProps) {
       <Empty
         kind="warn"
         title="We could not load this profile"
-        icon={<CloudOff size={24} aria-hidden="true" />}
+        icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p role="alert">{state.message}</p>
         <Button variant="pill" onClick={reload}>
@@ -268,20 +271,28 @@ function Member({ handle }: ProfileProps) {
   return (
     <>
       <div className={styles.head()}>
-        <Avatar name={member.displayName} src={member.avatarUrl} size="lg" />
-        <div className={styles.text()}>
-          <h1 className={styles.name()}>
-            {member.displayName}
-            {member.role === "staff" && <Chip>Staff</Chip>}
-          </h1>
-          <p className={styles.meta()}>{memberLine(member)}</p>
-          {member.bio && <p className={styles.bio()}>{member.bio}</p>}
-        </div>
+        <Avatar
+          name={member.displayName}
+          src={member.avatarUrl}
+          size="lg"
+          className={styles.face()}
+        />
+        <PageHead
+          className={styles.text()}
+          dateline={memberLine(member)}
+          title={
+            <span className={styles.name()}>
+              {member.displayName}
+              {member.role === "staff" && <Chip eyebrow>Staff</Chip>}
+            </span>
+          }
+        />
       </div>
+      {member.bio && <p className={styles.bio()}>{member.bio}</p>}
       {own && <Own onSaved={reload} />}
-      <h2 className={styles.section()}>
+      <SectionHeading as="h2" rule="thick">
         {own ? "Threads you started" : `Threads ${member.displayName} started`}
-      </h2>
+      </SectionHeading>
       <ThreadList
         state={threads}
         subject="their threads"
@@ -289,10 +300,7 @@ function Member({ handle }: ProfileProps) {
         onRetry={reload}
         onMore={loadMore}
         empty={
-          <Empty
-            title="No threads yet"
-            icon={<MessagesSquare size={24} aria-hidden="true" />}
-          >
+          <Empty title="No threads yet" icon={<Puffin size={40} />}>
             <p>
               {own
                 ? "The threads you start are listed here."
@@ -387,11 +395,11 @@ function Own({ onSaved }: { onSaved: () => void }) {
           className={styles.edit()}
           onClick={() => setEditing(true)}
         >
-          <Pencil size={15} aria-hidden="true" />
+          <Pencil size={15} strokeWidth={1.5} aria-hidden="true" />
           <span>Edit profile</span>
         </Button>
       )}
-      <Pane>
+      <Pane kind="ruled">
         <FollowSwitch
           on={user.autoFollow}
           disabled={saving}
