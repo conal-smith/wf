@@ -67,7 +67,9 @@ export function StarGlyphs({
   className,
 }: StarGlyphsProps) {
   const styles = starGlyphsStyles({ tone });
-  const gap = Math.max(1, Math.round(size / 6));
+  // The mockup's 2px at 12px, and 1px at the dock's 10px, where five stars
+  // and their gaps must stay inside a 73px column's padding.
+  const gap = Math.max(1, Math.floor(size / 6));
   const solid = stars ?? 0;
   const pot = Math.max(potential ?? solid, solid);
   const count = slots === "five" ? 5 : Math.max(pot, stars == null ? 5 : 1);

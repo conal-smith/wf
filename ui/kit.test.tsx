@@ -1070,6 +1070,17 @@ describe("the chart's own primitives", () => {
     expect(narrow).not.toContain("<circle");
   });
 
+  // The dock's columns are 73px with 8px of padding a side: five stars at
+  // its 10px must fit in what is left, or every column widens.
+  it("StarGlyphs keeps five of the dock's 10px stars inside a column", () => {
+    const width = Number(
+      html(<StarGlyphs stars={5} size={10} slots="potential" />).match(
+        /width="(\d+)"/,
+      )?.[1],
+    );
+    expect(width).toBeLessThanOrEqual(73 - 16);
+  });
+
   it("StarGlyphs leaves the dark unrated, at the width of a rated hour", () => {
     const dark = html(<StarGlyphs stars={null} />);
     const lit = html(<StarGlyphs stars={0} />);

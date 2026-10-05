@@ -18,6 +18,7 @@
 import { Menu, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../../ui/Button";
+import { Puffin } from "../../ui/Puffin";
 import { surfaceStyles } from "../../ui/Surface";
 import { RING, tv } from "../../ui/tv";
 import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
@@ -51,6 +52,10 @@ export const siteMenuStyles = tv({
       "animate-menu-in motion-reduce:animate-none",
     ],
     list: "m-0 flex list-none flex-col p-0",
+    // The Almanac signs the menu: the puffin and one line in the house's
+    // voice, under the sections, as the chart's menu does.
+    almanac:
+      "m-0 flex max-w-60 items-center gap-2 px-2 pt-3 pb-1 font-body text-body text-ink-muted italic",
     /*
      * A row is a section's name in the display face, on a hairline, the height
      * of touch: the index of a broadsheet, not a list of buttons. It goes
@@ -205,6 +210,10 @@ export function SiteMenu({
               );
             })}
           </ul>
+          <p className={styles.almanac()}>
+            <Puffin size={44} />
+            <span>The Almanac reads every forecast so you don’t have to.</span>
+          </p>
         </nav>
       )}
     </div>

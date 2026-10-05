@@ -144,6 +144,14 @@ describe("on the chart", () => {
     expect(SOURCE).not.toMatch(/from "lucide-react";[\s\S]*Store/);
   });
 
+  it("is signed by the Almanac: the puffin and one line, under the sections", () => {
+    expect(SOURCE).toContain("<Puffin size={44} />");
+    expect(SOURCE).toContain(
+      "The Almanac reads every forecast so you don’t have to.",
+    );
+    expect(siteMenuStyles().almanac()).toContain("italic");
+  });
+
   it("sets the section you are in in the italic, heavier, on the second sheet", () => {
     const here = siteMenuStyles({ current: true }).row().split(" ");
     for (const name of ["italic", "font-bold", "bg-sunken"])
