@@ -497,3 +497,45 @@
     env(safe-area-inset-bottom)
   );
 }
+
+/* ==== map ================================================================
+   The map's own values (src/, force5/src). Read from TypeScript through
+   `getComputedStyle` (force5/src/chartStyle.ts) and from the map's CSS
+   through var(), so the chart's colours are written here and nowhere else.
+   Plain custom properties, not theme colours: no utility class should ever
+   paint with a depth tint or the rider's wind scale. */
+:root {
+  /* The depth tints, metre by metre: shallow water darkest, deep water nearly
+     paper, as on an Admiralty chart. The four `sea-*` above are the key's. */
+  --map-d0: #a9cbd8;
+  --map-d1: #b3d1dc;
+  --map-d2: #bed7e0;
+  --map-d3: #c3dae2;
+  --map-d5: #cde0e6;
+  --map-d10: #dae8ea;
+  --map-d20: #e5edea;
+  --map-d30: #ecf0ea;
+  --map-d50: #f0f1ea;
+  --map-d100: #f2f1ea;
+  --map-d200: #f3f1ea;
+  /* Sand and marsh on the land, and the tide curve's ink. */
+  --map-sand: #eadcb4;
+  --map-wetland: #c9d3b2;
+  --map-tide: #3f6e7e;
+  /* The paper a label is haloed in over the chart. */
+  --map-halo: #f1efe6;
+
+  /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
+     too light, greens deepen through the sweet spot, yellow is the top of it,
+     orange to red too much. Muted, as inks on paper are, not screen neon.
+     The stops are the rider's own band (windBand in force5/src/stars.ts). */
+  --ride-calm: #6d8db4;
+  --ride-light: #8db3cf;
+  --ride-floor: #b5cf96;
+  --ride-good: #77b06e;
+  --ride-best: #3e8a55;
+  --ride-top: #d9c24f;
+  --ride-much: #e0913f;
+  --ride-over: #c8503a;
+  --ride-storm: #8c3a6c;
+}

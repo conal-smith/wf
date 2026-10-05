@@ -32,7 +32,10 @@ const EMPTY: (Wind | null | undefined)[] = [];
  * run finer than three-hourly, takes every third hour before filling the rest
  * in. The table is readable long before the last file lands.
  */
-export function usePointSeries(manifest: Manifest, point: Point): PointSeries {
+export function usePointSeries(
+  manifest: Manifest | null,
+  point: Point | null,
+): PointSeries {
   const [samples, setSamples] = useState<{
     key: string;
     values: (Wind | null)[];
@@ -40,11 +43,15 @@ export function usePointSeries(manifest: Manifest, point: Point): PointSeries {
     pending: boolean;
   }>({ key: "", values: [], failures: 0, pending: false });
   const [retry, setRetry] = useState(0);
-  const key = `${manifest.model}/${manifest.run}/${point.lon}/${point.lat}`;
-  const named = point.id ? manifest.spotForecasts[point.id] : undefined;
+  const key =
+    manifest && point
+      ? `${manifest.model}/${manifest.run}/${point.lon}/${point.lat}`
+      : "";
+  const named =
+    manifest && point?.id ? manifest.spotForecasts[point.id] : undefined;
 
   useEffect(() => {
-    if (named) return;
+    if (named || !manifest || !point) return;
     let cancelled = false;
     let next = 0;
     // Read once, when the point is chosen: a series that restarted every time
@@ -91,7 +98,7 @@ export function usePointSeries(manifest: Manifest, point: Point): PointSeries {
       cancelled = true;
       cancelAnimationFrame(queued);
     };
-  }, [manifest, named, key, point.lon, point.lat, retry]);
+  }, [manifest, named, key, retry]);
 
   return {
     key,

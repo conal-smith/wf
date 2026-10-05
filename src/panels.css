@@ -1,0 +1,307 @@
+/* The blend chart (src/BlendChart.tsx), in the dock's Blend view, and the
+   dock's display options (src/DisplayFilter.tsx). */
+.chart-holder {
+  position: relative;
+  height: var(--chart-height);
+  overflow: hidden;
+}
+/* Out of flow on purpose: an in-flow SVG carrying the previous model's width
+   would widen the cell it spans, which would widen every column under it. */
+.blend-chart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  touch-action: pan-x;
+}
+.chart-night {
+  fill: var(--color-ink);
+  opacity: 0.09;
+}
+.chart-gridline {
+  stroke: var(--color-line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  opacity: 0.3;
+}
+.chart-now {
+  stroke: var(--color-now-marker);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.chart-cursor {
+  stroke: var(--color-ink-2);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+.blend-band,
+.blend-gust {
+  stroke: none;
+}
+/* Fewer than three models behind these hours: the band's own edge is dashed,
+   so a narrow band there reads as thin evidence rather than as agreement. */
+.blend-sparse {
+  fill: none;
+  stroke: var(--color-ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+}
+.model-line {
+  fill: none;
+  stroke-width: 1;
+}
+.model-gust-line {
+  stroke-dasharray: 3 3;
+}
+/* The three marks below are drawn over the band's own wind colour, so they take
+   the ink that reads against a coloured ground, not the card surface's white. */
+.median-line {
+  fill: none;
+  stroke: var(--color-ink-inverse);
+  stroke-width: 1.4;
+  opacity: 0.75;
+}
+.chart-arrow-halo {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+.chart-arrow {
+  fill: none;
+  stroke: var(--color-ink-inverse);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+/* ---------- hover card ---------- */
+.chart-hover-card {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -100%);
+  width: max-content;
+  max-width: 240px;
+  padding: 9px 11px;
+  border-radius: 0;
+  background: var(--color-solid);
+  border: 1px solid var(--color-ink);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-ink) 20%, transparent);
+  font-size: 11px;
+  color: var(--color-ink);
+  pointer-events: none;
+}
+.chart-hover-card > strong {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  margin-bottom: 5px;
+}
+.chart-hover-card dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.chart-hover-card dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.chart-hover-card dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.chart-hover-card dt i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 7px;
+}
+.chart-hover-card dt small,
+.chart-hover-card dd small {
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  margin-left: 4px;
+}
+.chart-hover-card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.chart-hover-card p {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+}
+
+/* ---------- display options: the chart's box, over the dock ---------- */
+.display-filter {
+  position: fixed;
+  inset: auto 12px calc(var(--dock-height) + 12px) auto;
+  margin: 0;
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(580px, calc(100dvh - var(--dock-height) - 24px));
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-ground);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+.display-filter::backdrop {
+  background: color-mix(in srgb, var(--color-scrim) 33%, transparent);
+}
+.display-filter h2 {
+  margin: 16px 0 6px;
+  font: 500 10px/1.2 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-ink);
+  padding-bottom: 6px;
+}
+.filter-head h2 {
+  margin: 0;
+}
+.filter-close {
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-ground);
+  padding: 4px 12px;
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.filter-close:hover {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+.filter-units {
+  display: inline-flex;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.filter-units button {
+  border: 0;
+  background: none;
+  padding: 5px 11px;
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+.filter-units button + button {
+  border-left: 1px solid var(--color-line);
+}
+.filter-units button[aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+.filter-rider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rider-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.rider-field span {
+  min-width: 96px;
+}
+.rider-field input {
+  width: 96px;
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  background: transparent;
+  font: 15px var(--font-body);
+  color: var(--color-ink);
+  padding: 3px 2px;
+}
+.rider-field input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.rider-field input::placeholder {
+  font-style: italic;
+  color: var(--color-ink-muted);
+}
+.filter-models {
+  display: flex;
+  flex-direction: column;
+}
+.filter-model {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-line);
+  font: 600 14px var(--font-display);
+  cursor: pointer;
+}
+.filter-model input {
+  accent-color: var(--color-chart-magenta);
+  margin: 0;
+}
+.filter-model span {
+  display: flex;
+  flex-direction: column;
+}
+.filter-model small {
+  font: 400 10px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.filter-model.is-planned,
+.filter-model.is-unavailable {
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+.model-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.filter-model.is-planned .model-swatch,
+.filter-model.is-unavailable .model-swatch {
+  opacity: 0.35;
+}
+.filter-note {
+  margin: 8px 0 0;
+  font: italic 13px/1.35 var(--font-body);
+  color: var(--color-ink-muted);
+}
+@media (max-width: 720px) {
+  .display-filter {
+    inset: auto 8px calc(var(--dock-height) + 8px) 8px;
+    width: auto;
+  }
+  .rider-field input {
+    font-size: 16px;
+  }
+}

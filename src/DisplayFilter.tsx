@@ -4,14 +4,7 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import {
-  ROW_KEYS,
-  parseRider,
-  rowOn,
-  setRow as setRowPref,
-  type Prefs,
-  type RowKey,
-} from "../force5/src/prefs";
+import { parseRider, type Prefs } from "../force5/src/prefs";
 import { UNITS, type Units } from "../force5/src/units";
 import {
   ESTIMATE_WEIGHT_KG,
@@ -27,24 +20,10 @@ const SKILL_LABEL: Record<Rider["skill"], string> = {
   advanced: "Advanced",
 };
 
-export interface RowOffer {
-  label: string;
-  /** Why the row cannot be shown yet; the toggle is then disabled. */
-  unavailable?: string;
-  /**
-   * Whether the row is on until the reader says otherwise, for the rows whose
-   * default depends on whether this spot has the data at all. Undefined for a
-   * row whose default is simply its stored boolean.
-   */
-  defaultOn?: boolean;
-}
-
 interface Props {
   prefs: Prefs;
   onChange: (prefs: Prefs) => void;
   onClose: () => void;
-  /** One entry per row key, in `ROW_KEYS` order. */
-  rows: Record<RowKey, RowOffer>;
   /** Live wind models and whether their manifest answered. */
   models: readonly ModelAvailability[];
 }
@@ -58,7 +37,6 @@ export default function DisplayFilter({
   prefs,
   onChange,
   onClose,
-  rows,
   models,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -72,10 +50,6 @@ export default function DisplayFilter({
     return () => element?.close();
   }, []);
 
-  // Switching a row by hand also takes it out of availability's hands: from
-  // here on this row is the reader's choice at every spot.
-  const setRow = (key: RowKey, value: boolean) =>
-    onChange(setRowPref(prefs, key, value));
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
     onChange({
@@ -111,7 +85,7 @@ export default function DisplayFilter({
       }}
     >
       <div className="filter-head">
-        <h2>Show</h2>
+        <h2>Units</h2>
         <button
           className="filter-close"
           aria-label="Close display options"
@@ -120,32 +94,6 @@ export default function DisplayFilter({
           Done
         </button>
       </div>
-      <div className="filter-switches">
-        {ROW_KEYS.map((key) => {
-          const row = rows[key];
-          return (
-            <label
-              key={key}
-              className={`filter-switch${row.unavailable ? " is-unavailable" : ""}`}
-            >
-              <input
-                type="checkbox"
-                role="switch"
-                data-row={key}
-                checked={rowOn(prefs, key, row.defaultOn) && !row.unavailable}
-                disabled={!!row.unavailable}
-                onChange={(event) => setRow(key, event.target.checked)}
-              />
-              <span className="switch-track" aria-hidden="true" />
-              <span className="switch-text">
-                {row.label}
-                {row.unavailable && <small>{row.unavailable}</small>}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-      <h2>Units</h2>
       <div className="filter-units" role="group" aria-label="Wind units">
         {UNITS.map((unit) => (
           <button
@@ -212,7 +160,7 @@ export default function DisplayFilter({
         </label>
       </div>
       <p className="filter-note">
-        The stars and the wing row are rated for this rider.{" "}
+        The stars, the lights and the wing are rated for this rider.{" "}
         {prefs.rider.weightKg === null
           ? `Until you give a weight they assume ${ESTIMATE_WEIGHT_KG} kg.`
           : ""}{" "}
@@ -258,10 +206,6 @@ export default function DisplayFilter({
           </label>
         ))}
       </div>
-      <p className="filter-note">
-        Model colours identify a line on the chart. Wind speed is always
-        coloured by the wind scale, never by model.
-      </p>
     </dialog>
   );
 }

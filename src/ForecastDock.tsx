@@ -1,1800 +1,1439 @@
 import {
+  lazy,
+  memo,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
+import { ArrowDown, Layers3, SlidersHorizontal } from "lucide-react";
+import { Button } from "../ui/Button";
+import { Segmented } from "../ui/Segmented";
+import { StarGlyphs } from "../ui/StarGlyphs";
+import { loopPath } from "../ui/penPaths";
+// Both only when asked for: the chart's Blend view and the display options.
+const BlendChart = lazy(() => import("./BlendChart"));
+const DisplayFilter = lazy(() => import("./DisplayFilter"));
+import { InfoPop } from "./InfoPop";
+import { HourStars, riderLine } from "./RatingDetail";
 import {
-  ArrowDown,
-  ArrowUpDown,
-  ArrowUpRight,
-  CandlestickChart,
-  ChartArea,
-  ChevronLeft,
-  ChevronRight,
-  CloudRain,
-  CloudSun,
-  Cloudy,
-  Gauge,
-  Layers3,
-  Navigation,
-  Pause,
-  Play,
-  SlidersHorizontal,
-  Table2,
-  Thermometer,
-  ThermometerSun,
-  Waves,
-  Wind as WindIcon,
-  WindArrowDown,
-  X,
-} from "lucide-react";
-import BlendChart from "./BlendChart";
-import CandleChart from "./CandleChart";
-import DisplayFilter, { type RowOffer } from "./DisplayFilter";
-import ForecastHeader, { type ModelBand } from "./ForecastHeader";
-import ForecastSheet from "./ForecastSheet";
-import RowLabel from "./RowLabel";
-import StarsRows, { BestWindow, STARS_HELP, WING_HELP } from "./StarsRows";
+  FacingCompass,
+  ShoreGlyph,
+  StarToggle,
+  StarsHelp,
+  WindArrow,
+} from "./glyphs";
+import { candleGroups, modelSupport, niceMax } from "./chart";
+import type { PlaceHour } from "./ratings";
 import WeatherGlyph from "./WeatherGlyph";
 import {
-  PLOT_PAD_BOTTOM,
-  PLOT_PAD_TOP,
-  areaPath,
-  axisTicks,
-  candleGroups,
-  columnCentres,
-  columnEdges,
-  columnWeights,
-  dayGroups,
-  modelSupport,
-  seriesOnAxis,
-  type AxisReading,
-  niceMax,
-  valueScale,
-  windGradientStops,
-} from "./chart";
+  clock,
+  columnAtX,
+  dayBest,
+  dayLong,
+  dayShort,
+  hourLabel,
+  irishDate,
+  stripGeometry,
+  type DayBest,
+  type StripColumn,
+  type StripDay,
+  type StripGeometry,
+} from "./strip";
 import {
   useBlend,
   useSpotSeaTemperature,
-  useSpotTide,
   useSpotWaves,
   useSpotWeather,
+  type SpotWaves,
+  type SpotWeather,
+  type SeaTemperatureState,
 } from "./useBlend";
-import { usePointSeries } from "./usePointSeries";
-import { bridgeableGapHours, candlesOver } from "../force5/src/blend";
-import { dayNights } from "../force5/src/sun";
-import { bestWindow, rateHour, type HourRating } from "../force5/src/stars";
-import {
-  columnSources,
-  framePosition,
-  modelStretches,
-  windTrackBackground,
-  type DockColumn,
-} from "../force5/src/timeline";
-import type { ModelAvailability } from "../force5/src/manifests";
-import { spotSeries } from "../force5/src/series";
-import { MODELS, type ModelId } from "../force5/src/models";
-import {
-  VIEWS,
-  rowOn,
-  type ForecastView,
-  type Prefs,
-  type RowKey,
-} from "../force5/src/prefs";
-import { convert, unitLabel } from "../force5/src/units";
-import {
-  compass,
-  dayLabel,
-  freshness,
-  nearestFrame,
-  timeLabel,
-  windColor,
-  type FrameInfo,
-  type Manifest,
-  type Point,
-  type Wind,
-} from "../force5/src/weather";
-import { tideAt } from "../force5/src/tides";
-import { spotHref } from "../force5/src/siteNav";
-import {
-  NETWORK_LABEL,
-  observationAge,
-  seaTemperatureText,
-  sparklinePoints,
-} from "../force5/src/seaTemperature";
-import { precipIntervalHours, presentWeather } from "../force5/src/surface";
+import { presentWeather } from "../force5/src/surface";
 import { variableValue } from "../force5/src/variables";
-import type { WaveFieldSet } from "../force5/src/waves";
+import { seaTemperatureText } from "../force5/src/seaTemperature";
+import type { ModelAvailability } from "../force5/src/manifests";
+import type { Prefs } from "../force5/src/prefs";
+import type { Rider } from "../force5/src/stars";
+import { dayNights } from "../force5/src/sun";
+import { eventsBetween, tideAt, type SpotTide } from "../force5/src/tides";
+import { convert, type Units } from "../force5/src/units";
+import { compass, type Spot } from "../force5/src/weather";
+import { spotHref } from "../force5/src/siteNav";
+
+export type DockView = "table" | "blend";
 
 interface Props {
-  /** The run the map is drawing. It decides which columns have a map frame. */
-  manifest: Manifest;
-  /** The dock's own time axis, built from every model rather than from the map. */
-  columns: readonly DockColumn[];
-  /** The page's one availability sweep, shared with the blend and the columns. */
-  models: readonly ModelAvailability[];
-  modelsResolved: boolean;
-  point: Point;
+  spot: Spot;
+  columns: readonly StripColumn[];
+  days: readonly StripDay[];
+  hours: PlaceHour[] | undefined;
+  /** The selected column. */
+  selected: number;
+  /** Move the time; `final` once a gesture has come to rest. */
+  onSelect: (column: number, final: boolean) => void;
+  now: number;
   prefs: Prefs;
   onPrefsChange: (prefs: Prefs) => void;
-  /** The reader's place, as a valid time. The column is derived from it. */
-  selectedTime: string;
-  /** Put a model on the map at a given time, from the long-range chip. */
-  onShowOnMap: (model: ModelId, validTime: string) => void;
-  /** The time to keep in view; the map's own while a frame is failing. */
-  scrollTime: string | null;
-  onSelect: (validTime: string) => void;
-  open: boolean;
-  onClose: () => void;
+  models: readonly ModelAvailability[];
+  starred: boolean;
+  onToggleStar: () => void;
+  tide: SpotTide | null;
+  folded: boolean;
+  onFold: (folded: boolean) => void;
+  phone: boolean;
+  view: DockView;
+  onView: (view: DockView) => void;
+  reducedMotion: boolean;
+  /** The run that reaches the selected hour, when the map's run does not. */
+  reachable: { id: string; name: string } | null;
+  onShowOnMap: () => void;
+  /** What the map is drawing, for the small print. */
+  mapModel: string;
+  /** A point tapped on the map rather than a riding place. */
+  isPoint: boolean;
+  /** Its forecast is still being read out of the map's frames. */
+  pointPending?: boolean;
   playing: boolean;
   onTogglePlay: () => void;
-  /** A model switch is in flight: the time controls must not move. */
-  busy: boolean;
-  playDisabled: boolean;
-  reducedMotion: boolean;
+  /** The waves, weather and sea rows, below their own fold. */
+  more: boolean;
+  onMore: (more: boolean) => void;
+  /** The wave and weather manifests, once the rows have been opened. */
+  marine: readonly ModelAvailability[];
 }
 
-const VIEW_LABEL: Record<ForecastView, string> = {
-  table: "Table",
-  blend: "Blend",
-  candles: "Candles",
+const ROWS = {
+  day: 20,
+  hour: 18,
+  stars: 20,
+  wind: 20,
+  from: 20,
+  wing: 20,
+  tide: 40,
+  blend: 100,
+  more: 22,
+  waves: 20,
+  sky: 20,
+  air: 20,
+  rain: 20,
+  sea: 20,
 };
-const VIEW_GLYPH: Record<ForecastView, ReactNode> = {
-  table: <Table2 size={15} aria-hidden="true" />,
-  blend: <ChartArea size={15} aria-hidden="true" />,
-  candles: <CandlestickChart size={15} aria-hidden="true" />,
+const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
+type MoreRow = (typeof MORE_ROWS)[number];
+const MORE_LABEL: Record<MoreRow, [string, string]> = {
+  waves: ["Waves", "m"],
+  sky: ["Sky", ""],
+  air: ["Air", "°C"],
+  rain: ["Rain", "mm"],
+  sea: ["Sea", "°C"],
 };
+/** Rain, in millimetres over one step, that saturates a cell's tint. */
+const RAIN_FULL_MM = 4;
+/** Star cells' colours on the day slider: magenta by how many. */
+const STAR_TINT = [0.08, 0.16, 0.3, 0.5, 0.72, 0.95];
 
-const TideGlyph = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 15c2.5 0 2.5-4 5-4s2.5 4 5 4 2.5-4 5-4 2.5 4 5 4" />
-    <path d="M12 3v6m0-6-2.2 2.4M12 3l2.2 2.4" />
-  </svg>
-);
+const range = (cols: readonly StripColumn[], best: DayBest) =>
+  best.from === best.to
+    ? clock(cols[best.from].time)
+    : `${clock(cols[best.from].time)}–${clock(cols[best.to].time)}`;
+const shortRange = (cols: readonly StripColumn[], best: DayBest) =>
+  best.from === best.to
+    ? clock(cols[best.from].time)
+    : `${hourLabel(cols[best.from].time)}–${hourLabel(cols[best.to].time)}`;
 
-/** A single long swell line: one wave train that travelled to get here. */
-const SwellGlyph = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 14c5 0 5-6 10-6s5 6 10 6" />
-  </svg>
-);
-/** Short chop under wind ticks: sea the local wind is raising right now. */
-const WindSeaGlyph = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 16c1.7 0 1.7-3 3.3-3s1.7 3 3.4 3 1.6-3 3.3-3 1.7 3 3.3 3 1.7-3 3.4-3 1.6 3 3.3 3" />
-    <path d="M4 7h9m3 0h4M4 10.5h5" />
-  </svg>
-);
-
-const ROW_HELP: Record<RowKey, string> = {
-  stars: STARS_HELP,
-  wing: WING_HELP,
-  blend:
-    "Every selected model on one chart. The band is where the models put the wind; the white line is the middle of them.",
-  waveOverlay:
-    "A faint band along the bottom of the chart for wave height, on its own nought-to-six-metre scale. It shares the chart's time axis, not its value axis.",
-  wind: "The middle model at each hour — half the models sit above it, half below.",
-  spread:
-    "Half the gap between the highest and lowest model at that hour. Small means the models agree.",
-  gust: "The strongest gust any selected model shows for that hour.",
-  dir: "Where the wind blows from, averaged across the selected models. Arrows on the chart show the same thing.",
-  waves:
-    "Significant wave height and peak period; direction is where waves come from.",
-  swell:
-    "The swell part of the sea on its own: waves that were raised elsewhere and travelled here. Heights add in energy, not in metres, so swell and wind sea do not sum to the total.",
-  windsea:
-    "The sea the local wind is raising right now, separately from the swell.",
-  weather:
-    "The model's own present-weather code for the cell this spot sits in: clear, cloud, fog, drizzle, rain, showers, thunder or snow. A code is read, never averaged or blended between models, and each cell says which code it is and what it means.",
-  air: "Air temperature two metres above the ground, in whole degrees. Each cell adds the dew point and the relative humidity at that hour.",
-  rain: "Rain forecast for the interval ending at each column, in millimetres — an amount, not a rate, and not a total for the day. Each cell says which hours it covers.",
-  cloud:
-    "Total cloud cover through the whole column, as a percentage, with a three-level bar beside it for high, medium and low cloud.",
-  pressure:
-    "Pressure reduced to mean sea level, in whole hectopascals. Off by default: it is a synoptic reading rather than a launch decision.",
-  sea: "Model skin temperature, approximate. Over sea this is the model's own surface field and a proxy for a sea temperature, not a measurement; over land it is the temperature of the ground, which on a sunny afternoon runs far above the air. It is shown only where no station is measuring the water.",
-  tide: "Predicted tide height at the nearest station. Astronomical prediction only: no surge and no wind effect.",
-};
-
-/** The three wave rows, in the order the marine block stacks them. */
-const WAVE_ROWS = ["waves", "swell", "windsea"] as const;
-type WaveRowKey = (typeof WAVE_ROWS)[number];
-const WAVE_ROW_LABEL: Record<WaveRowKey, string> = {
-  waves: "Waves",
-  swell: "Swell",
-  windsea: "Wind sea",
-};
-const WAVE_ROW_GLYPH: Record<WaveRowKey, ReactNode> = {
-  waves: <Waves size={18} aria-hidden="true" />,
-  swell: <SwellGlyph />,
-  windsea: <WindSeaGlyph />,
-};
-
-/**
- * The surface-weather rows, in the order the marine block stacks them under the
- * sea: what the sky is doing, then how warm, wet and cloudy it is, then the two
- * readings that are a synoptic detail or an approximation.
- */
-const WEATHER_ROWS = [
-  "weather",
-  "air",
-  "rain",
-  "cloud",
-  "pressure",
-  "sea",
-] as const;
-type WeatherRowKey = (typeof WEATHER_ROWS)[number];
-const WEATHER_ROW_LABEL: Record<WeatherRowKey, string> = {
-  weather: "Weather",
-  air: "Air temp",
-  rain: "Rain",
-  cloud: "Cloud",
-  pressure: "Pressure",
-  sea: "Sea temp",
-};
-const WEATHER_ROW_GLYPH: Record<WeatherRowKey, ReactNode> = {
-  weather: <CloudSun size={18} aria-hidden="true" />,
-  air: <ThermometerSun size={18} aria-hidden="true" />,
-  rain: <CloudRain size={18} aria-hidden="true" />,
-  cloud: <Cloudy size={18} aria-hidden="true" />,
-  pressure: <Gauge size={18} aria-hidden="true" />,
-  sea: <Thermometer size={18} aria-hidden="true" />,
-};
-/** The unit each row states once, on its glyph, rather than in every cell. */
-const WEATHER_ROW_UNIT: Record<WeatherRowKey, string | undefined> = {
-  weather: undefined,
-  air: "°C",
-  rain: "mm",
-  cloud: "%",
-  pressure: "hPa",
-  sea: "°C",
-};
-/**
- * How much rain, in millimetres over one interval, saturates the cell's tint.
- * Four millimetres in three hours is properly wet; past that the tint stops
- * deepening, because the number is the reading and the tint is only a shape the
- * eye can scan.
- */
-const RAIN_TINT_FULL_MM = 4;
-
-/**
- * The observed Sea row's sparkline. Thirteen pixels inside a 24px row, drawn
- * beside the reading rather than under it, so the row keeps its budget and the
- * seven-day shape costs nothing in height.
- */
-const SEA_SPARK = { width: 54, height: 13 } as const;
-
-/** One column's wind reading and the run it was read from. */
-export interface ColumnCell {
-  validTime: string;
-  model: string;
-  /** Null where nothing covers the column, or where it has not loaded yet. */
-  wind: Wind | null;
-  /** True when the value sits between two of that run's published steps. */
-  interpolated: boolean;
-  /** Hours between the two steps it sits between; null on a published one. */
-  stepHours: number | null;
-  manifest: Manifest;
-  /** That run's own frame at this time, for the gust window it declares. */
-  frame: FrameInfo | null;
-}
-const NO_READING_AT_ALL: AxisReading = {
-  wind: null,
-  interpolated: false,
-  stepHours: null,
-};
-
-/** What one cell needs beyond its text: a tint, a muted style and a tooltip. */
-interface WeatherCell {
-  content: ReactNode;
-  title?: string;
-  className?: string;
-  style?: React.CSSProperties;
-}
-const NO_READING: WeatherCell = { content: "—" };
-
-/** Interpolate between actual timestamp centres, including mixed 3/6-hour columns. */
-function timeX(
-  content: HTMLElement,
-  columns: readonly DockColumn[],
-  time: number,
-) {
-  const position = framePosition(columns, time);
-  if (position === null) return null;
-  const centre = (index: number) => {
-    const cell = content
-      .querySelector(`[data-forecast-index="${index}"]`)
-      ?.closest("th");
-    if (!cell) return null;
-    const rect = cell.getBoundingClientRect();
-    return rect.left + rect.width / 2 - content.getBoundingClientRect().left;
-  };
-  const left = centre(Math.floor(position)),
-    right = centre(Math.ceil(position));
-  return left === null || right === null
-    ? null
-    : left + (right - left) * (position % 1);
+/** "today", "tomorrow", or the day's name. */
+function relativeDay(day: StripDay, now: number) {
+  if (day.date === irishDate(now)) return "today";
+  if (day.date === irishDate(now + 86400000)) return "tomorrow";
+  return dayLong(day.noon);
 }
 
-interface Geometry {
-  /** Width of the sticky row-label column, in pixels. */
-  label: number;
-  /** Width and height of the plot box, measured rather than assumed. */
-  chartWidth: number;
-  chartHeight: number;
-  /** Where the marine block sits inside the scrolling content. */
-  marineTop: number;
-  marineHeight: number;
-}
-const NO_GEOMETRY: Geometry = {
-  label: 0,
-  chartWidth: 0,
-  chartHeight: 0,
-  marineTop: 0,
-  marineHeight: 0,
-};
-const sameGeometry = (a: Geometry, b: Geometry) =>
-  a.label === b.label &&
-  a.chartWidth === b.chartWidth &&
-  a.chartHeight === b.chartHeight &&
-  a.marineTop === b.marineTop &&
-  a.marineHeight === b.marineHeight;
-
-export default function ForecastDock({
-  manifest,
+/** "Best today 13:00–16:00 · ★★★★ · 6.5 m", or what there is instead. */
+function DockBest({
   columns,
-  models,
-  modelsResolved,
-  point,
-  prefs,
-  onPrefsChange,
-  selectedTime,
-  scrollTime,
-  onSelect,
-  onShowOnMap,
-  open,
-  onClose,
-  playing,
-  onTogglePlay,
-  busy,
-  playDisabled,
-  reducedMotion,
-}: Props) {
-  const scroll = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
-  const holder = useRef<HTMLDivElement>(null);
-  const marine = useRef<HTMLTableSectionElement>(null);
-  const filterButton = useRef<HTMLButtonElement>(null);
-  const chipButton = useRef<HTMLButtonElement>(null);
-  const slider = useRef<HTMLInputElement>(null);
-  const returnFocus = useRef(false);
-  const initialScroll = useRef(true);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [now, setNow] = useState(Date.now);
-  const [nowX, setNowX] = useState<number | null>(null);
-  const [geometry, setGeometry] = useState<Geometry>(NO_GEOMETRY);
-
-  const { units, rows } = prefs;
-  const series = usePointSeries(manifest, point);
-  const resolved = modelsResolved;
-  const tide = useSpotTide(point.id);
-  const sea = useSpotSeaTemperature(point.id);
-  // Everything that reads a time axis reads the dock's columns, not the map
-  // model's frames: the columns outlive whichever run is on the map.
-  const axis = useMemo(
-    () => columns.map((column) => column.validTime),
-    [columns],
-  );
-  const selected = useMemo(
-    () =>
-      columns.length ? nearestFrame(columns, Date.parse(selectedTime)) : 0,
-    [columns, selectedTime],
-  );
-  const blend = useBlend(models, prefs.blendModels, point.id, axis);
-  const waves = useSpotWaves(models, point.id, axis);
-  const weather = useSpotWeather(models, point.id, axis);
-
-  // Focus never falls to the document because a control the reader activated
-  // went away: the scrubber takes it once the switch the chip asked for lands.
-  useEffect(() => {
-    if (busy || !returnFocus.current) return;
-    returnFocus.current = false;
-    slider.current?.focus({ preventScroll: true });
-  }, [busy]);
-
-  useEffect(() => {
-    const update = () => setNow(Date.now());
-    const timer = window.setInterval(update, 30000);
-    document.addEventListener("visibilitychange", update);
-    window.addEventListener("focus", update);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", update);
-      window.removeEventListener("focus", update);
-    };
-  }, []);
-
-  // One measurement pass for the Now line and both overlays: the charts are
-  // sized from the real column geometry, never from an assumed column width.
-  useLayoutEffect(() => {
-    const element = content.current;
-    if (!element) return;
-    const update = () => {
-      setNowX(timeX(element, columns, now));
-      const box = element.getBoundingClientRect();
-      const label =
-        element.querySelector("thead th")?.getBoundingClientRect().width ?? 0;
-      const plot = holder.current?.getBoundingClientRect();
-      const block = marine.current?.getBoundingClientRect();
-      const next: Geometry = {
-        label,
-        chartWidth: plot?.width ?? Math.max(0, box.width - label),
-        chartHeight: plot?.height ?? 0,
-        marineTop: block ? block.top - box.top : 0,
-        marineHeight: block?.height ?? 0,
-      };
-      setGeometry((previous) =>
-        sameGeometry(previous, next) ? previous : next,
-      );
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    if (holder.current) observer.observe(holder.current);
-    if (marine.current) observer.observe(marine.current);
-    return () => observer.disconnect();
-  }, [
-    columns,
+  hours,
+  day,
+  now,
+}: {
+  columns: readonly StripColumn[];
+  hours: PlaceHour[] | undefined;
+  day: StripDay | undefined;
+  now: number;
+}) {
+  if (!day || !hours) return <span className="dk-best" />;
+  const when = relativeDay(day, now);
+  const ratings = hours.map((h) => h.rating);
+  const best = dayBest(
+    ratings,
+    day,
     now,
-    open,
-    prefs.view,
-    rows,
-    tide.tide,
-    sea.observed,
-    blend.stats.length,
-  ]);
-
-  useLayoutEffect(() => {
-    const container = scroll.current;
-    if (!container) return;
-    if (!columns.length || scrollTime === null) return;
-    const scrollColumn = nearestFrame(columns, Date.parse(scrollTime));
-    const centreNow =
-      initialScroll.current && scrollColumn === nearestFrame(columns);
-    initialScroll.current = false;
-    const followTime = () => {
-      const cell = container
-        .querySelector<HTMLElement>(`[data-forecast-index="${scrollColumn}"]`)
-        ?.closest("th");
-      const labels = container.querySelector("thead th");
-      if (!cell || !labels) return;
-      // offsetLeft on the button is relative to its table cell, often zero.
-      // Compare viewport rectangles instead, allowing for sticky row labels.
-      const viewport = container.getBoundingClientRect();
-      const target = cell.getBoundingClientRect();
-      const labelWidth = labels.getBoundingClientRect().width;
-      const available = container.clientWidth - labelWidth;
-      const currentX =
-        centreNow && content.current
-          ? timeX(content.current, columns, Date.now())
-          : null;
-      const targetCentre =
-        currentX !== null && content.current
-          ? content.current.getBoundingClientRect().left + currentX
-          : target.left + target.width / 2;
-      const left =
-        container.scrollLeft +
-        targetCentre -
-        viewport.left -
-        labelWidth -
-        available / 2;
-      container.scrollLeft = Math.max(
-        0,
-        Math.min(left, container.scrollWidth - container.clientWidth),
-      );
-    };
-    followTime();
-    const observer = new ResizeObserver(followTime);
-    observer.observe(container);
-    const table = container.querySelector("table");
-    if (table) observer.observe(table);
-    return () => observer.disconnect();
-  }, [scrollTime, series.key, columns]);
-
-  const days = useMemo(() => dayGroups(axis, dayLabel), [axis]);
-  const weights = useMemo(
-    () => columnWeights(axis, manifest.stepHours),
-    [axis, manifest.stepHours],
+    columns.map((c) => c.time),
   );
-  const centres = useMemo(
-    () => columnCentres(weights, geometry.chartWidth),
-    [weights, geometry.chartWidth],
-  );
-  const edges = useMemo(
-    () => columnEdges(weights, geometry.chartWidth),
-    [weights, geometry.chartWidth],
-  );
-  const nights = useMemo(
-    () =>
-      axis.length
-        ? dayNights(
-            point.lat,
-            point.lon,
-            new Date(axis[0]),
-            new Date(axis[axis.length - 1]),
-          )
-        : [],
-    [axis, point.lat, point.lon],
-  );
-
-  /**
-   * The stars for every column, from the blend's per-model consensus (each
-   * ensemble counted once, as the forecast server does): its median wind and
-   * gust, its mean direction and how far the models agree. The dark columns
-   * come back null, and so does any column the blend cannot reach.
-   */
-  const facing = point.facing ?? null;
-  const ratings = useMemo(
-    (): (HourRating | null)[] =>
-      columns.map((column, at) => {
-        const stats = blend.consensus[at];
-        const time = Date.parse(column.validTime);
-        return rateHour(
-          {
-            windKn:
-              stats?.median === null || stats?.median === undefined
-                ? null
-                : convert(stats.median, "kn"),
-            gustKn:
-              stats?.gust.median === null || stats?.gust.median === undefined
-                ? null
-                : convert(stats.gust.median, "kn"),
-            from: blend.directions[at] ?? null,
-            agreement: stats?.agreement ?? null,
-            daylight: !nights.some(
-              (night) =>
-                time >= night.from.getTime() && time < night.to.getTime(),
-            ),
-          },
-          { facing },
-          prefs.rider,
-        );
-      }),
-    [columns, blend, nights, facing, prefs.rider],
-  );
-  const best = useMemo(() => {
-    // Only what is still ahead: a window that closed this morning sells nothing.
-    const ahead = ratings.map((rating, at) =>
-      Date.parse(columns[at].validTime) + 3600000 >= now ? rating : null,
-    );
-    return bestWindow(ahead);
-  }, [ratings, columns, now]);
-
-  /**
-   * Which run answers for each column: the map model wherever it has a frame,
-   * the column's own owner past that. Everything a cell says — the value, the
-   * gust window, the tooltip — follows from this one list.
-   */
-  // An expired run still draws the map — the reader chose it, and the footer
-  // calls it an archived snapshot — but it answers no cell in a table of what
-  // is coming.
-  const mapFreshness = freshness(manifest, now);
-  const sources = useMemo(
-    () =>
-      columnSources(
-        columns,
-        manifest.frames,
-        manifest.model,
-        mapFreshness !== "expired",
-      ),
-    [columns, manifest, mapFreshness],
-  );
-  const windById = useMemo(
-    () =>
-      new Map(
-        models
-          .filter((model) => model.wind !== null)
-          .map((model) => [model.id, model.wind!] as const),
-      ),
-    [models],
-  );
-  /**
-   * What the map model itself says at every column. A named spot reads the
-   * run's precomputed series; a bare point reads the samples taken out of the
-   * frames as they arrive, and bridges no further than the run's own cadence,
-   * so an hour that has not downloaded yet stays a dash rather than being
-   * invented from the two either side of it.
-   */
-  const mapReadings = useMemo(() => {
-    const points = point.id
-      ? spotSeries(manifest, point.id)
-      : manifest.frames.flatMap((frame, index) => {
-          const wind = series.values[index];
-          return wind
-            ? [{ hour: frame.hour, validTime: frame.validTime, ...wind }]
-            : [];
-        });
-    if (!points?.length) return null;
-    return seriesOnAxis(
-      points,
-      axis,
-      point.id ? undefined : bridgeableGapHours(manifest.frames),
-    );
-  }, [manifest, point.id, series.values, axis]);
-  /** And what each owning run says, for the columns the map model cannot span. */
-  const ownerReadings = useMemo(() => {
-    const readings = new Map<string, AxisReading[]>();
-    for (const source of sources) {
-      if (source.onMap || readings.has(source.model)) continue;
-      const run = windById.get(source.model);
-      const points = run && point.id ? spotSeries(run, point.id) : null;
-      if (points) readings.set(source.model, seriesOnAxis(points, axis));
-    }
-    return readings;
-  }, [sources, windById, point.id, axis]);
-  /** That run's own frame at a column, for the gust window it declares. */
-  const framesByTime = useMemo(() => {
-    const byModel = new Map<string, Map<string, FrameInfo>>();
-    const put = (run: Manifest) =>
-      byModel.set(
-        run.model,
-        new Map(run.frames.map((frame) => [frame.validTime, frame])),
-      );
-    put(manifest);
-    for (const run of windById.values()) if (!byModel.has(run.model)) put(run);
-    return byModel;
-  }, [manifest, windById]);
-  const cells = useMemo<ColumnCell[]>(
-    () =>
-      columns.map((column, at) => {
-        const source = sources[at] ?? { onMap: false, model: column.model };
-        const run = source.onMap
-          ? manifest
-          : (windById.get(source.model) ?? manifest);
-        const reading =
-          (source.onMap ? mapReadings : ownerReadings.get(source.model))?.[
-            at
-          ] ?? NO_READING_AT_ALL;
-        return {
-          validTime: column.validTime,
-          model: source.model,
-          wind: reading.wind,
-          interpolated: reading.interpolated,
-          stepHours: reading.stepHours,
-          manifest: run,
-          frame: reading.interpolated
-            ? null
-            : (framesByTime.get(run.model)?.get(column.validTime) ?? null),
-        };
-      }),
-    [
-      columns,
-      sources,
-      mapReadings,
-      ownerReadings,
-      framesByTime,
-      windById,
-      manifest,
-    ],
-  );
-  const columnWind = useMemo(() => cells.map((cell) => cell.wind), [cells]);
-  /** One label per stretch of the axis, for the header's model band. */
-  const bands = useMemo<ModelBand[]>(
-    () =>
-      modelStretches(sources).map((stretch) => {
-        const run =
-          stretch.model === manifest.model
-            ? manifest
-            : windById.get(stretch.model);
-        return {
-          ...stretch,
-          label: run?.modelName ?? stretch.model,
-          // An eighteen-hour-old run still owns its columns; the band is where
-          // the reader is told it is not the latest one, and an expired run —
-          // which only the map can be here — that it has run out entirely.
-          state: run ? freshness(run, now) : "fresh",
-        };
-      }),
-    [sources, manifest, windById, now],
-  );
-  /**
-   * A column the map model cannot reach keeps the map on its last frame. The
-   * reader is offered the run that does reach it, and nothing switches until
-   * they ask.
-   */
-  const beyondMap = sources[selected]?.onMap === false;
-  const reachable =
-    beyondMap && columns[selected]
-      ? MODELS.find((entry) => entry.id === columns[selected].model)
-      : undefined;
-
-  // Value axis: whole ten-unit steps above the highest gust in the blend, so a
-  // unit change visibly rescales the chart instead of relabelling it.
-  const peak = blend.stats.reduce(
-    (highest, hour) => Math.max(highest, hour.max ?? 0, hour.gust.max ?? 0),
-    0,
-  );
-  const max = niceMax(convert(peak, units));
-  const y = valueScale(max, geometry.chartHeight);
-  // Three hours of wall clock, not a fixed number of columns: past the seam a
-  // single column already covers six, and a fixed width would pair a
-  // three-hour candle with a twelve-hour one.
-  const groups = useMemo(() => candleGroups(axis), [axis]);
-  // How many models are actually behind each column. Later days have fewer, and
-  // the chart says so instead of looking confidently narrow.
-  const support = useMemo(
-    () => modelSupport(blend.lines, axis.length),
-    [blend.lines, axis.length],
-  );
-  const candles = useMemo(
-    () => (blend.stats.length ? candlesOver(blend.stats, groups) : []),
-    [blend.stats, groups],
-  );
-
-  const named = !!point.id;
-  const chartReady = blend.lines.length > 0;
-  const chartUnavailable = !named
-    ? "Choose a named spot for the model blend"
-    : resolved && !chartReady
-      ? "No model publishes a precomputed series for this spot yet"
-      : null;
-  const view: ForecastView = chartUnavailable ? "table" : prefs.view;
-  const setView = (next: ForecastView) =>
-    onPrefsChange({ ...prefs, view: next });
-
-  const tideOffer = !named
-    ? "named spots only"
-    : tide.loading
-      ? undefined
-      : (tide.error ?? undefined);
-  // A wave source that answered but cannot see this beach is a different thing
-  // from no adapter at all, and the filter says which.
-  const waveOffer = !named
-    ? "named spots only"
-    : !waves.published
-      ? "no source yet"
-      : waves.source
-        ? undefined
-        : "no wave data at this spot";
-  const partitionOffer = (key: "swell" | "windsea") =>
-    waveOffer ??
-    (waves.source?.fields[key]
-      ? undefined
-      : key === "swell"
-        ? "no swell partition here"
-        : "no wind-sea partition here");
-  // The same three states for the weather rows: no adapter published anything,
-  // one did but cannot see this spot, or a row whose variable this source does
-  // not declare. Each says which, rather than the row quietly disappearing.
-  const weatherOffer = !named
-    ? "named spots only"
-    : !weather.published
-      ? "no source yet"
-      : weather.source
-        ? undefined
-        : "no weather data at this spot";
-  const WEATHER_ROW_FIELD = {
-    weather: "present",
-    air: "air",
-    rain: "rain",
-    cloud: "cloud",
-    pressure: "pressure",
-    sea: "skin",
-  } as const;
-  const weatherRowOffer = (key: WeatherRowKey) =>
-    weatherOffer ??
-    (weather.source?.fields[WEATHER_ROW_FIELD[key]]
-      ? undefined
-      : "not in this model");
-  /**
-   * The Sea row has two possible sources, and they are not the same kind of
-   * thing. An in-situ observation is a measurement of the water and wins wherever
-   * a station is in range; the model's skin temperature is an approximation, and
-   * the row says which of the two it is showing either way.
-   */
-  const observed = sea.observed;
-  // Recomputed against the dock's own clock rather than taken from the load, so
-  // "2 h ago" is still true in a tab that has been open since this morning.
-  const observedAge = observed
-    ? (now - Date.parse(observed.latest.time)) / 3600000
-    : 0;
-  const observedDepth =
-    observed?.station.depth === null || observed?.station.depth === undefined
-      ? "sensor depth not published"
-      : `sensor ${observed.station.depth} m below the surface`;
-  const seaHelp = observed
-    ? `Measured water temperature from ${observed.station.name}, the nearest Marine Institute station reporting near this spot. A measurement, not a forecast: it is one reading for the whole row rather than a value per column, and the newest reading is as recent as the water gets. The line is the last seven days.`
-    : `${ROW_HELP.sea}${sea.note ? ` ${sea.note}` : ""}`;
-  const seaTitle = observed
-    ? `${observed.latest.value.toFixed(1)} °C measured at ${
-        observed.station.name
-      } · ${NETWORK_LABEL[observed.station.network]} · ${observed.distanceKm.toFixed(
-        1,
-      )} km from ${point.name} · ${observedDepth} · ${dayLabel(
-        observed.latest.time,
-      )} ${timeLabel(observed.latest.time)} Irish time (${observationAge(
-        observedAge,
-      )}) · ${sea.manifest?.attribution ?? "Marine Institute observations"}`
-    : undefined;
-
-  const rowOffers: Record<RowKey, RowOffer> = {
-    stars: {
-      label: "Stars",
-      unavailable: blend.stats.length ? undefined : "riding places only",
-    },
-    // The wing sits in every star's tooltip and in the best window already;
-    // the row is for the reader who wants it per hour, and the dock's height
-    // budget has room for one new row by default, not two.
-    wing: {
-      label: "Wing size",
-      unavailable: blend.stats.length ? undefined : "riding places only",
-    },
-    blend: { label: "Model blend" },
-    waveOverlay: { label: "Wave band on the chart", unavailable: waveOffer },
-    wind: { label: "Wind (median)" },
-    spread: { label: "Spread" },
-    gust: { label: "Gust" },
-    dir: { label: "Direction row" },
-    waves: { label: WAVE_ROW_LABEL.waves, unavailable: waveOffer },
-    swell: {
-      label: WAVE_ROW_LABEL.swell,
-      unavailable: partitionOffer("swell"),
-    },
-    windsea: {
-      label: WAVE_ROW_LABEL.windsea,
-      unavailable: partitionOffer("windsea"),
-    },
-    ...(Object.fromEntries(
-      WEATHER_ROWS.map((key) => [
-        key,
-        {
-          label: WEATHER_ROW_LABEL[key],
-          unavailable: weatherRowOffer(key),
-        },
-      ]),
-    ) as Record<WeatherRowKey, RowOffer>),
-    // An observation needs no weather model behind it, so the row is offered on
-    // the strength of the observations alone where they cover this spot - and is
-    // on by default there, because measured water is worth a row. Where they do
-    // not, it is the model's approximation again, and off.
-    sea: {
-      label: WEATHER_ROW_LABEL.sea,
-      unavailable: observed ? undefined : weatherRowOffer("sea"),
-      defaultOn: !!observed,
-    },
-    tide: { label: "Tide", unavailable: tideOffer },
-  };
-  /** A row's own switch, or its default where the reader has not touched it. */
-  const rowShown = (key: RowKey) =>
-    rowOn(prefs, key, rowOffers[key].defaultOn) && !rowOffers[key].unavailable;
-
-  const showTide = rows.tide && !tideOffer && !!tide.tide;
-  const waveRows = WAVE_ROWS.filter(rowShown);
-  const weatherRows = WEATHER_ROWS.filter(rowShown);
-  /** The rows the weather model is actually credited for: an observed Sea is not. */
-  const modelWeatherRows = weatherRows.filter(
-    (key) => key !== "sea" || !observed,
-  );
-  const marineRows: RowKey[] = [...waveRows, ...weatherRows];
-  const showMarine = showTide || marineRows.length > 0;
-  /** The field set each wave row reads, from the source's own variable map. */
-  const waveFieldSet = (key: WaveRowKey): WaveFieldSet | null =>
-    (key === "waves"
-      ? waves.source?.fields.total
-      : waves.source?.fields[key]) ?? null;
-  const waveCell = (key: WaveRowKey, column: number): ReactNode => {
-    const set = waveFieldSet(key);
-    const step = waves.columns[column];
-    const height = set && step ? step.values[set.height] : null;
-    // A null is a sea state the model did not resolve, not a flat calm.
-    if (typeof height !== "number") return "—";
-    const period = set!.period ? step!.values[set!.period] : null;
-    const angle = set!.direction ? step!.values[set!.direction] : null;
-    return (
-      <span className="wave-cell">
-        {typeof angle === "number" && (
-          // Wave direction is the bearing they come from, so the arrow rotated
-          // by that bearing travels the way the waves do — as on the wind rows.
-          <ArrowDown
-            className="wave-arrow"
-            size={13}
-            style={{ transform: `rotate(${angle}deg)` }}
-            aria-hidden="true"
-          />
-        )}
-        <b>{height.toFixed(1)}</b>
-        {typeof period === "number" && <small>{Math.round(period)}s</small>}
-      </span>
-    );
-  };
-  const waveHelp = (key: WaveRowKey) =>
-    [ROW_HELP[key], waves.source?.note].filter(Boolean).join(" ");
-
-  /**
-   * One surface-weather cell. Every row reads the same native step, so a column
-   * the weather run does not reach is a dash on all of them at once rather than
-   * a borrowed neighbouring hour, and a null is an absence the model published,
-   * never a zero.
-   */
-  const weatherCell = (key: WeatherRowKey, column: number): WeatherCell => {
-    const fields = weather.source?.fields;
-    const step = weather.columns[column];
-    if (!fields || !step) return NO_READING;
-    const at = (name: string | null) => variableValue(step, name);
-    const degrees = (value: number) => `${value.toFixed(1)} °C`;
-    switch (key) {
-      case "weather": {
-        const code = at(fields.present);
-        const reading = presentWeather(code);
-        return reading
-          ? {
-              content: <WeatherGlyph weather={reading} />,
-              title: `${reading.description} (WMO present-weather code ${reading.code}).`,
-            }
-          : NO_READING;
-      }
-      case "air": {
-        const value = at(fields.air);
-        if (value === null) return NO_READING;
-        const dew = at(fields.dewPoint);
-        const humidity = at(fields.humidity);
-        return {
-          content: Math.round(value),
-          title: [
-            `Air ${degrees(value)}`,
-            dew === null ? null : `dew point ${degrees(dew)}`,
-            humidity === null ? null : `humidity ${Math.round(humidity)} %`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        };
-      }
-      case "rain": {
-        const value = at(fields.rain);
-        const hours = precipIntervalHours(step);
-        if (value === null)
-          return {
-            content: "—",
-            title:
-              hours === null
-                ? "The run hour has no interval to accumulate rain over."
-                : "No rain amount is published for this interval.",
-          };
-        return {
-          // Zero is a dry interval the model actually forecast, so it reads as a
-          // zero; the dash above is the absence of any interval at all.
-          content: value < 0.05 ? "0" : value.toFixed(1),
-          className: "rain-cell",
-          style: {
-            "--rain-tint": Math.min(1, value / RAIN_TINT_FULL_MM).toFixed(2),
-          } as React.CSSProperties,
-          title: `${value.toFixed(1)} mm${
-            hours === null
-              ? ""
-              : ` in the ${hours} hour${hours === 1 ? "" : "s"} to ${timeLabel(
-                  step.validTime,
-                )}`
-          }.`,
-        };
-      }
-      case "cloud": {
-        const total = at(fields.cloud);
-        if (total === null) return NO_READING;
-        const levels = (
-          [
-            ["high", fields.cloudHigh],
-            ["medium", fields.cloudMid],
-            ["low", fields.cloudLow],
-          ] as const
-        ).map(([name, field]) => ({ name, value: at(field) }));
-        const stacked = levels.every((level) => level.value !== null);
-        return {
-          content: (
-            <span className="cloud-cell">
-              <b>{Math.round(total)}</b>
-              {stacked && (
-                <i className="cloud-bars" aria-hidden="true">
-                  {levels.map((level) => (
-                    <s
-                      key={level.name}
-                      style={
-                        {
-                          "--cover": `${Math.round(level.value!)}%`,
-                        } as React.CSSProperties
-                      }
-                    />
-                  ))}
-                </i>
-              )}
-            </span>
-          ),
-          title: `Total cloud ${Math.round(total)} %${
-            stacked
-              ? `, of which ${levels
-                  .map((level) => `${level.name} ${Math.round(level.value!)} %`)
-                  .join(", ")}`
-              : ""
-          }.`,
-        };
-      }
-      case "pressure": {
-        const value = at(fields.pressure);
-        return value === null
-          ? NO_READING
-          : {
-              content: Math.round(value),
-              title: `${value.toFixed(1)} hPa at mean sea level.`,
-            };
-      }
-      case "sea": {
-        const value = at(fields.skin);
-        return value === null
-          ? NO_READING
-          : {
-              content: Math.round(value),
-              className: "proxy-cell",
-              title: `Model skin temperature ${degrees(value)}, approximate — not a measured sea temperature. No observation is in range of this spot.`,
-            };
-      }
-    }
-  };
-  /** The day's highest air temperature, per day group, where the run reaches it. */
-  const dayMax = useMemo(() => {
-    const field = weather.source?.fields.air;
-    if (!field) return {} as Record<string, number>;
-    const highest: Record<string, number> = {};
-    for (const day of days)
-      for (let column = day.start; column < day.start + day.count; column++) {
-        const value = variableValue(weather.columns[column], field);
-        if (value !== null)
-          highest[day.date] = Math.max(highest[day.date] ?? value, value);
-      }
-    return highest;
-  }, [days, weather]);
-  const waveOverlayValues = useMemo(
-    () =>
-      rows.waveOverlay && waves.source
-        ? waves.columns.map((step) => {
-            const value = step?.values[waves.source!.fields.total.height];
-            return typeof value === "number" ? value : null;
-          })
-        : null,
-    [rows.waveOverlay, waves.source, waves.columns],
-  );
-  const tideValues = useMemo(
-    () =>
-      tide.tide
-        ? axis.map((iso) => tideAt(tide.tide!.curve, iso))
-        : axis.map(() => null),
-    [tide.tide, axis],
-  );
-  const tideRange = tideValues.reduce<{ lo: number; hi: number }>(
-    (range, value) =>
-      value === null
-        ? range
-        : { lo: Math.min(range.lo, value), hi: Math.max(range.hi, value) },
-    { lo: Infinity, hi: -Infinity },
-  );
-
-  const tidePath = areaPath(
-    centres,
-    tideValues,
-    tideScale(tideRange, geometry.marineHeight),
-    geometry.marineHeight,
-  );
-
-  const blendCells = (pick: (column: number) => ReactNode, key: string) =>
-    columns.map((column, at) => (
-      <td
-        key={`${key}-${column.validTime}`}
-        className={selected === at ? "selected-hour" : ""}
-      >
-        {pick(at)}
-      </td>
-    ));
-  const spread = (column: number) => {
-    const value = blend.stats[column]?.spread;
-    if (value === null || value === undefined) return "—";
-    const half = convert(value, units) / 2;
-    return `±${units === "m/s" ? half.toFixed(1) : Math.round(half)}`;
-  };
-
-  /**
-   * The distinct cadences the columns actually use, for the caption: "3/6" for
-   * the sample axis, "1/3/6" once HARMONIE is hourly. Read from the times
-   * themselves, because no one run's `stepHours` describes the whole axis.
-   */
-  const cadences = useMemo(() => {
-    const counts = new Map<number, number>();
-    for (let i = 1; i < axis.length; i++) {
-      const hours = Math.round(
-        (Date.parse(axis[i]) - Date.parse(axis[i - 1])) / 3600000,
-      );
-      if (hours > 0) counts.set(hours, (counts.get(hours) ?? 0) + 1);
-    }
-    // A gap that happens once is the seam between two runs, not a cadence.
-    return [...counts]
-      .filter(([, seen]) => seen > 1)
-      .map(([hours]) => hours)
-      .sort((a, b) => a - b);
-  }, [axis]);
-  /**
-   * Runs that answer for some column and publish no gust at all. The caption
-   * names them, rather than speaking for the map's run over a table most of
-   * whose columns another run answered.
-   */
-  const gustless = Array.from(
-    new Set(
-      cells
-        .filter((cell) => cell.manifest.gustAvailable === false)
-        .map((cell) => cell.manifest.modelName),
-    ),
-  );
-  const caption = `${point.name}: ${cadences.join("/") || 3}-hour wind forecast, in ${units}. Times are local to Ireland.${
-    gustless.length
-      ? ` Gust speed unavailable for the ${gustless.join(" and ")} hours.`
-      : ""
-  }`;
-  const toolbarCaption = [
-    named
-      ? chartReady
-        ? `${blend.contributing.length} model${blend.contributing.length === 1 ? "" : "s"}`
-        : "1 model"
-      : "Map point",
-    tide.tide ? `${tide.tide.station.name} tide` : null,
-    chartUnavailable && named ? "table only" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  // The scrubber indexes the dock's columns. Elapsed run hours meant nothing
-  // once the axis spans two runs initialised at different times.
-  const sliderMax = Math.max(1, columns.length - 1);
-  const selectColumn = (at: number) => {
-    const column = columns[Math.max(0, Math.min(columns.length - 1, at))];
-    if (column) onSelect(column.validTime);
-  };
-
+  const Day = when[0].toUpperCase() + when.slice(1);
+  if (!best) return <span className="dk-best">{Day}: done</span>;
+  if (!best.stars) return <span className="dk-best">{Day}: no stars</span>;
+  const r = ratings[best.from]!;
   return (
-    <>
-      <div className="dock-toolbar">
-        <button
-          className="play-button"
-          aria-label={playing ? "Pause forecast" : "Play forecast"}
-          // Playback steps through the map model's own frames, so from an hour
-          // it cannot draw there is nothing to step through: pressing Play
-          // would have thrown the reader back to the start of the run.
-          disabled={playDisabled || (!playing && beyondMap)}
-          title={
-            !playing && beyondMap
-              ? `Playback follows ${manifest.modelName}, which does not reach this hour.`
-              : undefined
+    <span className="dk-best">
+      Best {when} {range(columns, best)} ·{" "}
+      <StarGlyphs stars={best.stars} potential={r.potential} size={10} /> ·{" "}
+      {r.wing.own ?? r.wing.recommended} m
+    </span>
+  );
+}
+
+/** The strip's table: built when the data changes, never when the time does. */
+const StripTable = memo(function StripTable({
+  spot,
+  columns,
+  days,
+  hours,
+  units,
+  rider,
+  tide,
+  g,
+  spacer,
+  spacerEnd,
+  now,
+  blend,
+  more,
+  waves,
+  weather,
+  sea,
+  isPoint,
+}: {
+  spot: Spot;
+  columns: readonly StripColumn[];
+  days: readonly StripDay[];
+  hours: PlaceHour[] | undefined;
+  units: Units;
+  rider: Rider;
+  tide: SpotTide | null;
+  g: StripGeometry;
+  spacer: number;
+  spacerEnd: number;
+  now: number;
+  blend: React.ReactNode | null;
+  more: boolean;
+  waves: SpotWaves;
+  weather: SpotWeather;
+  sea: SeaTemperatureState;
+  isPoint: boolean;
+}) {
+  const facing = spot.facing ?? null;
+  const full = Math.max(...g.w, 0);
+  const cells = (
+    key: string,
+    render: (
+      hour: PlaceHour | undefined,
+      column: StripColumn,
+      at: number,
+    ) => React.ReactNode,
+  ) =>
+    columns.map((column, at) => {
+      const hour = hours?.[at];
+      const night = !hour || !hour.daylight;
+      const first = at === 0 || columns[at - 1].date !== column.date;
+      return (
+        <td
+          key={`${key}-${column.validTime}`}
+          data-i={at}
+          className={
+            [
+              night ? "night" : "",
+              column.time + 3600000 <= now ? "past" : "",
+              first ? "d0" : "",
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
-          onClick={onTogglePlay}
         >
-          {playing ? (
-            <Pause size={17} fill="currentColor" />
-          ) : (
-            <Play size={17} fill="currentColor" />
-          )}
-        </button>
-        <div className="dock-place">
-          <span className="dock-place-name">
-            <strong>{point.name}</strong>
-            {/* A riding place has a page of its own: the week by day, every
-                hour rated, then tide and daylight. */}
-            {named && point.id && (
-              <a
-                className="dock-spot-page"
-                href={spotHref(point.id)}
-                data-spot-page-link
-                aria-label={`Open the spot page for ${point.name}`}
-              >
-                <span className="dock-spot-page-text">Spot page</span>
-                <ArrowUpRight size={14} aria-hidden="true" />
-              </a>
-            )}
-          </span>
-          <small>
-            {point.county && <span>{point.county}</span>}
-            {toolbarCaption}
-          </small>
-        </div>
-        {rowShown("stars") && best && ratings[best.from] && (
-          <BestWindow
-            window={best}
-            rating={ratings[best.from]!}
-            from={columns[best.from].validTime}
-            to={columns[best.to].validTime}
-            onShow={() => selectColumn(best.from)}
-          />
-        )}
-        <div className="dock-views" role="group" aria-label="Forecast view">
-          {VIEWS.map((entry) => {
-            const disabled = entry !== "table" && !!chartUnavailable;
+          {render(hour, column, at)}
+        </td>
+      );
+    });
+  const sp = <td className="sp" aria-hidden="true" />;
+  const speed = (kn: number | null) =>
+    kn === null ? "" : Math.round(convert(kn / 1.94384449, units));
+  return (
+    <table className="tt" style={{ width: spacer + spacerEnd + g.total }}>
+      <colgroup>
+        <col style={{ width: spacer }} />
+        {columns.map((c, at) => (
+          <col key={c.validTime} style={{ width: g.w[at] }} />
+        ))}
+        <col style={{ width: spacerEnd }} />
+      </colgroup>
+      <tbody>
+        <tr className="tt-day">
+          {sp}
+          {days.map((day) => {
+            const best = hours
+              ? dayBest(
+                  hours.map((h) => h.rating),
+                  day,
+                )
+              : null;
             return (
-              <button
-                key={entry}
-                data-view={entry}
-                aria-pressed={view === entry}
-                disabled={disabled}
-                title={disabled ? chartUnavailable! : VIEW_LABEL[entry]}
-                onClick={() => setView(entry)}
-              >
-                {VIEW_GLYPH[entry]}
-                <span>{VIEW_LABEL[entry]}</span>
-              </button>
+              <td key={day.date} colSpan={day.count} className="d0">
+                <span>
+                  <b>
+                    {dayShort(day.noon)} {Number(day.date.slice(8))}
+                  </b>
+                  {best && best.stars > 0 && (
+                    <>
+                      <StarGlyphs
+                        stars={best.stars}
+                        potential={hours![best.from]!.rating!.potential}
+                        size={8}
+                      />
+                      <i>best {shortRange(columns, best)}</i>
+                    </>
+                  )}
+                </span>
+              </td>
             );
           })}
-        </div>
-        <button
-          ref={filterButton}
-          className={`dock-filter${filterOpen ? " pressed" : ""}`}
-          aria-label="Display options"
-          aria-expanded={filterOpen}
-          onClick={() => setFilterOpen((value) => !value)}
-        >
-          <SlidersHorizontal size={16} />
-        </button>
-        {open && (
-          <button
-            className="grid-close"
-            aria-label="Close forecast panel"
-            onClick={onClose}
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>
-      <div className="timeline">
-        <div className="timeline-controls">
-          <button
-            className="step-button"
-            aria-label="Previous forecast"
-            disabled={selected === 0}
-            onClick={() => selectColumn(selected - 1)}
-          >
-            <ChevronLeft size={17} />
-          </button>
-          <div className="slider-track">
-            <input
-              ref={slider}
-              type="range"
-              style={{
-                background: windTrackBackground(columnWind, columns.length),
-              }}
-              title="Track colours show forecast wind speed at the selected location"
-              min="0"
-              max={sliderMax}
-              value={selected}
-              disabled={busy}
-              aria-label="Forecast time"
-              aria-valuetext={`${dayLabel(axis[selected])} ${timeLabel(
-                axis[selected],
-              )}`}
-              onChange={(event) => selectColumn(Number(event.target.value))}
-            />
-          </div>
-          <button
-            className="step-button"
-            aria-label="Next forecast"
-            disabled={selected === columns.length - 1}
-            onClick={() => selectColumn(selected + 1)}
-          >
-            <ChevronRight size={17} />
-          </button>
-          {/* In the scrubber's own row, which the play button already gives a
-              height: a chip on a line of its own would grow the dock every time
-              the reader scrubbed across the seam, and the map would jump with
-              it. A live region as well — a control that appears beside the
-              scrubber is no use to someone who cannot see it appear. */}
-          <div className="map-reach" role="status">
-            {reachable && (
-              <button
-                ref={chipButton}
-                className="map-reach-chip"
-                onClick={() => {
-                  // The chip is about to unmount, and the scrubber is disabled
-                  // while the switch is in flight, so focus cannot simply move
-                  // there now: it is claimed back when the switch settles.
-                  returnFocus.current = true;
-                  onShowOnMap(reachable.id, axis[selected]);
-                }}
-              >
-                <Layers3 size={13} aria-hidden="true" />
-                <span>Show {reachable.name} on the map</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      {open && (
-        <section className="forecast-sheet glass" aria-label="Spot forecast">
-          <div
-            ref={scroll}
-            className="forecast-scroll"
-            tabIndex={0}
-            aria-label="Forecast times; scroll horizontally for more"
-          >
-            <div className="forecast-content" ref={content}>
-              <table className="forecast-table">
-                <caption className="sr-only">{caption}</caption>
-                <ForecastHeader
-                  columns={columns}
-                  weights={weights}
-                  point={point}
-                  days={days}
-                  bands={bands}
-                  selected={selected}
-                  onSelect={onSelect}
-                  showSun
-                  dayMax={dayMax}
-                />
-                {view === "table" ? (
-                  <ForecastSheet
-                    cells={cells}
-                    units={units}
-                    selected={selected}
-                  />
-                ) : (
-                  <tbody className="chart-body">
-                    {rows.blend && (
-                      <tr className="chart-row">
-                        <th scope="row" className="chart-gutter">
-                          <span
-                            className="axis-scale"
-                            role="img"
-                            aria-label={`Wind scale, 0 to ${max} ${unitLabel(units)}`}
-                            style={{
-                              top: PLOT_PAD_TOP,
-                              bottom: PLOT_PAD_BOTTOM,
-                              backgroundImage: `linear-gradient(to top, ${windGradientStops(
-                                max,
-                                units,
-                              )
-                                .map(
-                                  (stop) =>
-                                    `${stop.colour} ${(stop.offset * 100).toFixed(1)}%`,
-                                )
-                                .join(", ")})`,
-                            }}
-                          />
-                          <span className="axis-ticks" aria-hidden="true">
-                            {axisTicks(max).map((tick) => (
-                              <i key={tick} style={{ top: y(tick) }}>
-                                {tick}
-                              </i>
-                            ))}
-                          </span>
-                        </th>
-                        <td className="chart-cell" colSpan={columns.length}>
-                          <div className="chart-holder" ref={holder}>
-                            {geometry.chartWidth > 0 &&
-                              chartReady &&
-                              (view === "blend" ? (
-                                <BlendChart
-                                  width={geometry.chartWidth}
-                                  height={geometry.chartHeight}
-                                  centres={centres}
-                                  columns={columns}
-                                  groups={groups}
-                                  support={support}
-                                  stats={blend.stats}
-                                  lines={blend.lines}
-                                  directions={blend.directions}
-                                  nights={nights}
-                                  units={units}
-                                  max={max}
-                                  waves={waveOverlayValues}
-                                  reducedMotion={reducedMotion}
-                                />
-                              ) : (
-                                <CandleChart
-                                  width={geometry.chartWidth}
-                                  height={geometry.chartHeight}
-                                  edges={edges}
-                                  columns={columns}
-                                  candles={candles}
-                                  nights={nights}
-                                  units={units}
-                                  max={max}
-                                />
-                              ))}
-                            {!chartReady && (
-                              <p className="chart-empty" role="status">
-                                Reading the models…
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {rows.spread && (
-                      <tr className="blend-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={<ArrowUpDown size={18} aria-hidden="true" />}
-                            label="Spread"
-                            help={ROW_HELP.spread}
-                            unit={units}
-                          />
-                        </th>
-                        {blendCells(spread, "spread")}
-                      </tr>
-                    )}
-                    {rows.dir && (
-                      <tr className="blend-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={<Navigation size={18} aria-hidden="true" />}
-                            label="Direction"
-                            help={ROW_HELP.dir}
-                          />
-                        </th>
-                        {blendCells((column) => {
-                          const angle = blend.directions[column];
-                          return angle === null || angle === undefined ? (
-                            "—"
-                          ) : (
-                            <span className="direction-cell">
-                              <ArrowDown
-                                size={16}
-                                style={{ transform: `rotate(${angle}deg)` }}
-                                aria-hidden="true"
-                              />
-                              {compass(angle)}
-                            </span>
-                          );
-                        }, "dir")}
-                      </tr>
-                    )}
-                    {rows.wind && (
-                      <tr className="blend-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={<WindIcon size={18} aria-hidden="true" />}
-                            label="Wind"
-                            help={ROW_HELP.wind}
-                            unit={units}
-                          />
-                        </th>
-                        {columns.map((entry, column) => {
-                          const value = blend.stats[column]?.median ?? null;
-                          return (
-                            <td
-                              key={entry.validTime}
-                              className={`wind-cell ${selected === column ? "selected-hour" : ""}`}
-                              style={
-                                {
-                                  "--wind-colour":
-                                    value === null
-                                      ? "transparent"
-                                      : `rgba(${windColor(convert(value, "kn")).join(",")}, 0.65)`,
-                                } as React.CSSProperties
-                              }
-                            >
-                              {value === null
-                                ? "—"
-                                : Math.round(convert(value, units))}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )}
-                    {rows.gust && (
-                      <tr className="blend-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={
-                              <WindArrowDown size={18} aria-hidden="true" />
-                            }
-                            label="Gust"
-                            help={ROW_HELP.gust}
-                            unit={units}
-                          />
-                        </th>
-                        {columns.map((entry, column) => {
-                          const value = blend.stats[column]?.gust.max ?? null;
-                          return (
-                            <td
-                              key={entry.validTime}
-                              className={`gust-cell ${selected === column ? "selected-hour" : ""}`}
-                              style={
-                                {
-                                  "--wind-colour":
-                                    value === null
-                                      ? "transparent"
-                                      : `rgba(${windColor(convert(value, "kn")).join(",")}, 0.65)`,
-                                } as React.CSSProperties
-                              }
-                            >
-                              {value === null
-                                ? "—"
-                                : Math.round(convert(value, units))}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )}
-                  </tbody>
-                )}
-                {(rowShown("stars") || rowShown("wing")) && (
-                  <StarsRows
-                    showStars={rowShown("stars")}
-                    columns={columns}
-                    ratings={ratings}
-                    selected={selected}
-                    rider={prefs.rider}
+          {sp}
+        </tr>
+        <tr className="tt-hour">
+          {sp}
+          {cells("h", (_, column) => hourLabel(column.time))}
+          {sp}
+        </tr>
+        {blend ? (
+          <tr className="tt-blend">
+            {sp}
+            <td colSpan={columns.length} className="d0 blend-cell">
+              {blend}
+            </td>
+            {sp}
+          </tr>
+        ) : (
+          <>
+            <tr className="tt-stars">
+              {sp}
+              {cells("s", (hour, column, at) =>
+                hour?.rating ? (
+                  <HourStars
+                    hour={hour}
+                    time={column.time}
                     facing={facing}
-                    showWing={rowShown("wing")}
+                    rider={rider}
+                    size={full < 60 ? 8.6 : 9.5}
+                    slots="potential"
+                    compact={g.w[at] < full}
+                  />
+                ) : null,
+              )}
+              {sp}
+            </tr>
+            <tr className="tt-wind">
+              {sp}
+              {cells("w", (hour) =>
+                hour && hour.windKn !== null ? (
+                  <>
+                    <span className="kn">{speed(hour.windKn)}</span>
+                    {hour.gustKn !== null && (
+                      <span className="gu"> g{speed(hour.gustKn)}</span>
+                    )}
+                  </>
+                ) : (
+                  "–"
+                ),
+              )}
+              {sp}
+            </tr>
+            <tr className="tt-from">
+              {sp}
+              {cells("f", (hour) =>
+                hour && hour.from !== null ? (
+                  <span className="from-cell">
+                    <WindArrow from={hour.from} size={12} />
+                    <span className="cmp">{compass(hour.from)}</span>
+                    <ShoreGlyph from={hour.from} facing={facing} size={14} />
+                  </span>
+                ) : null,
+              )}
+              {sp}
+            </tr>
+            <tr className="tt-wing">
+              {sp}
+              {cells("g", (hour) =>
+                hour?.rating?.potential
+                  ? (hour.rating.wing.own ?? hour.rating.wing.recommended)
+                  : "",
+              )}
+              {sp}
+            </tr>
+          </>
+        )}
+        <tr className="tt-tide">
+          {sp}
+          <td colSpan={columns.length} className="d0">
+            <TideRow tide={tide} columns={columns} days={days} g={g} />
+          </td>
+          {sp}
+        </tr>
+        {more && (
+          <MoreRows
+            columns={columns}
+            cells={cells}
+            sp={sp}
+            waves={waves}
+            weather={weather}
+            sea={sea}
+            isPoint={isPoint}
+          />
+        )}
+      </tbody>
+    </table>
+  );
+});
+
+/** Where a time falls along the strip, between its columns' centres. */
+function xOf(
+  columns: readonly StripColumn[],
+  day: StripDay,
+  g: StripGeometry,
+  t: number,
+) {
+  const a = day.start;
+  const b = day.start + day.count - 1;
+  const centre = (i: number) => g.x[i] + g.w[i] / 2;
+  const step = (i: number, j: number) => columns[j].time - columns[i].time;
+  if (t <= columns[a].time) {
+    const span = day.count > 1 ? step(a, a + 1) : 3600000;
+    return centre(a) - ((columns[a].time - t) / span) * g.w[a];
+  }
+  if (t >= columns[b].time) {
+    const span = day.count > 1 ? step(b - 1, b) : 3600000;
+    return centre(b) + ((t - columns[b].time) / span) * g.w[b];
+  }
+  for (let i = a; i < b; i++)
+    if (t <= columns[i + 1].time)
+      return (
+        centre(i) +
+        ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i))
+      );
+  return centre(b);
+}
+
+/**
+ * The rows below the fold: the sea, the sky, the air and the rain, one native
+ * step per column (a code or an amount does not survive being interpolated),
+ * and the water's measured temperature where a station is in range.
+ */
+function MoreRows({
+  columns,
+  cells,
+  sp,
+  waves,
+  weather,
+  sea,
+  isPoint,
+}: {
+  columns: readonly StripColumn[];
+  cells: (
+    key: string,
+    render: (hour: PlaceHour | undefined, column: StripColumn, at: number) => React.ReactNode,
+  ) => React.ReactNode;
+  sp: React.ReactNode;
+  waves: SpotWaves;
+  weather: SpotWeather;
+  sea: SeaTemperatureState;
+  isPoint: boolean;
+}) {
+  const span = (key: string, text: string) => (
+    <tr className={`tt-more tt-${key}`} key={key}>
+      {sp}
+      <td colSpan={columns.length} className="d0 more-note">
+        {text}
+      </td>
+      {sp}
+    </tr>
+  );
+  if (isPoint)
+    return (
+      <>
+        {span("waves", "Waves, weather and the sea: riding places only")}
+        {MORE_ROWS.slice(1).map((key) => (
+          <tr className={`tt-more tt-${key}`} key={key}>
+            {sp}
+            <td colSpan={columns.length} className="d0" />
+            {sp}
+          </tr>
+        ))}
+      </>
+    );
+  const set = waves.source?.fields.total ?? null;
+  const fields = weather.source?.fields;
+  const at = (column: number, name: string | null | undefined) =>
+    variableValue(weather.columns[column], name);
+  const row = (key: MoreRow, render: (column: number) => React.ReactNode) => (
+    <tr className={`tt-more tt-${key}`} key={key}>
+      {sp}
+      {cells(key, (_, __, column) => render(column))}
+      {sp}
+    </tr>
+  );
+  const observed = sea.observed;
+  return (
+    <>
+      {waves.source && set
+        ? row("waves", (column) => {
+            const step = waves.columns[column];
+            const height = step ? step.values[set.height] : null;
+            if (typeof height !== "number") return "–";
+            const period = set.period ? step!.values[set.period] : null;
+            const dir = set.direction ? step!.values[set.direction] : null;
+            return (
+              <span
+                className="wave-cell"
+                title={`${height.toFixed(1)} m${typeof period === "number" ? ` at ${Math.round(period)} s` : ""}${typeof dir === "number" ? ` from ${compass(dir)}` : ""}`}
+              >
+                {typeof dir === "number" && (
+                  <ArrowDown
+                    size={11}
+                    strokeWidth={1.6}
+                    style={{ transform: `rotate(${dir}deg)` }}
+                    aria-label={`from ${compass(dir)}`}
                   />
                 )}
-                {showMarine && (
-                  <tbody className="marine-rows" ref={marine}>
-                    {marineRows.map((key) => {
-                      // A measurement is one reading, not a forecast per hour:
-                      // the observed Sea row spans its columns with the latest
-                      // reading at the left instead of implying a value at every
-                      // one of them.
-                      if (key === "sea" && observed) {
-                        const text = seaTemperatureText(observed, observedAge);
-                        const spark = sparklinePoints(
-                          observed.series,
-                          SEA_SPARK.width,
-                          SEA_SPARK.height,
-                        );
-                        return (
-                          <tr
-                            key={key}
-                            className="marine-row weather-row observed-row"
-                            data-row="sea"
-                          >
-                            <th scope="row">
-                              <RowLabel
-                                glyph={WEATHER_ROW_GLYPH.sea}
-                                label={WEATHER_ROW_LABEL.sea}
-                                help={seaHelp}
-                              />
-                            </th>
-                            <td
-                              className="observed-cell"
-                              colSpan={columns.length}
-                              title={seaTitle}
-                            >
-                              <span className="observed-reading">
-                                <b>{text.value}</b>
-                                <small>{`· ${text.detail}`}</small>
-                                {spark && (
-                                  <svg
-                                    className="observed-spark"
-                                    width={SEA_SPARK.width}
-                                    height={SEA_SPARK.height}
-                                    aria-hidden="true"
-                                  >
-                                    <polyline points={spark} />
-                                  </svg>
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      }
-                      const wave = (WAVE_ROWS as readonly RowKey[]).includes(
-                        key,
-                      )
-                        ? (key as WaveRowKey)
-                        : null;
-                      const surface = wave ? null : (key as WeatherRowKey);
-                      return (
-                        <tr
-                          key={key}
-                          className={`marine-row${wave ? " wave-row" : " weather-row"}`}
-                          data-row={key}
-                        >
-                          <th scope="row">
-                            <RowLabel
-                              glyph={
-                                wave
-                                  ? WAVE_ROW_GLYPH[wave]
-                                  : WEATHER_ROW_GLYPH[surface!]
-                              }
-                              label={rowOffers[key].label}
-                              help={
-                                wave
-                                  ? waveHelp(wave)
-                                  : key === "sea"
-                                    ? seaHelp
-                                    : ROW_HELP[key]
-                              }
-                              unit={wave ? "m" : WEATHER_ROW_UNIT[surface!]}
-                            />
-                          </th>
-                          {columns.map((entry, column) => {
-                            const cell: WeatherCell = wave
-                              ? { content: waveCell(wave, column) }
-                              : weatherCell(surface!, column);
-                            return (
-                              <td
-                                key={entry.validTime}
-                                className={
-                                  [
-                                    selected === column ? "selected-hour" : "",
-                                    cell.className ?? "",
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" ") || undefined
-                                }
-                                style={cell.style}
-                                title={cell.title}
-                              >
-                                {cell.content}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                    {/* The tide keeps its own row even under the wave rows: the
-                        underlay is a picture, and this is where the heights are
-                        actually readable. */}
-                    {showTide && (
-                      <tr className="marine-row tide-row">
-                        <th scope="row">
-                          <RowLabel
-                            glyph={<TideGlyph />}
-                            label="Tide"
-                            help={`${ROW_HELP.tide} ${tide.tide!.curve.datum}.`}
-                          />
-                        </th>
-                        {columns.map((entry, column) => (
-                          <td key={entry.validTime}>
-                            <span className="sr-only">
-                              {tideValues[column] === null
-                                ? "—"
-                                : `${tideValues[column]!.toFixed(2)} m`}
-                            </span>
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                  </tbody>
-                )}
-              </table>
-              {showTide && geometry.marineHeight > 0 && (
-                <svg
-                  className="tide-underlay"
-                  aria-hidden="true"
-                  width={geometry.chartWidth}
-                  height={geometry.marineHeight}
-                  style={{ left: geometry.label, top: geometry.marineTop }}
-                >
-                  <path className="tide-fill" d={tidePath} />
-                  <path className="tide-stroke" d={tidePath} />
-                </svg>
-              )}
-              {nowX !== null && (
-                <div
-                  className="forecast-now"
-                  style={{ left: nowX }}
-                  role="img"
-                  aria-label={`Now: ${dayLabel(new Date(now).toISOString())} ${timeLabel(
-                    new Date(now).toISOString(),
-                  )}, Irish time`}
-                  data-time={new Date(now).toISOString()}
-                >
-                  <span>Now</span>
-                </div>
-              )}
-            </div>
-          </div>
-          {view === "table" && (series.pending || series.failures > 0) && (
-            <div className="sheet-loading" role="status">
-              {series.pending
-                ? "Loading forecast hours…"
-                : "Some hours could not be loaded."}
-              {!series.pending && (
-                <button onClick={series.retry}>Retry missing hours</button>
-              )}
-            </div>
-          )}
-          <p className="forecast-credits">
-            {(blend.manifests.length
-              ? blend.manifests.map((entry) => entry.modelName)
-              : [manifest.modelName]
-            ).join(", ")}
-            {waves.source && (
-              <>
-                {" · "}
-                {waves.source.manifest.modelName} waves,{" "}
-                {waves.source.manifest.provider}
-              </>
-            )}
-            {weather.source && modelWeatherRows.length > 0 && (
-              <>
-                {" · "}
-                {weather.source.manifest.modelName},{" "}
-                {weather.source.manifest.provider}
-              </>
-            )}
-            {observed && (
-              <>{" · Sea temperature: Marine Institute observations"}</>
-            )}
-            {tide.tide && (
-              <>
-                {" · "}
-                {tide.tide.station.name} tide, {tide.tide.curve.datum}
-                {", "}
-                {tide.manifest?.attribution ?? "Marine Institute"}
-              </>
-            )}
-            {" · "}
-            <span>Speed colours show wind speed only, not suitability.</span>
-          </p>
-        </section>
-      )}
-      {filterOpen && (
-        <DisplayFilter
-          prefs={prefs}
-          onChange={onPrefsChange}
-          rows={rowOffers}
-          models={models.filter((model) => model.entry.kind === "wind")}
-          onClose={() => {
-            setFilterOpen(false);
-            // After the dialog has actually left the top layer: closing one
-            // drops focus, so the trigger has to take it back afterwards.
-            requestAnimationFrame(() =>
-              filterButton.current?.focus({ preventScroll: true }),
+                <b>{height.toFixed(1)}</b>
+                {typeof period === "number" && <small>{Math.round(period)}s</small>}
+              </span>
             );
-          }}
-        />
-      )}
+          })
+        : span("waves", waves.published ? "No wave model reaches this spot" : "Waves: reading…")}
+      {fields
+        ? row("sky", (column) => {
+            const reading = presentWeather(at(column, fields.present));
+            return reading ? (
+              <span title={reading.description}>
+                <WeatherGlyph weather={reading} size={14} />
+              </span>
+            ) : (
+              "–"
+            );
+          })
+        : span("sky", weather.published ? "No weather model reaches this spot" : "Weather: reading…")}
+      {fields
+        ? row("air", (column) => {
+            const value = at(column, fields.air);
+            return value === null ? "–" : `${Math.round(value)}°`;
+          })
+        : span("air", "")}
+      {fields
+        ? row("rain", (column) => {
+            const value = at(column, fields.rain);
+            if (value === null) return "–";
+            return (
+              <span
+                className="rain-cell"
+                style={
+                  {
+                    "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
+                  } as React.CSSProperties
+                }
+              >
+                {value < 0.05 ? "0" : value.toFixed(1)}
+              </span>
+            );
+          })
+        : span("rain", "")}
+      {observed
+        ? (() => {
+            const text = seaTemperatureText(observed);
+            return span("sea", `${text.value} measured · ${text.detail}`);
+          })()
+        : fields?.skin
+          ? row("sea", (column) => {
+              const value = at(column, fields.skin);
+              return value === null ? (
+                "–"
+              ) : (
+                <span className="proxy" title="The model's skin temperature: approximate, not a measurement">
+                  ~{Math.round(value)}°
+                </span>
+              );
+            })
+          : span("sea", sea.loading ? "" : "No sea temperature here")}
     </>
   );
 }
 
-/** Tide heights fill the marine block, padded so the curve never touches it. */
-function tideScale(
-  range: { lo: number; hi: number },
-  height: number,
-): (value: number) => number {
-  const lo = Number.isFinite(range.lo) ? range.lo : 0;
-  const hi = Number.isFinite(range.hi) ? range.hi : lo + 1;
-  const span = hi - lo || 1;
-  const top = 3;
-  const bottom = Math.max(top + 1, height - 2);
-  return (value: number) =>
-    bottom - Math.max(0, Math.min(1, (value - lo) / span)) * (bottom - top);
+/** The tide under the hours: a curve per day, its turns named, in metres. */
+function TideRow({
+  tide,
+  columns,
+  days,
+  g,
+}: {
+  tide: SpotTide | null;
+  columns: readonly StripColumn[];
+  days: readonly StripDay[];
+  g: StripGeometry;
+}) {
+  const H = ROWS.tide;
+  const width = g.total;
+  if (!tide)
+    return (
+      <svg width={width} height={H} className="tide-row" aria-hidden="true">
+        <text className="tide-none" x="8" y="24">
+          No tide station near
+        </text>
+      </svg>
+    );
+  const curve = tide.curve;
+  const lo = Math.min(...curve.curve);
+  const hi = Math.max(...curve.curve);
+  const y = (h: number) => H - 6 - ((h - lo) / (hi - lo || 1)) * (H - 14);
+  const paths: React.ReactNode[] = [];
+  const marks: React.ReactNode[] = [];
+  days.forEach((day) => {
+    const first = columns[day.start];
+    const last = columns[day.start + day.count - 1];
+    const half =
+      day.count > 1 ? (columns[day.start + 1].time - first.time) / 2 : 1800000;
+    const halfEnd =
+      day.count > 1
+        ? (last.time - columns[day.start + day.count - 2].time) / 2
+        : 1800000;
+    const a = first.time - half;
+    const b = last.time + halfEnd;
+    let d = "";
+    for (let t = a; t <= b; t += 600000) {
+      const h = tideAt(curve, t);
+      if (h === null) continue;
+      d += `${d ? "L" : "M"}${xOf(columns, day, g, t).toFixed(1)} ${y(h).toFixed(1)}`;
+    }
+    if (!d) return;
+    const x0 = xOf(columns, day, g, a);
+    const x1 = xOf(columns, day, g, b);
+    paths.push(
+      <g key={day.date}>
+        <path
+          className="tide-fill"
+          d={`${d}L${x1.toFixed(1)} ${H}L${x0.toFixed(1)} ${H}Z`}
+        />
+        <path className="tide-line" d={d} />
+      </g>,
+    );
+    const end = day.start + day.count - 1;
+    const dayEnd = g.x[end] + g.w[end];
+    for (const event of eventsBetween(curve, a, b)) {
+      const t = Date.parse(event.time);
+      const X = xOf(columns, day, g, t);
+      const Y = y(event.height);
+      const high = event.kind === "high";
+      const right = X < dayEnd - 130;
+      marks.push(
+        <g key={event.time}>
+          <circle
+            className={high ? "tide-hw" : "tide-lw"}
+            cx={X.toFixed(1)}
+            cy={Y.toFixed(1)}
+            r="2.6"
+          />
+          <text
+            className="tide-label"
+            x={(X + (right ? 6 : -6)).toFixed(1)}
+            y={(high ? Y + 13 : Y - 5).toFixed(1)}
+            textAnchor={right ? "start" : "end"}
+          >
+            {high ? "High" : "Low"} tide {clock(t)} · {event.height.toFixed(1)}{" "}
+            m
+          </text>
+        </g>,
+      );
+    }
+  });
+  return (
+    <svg
+      width={width}
+      height={H}
+      className="tide-row"
+      role="img"
+      aria-label={`Tide at ${tide.station.name}, metres above chart datum`}
+    >
+      {paths}
+      {marks}
+    </svg>
+  );
+}
+
+export default function ForecastDock(props: Props) {
+  const {
+    spot,
+    columns,
+    days,
+    hours,
+    selected,
+    onSelect,
+    now,
+    prefs,
+    onPrefsChange,
+    models,
+    starred,
+    onToggleStar,
+    tide,
+    folded,
+    onFold,
+    phone,
+    view,
+    onView,
+    reducedMotion,
+    reachable,
+    onShowOnMap,
+    isPoint,
+    playing,
+    onTogglePlay,
+    more,
+    onMore,
+    marine,
+  } = props;
+  const cw = phone ? 52 : 62;
+  // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
+  const g = useMemo(
+    () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
+    [columns, cw, phone],
+  );
+  const centre = (i: number) => (g.x[i] ?? 0) + (g.w[i] ?? cw) / 2;
+  const wrap = useRef<HTMLDivElement>(null);
+  const scrub = useRef<HTMLDivElement>(null);
+  const [wrapWidth, setWrapWidth] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterButton = useRef<HTMLButtonElement>(null);
+  const spacer = Math.max(0, wrapWidth / 2 - (g.w[0] ?? cw) / 2);
+  const spacerEnd = Math.max(0, wrapWidth / 2 - (g.w.at(-1) ?? cw) / 2);
+  const column = columns[selected];
+  const selectedDay = days.find(
+    (d) => selected >= d.start && selected < d.start + d.count,
+  );
+  const selectedDayIndex = selectedDay ? days.indexOf(selectedDay) : 0;
+
+  // The blend, only while it is the view: the chart reads every member.
+  const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
+  const blend = useBlend(
+    view === "blend" && !isPoint ? models : [],
+    prefs.blendModels,
+    spot.id,
+    axis,
+  );
+  const named = isPoint ? undefined : spot.id;
+  const waves = useSpotWaves(more ? marine : [], named, axis);
+  const weather = useSpotWeather(more ? marine : [], named, axis);
+  const sea = useSpotSeaTemperature(more ? named : undefined);
+  const blendNode = useMemo(() => {
+    if (view !== "blend") return null;
+    if (!blend.lines.length)
+      return <p className="blend-empty">Reading the models…</p>;
+    const peak = blend.stats.reduce(
+      (top, hour) => Math.max(top, hour.max ?? 0, hour.gust.max ?? 0),
+      0,
+    );
+    const nights = dayNights(
+      spot.lat,
+      spot.lon,
+      new Date(axis[0]),
+      new Date(axis[axis.length - 1]),
+    );
+    return (
+      <Suspense fallback={<p className="blend-empty">Reading the models…</p>}>
+        <BlendChart
+          width={g.total}
+          height={ROWS.blend}
+          centres={columns.map((_, i) => g.x[i] + g.w[i] / 2)}
+          columns={columns}
+          groups={candleGroups(axis)}
+          support={modelSupport(blend.lines, axis.length)}
+          stats={blend.stats}
+          lines={blend.lines}
+          directions={blend.directions}
+          nights={nights}
+          units={prefs.units}
+          max={niceMax(convert(peak, prefs.units))}
+          reducedMotion={reducedMotion}
+        />
+      </Suspense>
+    );
+  }, [
+    view,
+    blend,
+    columns,
+    g,
+    prefs.units,
+    reducedMotion,
+    spot.lat,
+    spot.lon,
+  ]);
+
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const measure = () => setWrapWidth(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [folded]);
+
+  /* ---- the strip scrolls the time, and the time scrolls the strip ---- */
+  const fromScroll = useRef(-1);
+  /**
+   * Where the strip is being scrolled to by the time, not by the reader:
+   * until it gets there its scroll events say nothing about the time. The
+   * reader's own wheel, touch or key takes over at once.
+   */
+  const programmatic = useRef<{ left: number; until: number } | null>(null);
+  const dragging = useRef(false);
+  const scrollFrame = useRef(0);
+  const scrollEnd = useRef(0);
+  const scrollTo = (index: number, smooth: boolean) => {
+    const el = wrap.current;
+    if (!el) return;
+    // The column's centre under the cursor in the middle of the strip.
+    const left = centre(index) - (g.w[0] ?? cw) / 2;
+    if (Math.abs(el.scrollLeft - left) < 1) return;
+    const animate = smooth && !reducedMotion;
+    clearTimeout(scrollEnd.current);
+    // Where the browser will actually stop: the strip's own end, at most.
+    const reach = Math.min(left, el.scrollWidth - el.clientWidth);
+    programmatic.current = { left: reach, until: performance.now() + 1500 };
+    el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
+  };
+  useLayoutEffect(() => {
+    if (fromScroll.current === selected) return;
+    scrollTo(selected, !dragging.current);
+  }, [selected, g, spacer, folded, view, more]);
+  // A fresh place opens on the same hour, not wherever the last one was left.
+  const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
+  useLayoutEffect(() => {
+    fromScroll.current = -1;
+    scrollTo(selected, false);
+  }, [placeKey]);
+
+  const onScroll = () => {
+    const going = programmatic.current;
+    if (going) {
+      const el = wrap.current;
+      if (el && Math.abs(el.scrollLeft - going.left) < 2)
+        programmatic.current = null;
+      if (performance.now() < going.until) return;
+      programmatic.current = null;
+    }
+    if (scrollFrame.current) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = 0;
+      const el = wrap.current;
+      if (!el) return;
+      const i = columnAtX(g, el.scrollLeft + (g.w[0] ?? cw) / 2);
+      fromScroll.current = i;
+      onSelect(i, false);
+      clearTimeout(scrollEnd.current);
+      scrollEnd.current = window.setTimeout(() => {
+        onSelect(i, true);
+      }, 180);
+    });
+  };
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(scrollFrame.current);
+      clearTimeout(scrollEnd.current);
+    },
+    [],
+  );
+
+  // Shift and the wheel move the hours where the system does not already
+  // turn it sideways; a plain vertical wheel is left to the page.
+  useEffect(() => {
+    const el = wrap.current;
+    const days = scrub.current;
+    if (!el || !days) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.shiftKey || event.deltaX || !event.deltaY) return;
+      event.preventDefault();
+      el.scrollLeft += event.deltaY;
+    };
+    // A sideways swipe over the day slider moves the strip as well.
+    const onDaysWheel = (event: WheelEvent) => {
+      const dx =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY)
+          ? event.deltaX
+          : event.shiftKey
+            ? event.deltaY
+            : 0;
+      if (!dx) return;
+      event.preventDefault();
+      el.scrollLeft += dx;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    days.addEventListener("wheel", onDaysWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      days.removeEventListener("wheel", onDaysWheel);
+    };
+  }, [folded]);
+
+  // The selected column, marked in place rather than by re-rendering the table.
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    el.querySelectorAll("td.c-sel").forEach((td) =>
+      td.classList.remove("c-sel"),
+    );
+    el.querySelectorAll(`td[data-i="${selected}"]`).forEach((td) =>
+      td.classList.add("c-sel"),
+    );
+  });
+
+  /* ---- the day slider: drag along it, or step with the keys ---- */
+  const pad = phone ? 4 : 8;
+  const columnAt = (clientX: number) => {
+    const blocks = scrub.current?.querySelectorAll<HTMLElement>(".sc-day");
+    if (!blocks?.length) return selected;
+    for (let d = 0; d < blocks.length; d++) {
+      const r = blocks[d].getBoundingClientRect();
+      if (clientX < r.right || d === blocks.length - 1) {
+        const day = days[d];
+        const f = (clientX - r.left - pad) / Math.max(1, r.width - 2 * pad);
+        return (
+          day.start +
+          Math.max(0, Math.min(day.count - 1, Math.floor(f * day.count)))
+        );
+      }
+    }
+    return selected;
+  };
+  const [handLeft, setHandLeft] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const blocks = scrub.current?.querySelectorAll<HTMLElement>(".sc-day");
+    const day = selectedDay;
+    if (!blocks?.length || !day) return setHandLeft(null);
+    const block = blocks[selectedDayIndex];
+    const at = selected - day.start;
+    setHandLeft(
+      block.offsetLeft +
+        pad +
+        (block.clientWidth - 2 * pad) * ((at + 0.5) / day.count),
+    );
+  });
+
+  const ratings = hours?.map((h) => h.rating);
+  const flag = column ? `${dayShort(column.time)} ${clock(column.time)}` : "";
+  const facing = spot.facing ?? null;
+
+  // The red pen: a loop round each day's best stretch, from the stars to the wind.
+  const loops = useMemo(() => {
+    if (!ratings || view !== "table") return [];
+    const top = ROWS.day + ROWS.hour;
+    const bottom = top + ROWS.stars + ROWS.wind;
+    return days.flatMap((day, d) => {
+      const best = dayBest(
+        ratings,
+        day,
+        now,
+        columns.map((c) => c.time),
+      );
+      if (!best || !best.stars) return [];
+      const x0 = spacer + g.x[best.from];
+      const x1 = spacer + g.x[best.to] + g.w[best.to];
+      return [
+        {
+          key: `${day.date}-${best.from}`,
+          d: loopPath(
+            (x0 + x1) / 2,
+            (top + bottom) / 2,
+            (x1 - x0) / 2 + 6,
+            (bottom - top) / 2 + 6,
+            d * 13 + best.from,
+          ),
+          delay: d * 90,
+        },
+      ];
+    });
+  }, [ratings, days, columns, spacer, g, now, view]);
+
+  const tideDot = useMemo(() => {
+    if (!tide || !column) return null;
+    const h = tideAt(tide.curve, column.time);
+    if (h === null) return null;
+    const lo = Math.min(...tide.curve.curve);
+    const hi = Math.max(...tide.curve.curve);
+    const top =
+      ROWS.day +
+      ROWS.hour +
+      (view === "blend"
+        ? ROWS.blend
+        : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing);
+    return {
+      x: spacer + centre(selected),
+      y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
+    };
+  }, [tide, column, selected, spacer, g, view]);
+
+  const label = phone ? 52 : 64;
+  return (
+    <section
+      className={`dock${folded ? " is-folded" : ""}`}
+      aria-label={`Forecast for ${spot.name}`}
+    >
+      {phone && (
+        <button
+          type="button"
+          className="dock-grab"
+          aria-label={folded ? "Open the hours" : "Fold the hours"}
+          aria-expanded={!folded}
+          onClick={() => onFold(!folded)}
+        />
+      )}
+      <div className="dk-head">
+        {!isPoint && (
+          <StarToggle
+            on={starred}
+            name={spot.name}
+            onToggle={onToggleStar}
+            size={19}
+          />
+        )}
+        <h2 className="dk-name">{spot.name}</h2>
+        {!isPoint && <FacingCompass facing={facing} size={20} />}
+        {spot.county && (
+          <span className={`dk-county${isPoint ? " is-point" : ""}`}>
+            {spot.county}
+          </span>
+        )}
+        <DockBest
+          columns={columns}
+          hours={hours}
+          day={days[selectedDayIndex]}
+          now={now}
+        />
+        <div className="dk-acts">
+          <Segmented
+            className="dk-view"
+            aria-label="Show the hours as"
+            options={[
+              { value: "table", label: "Table" },
+              { value: "blend", label: "Blend", disabled: isPoint },
+            ]}
+            value={view}
+            onChange={onView}
+          />
+          <InfoPop label="About these figures">
+            <p>
+              Solid stars: the hour as forecast for you. Outlined: what the wind
+              alone would give. Dark hours aren&rsquo;t rated.
+            </p>
+            <p className="ip-fig">{riderLine(prefs.rider)}</p>
+            {isPoint ? (
+              <p className="ip-small">
+                A point on the map, not a riding place: rated on the wind
+                alone, with no shore to face. Read from {props.mapModel} alone;
+                the hours it does not reach stay empty.
+              </p>
+            ) : (
+              <p className="ip-small">
+                Wind: the models&rsquo; middle, each counted once
+                {prefs.blendModels.length
+                  ? ` (${prefs.blendModels.length} in the blend)`
+                  : ""}
+                . The map draws {props.mapModel}.
+              </p>
+            )}
+            <p className="ip-small">
+              {tide
+                ? `Tide: Marine Institute, ${tide.station.name} (${tide.distanceKm.toFixed(1)} km), metres above ${tide.curve.datum}. Prediction only: no surge.`
+                : "No tide station near."}
+            </p>
+            {spot.note && <p className="ip-small">{spot.note}</p>}
+            {!!spot.locationSources?.length && (
+              <p className="ip-small ip-sources">
+                {spot.locationSources
+                  .filter((source) => /^https?:\/\//.test(source.url))
+                  .map((source, i) => (
+                    <a
+                      key={`${source.url}/${i}`}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`${source.name} · ${source.licence}`}
+                    >
+                      Source
+                      {spot.locationSources!.length > 1 ? ` ${i + 1}` : ""}
+                    </a>
+                  ))}
+              </p>
+            )}
+          </InfoPop>
+          <button
+            ref={filterButton}
+            type="button"
+            className="dk-settings"
+            aria-label="Display options"
+            aria-expanded={filterOpen}
+            onClick={() => setFilterOpen((v) => !v)}
+          >
+            <SlidersHorizontal size={15} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+          {!isPoint && (
+            <Button
+              variant="primary"
+              size="sm"
+              href={spotHref(spot.id)}
+              data-spot-page-link
+            >
+              Spot page →
+            </Button>
+          )}
+          {!phone && (
+            <button
+              type="button"
+              className="dk-chev"
+              aria-label={folded ? "Open the hours" : "Fold the hours"}
+              aria-expanded={!folded}
+              onClick={() => onFold(!folded)}
+            >
+              <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
+                <path
+                  d="M1 1.5L7 7.5L13 1.5"
+                  fill="none"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="scrub-row">
+      <button
+        type="button"
+        className="play"
+        aria-label={playing ? "Pause forecast" : "Play forecast"}
+        aria-pressed={playing}
+        onClick={onTogglePlay}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          {playing ? (
+            <path d="M3 2v8M9 2v8" strokeWidth="2.2" strokeLinecap="round" />
+          ) : (
+            <path d="M3 1.6L10.4 6L3 10.4Z" strokeLinejoin="round" />
+          )}
+        </svg>
+      </button>
+      <div
+        className={`scrub${days.length > 8 ? " many" : ""}`}
+        ref={scrub}
+      >
+        <input
+          type="range"
+          className="scrub-input"
+          aria-label="Forecast time"
+          min={0}
+          max={Math.max(0, columns.length - 1)}
+          step={1}
+          value={selected}
+          aria-valuetext={
+            column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
+          }
+          onChange={(event) => onSelect(Number(event.target.value), true)}
+          onKeyDown={(event) => {
+            // A day at a time, as the mockup's slider steps.
+            if (event.key !== "PageUp" && event.key !== "PageDown") return;
+            event.preventDefault();
+            const to =
+              days[
+                Math.max(
+                  0,
+                  Math.min(
+                    days.length - 1,
+                    selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
+                  ),
+                )
+              ];
+            const offset = selected - (selectedDay?.start ?? 0);
+            onSelect(to.start + Math.min(offset, to.count - 1), true);
+          }}
+        />
+        <div
+          className="sc-days"
+          style={{
+            gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+          }}
+          onPointerDown={(event) => {
+            dragging.current = true;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            onSelect(columnAt(event.clientX), false);
+          }}
+          onPointerMove={(event) => {
+            if (dragging.current) onSelect(columnAt(event.clientX), false);
+          }}
+          onPointerUp={() => {
+            if (!dragging.current) return;
+            dragging.current = false;
+            onSelect(selected, true);
+          }}
+          onPointerCancel={() => {
+            dragging.current = false;
+          }}
+        >
+          {days.map((day, d) => {
+            const best = ratings ? dayBest(ratings, day) : null;
+            return (
+              <div
+                key={day.date}
+                className={`sc-day${d === selectedDayIndex ? " on" : ""}`}
+              >
+                <div className="sc-h">
+                  <b>
+                    {dayShort(day.noon).slice(0, 2)}
+                    <span className="d3">{dayShort(day.noon).slice(2)}</span>
+                  </b>
+                  <span className="dt">{Number(day.date.slice(8))}</span>
+                  {best && (
+                    <>
+                      <span className="st">
+                        <StarGlyphs
+                          stars={best.stars}
+                          potential={ratings![best.from]!.potential}
+                          size={9}
+                        />
+                      </span>
+                      {best.stars > 0 && (
+                        <span className="bw">
+                          best {shortRange(columns, best)}
+                        </span>
+                      )}
+                      <span className="sn">{best.stars}★</span>
+                    </>
+                  )}
+                </div>
+                <div
+                  className="sc-strip"
+                  style={{
+                    gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {Array.from({ length: day.count }, (_, k) => {
+                    const at = day.start + k;
+                    const r = ratings?.[at];
+                    const h = hours?.[at];
+                    return (
+                      <i
+                        key={at}
+                        className={
+                          [
+                            !h || !h.daylight ? "night" : "",
+                            columns[at].time + 3600000 <= now ? "past" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || undefined
+                        }
+                        style={
+                          r
+                            ? ({
+                                "--tint": STAR_TINT[r.stars],
+                              } as React.CSSProperties)
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {handLeft !== null && (
+            <div
+              className={`sc-hand${selectedDayIndex === days.length - 1 && column && column.hour > 15 ? " flip" : ""}`}
+              style={{ left: handLeft }}
+              aria-hidden="true"
+            >
+              <span className="sc-flag">{flag}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      </div>
+
+      {reachable && (
+        <div className="map-reach" role="status">
+          <button
+            type="button"
+            className="map-reach-chip"
+            onClick={onShowOnMap}
+          >
+            <Layers3 size={13} strokeWidth={1.5} aria-hidden="true" />
+            <span>Show {reachable.name} on the map</span>
+          </button>
+        </div>
+      )}
+
+      {!folded && (
+        <div className="dk-body">
+          <div
+            className="dk-grid"
+            style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
+          >
+            <div className="dk-labs">
+              <div aria-hidden="true" style={{ height: ROWS.day }} />
+              <div aria-hidden="true" style={{ height: ROWS.hour }} />
+              {view === "blend" ? (
+                <div aria-hidden="true" style={{ height: ROWS.blend }}>
+                  Blend<small>{prefs.units}</small>
+                </div>
+              ) : (
+                <>
+                  <div aria-hidden="true" style={{ height: ROWS.stars }}>Stars</div>
+                  <div aria-hidden="true" style={{ height: ROWS.wind }}>
+                    Wind<small>{prefs.units}</small>
+                  </div>
+                  <div aria-hidden="true" style={{ height: ROWS.from }}>From</div>
+                  <div aria-hidden="true" style={{ height: ROWS.wing }}>
+                    Wing<small>m²</small>
+                  </div>
+                </>
+              )}
+              <div aria-hidden="true" style={{ height: ROWS.tide }}>
+                Tide<small>m</small>
+              </div>
+              {more &&
+                MORE_ROWS.map((key) => (
+                  <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
+                    {MORE_LABEL[key][0]}
+                    <small>{MORE_LABEL[key][1]}</small>
+                  </div>
+                ))}
+            <button
+              type="button"
+              className="dk-more"
+              aria-expanded={more}
+              aria-label={more ? "Hide waves, sky and sea" : "Show waves, sky and sea"}
+              onClick={() => onMore(!more)}
+            >
+              {more ? "Less" : "More"}
+              <svg width="10" height="6" viewBox="0 0 14 9" aria-hidden="true">
+                <path
+                  d={more ? "M1 7.5L7 1.5L13 7.5" : "M1 1.5L7 7.5L13 1.5"}
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            </div>
+
+            {view === "table" && (
+              // The "?" sits on the Stars label, outside the hidden labels.
+              <span
+                className="dk-stars-q"
+                style={{ top: ROWS.day + ROWS.hour }}
+              >
+                <StarsHelp />
+              </span>
+            )}
+            <div
+              className="tt-wrap"
+              ref={wrap}
+              tabIndex={0}
+              onWheel={() => (programmatic.current = null)}
+              onPointerDown={() => (programmatic.current = null)}
+              onTouchStart={() => (programmatic.current = null)}
+              onKeyDown={() => (programmatic.current = null)}
+              aria-label="The week hour by hour: scroll sideways to move through time"
+              onScroll={onScroll}
+              onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest("button, a")) return;
+                const td = target.closest<HTMLElement>("td[data-i]");
+                if (td) onSelect(Number(td.dataset.i), true);
+              }}
+            >
+              <StripTable
+                spot={spot}
+                columns={columns}
+                days={days}
+                hours={hours}
+                units={prefs.units}
+                rider={prefs.rider}
+                tide={tide}
+                g={g}
+                spacer={spacer}
+                spacerEnd={spacerEnd}
+                now={now}
+                blend={blendNode}
+                more={more}
+                waves={waves}
+                weather={weather}
+                sea={sea}
+                isPoint={isPoint}
+              />
+              <svg
+                className="tt-pen"
+                width={spacer + spacerEnd + g.total}
+                height={
+                  ROWS.day +
+                  ROWS.hour +
+                  (view === "blend"
+                    ? ROWS.blend
+                    : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing) +
+                  ROWS.tide +
+                  (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
+                }
+                aria-hidden="true"
+              >
+                {loops.map((loop) => (
+                  <path
+                    key={`${spot.id}-${loop.key}`}
+                    className="pen-loop"
+                    d={loop.d}
+                    pathLength={1}
+                    style={{ animationDelay: `${loop.delay}ms` }}
+                  />
+                ))}
+                {tideDot && (
+                  <circle
+                    className="tide-dot"
+                    cx={tideDot.x}
+                    cy={tideDot.y}
+                    r="3.4"
+                  />
+                )}
+              </svg>
+            </div>
+            <div
+              className="dk-cur"
+              style={{ left: label + wrapWidth / 2 }}
+              aria-hidden="true"
+            >
+              <span>{flag}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {filterOpen && (
+        <Suspense fallback={null}>
+          <DisplayFilter
+            prefs={prefs}
+            onChange={onPrefsChange}
+            models={models.filter((model) => model.entry.kind === "wind")}
+            onClose={() => {
+              setFilterOpen(false);
+              requestAnimationFrame(() =>
+                filterButton.current?.focus({ preventScroll: true }),
+              );
+            }}
+          />
+        </Suspense>
+      )}
+    </section>
+  );
 }
