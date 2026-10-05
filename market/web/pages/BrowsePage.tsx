@@ -66,7 +66,7 @@ export const browseStyles = tv({
     // rail chip beside it is put on.
     token: [
       "inline-flex h-control-sm items-center gap-1 rounded-full border-0 bg-sunken pr-2 pl-3",
-      "font-sans text-body font-semibold text-ink-2 cursor-pointer",
+      "font-body text-body font-semibold text-ink-2 cursor-pointer",
       "transition-colors duration-fast pointer-coarse:min-h-touch",
       "not-disabled:hover:bg-line-strong not-disabled:hover:text-ink-inverse",
       RING,

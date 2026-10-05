@@ -41,7 +41,7 @@ import {
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink",
     // The marketplace's page measure, and its narrower gutter on a phone.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-6 max-rail:px-3",
     shell:

@@ -13,7 +13,7 @@ export const popoverStyles = tv({
   slots: {
     base: "relative inline-flex",
     panel:
-      "absolute z-popover flex w-max min-w-44 flex-col gap-0.5 rounded-control border border-line bg-card p-1 font-sans shadow-marker",
+      "absolute z-popover flex w-max min-w-44 flex-col gap-0.5 rounded-control border border-line bg-card p-1 font-body shadow-marker",
     // A row of a panel that is a list of choices.
     item: [
       "flex min-h-control-sm w-full cursor-pointer items-center gap-2 rounded-control px-2 text-left text-body whitespace-nowrap text-ink-2",

@@ -15,7 +15,7 @@ const styles = tv({
     list: "m-0 flex list-none gap-2 overflow-x-auto p-0 pb-2 scrollbar-none snap-x",
     item: "flex shrink-0 snap-start",
     card: [
-      "flex w-38 flex-col items-start justify-start gap-2 rounded-surface border border-line bg-card p-3 text-left font-sans text-ink shadow-control",
+      "flex w-38 flex-col items-start justify-start gap-2 rounded-surface border border-line bg-card p-3 text-left font-body text-ink shadow-control",
       "cursor-pointer transition-colors duration-fast not-disabled:hover:border-line-strong not-disabled:hover:bg-card motion-reduce:transition-none",
       // The chosen day: a second, inner line in ink, not a colour alone.
       "data-current:border-inverse data-current:inset-ring-1 data-current:inset-ring-inverse",

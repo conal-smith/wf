@@ -27,7 +27,7 @@ import {
 export const composerStyles = tv({
   slots: {
     base: [
-      "relative grid gap-2 rounded-surface border border-line-strong bg-card py-3 pr-3 pl-5 font-sans shadow-marker",
+      "relative grid gap-2 rounded-surface border border-line-strong bg-card py-3 pr-3 pl-5 font-body shadow-marker",
       "max-rail:rounded-control max-rail:pl-3",
       RING_WITHIN,
     ],
@@ -36,7 +36,7 @@ export const composerStyles = tv({
     replyingLine: "min-w-0 flex-1 truncate",
     input: [
       "field-sizing-content max-h-60 min-h-control-lg w-full resize-none border-0 bg-transparent p-0 pt-2",
-      "font-sans text-prose text-ink placeholder:text-ink-muted placeholder:opacity-100",
+      "font-body text-prose text-ink placeholder:text-ink-muted placeholder:opacity-100",
       // Under 16px a focused field makes a phone zoom the page. The step up
       // is a heading's, so its weight is taken back off.
       "pointer-coarse:text-lead pointer-coarse:font-normal",
@@ -62,7 +62,7 @@ export const composerStyles = tv({
     matchName: "font-semibold text-ink",
     matchHandle: "text-ink-muted",
     // Signed out, or locked: the same slot, one thing in it.
-    gate: "flex items-center justify-between gap-3 rounded-surface border border-line bg-card py-3 pr-3 pl-5 font-sans shadow-marker max-rail:rounded-control max-rail:pl-3",
+    gate: "flex items-center justify-between gap-3 rounded-surface border border-line bg-card py-3 pr-3 pl-5 font-body shadow-marker max-rail:rounded-control max-rail:pl-3",
     gateText: "grid min-w-0 gap-0.5",
     gateTitle: "text-prose font-semibold text-ink",
     gateMeta: "text-body text-ink-muted",

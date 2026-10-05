@@ -40,7 +40,7 @@
   fill: var(--gust-fill);
 }
 .gust-z {
-  font: 700 9px var(--font-sans);
+  font: 700 9px var(--font-body);
 }
 .gust-arm,
 .gust-handle {

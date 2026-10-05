@@ -53,7 +53,7 @@ export const sellStyles = tv({
     quiet: "m-0 text-ink-muted",
     meta: "m-0 text-body text-ink-muted",
     /** What is wrong with the photographs, which are not a field. */
-    error: "m-0 font-sans text-body text-warn",
+    error: "m-0 font-body text-body text-warn",
     divider: "m-0 border-0 border-t border-line",
     /** Who the listing will go out under, beside the button that publishes it. */
     signature: "text-body text-ink-muted",

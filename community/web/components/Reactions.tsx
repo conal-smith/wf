@@ -13,7 +13,7 @@ export const reactionStyles = tv({
     base: "flex flex-wrap items-center gap-1",
     chip: [
       "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-transparent bg-sunken px-2",
-      "font-sans text-body font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
+      "font-body text-body font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
       "not-disabled:hover:border-line-strong pointer-coarse:min-h-touch pointer-coarse:px-3",
       RING,
     ],

@@ -39,7 +39,7 @@ const styles = tv({
       "flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-ink-muted tabular-nums",
     scroller:
       "overflow-x-auto rounded-surface border border-line bg-card shadow-control",
-    table: "w-full border-collapse font-sans text-body tabular-nums",
+    table: "w-full border-collapse font-body text-body tabular-nums",
     th: "px-2 py-2 text-left text-eyebrow whitespace-nowrap uppercase text-ink-muted first:pl-4 last:pr-3 max-wide:px-1 max-wide:first:pl-3 max-wide:last:pr-2",
     row: "border-t border-line align-middle",
     cell: "px-2 py-2 first:pl-4 last:pr-3 max-wide:px-1 max-wide:first:pl-3 max-wide:last:pr-2",
@@ -70,7 +70,7 @@ const styles = tv({
     detailNote: "m-0 text-caption text-ink-muted",
     reasons: "m-0 flex list-disc flex-col gap-1 pl-4",
     night: [
-      "flex w-full items-center gap-2 border-0 bg-transparent px-4 py-2 text-left font-sans text-body text-ink-muted",
+      "flex w-full items-center gap-2 border-0 bg-transparent px-4 py-2 text-left font-body text-body text-ink-muted",
       "cursor-pointer not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
       RING,
     ],

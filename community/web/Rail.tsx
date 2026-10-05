@@ -22,7 +22,7 @@ import { navigate, paths, routed, type Route } from "./router";
 
 export const railStyles = tv({
   slots: {
-    base: "flex min-w-0 flex-col gap-5 font-sans",
+    base: "flex min-w-0 flex-col gap-5 font-body",
     group: "flex flex-col gap-0.5",
     list: "m-0 flex list-none flex-col gap-0.5 p-0",
     heading: "m-0",

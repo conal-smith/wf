@@ -14,7 +14,7 @@ export const streamStyles = tv({
   slots: {
     base: "flex flex-col gap-1",
     divider: [
-      "flex items-center gap-3 px-3 py-2 font-sans text-eyebrow text-ink-muted uppercase",
+      "flex items-center gap-3 px-3 py-2 font-body text-eyebrow text-ink-muted uppercase",
       "before:flex-1 before:border-t before:border-line after:flex-1 after:border-t after:border-line",
     ],
     // Filled as well as worded, as an unread count is everywhere else.
