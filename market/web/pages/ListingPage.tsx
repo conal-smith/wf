@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -9,10 +8,16 @@ import {
   Pencil,
   Phone,
   Share2,
-  Star,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Chip, Pane } from "../../../ui";
+import {
+  Button,
+  Chip,
+  Kicker,
+  Pane,
+  Puffin,
+  SectionHeading,
+} from "../../../ui";
 import { paneStyles } from "../../../ui/Pane";
 import { buttonStyles } from "../../../ui/Button";
 import { linkStyles } from "../../../ui/Link";
@@ -21,11 +26,13 @@ import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
   Avatar,
+  BackLink,
   ConfirmDialog,
   Field,
   LoadError,
   Notice,
   PageSkeleton,
+  Price,
   RatingPicker,
   SaveButton,
   SellerRating,
@@ -43,61 +50,64 @@ import type {
   ReviewEligibility,
   SellerContact,
 } from "../../shared/types";
-import { formatPrice, relativeAge } from "../../shared/validate";
+import { relativeAge } from "../../shared/validate";
 
 export const listingStyles = tv({
   slots: {
     // Two columns where there is room for them: what is being read, and the
-    // panel that stands beside it. Under the rail's breakpoint the placement
+    // ad that stands beside it. Under the rail's breakpoint the placement
     // falls away and the three children stack in the order they are written,
-    // which puts the panel between the photographs and the description.
-    detail: "grid items-start gap-6 rail:grid-cols-detail",
+    // which puts the ad between the photographs and the particulars.
+    detail: "grid items-start gap-x-8 gap-y-8 rail:grid-cols-detail max-wide:gap-y-6",
     gallery: "min-w-0 rail:col-start-1 rail:row-start-1",
-    body: "flex min-w-0 flex-col gap-6 rail:col-start-1 rail:row-start-2",
-    // The panel spans both rows and stays in view while the body scrolls
-    // under it, clear of the sticky header: its bar, its inset and the gap.
+    body: "flex min-w-0 flex-col gap-8 rail:col-start-1 rail:row-start-2",
+    // The ad spans both rows and stays in view while the body scrolls under
+    // it, clear of the sticky masthead: its bar, its inset and the gap.
     aside: [
-      "flex min-w-0 flex-col gap-5",
+      "flex min-w-0 flex-col gap-6",
       "rail:col-start-2 rail:row-start-1 rail:row-span-2 rail:sticky rail:top-22.5",
     ],
 
     // ---- the photographs
+    // On paper, in a hairline frame, and never cropped.
     frame: [
       "relative grid aspect-4/3 place-items-center overflow-hidden",
-      "rounded-surface border border-line bg-sunken text-ink-muted",
+      "border border-line bg-sunken text-ink-muted",
     ],
     // Contained, not cropped: a board photographed end-on is the whole point.
     photo: "block size-full object-contain",
-    noPhoto: "flex min-w-0 flex-col items-center gap-1",
+    noPhoto: "flex min-w-0 flex-col items-center gap-2",
     // Over the photograph, so it carries the deeper shadow a marker has.
     nav: "absolute top-1/2 -translate-y-1/2 shadow-marker",
     count: "absolute right-3 bottom-3",
-    thumbs: "-mx-1 mt-3 flex gap-2 overflow-x-auto scrollbar-none p-1",
+    thumbs: "-mx-1 mt-2 flex gap-2 overflow-x-auto scrollbar-none p-1",
     /*
      * A thumbnail is the one control on this page ui/ has no part for, so it
      * carries the kit's ring by hand. It is 76 by 57, four to three like the
      * picture it stands for, which is well past the coarse-pointer minimum,
-     * so it asks for none. The chosen one is outlined as well as brought
-     * forward: an opacity on its own is not a state a reader can name (S2).
+     * so it asks for none. The chosen one is outlined in ink as well as
+     * brought forward: an opacity on its own is not a state a reader can name.
      * The fill is named again under the pointer so that the site reset's
-     * `button:enabled:hover` does not lay its white over it; the photograph
-     * covers the box either way, so it is there to keep the rule, not a pixel.
+     * `button:enabled:hover` does not lay its wash over it.
      */
     thumb: [
-      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-control border-0 bg-sunken p-0",
+      "w-19 shrink-0 cursor-pointer overflow-hidden rounded-none border border-line bg-sunken p-0",
       "aspect-4/3 opacity-65 transition-opacity duration-fast",
       "not-disabled:hover:bg-sunken not-disabled:hover:opacity-100",
       "focus-visible:opacity-100",
       // The focus ring takes the chosen one's place while it is there.
       "aria-pressed:opacity-100 aria-pressed:not-focus-visible:outline-2",
-      "aria-pressed:not-focus-visible:outline-offset-1 aria-pressed:not-focus-visible:outline-accent",
+      "aria-pressed:not-focus-visible:outline-offset-1 aria-pressed:not-focus-visible:outline-ink",
       RING,
     ],
     thumbImage: "block size-full object-cover",
 
-    // ---- the panel
-    stack: "flex min-w-0 flex-col gap-5",
+    // ---- the ad
+    // The one box on the page: the chart's, ruled twice, for what matters.
+    ad: "flex min-w-0 flex-col gap-5",
+    stack: "flex min-w-0 flex-col gap-4",
     tight: "flex min-w-0 flex-col gap-1",
+    kickerRow: "flex flex-wrap items-center gap-x-3 gap-y-1",
     actions: "flex items-center gap-2",
     /*
      * The action takes whatever the row has left after the controls beside it,
@@ -107,41 +117,45 @@ export const listingStyles = tv({
      */
     fill: "min-w-0 grow shrink text-center leading-tight whitespace-normal",
     formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
-    // The sunken box keeps the hairline it always had, in no colour, so what
-    // is inside it sits where it did.
-    contact: "grid gap-3 rounded-control border border-transparent",
-    contactRow: "inline-flex items-center gap-2 wrap-anywhere",
+    // The ways to reach the seller, once asked for: a well on the second sheet.
+    contact: "grid gap-3 p-4",
+    contactRow: "inline-flex items-center gap-2 font-mono text-body wrap-anywhere",
+
+    // ---- the seller, under a rule in the same column
     seller: [
-      "group flex min-w-0 items-center gap-3 rounded-control text-ink no-underline",
+      "group flex min-w-0 items-center gap-3 rounded-control py-1 text-ink no-underline",
       RING,
     ],
+    sellerName:
+      "font-display text-lead italic decoration-1 underline-offset-3 group-hover:underline",
     // It leans towards the page it opens, unless movement has been declined.
     chevron: [
       "ml-auto shrink-0 text-ink-muted transition-transform duration-fast",
       "group-hover:translate-x-1 motion-reduce:transition-none",
     ],
 
+    // ---- the Almanac's word, signed by the puffin
+    almanac: "flex items-end gap-3",
+    almanacText: "m-0 flex min-w-0 flex-col gap-1",
+    saying: "font-body text-body text-ink-2 italic",
+
     // ---- the body, and the review form under it
-    section: "flex min-w-0 flex-col gap-6",
-    sectionHead: "flex flex-wrap items-center justify-between gap-x-5 gap-y-2",
-    specs: "m-0 grid grid-cols-specs gap-x-6 gap-y-5",
-    spec: "flex min-w-0 flex-col gap-1",
-    term: "text-body text-ink-muted",
-    value: "m-0 font-semibold wrap-anywhere",
-    divider: "m-0 border-0 border-t border-line",
+    section: "flex min-w-0 flex-col gap-4",
+    // The particulars, as the chart sets a table: the name in the body face,
+    // the figure set right in the mono, a hairline between rows.
+    specs: "m-0 grid gap-x-8 wide:grid-cols-2",
+    spec: "flex min-w-0 items-baseline justify-between gap-4 border-0 border-b border-line py-2",
+    term: "font-body text-prose text-ink-2",
+    value: "m-0 text-right font-mono text-body font-medium wrap-anywhere",
     form: "grid gap-5",
 
     // ---- the words
-    lead: "m-0 text-lead text-ink",
-    price: "m-0 text-title text-ink",
-    eyebrow: "m-0 text-eyebrow text-ink-muted uppercase",
+    title: "m-0 font-display text-title text-balance text-ink",
     quiet: "m-0 text-body text-ink-muted",
     muted: "m-0 text-ink-muted",
     // A line of paragraph that carries nothing but a mark of its own.
     bare: "m-0",
-    // The smaller step, for a line set inside something that reads in prose.
-    note: "text-body",
-    prose: "m-0 max-w-measure whitespace-pre-wrap wrap-anywhere",
+    prose: "m-0 max-w-measure text-prose whitespace-pre-wrap wrap-anywhere",
   },
   variants: {
     /** Which edge of the photograph a step through it sits on. */
@@ -202,31 +216,31 @@ export default function ListingPage({ id }: { id: string }) {
         <Aside listing={listing} onChange={(l) => result.setData(l)} />
         <div className={styles.body()}>
           <section
-            className={paneStyles({
-              standing: true,
-              className: styles.section(),
-            })}
+            className={styles.section()}
+            aria-labelledby="listing-details"
           >
-            <div className={styles.stack()}>
-              <h2 className={styles.lead()}>Details</h2>
-              <dl className={styles.specs()}>
-                {specs.map(
-                  ([label, value]) =>
-                    value != null &&
-                    value !== "" && (
-                      <div className={styles.spec()} key={label}>
-                        <dt className={styles.term()}>{label}</dt>
-                        <dd className={styles.value()}>{value}</dd>
-                      </div>
-                    ),
-                )}
-              </dl>
-            </div>
-            <hr className={styles.divider()} />
-            <div className={styles.stack()}>
-              <h2 className={styles.lead()}>Description</h2>
-              <p className={styles.prose()}>{listing.description}</p>
-            </div>
+            <SectionHeading id="listing-details">Particulars</SectionHeading>
+            <dl className={styles.specs()}>
+              {specs.map(
+                ([label, value]) =>
+                  value != null &&
+                  value !== "" && (
+                    <div className={styles.spec()} key={label}>
+                      <dt className={styles.term()}>{label}</dt>
+                      <dd className={styles.value()}>{value}</dd>
+                    </div>
+                  ),
+              )}
+            </dl>
+          </section>
+          <section
+            className={styles.section()}
+            aria-labelledby="listing-description"
+          >
+            <SectionHeading id="listing-description">
+              Description
+            </SectionHeading>
+            <p className={styles.prose()}>{listing.description}</p>
           </section>
           {auth.signedIn && !listing.isOwner && (
             <ReviewSection listing={listing} />
@@ -234,16 +248,6 @@ export default function ListingPage({ id }: { id: string }) {
         </div>
       </article>
     </>
-  );
-}
-
-function BackLink() {
-  return (
-    <div>
-      <Link to={paths.browse()} className={buttonStyles({ size: "sm" })}>
-        <ArrowLeft size={15} aria-hidden="true" /> All listings
-      </Link>
-    </div>
   );
 }
 
@@ -276,8 +280,8 @@ function Gallery({ listing }: { listing: Listing }) {
           />
         ) : (
           <div className={styles.noPhoto()}>
-            <ImageIcon size={32} aria-hidden="true" />
-            <p className={styles.quiet()}>The seller has not added photos</p>
+            <ImageIcon size={32} strokeWidth={1.25} aria-hidden="true" />
+            <Kicker>The seller has not added photos</Kicker>
           </div>
         )}
         {count > 1 && (
@@ -289,7 +293,7 @@ function Gallery({ listing }: { listing: Listing }) {
               aria-label="Previous photo"
               onClick={() => step(-1)}
             >
-              <ChevronLeft size={18} aria-hidden="true" />
+              <ChevronLeft size={18} strokeWidth={1.5} aria-hidden="true" />
             </Button>
             <Button
               variant="pill"
@@ -298,7 +302,7 @@ function Gallery({ listing }: { listing: Listing }) {
               aria-label="Next photo"
               onClick={() => step(1)}
             >
-              <ChevronRight size={18} aria-hidden="true" />
+              <ChevronRight size={18} strokeWidth={1.5} aria-hidden="true" />
             </Button>
             <Chip tone="glass" className={styles.count()} aria-hidden="true">
               {index + 1} / {count}
@@ -450,23 +454,36 @@ export function Aside({
   return (
     <aside className={styles.aside()}>
       <section
-        className={paneStyles({ standing: true, className: styles.stack() })}
+        className={paneStyles({ double: true, className: styles.ad() })}
+        aria-labelledby="listing-title"
       >
-        <div className={styles.tight()}>
-          {listing.status !== "active" && (
-            <p className={styles.bare()}>
-              <Chip tone="warn">
+        <div className={styles.stack()}>
+          <div className={styles.kickerRow()}>
+            {listing.status !== "active" && (
+              <Chip tone="warn" eyebrow>
                 {listing.status === "sold" ? "Sold" : "Removed"}
               </Chip>
+            )}
+            <Kicker as="span">
+              {categoryLabel(listing.category)} ·{" "}
+              {conditionLabel(listing.condition)}
+            </Kicker>
+          </div>
+          <h1 className={styles.title()} id="listing-title">
+            {listing.title}
+          </h1>
+          <div className={styles.tight()}>
+            <p className={styles.bare()}>
+              <Price
+                listing={listing}
+                size="lg"
+                strike={listing.status === "sold"}
+              />
             </p>
-          )}
-          <h1 className={styles.lead()}>{listing.title}</h1>
-          <p className={styles.price()}>
-            {formatPrice(listing.priceCents, listing.currency)}
-          </p>
-          <p className={styles.quiet()}>
-            {where} · Listed {relativeAge(listing.createdAt)}
-          </p>
+            <Kicker>
+              {where} · Listed {relativeAge(listing.createdAt)}
+            </Kicker>
+          </div>
         </div>
 
         {listing.isOwner ? (
@@ -480,7 +497,8 @@ export function Aside({
                   className: styles.fill(),
                 })}
               >
-                <Pencil size={16} aria-hidden="true" /> Edit listing
+                <Pencil size={16} strokeWidth={1.5} aria-hidden="true" /> Edit
+                listing
               </Link>
               {shareButton}
             </div>
@@ -518,13 +536,14 @@ export function Aside({
           </Notice>
         ) : contact ? (
           <Pane kind="sunken" className={styles.contact()} aria-live="polite">
-            <p className={styles.eyebrow()}>Contact {contact.displayName}</p>
+            <Kicker tone="ink">Contact {contact.displayName}</Kicker>
             {contact.phone && (
               <a
                 className={linkStyles({ className: styles.contactRow() })}
                 href={`tel:${contact.phone}`}
               >
-                <Phone size={16} aria-hidden="true" /> {contact.phone}
+                <Phone size={16} strokeWidth={1.5} aria-hidden="true" />{" "}
+                {contact.phone}
               </a>
             )}
             {contact.whatsapp && whatsappNumber && (
@@ -534,7 +553,8 @@ export function Aside({
                 target="_blank"
                 rel="noreferrer"
               >
-                <MessageCircle size={16} aria-hidden="true" /> WhatsApp
+                <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" />{" "}
+                WhatsApp
               </a>
             )}
             {contact.email && (
@@ -542,7 +562,8 @@ export function Aside({
                 className={linkStyles({ className: styles.contactRow() })}
                 href={`mailto:${contact.email}?subject=${encodeURIComponent(`wingfoil.ie: ${listing.title}`)}`}
               >
-                <Mail size={16} aria-hidden="true" /> {contact.email}
+                <Mail size={16} strokeWidth={1.5} aria-hidden="true" />{" "}
+                {contact.email}
               </a>
             )}
           </Pane>
@@ -588,36 +609,43 @@ export function Aside({
         {error && <Notice kind="warn">{error}</Notice>}
       </section>
 
-      <section
-        className={paneStyles({ standing: true, className: styles.stack() })}
-        aria-label="Seller"
-      >
+      <section className={styles.section()} aria-label="Seller">
+        <SectionHeading size="kicker" rule="thin" as="h2">
+          Seller
+        </SectionHeading>
         <Link to={paths.seller(listing.seller.id)} className={styles.seller()}>
           <Avatar name={listing.seller.displayName} />
           <span className={styles.tight()}>
-            <span className={styles.lead()}>{listing.seller.displayName}</span>
+            <span className={styles.sellerName()}>
+              {listing.seller.displayName}
+            </span>
             <SellerRating seller={listing.seller} />
           </span>
           <ChevronRight
             size={18}
+            strokeWidth={1.5}
             className={styles.chevron()}
             aria-hidden="true"
           />
         </Link>
-        <p className={styles.quiet()}>
-          {listing.seller.soldCount} sold · Member since{" "}
+        <Kicker>
+          {listing.seller.soldCount} sold · Since{" "}
           {new Date(listing.seller.memberSince).getFullYear()}
           {listing.seller.county ? ` · Co. ${listing.seller.county}` : ""}
-        </p>
+        </Kicker>
       </section>
 
       {!listing.isOwner && listing.status === "active" && (
-        <Notice>
-          <span className={styles.note()}>
-            Meet somewhere public, check the gear before paying, and never pay a
-            deposit to hold an item.
-          </span>
-        </Notice>
+        <aside className={styles.almanac()} aria-label="The Almanac's advice">
+          <Puffin size={44} />
+          <p className={styles.almanacText()}>
+            <span className={styles.saying()}>
+              Meet somewhere public, see the gear before you pay, and never
+              send a deposit to hold it.
+            </span>
+            <Kicker as="span">The Almanac</Kicker>
+          </p>
+        </aside>
       )}
 
       <ConfirmDialog
@@ -682,21 +710,21 @@ function ReviewSection({ listing }: { listing: Listing }) {
 
   return (
     <section
-      className={paneStyles({ standing: true, className: styles.stack() })}
+      className={styles.section()}
       aria-labelledby="listing-review-title"
     >
-      <div className={styles.sectionHead()}>
-        <h2 className={styles.lead()} id="listing-review-title">
-          {e.existing
-            ? "Your review of this seller"
-            : `Rate ${listing.seller.displayName}`}
-        </h2>
-        {e.existing && <Stars value={e.existing.rating} />}
-      </div>
+      <SectionHeading
+        id="listing-review-title"
+        aside={e.existing && <Stars value={e.existing.rating} size={14} />}
+      >
+        {e.existing
+          ? "Your review of this seller"
+          : `Rate ${listing.seller.displayName}`}
+      </SectionHeading>
       {e.reason === "no-enquiry" ? (
         <p className={styles.muted()}>
-          Reviews are for people who actually got in touch. Once you have shown
-          the seller's contact details, you can rate how the sale went.
+          Show the seller's contact details first; then you can rate how the
+          sale went.
         </p>
       ) : e.reason === "profile-required" ? (
         <p className={styles.muted()}>
@@ -738,7 +766,6 @@ function ReviewSection({ listing }: { listing: Listing }) {
           )}
           <div className={styles.formActions()}>
             <Button type="submit" variant="pill" disabled={busy}>
-              <Star size={15} aria-hidden="true" />
               {busy ? "Saving…" : e.existing ? "Update review" : "Post review"}
             </Button>
           </div>
