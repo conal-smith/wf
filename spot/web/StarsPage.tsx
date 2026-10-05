@@ -103,8 +103,8 @@ export default function StarsPage() {
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
-            <StarGlyphs stars={3} potential={5} size={14} /> Solid stars are
-            the rating. Outlined stars are what the wind speed alone would have
+            <StarGlyphs stars={3} potential={5} size={14} /> Solid stars are the
+            rating. Outlined stars are what the wind speed alone would have
             earned, before anything was taken off.
           </li>
           <li className={s.glyph()}>
@@ -186,8 +186,8 @@ export default function StarsPage() {
           </p>
           <p className={s.p()}>
             If you have told us which wings you own, we pick the smallest one
-            that is big enough. If none of them suits the wind, the hour loses
-            a star.
+            that is big enough. If none of them suits the wind, the hour loses a
+            star.
           </p>
         </section>
 
@@ -398,8 +398,8 @@ function BandTable({ rider }: { rider: Rider }) {
         </tbody>
       </table>
       <p className={s.figures()}>
-        In knots, for someone who weighs {kg} kg. Heavier riders need more
-        wind, lighter riders less.
+        In knots, for someone who weighs {kg} kg. Heavier riders need more wind,
+        lighter riders less.
       </p>
     </>
   );
