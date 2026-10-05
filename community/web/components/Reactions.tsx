@@ -11,14 +11,15 @@ import { Popover } from "./Popover";
 export const reactionStyles = tv({
   slots: {
     base: "flex flex-wrap items-center gap-1",
+    // A tag on the second sheet, as the kit's chip is: the face, then its count in the figures' face.
     chip: [
-      "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-transparent bg-sunken px-2",
-      "font-body text-body font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
-      "not-disabled:hover:border-line-strong pointer-coarse:min-h-touch pointer-coarse:px-3",
+      "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-line bg-sunken px-2",
+      "font-mono text-caption font-semibold text-ink-2 tabular-nums transition-colors duration-fast",
+      "not-disabled:hover:border-ink pointer-coarse:min-h-touch pointer-coarse:px-3",
       RING,
     ],
     face: [
-      "grid size-control-sm cursor-pointer place-items-center rounded-control text-prose",
+      "grid size-control-sm cursor-pointer place-items-center rounded-full text-prose",
       "not-disabled:hover:bg-sunken pointer-coarse:size-touch",
       RING,
     ],
@@ -27,8 +28,8 @@ export const reactionStyles = tv({
     // Yours: outlined and raised as well as filled, and said with aria-pressed.
     mine: {
       true: {
-        chip: "border-accent bg-card text-ink shadow-control not-disabled:hover:border-accent",
-        face: "border border-accent bg-card shadow-control",
+        chip: "border-ink bg-card text-ink shadow-control not-disabled:hover:border-ink",
+        face: "border border-ink bg-card shadow-control",
       },
     },
   },
@@ -132,7 +133,7 @@ export function ReactionPicker({
       panelLabel="Reactions"
       grid
       onOpenChange={onOpenChange}
-      label={<SmilePlus size={15} aria-hidden="true" />}
+      label={<SmilePlus size={15} strokeWidth={1.5} aria-hidden="true" />}
     >
       {(close) => (
         <ReactionFaces
