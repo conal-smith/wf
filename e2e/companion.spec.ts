@@ -44,7 +44,10 @@ test("Gust answers a suggestion with lookups and a spot card, and shows it on th
   const id = await first.getAttribute("data-spot-card");
   const name = await first.getByRole("heading").textContent();
   expect(id).toBeTruthy();
-  await expect(first).toContainText(/★/);
+  // The chart's stars, drawn, and read out as words.
+  await expect(
+    first.getByRole("img", { name: /of 5 stars/ }).first(),
+  ).toBeVisible();
 
   await first.getByRole("button", { name: "Show on map" }).click();
   await expect(
