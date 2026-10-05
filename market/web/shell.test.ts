@@ -8,7 +8,6 @@ import { Field, TextInput } from "../../ui";
 import { buttonStyles } from "../../ui/Button";
 import { checkboxStyles } from "../../ui/Checkbox";
 import { controlStyles } from "../../ui/control";
-import { segmentedStyles } from "../../ui/Segmented";
 import { fieldStyles } from "../../ui/Field";
 import { mastheadStyles } from "../../ui/Masthead";
 import { compileTheme, holds } from "../../ui/theme.testkit";
