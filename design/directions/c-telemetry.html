@@ -1,0 +1,1596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wingfoil.ie — Telemetry</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@300..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carbon:#0E0F0C;--panel:#1A1C18;--grid:#2E322B;--read:#EDEDE6;--dim:#6B7065;--go:#D4FF3A;--alarm:#FF6B1A;
+  --off:#23261F;--top:52px;--bar:44px;--ease:cubic-bezier(.2,.7,.1,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--carbon);color:var(--read)}
+html{overflow-x:hidden}
+body{font:12px/1.45 'JetBrains Mono',ui-monospace,Menlo,monospace;font-feature-settings:"zero" 1;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--read);outline-offset:2px}
+::selection{background:var(--read);color:var(--carbon)}
+.disp{font-family:'Archivo',sans-serif;font-weight:900;font-stretch:62%;text-transform:uppercase;line-height:.84;letter-spacing:-.005em}
+.wide{font-family:'Archivo',sans-serif;font-weight:800;font-stretch:125%;text-transform:uppercase;letter-spacing:.02em}
+.lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.go{color:var(--go)}.alarm{color:var(--alarm)}.dimc{color:var(--dim)}
+kbd{font:600 9px/1 'JetBrains Mono',monospace;border:1px solid var(--grid);padding:2px 4px;color:var(--dim);border-radius:2px;letter-spacing:.06em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ===== lamps ===== */
+.lamps{display:inline-flex;gap:3px;vertical-align:middle}
+.lamps i{width:8px;height:8px;background:var(--off);display:block;transition:background .18s,box-shadow .18s,border-color .18s;border:1px solid transparent}
+.lamps i.pot{background:transparent;border-color:#70766a}
+.lamps i.on{background:var(--read)}
+.lamps.isgo i.on{background:var(--go);box-shadow:0 0 6px rgba(212,255,58,.55)}
+.lamps.big i{width:22px;height:22px}
+.lamps.big{gap:5px}
+.lamps.md i{width:12px;height:12px}
+
+/* ===== top bar ===== */
+.top{position:fixed;inset:0 0 auto 0;height:var(--top);z-index:40;display:flex;align-items:stretch;background:var(--carbon);border-bottom:1px solid var(--grid)}
+.brand{display:flex;align-items:center;gap:10px;padding:0 18px 0 16px;border-right:1px solid var(--grid)}
+.brand .blamp{width:10px;height:10px;background:var(--dim)}
+.brand .blamp.isgo{background:var(--go);box-shadow:0 0 10px rgba(212,255,58,.7)}
+.brand .wm{font-family:'Archivo',sans-serif;font-weight:900;font-stretch:125%;font-size:17px;letter-spacing:.01em}
+.brand .tld{font-family:'Archivo',sans-serif;font-weight:900;font-stretch:62%;font-size:13px;border:1.5px solid var(--read);padding:1px 3px 0;line-height:1;margin-left:-6px}
+.brand .ver{font-size:9px;color:var(--dim);letter-spacing:.14em;border-left:1px solid var(--grid);padding-left:10px;line-height:1.25}
+.nav{display:flex;align-items:stretch}
+.nav a{display:flex;align-items:center;gap:8px;padding:0 16px;border-right:1px solid var(--grid);font-size:11px;letter-spacing:.14em;color:var(--dim);position:relative;cursor:pointer}
+.nav a:hover{color:var(--read)}
+.nav a.on{color:var(--read)}
+.nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--read)}
+.nav a .nx{font-size:9px;color:#4a4f45}
+.status{margin-left:auto;display:flex;align-items:stretch}
+.status>*{display:flex;align-items:center;gap:6px;padding:0 14px;border-left:1px solid var(--grid);font-size:10.5px;letter-spacing:.1em;color:var(--dim);white-space:nowrap}
+.status b{color:var(--read);font-weight:600}
+#riderChip{cursor:pointer}
+#riderChip:hover{color:var(--read)}
+
+/* ===== views ===== */
+main{padding-top:var(--top);padding-bottom:var(--bar)}
+.view{display:none}
+.view.on{display:block}
+
+/* ===== MAP VIEW ===== */
+#v-map.on{display:grid;grid-template-columns:300px minmax(0,1fr) 352px;grid-template-rows:minmax(0,1fr) auto;height:calc(100vh - var(--top) - var(--bar));min-height:640px}
+.col{border-right:1px solid var(--grid);overflow:auto;scrollbar-width:thin;scrollbar-color:var(--grid) transparent}
+.col-r{border-right:0;border-left:1px solid var(--grid)}
+.ph{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 14px;border-bottom:1px solid var(--grid);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;position:sticky;top:0;background:var(--carbon);z-index:2}
+.ph b{color:var(--read);font-weight:600}
+.ph .code{color:#4a4f45}
+
+/* readout */
+.ro{padding:12px 14px 14px;border-bottom:1px solid var(--grid)}
+.ro-ll{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:11px;color:var(--dim);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.ro-ll b{color:var(--read);font-weight:500}
+.ro-name{font-size:36px;margin:2px 0 4px;word-break:break-word}
+.ro-sub{font-size:10.5px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.ro-big{display:flex;align-items:flex-end;gap:14px;margin-bottom:12px}
+.ro-big .kn{font:600 54px/0.8 'JetBrains Mono',monospace;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.ro-big .kn small{font-size:13px;letter-spacing:.1em;margin-left:4px;color:var(--dim);font-weight:500}
+.ro-big .kn.isgo{color:var(--go)}
+.ro-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--grid)}
+.ro-grid>div{padding:7px 0;border-bottom:1px solid var(--grid);display:flex;flex-direction:column;gap:1px}
+.ro-grid>div:nth-child(odd){padding-right:10px;border-right:1px solid var(--grid)}
+.ro-grid>div:nth-child(even){padding-left:10px}
+.ro-grid .v{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;text-transform:uppercase}
+.ro-grid .v.sm{font-size:12px}
+.ro-stars{display:flex;align-items:center;justify-content:space-between;margin:12px 0}
+.ro-stars .sx{font-size:10px;color:var(--dim);letter-spacing:.1em}
+.btn{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;height:34px;padding:0 12px;border:1px solid var(--read);font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:var(--read);color:var(--carbon);font-weight:600;width:100%}
+.btn:hover{background:transparent;color:var(--read)}
+.btn.ghost{background:transparent;color:var(--read);border-color:var(--grid)}
+.btn.ghost:hover{border-color:var(--read)}
+.btn kbd{border-color:currentColor;color:inherit;opacity:.6}
+
+/* rider config */
+.rc{padding:12px 14px}
+.rc-reset{font-size:9px;letter-spacing:.12em;color:var(--dim);border:1px solid var(--grid);padding:3px 6px;margin-top:6px}.rc-reset:hover{color:var(--read);border-color:var(--read)}
+.rc-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.rc-h button{font-size:9.5px;letter-spacing:.14em;color:var(--dim);border:1px solid var(--grid);padding:3px 6px}
+.rc-h button:hover{color:var(--read);border-color:var(--read)}
+.rc-mass{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px}
+.rc-mass output{font:600 34px/0.85 'JetBrains Mono',monospace;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.rc-mass output small{font-size:11px;color:var(--dim);letter-spacing:.12em;margin-left:4px;font-weight:500}
+.rc-range{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:ew-resize;display:block}
+.rc-range::-webkit-slider-runnable-track{height:26px;background:
+  repeating-linear-gradient(90deg,var(--grid) 0 1px,transparent 1px calc(100%/15)) 0 100%/100% 8px no-repeat,
+  linear-gradient(var(--grid),var(--grid)) 0 50%/100% 1px no-repeat}
+.rc-range::-moz-range-track{height:26px;background:linear-gradient(var(--grid),var(--grid)) 0 50%/100% 1px no-repeat}
+.rc-range::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:26px;background:var(--read);border:0;border-radius:0}
+.rc-range::-moz-range-thumb{width:10px;height:26px;background:var(--read);border:0;border-radius:0}
+.rc-ticks{display:flex;justify-content:space-between;font-size:9px;color:#4a4f45;margin:2px 0 10px}
+.rc-seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--grid);margin:6px 0 12px}
+.rc-seg button{height:30px;font-size:10px;letter-spacing:.12em;color:var(--dim);border-right:1px solid var(--grid)}
+.rc-seg button:last-child{border-right:0}
+.rc-seg button[aria-checked=true]{background:var(--read);color:var(--carbon);font-weight:700}
+.rc-seg button:hover:not([aria-checked=true]){color:var(--read)}
+.rc-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:6px 0 14px}
+.rc-chips button{height:26px;border:1px solid var(--grid);font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.rc-chips button[aria-pressed=true]{border-color:var(--read);color:var(--carbon);background:var(--read);font-weight:700}
+.rc-chips button:hover:not([aria-pressed=true]){color:var(--read);border-color:var(--dim)}
+.sp-rc .rc-chips{grid-template-columns:repeat(10,1fr)}
+.rc-band svg{display:block;width:100%;height:20px;overflow:visible}
+.rc-band .bl{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:4px;letter-spacing:.06em}
+.rc-delta{margin-top:12px;display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.12em;color:var(--dim);border-top:1px solid var(--grid);padding-top:10px;text-transform:uppercase}
+.rc-delta b{font:600 18px 'JetBrains Mono',monospace;color:var(--read);letter-spacing:-.02em}
+.rc-delta b.up{color:var(--go)} .rc-delta b.down{color:var(--alarm)}
+
+.legend{padding:14px;display:grid;gap:8px;font-size:10px;color:var(--dim);letter-spacing:.06em;border-top:1px solid var(--grid)}
+.legend .lg{display:flex;align-items:center;gap:10px}
+.legend .sw{width:22px;display:flex;justify-content:center;align-items:flex-end;height:20px}
+.legend .keys{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:4px}
+
+/* map stage */
+.stage{position:relative;overflow:hidden;background:
+  radial-gradient(ellipse at 50% 45%,rgba(237,237,230,.025),transparent 70%)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.ticker{position:absolute;left:0;right:0;top:0;height:30px;border-bottom:1px solid var(--grid);display:flex;align-items:center;background:rgba(14,15,12,.92);z-index:5;overflow:hidden}
+.ticker .tk-l{flex:none;height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--read);color:var(--carbon);font-weight:700;font-size:10.5px;letter-spacing:.16em}
+.ticker .tk-t{flex:1;overflow:hidden;white-space:nowrap;mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent)}
+.ticker .tk-run{display:inline-block;animation:tick 70s linear infinite;padding-left:16px}
+.ticker .tk-run span{margin-right:26px;font-size:11px;letter-spacing:.06em;color:var(--dim)}
+.ticker .tk-run span b{color:var(--read);font-weight:600}
+.ticker .tk-run span.isgo b{color:var(--go)}
+@keyframes tick{to{transform:translateX(-50%)}}
+.gauges{position:absolute;inset:0;z-index:2}
+.g{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;display:block;padding:0;outline-offset:3px}
+.g .bar{position:absolute;left:5px;bottom:7px;width:4px;height:var(--h,0px);background:
+  repeating-linear-gradient(0deg,var(--c,#9aa093) 0 3px,transparent 3px 4px);transition:height .55s var(--ease)}
+.g .lamp{position:absolute;left:3px;bottom:calc(var(--h,0px) + 9px);width:8px;height:8px;background:var(--lc,var(--off));transition:bottom .55s var(--ease),background .25s;box-shadow:var(--glow,none)}
+.g .foot{position:absolute;left:4px;top:5px;width:6px;height:6px;border:1px solid #80867a;background:var(--carbon)}
+.g.isgo{--c:var(--go);--lc:var(--go);--glow:0 0 8px rgba(212,255,58,.8);z-index:3}
+.g.isgo .foot{border-color:var(--go)}
+.g.mid{--c:#b9beb0;--lc:var(--read)}
+.g.low{--c:#5d6258;--lc:#4a4f45}
+.g.zero{--c:#3d4139;--lc:var(--off)}
+.g.warn .foot{border-color:var(--alarm)}
+.g:hover,.g.sel{z-index:6}
+.tag{position:absolute;z-index:7;transform:translate(10px,-50%);white-space:nowrap;font-size:10px;letter-spacing:.08em;padding:2px 6px;background:var(--carbon);border:1px solid var(--grid);pointer-events:none;color:var(--read);transition:left .4s var(--ease),top .4s var(--ease)}
+.tag b{font-weight:700;margin-right:6px}
+.tag.lead{padding:0;border:0;width:0;border-left:1px dashed #8d9386;background:none;transform:none;z-index:6}
+.tag.isgo b{color:var(--go)}
+.tag.selt{border-color:var(--read);background:var(--read);color:var(--carbon)}
+.tag.selt b{color:var(--carbon)}
+.xh{position:absolute;inset:0;pointer-events:none;z-index:4}
+.xh .v,.xh .h{position:absolute;background:rgba(237,237,230,.22)}
+.xh .v{top:30px;bottom:0;width:1px}
+.xh .h{left:0;right:0;height:1px}
+.xh .ret{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:1px solid var(--read)}
+.xh .ret::before,.xh .ret::after{content:"";position:absolute;background:var(--read)}
+.xh .ret::before{left:50%;top:-6px;bottom:-6px;width:1px;transform:translateX(-.5px);background:linear-gradient(var(--read) 0 6px,transparent 6px calc(100% - 6px),var(--read) 0)}
+.xh .ret::after{top:50%;left:-6px;right:-6px;height:1px;transform:translateY(-.5px);background:linear-gradient(90deg,var(--read) 0 6px,transparent 6px calc(100% - 6px),var(--read) 0)}
+.xh .ax{position:absolute;font-size:9.5px;letter-spacing:.06em;background:var(--read);color:var(--carbon);padding:1px 5px;font-weight:600;font-variant-numeric:tabular-nums}
+.xh .ax.y{left:0;transform:translateY(-50%)}
+.xh .ax.x{bottom:0;transform:translateX(-50%)}
+.xh.snap .ret{border-color:var(--read);width:30px;height:30px;margin:-15px 0 0 -15px}
+.xh.anim .v,.xh.anim .h,.xh.anim .ret,.xh.anim .ax{transition:all .45s var(--ease)}
+.stage .corner{position:absolute;font-size:9.5px;letter-spacing:.14em;color:#4f544a;z-index:3;pointer-events:none;line-height:1.6}
+.stage .c-bl{left:14px;bottom:12px}
+.stage .c-br{right:14px;bottom:12px;text-align:right}
+.stage .c-tl{left:14px;top:42px}
+.stage .scale{display:inline-block;width:60px;height:5px;border:1px solid #4f544a;border-top:0;vertical-align:middle;margin-left:6px}
+
+/* leaderboard */
+.lb{list-style:none}
+.lb li{display:grid;grid-template-columns:34px 1fr auto 44px;align-items:center;gap:8px;height:39px;padding:0 14px 0 0;border-bottom:1px solid var(--grid);cursor:pointer;position:relative}
+.lb li:hover,.lb li.sel{background:var(--panel)}
+.lb li.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--read)}
+.lb .pos{height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:var(--dim);border-right:1px solid var(--grid)}
+.lb li.isgo .pos{color:var(--go)}
+.lb li.isgo .pos::after{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;background:var(--go)}
+.lb li:first-child.isgo .pos{color:var(--carbon);background:var(--go)}
+.lb li:first-child.isgo .pos::after{display:none}
+.lb .nm{min-width:0}
+.lb .nm b{display:block;font-weight:600;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.02em}
+.lb .nm span{font-size:9.5px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.lb .kn{text-align:right;font-variant-numeric:tabular-nums;font-size:12px;font-weight:600}
+.lb .kn small{display:block;font-size:9px;color:var(--dim);font-weight:400}
+.lb li .lamps i{width:6px;height:6px}
+.lb-more{padding:10px 14px;font-size:10px;color:var(--dim);letter-spacing:.1em}
+
+/* scrubber */
+.scrub{grid-column:1/-1;border-top:1px solid var(--grid);display:grid;grid-template-columns:300px minmax(0,1fr);height:96px}
+.jog{border-right:1px solid var(--grid);display:grid;grid-template-columns:34px 1fr 34px;align-items:stretch}
+.jog>button{font-size:14px;color:var(--dim);border-right:1px solid var(--grid)}
+.jog>button:last-child{border-right:0;border-left:1px solid var(--grid)}
+.jog>button:hover{color:var(--read);background:var(--panel)}
+.wheel{position:relative;overflow:hidden;cursor:ew-resize;touch-action:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;user-select:none}
+.wheel .knurl{position:absolute;inset:22px 0 22px;background:repeating-linear-gradient(90deg,#23261f 0 2px,#3b4036 2px 3px,#1a1c18 3px 7px);background-position:var(--jx,0) 0;transition:background-position .45s var(--ease);
+  mask-image:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent)}
+.wheel .knurl::after{content:"";position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;margin-left:-1px;background:var(--read)}
+.wheel .wl{position:relative;font-size:9.5px;letter-spacing:.18em;color:var(--dim);background:var(--carbon);padding:0 6px;z-index:1}
+.wheel .wv{position:relative;z-index:1;background:var(--carbon);padding:0 8px;font-weight:700;font-size:13px;letter-spacing:.1em}
+.segs{display:grid;grid-template-columns:0.8fr repeat(5,1fr);min-width:0}
+.seg{position:relative;border-right:1px solid var(--grid);padding:9px 12px 8px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.seg:last-child{border-right:0}
+.seg:hover{background:var(--panel)}
+.seg[aria-selected=true]{background:var(--panel)}
+.seg[aria-selected=true]::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--read)}
+.seg .sl{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;letter-spacing:.14em;color:var(--dim)}
+.seg[aria-selected=true] .sl b{color:var(--read)}
+.seg .sl b{font-weight:700;color:#a7ac9f}
+.seg .gc{font-size:10px;letter-spacing:.08em}
+.seg .gc b{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.seg .hist{display:flex;align-items:flex-end;gap:2px;height:34px}
+.seg .hist i{flex:1;background:#40453b;min-height:1px;position:relative;transition:height .4s var(--ease)}
+.seg .hist i.g4{background:var(--go)}
+.seg .hist i.g0{background:#2a2e27}
+.seg .hl{display:flex;justify-content:space-between;font-size:8.5px;color:#4a4f45;margin-top:2px}
+
+/* ===== SPOT VIEW ===== */
+#v-spot{min-height:calc(100vh - var(--top) - var(--bar))}
+.sp-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) 400px;border-bottom:1px solid var(--grid)}
+.sp-head>div{border-right:1px solid var(--grid);min-width:0}
+.sp-head>div:last-child{border-right:0}
+.sp-id{padding:14px 20px 16px;display:flex;flex-direction:column}
+.back{align-self:flex-start;display:inline-flex;gap:10px;align-items:center;font-size:10.5px;letter-spacing:.16em;color:var(--dim);padding:5px 8px 5px 0;margin-bottom:12px}
+.back:hover{color:var(--read)}
+.sp-eyebrow{font-size:10px;letter-spacing:.16em;color:var(--dim);margin-bottom:8px;text-transform:uppercase}
+.sp-name{font-size:clamp(52px,6.2vw,96px);margin-bottom:12px;word-break:break-word}
+.sp-meta{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:4px 22px;font-size:10.5px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.sp-meta b{display:block;color:var(--read);font-weight:600;font-size:13px;letter-spacing:.02em}
+.sp-low{margin-top:auto;padding-top:14px;display:flex;gap:18px;align-items:flex-end}
+.sp-note{font-size:11px;color:var(--dim);max-width:40ch;line-height:1.5}
+.dial{flex:none;width:150px;height:150px}
+.nx-dial{margin-top:auto;padding-top:16px;display:flex;gap:22px;align-items:center}
+.nx-dial .dl{display:grid;gap:5px;font-size:9.5px;letter-spacing:.1em;color:var(--read)}
+.nx-dial .dl i{display:inline-block;width:14px;height:3px;margin-right:8px;vertical-align:middle}
+.dial svg{display:block;width:100%;height:100%;overflow:visible}
+.dial text{font-family:'JetBrains Mono',monospace}
+.sp-next{padding:16px 22px 18px;display:flex;flex-direction:column;background:
+  linear-gradient(var(--carbon),var(--carbon)) padding-box}
+.nx-top{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.16em;color:var(--dim)}
+.nx-top .lamps i{width:10px;height:10px}
+.nx-state{font-size:10px;letter-spacing:.16em;padding:3px 7px;border:1px solid currentColor}
+.seg7{display:flex;align-items:flex-end;gap:10px;margin:16px 0 14px;min-height:104px}
+.seg7 svg{display:block;width:auto;overflow:visible}
+.seg7 .sec{height:56px}
+.seg7 .tm{font:700 26px/1 'Archivo',sans-serif;font-stretch:62%;color:var(--dim);align-self:flex-start;margin-top:4px}
+.s7on{fill:var(--go);filter:drop-shadow(0 0 6px rgba(212,255,58,.45))}
+.s7off{fill:#1d201a}
+.seg7.nogo .s7on{fill:var(--alarm);filter:drop-shadow(0 0 6px rgba(255,107,26,.4))}
+.seg7.live .s7on{fill:var(--go)}
+.nx-sub{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:4px 26px;border-top:1px solid var(--grid);padding-top:12px;font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.nx-sub b{display:block;font-size:15px;color:var(--read);font-weight:600;letter-spacing:0}
+.nx-sub b.isgo{color:var(--go)}
+
+.sec-h{display:flex;align-items:center;gap:14px;height:34px;padding:0 20px;border-bottom:1px solid var(--grid);font-size:10.5px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.sec-h .ch{color:#4a4f45}
+.sec-h b{color:var(--read);font-weight:600}
+.sec-h .rt{margin-left:auto;display:flex;gap:16px;align-items:center}
+.sec-h .key{display:inline-flex;align-items:center;gap:6px}
+.sec-h .key i{display:inline-block;width:14px;height:2px;background:var(--read)}
+
+/* strip */
+.strip{position:relative;display:grid;grid-template-columns:78px minmax(0,1fr);border-bottom:1px solid var(--grid)}
+.gutter{position:relative;border-right:1px solid var(--grid);background:var(--carbon);z-index:2}
+.gutter div{position:absolute;left:12px;right:8px;font-size:9.5px;letter-spacing:.14em;color:var(--dim);line-height:1.15;transform:translateY(-50%)}
+.gutter div small{display:block;color:#4a4f45;font-size:8.5px}
+.strip-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--grid) transparent;outline-offset:-2px}
+.strip-scroll svg{display:block}
+.strip text{font-family:'JetBrains Mono',monospace}
+.led-on{fill:var(--read)} .led-go{fill:var(--go)} .led-off{fill:#1f221c} .led-pot{fill:none;stroke:#7a8074;stroke-width:1}
+.led-flash{animation:flash .6s ease-out}
+@keyframes flash{0%{opacity:.2}40%{opacity:1}}
+.cur{display:grid;grid-template-columns:150px repeat(8,minmax(0,1fr)) minmax(0,2.2fr);border-bottom:1px solid var(--grid);min-height:78px}
+.cur>div{padding:10px 14px;border-right:1px solid var(--grid);display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0}
+.cur>div:last-child{border-right:0}
+.cur .v{font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-transform:uppercase;white-space:nowrap}
+.cur .v small{font-size:10px;color:var(--dim);margin-left:3px;font-weight:400;letter-spacing:.06em}
+.cur .v.sm{font-size:13px;letter-spacing:0;white-space:normal;line-height:1.2}
+.cur .t .v{font-family:'Archivo',sans-serif;font-stretch:62%;font-weight:900;font-size:34px;letter-spacing:0;line-height:.85}
+.cur .reasons{font-size:10.5px;line-height:1.45;color:var(--dim)}
+.cur .reasons p::before{content:"▲ ";color:var(--alarm)}
+.cur .reasons p.ok::before{content:"● ";color:var(--go)}
+.cur .reasons p.ok{color:var(--read)}
+
+.sectors{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--grid)}
+.sector{padding:14px 16px 16px;border-right:1px solid var(--grid);text-align:left;display:grid;gap:10px;position:relative}
+.sector:last-child{border-right:0}
+.sector:hover{background:var(--panel)}
+.sector .s-top{display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.14em;color:var(--dim)}
+.sector .s-top b{color:var(--read)}
+.sector .s-day{font-size:44px}
+.sector .s-row{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;border-top:1px solid var(--grid);padding-top:6px}
+.sector .s-row b{font-size:13px;color:var(--read);letter-spacing:0;font-weight:600}
+.sector.isgo::after{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--go)}
+.sector .spark{height:34px;display:flex;align-items:flex-end;gap:1px}
+.sector .spark i{flex:1;background:#40453b}
+.sector .spark i.sg{background:var(--go)}
+.sector .spark i.n{background:transparent}
+
+.scope-wrap{border-bottom:1px solid var(--grid);padding:0 0 0 78px;position:relative;overflow-x:auto}
+.scope-wrap svg{display:block}
+.scope-glow{filter:drop-shadow(0 0 3px rgba(237,237,230,.55))}
+.tables{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--grid)}
+.tables>div{border-right:1px solid var(--grid);min-width:0}
+.tables>div:last-child{border-right:0}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-weight:400;font-size:9.5px;letter-spacing:.14em;color:var(--dim);text-align:left;padding:8px 14px;border-bottom:1px solid var(--grid)}
+td{padding:7px 14px;border-bottom:1px solid #22251f;font-size:12px}
+td.n,th.n{text-align:right}
+tr.est td{color:var(--dim)}
+.tag-hw{display:inline-block;width:26px;font-weight:700}
+.inst{padding:14px 20px;display:grid;gap:10px;font-size:11px;color:var(--dim);line-height:1.6}
+.inst b{color:var(--read);font-weight:600}
+.foot-attr{padding:16px 20px 26px;font-size:9.5px;letter-spacing:.08em;color:#4f544a;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.lite{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--grid)}
+.lite .ld{border-right:1px solid var(--grid);padding:16px;display:grid;gap:10px}
+.lite .ld:last-child{border-right:0}
+.lite .tube{height:150px;border:1px solid var(--grid);position:relative;background:repeating-linear-gradient(0deg,transparent 0 29px,#22251f 29px 30px)}
+.lite .tube i{position:absolute;left:30%;right:30%;bottom:0;background:repeating-linear-gradient(0deg,var(--c) 0 5px,transparent 5px 7px);transition:height .5s var(--ease)}
+.lite .tube span{position:absolute;right:6px;top:4px;font-size:9px;color:var(--dim)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 10px;border:1px solid var(--read);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.chip::before{content:"▸";color:var(--dim)}
+.chip:hover{background:var(--read);color:var(--carbon)}
+.chip.isgo{border-color:var(--go);color:var(--go)}
+.chip.isgo:hover{background:var(--go);color:var(--carbon)}
+
+/* ===== CO-PILOT ===== */
+.cpbar{position:fixed;left:0;right:0;bottom:0;height:var(--bar);z-index:45;display:flex;align-items:stretch;background:var(--carbon);border-top:1px solid var(--read);cursor:text}
+.cpbar .cp-l{flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--read);color:var(--carbon);font-weight:800;font-size:11px;letter-spacing:.18em}
+.cpbar .cp-l i{width:7px;height:7px;background:var(--carbon);border-radius:50%;animation:pulse 1.6s steps(2) infinite}
+@keyframes pulse{50%{opacity:.2}}
+.cpbar .cp-t{flex:1;display:flex;align-items:center;padding:0 16px;font-size:12.5px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;min-width:0}
+.cpbar .cp-t .tx{overflow:hidden;text-overflow:ellipsis}
+.cursor{display:inline-block;width:.6em;height:1.1em;background:var(--read);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite;flex:none}
+@keyframes blink{50%{opacity:0}}
+.cpbar .cp-r{flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-left:1px solid var(--grid);font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.console{visibility:hidden;position:fixed;right:0;top:var(--top);bottom:var(--bar);width:min(480px,100vw);z-index:44;background:rgba(14,15,12,.97);border-left:1px solid var(--read);display:flex;flex-direction:column;transform:translateX(102%);transition:transform .45s var(--ease);backdrop-filter:blur(6px)}
+.console.open{transform:none;visibility:visible}
+.console{transition:transform .45s var(--ease),visibility 0s .45s}.console.open{transition:transform .45s var(--ease)}
+.console .ph{position:static;height:38px}
+.console .ph button{color:var(--dim);font-size:10px;letter-spacing:.14em;display:flex;gap:8px;align-items:center}
+.console .ph button:hover{color:var(--read)}
+.log{flex:1;overflow:auto;padding:16px 18px 10px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--grid) transparent}
+.msg{display:grid;gap:4px;font-size:12px;line-height:1.55}
+.msg .who{font-size:9.5px;letter-spacing:.18em;color:var(--dim);display:flex;justify-content:space-between}
+.msg.you .body{color:var(--dim)}
+.msg.you .body p::before{content:"> ";color:var(--read)}
+.msg.cp{border-left:2px solid var(--read);padding-left:12px}
+.msg.cp .body p{letter-spacing:.03em;text-transform:uppercase}
+.msg.cp .body p.row{display:grid;grid-template-columns:30px 1fr auto auto;gap:10px;color:var(--read);font-variant-numeric:tabular-nums}
+.msg.cp .body p.row span:first-child{color:var(--dim)}
+.msg.cp .body p.row.isgo span:first-child{color:var(--go)}
+.msg.cp .body p.call{margin-top:6px;font-weight:700}
+.msg .chips{margin-top:10px}
+.prompt{display:flex;align-items:center;gap:8px;border-top:1px solid var(--grid);padding:0 14px;height:48px}
+.prompt span{color:var(--read);font-weight:700}
+.prompt input{flex:1;background:none;border:0;outline:0;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;caret-color:var(--read)}
+.prompt input::placeholder{color:#4f544a}
+.suggest{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 12px;border-top:1px solid var(--grid)}
+.suggest button{font-size:10px;letter-spacing:.08em;border:1px dashed var(--grid);padding:4px 8px;color:var(--dim)}
+.suggest button:hover{border-color:var(--read);color:var(--read)}
+.toast{position:fixed;left:50%;top:calc(var(--top) + 14px);transform:translate(-50%,-20px);opacity:0;z-index:60;background:var(--read);color:var(--carbon);font-weight:700;font-size:11px;letter-spacing:.14em;padding:8px 14px;transition:all .3s var(--ease);pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ===== responsive ===== */
+@media (max-width:1180px){
+  #v-map.on{grid-template-columns:260px minmax(0,1fr) 300px}
+  .scrub{grid-template-columns:260px minmax(0,1fr)}
+  .sp-head{grid-template-columns:1fr 1fr}
+  .sp-head .sp-rc{grid-column:1/-1;border-top:1px solid var(--grid)}
+  .cur{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .cur>div{border-bottom:1px solid var(--grid)}
+  .cur .reasons-cell{grid-column:1/-1}
+  .status .hide-m{display:none}
+}
+@media (max-width:760px){
+  :root{--top:86px;--bar:46px}
+  .top{flex-wrap:wrap}
+  .brand{height:52px;flex:1;border-right:0}
+  .status{height:52px;margin-left:0}
+  .status>*:not(#riderChip){display:none}
+  .nav{order:3;width:100%;height:34px;border-top:1px solid var(--grid);overflow-x:auto}
+  .nav a{flex:1;justify-content:center;padding:0 8px;font-size:10px;letter-spacing:.1em}
+  .nav a .nx{display:none}
+  .brand .ver{display:none}
+  #v-map.on{display:flex;flex-direction:column;height:auto}
+  .stage{order:1;height:min(72vh,560px);min-height:460px;border-bottom:1px solid var(--grid)}
+  .scrub{order:2;grid-template-columns:1fr;height:auto}
+  .jog{height:52px;border-right:0;border-bottom:1px solid var(--grid)}
+  .segs{overflow-x:auto;grid-template-columns:repeat(6,minmax(92px,1fr));height:108px}
+  .seg .sl{flex-direction:column;align-items:flex-start;gap:2px}
+  .col-l{order:3;border-right:0;overflow:visible}
+  .col-r{order:4;border-left:0;border-top:1px solid var(--grid);overflow:visible}
+  .ph{position:static}
+  .sp-head{grid-template-columns:1fr}
+  .sp-head>div{border-right:0;border-bottom:1px solid var(--grid)}
+  .sp-name{font-size:68px}
+  .dial{width:120px;height:120px}
+  .seg7 svg{height:84px}.seg7 .sec{height:40px}.seg7{min-height:84px}
+  .nx-sub{grid-template-columns:repeat(2,auto)}
+  .strip{grid-template-columns:58px minmax(0,1fr)}
+  .gutter div{left:8px;font-size:8.5px;letter-spacing:.06em}
+  .scope-wrap{padding-left:0}
+  .cur{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cur .t{grid-column:1/-1}
+  .sectors,.lite{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:74%;overflow-x:auto;scroll-snap-type:x mandatory}
+  .sector,.lite .ld{scroll-snap-align:start}
+  .sector .s-day{font-size:34px}
+  .tables{grid-template-columns:1fr}
+  .tables>div{border-right:0;border-bottom:1px solid var(--grid)}
+  .console{width:100vw;border-left:0}
+  .cpbar .cp-r{display:none}
+  .console .ph .code{display:none}
+  .sec-h{flex-wrap:wrap;height:auto;padding:9px 14px;gap:4px 10px}.sec-h .rt{display:none}
+  .sec-h>span:nth-child(3){flex-basis:100%}
+  .cpbar .cp-t{font-size:11px;padding:0 10px}
+  .cpbar .cp-l{padding:0 10px;font-size:10px}
+  .ro-name{font-size:34px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .ticker .tk-t{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#map" aria-label="wingfoil.ie — forecast map">
+    <span class="blamp" id="brandLamp" aria-hidden="true"></span>
+    <span class="wm">WINGFOIL</span><span class="tld">.IE</span>
+    <span class="ver">TLM/C<br>IRL·146</span>
+  </a>
+  <nav class="nav" aria-label="Primary">
+    <a href="#map" class="on" id="navF"><span class="nx">01</span>FORECAST</a>
+    <a href="#map" data-off="COMMUNITY"><span class="nx">02</span>COMMUNITY</a>
+    <a href="#map" data-off="MARKETPLACE"><span class="nx">03</span>MARKETPLACE</a>
+    <a href="#companion" id="navA"><span class="nx">04</span>ASK</a>
+  </nav>
+  <div class="status">
+    <span class="hide-m">SRC <b>7 MODELS</b></span>
+    <span class="hide-m" id="clock">—</span>
+    <button id="riderChip" aria-label="Rider configuration">RIDER <b id="riderTxt">80KG·RIDING</b></button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ MAP ============ -->
+  <section id="v-map" class="view" aria-label="Forecast map">
+    <div class="col col-l">
+      <div class="ph"><span><b>CURSOR</b> <span class="code">// CH.01</span></span><span id="roMode">SNAP</span></div>
+      <div class="ro" id="readout" aria-live="polite"></div>
+      <div class="ph"><span><b>RIDER CONFIG</b> <span class="code">// CH.02</span></span><span>RE-SCORES LIVE</span></div>
+      <div data-rc></div>
+      <div class="legend">
+        <div class="lbl">LEGEND</div>
+        <div class="lg"><span class="sw"><span class="g isgo" style="position:relative;--h:14px;margin:0;width:14px;height:20px"><span class="bar" style="bottom:0"></span><span class="lamp" style="bottom:16px"></span></span></span>BAR = RIDEABLE KN · LIME LAMP = ★4+ GO</div>
+        <div class="lg"><span class="sw"><span class="g mid" style="position:relative;--h:9px;margin:0;width:14px;height:20px"><span class="bar" style="bottom:0"></span><span class="lamp" style="bottom:11px"></span></span></span>WHITE ★2–3 · GREY ★1 · DARK ★0</div>
+        <div class="lg"><span class="sw"><span style="width:7px;height:7px;border:1px solid var(--alarm);display:block"></span></span>ORANGE FOOT = OFFSHORE / CROSS-OFF</div>
+        <div class="keys"><span><kbd>J</kbd> <kbd>K</kbd> STEP SPOTS</span><span><kbd>←</kbd> <kbd>→</kbd> TIME</span><span><kbd>↵</kbd> OPEN</span><span><kbd>/</kbd> CO-PILOT</span></div>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="ticker" aria-label="Rig now leaderboard ticker"><div class="tk-l">RIG NOW</div><div class="tk-t"><div class="tk-run" id="tkRun"></div></div></div>
+      <canvas id="matrix" aria-hidden="true"></canvas>
+      <div class="gauges" id="gauges" role="group" aria-label="Spots"></div>
+      <div class="xh" id="xh" aria-hidden="true"><div class="v"></div><div class="h"></div><div class="ret"></div><div class="ax y"></div><div class="ax x"></div></div>
+      <div class="corner c-tl" id="cTL"></div>
+      <div class="corner c-bl">EQUIRECT · COS 53.4°<br>DOT PITCH <span id="pitch">—</span><span class="scale"></span> 50 KM</div>
+      <div class="corner c-br" id="cBR"></div>
+    </div>
+    <div class="col col-r">
+      <div class="ph"><span><b>RIG NOW</b> <span class="code">// TIMING TOWER</span></span><span id="lbWhen">—</span></div>
+      <ol class="lb" id="lb"></ol>
+      <div class="lb-more" id="lbMore"></div>
+    </div>
+    <div class="scrub">
+      <div class="jog">
+        <button id="jogL" aria-label="Previous time">◂</button>
+        <div class="wheel" id="wheel" role="slider" tabindex="0" aria-label="Time jog wheel" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0">
+          <div class="knurl"></div>
+          <span class="wl">T-SELECT</span>
+          <span class="wv" id="wheelV">NOW</span>
+        </div>
+        <button id="jogR" aria-label="Next time">▸</button>
+      </div>
+      <div class="segs" id="segs" role="tablist" aria-label="Forecast time"></div>
+    </div>
+  </section>
+
+  <!-- ============ SPOT ============ -->
+  <section id="v-spot" class="view" aria-label="Spot telemetry"></section>
+</main>
+
+<aside class="console" id="console" aria-label="Co-pilot console" aria-hidden="true">
+  <div class="ph"><span><b>CO-PILOT</b> <span class="code">// CH.16 · DATA-ONLY · NO GUESSWORK</span></span><button id="cpClose">CLOSE <kbd>ESC</kbd></button></div>
+  <div class="log" id="log" aria-live="polite"></div>
+  <div class="suggest" id="suggest"></div>
+  <form class="prompt" id="cpForm"><span>&gt;</span><input id="cpIn" autocomplete="off" placeholder="ASK: BEST TOMORROW · WING AT KEEL 3PM · GO NOW" aria-label="Ask co-pilot"></form>
+</aside>
+
+<div class="cpbar" id="cpbar" role="button" tabindex="0" aria-label="Open co-pilot console">
+  <div class="cp-l"><i></i>CO-PILOT</div>
+  <div class="cp-t"><span class="tx" id="cpLine"></span><span class="cursor"></span></div>
+  <div class="cp-r"><kbd>/</kbd> TO TALK</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+(() => {
+'use strict';
+const WF = window.WF;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NOW = Date.parse(WF.now);
+const T0 = performance.now();
+const simNow = () => NOW + (performance.now() - T0);
+const H = 3600e3;
+const pad = (n, l = 2) => String(n).padStart(l, '0');
+const DAYN = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const c2d = c => COMPASS.indexOf(c) * 22.5;
+const d2c = d => COMPASS[Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
+const dayLbl = date => DAYN[new Date(date + 'T12:00:00Z').getUTCDay()];
+const dayNum = date => date.slice(8);
+const hm = local => local.slice(-5);           // "Mon, 5 Oct, 14:00" -> "14:00"
+const istHM = t => { const d = new Date(t + H); return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); };
+const istDay = t => DAYN[new Date(t + H).getUTCDay()];
+const f1 = n => (Math.round(n * 10) / 10).toFixed(1);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const up = s => String(s).toUpperCase();
+const DATES = WF.spots[0].days.map(d => d.date);
+const spotById = Object.fromEntries(WF.spots.map(s => [s.id, s]));
+const FEAT = WF.featured;
+const cty = c => up(c).slice(0, 3);
+
+/* ============ RATING PORT (matches rating.stars for 80 kg riding) ============ */
+const BANDS = { learning:[12,14,20,24], riding:[10,14,24,30], advanced:[8,13,28,35] };
+const SHARE = { learning:.2, riding:.3, advanced:.35 };
+const LEVEL_LBL = { learning:'LEARNING', riding:'RIDING', advanced:'ADVANCED' };
+const R = { w:80, level:'riding', quiver:[] };
+const isDefault = () => R.w === 80 && R.level === 'riding' && !R.quiver.length;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ramp = (x, x0, x1, y0, y1) => y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
+function band(r = R) {
+  const b = BANDS[r.level], k = r.w / 80, lo = Math.sqrt(k), hi = k ** .25;
+  return { min:b[0]*lo, sweetLow:b[1]*lo, sweetHigh:b[2]*hi, max:b[3]*hi };
+}
+function windScore(x, b) {
+  const { min, sweetLow:sl, sweetHigh:sh, max } = b;
+  if (x < min - 2) return 0;
+  if (x < min) return ramp(x, min - 2, min, 0, 1);
+  if (x < sl) return ramp(x, min, sl, 1, 4);
+  if (x <= sh) { const q = (sh - sl) / 4; if (x < sl + q) return ramp(x, sl, sl + q, 4, 5); if (x > sh - q) return ramp(x, sh - q, sh, 5, 4); return 5; }
+  if (x <= max) return ramp(x, sh, max, 4, 2);
+  return ramp(x, max, max + 6, 2, 0);
+}
+function shoreAngle(from, facing) {
+  const off = Math.abs(((((from - facing) % 360) + 540) % 360) - 180);
+  return off < 30 ? 'onshore' : off < 70 ? 'cross-on' : off < 110 ? 'cross' : off < 150 ? 'cross-off' : 'offshore';
+}
+function sessionOf(x, b) {
+  if (x < b.min - 2) return 'Too light'; if (x < b.min) return 'Pump and glide'; if (x < b.sweetLow) return 'Light-wind drills';
+  if (x <= (b.sweetLow + b.sweetHigh) / 2) return 'Cruising'; if (x <= b.sweetHigh) return 'Powered up'; if (x <= b.max) return 'Overpowered'; return 'Too strong';
+}
+function wingSize(kn, r = R) {
+  const sk = r.level === 'learning' ? 1.1 : r.level === 'advanced' ? .92 : 1;
+  return clamp(Math.round(5.5 * (r.w / 80) ** .8 * (15 / Math.max(kn, 6)) ** .85 * sk * 2) / 2, 2, 8);
+}
+function pickWing(kn, r = R) {
+  const rec = wingSize(kn, r); const q = [...r.quiver].sort((a, b) => a - b);
+  if (!q.length) return { rec, own:null, fit:'fits' };
+  const own = q.find(s => s >= rec * .9) ?? q[q.length - 1];
+  return { rec, own, fit: own < rec * .75 ? 'underpowered' : own > rec * 1.35 ? 'overpowered' : 'fits' };
+}
+/** h: {kn, gust, dir, agreement, daylight}; facing: deg|null */
+function rate(h, facing, r = R) {
+  if (!h.daylight || h.kn == null) return null;
+  const b = band(r), L = r.level === 'learning', A = r.level === 'advanced';
+  const m = h.kn, g = h.gust ?? m;
+  const fade = clamp((b.sweetHigh - m) / (b.sweetHigh - b.min), 0, 1);
+  const ride = m + SHARE[r.level] * fade * Math.min(Math.max(g - m, 0), m);
+  const base = windScore(ride, b);
+  let s = base, cap = 5; const reasons = [];
+  const ang = facing == null || h.dir == null ? null : shoreAngle(h.dir, facing);
+  if (ang === 'offshore') { cap = L ? 0 : 1; reasons.push('Offshore wind: it blows you away from the beach.'); }
+  else if (ang === 'cross-off') { s -= A ? 1 : L ? 3 : 1.5; reasons.push('Cross-offshore: a drift downwind takes you out, not in.'); }
+  else if (ang === 'onshore') { s -= 1; reasons.push('Onshore: slow to get out through the chop.'); }
+  else if (ang === 'cross' && L) { s -= .5; reasons.push('Cross-shore: fine, but cross-onshore is kinder to learn in.'); }
+  if (g > b.max) { s -= 1; reasons.push(`Gusts ${Math.round(g)} kn top your ${Math.round(b.max)} kn ceiling.`); }
+  const fct = g / m;
+  if (L) { const p = fct > 1.7 ? 2.25 : fct > 1.5 ? 1.5 : fct > 1.35 ? .75 : 0; if (p) { s -= p; reasons.push(`Gusty for learning: ${Math.round(g)} on a ${Math.round(m)} kn mean.`); } }
+  else if (fct > 1.7 && m >= b.sweetLow) { s -= .5; reasons.push(`Gusty: ${Math.round(g)} kn on a ${Math.round(m)} kn mean.`); }
+  if (h.agreement === 'low') { s -= 1; reasons.push('The models disagree, so this hour is a guess.'); }
+  else if (h.agreement === 'moderate') s -= .25;
+  const wing = pickWing(m, r);
+  if (wing.fit === 'underpowered') { s -= 1; reasons.push(`Your biggest wing is small: ~${f1(wing.rec)} m² would suit.`); }
+  if (wing.fit === 'overpowered') { s -= 1; reasons.push(`Your smallest wing is big: ~${f1(wing.rec)} m² would suit.`); }
+  const potential = Math.round(base);
+  const stars = clamp(Math.round(Math.min(s, cap)), 0, potential);
+  return { stars, potential, ride, shore: ang, wing, reasons, session: ang === 'offshore' ? 'Offshore' : sessionOf(ride, b) };
+}
+const wingTxt = w => w.own != null ? f1(w.own) : f1(w.rec);
+const SHORT = { 'Too light':'TOO LIGHT','Pump and glide':'PUMP+GLIDE','Light-wind drills':'DRILLS','Cruising':'CRUISING','Powered up':'POWERED','Overpowered':'OVERPOWERED','Too strong':'TOO STRONG','Offshore':'OFFSHORE' };
+const SHORE_TXT = s => s ? up(s) : 'SHORE N/A';
+const shoreWarn = s => s === 'offshore' || s === 'cross-off';
+
+/* ============ STATE ============ */
+let T = -1;            // -1 = NOW, 0..4 = day best
+let SEL = null;        // selected spot id on map
+let STATES = {};       // id -> state for T
+let RANK = [];
+let CUR_SPOT = null;   // spot page id
+let CUR_I = null;      // spot page cursor hour index
+let lastViewHash = '#map';
+
+function spotState(s, t = T) {
+  let src, at, dS, dP;
+  if (t < 0) { src = { kn:s.now.wind, gust:s.now.gust, dir:s.now.dir }; at = 'NOW'; dS = s.now.stars; dP = s.now.potential; }
+  else { const b = s.days[t].best; if (!b) return { none:true, r:{ stars:0, potential:0, ride:0 } }; src = { kn:b.wind, gust:b.gust, dir:c2d(b.dir) }; at = b.at; dS = b.stars; }
+  const r = rate({ ...src, agreement:null, daylight:true }, s.facing);
+  if (isDefault()) { r.stars = dS; r.potential = Math.max(r.potential, dS, dP ?? 0); }
+  return { ...src, at, compass:d2c(src.dir), r };
+}
+function computeStates() {
+  STATES = {};
+  WF.spots.forEach(s => STATES[s.id] = spotState(s));
+  RANK = WF.spots.filter(s => !STATES[s.id].none).sort((a, b) => STATES[b.id].r.stars - STATES[a.id].r.stars || STATES[b.id].r.ride - STATES[a.id].r.ride);
+}
+const tLabel = (t = T) => t < 0 ? 'NOW · ' + istDay(NOW) + ' ' + istHM(NOW) : dayLbl(DATES[t]) + ' ' + dayNum(DATES[t]) + ' · DAY BEST';
+const tShort = (t = T) => t < 0 ? 'NOW' : dayLbl(DATES[t]) + ' ' + dayNum(DATES[t]);
+
+/* featured hourly ratings, cached per rider */
+const ratedCache = {};
+function rated(id) {
+  const key = id + '|' + R.w + R.level + R.quiver.join(',');
+  if (ratedCache[key]) return ratedCache[key];
+  const f = FEAT[id];
+  return ratedCache[key] = f.hours.map(h => ({ h, r: rate({ kn:h.wind.kn, gust:h.wind.gust, dir:h.wind.dir, agreement:h.wind.agreement, daylight:h.daylight }, f.spot.facing) }));
+}
+const nowIdx = () => Math.floor((simNow() - Date.parse(FEAT.brandon.hours[0].time)) / H);
+function nextWindow(id) {
+  const hr = rated(id); const ni = Math.max(0, nowIdx());
+  for (let i = ni; i < hr.length; i++) {
+    if (hr[i].r && hr[i].r.stars >= 4) {
+      let j = i; while (j + 1 < hr.length && hr[j + 1].r && hr[j + 1].r.stars >= 4) j++;
+      const peak = hr.slice(i, j + 1).reduce((a, b) => b.r.stars > a.r.stars ? b : a);
+      return { start:i, end:j, live:i === ni, t0:Date.parse(hr[i].h.time), t1:Date.parse(hr[j].h.time) + H, peak };
+    }
+  }
+  return null;
+}
+
+/* ============ GEO / MAP ============ */
+const XS = WF.coast.flat().map(p => p[0]), YS = WF.coast.flat().map(p => p[1]);
+const BB = { x0:Math.min(...XS), x1:Math.max(...XS), y0:Math.min(...YS), y1:Math.max(...YS) };
+const KX = Math.cos(53.4 * Math.PI / 180);
+let P = null; // projection
+function pip(x, y, ring) {
+  let c = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+const onLand = (lon, lat) => WF.coast.some(r => pip(lon, lat, r));
+const proj = (lon, lat) => [P.ox + (lon - BB.x0) * KX * P.s, P.oy + (BB.y1 - lat) * P.s];
+const unproj = (x, y) => [BB.x0 + (x - P.ox) / (KX * P.s), BB.y1 - (y - P.oy) / P.s];
+let DOTS = [], stageW = 0, stageH = 0;
+const canvas = $('#matrix'), ctx = canvas.getContext('2d');
+function layoutMap() {
+  const st = $('#stage'); const W = st.clientWidth, Hh = st.clientHeight;
+  if (!W || !Hh) return;
+  stageW = W; stageH = Hh;
+  const mob = W < 560;
+  const padT = 30 + (mob ? 60 : 76), padB = mob ? 34 : 46, padX = mob ? 18 : 40;
+  const s = Math.min((W - 2 * padX) / ((BB.x1 - BB.x0) * KX), (Hh - padT - padB) / (BB.y1 - BB.y0));
+  const mw = (BB.x1 - BB.x0) * KX * s, mh = (BB.y1 - BB.y0) * s;
+  P = { s, ox:(W - mw) / 2, oy:padT + (Hh - padT - padB - mh) / 2 };
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  canvas.width = W * dpr; canvas.height = Hh * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const step = mob ? 6 : 7.5;
+  const kmPerPx = 111 / s;
+  $('#pitch').textContent = f1(step * kmPerPx) + ' KM';
+  $('.c-bl .scale').style.width = (50 / kmPerPx) + 'px';
+  const pts = WF.spots.map(sp => proj(sp.lon, sp.lat));
+  DOTS = [];
+  const R2 = (step * 3.6) ** 2; const cols = Math.floor((W - step / 2) / step) + 1; const rows = Math.floor((Hh - 30 - step / 2) / step) + 1;
+  for (let rI = 0; rI < rows; rI++) for (let cI = 0; cI < cols; cI++) { const x = step / 2 + cI * step, y = 30 + step / 2 + rI * step;
+    const [lon, lat] = unproj(x, y);
+    const land = lon > BB.x0 - .1 && lon < BB.x1 + .1 && lat > BB.y0 - .1 && lat < BB.y1 + .1 && onLand(lon, lat);
+    let ni = -1, nd = Infinity;
+    if (!land) for (let k = 0; k < pts.length; k++) { const dx = pts[k][0] - x, dy = pts[k][1] - y, d = dx * dx + dy * dy; if (d < nd) { nd = d; ni = k; } }
+    DOTS.push({ x, y, land, ni, nd: nd < R2 ? Math.sqrt(nd) / Math.sqrt(R2) : 2 });
+  }
+  DOTS.forEach((d, k) => { if (d.land) { const c = k % cols; const n = [c > 0 ? DOTS[k - 1] : null, c < cols - 1 ? DOTS[k + 1] : null, DOTS[k - cols], DOTS[k + cols]]; d.edge = n.some(q => !q || !q.land); } });
+  buildGauges(pts);
+  drawMatrix();
+  moveXH(null, true);
+}
+function drawMatrix() {
+  ctx.clearRect(0, 0, stageW, stageH);
+  const mob = stageW < 560;
+  const lr = mob ? 1.25 : 1.55;
+  for (const d of DOTS) {
+    if (d.land) { ctx.fillStyle = d.edge ? '#8d9386' : (mob ? '#474c41' : '#3e4339'); ctx.fillRect(d.x - lr, d.y - lr, lr * 2, lr * 2); continue; }
+    if (d.nd < 1) {
+      const st = STATES[WF.spots[d.ni].id]; const s = st.r.stars; const a = 1 - d.nd;
+      if (s >= 4) { ctx.fillStyle = `rgba(212,255,58,${(.08 + .5 * a * a).toFixed(3)})`; const r = .5 + a * .9; ctx.fillRect(d.x - r, d.y - r, r * 2, r * 2); continue; }
+      if (s >= 1) { ctx.fillStyle = `rgba(237,237,230,${(.05 + .1 * s * a).toFixed(3)})`; const r = .6 + a * .7; ctx.fillRect(d.x - r, d.y - r, r * 2, r * 2); continue; }
+    }
+    ctx.fillStyle = '#1c1e1a'; ctx.fillRect(d.x - .5, d.y - .5, 1, 1);
+  }
+}
+let gaugeEls = {};
+function buildGauges(pts) {
+  const g = $('#gauges'); g.innerHTML = ''; gaugeEls = {};
+  WF.spots.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'g'; b.style.left = pts[i][0] + 'px'; b.style.top = pts[i][1] + 'px';
+    b.dataset.id = s.id; b.innerHTML = '<span class="bar"></span><span class="lamp"></span><span class="foot"></span>';
+    b.addEventListener('click', () => { if (SEL === s.id) go('#spot/' + s.id); else select(s.id, true); });
+    b.addEventListener('focus', () => { if (SEL !== s.id) select(s.id, true, true); });
+    g.appendChild(b); gaugeEls[s.id] = b;
+  });
+  paintGauges();
+}
+function cls(st) { const s = st.r.stars; return s >= 4 ? 'isgo' : s >= 2 ? 'mid' : s >= 1 ? 'low' : 'zero'; }
+function paintGauges() {
+  const mob = stageW < 560, k = mob ? 1.35 : 1.75;
+  WF.spots.forEach(s => {
+    const el = gaugeEls[s.id]; if (!el) return; const st = STATES[s.id];
+    el.className = 'g ' + cls(st) + (shoreWarn(st.r.shore) ? ' warn' : '') + (SEL === s.id ? ' sel' : '');
+    el.style.setProperty('--h', Math.round(clamp(st.r.ride || 0, 0, 40) * k) + 'px');
+    el.style.zIndex = SEL === s.id ? 9 : 1 + st.r.stars;
+    el.setAttribute('aria-label', `${s.name}, ${s.county}. ${st.r.stars} of 5 stars, ${f1(st.r.ride)} knots rideable`);
+  });
+  paintTags();
+}
+function paintTags() {
+  if (!P || currentView !== 'map') return;
+  $$('.tag', $('#stage')).forEach(e => e.remove());
+  const stg = $('#stage'); const mob = stageW < 560;
+  const top = RANK.slice(0, mob ? 2 : 3);
+  const list = top.map((s, i) => ({ s, p:'P' + (i + 1) }));
+  if (SEL && !list.find(t => t.s.id === SEL)) list.push({ s:spotById[SEL], p:'SEL' });
+  const placed = [];
+  list.forEach(({ s, p }) => {
+    const [x, y] = proj(s.lon, s.lat); const st = STATES[s.id];
+    const t = document.createElement('div');
+    t.className = 'tag' + (st.r.stars >= 4 ? ' isgo' : '') + (s.id === SEL ? ' selt' : '');
+    t.innerHTML = `<b>${p}</b>${esc(up(s.name.split(/ [—–-] |, | \/ /)[0]))} ★${st.r.stars}`;
+    let ty = y - 10 - clamp(st.r.ride || 0, 0, 40) * (mob ? 1.35 : 1.75);
+    t.style.left = x + 'px'; t.style.top = ty + 'px';
+    stg.appendChild(t);
+    const w = t.offsetWidth; let flip = x + w + 14 > stageW; let lx = flip ? x - w - 10 : x + 10;
+    const hit = () => placed.find(q => lx < q.x + q.w + 4 && lx + w + 4 > q.x && Math.abs(ty - q.y) < 21);
+    let guard = 0; while (hit() && guard++ < 12) ty -= 22;
+    t.style.top = ty + 'px';
+    const y0 = y - 10 - clamp(st.r.ride || 0, 0, 40) * (mob ? 1.35 : 1.75);
+    if (ty < y0 - 2) { const ln = document.createElement('div'); ln.className = 'tag lead'; ln.style.cssText = `left:${x}px;top:${ty}px;height:${y0 - ty}px`; stg.appendChild(ln); }
+    if (flip) t.style.transform = 'translate(calc(-100% - 10px),-50%)';
+    placed.push({ x:lx, y:ty, w });
+  });
+}
+
+/* crosshair */
+const xh = $('#xh');
+let hoverPos = null;
+function moveXH(pos, instant) {
+  if (!P) return;
+  let x, y, snap = null;
+  if (pos) {
+    x = pos[0]; y = pos[1];
+    let best = null, bd = 26 * 26;
+    WF.spots.forEach(s => { const [sx, sy] = proj(s.lon, s.lat); const d = (sx - x) ** 2 + (sy - y) ** 2; if (d < bd) { bd = d; best = s; } });
+    if (best) { snap = best; [x, y] = proj(best.lon, best.lat); }
+  } else if (SEL) { snap = spotById[SEL]; [x, y] = proj(snap.lon, snap.lat); }
+  else return;
+  xh.classList.toggle('anim', !pos && !instant && !RM);
+  xh.classList.toggle('snap', !!snap);
+  $('.v', xh).style.left = x + 'px'; $('.h', xh).style.top = y + 'px';
+  const ret = $('.ret', xh); ret.style.left = x + 'px'; ret.style.top = y + 'px';
+  const [lon, lat] = snap ? [snap.lon, snap.lat] : unproj(x, y);
+  const ay = $('.ax.y', xh), ax = $('.ax.x', xh);
+  ay.style.top = y + 'px'; ay.textContent = f1(lat).padStart(4) + (lat >= 0 ? '°N' : '°S') + ' ' + Math.abs(lat).toFixed(3).slice(-3);
+  ay.textContent = Math.abs(lat).toFixed(3) + '°N';
+  ax.style.left = x + 'px'; ax.textContent = Math.abs(lon).toFixed(3) + '°W';
+  renderReadout(snap, lon, lat);
+}
+
+function renderReadout(s, lon, lat) {
+  const ro = $('#readout');
+  $('#roMode').textContent = hoverPos ? (s ? 'SNAP' : 'FREE') : 'LOCK';
+  const ll = `<div class="ro-ll"><span>LAT <b>${lat.toFixed(4)}N</b></span><span>LON <b>${Math.abs(lon).toFixed(4)}W</b></span></div>`;
+  if (!s) {
+    let best = null, bd = Infinity;
+    WF.spots.forEach(sp => { const d = Math.hypot((sp.lon - lon) * KX, sp.lat - lat) * 111; if (d < bd) { bd = d; best = sp; } });
+    const land = onLand(lon, lat);
+    ro.innerHTML = ll + `<div class="ro-name disp dimc">${land ? 'OVER LAND' : 'OPEN WATER'}</div><div class="ro-sub">NO SPOT UNDER CURSOR</div>
+      <div class="ro-grid"><div><span class="lbl">NEAREST</span><span class="v sm">${esc(up(best.name))}</span></div><div><span class="lbl">RANGE</span><span class="v">${Math.round(bd)} KM</span></div></div>`;
+    return;
+  }
+  const st = STATES[s.id]; const r = st.r; const gs = r.stars >= 4;
+  const rank = RANK.findIndex(x => x.id === s.id) + 1;
+  ro.innerHTML = ll + `
+    <div class="ro-name disp">${esc(up(s.name))}</div>
+    <div class="ro-sub">${esc(up(s.county))} · P${pad(rank)} / ${RANK.length} · ${s.facing == null ? 'FACING N/A' : 'FACING ' + s.facing + '° ' + d2c(s.facing)} ${FEAT[s.id] ? '· <span style="color:var(--read)">HOURLY FEED</span>' : ''}</div>
+    <div class="ro-big"><div class="kn ${gs ? 'isgo' : ''}">${f1(r.ride)}<small>KN RIDE</small></div></div>
+    <div class="ro-stars">${lampsHTML(r.stars, r.potential, 'md')}<span class="sx">${r.stars}/5 · ${r.potential} POSSIBLE</span></div>
+    <div class="ro-grid">
+      <div><span class="lbl">WIND / GUST</span><span class="v">${f1(st.kn)} / ${f1(st.gust)}</span></div>
+      <div><span class="lbl">DIR ${st.at === 'NOW' ? '' : '@ ' + st.at}</span><span class="v">${Math.round(st.dir)}° ${st.compass} <span style="display:inline-block;transform:rotate(${st.dir + 180}deg)">↑</span></span></div>
+      <div><span class="lbl">SHORE</span><span class="v sm ${shoreWarn(r.shore) ? 'alarm' : ''}">${SHORE_TXT(r.shore)}</span></div>
+      <div><span class="lbl">WING</span><span class="v">${wingTxt(r.wing)} M²</span></div>
+      <div style="grid-column:1/-1;border-right:0;padding-right:0"><span class="lbl">SESSION ${isDefault() ? '' : '· RE-SCORED'}</span><span class="v sm ${gs ? 'go' : ''}">${up(r.session)}</span></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="roOpen">OPEN TELEMETRY <kbd>↵</kbd></button></div>`;
+  $('#roOpen').onclick = () => go('#spot/' + s.id);
+}
+function lampsHTML(stars, pot, size = '') {
+  let h = `<span class="lamps ${size} ${stars >= 4 ? 'isgo' : ''}" role="img" aria-label="${stars} of 5 stars${pot > stars ? ', ' + pot + ' possible' : ''}">`;
+  for (let i = 1; i <= 5; i++) h += `<i class="${i <= stars ? 'on' : i <= pot ? 'pot' : ''}"></i>`;
+  return h + '</span>';
+}
+function select(id, fromUser, noFocus) {
+  SEL = id;
+  paintGauges(); renderLB();
+  moveXH(null);
+  if (fromUser && !noFocus) gaugeEls[id]?.focus({ preventScroll:true });
+}
+
+/* leaderboard + ticker */
+function renderLB() {
+  const list = RANK.slice(0, 18);
+  const lead = RANK[0] ? STATES[RANK[0].id].r.ride : 0;
+  $('#lb').innerHTML = list.map((s, i) => {
+    const st = STATES[s.id]; const g = st.r.stars >= 4;
+    return `<li class="${g ? 'isgo' : ''} ${SEL === s.id ? 'sel' : ''}" data-id="${s.id}" tabindex="-1">
+      <span class="pos">${pad(i + 1)}</span>
+      <span class="nm"><b>${esc(s.name)}</b><span>${cty(s.county)} · ${st.compass} ${st.at === 'NOW' ? '' : '· ' + st.at} ${FEAT[s.id] ? '· HRLY' : ''}</span></span>
+      ${lampsHTML(st.r.stars, st.r.potential)}
+      <span class="kn">${f1(st.r.ride)}<small>${i ? '+' + f1(lead - st.r.ride) : 'LEAD'}</small></span></li>`;
+  }).join('');
+  $$('#lb li').forEach(li => li.onclick = () => { if (SEL === li.dataset.id) go('#spot/' + li.dataset.id); else select(li.dataset.id, true); });
+  const ngo = RANK.filter(s => STATES[s.id].r.stars >= 4).length;
+  $('#lbMore').textContent = `${ngo} OF ${RANK.length} SPOTS AT ★4+ · ${RANK.length - 18} MORE BELOW P18`;
+  $('#lbWhen').textContent = tShort();
+  const tk = RANK.slice(0, 14).map((s, i) => { const st = STATES[s.id]; return `<span class="${st.r.stars >= 4 ? 'isgo' : ''}">P${i + 1} <b>${esc(up(s.name))} ★${st.r.stars}</b> ${f1(st.kn)}/${f1(st.gust)}KN ${st.compass} ${st.at === 'NOW' ? '' : st.at} ${wingTxt(st.r.wing)}M</span>`; }).join('');
+  $('#tkRun').innerHTML = tk + tk;
+  $('#brandLamp').classList.toggle('isgo', ngo > 0);
+}
+
+/* scrubber */
+function renderSegs() {
+  const opts = [-1, 0, 1, 2, 3, 4];
+  $('#segs').innerHTML = opts.map(t => {
+    const c = [0,0,0,0,0,0];
+    WF.spots.forEach(s => { const st = spotState(s, t); if (!st.none) c[st.r.stars]++; });
+    const mx = Math.max(...c, 1); const ngo = c[4] + c[5];
+    return `<button class="seg" role="tab" aria-selected="${t === T}" data-t="${t}">
+      <span class="sl"><b>${t < 0 ? 'NOW ' + istHM(NOW) : dayLbl(DATES[t]) + ' ' + dayNum(DATES[t])}</b><span class="gc ${ngo ? 'go' : ''}"><b>${ngo}</b> GO</span></span>
+      <span><span class="hist">${c.map((n, k) => `<i class="${k >= 4 ? 'g4' : k === 0 ? 'g0' : ''}" style="height:${Math.max(2, n / mx * 100)}%" title="${n} spots at ${k} stars"></i>`).join('')}</span>
+      <span class="hl"><span>★0</span><span>★5</span></span></span></button>`;
+  }).join('');
+  $$('#segs .seg').forEach(b => b.onclick = () => setT(+b.dataset.t));
+}
+function setT(t) {
+  T = clamp(t, -1, 4);
+  computeStates(); renderSegs(); paintGauges(); drawMatrix(); renderLB(); moveXH(hoverPos);
+  $('#wheelV').textContent = T < 0 ? 'NOW' : dayLbl(DATES[T]) + ' ' + dayNum(DATES[T]);
+  $('#wheel').setAttribute('aria-valuenow', T + 1); $('#wheel').setAttribute('aria-valuetext', tLabel());
+  $('.knurl').style.setProperty('--jx', (T + 1) * -37 + 'px');
+  $('#cTL').innerHTML = `T-SELECT <span style="color:var(--read)">${tLabel()}</span><br>${T < 0 ? 'MODEL BLEND · HOUR ' + istHM(NOW) : 'BEST DAYLIGHT HOUR PER SPOT'}`;
+  cpIdle();
+}
+
+/* ============ SPOT PAGE ============ */
+function seg7SVG(str, h = 120) {
+  const w = 56, hh = 100, t = 11, g = 1.6;
+  const Hs = cy => { const x0 = t / 2 + g, x1 = w - t / 2 - g; return `${x0},${cy} ${x0 + t / 2},${cy - t / 2} ${x1 - t / 2},${cy - t / 2} ${x1},${cy} ${x1 - t / 2},${cy + t / 2} ${x0 + t / 2},${cy + t / 2}`; };
+  const Vs = (cx, y0, y1) => { y0 += g; y1 -= g; return `${cx},${y0} ${cx + t / 2},${y0 + t / 2} ${cx + t / 2},${y1 - t / 2} ${cx},${y1} ${cx - t / 2},${y1 - t / 2} ${cx - t / 2},${y0 + t / 2}`; };
+  const SEG = { a:Hs(t / 2), g:Hs(hh / 2), d:Hs(hh - t / 2), f:Vs(t / 2, t / 2, hh / 2), b:Vs(w - t / 2, t / 2, hh / 2), e:Vs(t / 2, hh / 2, hh - t / 2), c:Vs(w - t / 2, hh / 2, hh - t / 2) };
+  const MAP = { '0':'abcdef','1':'bc','2':'abged','3':'abgcd','4':'fgbc','5':'afgcd','6':'afgedc','7':'abc','8':'abcdefg','9':'abcdfg','-':'g',' ':'' };
+  let x = 0, out = '';
+  for (const ch of str) {
+    if (ch === ':') { out += `<rect x="${x + 2}" y="28" width="10" height="10" class="s7on colon"/><rect x="${x + 2}" y="62" width="10" height="10" class="s7on colon"/>`; x += 18; continue; }
+    const on = MAP[ch] ?? '';
+    out += `<g transform="translate(${x},0) skewX(-7)">` + Object.entries(SEG).map(([k, p]) => `<polygon points="${p}" class="${on.includes(k) ? 's7on' : 's7off'}"/>`).join('') + '</g>';
+    x += w + 10;
+  }
+  return `<svg viewBox="-6 -2 ${x + 4} ${hh + 4}" style="height:${h}px" aria-hidden="true">${out}</svg>`;
+}
+function openSpot(id) {
+  if (!spotById[id]) id = 'brandon';
+  const changed = CUR_SPOT !== id;
+  CUR_SPOT = id;
+  if (changed && !pendingCursor) CUR_I = null;
+  if (pendingCursor != null) { CUR_I = pendingCursor; pendingCursor = null; }
+  renderSpot();
+  if (changed) window.scrollTo(0, 0);
+}
+let pendingCursor = null;
+function renderSpot() {
+  const s = spotById[CUR_SPOT]; const f = FEAT[s.id];
+  const v = $('#v-spot');
+  const fac = s.facing == null ? 'N/A' : s.facing + '° ' + d2c(s.facing);
+  const tide = f && f.tides && f.tides.station ? f.tides.station + ' ' + f1(f.tides.distance_km) + ' KM' : 'NO STATION';
+  const sea = f && f.sea_temperature ? f1(f.sea_temperature.celsius) + '°C' : '—';
+  const rank = (() => { const st = RANK.findIndex(x => x.id === s.id); return st >= 0 ? 'P' + pad(st + 1) : '—'; })();
+  v.innerHTML = `
+  <div class="sp-head">
+    <div class="sp-id">
+      <a class="back" href="#map">◂ MAP <kbd>ESC</kbd></a>
+      <div class="sp-eyebrow">${esc(up(s.county))} · ${s.lat.toFixed(3)}N ${Math.abs(s.lon).toFixed(3)}W · ${f ? 'HOURLY TELEMETRY' : 'DAY-BEST FEED'}</div>
+      <h1 class="sp-name disp">${esc(s.name)}</h1>
+      <div class="sp-meta">
+        <span>FACING<b>${fac}</b></span><span>${f ? 'TIDE STN' : 'RANK ' + tShort()}<b>${f ? esc(up(tide)) : rank}</b></span><span>${f ? 'SEA' : 'NOW'}<b>${f ? sea : f1(s.now.wind) + ' KN ' + s.now.compass}</b></span>
+      </div>
+      <div class="sp-low"><p class="sp-note">${f && f.spot.note ? esc(f.spot.note) : f ? 'Local launch, swell and tide conditions need checking.' : 'Hourly telemetry is wired at five instrumented spots. This page reads the day-best feed: the strongest-rated daylight hour of each day.'}</p></div>
+    </div>
+    <div class="sp-next" id="nxBlock"></div>
+    <div class="sp-rc" data-rc></div>
+  </div>
+  ${f ? featuredBody(s, f) : liteBody(s)}
+  <div class="foot-attr"><span>${esc(WF.generated)}</span><span>${f && f.tides && f.tides.attribution ? esc(f.tides.attribution) : ''} ${f && f.sea_temperature ? ' · ' + esc(f.sea_temperature.attribution) : ''}</span></div>`;
+  mountRC();
+  renderNext();
+  if (f) { buildStrip(); buildScope(); }
+  else { paintLite(); const st = spotState(s, -1); paintDial(st.dir, st.kn, st.r); }
+}
+function featuredBody(s, f) {
+  return `
+  <div class="sec-h"><span class="ch">CH.03</span><b>SPEED TRACE</b><span>5 DAYS · NIGHT COMPRESSED</span>
+    <span class="rt"><span class="key"><i></i>MEAN</span><span class="key"><i style="background:repeating-linear-gradient(90deg,var(--read) 0 2px,transparent 2px 4px)"></i>RIDEABLE</span><span class="key"><i style="height:8px;background:repeating-linear-gradient(135deg,#6b7065 0 1px,transparent 1px 3px)"></i>GUST</span><span class="key"><i style="background:var(--go)"></i>★4+ GO</span><span class="hide-m"><kbd>←</kbd> <kbd>→</kbd> STEP HOUR</span></span></div>
+  <div class="strip">
+    <div class="gutter" id="gutter"></div>
+    <div class="strip-scroll" id="stripScroll" tabindex="0" aria-label="Hourly telemetry. Use arrow keys to move the cursor."></div>
+  </div>
+  <div class="cur" id="cur" aria-live="polite"></div>
+  <div class="sec-h"><span class="ch">CH.04</span><b>DAY SECTORS</b><span>BEST WINDOW PER DAY, HELD ON ITS WEAKEST HOUR</span></div>
+  <div class="sectors" id="sectors"></div>
+  <div class="sec-h"><span class="ch">CH.05</span><b>TIDE + DAYLIGHT SCOPE</b><span>${f.tides && f.tides.station ? esc(up(f.tides.station)) + ' · DATUM ' + esc(f.tides.datum) : 'NO TIDE STATION'}</span><span class="rt"><span class="key"><i></i>PREDICTED</span><span class="key"><i style="background:repeating-linear-gradient(90deg,var(--dim) 0 3px,transparent 3px 6px)"></i>EXTRAPOLATED</span><span class="key"><i style="background:var(--go);height:6px"></i>GO HOURS</span></span></div>
+  <div class="scope-wrap" id="scope"></div>
+  <div class="tables" id="tables"></div>`;
+}
+function liteBody(s) {
+  return `
+  <div class="sec-h"><span class="ch">CH.03</span><b>DAY-BEST FEED</b><span>BEST DAYLIGHT HOUR · 5 DAYS</span></div>
+  <div class="lite" id="lite"></div>
+  <div class="inst"><span class="lbl">INSTRUMENTED SPOTS · FULL HOURLY TELEMETRY</span><div class="chips">${Object.values(FEAT).map(f => `<a class="chip" href="#spot/${f.spot.id}">${esc(f.spot.name)}</a>`).join('')}</div></div>`;
+}
+function paintLite() {
+  const s = spotById[CUR_SPOT];
+  $('#lite').innerHTML = s.days.map((d, t) => {
+    const st = spotState(s, t); if (st.none) return `<div class="ld"><span class="lbl">${dayLbl(d.date)} ${dayNum(d.date)}</span><div class="disp dimc" style="font-size:40px">NO DATA</div></div>`;
+    const r = st.r; const g = r.stars >= 4;
+    return `<div class="ld">
+      <div class="sector" style="padding:0;border:0"><div class="s-top"><b>S${t + 1}</b><span>${dayNum(d.date)} OCT</span></div><div class="s-day disp ${g ? 'go' : ''}">${dayLbl(d.date)}</div></div>
+      <div class="tube" style="--c:${g ? 'var(--go)' : r.stars >= 2 ? 'var(--read)' : '#5d6258'}"><span>${f1(r.ride)} KN</span><i style="height:${clamp(r.ride / 35 * 100, 2, 100)}%"></i></div>
+      ${lampsHTML(r.stars, r.potential, 'md')}
+      <div class="sector" style="padding:0;border:0;gap:6px">
+        <div class="s-row">BEST AT<b>${st.at}</b></div>
+        <div class="s-row">WIND/GUST<b>${f1(st.kn)}/${f1(st.gust)}</b></div>
+        <div class="s-row">DIR<b>${st.compass}</b></div>
+        <div class="s-row">SHORE<b class="${shoreWarn(r.shore) ? 'alarm' : ''}">${SHORE_TXT(r.shore)}</b></div>
+        <div class="s-row">WING<b>${wingTxt(r.wing)} M²</b></div>
+        <div class="s-row">SESSION<b class="${g ? 'go' : ''}">${SHORT[r.session]}</b></div>
+        <div class="s-row">NOON<b>${f1(d.noon.wind)} KN ${d2c(d.noon.dir)}</b></div>
+      </div></div>`;
+  }).join('');
+}
+
+/* next window + countdown */
+let NX = null;
+function renderNext() {
+  const s = spotById[CUR_SPOT]; const f = FEAT[s.id];
+  if (f) NX = nextWindow(s.id);
+  else {
+    NX = null;
+    const sn = spotState(s, -1);
+    if (sn.r.stars >= 4) NX = { live:true, t0:NOW, t1:NOW + H, lite:true, st:sn };
+    else for (let t = 0; t < 5 && !NX; t++) {
+      const st = spotState(s, t); if (st.none || st.r.stars < 4) continue;
+      const t0 = Date.parse(DATES[t] + 'T' + st.at + ':00Z') - H; if (t0 < NOW) continue;
+      NX = { live:false, t0, t1:t0 + H, lite:true, st };
+    }
+  }
+  const el = $('#nxBlock');
+  let sub;
+  if (!NX) sub = `<span>STATUS<b class="alarm">NO GO</b></span><span>HORIZON<b>5 DAYS</b></span><span>RIDER<b>${R.w}KG ${LEVEL_LBL[R.level]}</b></span><span>TRY<b>${R.level === 'advanced' ? 'ANOTHER SPOT' : 'ADVANCED?'}</b></span>`;
+  else if (NX.lite) sub = `<span>DAY<b class="isgo">${istDay(NX.t0)} ${istHM(NX.t0)}</b></span><span>WIND<b>${f1(NX.st.kn)} KN ${NX.st.compass}</b></span><span>WING<b>${wingTxt(NX.st.r.wing)} M²</b></span><span>SHORE<b>${SHORE_TXT(NX.st.r.shore)}</b></span>`;
+  else { const p = NX.peak; sub = `<span>WINDOW<b class="isgo">${istDay(NX.t0)} ${istHM(NX.t0)}–${istHM(NX.t1)}</b></span><span>PEAK<b>★${p.r.stars} · ${f1(p.h.wind.kn)} KN ${p.h.wind.compass}</b></span><span>WING<b>${wingTxt(p.r.wing)} M²</b></span><span>SHORE<b>${SHORE_TXT(p.r.shore)}</b></span>`; }
+  el.innerHTML = `
+    <div class="nx-top"><span>NEXT ${lampsHTML(4, 4)} WINDOW</span><span class="nx-state ${NX ? 'go' : 'alarm'}">${!NX ? 'NO GO · 5 DAYS' : NX.live ? 'LIVE · CLOSES IN' : 'T-MINUS'}</span></div>
+    <div class="seg7 ${!NX ? 'nogo' : NX.live ? 'live' : ''}" id="seg7" role="timer" aria-live="off"></div>
+    <div class="nx-sub">${sub}</div>
+    <div class="nx-dial"><div class="dial" id="dial" aria-hidden="true"></div>
+      <div class="dl"><span class="lbl">SHORE DIAL · CURSOR HOUR</span>
+        <span><i style="background:var(--read)"></i>CROSS-ON</span><span><i style="background:#8d9386"></i>ONSHORE · CROSS</span><span><i style="background:rgba(255,107,26,.55)"></i>CROSS-OFF</span><span><i style="background:var(--alarm)"></i>OFFSHORE</span>
+        <span class="dimc" style="margin-top:4px">ARROW = WIND FROM · HATCH = SEA</span></div></div>`;
+  tickCountdown(true);
+}
+let lastSeg = '';
+function tickCountdown(force) {
+  const el = $('#seg7'); if (!el) return;
+  let main = '--:--', sec = '--';
+  if (NX) {
+    const target = NX.live ? NX.t1 : NX.t0;
+    const ms = Math.max(0, target - simNow());
+    const hh = Math.floor(ms / H), mm = Math.floor(ms % H / 60000), ss = Math.floor(ms % 60000 / 1000);
+    main = pad(hh) + ':' + pad(mm); sec = pad(ss);
+  }
+  const key = main + sec;
+  if (key === lastSeg && !force) return;
+  lastSeg = key;
+  const mob = innerWidth < 760;
+  el.innerHTML = seg7SVG(main, mob ? 84 : 104) + `<div style="display:flex;flex-direction:column;justify-content:space-between;align-self:stretch"><span class="tm">${NX ? 'HRS:MIN' : ''}</span><span class="sec">${seg7SVG(sec, mob ? 40 : 48)}</span></div>`;
+  el.setAttribute('aria-label', NX ? (NX.live ? 'Window open, closes in ' : 'Next 4 star window in ') + main.replace(':', ' hours ') + ' minutes' : 'No 4 star window in the next 5 days');
+}
+
+/* shore dial */
+function dialSVG(facing, dir, kn, state) {
+  const c = 75, R0 = 60; const P2 = (r, a) => [c + r * Math.sin(a * Math.PI / 180), c - r * Math.cos(a * Math.PI / 180)];
+  const arc = (r, a0, a1) => { const [x0, y0] = P2(r, a0), [x1, y1] = P2(r, a1); return `M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${((a1 - a0 + 360) % 360) > 180 ? 1 : 0} 1 ${x1.toFixed(1)},${y1.toFixed(1)}`; };
+  let s = `<svg viewBox="0 0 150 150"><defs><pattern id="seah" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".8" height="3" fill="#3a3e35"/></pattern></defs>`;
+  s += `<circle cx="${c}" cy="${c}" r="${R0}" fill="none" stroke="#2E322B"/>`;
+  for (let a = 0; a < 360; a += 10) { const [x0, y0] = P2(R0, a), [x1, y1] = P2(R0 - (a % 90 ? (a % 30 ? 3 : 6) : 9), a); s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${a % 90 ? '#3a3e35' : '#8d9386'}"/>`; }
+  [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([l, a]) => { const [x, y] = P2(R0 + 10, a); s += `<text x="${x}" y="${y + 3}" font-size="8.5" fill="#6b7065" text-anchor="middle">${l}</text>`; });
+  if (facing != null) {
+    const a0 = facing - 90, a1 = facing + 90; const [x0, y0] = P2(R0 - 10, a0), [x1, y1] = P2(R0 - 10, a1);
+    s += `<path d="M${x0},${y0} A${R0 - 10},${R0 - 10} 0 0 1 ${x1},${y1} Z" fill="url(#seah)"/><line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#EDEDE6" stroke-width="1.5"/>`;
+    const [sx, sy] = P2(R0 - 26, facing); s += `<text x="${sx}" y="${sy + 3}" font-size="7.5" fill="#8d9386" text-anchor="middle" letter-spacing="1">SEA</text>`;
+    const zones = [[0, 30, '#8d9386'], [30, 70, '#EDEDE6'], [70, 110, '#8d9386'], [110, 150, 'rgba(255,107,26,.55)'], [150, 180, '#FF6B1A']];
+    zones.forEach(([o0, o1, col]) => { s += `<path d="${arc(R0 + 3, facing + o0 + .8, facing + o1 - .8)}" stroke="${col}" stroke-width="3" fill="none"/><path d="${arc(R0 + 3, facing - o1 + .8, facing - o0 - .8)}" stroke="${col}" stroke-width="3" fill="none"/>`; });
+  } else s += `<text x="${c}" y="${c + 34}" font-size="7.5" fill="#6b7065" text-anchor="middle" letter-spacing="1">FACING N/A</text>`;
+  if (dir != null) {
+    const col = state === 'go' ? '#D4FF3A' : state === 'warn' ? '#FF6B1A' : '#EDEDE6';
+    const [ox, oy] = P2(R0 + 4, dir), [ix, iy] = P2(15, dir);
+    const [h1x, h1y] = P2(25, dir + 10), [h2x, h2y] = P2(25, dir - 10);
+    s += `<line x1="${ox}" y1="${oy}" x2="${ix}" y2="${iy}" stroke="${col}" stroke-width="2.5"/><path d="M${ix},${iy} L${h1x},${h1y} L${h2x},${h2y}Z" fill="${col}"/>`;
+    s += `<circle cx="${c}" cy="${c}" r="13" fill="#0E0F0C" stroke="${col}"/><text x="${c}" y="${c + 4}" font-size="11" font-weight="700" fill="${col}" text-anchor="middle">${Math.round(kn)}</text>`;
+  }
+  return s + '</svg>';
+}
+function paintDial(dir, kn, r) { const el = $('#dial'); if (!el) return; const s = spotById[CUR_SPOT]; el.innerHTML = dialSVG(s.facing, dir, kn, r && r.stars >= 4 ? 'go' : r && shoreWarn(r.shore) ? 'warn' : ''); }
+
+/* strip */
+let XSC = null;
+const ROW = { head:[0, 30], trace:[30, 186], dir:[190, 212], led:[216, 262], wing:[266, 284], sess:[288, 306], shore:[310, 328], H:334 };
+function buildStrip() {
+  const hr = rated(CUR_SPOT); const f = FEAT[CUR_SPOT]; const b = band();
+  const sc = $('#stripScroll'); const avail = sc.clientWidth;
+  const nD = hr.filter(o => o.h.daylight).length, nN = hr.length - nD;
+  const mobS = innerWidth < 760; const Wn = mobS ? 3 : 2.5; const Wd = Math.max(mobS ? 24 : 17, (avail - nN * Wn - 2) / nD);
+  let x = 0; XSC = hr.map(o => { const w = o.h.daylight ? Wd : Wn; const c = { x, w, c:x + w / 2 }; x += w; return c; });
+  const TW = x, HH = ROW.H;
+  const ymax = Math.max(30, Math.ceil((Math.max(...hr.map(o => o.h.wind.gust)) + 3) / 5) * 5);
+  const [ty0, ty1] = ROW.trace; const yk = kn => ty1 - 6 - kn / ymax * (ty1 - ty0 - 14);
+  let s = `<svg width="${TW}" height="${HH}" viewBox="0 0 ${TW} ${HH}" role="img" aria-label="Five-day wind speed trace and hourly ratings">
+  <defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.2" height="4" fill="#5d6258"/></pattern>
+  <pattern id="nightp" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="1" height="4" fill="#1a1c18"/></pattern></defs>`;
+  // night columns
+  hr.forEach((o, i) => { if (!o.h.daylight) s += `<rect x="${XSC[i].x}" y="${ROW.head[1]}" width="${XSC[i].w + .5}" height="${HH - ROW.head[1]}" fill="url(#nightp)"/>`; });
+  // horizontal grid
+  for (let k = 0; k <= ymax; k += 5) s += `<line x1="0" x2="${TW}" y1="${yk(k)}" y2="${yk(k)}" stroke="${k % 10 ? '#1b1d19' : '#24271f'}"/>` + (k && k % 10 === 0 ? `<text x="4" y="${yk(k) - 3}" font-size="9" fill="#4a4f45">${k}</text>` : '');
+  // rider band
+  s += `<rect x="0" width="${TW}" y="${yk(b.sweetHigh)}" height="${yk(b.sweetLow) - yk(b.sweetHigh)}" fill="rgba(237,237,230,.035)"/>
+    <line x1="0" x2="${TW}" y1="${yk(b.sweetLow)}" y2="${yk(b.sweetLow)}" stroke="#4f544a" stroke-dasharray="1 3"/>
+    <line x1="0" x2="${TW}" y1="${yk(b.sweetHigh)}" y2="${yk(b.sweetHigh)}" stroke="#4f544a" stroke-dasharray="1 3"/>
+    <line x1="0" x2="${TW}" y1="${yk(b.min)}" y2="${yk(b.min)}" stroke="#3a3e35" stroke-dasharray="6 4"/>
+    <line x1="0" x2="${TW}" y1="${yk(b.max)}" y2="${yk(b.max)}" stroke="rgba(255,107,26,.45)" stroke-dasharray="6 4"/>`;
+  // spread band (model min-max)
+  const mid = hr.map((o, i) => [XSC[i].c, o.h.wind]);
+  s += `<path d="M${mid.map(([c, w]) => c + ',' + yk(w.max)).join('L')}L${mid.slice().reverse().map(([c, w]) => c + ',' + yk(w.min)).join('L')}Z" fill="rgba(237,237,230,.045)"/>`;
+  // gust shading
+  s += `<path d="M${mid.map(([c, w]) => c + ',' + yk(w.gust)).join('L')}L${mid.slice().reverse().map(([c, w]) => c + ',' + yk(w.kn)).join('L')}Z" fill="url(#hatch)" opacity=".75"/>`;
+  s += `<path d="M${mid.map(([c, w]) => c + ',' + yk(w.gust)).join('L')}" fill="none" stroke="#6b7065" stroke-width="1"/>`;
+  // rideable dotted
+  let rp = ''; hr.forEach((o, i) => { if (o.r) rp += (rp && hr[i - 1]?.r ? 'L' : 'M') + XSC[i].c + ',' + yk(o.r.ride); });
+  s += `<path d="${rp}" fill="none" stroke="#c9cdc0" stroke-width="1.2" stroke-dasharray="1.5 2.5"/>`;
+  // mean line, coloured per segment
+  for (let i = 0; i < hr.length - 1; i++) {
+    const a = hr[i], g = a.r && a.r.stars >= 4 && hr[i + 1].r && hr[i + 1].r.stars >= 4;
+    const col = g ? '#D4FF3A' : a.h.daylight ? '#EDEDE6' : '#6b7065';
+    s += `<line x1="${XSC[i].c}" y1="${yk(a.h.wind.kn)}" x2="${XSC[i + 1].c}" y2="${yk(hr[i + 1].h.wind.kn)}" stroke="${col}" stroke-width="${g ? 3 : 2}" stroke-linecap="round"/>`;
+  }
+  // band labels (right)
+  s += `<g font-size="8.5" fill="#6b7065" text-anchor="end"><text x="${TW - 4}" y="${yk(b.max) - 3}" fill="rgba(255,107,26,.8)">MAX ${Math.round(b.max)}</text><text x="${TW - 4}" y="${yk(b.sweetHigh) - 3}">SWEET ${Math.round(b.sweetLow)}–${Math.round(b.sweetHigh)}</text><text x="${TW - 4}" y="${yk(b.min) + 10}">MIN ${Math.round(b.min)}</text></g>`;
+  // day separators & labels, hour ticks
+  hr.forEach((o, i) => {
+    const l = hm(o.h.local);
+    if (l === '00:00') s += `<line x1="${XSC[i].x}" x2="${XSC[i].x}" y1="0" y2="${HH}" stroke="#3a3e35"/>`;
+    if (o.h.daylight && (!hr[i - 1] || !hr[i - 1].h.daylight)) {
+      const d = o.h.time.slice(0, 10);
+      s += `<text x="${XSC[i].x + 3}" y="13" font-size="11" font-weight="700" fill="#EDEDE6" letter-spacing="1.2">${dayLbl(d)} ${dayNum(d)}</text>`;
+    }
+    if (o.h.daylight && +l.slice(0, 2) % 3 === 0) s += `<text x="${XSC[i].c}" y="26" font-size="8.5" fill="#6b7065" text-anchor="middle">${l.slice(0, 2)}</text>`;
+    if (!o.h.daylight && hr[i - 1]?.h.daylight) s += `<text x="${XSC[i].x + 2}" y="26" font-size="8" fill="#3d4139">☾</text>`;
+  });
+  // dir arrows
+  const dy = (ROW.dir[0] + ROW.dir[1]) / 2;
+  hr.forEach((o, i) => { if (!o.r) return; const warn = shoreWarn(o.r.shore);
+    s += `<g transform="translate(${XSC[i].c},${dy}) rotate(${o.h.wind.dir + 180})"><path d="M0,-7 L3.5,2 L0,0 L-3.5,2Z M0,0 L0,7" fill="${warn ? '#FF6B1A' : '#c9cdc0'}" stroke="${warn ? '#FF6B1A' : '#c9cdc0'}" stroke-width="1"/></g>`; });
+  // LED stars
+  s += `<g id="ledg">${ledHTML(hr)}</g>`;
+  // wing
+  hr.forEach((o, i) => { if (!o.r) return; const bad = o.r.wing.fit !== 'fits';
+    s += `<text x="${XSC[i].c}" y="${ROW.wing[1] - 5}" font-size="${Wd < 25 ? 8 : 9.5}" text-anchor="middle" fill="${bad ? '#FF6B1A' : '#EDEDE6'}">${wingTxt(o.r.wing).replace('.0', '')}</text>`; });
+  // stints
+  s += stints(hr, ROW.sess, o => o.r.session, v => SHORT[v], v => v === 'Powered up' || v === 'Cruising' ? ['#3a3e35', '#EDEDE6'] : v === 'Offshore' || v === 'Too strong' ? ['rgba(255,107,26,.18)', '#FF6B1A'] : ['#22251f', '#8b9085']);
+  s += stints(hr, ROW.shore, o => o.r.shore || 'n/a', v => up(v), v => shoreWarn(v) ? ['rgba(255,107,26,.12)', '#FF6B1A'] : v === 'cross-on' || v === 'cross' ? ['#2c2f28', '#EDEDE6'] : ['#22251f', '#8b9085']);
+  // now line
+  const ni = nowIdx(); if (ni >= 0 && ni < hr.length) { const nx = XSC[ni].x + XSC[ni].w * ((simNow() - Date.parse(hr[ni].h.time)) / H);
+    s += `<line x1="${nx}" x2="${nx}" y1="${ROW.head[1]}" y2="${HH}" stroke="#EDEDE6" stroke-width="1"/><rect x="${nx - 15}" y="${ROW.head[1]}" width="30" height="12" fill="#EDEDE6"/><text x="${nx}" y="${ROW.head[1] + 9}" font-size="8.5" font-weight="700" fill="#0E0F0C" text-anchor="middle">NOW</text>`; }
+  // cursor
+  s += `<g id="curg" style="pointer-events:none"><rect id="curR" y="${ROW.head[1]}" height="${HH - ROW.head[1]}" fill="rgba(237,237,230,.07)"/><line id="curL" y1="${ROW.head[1]}" y2="${HH}" stroke="#EDEDE6" stroke-dasharray="2 2"/><circle id="curD" r="4" fill="#0E0F0C" stroke="#EDEDE6" stroke-width="2"/></g>`;
+  s += `<rect id="hit" x="0" y="0" width="${TW}" height="${HH}" fill="transparent" style="cursor:crosshair"/></svg>`;
+  sc.innerHTML = s;
+  sc._yk = yk;
+  // gutter
+  $('#gutter').style.height = HH + 'px';
+  $('#gutter').innerHTML = [['SPEED', 'KN', (ty0 + ty1) / 2], ['DIR', 'TO', dy], ['STARS', 'LED ×5', (ROW.led[0] + ROW.led[1]) / 2], ['WING', 'M²', (ROW.wing[0] + ROW.wing[1]) / 2 + 2], ['SESSION', '', (ROW.sess[0] + ROW.sess[1]) / 2], ['SHORE', '', (ROW.shore[0] + ROW.shore[1]) / 2]]
+    .map(([a, b, y]) => `<div style="top:${y}px">${a}<small>${b}</small></div>`).join('');
+  const hit = $('#hit', sc);
+  const pick = e => { const r = sc.querySelector('svg').getBoundingClientRect(); const px = e.clientX - r.left; let i = XSC.findIndex(c => px >= c.x && px < c.x + c.w); if (i < 0) return; if (!hr[i].r) { let j = i; while (j < hr.length && !hr[j].r) j++; let k = i; while (k >= 0 && !hr[k].r) k--; i = (j < hr.length && (k < 0 || j - i < i - k)) ? j : k; } setCursor(i); };
+  hit.addEventListener('pointermove', pick); hit.addEventListener('click', pick);
+  sc.onkeydown = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); stepCursor(e.key === 'ArrowRight' ? 1 : -1); } };
+  if (CUR_I == null) CUR_I = NX ? NX.peak ? hr.indexOf(NX.peak) : NX.start : Math.max(0, nowIdx());
+  if (!hr[CUR_I]?.r) stepCursor(1, true);
+  setCursor(CUR_I, true);
+  // scroll cursor into view on narrow screens
+  if (sc.scrollWidth > sc.clientWidth) sc.scrollLeft = Math.max(0, XSC[CUR_I].x - sc.clientWidth / 3);
+  renderSectors(); renderTables();
+  lastLED = hr.map(o => o.r ? o.r.stars : null);
+}
+function ledHTML(hr, prev) {
+  let s = ''; const [l0, l1] = ROW.led; const sh = (l1 - l0 - 4 * 3) / 5;
+  hr.forEach((o, i) => {
+    if (!o.r) return; const c = XSC[i]; const w = Math.min(c.w - 6, 16); const x = c.c - w / 2;
+    const fl = prev && prev[i] !== o.r.stars ? ' led-flash' : '';
+    for (let k = 1; k <= 5; k++) {
+      const y = l1 - k * sh - (k - 1) * 3;
+      const cl = k <= o.r.stars ? (o.r.stars >= 4 ? 'led-go' : 'led-on') : k <= o.r.potential ? 'led-pot' : 'led-off';
+      s += `<rect class="${cl}${fl}" x="${x + (cl === 'led-pot' ? .5 : 0)}" y="${y + (cl === 'led-pot' ? .5 : 0)}" width="${w - (cl === 'led-pot' ? 1 : 0)}" height="${sh - (cl === 'led-pot' ? 1 : 0)}"/>`;
+    }
+  });
+  return s;
+}
+function stints(hr, [y0, y1], key, lbl, col) {
+  let s = '', i = 0;
+  while (i < hr.length) {
+    if (!hr[i].r) { i++; continue; }
+    const v = key(hr[i]); let j = i; while (j + 1 < hr.length && hr[j + 1].r && key(hr[j + 1]) === v) j++;
+    const x = XSC[i].x + 1, w = XSC[j].x + XSC[j].w - XSC[i].x - 2; const [bg, fg] = col(v);
+    s += `<rect x="${x}" y="${y0}" width="${w}" height="${y1 - y0}" fill="${bg}"/><rect x="${x}" y="${y0}" width="2" height="${y1 - y0}" fill="${fg}"/>`;
+    const t = lbl(v); if (w > t.length * 5.6 + 10) s += `<text x="${x + 6}" y="${y1 - 6}" font-size="8.5" letter-spacing=".6" fill="${fg}">${t}</text>`;
+    i = j + 1;
+  }
+  return s;
+}
+function stepCursor(d, silent) {
+  const hr = rated(CUR_SPOT); let i = CUR_I ?? 0;
+  do { i += d; } while (i >= 0 && i < hr.length && !hr[i].r);
+  if (i < 0 || i >= hr.length) return;
+  if (silent) CUR_I = i; else setCursor(i);
+}
+function setCursor(i, force) {
+  const hr = rated(CUR_SPOT); const o = hr[i]; if (!o) return;
+  const changed = CUR_I !== i; CUR_I = i;
+  const sc = $('#stripScroll'); const c = XSC[i]; const yk = sc._yk;
+  $('#curR').setAttribute('x', c.x); $('#curR').setAttribute('width', c.w);
+  $('#curL').setAttribute('x1', c.c); $('#curL').setAttribute('x2', c.c);
+  $('#curD').setAttribute('cx', c.c); $('#curD').setAttribute('cy', yk(o.h.wind.kn));
+  if (changed || force) renderCur(o, i);
+}
+let lastStars = null;
+function renderCur(o, i) {
+  const h = o.h, r = o.r; const g = r && r.stars >= 4;
+  const d = h.time.slice(0, 10);
+  paintDial(h.wind.dir, h.wind.kn, r);
+  const reasons = r ? (r.reasons.length ? r.reasons.map(x => `<p>${esc(x)}</p>`).join('') : `<p class="ok">Clean hour. Nothing taken off.</p>`) : '<p>Night. Not rated.</p>';
+  $('#cur').innerHTML = `
+    <div class="t"><span class="lbl">CURSOR · ${dayLbl(d)} ${dayNum(d)}</span><span class="v">${hm(h.local)}</span></div>
+    <div><span class="lbl">MEAN</span><span class="v">${f1(h.wind.kn)}<small>KN</small></span></div>
+    <div><span class="lbl">GUST</span><span class="v">${f1(h.wind.gust)}<small>KN</small></span></div>
+    <div><span class="lbl">RIDEABLE</span><span class="v ${g ? 'go' : ''}">${r ? f1(r.ride) : '—'}<small>KN</small></span></div>
+    <div><span class="lbl">DIR</span><span class="v">${h.wind.dir}°<small>${h.wind.compass}</small></span></div>
+    <div><span class="lbl">STARS</span><span id="curLamps">${r ? lampsHTML(r.stars, r.potential, 'md') : '<span class="dimc">—</span>'}</span></div>
+    <div><span class="lbl">WING</span><span class="v ${r && r.wing.fit !== 'fits' ? 'alarm' : ''}">${r ? wingTxt(r.wing) : '—'}<small>M²</small></span></div>
+    <div><span class="lbl">SESSION · SHORE</span><span class="v sm ${g ? 'go' : ''}">${r ? SHORT[r.session] : 'NIGHT'}<br><span class="${r && shoreWarn(r.shore) ? 'alarm' : 'dimc'}">${r ? SHORE_TXT(r.shore) : ''}</span></span></div>
+    <div><span class="lbl">SEA · AIR</span><span class="v sm">${h.waves ? f1(h.waves.height_m) + 'M ' + h.waves.period_s + 'S' : '—'}<br><span class="dimc">${h.weather ? h.weather.air_c + '°C · ' + h.weather.rain_mm + 'MM · ' + up(h.wind.agreement) + ' AGR' : up(h.wind.agreement) + ' AGREEMENT'}</span></span></div>
+    <div class="reasons-cell"><span class="lbl">DEDUCTIONS</span><div class="reasons">${reasons}</div></div>`;
+  // lamps light one by one
+  if (r && !RM) { const ls = $$('#curLamps i'); ls.forEach(l => { l.dataset.c = l.className; l.className = ''; }); ls.forEach((l, k) => setTimeout(() => l.className = l.dataset.c, 50 + k * 70)); }
+}
+function renderSectors() {
+  const hr = rated(CUR_SPOT);
+  $('#sectors').innerHTML = DATES.map((d, t) => {
+    const day = hr.slice(t * 24, t * 24 + 24); const rs = day.filter(o => o.r);
+    const mx = Math.max(0, ...rs.map(o => o.r.stars)); const pot = Math.max(0, ...rs.map(o => o.r.potential));
+    // best window: longest run at the highest level reached by ≥2 consecutive hours
+    let win = null;
+    for (let lv = 5; lv >= 1 && !win; lv--) { let st = -1; for (let i = 0; i <= day.length; i++) { const ok = i < day.length && day[i].r && day[i].r.stars >= lv; if (ok && st < 0) st = i; if (!ok && st >= 0) { if (i - st >= 2 && (!win || i - st > win.n)) win = { a:st, b:i - 1, n:i - st, lv }; st = -1; } } }
+    const goH = rs.filter(o => o.r.stars >= 4).length;
+    const kn = rs.map(o => o.h.wind.kn); const bi = win ? t * 24 + win.a : (rs.length ? hr.indexOf(rs.reduce((a, b) => b.r.stars > a.r.stars ? b : a)) : 0);
+    const bo = hr[bi];
+    return `<button class="sector ${mx >= 4 ? 'isgo' : ''}" data-i="${bi}">
+      <div class="s-top"><b>S${t + 1}</b><span>${dayNum(d)} OCT</span></div>
+      <div class="s-day disp ${mx >= 4 ? 'go' : ''}">${dayLbl(d)}</div>
+      ${lampsHTML(mx, pot, 'md')}
+      <div class="spark">${day.map(o => `<i class="${!o.r ? 'n' : o.r.stars >= 4 ? 'sg' : ''}" style="height:${o.r ? Math.max(4, o.r.stars / 5 * 100) : 0}%"></i>`).join('')}</div>
+      <div class="s-row">WINDOW<b>${win ? hm(day[win.a].h.local) + '–' + hm(day[win.b].h.local) + ' ★' + win.lv : '—'}</b></div>
+      <div class="s-row">WIND<b>${rs.length ? f1(Math.min(...kn)) + '–' + f1(Math.max(...kn)) : '—'}</b></div>
+      <div class="s-row">GO HOURS<b class="${goH ? 'go' : ''}">${goH}</b></div>
+      <div class="s-row">WING<b>${bo && bo.r ? wingTxt(bo.r.wing) + ' M²' : '—'}</b></div>
+    </button>`;
+  }).join('');
+  $$('#sectors .sector').forEach(b => b.onclick = () => { const i = +b.dataset.i; setCursor(i); const sc = $('#stripScroll'); if (sc.scrollWidth > sc.clientWidth) sc.scrollTo({ left:XSC[i].x - sc.clientWidth / 3, behavior:RM ? 'auto' : 'smooth' }); $('#stripScroll').scrollIntoView({ block:'center', behavior:RM ? 'auto' : 'smooth' }); });
+}
+/* sun / tide helpers */
+const sunT = (date, str) => Date.parse(date + 'T' + str.slice(-5) + ':00Z') - H;
+function tideModel(ev) {
+  if (!ev || !ev.length) return null;
+  const pts = ev.map(e => ({ t:Date.parse(e.time), h:e.height_m, hi:e.tide === 'high', real:true }));
+  const half = pts.length > 1 ? (pts[pts.length - 1].t - pts[0].t) / (pts.length - 1) : 6.21 * H;
+  const lastH = [...pts].reverse().find(p => p.hi), lastL = [...pts].reverse().find(p => !p.hi);
+  const t0 = Date.parse(FEAT.brandon.hours[0].time), t1 = t0 + 120 * H;
+  while (pts[0].t > t0 - half) { const p = pts[0]; pts.unshift({ t:p.t - half, h:(p.hi ? (lastL || p).h : (lastH || p).h), hi:!p.hi, real:false }); }
+  while (pts[pts.length - 1].t < t1 + half) { const p = pts[pts.length - 1]; pts.push({ t:p.t + 6.21 * H, h:(p.hi ? (lastL || p).h : (lastH || p).h), hi:!p.hi, real:false }); }
+  const at = t => { let k = 0; while (k < pts.length - 2 && pts[k + 1].t < t) k++; const a = pts[k], b = pts[k + 1]; const u = clamp((t - a.t) / (b.t - a.t), 0, 1); return { h:a.h + (b.h - a.h) * (1 - Math.cos(Math.PI * u)) / 2, real:a.real && b.real }; };
+  return { pts, at };
+}
+function buildScope() {
+  const f = FEAT[CUR_SPOT]; const wrap = $('#scope'); const hr = rated(CUR_SPOT);
+  const W = Math.max(720, wrap.clientWidth - (innerWidth < 760 ? 0 : 78)), Hh = 230, padT = 22, padB = 30;
+  const t0 = Date.parse(f.hours[0].time), t1 = t0 + 120 * H;
+  const X = t => (t - t0) / (t1 - t0) * W;
+  const tm = tideModel(f.tides && f.tides.events);
+  const hmax = tm ? Math.ceil(Math.max(...tm.pts.map(p => p.h)) + .5) : 5;
+  const Y = h => Hh - padB - h / hmax * (Hh - padT - padB);
+  let s = `<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Tide height and daylight over five days">`;
+  // night shading
+  const sun = f.sun; let prevSet = t0;
+  sun.forEach((d, k) => { const rise = sunT(d.date, d.sunrise), set = sunT(d.date, d.sunset); s += `<rect x="${X(prevSet)}" y="${padT}" width="${X(rise) - X(prevSet)}" height="${Hh - padT - padB}" fill="#090a08"/>`; prevSet = set;
+    s += `<path d="M${X(rise)},${Hh - padB + 2} l5,8 h-10z" fill="#EDEDE6"/><text x="${X(rise) + 8}" y="${Hh - padB + 10}" font-size="8.5" fill="#6b7065">${d.sunrise.slice(-5)}</text>`;
+    s += `<path d="M${X(set)},${Hh - padB + 10} l5,-8 h-10z" fill="none" stroke="#EDEDE6"/><text x="${X(set) - 8}" y="${Hh - padB + 10}" font-size="8.5" fill="#6b7065" text-anchor="end">${d.sunset.slice(-5)}</text>`;
+    s += `<text x="${(X(rise) + X(set)) / 2}" y="${padT + 13}" font-size="10" font-weight="700" fill="#EDEDE6" text-anchor="middle" letter-spacing="1.2">${dayLbl(d.date)} ${dayNum(d.date)}</text>`; });
+  s += `<rect x="${X(prevSet)}" y="${padT}" width="${W - X(prevSet)}" height="${Hh - padT - padB}" fill="#090a08"/>`;
+  // graticule
+  for (let k = 0; k <= 20; k++) { const x = k / 20 * W; s += `<line x1="${x}" x2="${x}" y1="${padT}" y2="${Hh - padB}" stroke="${k % 4 ? '#1d201a' : '#2a2e27'}"/>`; }
+  for (let k = 0; k <= hmax; k++) s += `<line x1="0" x2="${W}" y1="${Y(k)}" y2="${Y(k)}" stroke="#1d201a"/><text x="4" y="${Y(k) - 3}" font-size="8.5" fill="#4a4f45">${k}M</text>`;
+  // go ticks
+  hr.forEach((o, i) => { if (o.r && o.r.stars >= 4) s += `<rect x="${X(Date.parse(o.h.time))}" y="${padT - 8}" width="${W / 120 - .5}" height="5" fill="#D4FF3A"/>`; });
+  s += `<text x="${W - 4}" y="${padT - 10}" font-size="8.5" fill="#6b7065" text-anchor="end">★4+ HOURS</text>`;
+  if (tm) {
+    let real = '', est = '';
+    for (let t = t0; t <= t1; t += 10 * 60e3) { const v = tm.at(t); const p = `${X(t).toFixed(1)},${Y(v.h).toFixed(1)}`; if (v.real) real += (real ? 'L' : 'M') + p; else { est += (est && !tm.at(t - 10 * 60e3).real === true ? 'L' : 'M') + p; } }
+    s += `<path d="${est}" fill="none" stroke="#6b7065" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+    s += `<path d="${real}" fill="none" stroke="#EDEDE6" stroke-width="2" class="scope-glow"/>`;
+    tm.pts.filter(p => p.real).forEach(p => s += `<circle cx="${X(p.t)}" cy="${Y(p.h)}" r="3.5" fill="#0E0F0C" stroke="#EDEDE6" stroke-width="1.5"/><text x="${X(p.t)}" y="${Y(p.h) + (p.hi ? -9 : 16)}" font-size="9" fill="#EDEDE6" text-anchor="middle" font-weight="700">${p.hi ? 'HW' : 'LW'} ${p.h.toFixed(2)}</text>`);
+    const lastReal = tm.pts.filter(p => p.real).pop();
+    s += `<text x="${X(lastReal.t) + 10}" y="${padT + 30}" font-size="8.5" fill="#6b7065">◂ PREDICTED | EXTRAPOLATED, 12H25 CYCLE — CHECK TABLES ▸</text>`;
+  } else {
+    let p = ''; for (let x = 0; x <= W; x += 3) p += (x ? 'L' : 'M') + x + ',' + (Y(hmax / 2) + Math.sin(x * 1.7) * 1.4 + Math.sin(x * .37) * 1.1).toFixed(1);
+    s += `<path d="${p}" fill="none" stroke="#FF6B1A" stroke-width="1.2" opacity=".8"/><text x="${W / 2}" y="${Y(hmax / 2) - 14}" font-size="11" font-weight="700" fill="#FF6B1A" text-anchor="middle" letter-spacing="2">NO TIDE STATION · NO SIGNAL</text>`;
+  }
+  const nx = X(simNow()); s += `<line x1="${nx}" x2="${nx}" y1="${padT}" y2="${Hh - padB}" stroke="#EDEDE6"/><rect x="${nx - 15}" y="${Hh - padB - 12}" width="30" height="12" fill="#EDEDE6"/><text x="${nx}" y="${Hh - padB - 3}" font-size="8.5" font-weight="700" text-anchor="middle" fill="#0E0F0C">NOW</text>`;
+  s += '</svg>';
+  wrap.innerHTML = s;
+}
+function renderTables() {
+  const f = FEAT[CUR_SPOT]; const hr = rated(CUR_SPOT);
+  const ev = f.tides && f.tides.events || [];
+  const tide = ev.length ? ev.map((e, k) => `<tr><td>${e.local.slice(0, 3).toUpperCase()} ${e.local.slice(-5)}</td><td><span class="tag-hw">${e.tide === 'high' ? 'HW' : 'LW'}</span>${e.tide === 'high' ? '▲' : '▼'}</td><td class="n">${e.height_m.toFixed(2)} M</td><td class="n dimc">${k ? (e.height_m - ev[k - 1].height_m > 0 ? '+' : '') + (e.height_m - ev[k - 1].height_m).toFixed(2) : '—'}</td></tr>`).join('')
+    + `<tr class="est"><td colspan="4">PREDICTIONS END ${ev[ev.length - 1].local.slice(0, 3).toUpperCase()} ${ev[ev.length - 1].local.slice(-5)} · ${esc(up(f.tides.station))} ${f1(f.tides.distance_km)} KM</td></tr>`
+    : `<tr><td colspan="4" class="alarm">${esc(up(f.tides && f.tides.note || 'NO TIDE DATA'))}</td></tr>`;
+  const sun = f.sun.map((d, t) => { const a = sunT(d.date, d.sunrise), b = sunT(d.date, d.sunset); const m = Math.round((b - a) / 60000); const go = hr.slice(t * 24, t * 24 + 24).filter(o => o.r && o.r.stars >= 4).length;
+    return `<tr><td>${dayLbl(d.date)} ${dayNum(d.date)}</td><td class="n">${d.sunrise.slice(-5)}</td><td class="n">${d.sunset.slice(-5)}</td><td class="n">${Math.floor(m / 60)}H${pad(m % 60)}</td><td class="n ${go ? 'go' : 'dimc'}">${go}</td></tr>`; }).join('');
+  const day = hr.filter(o => o.r); const avgW = day.reduce((a, o) => a + o.h.wind.kn, 0) / day.length;
+  const sea = f.sea_temperature;
+  $('#tables').innerHTML = `
+   <div><div class="ph" style="position:static"><b>TIDE EVENTS</b><span>LOCAL · ${f.tides && f.tides.datum ? esc(f.tides.datum) : '—'}</span></div><table><thead><tr><th>TIME</th><th>EVENT</th><th class="n">HEIGHT</th><th class="n">Δ</th></tr></thead><tbody>${tide}</tbody></table></div>
+   <div><div class="ph" style="position:static"><b>SUN</b><span>IST</span></div><table><thead><tr><th>DAY</th><th class="n">RISE</th><th class="n">SET</th><th class="n">LIGHT</th><th class="n">GO H</th></tr></thead><tbody>${sun}</tbody></table></div>
+   <div><div class="ph" style="position:static"><b>SPOT PROFILE</b><span>5-DAY</span></div><table><tbody>
+     <tr><td class="dimc">RATED HOURS</td><td class="n">${day.length}</td></tr>
+     <tr><td class="dimc">GO HOURS ★4+</td><td class="n ${day.some(o => o.r.stars >= 4) ? 'go' : ''}">${day.filter(o => o.r.stars >= 4).length}</td></tr>
+     <tr><td class="dimc">MEAN WIND (DAY)</td><td class="n">${f1(avgW)} KN</td></tr>
+     <tr><td class="dimc">MOST COMMON SHORE</td><td class="n">${f.spot.facing == null ? 'FACING N/A' : SHORE_TXT(mode(day.map(o => o.r.shore)))}</td></tr>
+     <tr><td class="dimc">MODAL WING</td><td class="n">${mode(day.map(o => wingTxt(o.r.wing)))} M²</td></tr>
+     <tr><td class="dimc">SEA TEMP</td><td class="n">${sea ? f1(sea.celsius) + '°C · ' + esc(up(sea.station)) : '—'}</td></tr>
+   </tbody></table></div>`;
+}
+const mode = a => { const c = {}; a.forEach(x => c[x] = (c[x] || 0) + 1); return Object.entries(c).sort((x, y) => y[1] - x[1])[0]?.[0] ?? '—'; };
+
+/* ============ RIDER CONFIG ============ */
+const QUIVER = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8];
+function rcHTML() {
+  return `<div class="rc">
+    <div class="rc-mass"><span class="lbl">RIDER MASS<br><button data-reset class="rc-reset">↺ RESET 80 KG · RIDING</button></span><output data-wout>${pad(R.w, 3)}<small>KG</small></output></div>
+    <input type="range" class="rc-range" min="45" max="120" step="1" value="${R.w}" aria-label="Rider weight in kilograms" data-w>
+    <div class="rc-ticks"><span>45</span><span>60</span><span>80</span><span>100</span><span>120</span></div>
+    <span class="lbl">LEVEL</span>
+    <div class="rc-seg" role="radiogroup" aria-label="Level">${Object.keys(BANDS).map(l => `<button role="radio" aria-checked="${R.level === l}" data-level="${l}">${LEVEL_LBL[l]}</button>`).join('')}</div>
+    <span class="lbl">QUIVER M² · NONE = RECOMMEND</span>
+    <div class="rc-chips">${QUIVER.map(q => `<button aria-pressed="${R.quiver.includes(q)}" data-q="${q}">${f1(q)}</button>`).join('')}</div>
+    <div class="rc-band" data-band></div>
+    <div class="rc-delta" data-delta></div>
+  </div>`;
+}
+function mountRC() {
+  $$('[data-rc]').forEach(c => { if (!c.closest('.view.on')) c.innerHTML = ''; });
+  $$('.view.on [data-rc]').forEach(c => {
+    c.innerHTML = rcHTML();
+    $('[data-w]', c).addEventListener('input', e => { R.w = +e.target.value; rescore(c); });
+    $$('[data-level]', c).forEach(b => b.onclick = () => { R.level = b.dataset.level; rescore(); });
+    $$('[data-q]', c).forEach(b => b.onclick = () => { const q = +b.dataset.q; R.quiver = R.quiver.includes(q) ? R.quiver.filter(x => x !== q) : [...R.quiver, q]; rescore(); });
+    $('[data-reset]', c).onclick = () => { R.w = 80; R.level = 'riding'; R.quiver = []; rescore(); };
+  });
+  paintRCStatic();
+}
+function paintRCStatic() {
+  const b = band(); const sx = k => clamp(k / 40 * 100, 0, 100);
+  const bandSVG = `<span class="lbl">RIDEABLE BAND · 0–40 KN</span><svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true" style="margin-top:6px">
+    <rect x="${sx(b.min)}" y="8" width="${sx(b.max) - sx(b.min)}" height="10" fill="#2a2e27"/>
+    <rect x="${sx(b.sweetLow)}" y="8" width="${sx(b.sweetHigh) - sx(b.sweetLow)}" height="10" fill="#EDEDE6"/>
+    <rect x="${sx(b.max)}" y="8" width=".6" height="10" fill="#FF6B1A"/>
+    ${[0, 10, 20, 30, 40].map(k => `<rect x="${sx(k) - .15}" y="20" width=".3" height="4" fill="#4a4f45"/>`).join('')}
+  </svg>
+  <div class="bl"><span>MIN ${f1(b.min)}</span><span style="color:var(--read)">SWEET ${f1(b.sweetLow)}–${f1(b.sweetHigh)} KN</span><span style="color:var(--alarm)">MAX ${f1(b.max)}</span></div>`;
+  $$('[data-band]').forEach(e => e.innerHTML = bandSVG);
+  $$('[data-wout]').forEach(o => o.innerHTML = pad(R.w, 3) + '<small>KG</small>');
+  $$('[data-w]').forEach(i => { if (+i.value !== R.w) i.value = R.w; });
+  $$('[data-level]').forEach(b2 => b2.setAttribute('aria-checked', R.level === b2.dataset.level));
+  $$('[data-q]').forEach(b2 => b2.setAttribute('aria-pressed', R.quiver.includes(+b2.dataset.q)));
+  // delta vs default
+  const D = { w:80, level:'riding', quiver:[] };
+  let txt;
+  if (CUR_SPOT && FEAT[CUR_SPOT] && currentView === 'spot') {
+    const f = FEAT[CUR_SPOT]; const cnt = r => f.hours.filter(h => { const x = rate({ kn:h.wind.kn, gust:h.wind.gust, dir:h.wind.dir, agreement:h.wind.agreement, daylight:h.daylight }, f.spot.facing, r); return x && x.stars >= 4; }).length;
+    const a = cnt(R), d = cnt(D); txt = ['GO HOURS · 5 DAYS', a, a - d];
+  } else {
+    const a = RANK.filter(s => STATES[s.id].r.stars >= 4).length;
+    const d = WF.spots.filter(s => { const st = spotState(s); return T < 0 ? s.now.stars >= 4 : s.days[T].best && s.days[T].best.stars >= 4; }).length;
+    txt = ['GO SPOTS · ' + tShort(), a, a - d];
+  }
+  $$('[data-delta]').forEach(e => e.innerHTML = `<span>${txt[0]}<br><span style="color:#4a4f45">Δ VS 80KG RIDING ${txt[2] > 0 ? '+' : ''}${txt[2]}</span></span><b class="${txt[2] > 0 ? 'up' : txt[2] < 0 ? 'down' : ''}">${pad(txt[1])}</b>`);
+  $('#riderTxt').textContent = `${R.w}KG·${LEVEL_LBL[R.level]}${R.quiver.length ? '·' + R.quiver.length + 'W' : ''}`;
+}
+let rsT = 0;
+function rescore() {
+  computeStates();
+  paintRCStatic();
+  cancelAnimationFrame(rsT);
+  rsT = requestAnimationFrame(() => {
+    paintGauges(); drawMatrix(); renderLB(); renderSegs(); moveXH(hoverPos);
+    if (currentView === 'spot') {
+      if (FEAT[CUR_SPOT]) {
+        renderNext(); buildStripKeepCursor(true);
+      } else { renderNext(); paintLite(); }
+    }
+    paintRCStatic(); cpIdle();
+  });
+}
+let lastLED = null;
+function buildStripKeepCursor(flash) {
+  const before = lastLED; const i = CUR_I; const sc = $('#stripScroll'); const sl = sc.scrollLeft;
+  buildStrip(); sc.scrollLeft = sl; setCursor(i, true);
+  if (flash && before && !RM) $('#ledg').innerHTML = ledHTML(rated(CUR_SPOT), before);
+}
+
+/* ============ CO-PILOT ============ */
+const log = $('#log');
+let scripted = false, typing = Promise.resolve();
+const sleep = ms => new Promise(r => setTimeout(r, RM ? 0 : ms));
+function short(name) { return up(name.split(/ [—–-] |, | \/ /)[0]); }
+function callFor(s, st) {
+  const r = st.r; const g = r.stars >= 4;
+  return `${short(s.name)} ★${r.stars} ${st.at === 'NOW' ? 'NOW' : 'FROM ' + st.at}. ${wingTxt(r.wing)} M. ${r.shore ? up(r.shore) : 'SHORE N/A'}. ${g ? 'GO.' : r.stars >= 2 ? 'MARGINAL.' : 'NO GO.'}`;
+}
+let idleK = 0;
+function cpIdle() {
+  if (!RANK.length) return;
+  const s = RANK[idleK % Math.min(3, RANK.length)]; const st = STATES[s.id];
+  typeInto($('#cpLine'), `${tShort() === 'NOW' ? 'RIG NOW' : tShort()} · P${idleK % Math.min(3, RANK.length) + 1} ${callFor(s, st)}`, st.r.stars >= 4);
+}
+let typeTok = 0;
+function typeInto(el, text, go) {
+  const tok = ++typeTok;
+  const html = t => go ? esc(t).replace(/GO\.$/, '<span class="go">GO.</span>') : esc(t).replace(/(NO GO\.)$/, '<span class="alarm">$1</span>');
+  if (RM) { el.innerHTML = html(text); return; }
+  let i = 0; const step = () => { if (tok !== typeTok) return; i = Math.min(text.length, i + 2); el.innerHTML = html(text.slice(0, i)); if (i < text.length) setTimeout(step, 14); };
+  step();
+}
+setInterval(() => { if (!consoleOpen) { idleK++; cpIdle(); } }, 7000);
+
+function addMsg(who, lines, chips) {
+  const m = document.createElement('div'); m.className = 'msg ' + who;
+  m.innerHTML = `<div class="who"><span>${who === 'you' ? 'YOU' : 'CO-PILOT'}</span><span>${istHM(simNow())} IST</span></div><div class="body"></div>`;
+  log.appendChild(m);
+  const body = $('.body', m);
+  return (async () => {
+    if (who === 'you') {
+      const p = document.createElement('p'); body.appendChild(p);
+      for (let i = 0; i <= lines.length; i += 2) { p.textContent = lines.slice(0, i); log.scrollTop = log.scrollHeight; await sleep(22); }
+      p.textContent = lines; return;
+    }
+    for (const ln of lines) {
+      const p = document.createElement('p'); if (ln.cls) p.className = ln.cls; body.appendChild(p);
+      if (ln.cols) { p.innerHTML = ln.cols.map(c => `<span>${c}</span>`).join(''); await sleep(90); }
+      else { const t = ln.t ?? ln; for (let i = 0; i <= t.length; i += 3) { p.textContent = t.slice(0, i); log.scrollTop = log.scrollHeight; await sleep(10); } p.innerHTML = ln.html ?? esc(t); }
+      log.scrollTop = log.scrollHeight;
+    }
+    if (chips && chips.length) {
+      const c = document.createElement('div'); c.className = 'chips';
+      chips.forEach(ch => { const b = document.createElement('button'); b.className = 'chip' + (ch.go ? ' isgo' : ''); b.textContent = ch.label; b.onclick = ch.act; c.appendChild(b); });
+      body.appendChild(c);
+    }
+    log.scrollTop = log.scrollHeight;
+  })();
+}
+function ask(q) {
+  typing = typing.then(() => addMsg('you', up(q))).then(() => sleep(380)).then(() => { const a = answer(q); return addMsg('cp', a.lines, a.chips); });
+  return typing;
+}
+const goLine = (t, g) => ({ t, html: g ? esc(t).replace(/GO\.$/, '<span class="go">GO.</span>') : esc(t).replace(/NO GO\.$/, '<span class="alarm">NO GO.</span>'), cls:'call' });
+function ansBest(t) {
+  const list = WF.spots.map(s => ({ s, st:spotState(s, t) })).filter(x => !x.st.none).sort((a, b) => b.st.r.stars - a.st.r.stars || b.st.r.ride - a.st.r.ride);
+  const ngo = list.filter(x => x.st.r.stars >= 4).length;
+  const top = list.slice(0, 5); const p1 = top[0];
+  const counties = mode(top.map(x => up(x.s.county))); const dirs = mode(top.map(x => x.st.compass));
+  const feat = top.find(x => FEAT[x.s.id]);
+  const lines = [
+    `${t < 0 ? 'NOW ' + istHM(NOW) : dayLbl(DATES[t]) + ' ' + dayNum(DATES[t]) + ' OCT'}. ${ngo} OF ${list.length} SPOTS AT ★4+.`,
+    ...top.map((x, i) => ({ cols:[`P${i + 1}`, esc(short(x.s.name)), '★' + x.st.r.stars + ' ' + x.st.at, f1(x.st.kn) + '/' + f1(x.st.gust) + ' ' + x.st.compass], cls:'row' + (x.st.r.stars >= 4 ? ' isgo' : '') })),
+    `PATTERN: ${counties}, ${dirs} WIND${top.every(x => x.st.at >= '16:00') ? ', LATE SESSION' : ''}.`,
+    goLine(callFor(p1.s, p1.st), p1.st.r.stars >= 4),
+  ];
+  const chips = [{ label:'JUMP ' + short(p1.s.name), go:p1.st.r.stars >= 4, act:() => { closeConsole(); go('#map'); setT(t); select(p1.s.id, true); } }];
+  if (feat) chips.push({ label:'OPEN ' + short(feat.s.name) + ' TELEMETRY', act:() => { const i = t < 0 ? nowIdx() : rated(feat.s.id).findIndex(o => o.h.time.startsWith(DATES[t]) && hm(o.h.local) === feat.st.at); pendingCursor = i >= 0 ? i : null; closeConsole(true); go('#spot/' + feat.s.id); } });
+  if (t >= 0) chips.push({ label:'SET T ' + dayLbl(DATES[t]), act:() => { setT(t); toast('T-SELECT ' + tShort()); } });
+  return { lines, chips };
+}
+function ansWing(id, hour, dayIdx) {
+  const s = spotById[id]; const f = FEAT[id];
+  if (!f) { const st = spotState(s, dayIdx ?? -1); return { lines:[`${short(s.name)} HAS DAY-BEST FEED ONLY.`, `${st.at}: ${f1(st.kn)} KN ${st.compass}, GUST ${f1(st.gust)}.`, goLine(`WING ${wingTxt(st.r.wing)} M. ★${st.r.stars}. ${st.r.stars >= 4 ? 'GO.' : 'NO GO.'}`, st.r.stars >= 4)], chips:[{ label:'OPEN ' + short(s.name), act:() => { closeConsole(true); go('#spot/' + id); } }] }; }
+  const hr = rated(id); const ni = nowIdx();
+  let i = hr.findIndex((o, k) => k >= (dayIdx != null ? dayIdx * 24 : ni) && +hm(o.h.local).slice(0, 2) === hour);
+  if (i < 0) i = ni;
+  const o = hr[i];
+  const tag = `${short(s.name)} ${hm(o.h.local)} ${dayLbl(o.h.time.slice(0, 10))}`;
+  if (!o.r) return { lines:[`${tag}: DARK. NOT RATED.`], chips:[] };
+  const r = o.r; const g = r.stars >= 4;
+  const lines = [
+    `${tag}. ${f1(o.h.wind.kn)} KN ${o.h.wind.compass}, GUST ${f1(o.h.wind.gust)}. RIDEABLE ${f1(r.ride)}.`,
+    `${SHORE_TXT(r.shore)}. ★${r.stars} OF ${r.potential} POSSIBLE. ${up(r.session)}.`,
+    `WING ${f1(r.wing.rec)} M FOR ${R.w} KG ${LEVEL_LBL[R.level]}${r.wing.own != null ? ' · TAKE YOUR ' + f1(r.wing.own) : ''}.`,
+  ];
+  if (r.reasons[0]) lines.push(`WHY: ${up(r.reasons[0].replace(/\.$/, ''))}.`);
+  lines.push(goLine(g ? 'GO.' : 'NO GO.', g));
+  const chips = [{ label:`OPEN ${short(s.name)} @ ${hm(o.h.local)}`, act:() => { pendingCursor = i; closeConsole(true); go('#spot/' + id); } }];
+  if (!g) {
+    const nw = nextWindow(id);
+    if (nw) { const p = nw.peak; const wtxt = `NEXT ★4: ${istDay(nw.t0)} ${istHM(nw.t0)}–${istHM(nw.t1)}. ${f1(p.h.wind.kn)} KN ${p.h.wind.compass}. ${wingTxt(p.r.wing)} M. ${SHORE_TXT(p.r.shore)}. GO.`; lines.push(goLine(wtxt, true));
+      chips.push({ label:`OPEN ${short(s.name)} @ ${istDay(nw.t0)} ${istHM(nw.t0)}`, go:true, act:() => { pendingCursor = nw.start; closeConsole(true); go('#spot/' + id); } }); }
+  }
+  chips.push({ label:'JUMP ' + short(s.name) + ' ON MAP', act:() => { closeConsole(); go('#map'); select(id, true); } });
+  return { lines, chips };
+}
+function findSpot(q) {
+  const ql = q.toLowerCase();
+  const feat = Object.keys(FEAT).find(id => ql.includes(id.split('-').pop()) || ql.includes(FEAT[id].spot.name.toLowerCase().split(/[ —-]/)[0]));
+  if (feat) return feat;
+  const s = WF.spots.find(sp => sp.name.toLowerCase().split(/[ —,\/-]+/).some(w => w.length >= 4 && ql.split(/\W+/).includes(w)));
+  return s ? s.id : null;
+}
+function answer(q) {
+  const ql = q.toLowerCase();
+  const dayIdx = /tomorrow/.test(ql) ? 1 : DATES.findIndex(d => ql.includes(dayLbl(d).toLowerCase()) || ql.includes({ MON:'monday', TUE:'tuesday', WED:'wednesday', THU:'thursday', FRI:'friday' }[dayLbl(d)]));
+  const id = findSpot(q);
+  const hm2 = ql.match(/(\d{1,2})(?::\d\d)?\s*(am|pm)?/);
+  if (id && (/wing|size|what|at \d|\dpm|\dam/.test(ql) && hm2)) { let h = +hm2[1]; if (hm2[2] === 'pm' && h < 12) h += 12; if (!hm2[2] && h < 8) h += 12; return ansWing(id, h, dayIdx >= 0 ? dayIdx : null); }
+  if (id) { const s = spotById[id]; const st = spotState(s, dayIdx >= 0 ? dayIdx : -1); const nw = FEAT[id] ? nextWindow(id) : null;
+    const lines = [`${short(s.name)} · ${up(s.county)} · ${dayIdx >= 0 ? dayLbl(DATES[dayIdx]) + ' BEST ' + st.at : 'NOW'}.`, `${f1(st.kn)} KN ${st.compass}, GUST ${f1(st.gust)}. RIDE ${f1(st.r.ride)}. ${SHORE_TXT(st.r.shore)}.`, goLine(callFor(s, st), st.r.stars >= 4)];
+    if (nw) lines.push(`NEXT ★4 WINDOW ${istDay(nw.t0)} ${istHM(nw.t0)}.`);
+    return { lines, chips:[{ label:'OPEN ' + short(s.name), act:() => { closeConsole(true); go('#spot/' + id); } }, { label:'JUMP ON MAP', act:() => { closeConsole(); go('#map'); select(id, true); } }] }; }
+  if (/best|where|go|rig|now|today|tomorrow|mon|tue|wed|thu|fri/.test(ql)) return ansBest(dayIdx >= 0 ? dayIdx : -1);
+  return { lines:['SAY AGAIN.', 'TRY: BEST TOMORROW · WING AT KEEL 3PM · GO NOW · RUSHEEN FRIDAY'], chips:[] };
+}
+const SUGG = ["Where's best tomorrow?", 'What wing at Brandon at 2pm?', 'Go now?', 'Keel Friday', 'Wing at Rusheen 4pm Thursday'];
+$('#suggest').innerHTML = SUGG.map(s => `<button>${esc(up(s))}</button>`).join('');
+$$('#suggest button').forEach((b, k) => b.onclick = () => ask(SUGG[k]));
+$('#cpForm').onsubmit = e => { e.preventDefault(); const v = $('#cpIn').value.trim(); if (!v) return; $('#cpIn').value = ''; ask(v); };
+let consoleOpen = false;
+function openConsole() {
+  consoleOpen = true; const c = $('#console'); c.classList.add('open'); c.setAttribute('aria-hidden', 'false');
+  $('#navA').classList.add('on'); $('#navF').classList.remove('on');
+  if (!scripted) { scripted = true; ask("Where's best tomorrow?").then(() => sleep(500)).then(() => ask('What wing at Brandon at 2pm?')); }
+  setTimeout(() => $('#cpIn').focus({ preventScroll:true }), RM ? 0 : 300);
+}
+function closeConsole(silent) {
+  if (!consoleOpen) return;
+  consoleOpen = false; const c = $('#console'); c.classList.remove('open'); c.setAttribute('aria-hidden', 'true');
+  $('#navA').classList.remove('on'); $('#navF').classList.add('on');
+  if (location.hash === '#companion' && !silent) history.replaceState(null, '', lastViewHash);
+}
+$('#cpClose').onclick = () => { closeConsole(); history.replaceState(null, '', lastViewHash); };
+$('#cpbar').onclick = () => go('#companion');
+$('#cpbar').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go('#companion'); } };
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1800); }
+$$('[data-off]').forEach(a => a.onclick = e => { e.preventDefault(); toast(a.dataset.off + ' CHANNEL — NOT IN THIS BUILD'); });
+$('#riderChip').onclick = () => { const el = $('[data-rc]:not(:empty)'); if (el) { el.scrollIntoView({ behavior:RM ? 'auto' : 'smooth', block:'center' }); $('[data-w]', el)?.focus({ preventScroll:true }); } };
+
+/* ============ ROUTER ============ */
+let currentView = null;
+function go(h) { if (location.hash === h) route(); else location.hash = h; }
+function show(v) {
+  if (currentView === v) return;
+  currentView = v;
+  $$('.view').forEach(e => e.classList.toggle('on', e.id === 'v-' + v));
+  if (v === 'map') { mountRC(); requestAnimationFrame(layoutMap); }
+}
+function route() {
+  const h = location.hash.slice(1) || 'map';
+  if (h.startsWith('spot/')) { show('spot'); $('#v-map [data-rc]').innerHTML = ''; openSpot(h.slice(5)); lastViewHash = '#' + h; closeConsole(true); }
+  else if (h === 'companion') { if (!currentView) show('map'); openConsole(); }
+  else { const was = currentView; show('map'); if (was !== 'map') { $('#v-spot').innerHTML = ''; mountRC(); } lastViewHash = '#map'; closeConsole(true); }
+  paintRCStatic();
+}
+addEventListener('hashchange', route);
+
+/* keyboard */
+addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' && e.target.type !== 'range') { if (e.key === 'Escape') { closeConsole(); $('#cpbar').focus(); } return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === '/') { e.preventDefault(); go('#companion'); return; }
+  if (e.key === 'Escape') { if (consoleOpen) { closeConsole(); history.replaceState(null, '', lastViewHash); } else if (currentView === 'spot') go('#map'); return; }
+  if (currentView === 'map' && !consoleOpen) {
+    if (e.key === 'j' || e.key === 'k') { const i = RANK.findIndex(s => s.id === SEL); const n = clamp(i + (e.key === 'j' ? 1 : -1), 0, RANK.length - 1); hoverPos = null; select(RANK[n].id, true); e.preventDefault(); }
+    else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === ']' || e.key === '[') && tag !== 'input') { setT(T + (e.key === 'ArrowRight' || e.key === ']' ? 1 : -1)); e.preventDefault(); }
+    else if (e.key === 'Enter' && SEL && (tag === 'body' || e.target.classList.contains('g') && e.target.dataset.id === SEL)) { if (tag !== 'button') { go('#spot/' + SEL); e.preventDefault(); } }
+  }
+  if (currentView === 'spot' && !consoleOpen && FEAT[CUR_SPOT] && tag === 'body' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { e.preventDefault(); stepCursor(e.key === 'ArrowRight' ? 1 : -1); }
+});
+
+/* stage interactions */
+const stage = $('#stage');
+stage.addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; const r = stage.getBoundingClientRect(); hoverPos = [e.clientX - r.left, e.clientY - r.top]; moveXH(hoverPos); });
+stage.addEventListener('pointerleave', () => { hoverPos = null; moveXH(null); });
+/* jog wheel */
+$('#jogL').onclick = () => setT(T - 1); $('#jogR').onclick = () => setT(T + 1);
+const wheel = $('#wheel'); let drag = null;
+wheel.addEventListener('pointerdown', e => { drag = { x:e.clientX, t:T }; wheel.setPointerCapture(e.pointerId); });
+wheel.addEventListener('pointermove', e => { if (!drag) return; const d = Math.round((e.clientX - drag.x) / -28); const nt = clamp(drag.t + d, -1, 4); if (nt !== T) setT(nt); });
+wheel.addEventListener('pointerup', () => drag = null);
+wheel.addEventListener('wheel', e => { e.preventDefault(); if (Math.abs(e.deltaY) + Math.abs(e.deltaX) < 4) return; clearTimeout(wheel._w); wheel._w = setTimeout(() => setT(T + ((e.deltaY || e.deltaX) > 0 ? 1 : -1)), 40); }, { passive:false });
+wheel.addEventListener('keydown', e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setT(T + (e.key === 'ArrowUp' ? 1 : -1)); } });
+
+/* clock */
+function clock() { const t = simNow(); const d = new Date(t + H); $('#clock').innerHTML = `<b>${istDay(t)} ${pad(d.getUTCDate())} OCT ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}</b> IST`; if (currentView === 'spot') tickCountdown(); }
+setInterval(clock, 1000);
+
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (currentView === 'map') layoutMap(); else if (currentView === 'spot' && FEAT[CUR_SPOT]) { buildStripKeepCursor(); buildScope(); tickCountdown(true); } }, 120); });
+
+/* boot */
+computeStates();
+SEL = RANK[0].id;
+renderSegs(); renderLB();
+route();
+setT(-1);
+clock();
+if (!location.hash) history.replaceState(null, '', '#map');
+})();
+</script>
+</body>
+</html>
