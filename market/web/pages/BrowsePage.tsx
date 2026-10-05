@@ -69,6 +69,11 @@ export const browseStyles = tv({
       "hidden",
       "max-wide:inline-flex max-wide:h-touch max-wide:flex-1 max-wide:shrink",
       "max-wide:rounded-control max-wide:border-line-strong max-wide:shadow-none",
+      // A tap leaves a phone "hovering" over what it pressed, and the pill's
+      // hover inks it in beside the view's one filled action. This replaces
+      // it (the recipes merge): under a finger, and open, it is on the second
+      // sheet, with the panel it opened.
+      "not-disabled:hover:bg-sunken not-disabled:hover:text-ink aria-expanded:bg-sunken",
     ],
     panel:
       "flex flex-auto flex-wrap items-center gap-2 max-wide:order-3 max-wide:hidden max-wide:basis-full",
@@ -105,16 +110,6 @@ export const browseStyles = tv({
     },
   },
 });
-
-/** "Mon 5 Oct", as the dateline over the classifieds gives it. */
-const dateline = (now = new Date()) =>
-  now
-    .toLocaleDateString("en-IE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    })
-    .replace(",", "");
 
 export default function BrowsePage() {
   usePageTitle("Second-hand wingfoil gear");
@@ -238,7 +233,11 @@ export default function BrowsePage() {
           <Kicker as="span" tone="ink">
             Classifieds
           </Kicker>
-          <Kicker as="span">{dateline()}</Kicker>
+          {/*
+            Where the paper is read, not the day: a date here would be the one
+            thing on the page that changes overnight, baseline and all.
+          */}
+          <Kicker as="span">All {COUNTIES.length} counties</Kicker>
         </div>
         <Headline id="browse-title">
           Second-hand gear<span className={headline.mark()}>:</span>{" "}
