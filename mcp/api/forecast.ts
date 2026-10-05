@@ -15,7 +15,7 @@
  */
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
-import type { ForecastSource } from "./source.js";
+import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
 /** A run older than this is flagged stale, as the map flags it. */
@@ -606,6 +606,8 @@ export interface HourWeather {
   air_c: number | null;
   rain_mm: number | null;
   cloud_pct: number | null;
+  /** The model's present-weather code (WMO 4677), where it publishes one. */
+  weather_code: number | null;
 }
 function hourWeather(source: SpotVariables, time: number): HourWeather | null {
   const step = stepAt(source.steps, time);
@@ -618,6 +620,7 @@ function hourWeather(source: SpotVariables, time: number): HourWeather | null {
     air_c: value("t2m", 0),
     rain_mm: value("precip", 1),
     cloud_pct: value("clct", 0),
+    weather_code: value("ww", 0),
   };
   return Object.values(result).every((v) => v === null) ? null : result;
 }
