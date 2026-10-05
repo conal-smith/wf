@@ -105,7 +105,7 @@ test("the menu carries the reader between the map and the marketplace", async ({
 
   await page.waitForURL("**/market");
   await expect(
-    page.getByRole("heading", { name: /Second-hand wingfoil gear/ }),
+    page.getByRole("heading", { name: /Second-hand gear/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "wingfoil.ie Market, home" }),
