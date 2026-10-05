@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type ElementType,
+  type HTMLAttributes,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -162,22 +163,31 @@ export function PenStrike({ children, className }: MarkProps) {
   );
 }
 
-export type PenNoteProps = VariantProps<typeof penNoteStyles> & {
-  /** A paragraph by default; a span inside a line of something else. */
-  as?: ElementType;
-  className?: string;
-  children: ReactNode;
-};
+export type PenNoteProps = VariantProps<typeof penNoteStyles> &
+  Omit<HTMLAttributes<HTMLElement>, "children"> & {
+    /** A paragraph by default; a span inside a line of something else. */
+    as?: ElementType;
+    className?: string;
+    children: ReactNode;
+    /** For a test or a script to find it by: `data-pen-note` and the like. */
+    [data: `data-${string}`]: string | boolean | undefined;
+  };
 
 /**
  * The pen's note in the margin: the verdict in a few words, as somebody would
- * write it. "Go 13:00–16:00. Four stars on a 6 m." Never a paragraph.
+ * write it. "Go 13:00–16:00. Four stars on a 6 m." Never a paragraph. Any
+ * other attribute (an id, `data-*`, `aria-*`) goes on the element.
  */
 export function PenNote({
   as: Tag = "p",
   size,
   className,
   children,
+  ...rest
 }: PenNoteProps) {
-  return <Tag className={penNoteStyles({ size, className })}>{children}</Tag>;
+  return (
+    <Tag {...rest} className={penNoteStyles({ size, className })}>
+      {children}
+    </Tag>
+  );
 }
