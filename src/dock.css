@@ -588,3 +588,161 @@ table.tt {
     bottom: calc(100% + 66px);
   }
 }
+
+/* ---------- play, by the day slider ---------- */
+.scrub-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 5px;
+}
+.scrub-row .scrub {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+.play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  cursor: pointer;
+}
+.play svg path {
+  fill: currentColor;
+  stroke: currentColor;
+}
+.play:hover {
+  background: var(--color-chart-magenta);
+  border-color: var(--color-chart-magenta);
+}
+.play:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+/* A fortnight of days: the name and the day's best figure, no glyphs. */
+.scrub.many .sc-h .st,
+.scrub.many .sc-h .bw {
+  display: none;
+}
+.scrub.many .sc-h .sn {
+  display: block;
+}
+.scrub.many .sc-day {
+  padding: 3px 5px 5px;
+}
+
+/* ---------- the rows below the fold ---------- */
+.dk-more {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.dk-more svg {
+  stroke: currentColor;
+}
+.dk-more:hover {
+  color: var(--color-chart-magenta);
+}
+.dk-more:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.tt tr.tt-more td {
+  height: 20px;
+  font-size: 11px;
+}
+.tt tr.tt-waves td {
+  border-top: 1px solid var(--color-line);
+}
+.tt td.more-note {
+  padding-left: 8px;
+  text-align: left;
+  font: italic 12px var(--font-body);
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+.wave-cell {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.wave-cell b {
+  font-weight: 600;
+}
+.wave-cell small {
+  font-size: 9px;
+  color: var(--color-ink-muted);
+}
+.wave-cell svg {
+  color: var(--color-depth);
+}
+.tt .weather-cell {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.tt .weather-cell svg {
+  stroke-width: 1.5;
+}
+.rain-cell {
+  padding: 0 3px;
+  background: color-mix(
+    in srgb,
+    var(--color-depth) calc(var(--rain, 0) * 45%),
+    transparent
+  );
+}
+.tt .proxy {
+  color: var(--color-ink-muted);
+}
+.stars-n {
+  font: 600 11px var(--font-mono);
+}
+.stars-n small {
+  font-size: 9px;
+}
+.dk-county.is-point {
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 720px) {
+  .scrub.many .sc-h {
+    justify-content: center;
+  }
+  .scrub.many .sc-h .d3,
+  .scrub.many .sc-h .sn {
+    display: none;
+  }
+  .scrub.many .sc-h b {
+    font-size: 12px;
+  }
+  .scrub.many .sc-day {
+    padding: 3px 1px 4px;
+  }
+  .play {
+    width: 30px;
+    height: 30px;
+  }
+}
+@media (max-width: 720px) {
+  /* The period is in the cell's title on a phone: the height and the arrow fit. */
+  .wave-cell small {
+    display: none;
+  }
+}

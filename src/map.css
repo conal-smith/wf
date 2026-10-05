@@ -1279,3 +1279,15 @@
   flex-wrap: wrap;
   gap: 4px 10px;
 }
+
+/* A point tapped on the open map: a ring and a cross, in ink. */
+.pick-mark {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 50%;
+  background:
+    linear-gradient(var(--color-ink), var(--color-ink)) center / 1.5px 100% no-repeat,
+    linear-gradient(var(--color-ink), var(--color-ink)) center / 100% 1.5px no-repeat;
+  pointer-events: none;
+}

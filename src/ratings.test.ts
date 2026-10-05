@@ -11,6 +11,7 @@ import {
   offshoreMark,
   placeConsensus,
   placeHours,
+  pointHours,
 } from "./ratings";
 
 /** The dock's own path, verbatim: what the fast one has to match. */
@@ -141,5 +142,28 @@ describe("offshoreMark", () => {
     ).toBe("struck");
     expect(offshoreMark(rated("cross"), DEFAULT_RIDER)).toBe(null);
     expect(offshoreMark(null, DEFAULT_RIDER)).toBe(null);
+  });
+});
+
+describe("pointHours", () => {
+  it("reads the sampled frames between their steps, and rates the wind alone", () => {
+    const frames = [0, 1, 2, 3].map((h) => ({
+      hour: h,
+      validTime: new Date(Date.parse("2026-10-05T11:00:00Z") + h * 3600000).toISOString(),
+    }));
+    const values = [
+      { u: -6, v: 0, gust: 9 },
+      null,
+      { u: -8, v: 0, gust: 11 },
+      { u: -8, v: 0, gust: 11 },
+    ];
+    const axis = ["2026-10-05T11:00:00Z", "2026-10-05T12:30:00Z", "2026-10-05T20:00:00Z"];
+    const out = pointHours(frames, values, { lat: 53, lon: -8 }, axis, DEFAULT_RIDER);
+    expect(out[0].windKn).toBeCloseTo(6 * 1.94384449, 6);
+    // Halfway from 11:00 to 13:00, across the hour not sampled yet.
+    expect(out[1].windKn).toBeCloseTo(7.5 * 1.94384449, 6);
+    expect(out[1].rating?.shore).toBe(null);
+    // Past the run: nothing, not a borrowed neighbour.
+    expect(out[2].windKn).toBe(null);
   });
 });

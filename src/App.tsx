@@ -24,9 +24,19 @@ import SidePanel, { type SideTab } from "./SidePanel";
 import SpotCard from "./SpotCard";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
-import { useModelAvailability, useSpotTide } from "./useBlend";
+import {
+  useMarineModels,
+  useModelAvailability,
+  useSpotTide,
+} from "./useBlend";
 import { useRatings } from "./useRatings";
-import { offshoreMark, type RatedPlace } from "./ratings";
+import { usePointSeries } from "./usePointSeries";
+import {
+  offshoreMark,
+  pointHours as pointHoursFrom,
+  type PlaceHour,
+  type RatedPlace,
+} from "./ratings";
 import {
   clock,
   dayBest,
@@ -73,6 +83,19 @@ import {
 const FIRST_SPOT = "brandon";
 const WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
+const MORE_KEY = "wingfoil.map.more.v1";
+/** The focus is on the point tapped on the map, not a riding place. */
+const AT_POINT = "@point";
+
+/** A point tapped on the map, as the dock names it. */
+interface Picked {
+  lon: number;
+  lat: number;
+  name: string;
+  coords: string;
+}
+const degrees = (lat: number, lon: number) =>
+  `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
 const PHONE = "(max-width: 720px)";
 /** Width the side panel and its gap take from the map, on a wide screen. */
 const SIDE_INSET = 380;
@@ -155,6 +178,13 @@ export default function App() {
   );
   const phone = useMedia(PHONE);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Picked | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [more, setMore] = useState(() => store.get(MORE_KEY) === "1");
+  const chooseMore = (next: boolean) => {
+    setMore(next);
+    store.set(MORE_KEY, next ? "1" : "0");
+  };
   const [popupOpen, setPopupOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
@@ -535,8 +565,9 @@ export default function App() {
   );
 
   /* ---- choosing a spot ---- */
-  const tide = useSpotTide(point?.id);
+  const tide = useSpotTide(picked ? undefined : point?.id);
   const selectSpot = (spot: Spot, fly = true) => {
+    setPicked(null);
     setPoint(spot);
     setPopupOpen(true);
     setFocusId(spot.id);
@@ -544,6 +575,19 @@ export default function App() {
     fav.visit(spot.id);
     if (phone) setFolded(true);
     if (fly) controls.current?.flyTo(spot);
+  };
+  /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
+  const pickPoint = (at: { lon: number; lat: number; place: string | null }) => {
+    const coords = degrees(at.lat, at.lon);
+    setPicked({
+      lon: at.lon,
+      lat: at.lat,
+      name: at.place ?? coords,
+      coords: at.place ? coords : "",
+    });
+    setFocusId(AT_POINT);
+    setPopupOpen(false);
+    setKeyOpen(false);
   };
   const clearFocus = () => {
     setFocusId(null);
@@ -620,10 +664,40 @@ export default function App() {
   };
   useEffect(() => () => clearTimeout(highlightTimer.current), []);
 
+  /* ---- a point tapped on the map: read out of the map model's frames ---- */
+  const pickedPoint = useMemo(
+    () =>
+      picked ? { name: picked.name, lat: picked.lat, lon: picked.lon } : null,
+    [picked],
+  );
+  const series = usePointSeries(picked ? manifest : null, pickedPoint);
+  const pickedHours = useMemo<PlaceHour[] | undefined>(
+    () =>
+      picked && manifest
+        ? pointHoursFrom(manifest.frames, series.values, picked, axis, rider)
+        : undefined,
+    [picked, manifest, series.values, axis, rider],
+  );
+  const dockSpot: Spot | null = picked
+    ? {
+        id: "",
+        name: picked.name,
+        county: picked.coords,
+        lat: picked.lat,
+        lon: picked.lon,
+        note: "",
+        facing: null,
+      }
+    : point;
+
   /* ---- what the pen writes beside the selected light ---- */
-  const pointHours = point ? hours.get(point.id) : undefined;
+  const pointHours: PlaceHour[] | undefined = picked
+    ? pickedHours
+    : point
+      ? hours.get(point.id)
+      : undefined;
   const penNote = useMemo(() => {
-    if (!point || !pointHours || !selectedDay) return "";
+    if (!dockSpot || !pointHours || !selectedDay) return "";
     const best = dayBest(
       pointHours.map((h) => h.rating),
       selectedDay,
@@ -638,7 +712,49 @@ export default function App() {
         ? clock(strip[best.from].time)
         : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`;
     return `${best.stars}★ ${span}, ${r.wing.own ?? r.wing.recommended} m`;
-  }, [point?.id, pointHours, selectedDay, strip, clockNow, version]);
+  }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
+
+  /* ---- playing through the hours ---- */
+  useEffect(() => {
+    if (!playing) return;
+    const step = window.setInterval(() => {
+      const s = stripRef.current;
+      const at = selectedRef.current
+        ? nearestColumn(s, Date.parse(selectedRef.current))
+        : 0;
+      if (at >= s.length - 1) {
+        setPlaying(false);
+        return;
+      }
+      chosenTime.current = true;
+      setSelectedTime(s[at + 1].validTime);
+    }, 1100);
+    // Any touch of the page but the button itself takes the hours back.
+    const stop = (event: Event) => {
+      if ((event.target as HTMLElement | null)?.closest?.(".play")) return;
+      setPlaying(false);
+    };
+    document.addEventListener("pointerdown", stop, true);
+    document.addEventListener("wheel", stop, { capture: true, passive: true });
+    document.addEventListener("keydown", stop, true);
+    return () => {
+      clearInterval(step);
+      document.removeEventListener("pointerdown", stop, true);
+      document.removeEventListener("wheel", stop, true);
+      document.removeEventListener("keydown", stop, true);
+    };
+  }, [playing]);
+  const togglePlay = () => {
+    if (!playing && selected >= strip.length - 1) selectColumn(0);
+    setPlaying((v) => !v);
+  };
+  const marine = useMarineModels(more && mapReady);
+  const focusAt =
+    focusId === AT_POINT
+      ? picked
+      : focusId && point && focusId === point.id
+        ? point
+        : null;
 
   /* ---- the run that reaches the hour, when the map's does not ---- */
   const beyondMap =
@@ -788,8 +904,11 @@ export default function App() {
               lights={lights}
               named={named}
               lightLabel={lightLabel}
-              selectedId={point?.id ?? null}
-              focusId={focusId}
+              selectedId={picked ? null : (point?.id ?? null)}
+              focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
+              mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
+              picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
+              onPick={pickPoint}
               windStyle={windStyle}
               rideStops={rideStops}
               layers={layers}
@@ -797,15 +916,14 @@ export default function App() {
               bottomInset={dockHeight + (phone ? 54 : 0)}
               rightInset={phone ? 0 : SIDE_INSET}
               phone={phone}
-              penNote={point && focusId === point.id ? penNote : null}
+              penNote={focusAt ? penNote : null}
               onSelect={(spot) => selectSpot(spot)}
-              onOpenMapClick={clearFocus}
               onReady={(c) => {
                 controls.current = c;
                 setMapReady(!!c);
               }}
               popup={
-                point && popupOpen ? (
+                point && popupOpen && !picked ? (
                   <SpotCard
                     spot={point}
                     time={column?.time ?? null}
@@ -870,9 +988,16 @@ export default function App() {
               </span>
             </div>
             <div className="map-footer" ref={dock}>
-              {point && strip.length > 0 && (
+              {dockSpot && strip.length > 0 && (
                 <ForecastDock
-                  spot={point}
+                  spot={dockSpot}
+                  isPoint={!!picked}
+                  pointPending={!!picked && series.pending}
+                  playing={playing}
+                  onTogglePlay={togglePlay}
+                  more={more}
+                  onMore={chooseMore}
+                  marine={marine}
                   columns={strip}
                   days={days}
                   hours={pointHours}
@@ -882,9 +1007,9 @@ export default function App() {
                   prefs={prefs}
                   onPrefsChange={changePrefs}
                   models={models}
-                  starred={starred.includes(point.id)}
-                  onToggleStar={() => fav.toggle(point.id)}
-                  tide={tide.tide}
+                  starred={!picked && starred.includes(dockSpot.id)}
+                  onToggleStar={() => fav.toggle(dockSpot.id)}
+                  tide={picked ? null : tide.tide}
                   folded={folded}
                   onFold={setFolded}
                   phone={phone}
@@ -908,7 +1033,7 @@ export default function App() {
         <Suspense fallback={null}>
           <Companion
             context={{
-              spot: point ? { id: point.id, name: point.name } : null,
+              spot: point && !picked ? { id: point.id, name: point.name } : null,
               time: selectedTime,
               rider: prefs.rider,
             }}

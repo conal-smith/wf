@@ -1,5 +1,5 @@
 /**
- * The dock's week: the forecast's own columns for the next seven Irish days,
+ * The dock's fortnight: the forecast's own columns for the next fifteen Irish days,
  * 07:00 to 20:00, as one strip of hours under a fixed cursor. Night columns
  * are left out, as the chart's dock leaves them out: nobody rides them, and a
  * strip of dark hours between every two days is a lot of swiping for nothing.
@@ -11,7 +11,8 @@
 import type { DockColumn } from "../force5/src/timeline";
 
 export const TIME_ZONE = "Europe/Dublin";
-export const STRIP_DAYS = 7;
+/** The old dock's range: as far as the longest run reaches. */
+export const STRIP_DAYS = 15;
 export const FIRST_HOUR = 7;
 export const LAST_HOUR = 20;
 
@@ -184,4 +185,54 @@ export function dayBest(
     if (!best || run.to - run.from > best.to - best.from) best = { ...run };
   }
   return best;
+}
+
+/** Where each column sits along the strip, and how wide it is. */
+export interface StripGeometry {
+  x: number[];
+  w: number[];
+  total: number;
+}
+
+/**
+ * Hourly columns at the full width; the three- and six-hourly ones further
+ * out a little narrower, so a fortnight is not a swipe too far and a day of
+ * five steps does not read as long as a day of fourteen.
+ */
+export function stripGeometry(
+  columns: readonly { time: number; date: string }[],
+  cw: number,
+  coarse = Math.round(cw * 0.8),
+): StripGeometry {
+  const x: number[] = [];
+  const w: number[] = [];
+  let total = 0;
+  columns.forEach((column, at) => {
+    const gaps = [columns[at - 1], columns[at + 1]]
+      .filter((n) => n && n.date === column.date)
+      .map((n) => Math.abs(n!.time - column.time));
+    const step = gaps.length ? Math.min(...gaps) : 3600000;
+    const width = step >= 3 * 3600000 ? coarse : cw;
+    x.push(total);
+    w.push(width);
+    total += width;
+  });
+  return { x, w, total };
+}
+
+/** The column whose centre is nearest a position along the strip. */
+export function columnAtX(g: StripGeometry, position: number): number {
+  let lo = 0,
+    hi = g.x.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (g.x[mid] + g.w[mid] / 2 < position) lo = mid + 1;
+    else hi = mid;
+  }
+  if (lo > 0) {
+    const a = g.x[lo - 1] + g.w[lo - 1] / 2;
+    const b = g.x[lo] + g.w[lo] / 2;
+    if (Math.abs(position - a) < Math.abs(position - b)) return lo - 1;
+  }
+  return lo;
 }

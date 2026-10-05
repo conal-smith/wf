@@ -87,7 +87,9 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   // A phone opens with the hours folded: the head and the week's days.
   await expect(page.locator(".dock")).toHaveClass(/is-folded/);
   expect(dock.height).toBeLessThan(260);
-  await expect(page.locator(".sc-day")).toHaveCount(7);
+  await expect(page.locator(".sc-day")).toHaveCount(
+    new Set(sampleStrip.map((c) => c.date)).size,
+  );
   // The rider's spots ride above the dock as a strip.
   await expect(page.locator(".side-strip")).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
@@ -127,7 +129,7 @@ test("the depths are one static file, read by range requests", async ({
   expect(ranged.every((range) => /^bytes=\d+-\d+$/.test(range))).toBe(true);
 });
 
-test("finding a spot flies there, focuses it and opens its popup; Escape, IRL and the open map clear it", async ({
+test("finding a spot flies there, focuses it and opens its popup; Escape and IRL clear it", async ({
   page,
 }) => {
   await openChart(page);
@@ -168,14 +170,52 @@ test("finding a spot flies there, focuses it and opens its popup; Escape, IRL an
   await expect(map).not.toHaveClass(/is-focus/);
   await expect(popup).toHaveCount(0);
 
-  await findSpot(page, "Dollymount");
-  await expect(map).toHaveClass(/is-focus/);
-  await steadyFrames(page);
-  await page.locator(".maplibregl-canvas").click({ position: await openWater(page) });
-  await expect(map).not.toHaveClass(/is-focus/);
-  await expect(popup).toHaveCount(0);
-  // The dock keeps the spot: clearing the focus is not choosing another.
+  // Clearing the focus is not choosing another place: the dock keeps it.
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+});
+
+test("a tap on the open map reads that point's forecast into the dock, focused on it", async ({
+  page,
+}) => {
+  await openChart(page);
+  const map = page.locator(".map-canvas");
+  await steadyFrames(page);
+  const at = await openWater(page);
+  await page.locator(".maplibregl-canvas").click({ position: at });
+  // Named by the nearest place or its coordinates, with no star and no page.
+  const name = page.locator(".dock .dk-name");
+  await expect(name).not.toHaveText("Brandon Bay");
+  await expect(page.locator(".dock .dk-head")).toContainText(
+    /\d+\.\d\d° [NS], \d+\.\d\d° [EW]/,
+  );
+  await expect(
+    page.locator(".dock").getByRole("button", { name: /^Star / }),
+  ).toHaveCount(0);
+  await expect(page.locator(".dock [data-spot-page-link]")).toHaveCount(0);
+  await expect(page.locator(".pick-mark")).toHaveCount(1);
+  await expect(map).toHaveClass(/is-focus/);
+  // Its hours fill from the map model's frames, rated on the wind alone.
+  await expect
+    .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
+      timeout: 30000,
+    })
+    .toBeGreaterThan(5);
+  await page.getByRole("button", { name: "About these figures" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "About these figures" }),
+  ).toContainText("rated on the wind alone");
+  await page.keyboard.press("Escape");
+  // A double tap zooms and picks nothing.
+  const before = await name.textContent();
+  await page.locator(".maplibregl-canvas").dblclick({ position: { x: at.x + 40, y: at.y } });
+  await page.waitForTimeout(500);
+  await expect(name).toHaveText(before!);
+  // Escape clears the focus, and a light chooses a riding place again.
+  await page.keyboard.press("Escape");
+  await expect(map).not.toHaveClass(/is-focus/);
+  await findSpot(page, "Dollymount");
+  await expect(name).toHaveText("Dollymount");
+  await expect(page.locator(".pick-mark")).toHaveCount(0);
 });
 
 test("a light shows the selected hour's stars, as the dock does, and follows the time", async ({

@@ -8,6 +8,8 @@ import {
 } from "../force5/src/blend";
 import {
   availableModels,
+  waveModels,
+  weatherModels,
   windModels,
   type AnyManifest,
   type ModelAvailability,
@@ -124,6 +126,24 @@ export function useModelAvailability(
     };
   }, []);
   return { models, resolved };
+}
+
+/**
+ * The wave and surface-weather manifests, read once the dock's extra rows are
+ * first opened and kept from then on: megabytes of JSON a reader who never
+ * opens them should not pay for.
+ */
+export function useMarineModels(enabled: boolean): ModelAvailability[] {
+  const [models, setModels] = useState<ModelAvailability[]>([]);
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!enabled || asked.current) return;
+    asked.current = true;
+    availableModels(undefined, [...waveModels(), ...weatherModels()])
+      .then(setModels)
+      .catch(() => setModels([]));
+  }, [enabled]);
+  return models;
 }
 
 export interface SeaTemperatureState {
@@ -272,6 +292,17 @@ export function useSpotWaves(
   );
   return useMemo(() => {
     if (!waves.length) return NO_WAVES;
+    // The preferred source first; one whose run is over (nothing on these
+    // columns) gives way to the next that has something to say.
+    let left = [...waves];
+    while (left.length) {
+      const source = preferredWaveSource(left, spotId);
+      if (!source) break;
+      const columns = waveAtAxis(source.series, axis);
+      if (columns.some(Boolean) || !axis.length)
+        return { source, published: true, columns };
+      left = left.filter((m) => m !== source.manifest);
+    }
     const source = preferredWaveSource(waves, spotId);
     return {
       source,
@@ -319,6 +350,15 @@ export function useSpotWeather(
   );
   return useMemo(() => {
     if (!published.length) return NO_WEATHER;
+    let left = [...published];
+    while (left.length) {
+      const source = preferredWeatherSource(left, spotId);
+      if (!source) break;
+      const columns = weatherAtAxis(source.series, axis);
+      if (columns.some(Boolean) || !axis.length)
+        return { source, published: true, columns };
+      left = left.filter((m) => m !== source.manifest);
+    }
     const source = preferredWeatherSource(published, spotId);
     return {
       source,
