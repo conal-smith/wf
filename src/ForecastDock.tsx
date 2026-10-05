@@ -9,6 +9,7 @@ import {
 import {
   ArrowDown,
   ArrowUpDown,
+  ArrowUpRight,
   CandlestickChart,
   ChartArea,
   ChevronLeft,
@@ -97,6 +98,7 @@ import {
   type Wind,
 } from "../force5/src/weather";
 import { tideAt } from "../force5/src/tides";
+import { spotHref } from "../force5/src/siteNav";
 import {
   NETWORK_LABEL,
   observationAge,
@@ -1210,7 +1212,22 @@ export default function ForecastDock({
           )}
         </button>
         <div className="dock-place">
-          <strong>{point.name}</strong>
+          <span className="dock-place-name">
+            <strong>{point.name}</strong>
+            {/* A riding place has a page of its own: the week by day, every
+                hour rated, then tide and daylight. */}
+            {named && point.id && (
+              <a
+                className="dock-spot-page"
+                href={spotHref(point.id)}
+                data-spot-page-link
+                aria-label={`Open the spot page for ${point.name}`}
+              >
+                <span className="dock-spot-page-text">Spot page</span>
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
+            )}
+          </span>
           <small>
             {point.county && <span>{point.county}</span>}
             {toolbarCaption}
