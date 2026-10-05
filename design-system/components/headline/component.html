@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Headline — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Headline</h2>
+
+      <p class="demo__label">Headline · 44 from 720, title · 30 under it</p>
+      <h1 class="wf-headline">
+        Donabate<span class="wf-headline__mark">:</span> a three-star Friday morning
+        <em class="wf-headline__soft">on a 5.5 m</em>
+      </h1>
+
+      <p class="demo__label">Under 720 (held) · the title step</p>
+      <h2 class="wf-headline is-narrow">
+        Donabate<span class="wf-headline__mark">:</span> a three-star Friday morning
+        <em class="wf-headline__soft">on a 5.5 m</em>
+      </h2>
+
+      <p class="demo__label">Without a mark</p>
+      <h2 class="wf-headline">How the stars <em class="wf-headline__soft">work</em></h2>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Headline · night chart (proposed)</h2>
+      <h2 class="wf-headline">
+        Donabate<span class="wf-headline__mark">:</span> a three-star Friday morning
+        <em class="wf-headline__soft">on a 5.5 m</em>
+      </h2>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+/* Empty — ui/Empty.tsx (emptyStyles over paneStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * Where a list would be, when there is nothing to list. It is a card Pane (one
+ * ink rule, paper with its grain), restated here so the component stands on
+ * its own, with a tall inset, everything centred, an icon in a ring like a
+ * chart's light, and a line in the display face's italic. */
+
+.wf-empty {
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  gap: var(--sem-space-x3);
+  padding: var(--sem-space-x14) var(--sem-space-x6);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-surface);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain);
+  background-repeat: repeat;
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-prose);
+  text-align: center;
+}
+
+/* A large control and a gap across (58px), ruled in ink like a chart's light.
+ * kind="info" (the default). */
+.wf-empty__icon {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: calc(var(--sem-space-step) * 14.5);
+  height: calc(var(--sem-space-step) * 14.5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-card);
+  color: var(--sem-color-ink);
+}
+
+/* kind="warn": the ring goes warm, and only the ring. */
+.wf-empty--warn .wf-empty__icon {
+  border-color: var(--sem-color-warn);
+  background: var(--sem-color-warn-ground);
+  color: var(--sem-color-warn);
+}
+
+/* The display face's italic: a line, not a heading. */
+.wf-empty__title {
+  margin: 0;
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-lead);
+  font-weight: var(--sem-font-weight-lead);
+  font-style: italic;
+  color: var(--sem-color-ink);
+}
+
+/* What to do about it: a sentence, and the action that mends it. */
+.wf-empty__body {
+  display: grid;
+  justify-items: center;
+  gap: var(--sem-space-x3);
+  max-width: var(--sem-container-reading);
+}
+/* The product's preflight zeroes a paragraph's margins. */
+.wf-empty__body > * {
+  margin: 0;
+}

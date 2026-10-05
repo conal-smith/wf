@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PenNote — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../pen-underline/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">PenNote</h2>
+
+      <p class="demo__label">md · lead (default) · the verdict</p>
+      <p class="wf-pen-note">Go 13:00–16:00. Four stars on a 6 m.</p>
+
+      <p class="demo__label">md · with the word that carries it underlined</p>
+      <p class="wf-pen-note wf-pen-note--md">Go 13:00–16:00. <span class="wf-pen-underline">Four stars<svg class="wf-pen-underline__mark" viewBox="0 0 80 8" aria-hidden="true" focusable="false"><path class="wf-pen-underline__stroke" d="M0.0 3.0 q40.0 -4 80.0 1" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span> on a 6 m.</p>
+
+      <p class="demo__label">sm · prose · the figures in the margin</p>
+      <p class="wf-pen-note wf-pen-note--sm">WSW 14 g22 · cross-shore · HW 13:25</p>
+      <p class="wf-pen-note wf-pen-note--sm">Today: no stars</p>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">PenNote · night chart (proposed)</h2>
+      <p class="wf-pen-note">Go 18:00 till dark. Four stars on a 6.5 m.</p>
+      <p class="wf-pen-note wf-pen-note--sm">WSW 14 g22 · cross-shore · HW 13:25</p>
+    </section>
+  </body>
+</html>

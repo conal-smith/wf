@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PenStrike — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../figure/component.css" />
+    <link rel="stylesheet" href="../kicker/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+    <style>
+      /* Demo only: the words the marks and labels sit in. */
+      /* A spot's name in a list: the display face's italic, as the chart sets it. */
+      .demo__name {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+        font-style: italic;
+      }
+      .demo__caption {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+      /* Room round the words for the marks, which stand clear of them. */
+      .demo__row--marked {
+        padding: var(--sem-space-x3) var(--sem-space-x3) var(--sem-space-x2);
+        gap: var(--sem-space-x8);
+      }
+      .demo__stack {
+        display: grid;
+        justify-items: start;
+        gap: var(--sem-space-x1);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">PenStrike</h2>
+
+      <p class="demo__label">Offshore · struck and red, never colour alone</p>
+      <div class="demo__row demo__row--marked">
+        <div class="demo__stack">
+          <span class="demo__name"><span class="wf-pen-strike">Brandon Bay<svg class="wf-pen-strike__mark" viewBox="0 0 115 23" aria-hidden="true" focusable="false"><path class="wf-pen-strike__stroke" d="M4.6 16.6 L110.4 6.9" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span></span>
+          <span class="demo__caption">0★ SW 10 · cross-off</span>
+        </div>
+      </div>
+
+      <p class="demo__label">Sold</p>
+      <div class="demo__row demo__row--marked">
+        <span class="wf-pen-strike"><span class="wf-figure" role="img" aria-label="450 euro"><span class="wf-figure__value">€450</span></span><svg class="wf-pen-strike__mark" viewBox="0 0 44 24" aria-hidden="true" focusable="false"><path class="wf-pen-strike__stroke" d="M1.8 17.3 L42.2 7.2" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+        <span class="wf-kicker wf-kicker--pen">Sold</span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">PenStrike · night chart (proposed)</h2>
+      <div class="demo__row demo__row--marked">
+        <div class="demo__stack">
+          <span class="demo__name"><span class="wf-pen-strike">Brandon Bay<svg class="wf-pen-strike__mark" viewBox="0 0 115 23" aria-hidden="true" focusable="false"><path class="wf-pen-strike__stroke" d="M4.6 16.6 L110.4 6.9" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span></span>
+          <span class="demo__caption">0★ SW 10 · cross-off</span>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

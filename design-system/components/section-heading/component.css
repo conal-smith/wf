@@ -1,0 +1,73 @@
+/* SectionHeading — ui/SectionHeading.tsx (sectionHeadingStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * The broadsheet's section head: the name in the display face, a rule under
+ * it, and on the same line, set right, the figures that sum the section up (a
+ * day's stars and best window, a count, a price). The rule divides the page;
+ * the section needs no box. */
+
+/* The rule is drawn under only: every side is zeroed first, so a double
+   style set on all four sides draws one. Thick (heavy) is the default. */
+.wf-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--sem-space-x3);
+  row-gap: var(--sem-space-x1);
+  padding-bottom: var(--sem-space-x1);
+  border: 0 solid var(--sem-color-ink);
+  border-bottom-width: var(--sem-rule-heavy);
+}
+
+/* ---- rules ---- */
+.wf-section-heading--thin {
+  border-bottom-width: var(--sem-rule-hairline);
+}
+.wf-section-heading--thick {
+  border-bottom-width: var(--sem-rule-heavy);
+}
+/* The heaviest: a page's foot, or the head of what follows a masthead. */
+.wf-section-heading--double {
+  border-style: double;
+  border-bottom-width: var(--sem-rule-double);
+}
+
+/* ---- the title: lead, the default ---- */
+.wf-section-heading__title {
+  margin: 0;
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-lead);
+  font-weight: var(--sem-font-weight-lead);
+  color: var(--sem-color-ink);
+}
+/* A page's own head, where there is no headline. */
+.wf-section-heading--title .wf-section-heading__title {
+  font-size: var(--sem-font-size-title);
+  line-height: var(--sem-font-line-title);
+  font-weight: var(--sem-font-weight-title);
+  letter-spacing: var(--sem-font-tracking-title);
+}
+/* A group in a list or a menu: the mono label on a thin rule. */
+.wf-section-heading--kicker .wf-section-heading__title {
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sem-color-ink-muted);
+}
+
+/* ---- the aside: figures, not a sentence, set right ---- */
+.wf-section-heading__aside {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--sem-color-ink-muted);
+}

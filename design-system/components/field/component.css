@@ -1,0 +1,53 @@
+/* Field — ui/Field.tsx (fieldStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A label, the control it names, and what is wrong with it if anything is.
+ * The label is the mono label, as a chart's legend names a thing (TITLE,
+ * PRICE); a hint beside it on the same line goes back to the body face's
+ * italic. `data-invalid` on the field turns the control inside warm: that
+ * rule lives with the control, in ../text-input/component.css
+ * (`.wf-field[data-invalid] .wf-control`), as the product's group/field. */
+
+.wf-field {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--sem-space-x2);
+}
+
+/* The mono label at a label's leading (tight), not a paragraph's. */
+.wf-field__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sem-space-x2);
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-tight);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+/* The hint: sentence case in the body face's italic, set right on the
+ * label's line and keeping its leading. */
+.wf-field__hint {
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-tight);
+  font-weight: var(--sem-font-weight-normal);
+  font-style: italic;
+  letter-spacing: 0;
+  text-align: right;
+  text-transform: none;
+}
+
+/* What is wrong, in words, in warm italic. */
+.wf-field__error {
+  color: var(--sem-color-warn);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-style: italic;
+}

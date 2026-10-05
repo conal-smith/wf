@@ -1,0 +1,49 @@
+/* Headline — ui/Headline.tsx (headlineStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * One a page, on a page that is read, saying the verdict in a line: Fraunces
+ * at its display cut (opsz 144), heavy and tight, the soft part of the line in
+ * its light italic, and a mark in the chart's magenta (the colon after a
+ * name). It steps to the title under 720px.
+ *
+ * `.is-narrow` holds the phone step still for the catalog; the product reaches
+ * the same rule through the media query alone. */
+
+.wf-headline {
+  margin: 0;
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-headline);
+  line-height: var(--sem-font-line-headline);
+  font-weight: var(--sem-font-weight-headline);
+  letter-spacing: var(--sem-font-tracking-headline);
+  font-variation-settings: "opsz" 144;
+  text-wrap: balance;
+  color: var(--sem-color-ink);
+}
+
+/* max-wide: under sem.breakpoint.wide (45rem), the title step. */
+@media (max-width: 719.98px) {
+  .wf-headline {
+    font-size: var(--sem-font-size-title);
+    line-height: var(--sem-font-line-title);
+    font-weight: var(--sem-font-weight-title);
+    letter-spacing: var(--sem-font-tracking-title);
+  }
+}
+.wf-headline.is-narrow {
+  font-size: var(--sem-font-size-title);
+  line-height: var(--sem-font-line-title);
+  font-weight: var(--sem-font-weight-title);
+  letter-spacing: var(--sem-font-tracking-title);
+}
+
+/* The soft tail: light italic, still set tight (tracking-tight on display type). */
+.wf-headline__soft {
+  font-weight: var(--sem-font-weight-normal);
+  font-style: italic;
+  letter-spacing: var(--sem-font-tracking-headline);
+}
+
+/* The mark: the colon after a name, in the chart's magenta. */
+.wf-headline__mark {
+  color: var(--sem-color-chart-magenta);
+}

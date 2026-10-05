@@ -1,0 +1,40 @@
+/* Link — ui/Link.tsx (linkStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A link in text. In running text it is underlined, because ink alone does
+ * not say "link": a hairline in the stroke grey under the quiet ink, and both
+ * go to the chart's magenta under the pointer. In a list of nothing but links
+ * (a footer, a menu) it can go plain.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
+ * reaches the same rules through :hover and :focus-visible. */
+
+.wf-link {
+  border-radius: var(--sem-radius-control);
+  color: var(--sem-color-quiet);
+  text-decoration: underline;
+  text-decoration-thickness: var(--sem-rule-hairline);
+  text-decoration-color: var(--sem-color-line-strong);
+  /* underline-offset-3 is Tailwind's 3px, not a spacing step; no token holds
+   * an underline offset (recorded as a gap). */
+  text-underline-offset: 3px;
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color;
+  transition-duration: var(--sem-duration-fast);
+}
+
+.wf-link:hover,
+.wf-link.is-hover {
+  color: var(--sem-color-chart-magenta);
+  text-decoration-color: currentColor;
+}
+
+/* The one ring: 2px of the chart's magenta, 2px clear (RING). */
+.wf-link:focus-visible,
+.wf-link.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* ---- plain: in a list of nothing but links, no underline ---- */
+.wf-link--plain {
+  text-decoration: none;
+}

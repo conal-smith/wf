@@ -1,0 +1,42 @@
+/* Skeleton — ui/Skeleton.tsx (skeletonStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The shape of what is loading, so the page does not jump when it lands. Drawn
+ * in the hairline's ink, which shows on grained paper where the second sheet
+ * does not, breathing gently; still for a reader who asks for less motion. It
+ * says nothing itself: whatever holds it carries aria-busy. */
+
+/* shape="line" (the default): square, as a line of type is. */
+.wf-skeleton {
+  display: block;
+  height: var(--sem-space-x3);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-line);
+  animation: var(--sem-animate-pulse);
+}
+
+/* shape="block": a photo, a chart, a pane's worth (128px at the least). */
+.wf-skeleton--block {
+  height: auto;
+  min-height: calc(var(--sem-space-step) * 32);
+  border-radius: var(--sem-radius-surface);
+}
+
+/* shape="circle": an avatar, a light, a control. */
+.wf-skeleton--circle {
+  width: var(--sem-size-control-md);
+  height: var(--sem-size-control-md);
+  border-radius: var(--sem-radius-full);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-skeleton {
+    animation: none;
+  }
+}
+
+/* As ui/theme.css draws it: from just under half, back to whole, alternating. */
+@keyframes pulse {
+  from {
+    opacity: 0.45;
+  }
+}

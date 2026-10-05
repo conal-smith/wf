@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Segmented — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Segmented</h2>
+
+      <p class="demo__label">The dock's switch · Table on</p>
+      <div class="demo__row">
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item" type="button" aria-pressed="false">Ribbon</button>
+        </div>
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="false">Table</button>
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Ribbon</button>
+        </div>
+      </div>
+
+      <p class="demo__label">Hover (held) · off, then on</p>
+      <div class="demo__row">
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item is-hover" type="button" aria-pressed="false">Ribbon</button>
+        </div>
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item is-hover" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item" type="button" aria-pressed="false">Ribbon</button>
+        </div>
+      </div>
+
+      <p class="demo__label">Focus-visible (held)</p>
+      <div class="demo__row">
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item is-focus" type="button" aria-pressed="false">Ribbon</button>
+        </div>
+      </div>
+
+      <p class="demo__label">Disabled item</p>
+      <div class="demo__row">
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item" type="button" aria-pressed="false" disabled>Ribbon</button>
+        </div>
+      </div>
+
+      <p class="demo__label">Stack · on, hovered, disabled</p>
+      <div class="wf-segmented wf-segmented--stack" role="group" aria-label="Wind on the chart">
+        <button class="wf-segmented__item" type="button" aria-pressed="true">Ink</button>
+        <button class="wf-segmented__item is-hover" type="button" aria-pressed="false">Coloured arrows</button>
+        <button class="wf-segmented__item" type="button" aria-pressed="false" disabled>Faint wash</button>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Segmented · night chart (proposed)</h2>
+      <div class="demo__row">
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+          <button class="wf-segmented__item is-hover" type="button" aria-pressed="false">Ribbon</button>
+        </div>
+        <div class="wf-segmented" role="group" aria-label="Show the hours as">
+          <button class="wf-segmented__item is-focus" type="button" aria-pressed="false">Table</button>
+          <button class="wf-segmented__item" type="button" aria-pressed="true">Ribbon</button>
+        </div>
+      </div>
+      <p class="demo__label">Stack</p>
+      <div class="wf-segmented wf-segmented--stack" role="group" aria-label="Wind on the chart">
+        <button class="wf-segmented__item" type="button" aria-pressed="false">Ink</button>
+        <button class="wf-segmented__item" type="button" aria-pressed="true">Coloured arrows</button>
+        <button class="wf-segmented__item" type="button" aria-pressed="false" disabled>Faint wash</button>
+      </div>
+    </section>
+  </body>
+</html>

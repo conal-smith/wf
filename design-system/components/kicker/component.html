@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kicker — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../figure/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+    <style>
+      /* Demo only: the words the marks and labels sit in. */
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x1);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Kicker</h2>
+
+      <p class="demo__label">Tones · muted (default), ink, pen</p>
+      <div class="demo__row">
+        <p class="wf-kicker">Wind kn</p>
+        <p class="wf-kicker wf-kicker--ink">Best Mon</p>
+        <p class="wf-kicker wf-kicker--pen">Best of the week</p>
+      </div>
+
+      <p class="demo__label">Naming a figure</p>
+      <div class="demo__row">
+        <div class="demo__stack">
+          <p class="wf-kicker">Wind kn</p>
+          <span class="wf-figure" role="img" aria-label="14 knots gusting 22"><span class="wf-figure__value">14</span><span class="wf-figure__sup">22</span></span>
+        </div>
+        <div class="demo__stack">
+          <p class="wf-kicker">Wing</p>
+          <span class="wf-figure"><span class="wf-figure__value">6</span><span class="wf-figure__unit">m</span></span>
+        </div>
+        <div class="demo__stack">
+          <p class="wf-kicker">Low tide</p>
+          <span class="wf-figure"><span class="wf-figure__value">13:25</span></span>
+        </div>
+      </div>
+
+      <p class="demo__label">Column heads · span</p>
+      <div class="demo__row">
+        <span class="wf-kicker">IST</span>
+        <span class="wf-kicker">Stars</span>
+        <span class="wf-kicker">Wind gust</span>
+        <span class="wf-kicker">From</span>
+        <span class="wf-kicker">Rides</span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Kicker · night chart (proposed)</h2>
+      <div class="demo__row">
+        <p class="wf-kicker">Wind kn</p>
+        <p class="wf-kicker wf-kicker--ink">Best Mon</p>
+        <p class="wf-kicker wf-kicker--pen">Best of the week</p>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SectionHeading — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../star-glyphs/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">SectionHeading</h2>
+
+      <p class="demo__label">lead · thick (default) · stars in ink</p>
+      <div class="wf-section-heading">
+        <h2 class="wf-section-heading__title">Monday 5</h2>
+        <div class="wf-section-heading__aside"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg> 12–13</div>
+      </div>
+
+      <p class="demo__label">lead · stars in the aside's ink</p>
+      <div class="wf-section-heading">
+        <h2 class="wf-section-heading__title">Tuesday 6</h2>
+        <div class="wf-section-heading__aside"><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg> 18–19</div>
+      </div>
+
+      <p class="demo__label">title · double · a page's own head</p>
+      <div class="wf-section-heading wf-section-heading--title wf-section-heading--double">
+        <h1 class="wf-section-heading__title">Second-hand gear</h1>
+        <div class="wf-section-heading__aside">48</div>
+      </div>
+
+      <p class="demo__label">kicker · thin · a group in a list</p>
+      <div class="wf-section-heading wf-section-heading--kicker wf-section-heading--thin">
+        <h3 class="wf-section-heading__title">Starred</h3>
+        <div class="wf-section-heading__aside">Best Mon</div>
+      </div>
+
+      <p class="demo__label">Rules · thin, thick, double</p>
+      <div class="wf-section-heading wf-section-heading--thin">
+        <h3 class="wf-section-heading__title">Low tide</h3>
+        <div class="wf-section-heading__aside">13:25 · 1.7 m</div>
+      </div>
+      <div class="wf-section-heading wf-section-heading--thick">
+        <h3 class="wf-section-heading__title">Low tide</h3>
+        <div class="wf-section-heading__aside">13:25 · 1.7 m</div>
+      </div>
+      <div class="wf-section-heading wf-section-heading--double">
+        <h3 class="wf-section-heading__title">Low tide</h3>
+        <div class="wf-section-heading__aside">13:25 · 1.7 m</div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">SectionHeading · night chart (proposed)</h2>
+      <div class="wf-section-heading">
+        <h2 class="wf-section-heading__title">Wednesday 7</h2>
+        <div class="wf-section-heading__aside"><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg> 08–19</div>
+      </div>
+      <p class="demo__label">kicker · thin</p>
+      <div class="wf-section-heading wf-section-heading--kicker wf-section-heading--thin">
+        <h3 class="wf-section-heading__title">Starred</h3>
+        <div class="wf-section-heading__aside">Best Mon</div>
+      </div>
+    </section>
+  </body>
+</html>
