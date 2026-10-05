@@ -155,6 +155,28 @@ given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
   more columns at the highest level any such run reaches, rated on its weakest
   column — with its wing; selecting it jumps the timeline there.
 
+## On the spot page
+
+`/spot/<id>` (`spot/web/`) rates the forecast server's consensus line rather
+than the dock's blend: the median wind and gust of every live model, each
+ensemble once, their vector-mean direction and the same 4 kn / 8 kn agreement
+thresholds (`mcp/api/forecast.ts`), so the stars there are the stars an
+assistant would be given. They can differ from the dock's by a star where the
+dock's blend uses a different set of models (Display options) or columns.
+
+- Rows are hourly for the first 72 hours and every third Irish hour after, where
+  the models themselves step three-hourly.
+- A day card shows the best solid stars of any daylight row, with the most the
+  wind offered as faded stars, and the day's best window.
+- The best window is the same `bestWindow` (two rows or more, rated on the
+  weakest); its end is written as the end of its last row, so "13:00–17:00"
+  covers four hourly rows.
+- The shore line ("Faces WNW · best in SSW–WSW or NNW–NNE winds") lists the
+  compass points whose wind is cross or cross-on to the facing, the two angles
+  the stars do not mark down for anyone.
+- The "Rate for" switch writes the same `rider` in `force5.prefs.v1` that the
+  dock's Display options do, through the same `parseRider` validation.
+
 ## What would make it better next
 
 1. **Stars on the map.** A small badge per marker for the selected hour would
