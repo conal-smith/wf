@@ -775,10 +775,7 @@ function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
           label={starsText(result.rating)}
         />{" "}
         as the{" "}
-        <a
-          className={s.link()}
-          href={spotHref(example.spot.id)}
-        >
+        <a className={s.link()} href={spotHref(example.spot.id)}>
           spot page
         </a>{" "}
         shows it, for {riderWords(rider)}, from the live forecast.
