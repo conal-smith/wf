@@ -1,0 +1,429 @@
+/*
+ * Gust (companion/web/Gust.tsx) and where he floats. Colours are the theme's
+ * own tokens (ui/theme.css) read through var(): the body is ink, the eyes are
+ * card white, the wing is the accent.
+ *
+ * Every animation sits behind prefers-reduced-motion: no-preference, so a
+ * reader who has asked for less motion gets the same faces, standing still.
+ */
+
+.gust {
+  --gust-fill: var(--color-ink);
+  --gust-eye: var(--color-card);
+  --gust-canopy: var(--color-accent);
+  --gust-tube: var(--color-accent-hover);
+  --gust-shade: var(--color-line);
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.gust :is(.gust-body, .gust-shadow, .gust-eye, .gust-dot, .gust-wing, .gust-z) {
+  transform-box: fill-box;
+}
+.gust .gust-body {
+  transform-origin: 50% 100%;
+}
+.gust :is(.gust-shadow, .gust-eye) {
+  transform-origin: 50% 50%;
+}
+/* The wing turns about its handle: the bottom middle of its box. */
+.gust .gust-wing {
+  transform-origin: 50% 100%;
+}
+
+.gust-shadow {
+  fill: var(--gust-shade);
+}
+.gust-fill,
+.gust-dot,
+.gust-z {
+  fill: var(--gust-fill);
+}
+.gust-z {
+  font: 700 9px var(--font-sans);
+}
+.gust-arm,
+.gust-handle {
+  fill: none;
+  stroke: var(--gust-fill);
+  stroke-linecap: round;
+}
+.gust-arm {
+  stroke-width: 5.6;
+}
+.gust-handle {
+  stroke-width: 2.4;
+}
+.gust-eye {
+  fill: var(--gust-eye);
+}
+.gust-lid {
+  fill: none;
+  stroke: var(--gust-eye);
+  stroke-width: 3.3;
+  stroke-linecap: round;
+}
+.gust-canopy {
+  fill: var(--gust-canopy);
+}
+.gust-window {
+  fill: var(--gust-eye);
+  fill-opacity: 0.42;
+}
+.gust-tube {
+  fill: none;
+  stroke: var(--gust-tube);
+  stroke-width: 3.6;
+  stroke-linecap: round;
+}
+.gust-strut {
+  stroke-width: 2.6;
+}
+
+/* The resting poses, which hold still for reduced motion too. */
+.gust[data-mood="thinking"] .gust-wing {
+  transform: rotate(-16deg);
+}
+.gust[data-mood="error"] .gust-wing {
+  transform: rotate(24deg) translateY(2px);
+}
+.gust[data-mood="asleep"] .gust-wing {
+  transform: rotate(58deg) translateY(4px);
+}
+.gust[data-mood="asleep"] .gust-z {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gust .gust-look {
+    transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .gust .gust-wing {
+    transition: transform var(--transition-duration-base) ease-out;
+  }
+
+  /* Idle and listening: a slow squash-and-stretch breath, a blink now and
+     then, and the wing fluttering in a breeze nobody else can feel. */
+  .gust[data-mood="idle"] .gust-body {
+    animation: gust-breathe 3.8s ease-in-out infinite;
+  }
+  .gust[data-mood="listening"] .gust-body {
+    animation: gust-breathe 2.6s ease-in-out infinite;
+  }
+  .gust:is([data-mood="idle"], [data-mood="listening"]) .gust-eye {
+    animation: gust-blink 5.2s ease-in-out infinite;
+  }
+  .gust[data-mood="idle"] .gust-wing {
+    animation: gust-flutter 2.4s ease-in-out infinite;
+  }
+  .gust[data-mood="listening"] .gust-wing {
+    animation: gust-flutter 3.4s ease-in-out infinite;
+  }
+
+  /* Thinking: the wing tipped back to feel for the wind, a wobble, the dots. */
+  .gust[data-mood="thinking"] .gust-body {
+    animation: gust-wobble 1.8s ease-in-out infinite;
+  }
+  .gust[data-mood="thinking"] .gust-wing {
+    animation: gust-feel 1.8s ease-in-out infinite;
+  }
+  .gust[data-mood="thinking"] .gust-eye {
+    animation: gust-blink 3.2s ease-in-out infinite 0.8s;
+  }
+  .gust[data-mood="thinking"] .gust-dot {
+    animation: gust-dot 1.2s ease-in-out infinite;
+  }
+  .gust[data-mood="thinking"] .gust-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .gust[data-mood="thinking"] .gust-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Success: a hop and two pumps of the wing. Stoked: pumping away, over and
+     over, because something good is coming. Error: a small shake. */
+  .gust[data-mood="success"] .gust-body {
+    animation: gust-hop 0.9s ease-out 2;
+  }
+  .gust[data-mood="success"] .gust-shadow {
+    animation: gust-hop-shadow 0.9s ease-out 2;
+  }
+  .gust[data-mood="success"] .gust-wing {
+    animation: gust-pump 0.45s ease-in-out 4;
+  }
+  .gust[data-mood="stoked"] .gust-body {
+    animation: gust-bounce 2.8s ease-in-out infinite;
+  }
+  .gust[data-mood="stoked"] .gust-shadow {
+    animation: gust-bounce-shadow 2.8s ease-in-out infinite;
+  }
+  .gust[data-mood="stoked"] .gust-wing {
+    animation: gust-pumping 2.8s ease-in-out infinite;
+  }
+  .gust[data-mood="error"] .gust-body {
+    animation: gust-shake 0.6s ease-in-out 1;
+  }
+
+  /* Asleep: a long, slow breath and the zs drifting up. */
+  .gust[data-mood="asleep"] .gust-body {
+    animation: gust-breathe 5.5s ease-in-out infinite;
+  }
+  .gust[data-mood="asleep"] .gust-z {
+    animation: gust-z 3.6s ease-in-out infinite;
+  }
+  .gust[data-mood="asleep"] .gust-z:nth-child(2) {
+    animation-delay: 1.8s;
+  }
+}
+
+@keyframes gust-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.035, 0.965);
+  }
+}
+@keyframes gust-blink {
+  0%,
+  91%,
+  100% {
+    transform: scaleY(1);
+  }
+  94% {
+    transform: scaleY(0.1);
+  }
+  97% {
+    transform: scaleY(1.05);
+  }
+}
+@keyframes gust-flutter {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1, 1);
+  }
+  30% {
+    transform: rotate(-4deg) scale(1.02, 0.98);
+  }
+  55% {
+    transform: rotate(2deg) scale(0.99, 1.01);
+  }
+  80% {
+    transform: rotate(-2deg) scale(1.01, 0.99);
+  }
+}
+@keyframes gust-feel {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(-22deg);
+  }
+}
+@keyframes gust-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg) scale(1.01, 0.99);
+  }
+  25% {
+    transform: rotate(0deg) scale(0.985, 1.015);
+  }
+  50% {
+    transform: rotate(3deg) scale(1.01, 0.99);
+  }
+  75% {
+    transform: rotate(0deg) scale(0.985, 1.015);
+  }
+}
+@keyframes gust-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes gust-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.1, 0.88);
+  }
+  45% {
+    transform: translateY(-14%) scale(0.94, 1.07);
+  }
+  75% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+}
+@keyframes gust-hop-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+}
+@keyframes gust-pump {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-10deg) translateY(-3px);
+  }
+}
+@keyframes gust-pumping {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  68%,
+  84% {
+    transform: rotate(-12deg) translateY(-3px);
+  }
+  76%,
+  92% {
+    transform: rotate(4deg) translateY(1px);
+  }
+}
+@keyframes gust-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  66% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  74% {
+    transform: translateY(-8%) scale(0.96, 1.05);
+  }
+  82% {
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+  90% {
+    transform: translateY(-3%) scale(1, 1);
+  }
+}
+@keyframes gust-bounce-shadow {
+  0%,
+  60%,
+  82%,
+  100% {
+    transform: scale(1);
+  }
+  74% {
+    transform: scale(0.8);
+  }
+}
+@keyframes gust-shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+  20% {
+    transform: translateX(-4%) rotate(-5deg);
+  }
+  40% {
+    transform: translateX(3%) rotate(4deg);
+  }
+  60% {
+    transform: translateX(-2%) rotate(-2deg);
+  }
+  80% {
+    transform: translateX(1%) rotate(1deg);
+  }
+}
+@keyframes gust-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 2px) scale(0.8);
+  }
+  30%,
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-4px, -6px) scale(1.1);
+  }
+}
+
+/* ---- where he floats ------------------------------------------------------
+ * The host says how far up to stand, so that nothing of its own is covered:
+ * --gust-launcher-bottom for the button, --gust-panel-bottom for the panel's
+ * foot (the map passes its dock's height). On a phone the panel is a drawer
+ * from the bottom edge instead.
+ */
+.gust-launcher {
+  position: fixed;
+  right: calc(var(--spacing) * 3);
+  bottom: var(--gust-launcher-bottom, calc(var(--spacing) * 6));
+  z-index: var(--z-index-panel);
+  transition:
+    bottom var(--transition-duration-base) ease,
+    transform var(--transition-duration-fast) ease;
+}
+
+.gust-panel {
+  position: fixed;
+  top: calc(var(--spacing) * 16);
+  right: calc(var(--spacing) * 20);
+  bottom: var(--gust-panel-bottom, calc(var(--spacing) * 6));
+  width: min(var(--container-dialog), calc(100vw - var(--spacing) * 24));
+  max-height: calc(var(--spacing) * 190);
+  margin-top: auto;
+  z-index: var(--z-index-panel);
+}
+
+@media (max-width: 45rem) {
+  .gust-launcher[data-open="true"] {
+    display: none;
+  }
+  .gust-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: min(86dvh, calc(var(--spacing) * 180));
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gust-panel {
+    animation: gust-panel-in var(--transition-duration-base) ease both;
+  }
+}
+@keyframes gust-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+/* The lookup chip's spinner. */
+@media (prefers-reduced-motion: no-preference) {
+  .gust-spin {
+    animation: gust-spin 0.9s linear infinite;
+  }
+}
+@keyframes gust-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

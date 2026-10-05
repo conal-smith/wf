@@ -53,6 +53,7 @@
     "deploy:prune": "docker compose -f deploy/local/docker-compose.yml run --rm prune"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@aws-sdk/client-s3": "^3.1134.0",
     "@aws-sdk/s3-request-presigner": "^3.1134.0",
     "@clerk/backend": "^3.18.1",

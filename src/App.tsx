@@ -18,6 +18,9 @@ import { forecastUrl } from "../force5/src/urls";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 import { useModelAvailability } from "./useBlend";
+import { Companion } from "../companion/web/Companion";
+import type { MapAction } from "../companion/shared/protocol";
+import { parseRider } from "../force5/src/prefs";
 import {
   dockColumns,
   frameForTime,
@@ -457,6 +460,41 @@ export default function App() {
     playing,
     onRun: commitRun,
   });
+  /**
+   * Gust moving the map, only ever at the rider's ask (a card's button, or a
+   * "show me" in the chat): the same selectSpot and selectTime every other
+   * control uses, and a moment's glow on the markers it is talking about.
+   */
+  const highlightTimer = useRef<number | undefined>(undefined);
+  const companionAction = (action: MapAction) => {
+    if (action.type === "select_spot") {
+      const spot = spots.find((s) => s.id === action.id);
+      if (spot) selectSpot(spot);
+    } else if (action.type === "set_time") {
+      const columns = columnsRef.current;
+      if (columns.length)
+        selectTime(
+          columns[nearestFrame(columns, Date.parse(action.iso))].validTime,
+        );
+    } else {
+      clearTimeout(highlightTimer.current);
+      const marked = action.ids.flatMap((id) => [
+        ...document.querySelectorAll<HTMLElement>(
+          `.spot-marker[data-spot-id="${CSS.escape(id)}"]`,
+        ),
+      ]);
+      document
+        .querySelectorAll(".spot-marker.gust-highlight")
+        .forEach((el) => el.classList.remove("gust-highlight"));
+      marked.forEach((el) => el.classList.add("gust-highlight"));
+      highlightTimer.current = window.setTimeout(
+        () => marked.forEach((el) => el.classList.remove("gust-highlight")),
+        4500,
+      );
+    }
+  };
+  useEffect(() => () => clearTimeout(highlightTimer.current), []);
+
   const togglePlayback = () => {
     if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
       setSelectedTime(manifest.frames[0].validTime);
@@ -805,6 +843,23 @@ export default function App() {
             </div>
           </section>
         </main>
+      )}
+      {!error && (
+        <Companion
+          context={{
+            spot: point.id ? { id: point.id, name: point.name } : null,
+            time: selectedTime,
+            rider: prefs.rider,
+          }}
+          onAction={companionAction}
+          onRiderSaved={(rider) =>
+            changePrefs({ ...prefs, rider: parseRider(rider) })
+          }
+          // Above the dock and the model picker's row (and the status line
+          // that can stand over it), clear of the zoom controls above.
+          launcherBottom={dockHeight + 108}
+          panelBottom={dockHeight + 12}
+        />
       )}
       <dialog
         ref={dialog}

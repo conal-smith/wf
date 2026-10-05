@@ -160,7 +160,7 @@ export async function loadSpots(source: ForecastSource): Promise<RidingSpot[]> {
 }
 
 /** Lower case, no accents, words only: "Seancheibh an Spidéil" → "seancheibh an spideil". */
-const fold = (value: string) =>
+export const fold = (value: string) =>
   value
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
@@ -451,7 +451,7 @@ export function windowFor(
   return { from, to: from + hours * HOUR, stepHours };
 }
 
-function axis(window: Window): number[] {
+export function axis(window: Window): number[] {
   const times: number[] = [];
   for (let t = window.from; t <= window.to; t += window.stepHours * HOUR)
     times.push(t);
@@ -459,7 +459,7 @@ function axis(window: Window): number[] {
 }
 
 /** Sunrise to sunset at the spot, the same equations the dock draws night from. */
-function daylight(spot: RidingSpot, time: number): boolean {
+export function daylight(spot: RidingSpot, time: number): boolean {
   const sun = sunTimes(spot.lat, spot.lon, new Date(time));
   if (sun.polar) return sun.polar === "day";
   return (
@@ -471,6 +471,8 @@ function daylight(spot: RidingSpot, time: number): boolean {
 }
 
 // ---- wind consensus ------------------------------------------------------------
+// spotWindLines and hourWind are exported for the companion (companion/api),
+// which rates the same consensus hour by hour for a rider.
 
 export interface ModelWind {
   wind_kn: number;
@@ -493,13 +495,13 @@ export interface HourWind {
   by_model?: Record<string, ModelWind>;
 }
 
-interface SpotWindLines {
+export interface SpotWindLines {
   lines: { run: ModelRun; points: WindPoint[]; gap: number }[];
   /** Models that are live but do not reach this spot. */
   outside: string[];
 }
 
-function spotWindLines(
+export function spotWindLines(
   wind: Loaded<WindManifest>[],
   spotId: string,
 ): SpotWindLines {
@@ -513,7 +515,7 @@ function spotWindLines(
   return { lines, outside };
 }
 
-function hourWind(
+export function hourWind(
   lines: SpotWindLines["lines"],
   time: number,
   perModel: boolean,
