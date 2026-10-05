@@ -19,14 +19,13 @@ import {
   type HourRating,
 } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
-import { Figure, PenNote, StarGlyphs } from "../../ui";
+import { Figure, PenNote, RatingTip, StarGlyphs } from "../../ui";
 import { penStyles } from "../../ui/Pen";
 import { loopPath } from "../../ui/penPaths";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DayTide } from "./DayTide";
 import { ShoreGlyph, SkyGlyph, WindArrow } from "./glyphs";
 import { RangeAxis, RangeBar, type Band } from "./RangeBar";
-import { RatingTip } from "./RatingTip";
 import {
   HOUR,
   clock,

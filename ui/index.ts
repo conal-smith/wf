@@ -38,6 +38,7 @@ export {
 } from "./Pen";
 export { loopPath, strikePath, underlinePath } from "./penPaths";
 export { Puffin, type PuffinProps } from "./Puffin";
+export { RatingTip, ratingTipStyles, type RatingTipProps } from "./RatingTip";
 export { SearchField, type SearchFieldProps } from "./SearchField";
 export { SectionHeading, type SectionHeadingProps } from "./SectionHeading";
 export {
