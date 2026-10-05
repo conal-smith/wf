@@ -107,17 +107,17 @@ test("a spot page has its week, its hours with stars, and its tide and daylight"
   await expect(
     tomorrow.getByRole("img", { name: /of 5 stars|No stars/ }).first(),
   ).toBeVisible();
-  // The tooltip carries the reasons; the row opens to say them in place.
-  await expect(light.first().locator("[data-stars]")).toHaveAttribute(
-    "title",
-    /of 5 stars/,
-  );
-  const opener = light.first().getByRole("button", { name: /Details for/ });
-  await opener.click();
-  await expect(opener).toHaveAttribute("aria-expanded", "true");
-  await expect(tomorrow.locator("[data-hour-detail]")).toContainText(
-    /of 5 stars|No wind reading/,
-  );
+  // The stars explain themselves: hovering them opens a card with the
+  // verdict, the reasons and who it is rated for; Escape closes it.
+  const stars = light.first().locator("[data-stars] button");
+  await stars.hover();
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toBeVisible();
+  await expect(tip).toContainText(/of 5 stars|No stars|No wind reading/);
+  await expect(tip).toContainText("Rated for");
+  await expect(stars).toHaveAttribute("aria-describedby", /.+/);
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
 
   // Choosing a day card takes the page to it.
   await cards.nth(1).click();

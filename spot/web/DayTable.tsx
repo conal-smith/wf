@@ -3,10 +3,10 @@
  * stars, the wind and its gusts, where from and how it meets the shore, what
  * the gusts make it ride like, the wing, the sea and the sky. Daylight is the
  * table; the dark hours either side fold away, dimmed and never rated, and
- * every row opens to say why it got the stars it did.
+ * every hour's stars explain themselves on hover, focus or a tap.
  */
-import { ChevronDown, Moon } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Moon } from "lucide-react";
+import { useState } from "react";
 import {
   SESSION_LABEL,
   SHORE_LABEL,
@@ -15,10 +15,11 @@ import {
 } from "../../force5/src/stars";
 import { presentWeather } from "../../force5/src/surface";
 import type { Units } from "../../force5/src/units";
-import { StarGlyphs, ratingTitle } from "../../src/StarsRows";
+import { StarGlyphs } from "../../src/StarsRows";
 import WeatherGlyph from "../../src/WeatherGlyph";
 import { RING, tv } from "../../ui/tv";
 import { AGREEMENT_WORDS, AgreementDots, FromArrow, WindBar } from "./parts";
+import { RatingTip } from "./RatingTip";
 import {
   clock,
   compass,
@@ -62,17 +63,11 @@ const styles = tv({
     weatherLine: "flex items-center gap-1.5",
     rain: "w-16 whitespace-nowrap text-ink-2",
     models: "w-16",
-    open: "w-10 text-right max-wide:w-8",
-    toggle: [
-      "inline-flex size-control-sm items-center justify-center rounded-full border-0 bg-transparent text-ink-muted",
-      "cursor-pointer transition-transform duration-fast not-disabled:hover:bg-sunken not-disabled:hover:text-ink motion-reduce:transition-none",
-      "aria-expanded:rotate-180",
-      RING,
-    ],
-    detail: "border-t border-line bg-solid",
-    detailCell: "px-4 py-3",
-    detailGrid: "grid gap-x-6 gap-y-2 text-body text-ink-2 wide:grid-cols-2",
+    detail: "flex flex-col gap-3 text-body text-ink-2",
+    detailWhen: "m-0 text-eyebrow uppercase text-ink-muted",
     detailHead: "m-0 text-label text-ink",
+    detailPart: "flex flex-col gap-1 border-t border-line pt-3",
+    detailNote: "m-0 text-caption text-ink-muted",
     reasons: "m-0 flex list-disc flex-col gap-1 pl-4",
     night: [
       "flex w-full items-center gap-2 border-0 bg-transparent px-4 py-2 text-left font-sans text-body text-ink-muted",
@@ -103,8 +98,8 @@ export interface DayTableProps {
   riderText: string;
 }
 
-/** Columns hidden on a phone; their readings are in the row's details there. */
-const COLUMNS = 12;
+/** Columns hidden on a phone; their readings are in the stars' card there. */
+const COLUMNS = 11;
 
 export function DayTable({
   day,
@@ -116,17 +111,9 @@ export function DayTable({
 }: DayTableProps) {
   const s = styles();
   const names = dayNames(day.date, now);
-  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [showNight, setShowNight] = useState(false);
   const { before, light, after } = darkRuns(day.rows);
   const nowHour = Math.floor(now / 3600000) * 3600000;
-  const toggle = (time: number) =>
-    setOpen((current) => {
-      const next = new Set(current);
-      if (next.has(time)) next.delete(time);
-      else next.add(time);
-      return next;
-    });
 
   const nightToggle = (rows: SpotRow[], edge: "before" | "after") =>
     rows.length > 0 && (
@@ -159,157 +146,145 @@ export function DayTable({
     const wind = hour.wind;
     const dark = !hour.daylight;
     const r = styles({ dark });
-    const expanded = open.has(row.time);
     const weather = presentWeather(hour.weather?.weather_code);
-    const detailId = `hour-detail-${row.time}`;
+    const detail = (
+      <HourDetail
+        row={row}
+        units={units}
+        unitText={unitText}
+        riderText={riderText}
+      />
+    );
     return (
-      <Fragment key={row.time}>
-        <tr
-          id={`hour-${row.time}`}
-          className={r.row()}
-          data-hour={new Date(row.time).toISOString()}
-          data-daylight={dark ? undefined : ""}
-          tabIndex={-1}
+      <tr
+        key={row.time}
+        id={`hour-${row.time}`}
+        className={r.row()}
+        data-hour={new Date(row.time).toISOString()}
+        data-daylight={dark ? undefined : ""}
+        tabIndex={-1}
+      >
+        <th scope="row" className={r.cell({ className: r.time() })}>
+          {row.time === nowHour && <span className={s.now()}>Now</span>}
+          {clock(row.time)}
+        </th>
+        <td
+          className={s.cell({ className: s.stars() })}
+          data-stars={rating ? rating.stars : undefined}
         >
-          <th scope="row" className={r.cell({ className: r.time() })}>
-            {row.time === nowHour && <span className={s.now()}>Now</span>}
-            {clock(row.time)}
-          </th>
-          <td
-            className={s.cell({ className: s.stars() })}
-            title={rating ? ratingTitle(rating) : "Dark: not rated"}
-            data-stars={rating ? rating.stars : undefined}
+          <RatingTip
+            label={`${clock(row.time)}: ${
+              rating
+                ? rating.potential
+                  ? starsText(rating)
+                  : `No stars, ${SESSION_LABEL[rating.session].toLowerCase()}`
+                : dark
+                  ? "dark, not rated"
+                  : "no wind reading"
+            }`}
+            detail={detail}
           >
-            {rating ? (
-              rating.potential ? (
-                <StarGlyphs
-                  stars={rating.stars}
-                  potential={rating.potential}
-                  size={13}
-                />
-              ) : (
-                <span
-                  className={s.none()}
-                  role="img"
-                  aria-label={`No stars: ${SESSION_LABEL[rating.session].toLowerCase()}`}
-                >
-                  –
-                </span>
-              )
-            ) : (
-              <span className="sr-only">
-                {dark ? "Dark, not rated" : "No wind reading"}
-              </span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.wind() })}>
-            {wind ? (
-              <span className="flex flex-col gap-1">
-                <span className={s.windLine()}>
-                  <span className={s.windNumber()}>
-                    {windIn(wind.wind_kn, units)}
-                  </span>
-                  {wind.gust_kn !== null && (
-                    <span className={s.gust()}>
-                      <span aria-hidden="true">g</span>
-                      <span className="sr-only">gusting </span>
-                      {windIn(wind.gust_kn, units)}
-                    </span>
-                  )}
-                </span>
-                <WindBar knots={wind.wind_kn} gust={wind.gust_kn} />
-              </span>
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.dir() })}>
-            {wind && (
-              <>
-                <span className={s.dirLine()}>
-                  <FromArrow from={wind.direction_deg} />
-                  {wind.direction}
-                </span>
-                {row.shore && <span className={s.shore()}>{row.shore}</span>}
-              </>
-            )}
-          </td>
-          <td className={s.cell({ className: [s.wing(), s.hidden()] })}>
-            {rating && rating.liftKn >= 1 ? (
-              windIn(rating.rideKn, units)
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.wing() })}>
             {rating?.potential ? (
-              `${rating.wing.own ?? rating.wing.recommended}`
+              <StarGlyphs
+                stars={rating.stars}
+                potential={rating.potential}
+                size={13}
+              />
             ) : (
-              <span className={s.muted()}>–</span>
+              <span className={s.none()} aria-hidden="true">
+                –
+              </span>
             )}
-          </td>
-          <td className={s.cell({ className: [s.session(), s.hidden()] })}>
-            {rating ? SESSION_LABEL[rating.session] : ""}
-          </td>
-          <td className={s.cell({ className: [s.waves(), s.hidden()] })}>
-            {hour.waves?.height_m != null ? (
-              <span className={s.wavesLine()}>
-                {hour.waves.height_m.toFixed(1)} m
-                {hour.waves.period_s != null && (
-                  <span className={s.muted()}>{hour.waves.period_s} s</span>
-                )}
-                {hour.waves.direction_deg != null && (
-                  <FromArrow from={hour.waves.direction_deg} size={12} />
+          </RatingTip>
+        </td>
+        <td className={s.cell({ className: s.wind() })}>
+          {wind ? (
+            <span className="flex flex-col gap-1">
+              <span className={s.windLine()}>
+                <span className={s.windNumber()}>
+                  {windIn(wind.wind_kn, units)}
+                </span>
+                {wind.gust_kn !== null && (
+                  <span className={s.gust()}>
+                    <span aria-hidden="true">g</span>
+                    <span className="sr-only">gusting </span>
+                    {windIn(wind.gust_kn, units)}
+                  </span>
                 )}
               </span>
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.weather() })}>
-            <span className={s.weatherLine()}>
-              {weather && <WeatherGlyph weather={weather} size={16} />}
-              {hour.weather?.air_c != null && `${hour.weather.air_c}°`}
+              <WindBar knots={wind.wind_kn} gust={wind.gust_kn} />
             </span>
-          </td>
-          <td className={s.cell({ className: [s.rain(), s.hidden()] })}>
-            {hour.weather?.rain_mm ? (
-              `${hour.weather.rain_mm} mm`
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: [s.models(), s.hidden()] })}>
-            {wind && (
-              <AgreementDots
-                agreement={wind.agreement}
-                models={wind.models}
-                min={wind.min_kn}
-                max={wind.max_kn}
-              />
-            )}
-          </td>
-          <td className={s.cell({ className: s.open() })}>
-            <button
-              type="button"
-              className={s.toggle()}
-              aria-expanded={expanded}
-              aria-controls={detailId}
-              aria-label={`Details for ${clock(row.time)}`}
-              onClick={() => toggle(row.time)}
-            >
-              <ChevronDown size={16} aria-hidden="true" />
-            </button>
-          </td>
-        </tr>
-        {expanded && (
-          <tr id={detailId} className={s.detail()}>
-            <td colSpan={COLUMNS} className={s.detailCell()}>
-              <HourDetail row={row} units={units} unitText={unitText} />
-            </td>
-          </tr>
-        )}
-      </Fragment>
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: s.dir() })}>
+          {wind && (
+            <>
+              <span className={s.dirLine()}>
+                <FromArrow from={wind.direction_deg} />
+                {wind.direction}
+              </span>
+              {row.shore && <span className={s.shore()}>{row.shore}</span>}
+            </>
+          )}
+        </td>
+        <td className={s.cell({ className: [s.wing(), s.hidden()] })}>
+          {rating && rating.liftKn >= 1 ? (
+            windIn(rating.rideKn, units)
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: s.wing() })}>
+          {rating?.potential ? (
+            `${rating.wing.own ?? rating.wing.recommended}`
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: [s.session(), s.hidden()] })}>
+          {rating ? SESSION_LABEL[rating.session] : ""}
+        </td>
+        <td className={s.cell({ className: [s.waves(), s.hidden()] })}>
+          {hour.waves?.height_m != null ? (
+            <span className={s.wavesLine()}>
+              {hour.waves.height_m.toFixed(1)} m
+              {hour.waves.period_s != null && (
+                <span className={s.muted()}>{hour.waves.period_s} s</span>
+              )}
+              {hour.waves.direction_deg != null && (
+                <FromArrow from={hour.waves.direction_deg} size={12} />
+              )}
+            </span>
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: s.weather() })}>
+          <span className={s.weatherLine()}>
+            {weather && <WeatherGlyph weather={weather} size={16} />}
+            {hour.weather?.air_c != null && `${hour.weather.air_c}°`}
+          </span>
+        </td>
+        <td className={s.cell({ className: [s.rain(), s.hidden()] })}>
+          {hour.weather?.rain_mm ? (
+            `${hour.weather.rain_mm} mm`
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: [s.models(), s.hidden()] })}>
+          {wind && (
+            <AgreementDots
+              agreement={wind.agreement}
+              models={wind.models}
+              min={wind.min_kn}
+              max={wind.max_kn}
+            />
+          )}
+        </td>
+      </tr>
     );
   };
 
@@ -388,9 +363,6 @@ export function DayTable({
               <th scope="col" className={s.th({ className: s.hidden() })}>
                 Models
               </th>
-              <th scope="col" className={s.th()}>
-                <span className="sr-only">Details</span>
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -406,23 +378,33 @@ export function DayTable({
   );
 }
 
-/** Everything one row's stars rest on, said in sentences. */
+/**
+ * Everything one hour's stars rest on, said in sentences: the card the stars
+ * open. First the verdict and why, then the wing, then the readings behind it,
+ * and last who it is rated for and how to read the stars.
+ */
 function HourDetail({
   row,
   units,
   unitText,
+  riderText,
 }: {
   row: SpotRow;
   units: Units;
   unitText: string;
+  riderText: string;
 }) {
   const s = styles();
   const { hour, rating } = row;
   const wind = hour.wind;
   const weather = presentWeather(hour.weather?.weather_code);
   return (
-    <div className={s.detailGrid()} data-hour-detail>
+    <div className={s.detail()} data-hour-detail>
       <div className="flex flex-col gap-1">
+        <p className={s.detailWhen()}>
+          {clock(row.time)}
+          {row.step > 1 && `–${clock(row.time + row.step * 3600000)}`}
+        </p>
         <p className={s.detailHead()}>
           {rating
             ? ratingSentence(rating)
@@ -454,41 +436,52 @@ function HourDetail({
           </p>
         ) : null}
       </div>
-      <div className="flex flex-col gap-1">
-        {wind && (
-          <p className="m-0">
-            {wind.models} model{wind.models === 1 ? "" : "s"}:{" "}
-            {windIn(wind.min_kn, units)}–{windIn(wind.max_kn, units)} {unitText}
-            {wind.gust_max_kn !== null &&
-              `, gusts to ${windIn(wind.gust_max_kn, units)}`}
-            , from {compass(wind.direction_deg)} ({wind.direction_deg}°)
-            {row.shore && `, ${SHORE_LABEL[row.shore]}`}.{" "}
-            {wind.agreement && `${AGREEMENT_WORDS[wind.agreement]}.`}
-          </p>
-        )}
-        {hour.waves?.height_m != null && (
-          <p className="m-0">
-            Waves {hour.waves.height_m.toFixed(1)} m
-            {hour.waves.period_s != null && ` at ${hour.waves.period_s} s`}
-            {hour.waves.direction_deg != null &&
-              ` from ${compass(hour.waves.direction_deg)}`}
-            .
-          </p>
-        )}
-        {hour.weather && (
-          <p className="m-0">
-            {[
-              weather?.description,
-              hour.weather.air_c != null && `${hour.weather.air_c} °C`,
-              hour.weather.rain_mm != null && `${hour.weather.rain_mm} mm rain`,
-              hour.weather.cloud_pct != null &&
-                `${hour.weather.cloud_pct}% cloud`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        )}
-      </div>
+      {(wind || hour.waves?.height_m != null || hour.weather) && (
+        <div className={s.detailPart()}>
+          {wind && (
+            <p className="m-0">
+              {wind.models} model{wind.models === 1 ? "" : "s"}:{" "}
+              {windIn(wind.min_kn, units)}–{windIn(wind.max_kn, units)}{" "}
+              {unitText}
+              {wind.gust_max_kn !== null &&
+                `, gusts to ${windIn(wind.gust_max_kn, units)}`}
+              , from {compass(wind.direction_deg)} ({wind.direction_deg}°)
+              {row.shore && `, ${SHORE_LABEL[row.shore]}`}.{" "}
+              {wind.agreement && `${AGREEMENT_WORDS[wind.agreement]}.`}
+            </p>
+          )}
+          {hour.waves?.height_m != null && (
+            <p className="m-0">
+              Waves {hour.waves.height_m.toFixed(1)} m
+              {hour.waves.period_s != null && ` at ${hour.waves.period_s} s`}
+              {hour.waves.direction_deg != null &&
+                ` from ${compass(hour.waves.direction_deg)}`}
+              .
+            </p>
+          )}
+          {hour.weather && (
+            <p className="m-0">
+              {[
+                weather?.description,
+                hour.weather.air_c != null && `${hour.weather.air_c} °C`,
+                hour.weather.rain_mm != null &&
+                  `${hour.weather.rain_mm} mm rain`,
+                hour.weather.cloud_pct != null &&
+                  `${hour.weather.cloud_pct}% cloud`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+      {rating && (
+        <p className={s.detailNote()}>
+          Rated for {riderText}. Solid stars are this hour as forecast; faded
+          ones are what the wind alone would give, before the shore, the gusts
+          and the models' doubts take theirs off.
+        </p>
+      )}
     </div>
   );
 }
