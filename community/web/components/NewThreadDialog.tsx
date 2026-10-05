@@ -23,7 +23,7 @@ import {
   TextArea,
   TextInput,
 } from "../../../ui";
-import { RING, tv } from "../../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import { LIMITS, type Channel, type ThreadInput } from "../../shared/types";
 import { threadInputSchema } from "../../shared/validate";
 import { ApiRequestError, useApi } from "../api";
@@ -38,18 +38,21 @@ import {
 export const newThreadStyles = tv({
   slots: {
     form: "grid gap-5",
-    where: "m-0 flex flex-wrap items-center gap-1 text-body text-ink-muted",
-    channel: "inline-flex items-center gap-0.5 font-semibold text-ink-2",
+    where: [
+      "m-0 flex flex-wrap items-center gap-1 text-ink-muted",
+      MONO_LABEL,
+    ],
+    channel: "inline-flex items-center gap-0.5 font-semibold text-ink",
     tags: "flex flex-wrap gap-1",
-    tag: "text-body",
+    tag: "",
     photos: "m-0 flex list-none flex-wrap gap-2 p-0",
-    photo: "relative h-18 w-24 overflow-hidden rounded-control bg-sunken",
+    photo: "relative h-18 w-24 overflow-hidden border border-line bg-sunken",
     image: "size-full object-cover",
     remove: "absolute top-1 right-1 bg-card shadow-control",
     failed:
       "absolute inset-x-0 bottom-0 bg-warn-ground px-1 text-center text-caption text-warn",
     add: [
-      "grid h-18 w-24 cursor-pointer place-items-center rounded-control border-2 border-dashed border-line-strong bg-ground text-ink-muted",
+      "grid h-18 w-24 cursor-pointer place-items-center border border-dashed border-ink bg-ground text-ink-muted",
       "transition-colors duration-fast not-disabled:hover:border-ink-muted not-disabled:hover:text-ink",
       "disabled:cursor-default disabled:opacity-100",
       RING,
@@ -61,7 +64,7 @@ export const newThreadStyles = tv({
   variants: {
     // Still on its way to storage.
     busy: { true: { image: "animate-pulse motion-reduce:animate-none" } },
-    on: { false: { tag: "font-normal shadow-none" } },
+    on: { false: { tag: "shadow-none" } },
   },
 });
 
@@ -106,6 +109,9 @@ export interface Spot {
   id: string;
   name: string;
   county: string;
+  /** Where it is, for the hours of daylight its stars are rated in. */
+  lat?: number;
+  lon?: number;
 }
 
 export const spotLabel = (spot: Spot) => `${spot.name}, Co. ${spot.county}`;
@@ -394,7 +400,7 @@ function NewThreadDialog({
             <>
               <span>in</span>
               <span className={styles.channel()}>
-                <Hash size={13} aria-hidden="true" />
+                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
                 {channel.name}
               </span>
               {auth.identity.name && <span aria-hidden="true">·</span>}
@@ -524,7 +530,7 @@ function NewThreadDialog({
                   className={styles.remove()}
                   onClick={() => remove(photo)}
                 >
-                  <X size={14} aria-hidden="true" />
+                  <X size={14} strokeWidth={1.5} aria-hidden="true" />
                 </Button>
               </li>
             ))}
@@ -536,7 +542,7 @@ function NewThreadDialog({
                   aria-label="Add photos"
                   onClick={() => file.current?.click()}
                 >
-                  <ImagePlus size={20} aria-hidden="true" />
+                  <ImagePlus size={20} strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </li>
             )}
@@ -556,7 +562,7 @@ function NewThreadDialog({
         {spots.length > 0 && (
           <Field
             label="Spot"
-            hint="Optional. Shows the live wind on your thread."
+            hint="Optional. Puts its wind and stars on your thread."
             htmlFor={ids.spot}
             error={errors.spotId}
           >
@@ -597,7 +603,7 @@ export function NewThreadPill({ to }: NewThreadPillProps) {
       size="lg"
       className={styles.fab()}
     >
-      <Plus size={18} aria-hidden="true" />
+      <Plus size={18} strokeWidth={1.5} aria-hidden="true" />
       New thread
     </Button>
   );

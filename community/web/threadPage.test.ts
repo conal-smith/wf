@@ -335,7 +335,7 @@ describe("S6: reactions", () => {
       (m) => m[0],
     );
     expect(mine).toContain('aria-pressed="true"');
-    for (const name of ["border-accent", "bg-card", "shadow-control"])
+    for (const name of ["border-ink", "bg-card", "shadow-control"])
       expect(mine).toContain(name);
     expect(theirs).toContain('aria-pressed="false"');
     expect(theirs).toContain("bg-sunken");

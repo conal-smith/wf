@@ -1,7 +1,11 @@
 /**
- * The reply slot, docked under the stream. Signed in it is the composer, and
- * its Reply is the view's one filled action; signed out it is the offer to
- * sign in; on a locked thread it is the reason.
+ * The reply slot, docked under the stream as the forecast's dock is under the
+ * map: a strip of paper over a double rule. Signed in it is the composer, a
+ * ruled field to write in and the view's one filled action, Reply; signed out
+ * it is the offer to sign in; on a locked thread it is the reason.
+ *
+ * When a reply answers one message, the pen loops the name of who is being
+ * answered: the one mark on the view that says where this letter is going.
  */
 import { AtSign, Image as ImageIcon, Lock, LogIn, Send, X } from "lucide-react";
 import {
@@ -13,8 +17,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
-import { Avatar, Button } from "../../../ui";
-import { HOVER, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
+import { Avatar, Button, PenLoop } from "../../../ui";
+import { HOVER, MONO_LABEL, NO_RING, RING_WITHIN, tv } from "../../../ui/tv";
 import { LIMITS, type Member, type Message } from "../../shared/types";
 import {
   applyMention,
@@ -26,46 +30,53 @@ import {
 
 export const composerStyles = tv({
   slots: {
+    // The dock's paper, over the broadsheet's double rule. `border-0` first:
+    // `border-double` would otherwise draw all four sides.
     base: [
-      "relative grid gap-2 rounded-surface border border-line-strong bg-card py-3 pr-3 pl-5 font-body shadow-marker",
-      "max-rail:rounded-control max-rail:pl-3",
+      "relative grid gap-2 border-0 border-t-3 border-double border-ink bg-ground paper-grain pt-3 pb-safe-3 font-body",
+    ],
+    replying: "flex min-w-0 items-center gap-2 pl-1 text-body text-ink-muted",
+    replyingLabel: ["shrink-0", MONO_LABEL],
+    // Clear of the words either side by the loop's own reach.
+    loop: "mx-3 shrink-0",
+    replyingName: "font-display font-semibold text-ink",
+    replyingLine: "min-w-0 flex-1 truncate italic",
+    // The field: a box ruled in ink to write in, as the kit's fields are.
+    box: [
+      "grid gap-2 rounded-control border border-ink bg-card px-3 py-2",
       RING_WITHIN,
     ],
-    replying: "flex min-w-0 items-center gap-2 text-body text-ink-muted",
-    replyingName: "shrink-0 font-semibold text-ink-2",
-    replyingLine: "min-w-0 flex-1 truncate",
     input: [
-      "field-sizing-content max-h-60 min-h-control-lg w-full resize-none border-0 bg-transparent p-0 pt-2",
-      "font-body text-prose text-ink placeholder:text-ink-muted placeholder:opacity-100",
-      // Under 16px a focused field makes a phone zoom the page. The step up
-      // is a heading's, so its weight is taken back off.
-      "pointer-coarse:text-lead pointer-coarse:font-normal",
+      "field-sizing-content max-h-60 min-h-control-md w-full resize-none border-0 bg-transparent p-0",
+      // The input step everywhere: under 16px a focused field makes a phone
+      // zoom the page, and a letter is easier written at the size it is read.
+      "font-body text-input leading-normal text-ink placeholder:text-ink-muted placeholder:italic placeholder:opacity-100",
       NO_RING,
     ],
-    photos: "flex flex-wrap gap-2",
-    photo: "relative size-18 overflow-hidden rounded-control bg-sunken",
+    photos: "m-0 flex list-none flex-wrap gap-2 p-0",
+    photo: "relative size-18 overflow-hidden border border-line bg-sunken",
     photoImage: "size-full object-cover",
     photoBusy: "animate-pulse motion-reduce:animate-none",
     photoRemove: "absolute top-0 right-0 bg-card shadow-control",
     error: "m-0 text-body text-warn",
     bar: "flex items-center gap-0.5",
-    send: "ml-auto px-5 text-body",
+    send: "ml-auto",
     hiddenInput: "hidden",
     // The people an @ offers, over the field.
     matches:
-      "absolute bottom-full left-3 z-popover mb-1 flex min-w-56 flex-col gap-0.5 rounded-control border border-line bg-card p-1 shadow-marker",
+      "absolute bottom-full left-0 z-popover mb-1 flex min-w-56 flex-col border border-ink bg-card paper-grain p-1 shadow-surface",
     match: [
-      "flex min-h-control-md w-full cursor-pointer items-center gap-2 rounded-control px-2 text-left text-body text-ink-2",
+      "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-b border-line px-2 text-left text-body text-ink-2 last:border-b-0",
       "pointer-coarse:min-h-touch",
       HOVER,
     ],
-    matchName: "font-semibold text-ink",
-    matchHandle: "text-ink-muted",
-    // Signed out, or locked: the same slot, one thing in it.
-    gate: "flex items-center justify-between gap-3 rounded-surface border border-line bg-card py-3 pr-3 pl-5 font-body shadow-marker max-rail:rounded-control max-rail:pl-3",
+    matchName: "font-display font-semibold text-ink",
+    matchHandle: "font-mono text-caption text-ink-muted",
+    // Signed out, or locked: the same strip of paper, one thing on it.
+    gate: "flex items-center justify-between gap-3 border-0 border-t-3 border-double border-ink bg-ground paper-grain pt-3 pb-safe-3 font-body",
     gateText: "grid min-w-0 gap-0.5",
-    gateTitle: "text-prose font-semibold text-ink",
-    gateMeta: "text-body text-ink-muted",
+    gateTitle: "font-display text-prose font-semibold text-ink",
+    gateMeta: "text-body text-ink-muted italic",
     locked: "flex items-center gap-3 text-ink-muted",
   },
   variants: {
@@ -306,10 +317,12 @@ export function Composer({
       )}
       {replyingTo && (
         <div className={styles.replying()}>
-          <span>Replying to</span>
-          <span className={styles.replyingName()}>
-            {replyingTo.author.displayName}
-          </span>
+          <span className={styles.replyingLabel()}>Replying to</span>
+          <PenLoop seed={5} className={styles.loop()}>
+            <span className={styles.replyingName()}>
+              {replyingTo.author.displayName}
+            </span>
+          </PenLoop>
           <span className={styles.replyingLine()}>{firstLine(replyingTo)}</span>
           <Button
             size="sm"
@@ -317,66 +330,68 @@ export function Composer({
             aria-label="Cancel replying to this message"
             onClick={onCancelReply}
           >
-            <X size={15} aria-hidden="true" />
+            <X size={15} strokeWidth={1.5} aria-hidden="true" />
           </Button>
         </div>
       )}
-      <textarea
-        ref={field}
-        className={styles.input()}
-        rows={1}
-        maxLength={LIMITS.bodyMax}
-        placeholder={
-          replyingTo
-            ? `Reply to ${replyingTo.author.displayName}…`
-            : "Reply to the thread…"
-        }
-        aria-label="Your reply"
-        aria-autocomplete="list"
-        aria-controls={matches.length ? listId : undefined}
-        aria-activedescendant={active ? `${listId}-${active.id}` : undefined}
-        value={text}
-        // Not disabled, which would drop the focus a sent reply keeps.
-        readOnly={busy}
-        onChange={(event) => {
-          setText(event.target.value);
-          setCaret(event.target.selectionStart);
-          setRow(0);
-          setDismissed(null);
-        }}
-        onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
-        onKeyDown={onKeyDown}
-      />
-      {photos.length > 0 && (
-        <ul className={styles.photos()} aria-label="Photos to send">
-          {photos.map((photo, i) => (
-            <li
-              key={photo.id}
-              className={styles.photo({
-                className: photo.key ? undefined : styles.photoBusy(),
-              })}
-              aria-busy={!photo.key || undefined}
-            >
-              {photo.previewUrl && (
-                <img
-                  className={styles.photoImage()}
-                  src={photo.previewUrl}
-                  alt=""
-                />
-              )}
-              <Button
-                size="sm"
-                icon
-                className={styles.photoRemove()}
-                aria-label={`Remove photo ${i + 1}`}
-                onClick={() => detach(photo)}
+      <div className={styles.box()}>
+        <textarea
+          ref={field}
+          className={styles.input()}
+          rows={1}
+          maxLength={LIMITS.bodyMax}
+          placeholder={
+            replyingTo
+              ? `Reply to ${replyingTo.author.displayName}…`
+              : "Reply to the thread…"
+          }
+          aria-label="Your reply"
+          aria-autocomplete="list"
+          aria-controls={matches.length ? listId : undefined}
+          aria-activedescendant={active ? `${listId}-${active.id}` : undefined}
+          value={text}
+          // Not disabled, which would drop the focus a sent reply keeps.
+          readOnly={busy}
+          onChange={(event) => {
+            setText(event.target.value);
+            setCaret(event.target.selectionStart);
+            setRow(0);
+            setDismissed(null);
+          }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
+          onKeyDown={onKeyDown}
+        />
+        {photos.length > 0 && (
+          <ul className={styles.photos()} aria-label="Photos to send">
+            {photos.map((photo, i) => (
+              <li
+                key={photo.id}
+                className={styles.photo({
+                  className: photo.key ? undefined : styles.photoBusy(),
+                })}
+                aria-busy={!photo.key || undefined}
               >
-                <X size={13} aria-hidden="true" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+                {photo.previewUrl && (
+                  <img
+                    className={styles.photoImage()}
+                    src={photo.previewUrl}
+                    alt=""
+                  />
+                )}
+                <Button
+                  size="sm"
+                  icon
+                  className={styles.photoRemove()}
+                  aria-label={`Remove photo ${i + 1}`}
+                  onClick={() => detach(photo)}
+                >
+                  <X size={13} strokeWidth={1.5} aria-hidden="true" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {error && (
         <p className={styles.error()} role="alert">
           {error}
@@ -400,7 +415,7 @@ export function Composer({
           disabled={busy || photos.length >= LIMITS.photosPerMessage}
           onClick={() => files.current?.click()}
         >
-          <ImageIcon size={16} aria-hidden="true" />
+          <ImageIcon size={16} strokeWidth={1.5} aria-hidden="true" />
         </Button>
         <Button
           size="sm"
@@ -409,17 +424,17 @@ export function Composer({
           disabled={busy}
           onClick={startMention}
         >
-          <AtSign size={16} aria-hidden="true" />
+          <AtSign size={16} strokeWidth={1.5} aria-hidden="true" />
         </Button>
         <Button
           type="submit"
           variant="primary"
-          size="sm"
+          size="md"
           className={styles.send()}
           disabled={!ready}
         >
           <span>{busy ? "Sending…" : "Reply"}</span>
-          <Send size={14} aria-hidden="true" />
+          <Send size={14} strokeWidth={1.5} aria-hidden="true" />
         </Button>
       </div>
     </form>
@@ -447,7 +462,7 @@ export function SignInToReply() {
             : undefined
         }
       >
-        <LogIn size={15} aria-hidden="true" />
+        <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
         <span>Sign in to reply</span>
       </Button>
     </div>
@@ -460,7 +475,7 @@ export function LockedNotice({ reason }: { reason: string | null }) {
   return (
     <div className={styles.gate()} role="status">
       <span className={styles.locked()}>
-        <Lock size={18} aria-hidden="true" />
+        <Lock size={18} strokeWidth={1.5} aria-hidden="true" />
         <span className={styles.gateText()}>
           <span className={styles.gateTitle()}>This thread is locked</span>
           <span className={styles.gateMeta()}>

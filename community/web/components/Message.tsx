@@ -1,8 +1,9 @@
 /**
- * One message. The opening post is the one card of the page; a reply stands
- * on the ground under it. Both carry the same things: who and when, the body,
- * photos, reactions, and the actions that show on hover, on focus and on a
- * long press.
+ * One message: a letter. The opening post is the one card of the page, ruled
+ * in ink; a reply stands on the paper under it, divided from the next by a
+ * hairline. Both carry the same things: a byline (the face, the name in the
+ * display face, the time in the mono), the body set for reading, photos,
+ * reactions, and the actions that show on hover, on focus and on a long press.
  */
 import { Flag, Pencil, Reply, Trash2 } from "lucide-react";
 import {
@@ -33,30 +34,37 @@ import { ReactionPicker, Reactions } from "./Reactions";
 
 export const messageStyles = tv({
   slots: {
-    base: "group relative flex scroll-mt-24 flex-col gap-1 rounded-control px-3 py-3 font-body transition-colors duration-base motion-reduce:transition-none",
-    // The quoted line above a reply, indented to stand over the words, not the face.
+    base: [
+      "group relative flex scroll-mt-24 flex-col gap-2 font-body",
+      "transition-colors duration-base motion-reduce:transition-none",
+    ],
+    // The letter it answers, quoted above it under a rule down its edge.
     replyTo: [
-      "flex min-w-0 items-center gap-1 self-start rounded-control pl-13 text-body text-ink-muted no-underline max-rail:pl-10.5",
-      "max-w-full not-disabled:hover:text-ink",
+      "flex min-w-0 max-w-full items-baseline gap-1.5 self-start border-0 border-l-2 border-ink pl-2 text-body text-ink-muted no-underline",
+      "not-disabled:hover:text-ink",
       RING,
     ],
-    replyToName: "shrink-0 font-semibold",
-    replyToLine: "min-w-0 truncate",
-    row: "flex min-w-0 items-start gap-3",
-    avatar: "max-rail:size-control-sm max-rail:text-caption",
-    column: "flex min-w-0 flex-1 flex-col gap-1",
-    head: "flex flex-wrap items-center gap-x-2 gap-y-1",
-    name: "text-prose font-semibold text-ink",
-    time: "text-body text-ink-muted",
+    replyToIcon: "shrink-0 self-center",
+    replyToName: "shrink-0 font-display font-semibold text-ink-2",
+    replyToLine: "min-w-0 truncate italic",
+    // The byline: the face, the name, and the time set right.
+    head: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
+    name: "font-display text-prose font-semibold text-ink",
+    time: "font-mono text-caption whitespace-nowrap text-ink-muted tabular-nums",
+    when: "ml-auto flex items-baseline gap-2",
     timeLong: "max-rail:hidden",
     timeShort: "rail:hidden",
+    column: "flex min-w-0 flex-col gap-2",
     removed: "m-0 text-prose text-ink-muted italic",
     photos: "grid max-w-dialog grid-cols-2 gap-2",
-    photo: ["block aspect-4/3 overflow-hidden rounded-control bg-sunken", RING],
+    photo: [
+      "block aspect-4/3 overflow-hidden border border-line bg-sunken",
+      RING,
+    ],
     photoImage: "size-full object-cover",
-    reactions: "mt-1",
+    // The chart's instrument: a square box ruled in ink, over the letter's corner.
     tools: [
-      "absolute -top-3 right-3 z-popover flex rounded-full border border-line bg-card p-0.5 shadow-marker",
+      "absolute top-1 right-0 z-popover flex border border-ink bg-card p-0.5 shadow-marker",
       "pointer-events-none opacity-0 transition-opacity duration-fast motion-reduce:transition-none",
       "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
       "group-hover:pointer-events-auto group-hover:opacity-100",
@@ -66,20 +74,21 @@ export const messageStyles = tv({
     error: "m-0 text-body text-warn",
   },
   variants: {
-    // The one card: the opening post. Its actions sit inside its corner.
+    // The one card: the opening post, ruled in ink on its grained paper.
     opening: {
       true: {
-        base: "gap-4 rounded-surface px-5 py-5 max-rail:rounded-control max-rail:px-3 max-rail:py-3",
-        row: "items-center",
-        // Beside the face: the name over the time, where there is the room.
-        head: "rail:flex-col rail:items-start rail:gap-0",
-        tools: "top-3",
+        base: "gap-3 p-5 max-rail:p-4",
+        name: "text-lead",
+        column: "gap-3",
+        tools: "top-3 right-3",
       },
+      // A reply: on the paper, a hairline under it.
+      false: { base: "border-b border-line py-4" },
     },
     // Held open by a long press or an open picker, where there is no hover.
     toolsOpen: { true: { tools: "pointer-events-auto opacity-100" } },
-    // Just jumped to: raised for a moment, then let go.
-    marked: { true: { base: "bg-card shadow-control" } },
+    // Just jumped to: on the second sheet for a moment, then let go.
+    marked: { true: { base: "bg-sunken" } },
   },
 });
 
@@ -140,7 +149,12 @@ function ReplyTo({
         onJump(target);
       }}
     >
-      <Reply size={13} aria-hidden="true" />
+      <Reply
+        className={styles.replyToIcon()}
+        size={13}
+        strokeWidth={1.5}
+        aria-hidden="true"
+      />
       <span className={styles.replyToName()}>{target.author.displayName}</span>
       <span className={styles.replyToLine()}>
         {target.removed ? "Removed message" : target.excerpt}
@@ -327,7 +341,9 @@ export function Message({
       ref={root}
       id={`m-${message.seq}`}
       className={
-        opening ? paneStyles({ className: styles.base() }) : styles.base()
+        opening
+          ? paneStyles({ double: true, className: styles.base() })
+          : styles.base()
       }
       aria-label={`${author.displayName}, ${messageTime(message.createdAt, now).long}`}
       onPointerDown={startPress}
@@ -359,7 +375,7 @@ export function Message({
               aria-label="Reply to this message"
               onClick={() => onReply(message)}
             >
-              <Reply size={15} aria-hidden="true" />
+              <Reply size={15} strokeWidth={1.5} aria-hidden="true" />
             </Button>
           )}
           {!mine && (
@@ -369,7 +385,7 @@ export function Message({
               aria-label="Report"
               onClick={() => onReport(message)}
             >
-              <Flag size={15} aria-hidden="true" />
+              <Flag size={15} strokeWidth={1.5} aria-hidden="true" />
             </Button>
           )}
           {canEdit(message, viewer, now) && (
@@ -379,7 +395,7 @@ export function Message({
               aria-label="Edit"
               onClick={() => setEditing(true)}
             >
-              <Pencil size={15} aria-hidden="true" />
+              <Pencil size={15} strokeWidth={1.5} aria-hidden="true" />
             </Button>
           )}
           {canDelete(message, viewer) && (
@@ -389,48 +405,20 @@ export function Message({
               aria-label="Delete"
               onClick={() => onDelete(message)}
             >
-              <Trash2 size={15} aria-hidden="true" />
+              <Trash2 size={15} strokeWidth={1.5} aria-hidden="true" />
             </Button>
           )}
         </div>
       )}
       {message.replyTo && <ReplyTo target={message.replyTo} onJump={onJump} />}
-      <div className={styles.row()}>
-        <Avatar
-          name={author.displayName}
-          src={author.avatarUrl}
-          className={styles.avatar()}
-        />
-        {opening ? (
-          <Byline message={message} now={now} opening />
-        ) : (
-          <div className={styles.column()}>
-            <Byline
-              message={message}
-              now={now}
-              started={author.id === startedBy}
-            />
-            {editing ? (
-              <EditForm
-                message={message}
-                onSave={(text) => onEdit(message, text)}
-                onCancel={() => setEditing(false)}
-              />
-            ) : (
-              content(message, viewer.staff)
-            )}
-            {visible && (
-              <Reactions
-                className={styles.reactions()}
-                message={message}
-                onReact={react}
-              />
-            )}
-          </div>
-        )}
-      </div>
-      {opening &&
-        (editing ? (
+      <Byline
+        message={message}
+        now={now}
+        opening={opening}
+        started={!opening && author.id === startedBy}
+      />
+      <div className={styles.column()}>
+        {editing ? (
           <EditForm
             message={message}
             onSave={(text) => onEdit(message, text)}
@@ -438,11 +426,12 @@ export function Message({
           />
         ) : (
           content(message, viewer.staff)
-        ))}
-      {opening && visible && attached}
-      {opening && visible && (
-        <Reactions message={message} onReact={react} picker />
-      )}
+        )}
+        {opening && visible && attached}
+        {visible && (
+          <Reactions message={message} onReact={react} picker={opening} />
+        )}
+      </div>
     </article>
   );
 }
@@ -461,17 +450,24 @@ function Byline({
   const styles = messageStyles({ opening });
   return (
     <div className={styles.head()}>
+      <Avatar
+        name={message.author.displayName}
+        src={message.author.avatarUrl}
+        size={opening ? "md" : "sm"}
+      />
       <span className={styles.name()}>{message.author.displayName}</span>
-      {started && <Chip>Started the thread</Chip>}
-      <Time iso={message.createdAt} now={now} />
-      {message.editedAt && message.status === "visible" && (
-        <span
-          className={styles.time()}
-          title={new Date(message.editedAt).toLocaleString()}
-        >
-          (edited)
-        </span>
-      )}
+      {started && <Chip eyebrow>Started the thread</Chip>}
+      <span className={styles.when()}>
+        {message.editedAt && message.status === "visible" && (
+          <span
+            className={styles.time()}
+            title={new Date(message.editedAt).toLocaleString()}
+          >
+            (edited)
+          </span>
+        )}
+        <Time iso={message.createdAt} now={now} />
+      </span>
     </div>
   );
 }
