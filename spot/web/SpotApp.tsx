@@ -73,9 +73,9 @@ const styles = tv({
     ],
     domain: "font-normal text-ink-muted",
     barEnd: "ml-auto flex items-center gap-2",
-    main: "flex flex-col gap-10 pt-4 pb-12 max-wide:gap-8",
+    main: "flex flex-col gap-10 pt-4 pb-12 max-wide:gap-8 max-sm:gap-6 max-sm:pt-1",
     hero: "grid items-start gap-6 rail:grid-cols-detail",
-    identity: "flex min-w-0 flex-col gap-4",
+    identity: "flex min-w-0 flex-col gap-4 max-sm:gap-3",
     eyebrow: "flex flex-wrap items-center gap-2 text-body text-ink-muted",
     name: "m-0 text-title wide:text-reading wide:leading-tight wide:font-semibold wide:tracking-tight",
     shore: "flex items-center gap-4",
@@ -84,10 +84,26 @@ const styles = tv({
     fact: "m-0 text-body text-ink-2 tabular-nums",
     factMuted: "text-ink-muted",
     actions: "flex flex-wrap items-center gap-2",
+    // On a phone the header's Map button is the way back; the row would only
+    // push the week further down.
+    heroActions: "max-sm:hidden",
+    // A phone folds the rider into one line under the name, so the week is on
+    // the first screen; it opens in place.
+    riderChip: [
+      "flex min-h-touch w-full items-center gap-2 rounded-pill border border-line bg-card px-4 py-2 text-left font-sans text-body text-ink-2 shadow-control",
+      "cursor-pointer transition-colors duration-fast not-disabled:hover:bg-solid motion-reduce:transition-none",
+      RING,
+    ],
+    riderChipText: "min-w-0 flex-1 truncate tabular-nums",
+    riderChipLevel: "font-semibold text-ink",
+    riderChipAction:
+      "shrink-0 text-label text-quiet underline underline-offset-4 decoration-line-strong",
+    riderPanel: "rounded-surface border border-line bg-card p-4 shadow-control",
     glance: "m-0 grid grid-cols-4 gap-2 max-wide:grid-cols-2",
-    tile: "flex min-w-0 flex-col gap-0.5 rounded-control border border-line bg-card px-4 py-3 shadow-control",
+    tile: "flex min-w-0 flex-col gap-0.5 rounded-control border border-line bg-card px-4 py-3 shadow-control max-sm:px-3 max-sm:py-2",
     tileLabel: "text-eyebrow uppercase text-ink-muted",
-    tileValue: "m-0 text-lead whitespace-nowrap tabular-nums",
+    tileValue:
+      "m-0 text-lead whitespace-nowrap tabular-nums max-sm:text-prose max-sm:font-semibold",
     tileDetail: "m-0 truncate text-caption text-ink-muted",
     side: "flex flex-col gap-5",
     bestEyebrow: "m-0 text-eyebrow uppercase text-ink-muted",
@@ -309,6 +325,29 @@ function Loading() {
   );
 }
 
+/** Below Tailwind's `sm` (40rem): where the rider folds into one line. */
+const PHONE = "(max-width: 39.99rem)";
+
+/**
+ * Whether the page is on a phone. The rider's controls are drawn once, in the
+ * side panel or in the fold under the name, never in both: two copies would be
+ * two sets of the same fields.
+ */
+function usePhone(): boolean {
+  const [phone, setPhone] = useState(
+    () => window.matchMedia?.(PHONE).matches ?? false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia?.(PHONE);
+    if (!media) return;
+    const change = () => setPhone(media.matches);
+    change();
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  return phone;
+}
+
 /** Scroll to an element, smoothly unless the reader has asked for less motion. */
 function scrollToId(id: string, focus = false) {
   const element = document.getElementById(id);
@@ -343,6 +382,8 @@ function SpotPage({
     savePrefs({ ...loadPrefs(), rider: next });
   };
   const facing = shoreFacing(spot.id);
+  const phone = usePhone();
+  const [riderOpen, setRiderOpen] = useState(false);
   const rows = useMemo(
     () => spotRows(forecast.hours, now, facing, rider),
     [forecast.hours, now, facing, rider],
@@ -385,6 +426,40 @@ function SpotPage({
             {spot.county && <span>{spot.county}</span>}
           </div>
           <h1 className={s.name()}>{spot.name}</h1>
+          {phone && (
+            <>
+              <button
+                type="button"
+                className={s.riderChip()}
+                aria-expanded={riderOpen}
+                aria-controls="rider-panel"
+                data-rider-chip
+                onClick={() => setRiderOpen((open) => !open)}
+              >
+                <span className={s.riderChipText()}>
+                  Rated for{" "}
+                  <span className={s.riderChipLevel()}>
+                    {SKILL_LABEL[rider.skill]}
+                  </span>{" "}
+                  · {weightText(rider)}
+                  {rider.wings.length ? ` · ${rider.wings.join(", ")} m²` : ""}
+                </span>
+                <span className={s.riderChipAction()} aria-hidden="true">
+                  {riderOpen ? "Done" : "Change"}
+                </span>
+                <span className="sr-only">
+                  {riderOpen
+                    ? ". Close the rider controls"
+                    : ". Change who the stars are rated for"}
+                </span>
+              </button>
+              {riderOpen && (
+                <div id="rider-panel" className={s.riderPanel()}>
+                  <RiderSwitch rider={rider} onChange={changeRider} />
+                </div>
+              )}
+            </>
+          )}
           <div className={s.shore()}>
             <ShoreDial
               facing={facing}
@@ -467,7 +542,7 @@ function SpotPage({
               data-sea-temperature={sea ? "" : undefined}
             />
           </dl>
-          <div className={s.actions()}>
+          <div className={s.actions({ className: s.heroActions() })}>
             <Button variant="pill" size="sm" href={mapSpotHref(spot.id)}>
               <MapIcon size={14} aria-hidden="true" />
               <span>Open on the map</span>
@@ -520,8 +595,12 @@ function SpotPage({
               </p>
             )}
           </div>
-          <hr className={s.rule()} />
-          <RiderSwitch rider={rider} onChange={changeRider} />
+          {!phone && (
+            <>
+              <hr className={s.rule()} />
+              <RiderSwitch rider={rider} onChange={changeRider} />
+            </>
+          )}
         </Pane>
       </div>
 
