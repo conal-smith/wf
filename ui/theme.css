@@ -424,8 +424,8 @@
  * the element is filled with. It is a background image only, so it sits with
  * `bg-ground` or `bg-card` rather than replacing them: an opaque surface that
  * covers the ground's grain brings its own, and the page reads as one sheet.
- * One 220px tile, rasterised once and repeated; no filter runs per frame, and
- * nothing is laid over the map, which has no paper to grain.
+ * One 220px tile, rasterised once and repeated, so no filter runs per frame.
+ * It is never laid over the moving map: the map is not paper.
  */
 @utility paper-grain {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

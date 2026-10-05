@@ -188,12 +188,12 @@ test("the rail is reachable by keyboard, and aria-current follows the open chann
   await page.waitForURL((url) => url.pathname === "/community");
   await expect(current(page)).toHaveText(["Latest"]);
 
-  // The one ring, not the map's: 3px of focus, 2px clear.
+  // The one ring, not the map's: 2px of focus (the chart's magenta), 2px clear.
   const ring = await row(page, "Latest").evaluate((el) => {
     const style = getComputedStyle(el);
     return `${style.outlineWidth} ${style.outlineOffset}`;
   });
-  expect(ring).toBe("3px 2px");
+  expect(ring).toBe("2px 2px");
 });
 
 test("a category head folds its channels away and says so", async ({
