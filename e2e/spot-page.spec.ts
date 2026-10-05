@@ -246,3 +246,36 @@ test("the map's spot popup and dock both open the spot page", async ({
     timeout: 30000,
   });
 });
+
+test("on a phone the rider folds into one line, so the week is on the first screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/spot/brandon");
+  const chip = page.locator("[data-rider-chip]");
+  await expect(chip).toBeVisible({ timeout: 30000 });
+  await expect(chip).toContainText("Rated for Riding · ~80 kg");
+  await expect(chip).toHaveAttribute("aria-expanded", "false");
+  // Folded: the controls are not drawn at all, and the week is in view.
+  await expect(page.locator('[data-rider="weight"]')).toHaveCount(0);
+  await expect(page.locator("[data-day-card]").first()).toBeInViewport();
+
+  // Change opens the same controls in place, and they re-rate the page.
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-expanded", "true");
+  const level = page.getByRole("group", { name: "Riding level" });
+  await expect(level).toBeVisible();
+  const riding = await ratings(page);
+  await level.getByRole("button", { name: "Learning" }).click();
+  await expect(chip).toContainText("Rated for Learning · ~80 kg");
+  await expect.poll(() => ratings(page)).not.toBe(riding);
+  await page.locator('[data-rider="weight"]').fill("95");
+  await expect(chip).toContainText("Rated for Learning · 95 kg");
+  await chip.click();
+  await expect(page.locator('[data-rider="weight"]')).toHaveCount(0);
+
+  // The desktop keeps the controls in the side panel, with no fold.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(page.locator("[data-rider-chip]")).toHaveCount(0);
+  await expect(page.locator('[data-rider="weight"]')).toHaveValue("95");
+});

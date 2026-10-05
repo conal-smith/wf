@@ -62,7 +62,8 @@ interpolation between the published high and low waters) over night and civil
 twilight, with the turns and first light / sunrise / sunset / last light as
 tables. A **Rate for** switch (Learning / Riding / Advanced, weight, wings)
 re-rates every hour live and is the same rider as the dock's Display options
-(`force5.prefs.v1`). The header draws the shore as a compass with the winds it
+(`force5.prefs.v1`); on a phone it folds into one line under the name
+("Rated for Riding · ~80 kg · Change") so the week is on the first screen. The header draws the shore as a compass with the winds it
 likes (cross and cross-on, from the computed facing) and the best window still
 ahead. `/spot` lists every place.
 
