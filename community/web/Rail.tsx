@@ -31,7 +31,7 @@ export const railStyles = tv({
       "flex min-h-9 items-center gap-2 border-b border-line px-2",
       "font-display text-prose whitespace-nowrap text-ink-2 no-underline transition-colors duration-fast",
       "not-disabled:hover:text-chart-magenta",
-      // A row is a tap target on a phone, where the rail is the whole page.
+      // A row is a tap target on a phone, where the rail unfolds over the page.
       "max-rail:min-h-touch pointer-coarse:min-h-touch",
       RING,
     ],
@@ -190,9 +190,11 @@ export interface RailProps {
   /** The lit row's key, from `railCurrent`. */
   current: string | null;
   className?: string;
+  /** For the control that unfolds it on a phone (`aria-controls`). */
+  id?: string;
 }
 
-export function Rail({ state, reload, current, className }: RailProps) {
+export function Rail({ state, reload, current, className, id }: RailProps) {
   const styles = railStyles();
   // Search is the home feed narrowed: the words ride in the URL as `q`.
   const search = (event: FormEvent<HTMLFormElement>) => {
@@ -201,7 +203,7 @@ export function Rail({ state, reload, current, className }: RailProps) {
     if (q) navigate(paths.home(new URLSearchParams({ q })));
   };
   return (
-    <nav className={styles.base({ className })} aria-label="Channels">
+    <nav id={id} className={styles.base({ className })} aria-label="Channels">
       <form role="search" onSubmit={search}>
         <SearchField
           name="q"
