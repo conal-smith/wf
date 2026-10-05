@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { CircleAlert, SquarePen, X } from "lucide-react";
-import { Button } from "../../ui";
+import { Button, Kicker, StarGlyphs } from "../../ui";
+import { MONO_LABEL, RING } from "../../ui/tv";
 import { loadPrefs, parseRider, savePrefs } from "../../force5/src/prefs";
 import {
   COMPANION_NAME,
@@ -9,11 +10,11 @@ import {
 } from "../shared/protocol";
 import type { AssistantMessage, Message } from "./chat";
 import { Composer } from "./Composer";
-import { Gust } from "./Gust";
+import { Character } from "./Character";
 import { MOOD_LABEL } from "./mood";
 import { ProposalCard } from "./ProposalCard";
 import { RichText } from "./RichText";
-import { SpotCard, Stars } from "./SpotCard";
+import { SpotCard } from "./SpotCard";
 import { ToolChips } from "./ToolChips";
 import {
   useCompanion,
@@ -123,11 +124,11 @@ export function Companion({
         ref={launcher}
         type="button"
         className={[
+          // Paper in an ink ring, like a light on the chart: not glass.
           "gust-launcher group grid size-16 cursor-pointer place-items-center rounded-full",
-          "border border-card/70 bg-glass shadow-surface backdrop-blur-glass backdrop-saturate-145",
-          "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
+          "border border-ink bg-card paper-grain shadow-marker inset-shadow-frame",
           "not-disabled:hover:bg-card not-disabled:hover:-translate-y-0.5",
-          "not-disabled:focus-visible:outline-3 not-disabled:focus-visible:outline-offset-2 not-disabled:focus-visible:outline-focus",
+          RING,
         ].join(" ")}
         data-open={gust.open}
         data-mood={gust.mood}
@@ -137,11 +138,11 @@ export function Companion({
         title={`Ask ${COMPANION_NAME} (⌘J)`}
         onClick={() => gust.toggle()}
       >
-        <Gust mood={gust.mood} size={60} className="translate-x-2" />
+        <Character mood={gust.mood} size={60} className="translate-x-2" />
         {gust.nudging && !gust.open && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -left-1 rounded-full bg-accent px-2 py-0.5 font-body text-caption font-bold text-accent-ink shadow-control"
+            className="absolute -top-1 -left-1 rounded-full bg-inverse px-2 py-0.5 font-mono text-caption font-semibold text-ink-inverse tabular-nums shadow-control"
           >
             {nudgeStars}★
           </span>
@@ -183,9 +184,9 @@ function Panel({
       aria-label={COMPANION_NAME}
       tabIndex={-1}
       className={[
+        // The chart's box: opaque paper with its grain, ruled twice in ink.
         "gust-panel flex flex-col overflow-hidden rounded-surface font-body text-ink focus:outline-hidden",
-        "border border-card/70 bg-glass shadow-surface backdrop-blur-glass backdrop-saturate-145",
-        "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
+        "border border-ink bg-card paper-grain shadow-surface inset-shadow-frame",
       ].join(" ")}
       onKeyDown={(event) => {
         // The map closes its dock on Escape; inside Gust it closes Gust only.
@@ -195,12 +196,14 @@ function Panel({
         }
       }}
     >
-      <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <Gust mood={gust.mood} size={40} labelled />
+      <header className="mx-1 mt-1 flex items-center gap-3 border-0 border-b-3 border-double border-ink px-3 py-2.5">
+        <Character mood={gust.mood} size={40} labelled />
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-lead">{COMPANION_NAME}</h2>
+          <h2 className="m-0 font-display text-lead text-ink">
+            {COMPANION_NAME}
+          </h2>
           <p
-            className="m-0 truncate text-caption text-ink-muted"
+            className={["m-0 truncate text-ink-muted", MONO_LABEL].join(" ")}
             aria-live="polite"
           >
             {asleep
@@ -222,7 +225,7 @@ function Panel({
             input.current?.focus();
           }}
         >
-          <SquarePen size={16} aria-hidden="true" />
+          <SquarePen size={16} strokeWidth={1.5} aria-hidden="true" />
         </Button>
         <Button
           variant="quiet"
@@ -231,7 +234,7 @@ function Panel({
           aria-label={`Close ${COMPANION_NAME}`}
           onClick={() => gust.toggle(false)}
         >
-          <X size={18} aria-hidden="true" />
+          <X size={18} strokeWidth={1.5} aria-hidden="true" />
         </Button>
       </header>
 
@@ -250,11 +253,11 @@ function Panel({
         )}
       </div>
 
-      <footer className="flex flex-col gap-1 border-t border-line px-3 pt-3 pb-safe-3">
+      <footer className="flex flex-col gap-1 border-0 border-t border-ink px-3 pt-3 pb-safe-3">
         {gust.chat.requestError && (
           <p
             role="alert"
-            className="m-0 flex items-start gap-1 px-1 text-body text-warn"
+            className="m-0 flex items-start gap-1 px-1 font-body text-body text-warn"
           >
             <CircleAlert
               size={14}
@@ -273,7 +276,7 @@ function Panel({
           busy={gust.busy}
           placeholder={asleep ? `${COMPANION_NAME} is asleep` : undefined}
         />
-        <p className="m-0 px-1 text-caption text-ink-muted">
+        <p className="m-0 px-1 font-body text-caption text-ink-muted italic">
           Forecasts, not promises. Check the launch and conditions yourself.
         </p>
       </footer>
@@ -287,9 +290,11 @@ function Asleep() {
       className="flex flex-col items-center gap-3 py-8 text-center"
       role="status"
     >
-      <Gust mood="asleep" size={96} />
-      <p className="m-0 text-prose font-semibold">{COMPANION_NAME} is asleep</p>
-      <p className="m-0 max-w-reading text-body text-ink-muted">
+      <Character mood="asleep" size={96} />
+      <p className="m-0 font-display text-lead text-ink">
+        {COMPANION_NAME} is asleep
+      </p>
+      <p className="m-0 max-w-reading font-body text-body text-ink-2">
         The companion isn&rsquo;t configured on this server, so there&rsquo;s
         nobody to answer. The map, the dock and the stars all work as usual.
       </p>
@@ -317,35 +322,47 @@ function Welcome({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-center gap-2 pt-2 text-center">
-        <Gust mood={gust.mood} size={84} />
-        <p className="m-0 text-lead">Where to, rider?</p>
-        <p className="m-0 max-w-reading text-body text-ink-muted">
+        <Character mood={gust.mood} size={84} />
+        <p className="m-0 font-display text-lead text-ink">Where to, rider?</p>
+        <p className="m-0 max-w-reading font-body text-body text-ink-2">
           Ask me where and when to go. I read every model&rsquo;s forecast, rate
           it for you in stars, and can put it on the map.
         </p>
       </div>
       <ul
-        className="m-0 flex list-none flex-wrap justify-center gap-2 p-0"
+        className="m-0 flex list-none flex-col border-0 border-t border-ink p-0"
         aria-label="Suggestions"
       >
         {asks.map((ask) => (
-          <li key={ask}>
-            <Button
-              variant="pill"
-              size="sm"
+          <li key={ask} className="border-0 border-b border-line">
+            <button
+              type="button"
+              className={[
+                "flex min-h-touch w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-1 py-2 text-left font-body text-prose text-ink italic",
+                "not-disabled:hover:bg-sunken not-disabled:hover:text-chart-magenta",
+                RING,
+              ].join(" ")}
               onClick={() => void gust.send(ask)}
             >
-              {ask}
-            </Button>
+              <span className="min-w-0 flex-1">{ask}</span>
+              <span aria-hidden="true" className="font-mono text-ink-muted">
+                →
+              </span>
+            </button>
           </li>
         ))}
       </ul>
       {gust.nudge?.best && (
         <div className="flex flex-col gap-2">
-          <p className="m-0 flex items-center gap-1 text-label text-ink-2">
-            Heads up: <Stars stars={gust.nudge.best.stars} /> coming at{" "}
-            {gust.nudge.name}
-          </p>
+          <Kicker className="flex items-center gap-1.5">
+            Heads up:{" "}
+            <StarGlyphs
+              stars={gust.nudge.best.stars}
+              potential={gust.nudge.best.stars}
+              size={10}
+            />{" "}
+            at {gust.nudge.name}
+          </Kicker>
           <SpotCard card={gust.nudge} onShow={onShow} compact />
         </div>
       )}
@@ -368,7 +385,7 @@ function Reply({
       <ToolChips tools={message.tools} />
       {message.parts.map((part, i) =>
         part.kind === "text" ? (
-          <div key={i} className="text-prose leading-normal text-ink-2">
+          <div key={i} className="font-body text-prose leading-normal text-ink">
             <RichText text={part.text} />
           </div>
         ) : part.kind === "card" ? (
@@ -392,7 +409,7 @@ function Reply({
         ),
       )}
       {message.error && (
-        <p className="m-0 flex items-start gap-2 rounded-control bg-warn-ground px-3 py-2 text-body text-warn">
+        <p className="m-0 flex items-start gap-2 border-0 border-l-3 border-warn bg-warn-ground px-3 py-2 font-body text-body text-warn">
           <CircleAlert
             size={14}
             className="mt-0.5 shrink-0"
@@ -441,7 +458,7 @@ function Conversation({
             m.role === "user" ? (
               <li key={m.id} className="flex justify-end pl-10">
                 <span className="sr-only">You said</span>
-                <p className="m-0 rounded-surface rounded-br-control bg-inverse px-4 py-2 text-prose whitespace-pre-wrap text-ink-inverse">
+                <p className="m-0 border-0 border-r-3 border-ink pr-3 text-right font-body text-prose whitespace-pre-wrap text-ink italic">
                   {m.text}
                 </p>
               </li>
@@ -453,10 +470,10 @@ function Conversation({
       </div>
       {waiting && (
         <p
-          className="m-0 flex items-center gap-2 text-body text-ink-muted"
+          className="m-0 flex items-center gap-2 font-body text-body text-ink-muted italic"
           role="status"
         >
-          <Gust mood="thinking" size={30} /> {COMPANION_NAME} is{" "}
+          <Character mood="thinking" size={30} /> {COMPANION_NAME} is{" "}
           {MOOD_LABEL.thinking}…
         </p>
       )}
