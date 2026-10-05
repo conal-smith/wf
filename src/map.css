@@ -1061,7 +1061,7 @@
   margin-top: 9px;
 }
 
-/* The card the stars open (spot/web/RatingTip.tsx), in the chart's words. */
+/* What the card the stars open says (ui/RatingTip.tsx), in the chart's words. */
 .rating-detail {
   font-size: 13px;
   line-height: 1.35;
@@ -1276,34 +1276,6 @@
   }
 }
 
-/* ---------- the stars' explanation (src/StarTip.tsx) ---------- */
-.star-tip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  margin: 0 -2px;
-  padding: 0 2px;
-  border: 0;
-  background: transparent;
-  color: var(--color-ink);
-  cursor: help;
-}
-@media (hover: hover) and (pointer: fine) {
-  .star-tip:hover {
-    background: var(--color-sunken);
-  }
-}
-.star-tip:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
-}
-.star-tip-card {
-  position: fixed;
-  z-index: 70;
-  padding: 11px 13px 10px;
-  text-align: left;
-  pointer-events: auto;
-}
 .ip-sources {
   display: flex;
   flex-wrap: wrap;

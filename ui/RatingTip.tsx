@@ -1,11 +1,17 @@
 /**
  * An hour's stars, explained where they are: hover them, focus them or tap
- * them and a card says what the rating is and what it rests on. The spot
- * page's own (spot/web/RatingTip.tsx), carried over so the map's bundle does
- * not reach into the spot page's: the same behaviour, drawn as the chart's
- * box. The card is positioned in the viewport and rendered into the body, so
- * the strip's scroller never clips it; it closes on scroll, on Escape and on a
- * tap anywhere else.
+ * them and a card says what the rating is and what it rests on. The card is
+ * positioned in the viewport and rendered into the document body, so a
+ * table's horizontal scroller never clips it; it sits below the stars, or
+ * above them when there is no room below, and closes on scroll, on Escape
+ * and on a tap anywhere else.
+ *
+ * It is the chart's box: paper with its grain, ruled twice in ink. A press on
+ * the stars is theirs alone: it never reaches the row or the column they sit
+ * in, which have presses of their own.
+ *
+ * One explanation for the whole site: the spot page's hours (`md`) and the
+ * map's dock and spot card (`sm`, fitted to a narrow cell) both open this.
  */
 import {
   useEffect,
@@ -16,9 +22,32 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { RING, tv, type VariantProps } from "./tv";
+
+export const ratingTipStyles = tv({
+  slots: {
+    trigger: [
+      "inline-flex items-center rounded-control border-0 bg-transparent text-ink",
+      "cursor-help not-disabled:hover:bg-sunken",
+      RING,
+    ],
+    // On the dialogs' layer: it is the one thing open, and it must clear the
+    // spot page's sticky heads and the map's dock and boxes.
+    card: "pointer-events-auto fixed z-dialog rounded-surface border border-ink bg-card paper-grain p-4 text-left text-ink shadow-surface inset-shadow-frame",
+  },
+  variants: {
+    size: {
+      // A row of the spot page's day.
+      md: { trigger: "-mx-1 min-h-control-sm px-1" },
+      // A cell of the map's dock, or its spot card.
+      sm: { trigger: "-mx-0.5 min-h-5.5 px-0.5" },
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
 /** The card's width, and how close it may come to the viewport's edges. */
-const WIDTH = 280;
+const WIDTH = 320;
 const MARGIN = 12;
 const GAP = 6;
 /** Long enough to cross from the stars into the card without it closing. */
@@ -30,16 +59,26 @@ interface Place {
   width: number;
 }
 
-export interface StarTipProps {
+export interface RatingTipProps {
   /** What the stars say, for a screen reader: "3 of 5 stars". */
   label: string;
+  size?: VariantProps<typeof ratingTipStyles>["size"];
+  /** On the stars' button: a hook for a table that fits it to its row. */
+  className?: string;
   /** The stars themselves. */
   children: ReactNode;
   /** The explanation. */
   detail: ReactNode;
 }
 
-export function StarTip({ label, children, detail }: StarTipProps) {
+export function RatingTip({
+  label,
+  size,
+  className,
+  children,
+  detail,
+}: RatingTipProps) {
+  const s = ratingTipStyles({ size });
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -112,7 +151,7 @@ export function StarTip({ label, children, detail }: StarTipProps) {
       <button
         ref={trigger}
         type="button"
-        className="star-tip"
+        className={s.trigger({ className })}
         aria-label={label}
         aria-expanded={open}
         aria-describedby={open ? id : undefined}
@@ -131,7 +170,12 @@ export function StarTip({ label, children, detail }: StarTipProps) {
           if (event.currentTarget.matches(":focus-visible")) show();
         }}
         onBlur={hideSoon}
-        onClick={() => {
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ")
+            event.stopPropagation();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
           if (pointer.current === "mouse") show();
           else if (open) hide();
           else show();
@@ -146,7 +190,7 @@ export function StarTip({ label, children, detail }: StarTipProps) {
             ref={card}
             id={id}
             role="tooltip"
-            className="star-tip-card chart-box"
+            className={s.card()}
             data-rating-tip
             style={
               place

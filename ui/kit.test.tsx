@@ -24,6 +24,7 @@ import { paneStyles } from "./Pane";
 import { penNoteStyles, penStyles } from "./Pen";
 import { loopPath, strikePath, underlinePath } from "./penPaths";
 import { puffinStyles } from "./Puffin";
+import { ratingTipStyles } from "./RatingTip";
 import { searchFieldStyles } from "./SearchField";
 import { sectionHeadingStyles } from "./SectionHeading";
 import { segmentedStyles } from "./Segmented";
@@ -90,6 +91,7 @@ const RECIPES = {
   penNoteStyles,
   penStyles,
   puffinStyles,
+  ratingTipStyles,
   searchFieldStyles,
   sectionHeadingStyles,
   segmentedStyles,
@@ -182,7 +184,7 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the thirty-three components, by name", () => {
+  it("is the thirty-four components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
@@ -209,6 +211,7 @@ describe("S2: what ui/ exports", () => {
         "PenStrike",
         "PenUnderline",
         "Puffin",
+        "RatingTip",
         "SearchField",
         "SectionHeading",
         "Segmented",
@@ -244,6 +247,7 @@ describe("S2: what ui/ exports", () => {
     ["SectionHeading", sectionHeadingStyles, "rule", ["thin", "thick", "double"]],
     ["StarGlyphs", starGlyphsStyles, "tone", ["ink", "inverse", "magenta"]],
     ["Avatar", avatarStyles, "size", ["sm", "md", "lg"]],
+    ["RatingTip", ratingTipStyles, "size", ["md", "sm"]],
   ] as const)("%s has %s: %j", (_, recipe, variant, values) => {
     const variants = (recipe as unknown as { variants: Record<string, object> })
       .variants;

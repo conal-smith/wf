@@ -153,6 +153,7 @@ exports its recipe (`buttonStyles`, …) for a link a router owns.
 | `Headline` | One a page; `headlineStyles().soft()` for the italic tail, `.mark()` for a magenta colon | `as` h1/h2. |
 | `Figure` | The number first, a gust raised, the unit small | `value`, `sup`, `unit`, `size` sm/md/lg, `alarm` (sup in the pen's ink), `label`. |
 | `StarGlyphs` | Solid, faded (the wind alone), dots to five; `null` is the dark | `stars`, `potential`, `size`, `slots` five/potential, `tone` ink/inverse/magenta, `label`. |
+| `RatingTip` | An hour's stars as a button; hover, focus or tap opens the chart's box saying why | `label`, `detail`, `size` md (the spot page) / sm (the map's dock and card). The one explanation on the site. |
 | `PenLoop`, `PenUnderline`, `PenStrike` | The pen's marks round their children, drawn in once | Decoration (`aria-hidden`): say the same thing in words. `seed` picks the hand. |
 | `PenNote` | The pen's handwriting | `size` sm/md, `as`. |
 | `loopPath`, `underlinePath`, `strikePath` | The pen's geometry, for any SVG (the map's overlay, the dock's table) | Pure functions. |

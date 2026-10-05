@@ -1,5 +1,5 @@
+import { RatingTip } from "../ui/RatingTip";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import { StarTip } from "./StarTip";
 import {
   ESTIMATE_WEIGHT_KG,
   SESSION_LABEL,
@@ -118,7 +118,9 @@ export function HourStars({
   const r = hour?.rating;
   if (!hour || !r) return null;
   return (
-    <StarTip
+    <RatingTip
+      size="sm"
+      className="star-tip"
       label={`${clock(time)}: ${
         r.potential
           ? starsText(r)
@@ -141,6 +143,6 @@ export function HourStars({
           slots={slots}
         />
       )}
-    </StarTip>
+    </RatingTip>
   );
 }

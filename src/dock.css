@@ -389,7 +389,7 @@ table.tt {
   background: var(--color-ink);
   color: var(--color-ink-inverse);
 }
-/* The stars' explanation button (spot/web/RatingTip.tsx), fitted to the row. */
+/* The stars' explanation button (ui/RatingTip.tsx), fitted to the row. */
 .tt tr.tt-stars td .star-tip {
   min-height: 0;
   height: 18px;
