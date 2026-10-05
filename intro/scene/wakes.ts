@@ -1,8 +1,9 @@
 /**
- * What a foil leaves on flat water: the board flies, so there is no bow wave,
- * only the mast slicing the surface. Behind it a bright streak of white water
- * that dies in a couple of seconds, a thin V of wake that lingers, and a
- * flicker of spray where the mast comes out of the water.
+ * What a foil leaves on flat water, which is very little: the board flies, so
+ * there is no bow wave, only the mast slicing the surface. Behind it a faint
+ * thin line that is gone in a couple of seconds, a V of wake you only just
+ * see, and a flicker of spray where the mast cuts the water. Read off the
+ * tracks, so the line bends with every carve.
  *
  * Both are read straight off the precomputed tracks: a wake vertex k steps
  * back is simply where the mast was k steps ago, and a spray droplet is born
@@ -23,8 +24,8 @@ import {
 import { sampleTrack, type Track } from "./fleet";
 import { MAST_ENTRY } from "./rider";
 
-const STEPS = 56;
-const STEP_SECONDS = 0.075;
+const STEPS = 40;
+const STEP_SECONDS = 0.06;
 
 const wakeVertex = /* glsl */ `
   attribute float aAge;
@@ -59,13 +60,13 @@ const wakeFragment = /* glsl */ `
   }
   void main() {
     float side = abs(vSide);
-    // The streak straight behind the mast, bright and quickly gone.
-    float streak = exp(-side * side * 40.0) * pow(1.0 - vAge, 4.0);
-    // The two arms of the V, thin, fading slower.
-    float arm = (side - 0.86) * 14.0;
-    float arms = exp(-arm * arm) * pow(1.0 - vAge, 1.6) * smoothstep(0.0, 0.08, vAge) * smoothstep(0.95, 0.35, vAge) * 0.22;
+    // The line straight behind the mast, faint and quickly gone.
+    float streak = exp(-side * side * 60.0) * pow(1.0 - vAge, 3.0);
+    // The two arms of the V, barely there.
+    float arm = (side - 0.86) * 12.0;
+    float arms = exp(-arm * arm) * pow(1.0 - vAge, 1.6) * smoothstep(0.0, 0.1, vAge) * smoothstep(0.95, 0.35, vAge) * 0.07;
     float n = vnoise(vWorld * 7.0 + vSeed * 13.0) * 0.6 + vnoise(vWorld * 23.0 - time * 0.5) * 0.4;
-    float a = (streak * (0.55 + 0.6 * n) + arms * (0.4 + 0.8 * n)) * 0.85;
+    float a = (streak * (0.5 + 0.6 * n) * 0.32 + arms * (0.4 + 0.8 * n));
     // Over-unity alpha would subtract light behind it, and a negative colour
     // turns to NaN in the bloom and tone mapping, blacking out the frame.
     gl_FragColor = vec4(foam, clamp(a, 0.0, 1.0));
@@ -91,7 +92,7 @@ const sprayFragment = /* glsl */ `
     vec2 c = gl_PointCoord - 0.5;
     float d = dot(c, c);
     if (d > 0.25) discard;
-    float a = smoothstep(0.25, 0.0, d) * (1.0 - vLife) * 0.45;
+    float a = smoothstep(0.25, 0.0, d) * (1.0 - vLife) * 0.22;
     gl_FragColor = vec4(foam * 1.4, a);
   }
 `;
@@ -103,7 +104,7 @@ export interface Wakes {
   dispose(): void;
 }
 
-const DROPS = 26;
+const DROPS = 14;
 const DROP_LIFE = 0.75;
 
 function hash(n: number) {
@@ -202,7 +203,7 @@ export function createWakes(tracks: Track[]): Wakes {
           dx /= len;
           dz /= len;
           const a = k / (STEPS - 1);
-          const width = 0.06 + 2.8 * Math.pow(a, 0.75);
+          const width = 0.04 + 1.1 * Math.pow(a, 0.8);
           const v = ((r * STEPS + k) * 2) * 3;
           // Before the film started nothing had been drawn: fold those away.
           const fold = t < 0 ? 0 : 1;

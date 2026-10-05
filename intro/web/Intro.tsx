@@ -120,10 +120,19 @@ export default function Intro({ startAt, onMenu, onDone }: IntroProps) {
       el.style.opacity = String(opacity);
       el.style.transform = lift ? `translateY(${lift}px)` : "";
     };
+    const query = new URLSearchParams(window.location.search);
+    const frozen = query.has("freeze");
     startIntro(canvas.current!, {
       startAt,
       // `&freeze` holds a review frame still: `/?intro=17&freeze`.
-      frozen: new URLSearchParams(window.location.search).has("freeze"),
+      frozen,
+      // Every showing rides a little differently; `&seed=N` replays one, and a
+      // frozen review frame keeps to the review seed so it can be compared.
+      seed: query.has("seed")
+        ? Number(query.get("seed"))
+        : frozen
+          ? undefined
+          : Math.floor(Math.random() * 2 ** 31),
       onTime(t, cameraHeight) {
         sound.current?.update(t, cameraHeight);
         // Words decode into place, a few new stand-ins every second.

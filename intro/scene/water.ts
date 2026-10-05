@@ -23,6 +23,7 @@ import {
   type WebGLRenderer,
 } from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
+import { GUST_GLSL, type Squall, squallAt } from "./gust";
 import { seeded } from "./random";
 
 const WAVES = 28;
@@ -44,6 +45,8 @@ export interface Water {
   setHaze(base: Color, toSun: Color, density: number): void;
   /** The sky overhead, which lights the water from above. */
   setSkyLight(sky: Color): void;
+  /** Where the squall is at time t, and how strong. */
+  setSquall(squall: Squall, t: number): void;
   resize(width: number, height: number): void;
   dispose(): void;
 }
@@ -106,27 +109,7 @@ const fragmentShader = /* glsl */ `
   varying vec4 vMirror;
   varying vec3 vWorld;
 
-  float hash(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
-  }
-
-  // Stronger and lighter air, drifting downwind: 1 is the mean breeze.
-  float gustField(vec2 p) {
-    vec2 drift = windDir * time * 4.5;
-    vec2 q = (p - drift) * 0.012;
-    float n = vnoise(q) * 0.55 + vnoise(q * 2.3 + 7.1) * 0.3 + vnoise(q * 5.1 - 3.7) * 0.15;
-    float lanes = smoothstep(0.32, 0.72, n);
-    return mix(0.22, 1.35, lanes);
-  }
+  ${GUST_GLSL}
 
   void main() {
     vec3 toEye = cameraPosition - vWorld;
@@ -149,6 +132,12 @@ const fragmentShader = /* glsl */ `
       float strength = mix(gust, 1.0, clamp(lambda / 3.5, 0.0, 1.0));
       grad += waveDir[i] * (w.z * w.x * cos(phase) * keep * strength);
     }
+    // The squall: a ruffled patch racing downwind, the way a sailor sees a
+    // gust coming. Its own short chop, where the pixels can hold it.
+    float squall = clamp(squallField(vWorld.xz) / 1.8, 0.0, 1.0);
+    vec2 chopAt = vWorld.xz * 1.7 - windDir * time * 3.0;
+    vec2 chop = vec2(vnoise(chopAt), vnoise(chopAt + 17.3)) - 0.5;
+    grad += chop * 0.5 * squall * smoothstep(1.2, 0.25, footprint);
     vec3 N = normalize(vec3(-grad.x, 1.0, -grad.y));
 
     // Fresnel (Schlick, water F0 = 0.02).
@@ -175,6 +164,12 @@ const fragmentShader = /* glsl */ `
     // that sheen is what makes the gusts' dark-and-light patches readable.
     body += hazeBase * clamp((1.0 - N.y) * 30.0, 0.0, 1.0) * 0.05 * gust;
     vec3 col = mix(body, reflection, fresnel);
+    // Ruffled water scatters the sky instead of mirroring it: on dark water
+    // the gust is a paler, matte patch, flecked with white where it bites.
+    float fine = smoothstep(1.2, 0.25, footprint);
+    float fleck = smoothstep(0.72, 0.92, vnoise(chopAt * 1.4 + 5.1)) * fine;
+    col = mix(col, col * 0.7 + skyLight * 0.55, squall * 0.6);
+    col += hazeBase * fleck * squall * 0.12;
 
     // Sun glitter: each ripple facet that tilts the sun into the eye. The
     // roughness grows with the pixel footprint so far facets blend into a path.
@@ -225,6 +220,9 @@ export function createWater(options: WaterOptions): Water {
       hazeBase: { value: new Color(0.5, 0.45, 0.45) },
       hazeSun: { value: new Color(1.2, 0.7, 0.4) },
       hazeDensity: { value: 0.00012 },
+      squallCentre: { value: new Vector2() },
+      squallSize: { value: new Vector2(1, 1) },
+      squallPower: { value: 0 },
     },
     vertexShader,
     fragmentShader,
@@ -277,6 +275,10 @@ export function createWater(options: WaterOptions): Water {
     },
     setSkyLight(sky) {
       uniforms.skyLight.value.copy(sky);
+    },
+    setSquall(squall, t) {
+      uniforms.squallPower.value = squallAt(squall, t, uniforms.squallCentre.value);
+      uniforms.squallSize.value.set(squall.along, squall.across);
     },
     resize(width, height) {
       mesh
