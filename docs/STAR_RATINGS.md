@@ -69,6 +69,11 @@ Each deduction is a sentence in the cell's tooltip, so a rider can argue with it
 | Models disagree (spread ≥ 8 kn) / some spread                                   | −1 / −0.25        | same                 |
 | Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                | −1                   |
 
+Every deduction that costs a star is given as a reason. The quarter for some
+spread among the models is the one that usually costs nothing; when it does tip
+an hour under a whole star, the reason says so ("The models differ a little,
+enough to hold back a star").
+
 Dark hours are not rated: the cell stays empty rather than showing a zero.
 
 ### Why v2 (October 2026)
