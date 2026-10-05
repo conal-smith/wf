@@ -1,0 +1,32 @@
+/*
+ * The four faces, self-hosted. Imported once, from src/main.tsx, beside the
+ * theme, so every bundle on the origin shares them. The families are named in
+ * ui/theme.css (`--font-display`, `--font-body`, `--font-mono`, `--font-hand`).
+ *
+ * Chosen for a phone on a slow connection:
+ *
+ * - Same origin, hashed and cached for good by the build: no third-party
+ *   connection to open before the first word can be set, and no reader's
+ *   address handed to a font host.
+ * - Every face is split by script with `unicode-range`, so a page in English
+ *   fetches the Latin files only, and a face (or a style) nothing on the page
+ *   uses is never fetched at all: the hand comes down the first time the pen
+ *   writes, the italics the first time something is set in one.
+ * - `font-display: swap` throughout: Georgia stands in until the face lands.
+ * - Fraunces with its optical-size axis: the wordmark and the headlines are set
+ *   at its high-contrast display cut, and small names at its sturdy text cut.
+ *   It costs 30 KB a style over the weight axis alone, and the look is in it.
+ * - Newsreader on its weight axis only. Its default optical size is the one for
+ *   body text, which is all it sets, and the full axis would cost 75 KB a
+ *   style more for a difference nobody would see at 13 to 15px.
+ * - Plex Mono in the three weights the figures and labels use, and Kalam in its
+ *   one.
+ */
+@import "@fontsource-variable/fraunces/opsz.css";
+@import "@fontsource-variable/fraunces/opsz-italic.css";
+@import "@fontsource-variable/newsreader/wght.css";
+@import "@fontsource-variable/newsreader/wght-italic.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/kalam/400.css";

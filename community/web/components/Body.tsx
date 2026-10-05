@@ -10,10 +10,13 @@ import { parseBody, type Block, type Inline } from "../body";
 
 export const bodyStyles = tv({
   slots: {
-    base: "grid max-w-measure min-w-0 gap-2 font-sans text-prose wrap-anywhere text-ink",
+    // Set for reading: the message's measure, and room between paragraphs.
+    base: "grid max-w-measure min-w-0 gap-3 font-body text-prose text-pretty wrap-anywhere text-ink",
     paragraph: "m-0",
     list: "m-0 grid gap-1 pl-5",
-    quote: "m-0 grid gap-2 border-l-2 border-line-strong pl-3 text-ink-muted",
+    // A letter quoted in another: a rule in ink down its edge, in the italic.
+    quote:
+      "m-0 grid gap-2 border-0 border-l-2 border-ink pl-3 text-ink-2 italic",
     bold: "font-semibold",
     // Filled and heavier as well as recoloured: a name, not a link.
     mention: "rounded-full bg-sunken px-1 font-semibold text-ink-2",

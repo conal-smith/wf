@@ -8,31 +8,32 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../../ui";
+import { Button, Kicker, SectionHeading } from "../../../ui";
 import { buttonStyles } from "../../../ui/Button";
 import { linkStyles } from "../../../ui/Link";
-import { segmentedStyles } from "../../../ui/Segmented";
 import { RING, tv } from "../../../ui/tv";
 import { useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
+  Age,
   ConfirmDialog,
   Empty,
   ListingGrid,
   LoadError,
   Notice,
   PageSkeleton,
+  Price,
   Stars,
   errorMessage,
   pane,
   sharedStyles,
+  tabStyles,
   useAsync,
   usePageTitle,
 } from "../components";
 import ProfileForm from "./ProfileForm";
 import { Link, paths } from "../router";
 import type { Listing, MePayload } from "../../shared/types";
-import { formatPrice, relativeAge } from "../../shared/validate";
 
 const TABS = [
   { id: "listings", label: "My listings" },
@@ -44,69 +45,43 @@ const TABS = [
 export const meStyles = tv({
   slots: {
     /** A heading with one thing to do beside it, on one line while it fits. */
-    sectionHead: "flex flex-wrap items-center justify-between gap-x-5 gap-y-2",
-    title: "m-0 text-title text-balance text-ink",
-    lead: "m-0 text-lead text-ink",
-    meta: "text-body text-ink-muted",
-    quiet: "m-0 text-ink-muted",
-    /*
-     * The four sections of the account, drawn as the kit's Segmented but worn
-     * by links: each one is a URL, so it stays an <a> the router takes over
-     * rather than becoming a button (market/web/router.tsx has no `routed()`).
-     * The track scrolls sideways where four words do not fit.
-     */
-    tabs: "max-w-full gap-0 self-start overflow-x-auto scrollbar-none",
-    /*
-     * A row of words rather than a row of controls, as the browse rail's chips
-     * are: the body step, and the taller track market.css drew for them.
-     */
-    tab: [
-      "h-8.5 px-3 text-body leading-tight font-semibold no-underline",
-      /*
-       * The one ring, drawn inside the tab: the track scrolls, so it clips
-       * whatever lies past its 4px of padding, and a ring 2px clear of the tab
-       * reaches 5px out and was cut flat on every side (the design bundle's segmented
-       * drew it inset for the same reason).
-       */
-      "not-disabled:focus-visible:-outline-offset-2",
-    ],
-    /**
-     * How many are saved, in the tab that holds them: the caption step at the
-     * tab's own leading and weight, in the muted ink. Not the kit's Count,
-     * which is a filled badge for what has not been read yet.
-     */
-    count: "text-caption leading-tight text-ink-muted",
+    sectionHead: "flex flex-wrap items-end justify-between gap-x-5 gap-y-2",
+    title: "m-0 font-display text-title text-balance text-ink",
 
     // ---- my listings --------------------------------------------------------
 
-    stack: "flex min-w-0 flex-col gap-5",
-    list: "m-0 flex list-none flex-col gap-3 p-0",
+    stack: "flex min-w-0 flex-col gap-4",
+    group: "flex min-w-0 flex-col gap-1",
+    /** One listing to a row, a hairline under each, as a ledger sets them. */
+    list: "m-0 flex list-none flex-col p-0",
     /*
      * A listing and what can be done to it, side by side until they cannot.
-     * A pane with a control's inset rather than a page's, and a phone takes
-     * the roomier right-hand side back off again.
      */
-    item: "flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-3 p-3 pr-5 shadow-control max-wide:p-3",
+    item: "flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-3 border-0 border-b border-line py-3",
     /** The whole of the listing is the link to it. */
     itemMain: [
-      "flex min-w-0 shrink grow basis-70 items-center gap-3",
+      "group flex min-w-0 shrink grow basis-70 items-center gap-3",
       "rounded-control text-ink no-underline",
       RING,
     ],
+    // The photograph on paper, in its hairline frame; a sold one goes grey.
     thumb:
-      "grid aspect-4/3 w-22 shrink-0 place-items-center overflow-hidden rounded-control bg-sunken text-line-strong max-wide:w-18",
-    thumbImage: "block size-full object-cover",
+      "grid aspect-4/3 w-22 shrink-0 place-items-center overflow-hidden border border-line bg-sunken text-ink-muted max-wide:w-18",
+    thumbImage: "block size-full object-cover group-data-sold:grayscale",
     itemText: "flex min-w-0 flex-col gap-1",
-    itemTitle: "truncate font-semibold",
-    itemPrice: "text-ink-muted",
+    itemTitle:
+      "truncate font-display text-prose font-semibold decoration-1 underline-offset-3 group-hover:underline",
+    itemFigures: "flex flex-wrap items-baseline gap-x-3 gap-y-1",
+    actions: "flex flex-wrap items-center gap-2",
 
     // ---- reviews given ------------------------------------------------------
 
-    /** One after another down the pane, hairlines between and none at the ends. */
+    /** One after another, hairlines between. */
     review:
-      "flex flex-col gap-2 border-t border-line py-5 first:border-0 first:pt-0 last:pb-0",
+      "flex flex-col gap-2 border-0 border-b border-line py-4 first:pt-1",
     reviewHead: "flex flex-wrap items-center justify-between gap-2",
-    comment: "m-0 max-w-measure whitespace-pre-wrap wrap-anywhere",
+    about: "m-0 text-body text-ink-muted",
+    comment: "m-0 max-w-measure text-prose whitespace-pre-wrap wrap-anywhere",
   },
 });
 
@@ -122,13 +97,14 @@ export default function MePage({ tab }: { tab: string }) {
 
   const styles = meStyles();
   const shared = sharedStyles();
+  const tabs = tabStyles();
 
   if (!auth.loaded || (me.loading && !me.data)) return <PageSkeleton />;
   if (!auth.signedIn) {
     return (
       <Empty
         title="Sign in to see your account"
-        icon={<UserRound size={24} aria-hidden="true" />}
+        icon={<UserRound size={24} strokeWidth={1.5} aria-hidden="true" />}
         className={shared.emptyPane()}
       >
         <p>Your listings, saved gear and reviews all live here.</p>
@@ -154,32 +130,32 @@ export default function MePage({ tab }: { tab: string }) {
 
   return (
     <>
-      <div className={styles.sectionHead()}>
+      <div className={shared.head()}>
+        <div className={shared.dateline()}>
+          <Kicker as="span" tone="ink">
+            Your account
+          </Kicker>
+          <Link
+            to={paths.seller(data.profile.id)}
+            className={buttonStyles({ variant: "link", size: "sm" })}
+          >
+            Your public page <span aria-hidden="true">→</span>
+          </Link>
+        </div>
         <h1 className={styles.title()}>{data.profile.displayName}</h1>
-        <Link
-          to={paths.seller(data.profile.id)}
-          className={buttonStyles({ variant: "link" })}
-        >
-          View your public seller page
-        </Link>
       </div>
-      <div
-        className={segmentedStyles().base({ className: styles.tabs() })}
-        role="tablist"
-        aria-label="Account sections"
-      >
+      <div className={tabs.list()} role="tablist" aria-label="Account sections">
         {TABS.map((t) => (
           <Link
             key={t.id}
             to={paths.me(t.id)}
             role="tab"
             aria-selected={current === t.id}
-            aria-pressed={current === t.id}
-            className={segmentedStyles().item({ className: styles.tab() })}
+            className={tabs.tab()}
           >
             {t.label}
             {t.id === "saved" && data.saved.length > 0 && (
-              <small className={styles.count()}>{data.saved.length}</small>
+              <small className={tabs.count()}>{data.saved.length}</small>
             )}
           </Link>
         ))}
@@ -193,7 +169,7 @@ export default function MePage({ tab }: { tab: string }) {
         ) : (
           <Empty
             title="Nothing saved yet"
-            icon={<Heart size={24} aria-hidden="true" />}
+            icon={<Heart size={24} strokeWidth={1.5} aria-hidden="true" />}
             className={shared.emptyPane()}
           >
             <p>Tap Save on a listing to keep an eye on it here.</p>
@@ -266,7 +242,7 @@ function MyListings({
     return (
       <Empty
         title="You have nothing listed"
-        icon={<Tag size={24} aria-hidden="true" />}
+        icon={<Tag size={24} strokeWidth={1.5} aria-hidden="true" />}
         className={shared.emptyPane()}
       >
         <p>Gear you no longer ride is gear someone else is looking for.</p>
@@ -288,8 +264,12 @@ function MyListings({
   const Row = ({ listing }: { listing: Listing }) => {
     const enquiries = data.enquiries[listing.id] ?? 0;
     return (
-      <li className={pane(styles.item())}>
-        <Link to={paths.listing(listing.id)} className={styles.itemMain()}>
+      <li className={styles.item()}>
+        <Link
+          to={paths.listing(listing.id)}
+          className={styles.itemMain()}
+          data-sold={listing.status === "sold" ? "" : undefined}
+        >
           <span className={styles.thumb()}>
             {listing.photos[0] ? (
               <img
@@ -299,31 +279,31 @@ function MyListings({
                 loading="lazy"
               />
             ) : (
-              <ImageIcon size={20} aria-hidden="true" />
+              <ImageIcon size={20} strokeWidth={1.5} aria-hidden="true" />
             )}
           </span>
           <span className={styles.itemText()}>
             <span className={styles.itemTitle()}>{listing.title}</span>
-            <span className={styles.meta()}>
-              <strong className={styles.itemPrice()}>
-                {formatPrice(listing.priceCents, listing.currency)}
-              </strong>{" "}
-              · Listed {relativeAge(listing.createdAt)}
-              {listing.status === "sold" && listing.soldAt
-                ? ` · Sold ${relativeAge(listing.soldAt)}`
-                : ""}
-            </span>
-            <span className={styles.meta()}>
-              {enquiries} enquir{enquiries === 1 ? "y" : "ies"}
+            <span className={styles.itemFigures()}>
+              <Price listing={listing} size="sm" />
+              <Kicker as="span">
+                {listing.status === "sold" && listing.soldAt ? (
+                  <Age iso={listing.soldAt} prefix="Sold" />
+                ) : (
+                  <Age iso={listing.createdAt} />
+                )}
+                {" · "}
+                {enquiries} enquir{enquiries === 1 ? "y" : "ies"}
+              </Kicker>
             </span>
           </span>
         </Link>
-        <span className={shared.formActions()}>
+        <span className={styles.actions()}>
           <Link
             to={paths.edit(listing.id)}
             className={buttonStyles({ variant: "pill", size: "sm" })}
           >
-            <Pencil size={14} aria-hidden="true" /> Edit
+            <Pencil size={14} strokeWidth={1.5} aria-hidden="true" /> Edit
           </Link>
           {listing.status === "active" ? (
             <Button
@@ -370,33 +350,40 @@ function MyListings({
         will be deleted. This cannot be undone.
       </ConfirmDialog>
       {error && <Notice kind="warn">{error}</Notice>}
-      <div className={styles.sectionHead()}>
-        <h2 className={styles.lead()}>Live ({active.length})</h2>
-        <Link
-          to={paths.sell()}
-          className={buttonStyles({ variant: "pill", size: "sm" })}
+      <section className={styles.group()} aria-labelledby="me-live">
+        <SectionHeading
+          id="me-live"
+          aside={
+            <Link
+              to={paths.sell()}
+              className={buttonStyles({ variant: "pill", size: "sm" })}
+            >
+              <PlusCircle size={14} strokeWidth={1.5} aria-hidden="true" /> New
+              listing
+            </Link>
+          }
         >
-          <PlusCircle size={14} aria-hidden="true" /> New listing
-        </Link>
-      </div>
-      {active.length ? (
-        <ul className={styles.list()}>
-          {active.map((l) => (
-            <Row key={l.id} listing={l} />
-          ))}
-        </ul>
-      ) : (
-        <p className={styles.quiet()}>Nothing live right now.</p>
-      )}
+          Live ({active.length})
+        </SectionHeading>
+        {active.length ? (
+          <ul className={styles.list()}>
+            {active.map((l) => (
+              <Row key={l.id} listing={l} />
+            ))}
+          </ul>
+        ) : (
+          <p className={styles.about()}>Nothing live right now.</p>
+        )}
+      </section>
       {sold.length > 0 && (
-        <>
-          <h2 className={styles.lead()}>Sold ({sold.length})</h2>
+        <section className={styles.group()} aria-labelledby="me-sold">
+          <SectionHeading id="me-sold">Sold ({sold.length})</SectionHeading>
           <ul className={styles.list()}>
             {sold.map((l) => (
               <Row key={l.id} listing={l} />
             ))}
           </ul>
-        </>
+        </section>
       )}
     </div>
   );
@@ -409,7 +396,7 @@ function ReviewsGiven({ data }: { data: MePayload }) {
     return (
       <Empty
         title="You have not reviewed anyone yet"
-        icon={<Star size={24} aria-hidden="true" />}
+        icon={<Star size={24} strokeWidth={1.5} aria-hidden="true" />}
         className={shared.emptyPane()}
       >
         <p>
@@ -420,14 +407,16 @@ function ReviewsGiven({ data }: { data: MePayload }) {
     );
   }
   return (
-    <section className={pane(shared.pane())}>
+    <section aria-label="Reviews you have given">
       {data.reviewsGiven.map((r) => (
         <div key={r.id} className={styles.review()}>
           <div className={styles.reviewHead()}>
-            <Stars value={r.rating} />
-            <span className={styles.meta()}>{relativeAge(r.createdAt)}</span>
+            <Stars value={r.rating} size={12} />
+            <Kicker as="span">
+              <Age iso={r.createdAt} prefix="Reviewed" />
+            </Kicker>
           </div>
-          <p className={styles.meta()}>
+          <p className={styles.about()}>
             On{" "}
             <Link to={paths.listing(r.listingId)} className={linkStyles()}>
               {r.listingTitle}

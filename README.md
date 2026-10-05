@@ -1,6 +1,6 @@
 # wingfoil.ie — Ireland wind explorer
 
-An edge-to-edge Irish wind map powered by **Force5**, with real **DWD ICON-EU**, **Met Éireann HARMONIE-AROME DINI control**, **ECMWF IFS 15-day** and **NOAA GFS 0.25°** forecasts. Floating glass controls keep the map central; a bottom forecast grid is visible immediately for Brandon Bay and updates when you select a spot or map point. MapLibre renders the geography and wind-speed colour layer. A Canvas particle overlay follows the same U/V vectors. The selected spot, map markers and inspector use the same forecast frame.
+The wing-foil forecast for Ireland, drawn as an Admiralty chart crossed with an old broadsheet weather report (see [the brand](docs/BRAND.md)). The map at `/` is the chart: paper land, the sea in EMODnet depth tints with contours and soundings, the coast in ink, the forecast wind as moving ink arrows, and every riding place a light showing its stars for the hour selected. The dock below it is the chosen spot's week, hour by hour. The forecasts are Met Éireann HARMONIE, DWD ICON-EU, ECMWF IFS and AIFS, NOAA GFS and GEFS, Météo-France ARPEGE and AROME, blended.
 
 ## Run the website
 
@@ -23,30 +23,47 @@ That writes nine bundles in exactly the published format — HARMONIE, ICON-EU, 
 
 The generator refuses to write into a `public/weather` that holds **anything** that looks like forecast data — any `*.json` manifest, or any run directory. A run directory with no manifest beside it is exactly what an interrupted import leaves, and dropping synthetic manifests next to it would both corrupt the site and make the ingest's prune treat the real runs as junk. Pass `--force` to replace what is there; even then it will not delete a run directory unless a manifest in the same directory claims it and says `provider: "Synthetic sample data"`. `--profile live` anchors the run times to the wall clock instead, and `--out <dir>` writes somewhere else entirely.
 
-Features:
+The map:
 
-- Pan/zoom Ireland and the surrounding Atlantic.
-- Stronger Force5 wind colours: cool blues below 10 knots, green through yellow-green from 10–30, then yellow, orange, red and purple. The map, hourly cells and scrubber share the scale; colours indicate speed, not safety or rider suitability.
-- Downwind particles and 146 selectable riding-place references. Clicking a spot opens a compact glass popout with coordinates, access caveats and source links.
-- **Star ratings.** At a riding place the dock rates every daylight hour out of five for the rider in Display options (weight, level and the wings they own; 80 kg until they say), with the wing size it assumes and the best window still ahead. Solid stars are what the hour is worth at that spot; faded stars are what the wind alone would give. See [the rating notes](docs/STAR_RATINGS.md).
-- Click anywhere inside the forecast domain for its modelled wind and gust.
-- HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
-- Model changes preserve the nearest available valid time, explain time/range changes, and replace the map, readings and metadata together only after validation. Failed/cancelled switches keep the old model visible.
-- **ECMWF · 15 days** adds an explicit long-range choice: public 0.25° IFS wind, 3-hourly through day 6, then 6-hourly through day 15. The scrubber uses elapsed time; later columns widen to reflect the cadence. Week two is labelled as a less-certain outlook. Scalar gusts are included except at initialization; gust-cell tooltips show the actual source maximum periods. See the [specification and implementation plan](docs/ECMWF_15_DAY_PLAN.md) and [gust data notes](docs/GUST_DATA.md).
-- **GFS · 0.25°** adds NOAA's public-domain global deterministic run: the same Ireland/Atlantic box at 0.25°, 3-hourly to +240 h by default. Its gust field is an **instantaneous** surface gust valid at each forecast time, not a maximum over a preceding interval, so gust values are not directly comparable with ICON-EU or ECMWF.
-- **GEFS · 31 members** adds NOAA's public-domain global ensemble over the same box at 0.25°, 6-hourly to +240 h. The map draws the ensemble **mean**, and the manifest also carries every member's own series for each riding place, so a probability view never downloads member grids. A mean is not the most likely outcome, its gusts are instantaneous like GFS's, and averaging 31 of them reads lower than any single member's gust.
-- **AIFS · 0.25°** adds ECMWF's machine-learned deterministic model over the same box, 6-hourly to +360 h at all four cycles. It is a different kind of forecast from IFS rather than a correction of it, and it publishes **no gust at all** — the source has none, so the gust rows read as unavailable instead of being estimated from the mean wind.
-- **ECMWF Wave · 0.25°** adds the 15-day wave outlook: significant height, mean and peak period, mean direction, and six period-band heights that stand in for a swell partition the open-data stream does not publish. At 0.25° most Irish beaches are read from the nearest cell the model solved, with the offset stated, so it sits last behind the Irish shelf model and GFS-Wave.
-- Edge-to-edge, bottom-flush forecast dock open on arrival, with three views over one shared set of time columns: **Blend** (the default), **Candles** and **Table**. The table keeps the aligned, horizontally scrollable wind, gust and direction rows. Click a time column to update the map. HARMONIE gusts are hourly maxima from the control's gust components; the bundled snapshot predates this and still shows `—`.
-- The grid opens around the current time. A dashed **Now** line marks real clock time between forecast timestamps, separately from the selected forecast column. It updates every 30 seconds and on tab return without interrupting manual browsing; it is hidden when the current time lies outside the model's forecast range.
-- Magnifying-glass button expands county/name search; point selection keeps the selected location above the sheet.
-- Small standalone Force5 branding; coastline outlines and a soft shadow above the wind layer add depth to the land.
-- Knots, metres per second, km/h and mph, chosen in the dock's display options, which drive the charts, the table and the map readouts together.
-- Irish local time with explicit model initialization in UTC.
-- Real source information, stale/expired snapshot status, retryable frame errors.
-- Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
+- **The chart.** MapLibre draws the style in `force5/src/chartStyle.ts` (ported from the signed-off mockup's kit, every colour from `ui/theme.css`): OpenStreetMap's coast and places through OpenFreeMap, and the depths from `public/bathy/ireland.pmtiles`, one static PMTiles file read by HTTP range requests ([how it was made](scripts/bathymetry/README.md)). Depth is faint at country zoom, comes up from zoom 9 and is full by 11. Layers turn the tints, contours and soundings, relief and spot names on and off.
+- **The wind**, three ways, chosen in Layers and remembered: **Ink** (the default), the arrows **coloured** by speed, or a **faint wash** of colour over the sea with the ink arrows on it. The wash and the coloured arrows are on the rider's own scale (`windBand`): blue below their floor, greens through the sweet spot, yellow at its top, orange to red past what they can hold; the key shows the knots. The arrows are particles whose trails are drawn fresh every frame; they pause while the map moves and stop for reduced motion. The model the map draws is chosen in Layers too.
+- **Lights.** Each of the 146 riding places shows the selected hour's stars in a ring, ink at 3–4, magenta at 5, dashed at none, with an arrow blowing downwind. A true offshore hour is struck through in red; cross-offshore gets a red arrow, and is struck for a rider set to Learning. The stars are the dock's own: every model counted once, its median wind and gust, rated for the rider (`src/ratings.ts`).
+- **Focus.** Choosing a spot (a light, the search, your spots) flies there, rings it in the pen with the day's best, opens a popup of figures (the hour, its stars, wind, shore, wing, tide, a star toggle, the spot page) and quietens everything but the wind. Escape, IRL or a tap on the open map clear it.
+- **Your spots** and a **key** share a panel (a strip above the dock on a phone): the spots you star and the ones you look at, with the selected day's best, kept on this device by `shared/web/favourites.ts`, which the spot page shares.
+- **Tap anywhere** on the open map for that point's forecast in the dock, named by the nearest place or its coordinates: read from the map's model, rated on the wind alone (a point has no shore to face), and focused like a spot.
+- **The dock** is fifteen days as one strip of hours, 07:00 to 20:00, under a fixed cursor, with a day slider above it and a play button that steps the map, the lights and the cursor through the hours until a touch stops it. The three- and six-hourly days further out are narrower. Swipe it, shift-scroll it, drag the slider or use the keys; the two move together and a vertical scroll is never taken. Rows: stars (hover or tap for why, and "?" for [how they work](/stars)), wind and gust, direction against the shore, wing, and the tide with its turns named. The red pen loops each day's best stretch. Below a fold, one tap away and remembered: waves (height, period, direction), the sky, the air, rain, and the sea's temperature (measured where a station is in range, the model's otherwise). A Blend view draws every model; display options set the units, the rider and the models in the blend. A phone opens it folded.
+- **Less text.** Sources and caveats sit behind an "i": the chart's in the corner, the figures' in the dock.
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged), plus 121 places read from four public spot guides on 30 September 2026. The public map and search show 146 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
+
+## Spot pages
+
+`/spot/<id>` (for example [`/spot/brandon`](http://127.0.0.1:5173/spot/brandon))
+is a riding place's own page, set as the chart's broadsheet, day by day: a
+headline with the week's verdict ("a five-star Friday afternoon on a 5.5 m"),
+the shore as a compass with the winds it likes, the week in one ruled strip
+(each day's best stars and window), then each day under a header that sticks
+while its hours scroll, with the pen's note on it. Every daylight hour is a row
+of figures — stars, wind with the gust raised, where it comes from, the sky and
+**the chance it rides** (the share of ensemble members windy enough for the
+rider) — the dark folded away and never rated; a tap opens the hour's second
+line with the session, wing, waves, the models' and members' spread and every
+reason a star came off. The pen loops each day's best window, and under each
+day runs the tide as a 24-hour curve with the night and twilight behind it,
+then the high and low waters and the light as two small tables. A **Rated
+for** line (Learning / Riding / Advanced, weight and wings behind a fold)
+re-rates everything live and is the same rider as the dock's Display options
+(`force5.prefs.v1`); a star keeps the place in your spots, as the map does.
+`/spot` lists every place, and `/stars` (the same bundle) is How the stars
+work. [The star ratings](docs/STAR_RATINGS.md#on-the-spot-page) say how the
+stars and the chance are worked out.
+
+Open it from the map: **Spot page** in a spot's popup, or in the dock's head. It is its own lazy bundle (`spot/web/`, never the
+map or MapLibre) and reads the published bundles through the MCP server's own
+reduction (`mcp/api/forecast.ts` with the browser-safe `mcp/api/httpSource.ts`),
+so the page and an assistant see the same consensus. With `npm run dev` it
+needs a forecast in `public/weather` like the map does; tides need
+`npm run tides:refresh`.
 
 ## Marketplace
 
@@ -72,6 +89,53 @@ daylight), `find_wind` (spots ranked by hours in a wind range) and
 `public/`. `/ai` (`ai/web/`) is the page that hands it out, with one-click
 install links for Claude, Cursor and VS Code and the lines to paste for the
 rest.
+
+## Gust, the in-app companion
+
+Gust is the little ink blob with a wing in the map's bottom-right corner (above
+the dock and the model picker; a drawer on phones). Tap him, or press
+Cmd/Ctrl+J, and ask where and when to go: "Where's best tomorrow?", "Is
+Brandon on this weekend?", "What wing should I take?". He reads the same
+forecast consensus as the MCP server, rates it with the dock's stars for the
+rider in Display options (saying when he assumes 80 kg), and answers with spot
+cards, window chips and a short word of judgement, including a warning
+whenever the wind is offshore. Cards and chips can move the map (select the
+spot, jump the timeline); Gust only moves it himself when asked. He can
+propose a rider profile, which is saved only when the rider taps Confirm.
+When the selected spot has a four-star window in the next 48 hours, he nudges
+with a badge.
+
+- `companion/api/`: the Hono routes at `/api/companion` (`/status`, `/nudge`,
+  `/chat`), a manual streaming tool-use loop over the Claude API
+  (`@anthropic-ai/sdk`, `claude-opus-5-5`, at most 6 model calls a turn,
+  server-side refusal fallbacks, prompt caching on a frozen system prompt), and
+  five tools: `find_sessions`, `get_spot_forecast`, `list_spots`, `show_on_map`
+  and `propose_rider_profile`. The chat is stateless: the browser sends the
+  last 20 messages and what it is looking at, and keeps the transcript in
+  sessionStorage. Rate-limited per IP.
+- `companion/shared/protocol.ts`: the server-sent events both ends share:
+  `text`, `tool`, `card`, `action`, `proposal`, `error`, `done`.
+- `companion/web/`: Gust himself, the launcher and the panel.
+
+| Variable            | Default           | What it does                                                                                             |
+| ------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | unset             | Wakes Gust. Unset, `/api/companion/chat` answers 503 `not_configured` and the panel says Gust is asleep. |
+| `COMPANION_MODEL`   | `claude-opus-5-5` | The model.                                                                                               |
+| `COMPANION_EFFORT`  | `low`             | `output_config.effort` per call: `low`, `medium`, `high`, `xhigh`, `max`. Low keeps chat quick.          |
+| `COMPANION_FAKE`    | unset             | `1` answers from a scripted fake model over the real tools (demos, e2e). Refused in production.          |
+| `FORECAST_BASE_URL` | `public/` in dev  | Where the forecast is read, as for the MCP server.                                                       |
+
+Try it with a real key:
+
+```bash
+MARKET_DB=memory MARKET_AUTH_MODE=dev MARKET_STORAGE=local \
+  ANTHROPIC_API_KEY=sk-ant-... npm run market:api   # API on :8787
+npm run dev                                         # map on :5173, /api proxied
+```
+
+Or without one, scripted: the same with `COMPANION_FAKE=1` in place of the
+key. The e2e suite runs it that way (`e2e/companion.spec.ts`), over the staged
+sample forecast and on the browser's frozen clock.
 
 ## Run it yourself on one machine
 
@@ -105,7 +169,7 @@ docker build -f force5/Dockerfile -t force5-forecast:local .
 docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --step 1
 ```
 
-The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. The bucket is AWS S3 by default; add `--endpoint-url`/`S3_ENDPOINT_URL` (and the standard `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) to publish to **Cloudflare R2** instead, which is the intended deployment — the region defaults to `auto` when an endpoint is given. A publish deletes the objects the run it supersedes referenced, and `python force5/ingest/prune.py --bucket NAME --dry-run` sweeps what failed uploads left behind. See [the live pipeline document](docs/LIVE_FORECAST_PIPELINE.md#cloudflare-r2-and-one-shot-batch-containers); no R2 bucket has been created or verified yet. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. The scrubber colours show the selected location's forecast wind speed using the map palette, with grey for unavailable/loading values. Single-click selects a map point; double-click zooms without changing the selection.
+The worker defaults to hourly output and only uploads when `--bucket`/`S3_BUCKET` is supplied. `--models` accepts any registry id: `harmonie icon-eu icon-eu-weather ecmwf gfs gefs arpege arome tides mi-swan`. The bucket is AWS S3 by default; add `--endpoint-url`/`S3_ENDPOINT_URL` (and the standard `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) to publish to **Cloudflare R2** instead, which is the intended deployment — the region defaults to `auto` when an endpoint is given. A publish deletes the objects the run it supersedes referenced, and `python force5/ingest/prune.py --bucket NAME --dry-run` sweeps what failed uploads left behind. See [the live pipeline document](docs/LIVE_FORECAST_PIPELINE.md#cloudflare-r2-and-one-shot-batch-containers); no R2 bucket has been created or verified yet. Configure `VITE_FORECAST_BASE_URL` at website build time to read forecasts from a separate CDN; leave unset for bundled snapshots. A tap on the open map reads that point's forecast into the dock; a double tap zooms without changing the selection.
 
 ## Refresh the forecast
 
@@ -1109,6 +1173,17 @@ The bundled runs' horizons have passed, so `worker.py --publish-only` refuses th
 through the worker; for HARMONIE and ICON-EU call
 `validate_bundle(public, model, now=<a time inside the run>)` directly.
 
+## Design
+
+The site is drawn as **the chart**: an Admiralty chart crossed with an old broadsheet weather report. [`docs/BRAND.md`](docs/BRAND.md) is how to draw in it and [`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md) the rules and their dated rulings. Every design value is written once, in `ui/theme.css`, and every control comes from the kit in `ui/` (gallery at `/ui` under the dev server).
+
+`design-system/` restates the theme and the kit as a SprintEngine Studio design-system bundle (tokens, principles, components, patterns, glyphs and a catalog at `design-system/catalog/index.html`), to open in the Studio's Design door: point it at the `design-system/` folder. [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) explains how the two are kept equal.
+
+```sh
+npm run ui:lint       # theme only, theme == bundle, no new raw controls, the bundle's own lint
+npm run design:build  # regenerate the bundle's tokens.css and catalog after a token or component change
+```
+
 ## Verify / build
 
 ```sh
@@ -1180,14 +1255,14 @@ force5/src/surface.ts      The weather-shaped door: surface fields, source order
 force5/src/seaTemperature.ts Observed sea temperature: manifest contract and per-spot readings
 force5/src/WindMap.tsx      MapLibre basemap, raster colours, particle renderer
 force5/assets/             Force5 platform branding
-src/App.tsx                Full-screen forecast explorer and floating controls
-src/ForecastDock.tsx       Dock shell: toolbar, scrubber, shared header, rows, filter
-src/ForecastHeader.tsx     Day groups with sun times and the hour columns every view shares
-src/ForecastSheet.tsx      Table view rows for named and arbitrary points
-src/BlendChart.tsx         Probability blend: gradient bands, model lines, median, arrows
-src/CandleChart.tsx        One candle per three-hour column
+src/App.tsx                The map at /: the chart, its boxes, the lights, focus, the dock
+src/map.css                The chart's boxes, neatline, lights, popup and small print
+src/ForecastDock.tsx       The dock: its head, day slider, play, the strip's Table and More rows
+src/strip.ts               The dock's columns and each day's best stretch (pure, unit-tested)
+src/ratings.ts             Every spot's week rated at once, for the dock and the lights
+src/BlendChart.tsx         The Blend view: models' range by speed, model lines, median
 src/WeatherGlyph.tsx       One inline stroke glyph per WMO present-weather group
-src/DisplayFilter.tsx      Rows, units and blend models, persisted in preferences
+src/DisplayFilter.tsx      Units, rider and blend models, persisted in preferences
 src/chart.ts               Chart geometry, scales and path builders (pure, unit-tested)
 src/dock.css               Dock, chart and filter styles
 IMPLEMENTATION_PLAN.md     Scope, implementation decisions and next milestone
@@ -1396,114 +1471,49 @@ the launch.
 
 ## Forecast dock
 
-One shell, three views, all hung off the same time columns so the Now line, the
-auto-scroll and the column hooks are shared:
+The chosen spot's fortnight as one strip of hours under a fixed cursor, on
+paper with a double rule along its top (`src/ForecastDock.tsx`, `src/dock.css`).
+Its columns come from `src/strip.ts`: 07:00 to 20:00 Irish time, hourly while
+the models are, then the coarser three- and six-hourly days further out in
+narrower columns.
 
-- **Toolbar** (48px): the Play button — the view's one filled action — the spot
-  name with its county and a caption naming how many models are in the blend and
-  which tide station is being read, a Table / Blend / Candles switch (icons only
-  under 760px), the display filter and close. The scrubber sits directly beneath.
-- **Time header**: day groups carrying sunrise and sunset in Irish time, then the
-  hour ticks. A day group too narrow to hold its sun times shows only its label,
-  because a group is as wide as its own content and would otherwise stretch the
-  columns beneath it. A group of at least six columns also carries that day's
-  highest air temperature after the sun times, when a weather run reaches it;
-  a narrower group skips it rather than truncating it.
-- **Blend**: the models filled between, coloured by speed from the wind ramp read
-  off the value axis — full range, quartiles and an inner core, multiplied so the
-  core darkens where the models agree — plus the gust continuation above the wind
-  median, one faint line per model in that model's hue, gusts dashed, ensemble
-  members fainter still, the white median, direction arrows, night shading from
-  the sun times and the Now line. Hovering or pressing a column gives a card with
-  each model's reading, the spread and the agreement in words.
-- **Candles**: one candle per three-hour column — wick for the full model range,
-  body for the middle half, tick for the median, filled by the median's own wind
-  colour, with a thin warm bar beside it for the gust range.
-- **Rows** below the chart, each optional: spread, direction, the median wind and
-  the gust maximum, then a marine block where the tide curve is drawn as a faint
-  underlay. Each row is a glyph with an explanation on hover, focus or long press.
-  The block stacks the sea first — waves, swell, wind sea — then surface weather:
-  weather, air, rain, cloud, pressure, sea, and the tide last.
-- **Waves** in that marine block, read from a wave manifest: per column, a small
-  arrow rotated to where the waves are going, the significant height in metres to
-  one decimal, and the peak period in whole seconds beside it, muted. `mi-swan` is
-  preferred for a spot it resolves and `gfs-wave` is the fallback; the credits
-  line names the source actually used, and the glyph's explanation carries the
-  manifest's own coverage note when a location is land-masked or read from the
-  water next to it. **Swell** and **wind sea** are separate rows, off by default,
-  shown when the source publishes those partitions (`swell1_h/p/d` and
-  `shww/mpww/mdww` from GFS-Wave; `hswe` and the derived `shww` from SWAN). Their
-  heights add in energy, not in metres, so they do not sum to the total. Wave
-  values are never interpolated: a column takes the nearest native forecast step
-  within 1.5 hours and is otherwise empty. A spot no wave model resolves hides the
-  rows and the filter says "no wave data at this spot".
-- **Surface weather** in the same block, read from a `kind: "weather"` manifest
-  (`icon-eu-weather` today). **Air** is the two-metre temperature in whole degrees,
-  with the hour's dew point and relative humidity in the cell's own tooltip.
-  **Rain** is the amount in the interval ending at that column, in millimetres,
-  with the cell tinted by how much and the interval named in its tooltip; the run
-  hour has no interval to difference and reads as a dash, and a dry interval the
-  model did forecast reads as `0`. **Weather** is the WMO present-weather code
-  drawn as one of nine inline stroke glyphs — clear, partly, cloudy, fog, drizzle,
-  rain, showers, thunder, snow — with the code and its own words in the tooltip;
-  a code is read from the cell the spot sits in and is never averaged, blended or
-  interpolated. **Cloud** (off by default) is total cover as a percentage with a
-  three-level bar beside it for high, medium and low. **Pressure** (off) is mean
-  sea level pressure in whole hectopascals. Air and Weather are on by default; Rain
-  is opt-in because the weather glyph already shows it. Like the
-  waves, these steps are matched to the wind model's columns within 1.5 hours and
-  are otherwise dashes, and the credits line names DWD for them.
-- **Sea** prefers the **measurement**. Where `marine/sea-temperature.json` has a
-  station reporting near the spot, the row is one reading spanning its columns at
-  the left — `15.2 °C · M3 buoy, 61 km, 2 h ago` — with the last seven days as a
-  13px sparkline beside it and a tooltip naming the station, its network, the
-  distance, the sensor depth where one is published, when it was measured and who
-  measured it. An observation is not a forecast, so it is shown once rather than
-  pretended at every column, the age is recomputed against the page's own clock,
-  and the credits line reads "Sea temperature: Marine Institute observations".
-  Where no station is in range the row falls back to the model's own ground/skin
-  temperature (`t_g`), drawn back and labelled "model skin temperature,
-  approximate" in the cell, with the manifest's own reason — "beyond the 60 km
-  limit" — in the row's explanation, so the row always says which of the two it is
-  showing. **The Sea row is on by default exactly where an observation exists**;
-  elsewhere it is off, because an approximation does not earn a row. That default
-  holds only until the reader touches the switch: `prefs.touchedRows` records the
-  rows they have set by hand, and a touched row is their choice at every spot from
-  then on (`rowOn(prefs, key, available)` in `force5/src/prefs.ts` is the whole
-  rule). Sea temperature is loaded on the same discipline as the tides — one
-  aborting fetch of one manifest — and a 404 simply means no observations, not an
-  error.
-- **Display options**: row switches, units and the models in the blend, persisted
-  to local storage. Units drive the charts, the table and the map readouts
-  together. Planned models are listed greyed; rows with no adapter yet say "no
-  source yet" rather than disappearing. One switch is a chart layer rather than a
-  row: a faint wave band along the chart's foot, on its own nought-to-six-metre
-  scale, off by default.
+- **The head**: the star toggle, the spot's name, its shore as a small compass
+  and its county; the day's best stretch still ahead ("Best today 13:00–16:00 ·
+  ★★★★ · 6.5 m"); a TABLE | BLEND switch; an "i" with the figures' sources and
+  the tide station; the display options; the spot page; and the fold. A phone
+  opens the dock folded.
+- **The day slider and play.** Above the strip, one cell a day tinted magenta
+  by its best stars, named in two letters on a phone. The ink play button steps
+  the map, the lights and the cursor through the hours; any touch stops it.
+  The slider and the strip move together, by swipe, shift-scroll, drag or keys,
+  and a vertical scroll is never taken.
+- **Table**, the default: the day and its best (the red pen loops each day's
+  best stretch), the hour, then **Stars** (hover or tap for the chart's box
+  saying why, `ui/RatingTip.tsx`; "?" for [how they work](/stars)), **Wind**
+  with the gust, **From** with the shore glyph, **Wing**, and the **Tide** as
+  a curve with its turns named.
+- **Blend** draws every model in place of the star, wind, direction and wing
+  rows (`src/BlendChart.tsx`, loaded when first asked for): the models' range
+  coloured by speed, one faint line per model, the median, and a card per
+  column with each model's reading and the agreement in words. A point tapped
+  on the open map has no blend: it is read from the map's model alone.
+- **More**, below its own fold, one tap away and remembered: **Waves** (height,
+  period and an arrow for where they come from; `mi-swan` where it resolves the
+  spot, `gfs-wave` otherwise), the **Sky** as a WMO present-weather glyph,
+  the **Air**, **Rain** tinted by how much, and the **Sea**: the measurement,
+  as one line across the row, where a station is in range
+  (`marine/sea-temperature.json`), else the model's skin temperature marked as
+  approximate. These rows take each source's nearest native step and are never
+  interpolated; the wave and weather manifests are only read once More is
+  opened. A tapped point says these are for riding places only.
+- **Display options** (a dialog, `src/DisplayFilter.tsx`, loaded when first
+  opened): the units, the rider (level, weight, wings) the stars, the lights
+  and the wing are rated for, and the models in the blend.
 
-The charts read precomputed per-spot series only and never download a map frame.
-An arbitrary map point, or a named spot no selected model publishes a series for,
-disables both charts with the reason in the switch's tooltip and shows the Table
-view, which samples the grids as it always has. Tide predictions are not committed:
-without `npm run tides:refresh` the tide row is hidden and the filter says why.
-
-The dock's columns are the **selected wind model's** own forecast times, which the
-wave and weather rows are matched onto. A run that does not overlap the wind model
-on screen therefore reads as dashes rather than as a shorter row: with the bundled
-snapshots that means HARMONIE (13–16 September) shows no wave or weather numbers
-and GFS (16–21 September) or ECMWF (to 28 September) shows them, because the
-bundled GFS-Wave run starts on 16 September at 18 UTC and the bundled ICON-EU
-surface run is that same hour plus one three-hour step.
-
-A spot with an observation in range adds the Sea row to those defaults, which is
-one more 24px row (22px compact). Default dock height, measured with the bundled
-snapshots and no observations published: **439px at 1440** and
-**373px at 390** (411px and 349px with no tide predictions published). The Table
-view is 368px and 334px. The waves and tide rows are 28px, 24px compact; every
-surface-weather row takes the standard 24px, 22px compact. The three default-on
-weather rows are what grew the dock by 72px and 66px over its previous 367px and
-307px, which is the largest thing outstanding about this feature: the per-row
-budget is intact, but the phone dock is now 44 % of an 844px viewport, and which
-rows deserve to be on by default is a design call rather than a code one.
+Tide predictions are not committed: without `npm run tides:refresh` the tide
+row says there is no station near. Heights, measured on the e2e sample site at
+Brandon: **276px at 1440** (376px with More open); at 390 **172px folded**,
+354px open and 454px with More.
 
 ## Open-tab refresh
 

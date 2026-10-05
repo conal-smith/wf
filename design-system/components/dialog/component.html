@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dialog — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../button/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: a static stage standing in for the page behind a modal, with
+         the scrim laid over it. The product's scrim is the dialog's ::backdrop. */
+      .demo__stage {
+        position: relative;
+        display: grid;
+        place-items: center;
+        padding: var(--sem-space-x10) 0;
+        overflow: hidden;
+        background: var(--sem-color-sea-3);
+      }
+      .demo__land {
+        position: absolute;
+        top: var(--sem-space-x4);
+        left: var(--sem-space-x6);
+        width: 55%;
+        height: 70%;
+        background: var(--sem-color-land);
+        border: var(--sem-rule-hairline) solid var(--sem-color-relief);
+      }
+      .demo__place {
+        position: absolute;
+        right: var(--sem-space-x4);
+        bottom: var(--sem-space-x3);
+        font-family: var(--sem-font-family-display);
+        font-style: italic;
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .demo__stage::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--sem-color-scrim);
+        backdrop-filter: blur(var(--sem-blur-scrim));
+      }
+      .demo__stage > .wf-dialog {
+        position: relative;
+        z-index: var(--sem-z-index-dialog);
+      }
+      .demo__fig {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Dialog</h2>
+
+      <p class="demo__label">size="md" · over the scrim · the filled action last</p>
+      <div class="demo__stage">
+        <span class="demo__land" aria-hidden="true"></span>
+        <span class="demo__place" aria-hidden="true">Rusheen Bay</span>
+        <div class="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-share">
+          <div class="wf-dialog__head">
+            <h2 class="wf-dialog__title" id="dlg-share">Share Rusheen Bay</h2>
+            <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </div>
+          <div class="wf-dialog__body">
+            <p>Best today 13:00–16:00.</p>
+            <p class="demo__fig">14 g22 · WSW · 6 m</p>
+          </div>
+          <div class="wf-dialog__actions">
+            <button class="wf-button wf-button--pill" type="button">Copy link</button>
+            <button class="wf-button wf-button--primary" type="button">Share</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="demo__label">ConfirmDialog · Cancel, then the danger answer · no close</p>
+      <div class="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-remove">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" id="dlg-remove">Remove this listing?</h2>
+        </div>
+        <div class="wf-dialog__body">
+          <p>Its photos go with it. This cannot be undone.</p>
+        </div>
+        <div class="wf-dialog__actions">
+          <button class="wf-button wf-button--pill" type="button">Cancel</button>
+          <button class="wf-button wf-button--danger" type="button">Remove listing</button>
+        </div>
+      </div>
+
+      <p class="demo__label">ConfirmDialog · busy: both answers wait</p>
+      <div class="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-busy" aria-busy="true">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" id="dlg-busy">Remove this listing?</h2>
+        </div>
+        <div class="wf-dialog__body">
+          <p>Its photos go with it. This cannot be undone.</p>
+        </div>
+        <div class="wf-dialog__actions">
+          <button class="wf-button wf-button--pill" type="button" disabled>Cancel</button>
+          <button class="wf-button wf-button--danger" type="button" disabled>Remove listing</button>
+        </div>
+      </div>
+
+      <p class="demo__label">Busy, dismissible · the close is held shut too</p>
+      <div class="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-send" aria-busy="true">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" id="dlg-send">Report the conditions</h2>
+          <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close" disabled>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div class="wf-dialog__actions">
+          <button class="wf-button wf-button--primary" type="button" disabled>Sending</button>
+        </div>
+      </div>
+
+      <p class="demo__label">size="wide" · up to 640px</p>
+      <div class="wf-dialog wf-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="dlg-wide">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" id="dlg-wide">Brandon Bay · Tue 6</h2>
+          <button class="wf-button wf-button--icon wf-button--sm is-focus" type="button" aria-label="Close">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div class="wf-dialog__body">
+          <p class="demo__fig">Low tide 13:25 · 1.7 m</p>
+          <p class="demo__fig">SW 10g15 · cross-off</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Dialog · night chart (proposed)</h2>
+      <div class="demo__stage">
+        <span class="demo__land" aria-hidden="true"></span>
+        <div class="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-night">
+          <div class="wf-dialog__head">
+            <h2 class="wf-dialog__title" id="dlg-night">Remove this listing?</h2>
+          </div>
+          <div class="wf-dialog__body">
+            <p>This cannot be undone.</p>
+          </div>
+          <div class="wf-dialog__actions">
+            <button class="wf-button wf-button--pill" type="button">Cancel</button>
+            <button class="wf-button wf-button--danger" type="button">Remove listing</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

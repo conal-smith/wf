@@ -1,31 +1,26 @@
 /**
- * The community's header: the marketplace's bar, with Community in the chip.
+ * The community's header: the site's masthead, with Community beside the name.
  * The site menu, the way home, and on the right what a member does from any
  * page: start a thread, read the bell, be themselves.
  */
 import { UserButton } from "@clerk/clerk-react";
-import { LogIn, PlusCircle, Wind } from "lucide-react";
+import { LogIn, PlusCircle } from "lucide-react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { useSiteAuth } from "../../shared/web/auth";
-import { Button, Chip } from "../../ui";
-import { RING, tv } from "../../ui/tv";
+import { Button } from "../../ui";
+import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
+import { tv } from "../../ui/tv";
 import { Bell } from "./components/Bell";
 import { paths, routed } from "./router";
 
+/*
+ * The site's masthead (ui/Masthead.tsx) with the community's own few actions.
+ */
 export const headerStyles = tv({
   slots: {
-    base: "sticky top-0 z-header py-3",
-    // A card, not glass: there is no map under it to show through.
-    bar: "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card pr-2 pl-3 shadow-marker max-rail:gap-1 max-rail:px-1",
-    brand: [
-      "inline-flex min-w-0 items-center gap-2 rounded-control font-sans text-lead whitespace-nowrap text-ink no-underline",
-      RING,
-    ],
-    domain: "font-normal text-ink-muted",
-    actions: "ml-auto flex items-center gap-1",
     // On a phone the way to start a thread is the page's own, not the bar's.
     newThread: "max-rail:hidden",
-    user: "inline-flex items-center px-2 font-sans text-body text-ink-muted",
+    user: "inline-flex items-center px-2 font-body text-body text-ink-muted",
   },
 });
 
@@ -56,22 +51,18 @@ export function Header({
 }: HeaderProps) {
   const auth = useSiteAuth();
   const styles = headerStyles();
+  const masthead = mastheadStyles();
   return (
-    <header className={styles.base()}>
-      <div className={styles.bar()}>
-        <SiteMenu current="community" size="sm" />
+    <Masthead>
+        <SiteMenu current="community" size="sm" ground="content" />
         <a
           {...routed(paths.home())}
-          className={styles.brand()}
+          className={masthead.brand()}
           aria-label="wingfoil.ie Community, home"
         >
-          <Wind size={22} aria-hidden="true" />
-          <span>
-            wingfoil<span className={styles.domain()}>.ie</span>
-          </span>
-          <Chip eyebrow>Community</Chip>
+          <MastheadMark section="Community" />
         </a>
-        <nav className={styles.actions()} aria-label="Community">
+        <nav className={masthead.actions()} aria-label="Community">
           {auth.signedIn ? (
             <>
               {newThread && (
@@ -111,7 +102,6 @@ export function Header({
             </Button>
           )}
         </nav>
-      </div>
-    </header>
+    </Masthead>
   );
 }

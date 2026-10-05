@@ -7,7 +7,7 @@ export const checkboxStyles = tv({
     // thumb: a box on its own is 20px, which no rule here would allow.
     base: [
       "inline-flex min-h-touch cursor-pointer items-center gap-2",
-      "font-sans text-prose text-ink",
+      "font-body text-prose text-ink",
       "has-disabled:cursor-default has-disabled:text-ink-disabled",
     ],
     /*
@@ -16,7 +16,7 @@ export const checkboxStyles = tv({
      * not the accent: the accent is the one filled action on a view, and a
      * checkbox is never that. `m-0` takes off the margin a browser gives it.
      */
-    input: ["size-5 shrink-0 accent-inverse m-0", RING, DISABLED],
+    input: ["size-4.5 shrink-0 accent-inverse m-0", RING, DISABLED],
     label: "min-w-0",
   },
 });

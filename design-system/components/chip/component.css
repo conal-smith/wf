@@ -1,0 +1,64 @@
+/* Chip — ui/Chip.tsx (chipStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A tag in the figures' face: mono, in a capsule ruled with a hairline, on the
+ * paper it stands on. It labels a thing (a category, a condition, a status);
+ * it is never pressed. */
+
+/* tone="neutral" (the default): the second sheet, a line-coloured hairline. */
+.wf-chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-x1);
+  padding: var(--sem-space-x0-5) var(--sem-space-x2-5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-line);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink-2);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  white-space: nowrap;
+}
+
+/* tone="warn": now, or degraded. A chip that is only a category is neutral. */
+.wf-chip--warn {
+  border-color: var(--sem-color-warn);
+  background: var(--sem-color-warn-ground);
+  color: var(--sem-color-warn);
+}
+
+/* tone="glass": paper over a photograph. A badge has to read on whatever the
+ * picture is, so it takes the ink rule and paper that lets a little through. */
+.wf-chip--glass {
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-glass);
+  color: var(--sem-color-ink);
+  -webkit-backdrop-filter: blur(var(--sem-blur-glass));
+  backdrop-filter: blur(var(--sem-blur-glass));
+}
+
+/* ...and goes solid for a reader who has declined transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  .wf-chip--glass {
+    background: var(--sem-color-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* eyebrow: the mono label's step, in tracked capitals. */
+.wf-chip--eyebrow {
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+/* A 10px lucide icon in currentColor beside the words (Saved, a photo count). */
+.wf-chip__icon {
+  width: var(--sem-space-x2-5);
+  height: var(--sem-space-x2-5);
+  flex-shrink: 0;
+}

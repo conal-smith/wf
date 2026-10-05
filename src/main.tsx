@@ -1,12 +1,17 @@
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import "maplibre-gl/dist/maplibre-gl.css";
+// The base every section stands on. The map's own stylesheets (MapLibre's,
+// map.css, dock.css, panels.css) are imported by src/App.tsx and travel in
+// its chunk.
 import "./styles.css";
-import "./compact.css";
-import "./dock.css";
+import "../ui/fonts.css";
 import "../ui/theme.css";
-import App from "./App";
-import { isAiPath, isCommunityPath, isMarketPath } from "../force5/src/siteNav";
+import {
+  isAiPath,
+  isCommunityPath,
+  isMarketPath,
+  isSpotPath,
+} from "../force5/src/siteNav";
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
@@ -24,6 +29,12 @@ const isCommunity = isCommunityPath(window.location.pathname);
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const isAi = isAiPath(window.location.pathname);
 
+// A riding place's own page, at /spot/<id>, and "How the stars work" at
+// /stars: a fifth bundle, split off the same way (isSpotPath matches both). It
+// reads the forecast's pure modules and never the map.
+const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
+const isSpot = isSpotPath(window.location.pathname);
+
 // The kit gallery, at /ui, under the dev server only. The mode is a constant in
 // a build, and `vite build` is "production" whatever the shell says, so the
 // import it guards is dropped there and no gallery chunk is written: in
@@ -36,26 +47,49 @@ const Gallery =
     : null;
 const isGallery = /^\/ui\/?$/.test(window.location.pathname);
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {Gallery && isGallery ? (
+// The wind map, at / and at any path no section above claims: a bundle of its
+// own like the others, so that a spot page, /stars or /ai never downloads
+// MapLibre and the map's 1.6 MB.
+//
+// Imported rather than `React.lazy`, and rendered once it is here. A lazy
+// component suspends on the first render, and React holds back the content
+// that replaces a committed fallback for up to 300 ms (FALLBACK_THROTTLE_MS):
+// measured on a phone profile, that put the map's first paint ~150 ms and a
+// usable map ~165 ms behind the single bundle it replaced. Nothing is drawn
+// meanwhile, as nothing was while the single bundle was being parsed.
+const loadMap = () => import("./App");
+
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+
+if (Gallery && isGallery)
+  root.render(
+    <React.StrictMode>
       <Suspense fallback={null}>
         <Gallery />
       </Suspense>
-    ) : isMarket ? (
+    </React.StrictMode>,
+  );
+else if (isMarket || isCommunity || isAi || isSpot)
+  root.render(
+    <React.StrictMode>
       <Suspense fallback={null}>
-        <MarketApp />
+        {isMarket ? (
+          <MarketApp />
+        ) : isCommunity ? (
+          <CommunityApp />
+        ) : isAi ? (
+          <AiApp />
+        ) : (
+          <SpotApp />
+        )}
       </Suspense>
-    ) : isCommunity ? (
-      <Suspense fallback={null}>
-        <CommunityApp />
-      </Suspense>
-    ) : isAi ? (
-      <Suspense fallback={null}>
-        <AiApp />
-      </Suspense>
-    ) : (
-      <App />
-    )}
-  </React.StrictMode>,
-);
+    </React.StrictMode>,
+  );
+else
+  void loadMap().then(({ default: App }) =>
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
+    ),
+  );

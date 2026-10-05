@@ -1,0 +1,117 @@
+/* Masthead — ui/Masthead.tsx (mastheadStyles, MastheadMark), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * The masthead every page that is read shares: the site menu (a raised icon
+ * Button), the brand link holding the Wordmark and the section after a
+ * hairline in the mono label, and the section's few actions set right, all
+ * over the broadsheet's double rule. Paper with its grain, sticky, inside the
+ * page measure as a nameplate sits inside the type area.
+ *
+ * On a phone (under sem.breakpoint.wide, 45rem) the section stands under the
+ * name, the wordmark steps to lead and the gaps close, so the menu, the name
+ * and two actions share 390px. `.is-narrow` on the masthead holds that layout
+ * still for the catalog; the product reaches it through the media query only.
+ * `.is-focus` holds the brand link's ring, as `:focus-visible` draws it. */
+
+.wf-masthead {
+  position: sticky;
+  top: 0;
+  z-index: var(--sem-z-index-header);
+  /* pt-safe-2: the step, or the notch's inset, whichever is the larger. */
+  padding-top: max(var(--sem-space-x2), env(safe-area-inset-top));
+  background-color: var(--sem-color-ground);
+  background-image: var(--sem-texture-grain);
+  background-repeat: repeat;
+}
+
+/* The double rule along the foot only: the other three sides go to zero first. */
+.wf-masthead__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x3);
+  min-height: var(--sem-space-x14);
+  padding-bottom: var(--sem-space-x2);
+  border: 0 solid var(--sem-color-ink);
+  border-bottom: var(--sem-rule-double) double var(--sem-color-ink);
+}
+
+/* The brand link: the wordmark, then the section. */
+.wf-masthead__brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--sem-space-x3);
+  border-radius: var(--sem-radius-control);
+  color: var(--sem-color-ink);
+  text-decoration: none;
+}
+.wf-masthead__brand:focus-visible,
+.wf-masthead__brand.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* The section, after a hairline: MARKET, COMMUNITY. */
+.wf-masthead__section {
+  padding-left: var(--sem-space-x3);
+  border: 0 solid var(--sem-color-line);
+  border-left-width: var(--sem-rule-hairline);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sem-color-ink-muted);
+}
+
+/* The section's own actions, set right. */
+.wf-masthead__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sem-space-x2);
+  margin-left: auto;
+}
+
+/* ---- the phone: max-wide, under sem.breakpoint.wide (45rem) ---- */
+@media (max-width: 719.98px) {
+  .wf-masthead__bar {
+    gap: var(--sem-space-x2);
+  }
+  .wf-masthead__brand {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sem-space-x0-5);
+  }
+  /* The wordmark steps down to lead. */
+  .wf-masthead__brand .wf-masthead__mark {
+    font-size: var(--sem-font-size-lead);
+  }
+  .wf-masthead__section {
+    padding-left: 0;
+    border-left-width: 0;
+  }
+  .wf-masthead__actions {
+    gap: var(--sem-space-x1);
+  }
+}
+
+/* The same phone layout, held for the catalog at any width. */
+.wf-masthead.is-narrow .wf-masthead__bar {
+  gap: var(--sem-space-x2);
+}
+.wf-masthead.is-narrow .wf-masthead__brand {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sem-space-x0-5);
+}
+.wf-masthead.is-narrow .wf-masthead__brand .wf-masthead__mark {
+  font-size: var(--sem-font-size-lead);
+}
+.wf-masthead.is-narrow .wf-masthead__section {
+  padding-left: 0;
+  border-left-width: 0;
+}
+.wf-masthead.is-narrow .wf-masthead__actions {
+  gap: var(--sem-space-x1);
+}

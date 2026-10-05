@@ -159,7 +159,9 @@ test("the rail is reachable by keyboard, and aria-current follows the open chann
     walked.push(
       await page.evaluate(() => {
         const el = document.activeElement!;
-        return `${el.tagName.toLowerCase()} ${el.firstChild?.nextSibling?.textContent ?? el.textContent}`;
+        // A row's name is its first span; a category head is its words.
+        const name = el.querySelector("span") ?? el;
+        return `${el.tagName.toLowerCase()} ${name.textContent}`;
       }),
     );
   }
@@ -188,12 +190,12 @@ test("the rail is reachable by keyboard, and aria-current follows the open chann
   await page.waitForURL((url) => url.pathname === "/community");
   await expect(current(page)).toHaveText(["Latest"]);
 
-  // The one ring, not the map's: 3px of focus, 2px clear.
+  // The one ring, not the map's: 2px of focus (the chart's magenta), 2px clear.
   const ring = await row(page, "Latest").evaluate((el) => {
     const style = getComputedStyle(el);
     return `${style.outlineWidth} ${style.outlineOffset}`;
   });
-  expect(ring).toBe("3px 2px");
+  expect(ring).toBe("2px 2px");
 });
 
 test("a category head folds its channels away and says so", async ({
@@ -258,20 +260,33 @@ test.describe("below 900px", () => {
         document.documentElement.clientWidth,
     );
 
-  test("the channels are the page at /community, in rows a finger can hit", async ({
+  const toggle = (page: Page) => page.getByRole("button", { name: "Channels" });
+
+  test("a phone opens on the latest threads; the channels unfold under one control, in rows a finger can hit", async ({
     page,
   }) => {
     await answerApi(page);
     await page.goto("/community");
-    await expect(row(page, /Wings/)).toBeVisible();
 
+    // The page is what a phone opens on, near the top, not under the index.
+    const latest = page.getByRole("heading", { level: 1, name: "Latest" });
+    await expect(latest).toBeVisible();
+    expect((await latest.boundingBox())!.y).toBeLessThan(250);
+    await expect(rail(page)).toBeHidden();
+    await expect(toggle(page)).toHaveAttribute("aria-expanded", "false");
+    expect((await toggle(page).boundingBox())!.height).toBeGreaterThanOrEqual(
+      44,
+    );
+
+    await toggle(page).click();
+    await expect(toggle(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(row(page, /Wings/)).toBeVisible();
     const railBox = (await rail(page).boundingBox())!;
     expect(railBox.width).toBeGreaterThan(340);
     for (const name of [/Latest/, /Announcements/, /Wings/]) {
       const box = (await row(page, name).boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
-    await expect(page.getByRole("link", { name: "Channels" })).toHaveCount(0);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
     // Nothing inside the header's pill overflows it.
@@ -281,19 +296,27 @@ test.describe("below 900px", () => {
     ).toBeLessThanOrEqual(0);
   });
 
-  test("a channel is a page of its own, with a way back to the channels", async ({
+  test("a channel is a page of its own, and the channels are one tap from it", async ({
     page,
   }) => {
     await answerApi(page);
     await page.goto("/community");
+    await toggle(page).click();
     await row(page, /Wings/).click();
     await page.waitForURL("**/community/c/wings");
 
+    // Chosen, the list folds away and the channel is the page.
     await expect(rail(page)).toBeHidden();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Wings/);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-    await page.getByRole("link", { name: "Channels" }).click();
+    await toggle(page).click();
+    await expect(current(page)).toHaveText(/Wings/);
+    await row(page, /Latest/).click();
     await page.waitForURL((url) => url.pathname === "/community");
-    await expect(row(page, /Wings/)).toBeVisible();
+    await expect(rail(page)).toBeHidden();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Latest" }),
+    ).toBeVisible();
   });
 });

@@ -97,6 +97,9 @@ async function answerApi(page: Page) {
 }
 
 const card = (page: Page) => page.locator('a[href^="/?spot="]');
+/** The wind now, as the card writes it: a figure, named in words. */
+const windNow = (page: Page) =>
+  card(page).getByRole("img", { name: /knots now/ });
 
 test("a thread with a spot shows its name, its wind now and the way to the map", async ({
   page,
@@ -105,7 +108,8 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
   await page.goto("/community/t/t_spot/5m-or-6m");
 
   await expect(card(page)).toHaveCount(1);
-  await expect(card(page)).toContainText("Dollymount, Co. Dublin");
+  await expect(card(page)).toContainText("Dollymount");
+  await expect(card(page)).toContainText("Co. Dublin");
   await expect(card(page)).toHaveAttribute("href", "/?spot=dollymount");
 
   // The fixture pins the clock on one of the sample run's hours: that hour's wind.
@@ -115,7 +119,17 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
       Date.parse(entry.validTime) === SAMPLE_CLOCK.getTime(),
   );
   const knots = Math.round(Math.hypot(hour.u, hour.v) * KNOTS);
-  await expect(card(page)).toContainText(`${knots} kn now`);
+  await expect(windNow(page)).toHaveAccessibleName(
+    new RegExp(`^${knots} knots now`),
+  );
+  await expect(windNow(page)).toContainText(`${knots}`);
+  // The hour's stars beside it, or the dark said where there are none.
+  await expect(
+    card(page)
+      .getByRole("img", { name: /of 5 stars/ })
+      .or(card(page).getByText("dark", { exact: true }))
+      .first(),
+  ).toBeVisible();
 
   // The swatch is the ramp's stop for that speed; the number is the page's ink.
   const stop = [0, 5, 9, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 65]
@@ -127,9 +141,7 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
   await expect(swatch).toHaveCount(1);
   const [swatchColour, numberColour, ink] = await Promise.all([
     swatch.evaluate((el) => getComputedStyle(el).backgroundColor),
-    card(page)
-      .locator(".tabular-nums")
-      .evaluate((el) => getComputedStyle(el).color),
+    windNow(page).evaluate((el) => getComputedStyle(el).color),
     page
       .getByRole("heading", { level: 1 })
       .evaluate((el) => getComputedStyle(el).color),
@@ -148,8 +160,8 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
 
   // On a phone the card keeps the name, the wind and the number.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(card(page)).toContainText("Dollymount, Co. Dublin");
-  await expect(card(page).locator(".tabular-nums")).toBeVisible();
+  await expect(card(page)).toContainText("Dollymount");
+  await expect(windNow(page)).toBeVisible();
   const narrow = (await card(page).boundingBox())!;
   expect(narrow.x + narrow.width).toBeLessThanOrEqual(390);
   await page.screenshot({
@@ -163,7 +175,7 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
     /active/,
     { timeout: 30000 },
   );
-  await expect(page.getByRole("table", { name: /Dollymount/ })).toBeVisible();
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
 });
 
 test("a thread without a spot shows no card, and neither does a spot the map does not list", async ({
@@ -198,9 +210,9 @@ test("without the forecast the card is still the name and the link", async ({
     route.fulfill({ status: 503, body: "" }),
   );
   await page.goto("/community/t/t_spot/5m-or-6m");
-  await expect(card(page)).toContainText("Dollymount, Co. Dublin");
+  await expect(card(page)).toContainText("Dollymount");
   await expect(card(page)).toContainText("Forecast on the wind map");
-  await expect(card(page)).not.toContainText("kn");
+  await expect(windNow(page)).toHaveCount(0);
 });
 
 test("the reading keeps up with the clock on a thread left open, and stands down past the run", async ({
@@ -237,19 +249,21 @@ test("the reading keeps up with the clock on a thread left open, and stands down
   // A controlled clock, so three hours can pass without waiting for them.
   await page.clock.install({ time: SAMPLE_CLOCK });
   await page.goto("/community/t/t_spot/5m-or-6m");
-  await expect(card(page)).toContainText("W · gusting 26 kn");
-  await expect(card(page)).toContainText("19 kn now");
+  await expect(windNow(page)).toHaveAccessibleName(
+    "19 knots now, W · gusting 26 kn",
+  );
   await expect(card(page).locator(".bg-wind-k15")).toHaveCount(1);
 
   await page.clock.fastForward("03:00:00");
-  await expect(card(page)).toContainText("W · gusting 40 kn");
-  await expect(card(page)).toContainText("31 kn now");
+  await expect(windNow(page)).toHaveAccessibleName(
+    "31 knots now, W · gusting 40 kn",
+  );
   await expect(card(page).locator(".bg-wind-k30")).toHaveCount(1);
 
   // Two hours past the run's last hour there is no "now" to give.
   await page.clock.fastForward("02:00:00");
   await expect(card(page)).toContainText("Forecast on the wind map");
-  await expect(card(page)).not.toContainText("kn");
+  await expect(windNow(page)).toHaveCount(0);
 });
 
 test("the map opens where it always has for a spot it does not hold", async ({

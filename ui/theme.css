@@ -51,6 +51,8 @@
 @source "../market/web";
 @source "../community/web";
 @source "../ai/web";
+@source "../companion/web";
+@source "../spot/web";
 /* The site menu, which every bundle draws, is written in utilities too. Its
    one file, not force5/src: that is the map's own code, and unscanned. */
 @source "../force5/src/SiteMenu.tsx";
@@ -85,58 +87,94 @@
      here is 14px (src/styles.css), which would make a step 3.5px. */
   --spacing: 4px;
 
-  /* ---- colour: Atlantic ------------------------------------------------ */
+  /* ---- colour: the chart ---------------------------------------------- */
 
-  /* Grounds and surfaces. `solid` is a fill only: `border-solid` and
-     `outline-solid` already mean the line style, and keep meaning it. */
-  --color-ground: #f4f6fa;
-  --color-sea: #9db0cc;
-  --color-card: #fff;
-  --color-solid: #eef2f9;
-  --color-glass: #eef2f9db;
-  --color-sunken: #e1e8f3;
-  --color-inverse: #0b2545;
-  --color-scrim: #0a1f3c73;
+  /* An Admiralty chart crossed with a broadsheet weather report (ruling of
+     2026-10-05, docs/BRAND.md): paper and ink, chart magenta, and a red pen.
+     Structure is drawn in ink rules on one paper, not in lighter cards on a
+     darker ground, so the ground, the card, the solid fallback and the paper
+     a double rule's gap is painted in are one value. `solid` is a fill only:
+     `border-solid` and `outline-solid` already mean the line style. */
+  --color-ground: #f3eee3;
+  --color-card: #f3eee3;
+  --color-solid: #f3eee3;
+  /* The paper's second sheet: a well, a placeholder, a tinted table row. */
+  --color-sunken: #ede6d6;
+  /* Paper laid over a photograph, which still shows a little through it. */
+  --color-glass: #f3eee3eb;
+  --color-inverse: #1a1d21;
+  --color-scrim: #1a1d212e;
+
+  /* The sea and the shore, as a chart tints them. `sea` is the ground the map
+     floats on, what shows in a tile gap. The four tints run shallow to deep:
+     drying and under a metre, about three, about ten, thirty and beyond, the
+     depths a foil cares about (a 75-95 cm mast touches down in the first). */
+  --color-sea: #d5e6ea;
+  --color-sea-1: #a9cbd8;
+  --color-sea-2: #c3dae2;
+  --color-sea-3: #dae8ea;
+  --color-sea-4: #ecf0ea;
+  /* The contour and sounding ink, a stroke on the tints, never body text. */
+  --color-depth: #5f8c9c;
+  /* Land buff, and the relief lines drawn on it. */
+  --color-land: #ede3c8;
+  --color-relief: #b59e74;
 
   /* The basemap's own two fills, painted over the third-party style from TS
-     (force5/src/WindMap.tsx). `sea` above is a different job: it is the ground
-     the map floats on, what shows in a tile gap or an overscroll, and it stays
-     a step darker so the basemap reads as something laid on top of it. Land is
-     the one value the Atlantic ramp does not hold — the warm off-white the map
-     has always drawn, kept at its own value so the coast still reads. */
-  --color-basemap-water: #c3cfe2;
-  --color-basemap-land: #f0f1e8;
+     (force5/src/WindMap.tsx): deep water nearly paper, as on a chart, and the
+     land buff. */
+  --color-basemap-water: #e5edea;
+  --color-basemap-land: #ede3c8;
 
   /* The bar a forecast cell paints behind its number, at 22%: a quantity, not
-     water. The same step as `sea`, and named apart from it so that moving the
-     ground behind the map never moves the wind grid's bars with it. */
-  --color-wash: #9db0cc;
+     water, so it takes the chart's magenta rather than a sea tint. */
+  --color-wash: #b0186a;
 
-  /* Lines. */
-  --color-line: #0a1f3c1a;
-  --color-line-strong: #7488a6;
+  /* Lines. `line` is the hairline between rows; `line-strong` is the stroke a
+     field's box and a disabled icon take, at 3:1 on paper. A rule that frames
+     something is drawn in `ink` itself: `border-ink`. */
+  --color-line: #1a1d2133;
+  --color-line-strong: #7c7b78;
 
-  /* Text. */
-  --color-ink: #0a1f3c;
-  --color-ink-2: #1f3a5c;
-  --color-ink-muted: #4a607c;
-  --color-ink-disabled: #7488a6;
-  --color-ink-inverse: #fff;
+  /* Text, on paper. ink 14.6:1, ink-2 9.5:1, ink-muted 5.8:1 (5.4:1 on
+     sunken): muted is the floor for words. ink-disabled is a stroke's 3:1. */
+  --color-ink: #1a1d21;
+  --color-ink-2: #3b3c3e;
+  --color-ink-muted: #5b5c5b;
+  --color-ink-disabled: #7c7b78;
+  --color-ink-inverse: #f3eee3;
 
-  /* Action: one filled action per view takes the accent. */
-  --color-accent: #1463ff;
-  --color-accent-hover: #0d4fd1;
-  --color-accent-ink: #fff;
-  --color-quiet: #0b2545;
-  --color-focus: #0b2545;
+  /* Action: one filled action per view, and it is an ink pill that turns
+     magenta under the pointer. */
+  --color-accent: #1a1d21;
+  --color-accent-hover: #b0186a;
+  --color-accent-ink: #f3eee3;
+  --color-quiet: #1a1d21;
+  --color-focus: #b0186a;
 
-  /* Status. Warm means now or degraded, never decoration. */
-  --color-ok: #3c8a72;
-  --color-warn: #854d31;
-  --color-warn-ground: #fff4e8;
-  --color-now: #a8442e;
+  /* The chart's magenta: the best of something (a five-star hour, the spot in
+     view, a quantity's bar) and the focus ring. Never body text below 5.7:1,
+     which it meets on paper. */
+  --color-chart-magenta: #b0186a;
 
-  /* Wind speed, in knots. These mean wind and nothing else. */
+  /* The red pen: a loop round the one thing that matters, an underline, a
+     strike through what is off. `pen` is the mark (a stroke, 4.1:1); the
+     pen's handwriting takes `pen-ink`, which reads at 4.9:1. */
+  --color-pen: #d43a2c;
+  --color-pen-ink: #bf3125;
+
+  /* A buoy's yellow: the puffin's beak, a light on the chart. Never text. */
+  --color-buoy: #e9b200;
+
+  /* Status. Warm means now or degraded, never decoration; on the chart the
+     warm is the pen's own red, darkened to read as words. */
+  --color-ok: #2a7046;
+  --color-warn: #b02a1f;
+  --color-warn-ground: #efd8cd;
+  --color-now: #b02a1f;
+
+  /* Wind speed, in knots. These mean wind and nothing else, and they do not
+     re-theme: a colour that means 35 knots means 35 knots on any paper. */
   --color-wind-k00: #355897;
   --color-wind-k05: #2a76b8;
   --color-wind-k09: #2e97be;
@@ -154,68 +192,106 @@
 
   /* Two marks that say what they are rather than which palette they came from,
      so the palette does not move them: the dashed line the map and the dock
-     both draw at the present hour, and the gust cap on a candle, at the values
-     they have always had (D12). */
+     both draw at the present hour, and the gust cap on a candle (D12). */
   --color-now-marker: #bf6546;
   --color-gust: #e0803a;
 
   /* ---- type ------------------------------------------------------------ */
 
-  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Four faces, each with one job, self-hosted (ui/fonts.css):
+     display, Fraunces: names, headings, the wordmark, set with optical size;
+     body, Newsreader: the few sentences there are;
+     mono, IBM Plex Mono: every figure, and every label, in tracked capitals;
+     hand, Kalam: the red pen, and nothing else. */
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-hand: "Kalam", "Bradley Hand", "Segoe Print", cursive;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  /* The wordmark's weight, and nothing else's. */
+  --font-weight-extrabold: 800;
 
   /* A step carries its own line height, and its weight and tracking where it
-     has one: `text-title` is the whole step, not only a size. */
-  --text-eyebrow: 9px;
-  --text-eyebrow--line-height: 1.5;
-  --text-eyebrow--font-weight: 600;
-  --text-eyebrow--letter-spacing: 1.1px;
-  --text-caption: 10px;
-  --text-caption--line-height: 1.5;
+     has one: `text-title` is the whole step, not only a size. The face is
+     the recipe's to name beside it (`font-mono text-label uppercase`): a
+     step cannot carry a family. */
+  /* Mono, tracked capitals: a kicker, a column head, an axis tick. */
+  --text-eyebrow: 10px;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--font-weight: 500;
+  --text-eyebrow--letter-spacing: 0.14em;
+  /* Small figures and the small print. */
+  --text-caption: 11px;
+  --text-caption--line-height: 1.4;
+  /* A control's words: mono capitals on a pill. */
   --text-label: 11px;
-  --text-label--line-height: 1.3;
-  --text-label--font-weight: 600;
-  --text-body: 12px;
-  --text-body--line-height: 1.5;
-  --text-prose: 14px;
-  --text-prose--line-height: 1.5;
-  --text-lead: 17px;
-  --text-lead--line-height: 1.3;
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 500;
+  --text-label--letter-spacing: 0.09em;
+  --text-body: 13px;
+  --text-body--line-height: 1.4;
+  --text-prose: 15px;
+  --text-prose--line-height: 1.45;
+  /* What a field is set at on a touch device: under 16px a phone zooms. */
+  --text-input: 16px;
+  --text-input--line-height: 1.3;
+  /* A section's heading, a card's name: Fraunces. */
+  --text-lead: 19px;
+  --text-lead--line-height: 1.2;
   --text-lead--font-weight: 600;
-  --text-title: 25px;
-  --text-title--line-height: 1.3;
-  --text-title--font-weight: 600;
-  --text-title--letter-spacing: -0.7px;
+  /* A number that is the point of its row: the knots in a table. Mono. */
+  --text-figure: 19px;
+  --text-figure--line-height: 1;
+  --text-figure--font-weight: 600;
+  --text-figure--letter-spacing: -0.02em;
+  --text-title: 30px;
+  --text-title--line-height: 1.05;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.02em;
+  /* The broadsheet's headline: one a page, and a page that is read. */
+  --text-headline: 44px;
+  --text-headline--line-height: 1;
+  --text-headline--font-weight: 700;
+  --text-headline--letter-spacing: -0.035em;
   --text-reading: 48px;
-  --text-reading--line-height: 1.3;
+  --text-reading--line-height: 1;
 
   /* The three leadings, for the few places a step's own is not the one wanted:
      a card's title takes the prose size at the tight leading. `leading-none`
      is Tailwind's own and needs nothing here. */
-  --leading-tight: 1.3;
-  --leading-normal: 1.5;
+  --leading-tight: 1.2;
+  --leading-normal: 1.45;
   --leading-loose: 1.75;
 
   /* ---- shape and depth ------------------------------------------------- */
 
-  --radius-control: 12px;
-  --radius-surface: 20px;
-  --radius-pill: 24px;
-  --radius-dialog: 30px;
+  /* Square, as print is. A field keeps a whisper of a corner so it reads as a
+     box to write in; anything pressed is a capsule. */
+  --radius-control: 2px;
+  --radius-surface: 0px;
+  --radius-pill: 9999px;
+  --radius-dialog: 0px;
   --radius-full: 9999px;
 
-  --shadow-control: 0px 1px 5px #0a1f3c1f;
-  --shadow-marker: 0px 3px 12px #0a1f3c2e;
-  --shadow-surface: 0px 10px 40px #0a1f3c33;
-  --shadow-dock: 0px -4px 24px #0a1f3c33;
+  /* Little shadow, and a warm one: paper lifts off paper, it does not float. */
+  --shadow-control: 0px 1px 0px #1a1d210f;
+  --shadow-marker: 0px 4px 10px -6px #3c2d1466;
+  --shadow-surface: 0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459;
+  --shadow-dock: 0px -8px 22px -16px #3c2d1473;
 
-  /* Glass sits over the moving map; the scrim sits behind a dialog. */
-  --blur-glass: 28px;
-  --blur-scrim: 5px;
+  /* The double rule, as `border border-ink inset-shadow-frame`: the border is
+     the outer line, then three of paper, then the inner line. The gap is the
+     paper every surface is, so it vanishes into it. */
+  --inset-shadow-frame: inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21;
+
+  /* Glass is a badge over a photograph now, not a panel over the map: paper
+     over the map is opaque. The scrim behind a dialog barely softens. */
+  --blur-glass: 12px;
+  --blur-scrim: 2px;
 
   /* Measures, as `max-w-dialog`: the widths a dialog and a line of reading
      take when the viewport leaves them the room. */
@@ -276,6 +352,33 @@
   --animate-pulse: pulse 1s ease-in-out infinite alternate;
   --animate-dialog-in: dialog-in 150ms ease both;
   --animate-menu-in: menu-in 150ms ease both;
+  /* The pen drawing its stroke in, once, as a hand would: on a path with
+     `pathLength="1"` and `strokeDasharray="1"` (ui/Pen.tsx). Held off for a
+     reader who asks for less motion, when the stroke is simply there. */
+  --animate-ink: ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
+  /* The puffin shifting his weight, now and then. */
+  --animate-bob: bob 6s ease-in-out infinite;
+
+  @keyframes ink {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes bob {
+    0%,
+    46%,
+    54%,
+    100% {
+      transform: none;
+    }
+    50% {
+      transform: translateY(-3px) rotate(-2deg);
+    }
+  }
 
   @keyframes pulse {
     from {
@@ -314,6 +417,56 @@
   @media (prefers-reduced-transparency: reduce) {
     @slot;
   }
+}
+
+/*
+ * Hover, for a pointer that hovers and is fine: a mouse or a trackpad. A tap
+ * leaves the browser "hovering" over what was pressed until the next tap
+ * lands elsewhere. Tailwind's own `hover:` is held to `(hover: hover)`, which
+ * a phone answers no to, but a touch laptop, a tablet with a trackpad and
+ * some phones answer yes, and there a tapped pill stayed inked. Holding it
+ * to a fine pointer as well keeps a finger's tap from leaving a hover behind.
+ * `group-hover:` and `peer-hover:` are built from this. The map's own CSS
+ * gates its hovers on the same query (src/styles.css, map.css, dock.css,
+ * panels.css).
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
+ * The paper's grain: a faint fractal noise, multiplied into whatever paper
+ * the element is filled with. It is a background image only, so it sits with
+ * `bg-ground` or `bg-card` rather than replacing them: an opaque surface that
+ * covers the ground's grain brings its own, and the page reads as one sheet.
+ * One 220px tile, rasterised once and repeated, so no filter runs per frame.
+ * It is never laid over the moving map: the map is not paper.
+ */
+@utility paper-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* The dark hours: a fine diagonal hatch in ink, as a chart shades what is
+   not there to be used. Over a table cell, a strip of a day, a tide curve. */
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/* Fraunces at its largest optical size: the high-contrast cut the wordmark
+   and a headline are set in, whatever size they are drawn at. Elsewhere the
+   browser picks the optical size from the font size, which is what is
+   wanted. */
+@utility optical-display {
+  font-variation-settings: "opsz" 144;
 }
 
 /* A row that scrolls sideways inside a page that does not: the cut-off item at
@@ -362,4 +515,46 @@
     calc(var(--spacing) * --value(integer)),
     env(safe-area-inset-bottom)
   );
+}
+
+/* ==== map ================================================================
+   The map's own values (src/, force5/src). Read from TypeScript through
+   `getComputedStyle` (force5/src/chartStyle.ts) and from the map's CSS
+   through var(), so the chart's colours are written here and nowhere else.
+   Plain custom properties, not theme colours: no utility class should ever
+   paint with a depth tint or the rider's wind scale. */
+:root {
+  /* The depth tints, metre by metre: shallow water darkest, deep water nearly
+     paper, as on an Admiralty chart. The four `sea-*` above are the key's. */
+  --map-d0: #a9cbd8;
+  --map-d1: #b3d1dc;
+  --map-d2: #bed7e0;
+  --map-d3: #c3dae2;
+  --map-d5: #cde0e6;
+  --map-d10: #dae8ea;
+  --map-d20: #e5edea;
+  --map-d30: #ecf0ea;
+  --map-d50: #f0f1ea;
+  --map-d100: #f2f1ea;
+  --map-d200: #f3f1ea;
+  /* Sand and marsh on the land, and the tide curve's ink. */
+  --map-sand: #eadcb4;
+  --map-wetland: #c9d3b2;
+  --map-tide: #3f6e7e;
+  /* The paper a label is haloed in over the chart. */
+  --map-halo: #f1efe6;
+
+  /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
+     too light, greens deepen through the sweet spot, yellow is the top of it,
+     orange to red too much. Muted, as inks on paper are, not screen neon.
+     The stops are the rider's own band (windBand in force5/src/stars.ts). */
+  --ride-calm: #6d8db4;
+  --ride-light: #8db3cf;
+  --ride-floor: #b5cf96;
+  --ride-good: #77b06e;
+  --ride-best: #3e8a55;
+  --ride-top: #d9c24f;
+  --ride-much: #e0913f;
+  --ride-over: #c8503a;
+  --ride-storm: #8c3a6c;
 }

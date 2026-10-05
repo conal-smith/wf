@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 
-test("public riding places are on the map and the Blast alias finds Kilcrea with a grid-backed forecast", async ({
+test("public riding places are on the chart and the Blast alias finds Kilcrea, with its sources behind the i", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -8,13 +8,10 @@ test("public riding places are on the map and the Blast alias finds Kilcrea with
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
-  await expect(page.locator('.spot-marker[data-kind="operator"]')).toHaveCount(
-    0,
-  );
-  await expect(page.locator('.spot-marker[data-kind="club"]')).toHaveCount(0);
-  await expect(page.locator('.spot-marker[data-kind="area"]')).toHaveCount(0);
-  const search = page.getByRole("searchbox");
-  await page.getByLabel("Open spot search").click();
+  // Riding places only: no schools, clubs or areas among the lights.
+  for (const kind of ["operator", "club", "area"])
+    await expect(page.locator(`.spot-marker[data-kind="${kind}"]`)).toHaveCount(0);
+  const search = page.getByRole("combobox", { name: "Find a spot" });
   for (const alias of ["Blast", "Kilcrea", "Donabate"]) {
     await search.fill(alias);
     // Donabate is also a beach of its own on the far side of the peninsula,
@@ -26,39 +23,34 @@ test("public riding places are on the map and the Blast alias finds Kilcrea with
     await expect(page.locator(".spot-row")).toHaveCount(
       alias === "Donabate" ? 2 : 1,
     );
-    await expect(rows).not.toContainText("School / operator");
   }
   await search.fill("Kilcrea");
   await page.locator(".spot-row").click();
   const blast = page.locator('[data-spot-id="kilcrea"]');
-  await expect(blast).toHaveClass(/active/);
-  await expect(page.getByRole("table", { name: /Kilcrea/ })).toBeVisible();
-  await expect(page.locator(".sheet-loading")).toHaveCount(0, {
-    timeout: 30000,
-  });
-  // Kilcrea's series was recomputed from the bundled frames, so the dock now
-  // opens on the blend here; the per-hour numbers live in the table view.
-  await page.locator('[data-view="table"]').click();
-  await expect(page.locator(".wind-cell").first()).toHaveText(/^\d+$/);
-  await expect(page.locator(".wind-cell").last()).toHaveText(/^\d+$/);
-  const marker = (await blast.boundingBox())!;
-  const dock = (await page.locator(".map-footer").boundingBox())!;
-  expect(marker.y + marker.height).toBeLessThan(dock.y);
-  await page.getByLabel("Forecast data and sources").click();
-  await expect(page.locator("dialog")).toContainText("not a verified launch");
-  await expect(
-    page.locator('.location-sources a[href*="10816824305"]'),
-  ).toBeVisible();
-  await expect(page.locator(".location-attribution")).toContainText(
-    "CC BY 4.0",
+  await expect(blast).toHaveClass(/\bsel\b/);
+  await expect(page.locator(".dock .dk-name")).toHaveText(
+    "Kilcrea — Malahide Estuary",
   );
-  await page.getByLabel("Close forecast information").click();
-  await page.getByLabel("Open spot search").click();
+  await page.locator(".dock-grab").click();
+  await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(
+    /^\d+$/,
+  );
+  // Its sources and its caveat are the dock's small print.
+  await page.getByRole("button", { name: "About these figures" }).click();
+  const print = page.getByRole("dialog", { name: "About these figures" });
+  await expect(print).toContainText("not a verified launch");
+  await expect(print.locator('a[href*="10816824305"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  // And the chart's own sources, the licences with them.
+  await page.getByRole("button", { name: "Sources and small print" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Sources and small print" }),
+  ).toContainText("CC BY 4.0");
+  await page.keyboard.press("Escape");
   await search.fill("Newtownards");
   await page.locator(".spot-row").click();
   await expect(page.locator('[data-spot-id="newtownards"]')).toHaveClass(
-    /active/,
+    /\bsel\b/,
   );
-  await expect(page.getByRole("table", { name: /Newtownards/ })).toBeVisible();
-  await page.screenshot({ path: "test-results/locations-mobile.png" });
+  await expect(page.locator(".dock .dk-name")).toHaveText(/Newtownards/);
 });

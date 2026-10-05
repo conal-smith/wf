@@ -5,7 +5,8 @@ import { tv } from "./tv";
 export const pagerStyles = tv({
   slots: {
     base: "flex items-center justify-center gap-3 pt-2",
-    status: "font-sans text-body text-ink-muted tabular-nums",
+    // A figure, so the figures' face.
+    status: "font-mono text-caption text-ink-muted tabular-nums",
   },
 });
 
@@ -37,6 +38,7 @@ export function Pager({
     <nav className={styles.base({ className })} aria-label="Pages">
       <Button
         variant="pill"
+        size="sm"
         disabled={page <= 1}
         onClick={() => onPage(page - 1)}
       >
@@ -47,6 +49,7 @@ export function Pager({
       </span>
       <Button
         variant="pill"
+        size="sm"
         disabled={page >= pages}
         onClick={() => onPage(page + 1)}
       >

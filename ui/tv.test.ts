@@ -26,7 +26,12 @@ describe("ui/tv.ts: the merge knows the theme's names", () => {
   it.each(Object.keys(THEME_NAMES) as (keyof typeof THEME_NAMES)[])(
     "lists every --%s-* the theme declares, and no other",
     (family) => {
-      expect([...THEME_NAMES[family]].sort()).toEqual(declared(family).sort());
+      // `--font-weight-*` begins as `--font-*` does, and is a family of its
+      // own that the merge already knows by its stock names.
+      const names = declared(family).filter(
+        (name) => family !== "font" || !name.startsWith("weight-"),
+      );
+      expect([...THEME_NAMES[family]].sort()).toEqual(names.sort());
     },
   );
 
@@ -46,6 +51,9 @@ describe("ui/tv.ts: the merge knows the theme's names", () => {
     ["duration-base duration-fast", "duration-fast"],
     ["z-panel z-dialog", "z-dialog"],
     ["bg-card bg-accent", "bg-accent"],
+    ["font-body font-mono", "font-mono"],
+    ["font-display font-body", "font-body"],
+    ["inset-shadow-frame inset-shadow-none", "inset-shadow-none"],
   ])("%s merges to %s", (written, merged) => {
     expect(tv({ base: written })()).toBe(merged);
   });
@@ -79,11 +87,11 @@ describe("ui/tv.ts: the shared states", () => {
     expect(holds(css, "border-card")).toBe(false);
   });
 
-  // S4: one ring, 3px of focus, 2px clear.
+  // S4: one ring, 2px of the chart's magenta, 2px clear.
   it.each([
     ["on the control", RING, "focus-visible"],
     ["on the box around a field", RING_WITHIN, "focus-within"],
-  ])("the ring %s is 3px of focus, 2px clear", (_, ring, state) => {
+  ])("the ring %s is 2px of focus, 2px clear", (_, ring, state) => {
     const css = build(ring.split(" "));
     const rules = ring
       .split(" ")
@@ -92,7 +100,7 @@ describe("ui/tv.ts: the shared states", () => {
         return css.slice(start, css.indexOf("\n}", start));
       })
       .join("\n");
-    expect(rules).toContain("outline-width: 3px;");
+    expect(rules).toContain("outline-width: 2px;");
     expect(rules).toContain("outline-offset: 2px;");
     expect(rules).toContain("outline-color: var(--color-focus);");
     for (const name of ring.split(" ")) expect(name).toContain(`${state}:`);
@@ -105,7 +113,7 @@ describe("ui/tv.ts: the shared states", () => {
   it("outranks the site reset's button states", () => {
     const css = build([...RING.split(" "), HOVER, ...DISABLED.split(" ")]);
     expect(css).toContain(
-      `${selector("not-disabled:focus-visible:outline-3")}:not(:disabled):focus-visible {`,
+      `${selector("not-disabled:focus-visible:outline-2")}:not(:disabled):focus-visible {`,
     );
     expect(css).toContain(
       `${selector("not-disabled:hover:bg-sunken")}:not(:disabled):hover {`,
@@ -113,21 +121,22 @@ describe("ui/tv.ts: the shared states", () => {
     expect(css).toContain(`${selector("disabled:opacity-100")}:disabled {`);
   });
 
-  // The kit's hover holds itself to a device that can hover; the reset's wash
+  // The kit's hover holds itself to a mouse (ui/theme.css); the reset's wash
   // has to as well, or on a phone a tapped button keeps the wash in place of
   // the fill the kit named for it: a primary's accent under white words.
   it("lays the reset's hover wash only where the kit's hover reaches", () => {
+    const GATE = "@media (hover: hover) and (pointer: fine)";
     const css = build([HOVER]);
     const kit = css.indexOf(`${selector(HOVER)}:not(:disabled):hover {`);
     expect(kit).toBeGreaterThan(-1);
-    expect(css.lastIndexOf("@media (hover: hover)", kit)).toBeGreaterThan(-1);
+    expect(css.lastIndexOf(GATE, kit)).toBeGreaterThan(-1);
 
     const reset = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
     const washes = [...reset.matchAll(/^(\s*)button:enabled:hover \{/gm)];
     expect(washes).toHaveLength(1);
     const at = washes[0].index!;
-    const guard = reset.lastIndexOf("@media (hover: hover) {", at);
-    expect(guard, "inside @media (hover: hover)").toBeGreaterThan(-1);
+    const guard = reset.lastIndexOf(`${GATE} {`, at);
+    expect(guard, `inside ${GATE}`).toBeGreaterThan(-1);
     expect(reset.slice(guard, at)).not.toContain("}");
   });
 });
@@ -143,8 +152,8 @@ describe("ui/theme.css: blur, measures and animation", () => {
   );
 
   it.each([
-    ["backdrop-blur-glass", "--blur-glass", "28px"],
-    ["backdrop-blur-scrim", "--blur-scrim", "5px"],
+    ["backdrop-blur-glass", "--blur-glass", "12px"],
+    ["backdrop-blur-scrim", "--blur-scrim", "2px"],
     ["max-w-dialog", "--container-dialog", "420px"],
     ["max-w-dialog-wide", "--container-dialog-wide", "640px"],
     ["max-w-reading", "--container-reading", "44ch"],
@@ -215,11 +224,11 @@ describe("ui/theme.css: blur, measures and animation", () => {
     expect(css).toMatch(/@media \(width < 45rem\) \{\s*\.max-wide\\:hidden \{/);
   });
 
-  // The design system's three, restated: the stock `tight` was 1.25, and a
-  // card's title takes the prose size at 1.3. Every other stock name is gone.
+  // The chart's three, restated: the display face sets tight, and the body
+  // face at a little under a paragraph's 1.5. Every other stock name is gone.
   it.each([
-    ["leading-tight", "--leading-tight", "1.3"],
-    ["leading-normal", "--leading-normal", "1.5"],
+    ["leading-tight", "--leading-tight", "1.2"],
+    ["leading-normal", "--leading-normal", "1.45"],
     ["leading-loose", "--leading-loose", "1.75"],
   ])("%s reads %s, which is %s", (name, variable, value) => {
     const css = build([name]);
@@ -293,6 +302,43 @@ describe("ui/theme.css: blur, measures and animation", () => {
     expect(css).toMatch(
       /@keyframes menu-in \{\s*from \{\s*opacity: 0;\s*transform: translateY\(-4px\);\s*\}\s*\}/,
     );
+  });
+
+  // The paper's grain, the night's hatch and the display cut: three
+  // utilities the theme writes itself, because each is a value no class holds.
+  it("grains the paper with one tile, as a background image only", () => {
+    const css = flat(build(["paper-grain"]));
+    expect(css).toContain(".paper-grain {");
+    expect(css).toContain('background-image: url("data:image/svg+xml,');
+    expect(css).toContain("feTurbulence");
+    expect(css).not.toMatch(/\.paper-grain \{[^}]*background-color/);
+  });
+
+  it("hatches the dark hours in ink, and sets Fraunces at its display cut", () => {
+    expect(flat(build(["hatch"]))).toContain(
+      "background-image: repeating-linear-gradient( 135deg, color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px, transparent 1px 4px );",
+    );
+    expect(flat(build(["optical-display"]))).toContain(
+      'font-variation-settings: "opsz" 144;',
+    );
+  });
+
+  it("draws the double rule as two inset lines with paper between", () => {
+    const css = flat(build(["inset-shadow-frame"]));
+    expect(css).toContain(".inset-shadow-frame {");
+    // The outer line is the border; this is the gap of paper and the inner line.
+    expect(css).toMatch(
+      /--tw-inset-shadow: inset 0 0 0 3px var\(--tw-inset-shadow-color, #\w+\), inset 0 0 0 4px var\(--tw-inset-shadow-color, #\w+\);/,
+    );
+  });
+
+  it("draws the pen in once, and lets the puffin bob, both declinable", () => {
+    const css = flat(
+      build(["animate-ink", "animate-bob", "motion-reduce:animate-none"]),
+    );
+    expect(css).toContain("--animate-ink: ink 750ms");
+    expect(css).toMatch(/@keyframes ink \{ from \{ stroke-dashoffset: 1; \}/);
+    expect(css).toContain("@keyframes bob");
   });
 
   it("glass goes solid for a reader who asked for less transparency", () => {

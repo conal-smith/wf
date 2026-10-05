@@ -36,7 +36,7 @@ describe("the basemap's colours", () => {
           "--color-basemap-water": declared("basemap-water"),
         }),
       ),
-    ).toEqual({ land: "#f0f1e8", water: "#c3cfe2" });
+    ).toEqual({ land: "#ede3c8", water: "#e5edea" });
   });
 
   // A computed value arrives with the whitespace the declaration had.
@@ -58,18 +58,19 @@ describe("the basemap's colours", () => {
     expect(basemapColours(root({}))).toEqual({ land: "", water: "" });
   });
 
-  it("is the only place WindMap names a basemap colour", () => {
-    const source = readFileSync(
-      resolve(ROOT, "force5/src/WindMap.tsx"),
-      "utf8",
-    );
-    const paint = source.slice(
-      source.indexOf("VITE_BASEMAP_STYLE_URL) {"),
-      source.indexOf('map.addSource("towns"'),
-    );
-    expect(paint).toContain("basemap.land");
-    expect(paint).toContain("basemap.water");
-    expect(paint).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  // The chart is drawn from a style written in TypeScript (the mockup's
+  // chartStyle), so every colour it paints is handed over from the theme:
+  // neither the style nor the map that loads it writes one down.
+  it("is the only way the chart gets a colour", () => {
+    for (const file of ["force5/src/chartStyle.ts", "force5/src/WindMap.tsx"]) {
+      const source = readFileSync(resolve(ROOT, file), "utf8");
+      expect(source, file).not.toMatch(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/i);
+      expect(source, file).not.toMatch(/\brgba?\(/);
+    }
+    const style = readFileSync(resolve(ROOT, "force5/src/chartStyle.ts"), "utf8");
+    expect(style).toContain("basemapColours(root).land");
+    for (const name of ["map-d0", "map-d200", "map-sand", "map-halo"])
+      expect(theme).toMatch(new RegExp(`--${name}: #[0-9a-f]{6};`));
   });
 
   // The warning is for a developer who forgot the import, and a build must not

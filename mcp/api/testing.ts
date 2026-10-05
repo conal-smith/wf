@@ -2,6 +2,11 @@
  * The committed synthetic fixtures laid out as the site publishes them:
  * `weather/<model>.json` from tests/fixtures/weather and the riding locations
  * from public/. The runs span 13–16 Sept 2026, so tests pin their clock.
+ *
+ * `marine/` is ingest output, git-ignored and absent from a clean checkout, so
+ * it is never read from public/ here: a worktree that links it to real tides
+ * would otherwise answer a test differently from CI. A test that wants tides
+ * or a sea temperature passes them in `extra`.
  */
 import { fileURLToPath } from "node:url";
 import { dirSource, type ForecastSource } from "./source";
@@ -19,9 +24,9 @@ export function fixtureSource(
   return {
     json(path) {
       if (path in extra) return Promise.resolve(extra[path]);
-      return path.startsWith("weather/")
-        ? fixtures.json(path)
-        : site.json(path);
+      if (path.startsWith("weather/")) return fixtures.json(path);
+      if (path.startsWith("marine/")) return Promise.resolve(null);
+      return site.json(path);
     },
   };
 }

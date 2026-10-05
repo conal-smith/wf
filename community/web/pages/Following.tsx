@@ -4,27 +4,25 @@
  * first. Each row says why it is there. A thread is followed by starting it or
  * replying to it (D19), so this page is mostly a member's own conversations.
  */
-import { BellRing, Hash } from "lucide-react";
+import { Hash } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Empty, Notice } from "../../../ui";
-import { tv } from "../../../ui/tv";
+import { Button, Empty, Notice, Puffin } from "../../../ui";
+import { MONO_LABEL, tv } from "../../../ui/tv";
 import type { Channel } from "../../shared/types";
 import { useApi } from "../api";
 import { MembersOnly } from "../components/MembersOnly";
+import { PageHead, dateline } from "../components/PageHead";
 import { ThreadList } from "../components/ThreadList";
 import { useThreadFeed, type ChannelsState, type FeedSource } from "../hooks";
 import { paths, routed } from "../router";
 
 export const followingStyles = tv({
   slots: {
-    head: "grid min-w-0 gap-2",
-    title: "m-0 text-title text-ink",
-    lede: "m-0 text-prose text-ink-2",
     channels: "flex flex-wrap items-center gap-2",
-    label: "text-body text-ink-muted",
-    none: "m-0 text-body text-ink-muted",
+    label: ["text-ink-muted", MONO_LABEL],
+    none: "m-0 font-body text-body text-ink-muted italic",
   },
 });
 
@@ -45,17 +43,10 @@ export interface FollowingProps {
 }
 
 export function Following(props: FollowingProps) {
-  const styles = followingStyles();
   usePageTitle("Following", "Community");
   return (
     <>
-      <div className={styles.head()}>
-        <h1 className={styles.title()}>Following</h1>
-        <p className={styles.lede()}>
-          Threads you started or replied to, and new threads in the channels you
-          follow.
-        </p>
-      </div>
+      <PageHead dateline={dateline(new Date())} title="Following" />
       <MembersOnly what="what you follow">
         <Followed {...props} />
       </MembersOnly>
@@ -127,7 +118,7 @@ function Followed({ channels, onFollowed }: FollowingProps) {
                 onClick={() => toggle(channel)}
                 aria-describedby="followed-channels"
               >
-                <Hash size={13} aria-hidden="true" />
+                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
                 {channel.name}
               </Button>
             ))
@@ -138,14 +129,13 @@ function Followed({ channels, onFollowed }: FollowingProps) {
                 variant="pill"
                 size="sm"
               >
-                <Hash size={13} aria-hidden="true" />
+                <Hash size={13} strokeWidth={1.5} aria-hidden="true" />
                 {channel.name}
               </Button>
             ))}
         {!managed && !last.current.length && channels.status === "ready" && (
           <p className={styles.none()}>
-            None yet. Open a channel and press Follow channel to hear about its
-            new threads.
+            None yet: Follow channel, on any channel.
           </p>
         )}
         {managed ? (
@@ -174,14 +164,10 @@ function Followed({ channels, onFollowed }: FollowingProps) {
         onRetry={feed.reload}
         onMore={feed.loadMore}
         empty={
-          <Empty
-            title="Nothing followed yet"
-            icon={<BellRing size={24} aria-hidden="true" />}
-          >
+          <Empty title="Nothing followed yet" icon={<Puffin size={40} />}>
             <p>
-              You follow a thread by starting it or replying to it, and a
-              channel by choosing to. What you follow is listed here, and the
-              bell tells you when it moves.
+              Start a thread or reply to one, and it is kept here. The bell
+              tells you when it moves.
             </p>
             <Button {...routed(paths.home())} variant="pill">
               Browse the latest threads

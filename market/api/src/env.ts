@@ -6,6 +6,14 @@
 export type AuthMode = "clerk" | "dev";
 export type StorageMode = "s3" | "local";
 export type DbMode = "postgres" | "memory";
+export type CompanionEffort = "low" | "medium" | "high" | "xhigh" | "max";
+const EFFORTS: readonly CompanionEffort[] = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
 
 export interface Config {
   port: number;
@@ -18,6 +26,18 @@ export interface Config {
    * `public/` in development and leaves /api/mcp off in production.
    */
   forecastBaseUrl: string | null;
+  /**
+   * Gust, the in-app companion (companion/api). With no API key and no fake it
+   * is asleep: /api/companion/chat answers 503 not_configured.
+   */
+  companion: {
+    apiKey: string | null;
+    model: string;
+    /** output_config.effort per model call; low keeps a chat quick. */
+    effort: CompanionEffort;
+    /** The scripted fake model (COMPANION_FAKE=1): development and e2e only. */
+    fake: boolean;
+  };
   db: { mode: DbMode; url: string | null };
   auth: {
     mode: AuthMode;
@@ -104,12 +124,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error("FORECAST_BASE_URL must be an http(s) URL");
   }
 
+  const companionFake = env.COMPANION_FAKE === "1";
+  if (companionFake && production) {
+    throw new Error(
+      "COMPANION_FAKE answers with a scripted model and is refused in production",
+    );
+  }
+  const effort = (env.COMPANION_EFFORT?.trim() || "low") as CompanionEffort;
+  if (!EFFORTS.includes(effort)) {
+    throw new Error(`COMPANION_EFFORT must be one of ${EFFORTS.join(", ")}`);
+  }
+
   return {
     port,
     production,
     publicUrl,
     corsOrigins,
     forecastBaseUrl,
+    companion: {
+      apiKey: env.ANTHROPIC_API_KEY?.trim() || null,
+      model: env.COMPANION_MODEL?.trim() || "claude-opus-5-5",
+      effort,
+      fake: companionFake,
+    },
     db: { mode: dbMode, url: dbUrl },
     auth: {
       mode: authMode,

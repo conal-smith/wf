@@ -3,10 +3,11 @@ import { expect, message, sendReply, test, unique } from "./fixtures";
 
 /**
  * S6. The phone project's one spec (playwright.config.ts): 390 wide, touch.
- * On a phone the channel list is the home page, and each step down is a page
- * of its own: channels, a channel, a thread, a reply.
+ * A phone opens on the latest threads, with the channels one tap away, and
+ * each step down is a page of its own: the latest, a channel, a thread, a
+ * reply.
  */
-test("on a phone: channels, a channel, a thread, a reply", async ({
+test("on a phone: the latest, a channel, a thread, a reply", async ({
   as,
   member,
 }) => {
@@ -27,13 +28,24 @@ test("on a phone: channels, a channel, a thread, a reply", async ({
         document.documentElement.clientWidth,
     );
 
-  // Channels: the list is the page.
+  // The latest threads are the page, and the thread just started is on it.
+  await expect(
+    aoife.getByRole("heading", { level: 1, name: "Latest" }),
+  ).toBeVisible();
+  await expect(
+    aoife.getByRole("main").getByRole("link", { name: thread.title }),
+  ).toBeVisible();
   const channels = aoife.getByRole("navigation", { name: "Channels" });
+  await expect(channels).toBeHidden();
+  expect(await sideways()).toBe(0);
+
+  // The channels, one tap away.
+  await aoife.getByRole("button", { name: "Channels" }).tap();
   await expect(channels.getByRole("link", { name: /Technique/ })).toBeVisible();
   expect(await sideways()).toBe(0);
   await channels.getByRole("link", { name: /Technique/ }).tap();
 
-  // A channel: its threads, and the list it came from is a way back, not a column.
+  // A channel: its threads, and the list it came from folds away again.
   await expect(aoife).toHaveURL(/\/community\/c\/technique$/);
   await expect(aoife.getByRole("heading", { level: 1 })).toHaveText(
     /Technique/,

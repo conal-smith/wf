@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Puffin — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../pen-note/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+    <style>
+      /* Demo only: the words the marks and labels sit in. */
+      .demo__caption {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__stack {
+        display: grid;
+        justify-items: center;
+        gap: var(--sem-space-x1);
+      }
+      .demo__row--foot {
+        align-items: flex-end;
+      }
+      /* The Almanac's signature: the note, and the puffin at its foot. */
+      .demo__almanac {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--sem-space-x4);
+        max-width: var(--sem-container-dialog);
+        padding-left: var(--sem-space-x4);
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .demo__almanac > div {
+        display: grid;
+        flex: 1;
+        gap: var(--sem-space-x1);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Puffin</h2>
+
+      <p class="demo__label">Sizes · 32, 44 (the menu), 57 (default), 96</p>
+      <div class="demo__row demo__row--foot">
+        <div class="demo__stack"><svg class="wf-puffin" width="29.54" height="32" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-s32" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-s32)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg><span class="demo__caption">32</span></div>
+        <div class="demo__stack"><svg class="wf-puffin" width="40.62" height="44" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-s44" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-s44)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg><span class="demo__caption">44</span></div>
+        <div class="demo__stack"><svg class="wf-puffin" width="52.62" height="57" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-s57" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-s57)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg><span class="demo__caption">57</span></div>
+        <div class="demo__stack"><svg class="wf-puffin" width="88.62" height="96" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-s96" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-s96)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg><span class="demo__caption">96</span></div>
+      </div>
+
+      <p class="demo__label">Signing the note · bob, titled "The Almanac"</p>
+      <div class="demo__almanac">
+        <div>
+          <p class="wf-pen-note">Go 13:00–16:00. Four stars on a 6 m.</p>
+          <p class="wf-pen-note wf-pen-note--sm">WSW 14 g22 · cross-shore · HW 13:25</p>
+        </div>
+        <svg class="wf-puffin wf-puffin--bob" width="52.62" height="57" viewBox="0 0 120 130" role="img" aria-label="The Almanac" focusable="false">
+          <defs>
+            <pattern id="puffin-almanac" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-almanac)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg>
+      </div>
+
+      <p class="demo__label">Decorative (aria-hidden) · titled (role img)</p>
+      <div class="demo__row demo__row--foot">
+        <svg class="wf-puffin" width="40.62" height="44" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-deco" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-deco)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg>
+        <svg class="wf-puffin" width="40.62" height="44" viewBox="0 0 120 130" role="img" aria-label="The Almanac" focusable="false">
+          <defs>
+            <pattern id="puffin-titled" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-titled)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Puffin · night chart (proposed)</h2>
+      <div class="demo__row demo__row--foot">
+        <svg class="wf-puffin wf-puffin--bob" width="52.62" height="57" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-night" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-night)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg>
+        <svg class="wf-puffin" width="88.62" height="96" viewBox="0 0 120 130" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="puffin-night-96" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+              <line class="wf-puffin__paper-line" x1="0" y1="0" x2="0" y2="2.4" stroke-width=".55" />
+            </pattern>
+          </defs>
+          <path class="wf-puffin__rock" d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" stroke-width="1.3" stroke-linejoin="round" />
+          <path class="wf-puffin__ink-line" d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke-width=".8" stroke-linecap="round" />
+          <g class="wf-puffin__figure">
+            <path class="wf-puffin__pen" d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" stroke-width=".9" stroke-linejoin="round" />
+            <path class="wf-puffin__ink" d="M78 96 L92 106 L80 104 Z" />
+            <path class="wf-puffin__ink" d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" />
+            <path class="wf-puffin__paper" d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" stroke-width=".6" stroke-linecap="round" opacity=".55" />
+            <path class="wf-puffin__hatched" d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#puffin-night-96)" stroke-width=".6" />
+            <circle class="wf-puffin__ink" cx="56" cy="33" r="16.5" />
+            <path class="wf-puffin__paper" d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" stroke-width=".9" />
+            <path class="wf-puffin__ink-line" d="M44 38 q4 3 9 2" stroke-width=".55" opacity=".5" />
+            <path class="wf-puffin__ink-line" d="M46.5 26.5 L49 24 L51.5 26.5" stroke-width=".8" stroke-linecap="round" />
+            <circle class="wf-puffin__ink" cx="49" cy="29" r="2" />
+            <circle class="wf-puffin__paper" cx="49.6" cy="28.4" r=".55" stroke-width="0" />
+            <path class="wf-puffin__ink-line" d="M51 30.5 L55 32" stroke-width=".7" stroke-linecap="round" />
+            <path class="wf-puffin__pen" d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" stroke-width="1.1" stroke-linejoin="round" />
+            <path class="wf-puffin__buoy" d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" stroke-width=".8" />
+            <path class="wf-puffin__paper-line" d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" stroke-width=".9" stroke-linecap="round" />
+            <path class="wf-puffin__ink-line" d="M21 37 C28 37.5 36 37 43 34.5" stroke-width=".7" />
+          </g>
+        </svg>
+      </div>
+    </section>
+  </body>
+</html>

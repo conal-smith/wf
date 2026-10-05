@@ -8,10 +8,17 @@ export const fieldStyles = tv({
     // A label's leading, not a paragraph's: the body step at the design
     // system's label line height (1.3), which is what a field label has always
     // been drawn at. The hint sits on the same line and keeps it.
+    // The mono label, as a chart's legend names a thing: TITLE, PRICE. The
+    // hint beside it goes back to the body face's italic, in sentence case.
     label:
-      "flex items-baseline justify-between gap-2 font-sans text-body leading-tight font-semibold text-ink-2",
-    hint: "text-right text-body leading-tight font-normal text-ink-muted",
-    error: "font-sans text-body text-warn",
+      "flex items-baseline justify-between gap-2 font-mono text-eyebrow leading-tight text-ink-muted uppercase",
+    // The hint's face stands taller than the mono label's, and in a row
+    // aligned on the baseline it would deepen the row: the label 2px lower and
+    // the control under it 3.6px lower than a field without a hint. Drawn in
+    // by 2px above and below, it fits the label's line exactly; a hint long
+    // enough to wrap still takes the room its second line needs.
+    hint: "-my-0.5 text-right font-body text-body leading-tight font-normal tracking-normal text-ink-muted normal-case italic",
+    error: "font-body text-body text-warn italic",
   },
 });
 

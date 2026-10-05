@@ -2,8 +2,8 @@ import failte from "../data/locations/failte-ireland.json";
 import osm from "../data/locations/openstreetmap.json";
 import web from "../data/locations/web-research.json";
 import guides from "../data/locations/spot-guides.json";
-import shore from "../data/locations/shore-facing.json";
 import type { Spot } from "../force5/src/weather";
+import { shoreFacing } from "../force5/src/shoreFacing";
 
 export const locationKindLabel = (kind: Spot["kind"]) =>
   ({
@@ -45,17 +45,7 @@ export function ridingLocations(original: Spot[]): Spot[] {
   });
 }
 
-/**
- * The seaward bearing the stars rate a place's shore against: a hand
- * correction where there is one, else the computed facing where it was clear
- * enough to publish, else null and the place is rated on the wind alone.
- */
-export function shoreFacing(id: string): number | null {
-  const overrides: Record<string, number | null> = shore.overrides;
-  if (id in overrides) return overrides[id];
-  const places: Record<string, { facing: number | null }> = shore.places;
-  return places[id]?.facing ?? null;
-}
+export { shoreFacing };
 
 /**
  * The place a link from elsewhere on the site opens the map on: `/?spot=keel`,

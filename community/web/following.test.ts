@@ -273,8 +273,9 @@ describe("S1: Following", () => {
       html(
         createElement(ThreadRow, { thread: t, showChannel: true, now: NOW }),
       );
+    // In the row's dateline, beside its channel.
     expect(row(thread("a", { why: "replied" }))).toMatch(
-      /<svg [^>]*lucide-bell[^>]*>.*?<\/svg>You replied/,
+      /<p class="[^"]*uppercase[^"]*">.*?>You replied<\/span>/,
     );
     const plain = row(thread("b"));
     for (const words of Object.values(WHY)) expect(plain).not.toContain(words);
@@ -332,9 +333,9 @@ describe("S1: Following", () => {
     );
     expect(out).toContain("Nothing followed yet");
     expect(out).toContain(
-      "You follow a thread by starting it or replying to it, and a channel by choosing to.",
+      "Start a thread or reply to one, and it is kept here.",
     );
-    expect(out).toContain("None yet.");
+    expect(out).toContain("None yet: Follow channel, on any channel.");
     expect(out).not.toContain(">Manage<");
     expect(filled(out)).toEqual([]);
   });
@@ -681,12 +682,12 @@ describe("S4: a row of the bell", () => {
 
   it("unread is a dot, a tint and a word: never colour alone", () => {
     const unread = drawn(note("u"));
-    expect(unread).toMatch(/^<a [^>]*class="[^"]*bg-ground/);
+    expect(unread).toMatch(/^<a [^>]*class="[^"]*bg-sunken/);
     expect(unread).toMatch(
       /<span class="[^"]*rounded-full bg-accent[^"]*"><span class="sr-only">Unread<\/span><\/span>/,
     );
     const read = drawn(note("u", { readAt: minutesAgo(1) }));
-    expect(read).not.toMatch(/^<a [^>]*class="[^"]*bg-ground/);
+    expect(read).not.toMatch(/^<a [^>]*class="[^"]*bg-sunken/);
     expect(read).not.toContain("Unread");
     expect(read).not.toContain("bg-accent");
   });
@@ -965,7 +966,7 @@ describe("S6: a member's profile", () => {
       { handle: "aoife-k" },
       { useMember: memberOf(memberReady([thread("a"), thread("b")])) },
     );
-    expect(out).toMatch(/<h1 [^>]*>Aoife K<\/h1>/);
+    expect(out).toMatch(/<h1 [^>]*><span [^>]*>Aoife K<\/span><\/h1>/);
     expect(out).toContain("@aoife-k · Dublin · Joined September 2026");
     expect(out).toContain("Dollymount most evenings.");
     expect(out).toMatch(/<h2 [^>]*>Threads Aoife K started<\/h2>/);

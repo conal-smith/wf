@@ -4,15 +4,16 @@ import { tv, type VariantProps } from "./tv";
 
 export const noticeStyles = tv({
   slots: {
-    base: "flex items-start gap-3 rounded-control px-5 py-3 font-sans text-prose",
+    // Set off as the broadsheet sets off a note: a heavy rule down its edge.
+    base: "flex items-start gap-3 border-l-3 px-4 py-3 font-body text-prose",
     icon: "mt-0.5 shrink-0",
     body: "min-w-0",
   },
   variants: {
     kind: {
-      info: { base: "bg-sunken text-ink-2" },
+      info: { base: "border-ink bg-sunken text-ink-2" },
       // Warm, an icon of its own and an interrupting role: three tellings.
-      warn: { base: "bg-warn-ground text-warn" },
+      warn: { base: "border-warn bg-warn-ground text-warn" },
     },
   },
   defaultVariants: { kind: "info" },

@@ -1,10 +1,47 @@
 import { describe, expect, it } from "vitest";
 import {
+  APP_ROUTES,
   SITE_SECTIONS,
+  isSpotPath,
+  isStarsPath,
+  mapSpotHref,
+  spotHref,
+  spotIdFromPath,
   isAiPath,
   isCommunityPath,
   isMarketPath,
+  OWN_BUNDLE_PATHS,
 } from "./siteNav";
+
+describe("OWN_BUNDLE_PATHS", () => {
+  const claimed = (path: string) => OWN_BUNDLE_PATHS.some((p) => p.test(path));
+
+  // The build preloads the map's chunk wherever none of these match, so it
+  // must claim exactly what the entry point splits off.
+  it("claims every path the entry point gives a bundle of its own", () => {
+    for (const path of [
+      "/market",
+      "/market/sell",
+      "/community/c/general",
+      "/ai",
+      "/spot/brandon",
+      "/stars",
+    ]) {
+      expect(claimed(path)).toBe(true);
+      expect(
+        isMarketPath(path) ||
+          isCommunityPath(path) ||
+          isAiPath(path) ||
+          isSpotPath(path),
+      ).toBe(true);
+    }
+  });
+
+  it("leaves the map's paths alone", () => {
+    for (const path of ["/", "", "/?spot=brandon", "/spots", "/marketplace"])
+      expect(claimed(path)).toBe(false);
+  });
+});
 
 describe("isMarketPath", () => {
   it("claims /market and everything under it", () => {
@@ -86,5 +123,72 @@ describe("SITE_SECTIONS", () => {
       expect(isCommunityPath(section.href)).toBe(section.id === "community");
       expect(isAiPath(section.href)).toBe(section.id === "ai");
     }
+  });
+});
+
+describe("isSpotPath", () => {
+  it("claims /spot and every place under it", () => {
+    expect(isSpotPath("/spot")).toBe(true);
+    expect(isSpotPath("/spot/")).toBe(true);
+    expect(isSpotPath("/spot/brandon")).toBe(true);
+    expect(isSpotPath("/spot/brandon/")).toBe(true);
+  });
+
+  it("claims /stars, the bundle's other page, and isStarsPath tells it apart", () => {
+    expect(isSpotPath("/stars")).toBe(true);
+    expect(isSpotPath("/stars/")).toBe(true);
+    expect(isSpotPath("/starship")).toBe(false);
+    expect(isStarsPath("/stars")).toBe(true);
+    expect(isStarsPath("/spot/brandon")).toBe(false);
+    expect(isStarsPath("/starsign")).toBe(false);
+  });
+
+  it("does not claim a path that merely starts with the word", () => {
+    expect(isSpotPath("/spots")).toBe(false);
+    expect(isSpotPath("/spotify")).toBe(false);
+    expect(isSpotPath("/")).toBe(false);
+    expect(isSpotPath("/?spot=brandon")).toBe(false);
+    expect(isSpotPath("/community/spot/brandon")).toBe(false);
+  });
+});
+
+describe("spotIdFromPath", () => {
+  it("reads the one segment after /spot, decoded", () => {
+    expect(spotIdFromPath("/spot/brandon")).toBe("brandon");
+    expect(spotIdFromPath("/spot/brandon/")).toBe("brandon");
+    expect(spotIdFromPath("/spot/fi-inchydoney%20east")).toBe(
+      "fi-inchydoney east",
+    );
+  });
+
+  it("is null for the index, a deeper path, or a malformed escape", () => {
+    expect(spotIdFromPath("/spot")).toBeNull();
+    expect(spotIdFromPath("/spot/")).toBeNull();
+    expect(spotIdFromPath("/spot/brandon/extra")).toBeNull();
+    expect(spotIdFromPath("/spot/%E0%A4%A")).toBeNull();
+  });
+
+  it("round-trips with spotHref", () => {
+    for (const id of ["brandon", "osm-blast-kilcrea", "a b/c"])
+      expect(spotIdFromPath(spotHref(id))).toBe(id);
+  });
+});
+
+describe("mapSpotHref", () => {
+  it("opens the map on a place", () => {
+    expect(mapSpotHref("keel")).toBe("/?spot=keel");
+    expect(mapSpotHref("a b")).toBe("/?spot=a%20b");
+  });
+});
+
+describe("APP_ROUTES", () => {
+  it("is every section with a bundle of its own, then the spot page and the stars", () => {
+    expect(APP_ROUTES).toEqual([
+      "/market",
+      "/community",
+      "/ai",
+      "/spot",
+      "/stars",
+    ]);
   });
 });

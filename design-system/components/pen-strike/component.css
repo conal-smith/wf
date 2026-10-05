@@ -1,0 +1,45 @@
+/* PenStrike — ui/Pen.tsx (penStyles: wrap, strike, stroke) with
+ * ui/penPaths.ts (strikePath), rendered in CSS. Consumes --sem-* only.
+ *
+ * A stroke through what is off: offshore, sold, cancelled. It lies over the
+ * words' own box (inset-0), its viewBox `0 0 w h`, rising left to right from
+ * 4% in at 72% down to 96% across at 30% down: strikePath(w, h). Never colour
+ * alone: the word is struck *and* red. Drawn in once; simply there for a
+ * reader who asks for less motion. */
+
+.wf-pen-strike {
+  position: relative;
+  display: inline-block;
+}
+
+.wf-pen-strike__mark {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wf-pen-strike__stroke {
+  fill: none;
+  stroke: var(--sem-color-pen);
+  /* stroke-2: two user units, which are pixels here */
+  stroke-width: var(--sem-rule-heavy);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: var(--sem-opacity-pen);
+  animation: var(--sem-animate-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-pen-strike__stroke {
+    animation: none;
+  }
+}
+
+@keyframes ink {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

@@ -3,7 +3,7 @@ import { RING, tv, type VariantProps } from "./tv";
 
 export const linkStyles = tv({
   base: [
-    "rounded-control text-quiet transition-colors duration-fast not-disabled:hover:text-ink",
+    "rounded-control text-quiet transition-colors duration-fast not-disabled:hover:text-chart-magenta",
     RING,
   ],
   variants: {
@@ -11,7 +11,7 @@ export const linkStyles = tv({
     // In a list of nothing but links, a footer or a menu, it can go plain.
     plain: {
       false:
-        "underline underline-offset-4 decoration-line-strong not-disabled:hover:decoration-current",
+        "underline decoration-1 underline-offset-3 decoration-line-strong not-disabled:hover:decoration-current",
       true: "no-underline",
     },
   },

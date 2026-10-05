@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 /**
  * The three apps on this origin must not reach each other.
  *
- * `src/main.tsx` picks the wind map, the marketplace or the community from the
- * pathname and lazy-loads the latter two, so the map never pays for them and
- * they never pay for MapLibre, nor for each other. The shared site menu is the
+ * `src/main.tsx` picks the wind map, the marketplace, the community, the AI
+ * page or the spot page from the pathname and loads each with a dynamic
+ * import, so none pays for another: the map never pays for them, and they
+ * never pay for MapLibre. The shared site menu is the
  * one piece of code all three import, and a single careless
  * `from "../force5/src"` in it — the barrel, which exports `WindMap` — would
  * quietly pull the whole map into the marketplace chunk and the community's.
@@ -39,7 +40,8 @@ const EXTENSIONS = [
 
 function resolveLocal(from: string, specifier: string): string | null {
   if (!specifier.startsWith(".")) return null;
-  const base = join(dirname(from), specifier);
+  // Node-style TypeScript writes `./source.js` for `./source.ts` (mcp/api).
+  const base = join(dirname(from), specifier).replace(/\.js$/, "");
   for (const ext of EXTENSIONS) {
     const candidate = base + ext;
     if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
@@ -169,8 +171,11 @@ describe("the community bundle", () => {
   });
 });
 
-describe("the map bundle", () => {
-  it("reaches the marketplace only through the lazy import in main.tsx", () => {
+describe("the entry point", () => {
+  // src/main.tsx is what every path downloads first, so it carries the base
+  // and the path test and nothing else: each section, the map included, is a
+  // dynamic import of its own.
+  it("reaches the marketplace only through the lazy import", () => {
     const graph = staticGraph("src/main.tsx");
     expect([...graph].filter((m) => m.startsWith("market/web/"))).toEqual([]);
     // The one line that does cross, and it is a dynamic import.
@@ -187,7 +192,106 @@ describe("the map bundle", () => {
     );
   });
 
-  it("still reaches MapLibre, so the check above is about something", () => {
-    expect(staticGraph("src/main.tsx")).toContain("maplibre-gl");
+  // A spot page, /stars and /ai must not download the map's 1.6 MB: the map
+  // is imported, not linked, and only on its own paths.
+  it("does not statically reach the map, MapLibre or the map's app", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect([...graph].filter((m) => m === "src/App.tsx")).toEqual([]);
+    expect(reached("src/main.tsx", "force5/src/index.ts")).toEqual([]);
+    expect(reached("src/main.tsx", "WindMap")).toEqual([]);
+    expect(reached("src/main.tsx", "maplibre-gl")).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /import\("\.\/App"\)/,
+    );
+  });
+
+  it("still reaches the base and the path test, so the check above is about something", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect(graph).toContain("src/styles.css");
+    expect(graph).toContain("ui/theme.css");
+    expect(graph).toContain("force5/src/siteNav.ts");
+  });
+});
+
+describe("the map bundle", () => {
+  const ENTRY = "src/App.tsx";
+
+  it("reaches none of the other sections", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter((m) =>
+        /^(market|community|spot|ai)\//.test(m),
+      ),
+    ).toEqual([]);
+  });
+
+  it("still reaches MapLibre and its stylesheet, so the checks above are about something", () => {
+    const graph = staticGraph(ENTRY);
+    expect(graph).toContain("maplibre-gl");
+    expect(graph).toContain("src/map.css");
+  });
+});
+
+// The map and the spot page explain an hour's stars with one component. It
+// is the kit's, which both may import, because neither may import the other.
+describe("the stars' explanation", () => {
+  it("is ui/RatingTip.tsx in both the map and the spot page, and nowhere else", () => {
+    for (const entry of ["src/App.tsx", "spot/web/SpotApp.tsx"]) {
+      const graph = [...staticGraph(entry)];
+      expect(graph, entry).toContain("ui/RatingTip.tsx");
+      expect(
+        graph.filter((m) => /(StarTip|RatingTip)\.tsx$/.test(m)),
+        entry,
+      ).toEqual(["ui/RatingTip.tsx"]);
+    }
+  });
+});
+
+describe("the spot page bundle", () => {
+  const ENTRY = "spot/web/SpotApp.tsx";
+
+  it("does not statically reach the map, MapLibre or the map's app", () => {
+    expect(reached(ENTRY, "force5/src/index.ts")).toEqual([]);
+    expect(reached(ENTRY, "WindMap")).toEqual([]);
+    expect(reached(ENTRY, "maplibre-gl")).toEqual([]);
+    // It borrows nothing from the map's sources: its stars come from the kit
+    // and its glyphs are its own (spot/web/glyphs.tsx).
+    expect(
+      [...staticGraph(ENTRY)].filter((m) => m.startsWith("src/")).sort(),
+    ).toEqual([]);
+  });
+
+  it("reaches neither the marketplace nor the community, nor they it", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter(
+        (m) => m.startsWith("market/") || m.startsWith("community/"),
+      ),
+    ).toEqual([]);
+    for (const other of [
+      "market/web/MarketApp.tsx",
+      "community/web/CommunityApp.tsx",
+      "src/App.tsx",
+    ])
+      expect(
+        [...staticGraph(other)].filter((m) => m.startsWith("spot/")),
+      ).toEqual([]);
+  });
+
+  // The page reads the forecast through the MCP server's reduction, and the
+  // browser-safe half of its reader: never the half that opens the disk.
+  it("reads the forecast through the shared, browser-safe modules", () => {
+    const graph = staticGraph(ENTRY);
+    expect(graph).toContain("mcp/api/forecast.ts");
+    expect(graph).toContain("mcp/api/httpSource.ts");
+    expect(graph).toContain("force5/src/stars.ts");
+    expect(graph).not.toContain("mcp/api/source.ts");
+    expect([...graph].filter((m) => m.startsWith("node:"))).toEqual([]);
+  });
+
+  it("is reached from the entry point only through its lazy import", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect([...graph].filter((m) => m.startsWith("spot/"))).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /React\.lazy\(\s*\(\)\s*=>\s*import\("\.\.\/spot\/web\/SpotApp"\)/,
+    );
   });
 });

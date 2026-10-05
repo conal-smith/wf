@@ -18,6 +18,7 @@ import {
   pathPoints,
   quantile,
   type BlendInput,
+  perModelLines,
 } from "./blend";
 import { KNOTS } from "./units";
 import type { SeriesPoint } from "./series";
@@ -275,6 +276,34 @@ describe("per-hour statistics", () => {
     expect(quantile([1, 2, 3, 4], 0.25)).toBeCloseTo(1.75, 10);
     expect(quantile([1, 2, 3, 4], 0.5)).toBeCloseTo(2.5, 10);
     expect(quantile([4], 0.75)).toBe(4);
+  });
+});
+
+describe("per-model consensus", () => {
+  const line = (model: string, speed: number, member?: number) => ({
+    model,
+    ...(member === undefined ? {} : { memberIndex: member }),
+    speed: [speed, null],
+    gust: [speed * 1.5, null],
+  });
+  it("counts an ensemble once, as its member mean, beside each deterministic model", () => {
+    const members = [4, 5, 6, 5, 4, 6].map((v, i) => line("gefs", v, i));
+    const lines = perModelLines([
+      line("harmonie", 8),
+      ...members,
+      line("arome", 8),
+    ]);
+    expect(lines.map((l) => l.model)).toEqual(["harmonie", "gefs", "arome"]);
+    expect(lines[1].speed).toEqual([5, null]);
+    expect(lines[1].gust[0]).toBeCloseTo(7.5, 9);
+    // The fine-grid models now carry the median, not the members.
+    expect(blendStats(lines, ["a", "b"])[0].median).toBe(8);
+    expect(
+      blendStats(
+        [line("harmonie", 8), ...members, line("arome", 8)],
+        ["a", "b"],
+      )[0].median,
+    ).toBe(5.5);
   });
 });
 

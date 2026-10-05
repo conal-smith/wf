@@ -8,8 +8,8 @@ import { Field, TextInput } from "../../ui";
 import { buttonStyles } from "../../ui/Button";
 import { checkboxStyles } from "../../ui/Checkbox";
 import { controlStyles } from "../../ui/control";
-import { segmentedStyles } from "../../ui/Segmented";
 import { fieldStyles } from "../../ui/Field";
+import { mastheadStyles } from "../../ui/Masthead";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
@@ -29,7 +29,11 @@ import {
   SaveButton,
   SellerRating,
   sharedStyles,
+  shortAge,
   Stars,
+  starsOf,
+  newestFresh,
+  tabStyles,
 } from "./components";
 import { shellStyles } from "./MarketApp";
 import { browseStyles } from "./pages/BrowsePage";
@@ -99,6 +103,7 @@ const RECIPES = {
   sellStyles,
   sharedStyles,
   shellStyles,
+  tabStyles,
 };
 
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
@@ -227,14 +232,17 @@ describe("S1: Tailwind and ui/ only, everywhere in the marketplace", () => {
     );
   });
 
-  it("draws the face beside a name at the two sizes it had", () => {
-    expect(faceStyles().split(" ")).toEqual(
-      expect.arrayContaining(["size-control-lg", "text-lead", "bg-inverse"]),
-    );
+  it("draws the face beside a name as the kit's monogram, a size down on a phone", () => {
     expect(faceStyles({ large: true }).split(" ")).toEqual(
-      expect.arrayContaining(["size-17.5", "text-title", "tracking-normal"]),
+      expect.arrayContaining(["max-wide:size-14", "max-wide:text-lead"]),
     );
-    expect(html(createElement(Avatar, { name: "aoife" }))).toContain(">A<");
+    expect(html(createElement(Avatar, { name: "Aoife Byrne" }))).toContain(
+      ">AB<",
+    );
+    // The kit's ring in ink, not the old filled disc.
+    expect(html(createElement(Avatar, { name: "aoife" }))).toMatch(
+      /class="[^"]*border-ink[^"]*italic/,
+    );
   });
 });
 
@@ -264,7 +272,8 @@ describe("S2: the shell's measures", () => {
     expect(page).not.toContain("px-6");
     expect(page).not.toContain("max-wide:px-3");
 
-    expect(headerStyles().base().split(" ")).toContain("pt-safe-3");
+    // The header is the site's masthead now, and it keeps the notch clear too.
+    expect(mastheadStyles().base().split(" ")).toContain("pt-safe-2");
     expect(footerStyles().base()).toContain("pb-safe-6");
   });
 });
@@ -281,7 +290,7 @@ describe("S3: what a phone drops, at 720px", () => {
     const styles = headerStyles();
     expect(styles.label()).toBe("hidden wide:inline");
     expect(styles.name()).toContain("wide:inline-flex");
-    expect(styles.bar()).toContain("max-wide:px-1");
+    expect(mastheadStyles().bar()).toContain("max-wide:gap-2");
   });
 
   it("scrolls the category rail on one line, bleeding to the edge", () => {
@@ -338,13 +347,23 @@ describe("S3: what a phone drops, at 720px", () => {
 });
 
 describe("S5: what the card does, and what it does not", () => {
-  it("lifts and zooms under the pointer, and stands still under reduce", () => {
-    const styles = listingCardStyles();
-    expect(styles.card()).toContain(
-      "motion-safe:not-disabled:hover:-translate-y-1",
+  it("is a ruled pane: the heavy rule over the ad, no box round it", () => {
+    const out = card("active");
+    const open = out.slice(0, out.indexOf(">"));
+    expect(open).toContain("border-t-2");
+    expect(open).toContain("border-ink");
+    expect(open).not.toMatch(/[\s"]border[\s"]/);
+    // The photograph stands in its own hairline frame.
+    expect(listingCardStyles().media().split(" ")).toEqual(
+      expect.arrayContaining(["border", "border-line"]),
     );
-    expect(styles.card()).toContain("not-disabled:hover:shadow-surface");
-    expect(styles.card()).toContain("motion-reduce:transition-none");
+  });
+
+  it("does not float under the pointer: the name underlines, the photo leans in", () => {
+    const styles = listingCardStyles();
+    expect(styles.card()).not.toContain("translate");
+    expect(styles.card()).not.toContain("shadow");
+    expect(styles.title()).toContain("group-hover:underline");
     expect(styles.image()).toContain("motion-safe:group-hover:scale-104");
     expect(styles.image()).toContain("motion-reduce:transition-none");
   });
@@ -371,27 +390,63 @@ describe("S5: what the card does, and what it does not", () => {
     expect(openTag(card("active"))).not.toContain("data-sold");
   });
 
-  it("is one link, with the price, the title and where it is", () => {
+  it("is one link, with the price as a figure, the title and where it is", () => {
     const out = card("active");
     expect(out).toMatch(/^<a href="\/market\/listing\/l1"/);
-    expect(out).toContain("€380");
+    expect(out).toMatch(/class="[^"]*font-mono[^"]*tabular-nums[^"]*">.*€380/);
     expect(out).toContain("<h3");
     expect(out).toContain("Castlegregory, Kerry");
-    // Two photos, so the count badge, and a rating the seller has earned.
+    // Two photos, so the count badge, and the seller's stars, said in words.
     expect(out).toContain("Photos:");
-    expect(out).toContain("4.5");
+    expect(out).toContain('aria-label="4.5 out of 5"');
   });
 
-  it("badges a saved listing in glass, at the corner of the photograph", () => {
+  it("badges a saved listing on paper, at the corner of the photograph", () => {
     // Top left is the badge's corner; bottom right is the photo count's,
     // which every card with more than one photo already carries.
     expect(card("active", { saved: true })).toMatch(
-      /class="[^"]*bg-glass[^"]*absolute top-3 left-3"/,
+      /class="[^"]*bg-glass[^"]*absolute top-2 left-2"/,
     );
-    expect(card("active")).not.toMatch(/absolute top-3 left-3/);
+    expect(card("active")).not.toMatch(/absolute top-2 left-2/);
     expect(card("active")).toMatch(
-      /class="[^"]*bg-glass[^"]*absolute right-3 bottom-3"/,
+      /class="[^"]*bg-glass[^"]*absolute right-2 bottom-2"/,
     );
+  });
+
+  it("loops new in the pen on one card at most, and only from this week", () => {
+    const now = Date.parse("2026-09-20T09:00:00.000Z");
+    const at = (id: string, iso: string, status: Listing["status"] = "active") =>
+      listingOf(status, { id, createdAt: iso });
+    expect(
+      newestFresh(
+        [
+          at("old", "2026-09-17T09:00:00.000Z"),
+          at("newer", "2026-09-19T09:00:00.000Z"),
+          at("sold", "2026-09-20T08:00:00.000Z", "sold"),
+        ],
+        now,
+      ),
+    ).toBe("newer");
+    expect(newestFresh([at("old", "2026-09-01T09:00:00.000Z")], now)).toBe(
+      null,
+    );
+    const fresh = html(
+      createElement(ListingCard, {
+        listing: listingOf("active", {}),
+        fresh: true,
+      }),
+    );
+    expect(fresh).toMatch(/font-hand[^"]*">new</);
+    expect(card("active")).not.toContain("font-hand");
+  });
+
+  it("says an age as a figure, and in words to a screen reader", () => {
+    const now = Date.parse("2026-09-20T09:00:00.000Z");
+    expect(shortAge("2026-09-20T08:59:50.000Z", now)).toBe("now");
+    expect(shortAge("2026-09-20T07:00:00.000Z", now)).toBe("2h");
+    expect(shortAge("2026-09-17T09:00:00.000Z", now)).toBe("3d");
+    expect(shortAge("2026-08-30T09:00:00.000Z", now)).toBe("3w");
+    expect(card("active")).toMatch(/class="sr-only">Listed \d+ days ago</);
   });
 });
 
@@ -469,14 +524,31 @@ describe("S1: the listing's two columns, and the panel that stays in view", () =
   });
 });
 
-describe("the seller's tabs", () => {
-  // The track clips what overflows it, so the ring goes inside the tab.
-  it("draws the ring inside the tab, where the track cannot clip it", () => {
-    const tab = sellerStyles().tab().split(" ");
+describe("the tabs, on the seller's page and the account", () => {
+  // The row clips what overflows it, so the ring goes inside the tab.
+  it("draws the ring inside the tab, where the row cannot clip it", () => {
+    const tab = tabStyles().tab().split(" ");
     expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
     expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
-    expect(tab).toContain("not-disabled:focus-visible:outline-3");
-    expect(sellerStyles().tabs().split(" ")).toContain("overflow-x-auto");
+    expect(tab).toContain("not-disabled:focus-visible:outline-2");
+    expect(tabStyles().list().split(" ")).toContain("overflow-x-auto");
+    expect(tabStyles().list().split(" ")).toContain("scrollbar-none");
+  });
+
+  it("underlines the one being read in ink and sets it heavier, not colour alone", () => {
+    const tab = tabStyles().tab().split(" ");
+    expect(tab).toContain("aria-selected:border-ink");
+    expect(tab).toContain("aria-selected:font-semibold");
+    expect(tab).toContain("pointer-coarse:min-h-touch");
+  });
+
+  it("is the one recipe both pages draw their tabs with", () => {
+    expect(read("pages/SellerPage.tsx")).toContain("tabs.tab()");
+    expect(read("pages/MePage.tsx")).toContain("tabs.tab()");
+    expect(read("pages/MePage.tsx")).toMatch(/<Link[\s\S]*?role="tab"/);
+    expect(read("pages/MePage.tsx")).toContain(
+      "<small className={tabs.count()}",
+    );
   });
 });
 
@@ -502,7 +574,7 @@ describe("S2: the gallery", () => {
       .split(" ")
       .filter((c) => c.startsWith("aria-pressed:"));
     expect(pressed).toContain("aria-pressed:not-focus-visible:outline-2");
-    expect(pressed).toContain("aria-pressed:not-focus-visible:outline-accent");
+    expect(pressed).toContain("aria-pressed:not-focus-visible:outline-ink");
     // The opacity is there too, and on its own it would not be a state.
     expect(pressed).toContain("aria-pressed:opacity-100");
     // The outline gives way to the focus ring, never sits over it.
@@ -511,52 +583,61 @@ describe("S2: the gallery", () => {
   });
 });
 
-describe("S3: the accent is for what was earned, the line for what was not", () => {
-  it("colours the marks, the picker and the bars the one pair of ways", () => {
-    const rating = ratingStyles();
-    expect(rating.marks().split(" ")).toContain("text-accent");
-    expect(rating.empty().split(" ")).toContain("text-line-strong");
-    expect(ratingStyles({ lit: true }).star().split(" ")).toContain(
-      "text-accent",
+describe("S3: a rating is the chart's star, and the shape says it", () => {
+  it("draws whole stars, the half an average reaches past, and dots", () => {
+    expect(starsOf(4.5)).toEqual({ stars: 4, potential: 5 });
+    expect(starsOf(4.2)).toEqual({ stars: 4, potential: 4 });
+    expect(starsOf(4.8)).toEqual({ stars: 5, potential: 5 });
+    expect(starsOf(0)).toEqual({ stars: 0, potential: 0 });
+    const out = html(createElement(Stars, { value: 4.5 }));
+    expect(out).toContain('aria-label="4.5 out of 5"');
+    // Four solid, one outline, no lucide star anywhere.
+    expect(out.match(/fill-current"/g)).toHaveLength(4);
+    expect(out).toContain("fill-none stroke-current");
+    expect(out).not.toContain("lucide");
+    expect(html(createElement(Stars, { value: null }))).toContain(
+      'aria-label="Not yet rated"',
     );
-    expect(rating.star().split(" ")).toContain("text-line-strong");
-    // What the picker's own button comes to once the star's colour is laid
-    // over the kit's: the mark's colour, and no box under the pointer.
+  });
+
+  it("picks a rating with the same star, solid when lit", () => {
+    const out = html(createElement(RatingPicker, { value: 2, onChange: () => {} }));
+    expect(out.match(/role="radio"/g)).toHaveLength(5);
+    expect(out.match(/fill-current"/g)).toHaveLength(2);
+    expect(out).not.toContain("lucide");
     for (const lit of [true, false]) {
       const star = buttonStyles({
         icon: true,
-        size: "sm",
+        size: "md",
         className: ratingStyles({ lit }).star(),
       }).split(" ");
-      expect(star).toContain(lit ? "text-accent" : "text-line-strong");
-      expect(star).not.toContain("text-quiet");
+      expect(star).toContain(lit ? "text-ink" : "text-ink-muted");
       expect(star).toContain("not-disabled:hover:bg-transparent");
-      expect(star).not.toContain("not-disabled:hover:bg-sunken");
     }
-    expect(sellerStyles().fill().split(" ")).toContain("bg-accent");
-    expect(sellerStyles().bar().split(" ")).toContain("bg-sunken");
   });
 
-  /*
-   * A filled star is a mark, not an action, so it does not spend the view's
-   * one filled control: nothing either page draws takes the accent as a fill
-   * but the histogram's bar, and the one accent-filled control on the listing
-   * is the kit's primary, which the page uses once.
-   */
-  it("leaves the one accent fill to the one action", () => {
+  it("sums a seller up in a figure beside the stars, or says there is none", () => {
+    expect(html(createElement(SellerRating, { seller: sellerOf(2) }))).toMatch(
+      /font-mono[^"]*">4\.5/,
+    );
+    expect(html(createElement(SellerRating, { seller: sellerOf(0) }))).toContain(
+      "No ratings yet",
+    );
+  });
+
+  // The histogram's bars are a quantity, so they are magenta's wash, as the
+  // chart draws the chance an hour rides; nothing on these pages fills in
+  // the accent but the kit's one primary.
+  it("fills the histogram in the wash, and leaves the accent fill to the action", () => {
+    expect(sellerStyles().fill().split(" ")).toContain("bg-wash/25");
     expect(classesOf(listingStyles)).not.toContain("bg-accent");
     expect(classesOf(ratingStyles)).not.toContain("bg-accent");
-    expect(classesOf(sellerStyles).filter((c) => c === "bg-accent")).toEqual([
-      "bg-accent",
-    ]);
+    expect(classesOf(sellerStyles)).not.toContain("bg-accent");
     expect(buttonStyles({ variant: "primary" })).toContain("bg-accent");
     // Saved is a toggle that says so in its own words, not another fill.
-    expect(buttonStyles({ variant: "pill", pressed: "worded" })).not.toContain(
-      "bg-accent",
-    );
-    expect(buttonStyles({ variant: "pill", pressed: "worded" })).not.toContain(
-      "bg-inverse",
-    );
+    expect(
+      buttonStyles({ variant: "pill", pressed: "worded" }).split(" "),
+    ).not.toContain("bg-inverse");
   });
 });
 
@@ -621,7 +702,8 @@ describe("S4: the sign-in gate", () => {
     // on the inverse ground, and is not a pressed button.
     const toggle = out.match(/<button[^>]*aria-pressed="true"[^>]*>/)?.[0];
     expect(toggle).toBeDefined();
-    expect(toggle).not.toContain("bg-inverse");
+    // Its hover inks it (`not-disabled:hover:bg-inverse`); at rest it is not.
+    expect(toggle).not.toMatch(/[\s"]bg-inverse[\s"]/);
   });
 });
 
@@ -724,12 +806,9 @@ describe("S4: the header, and its one filled action", () => {
       out.match(/<a href="\/market\/sell" class="([^"]*)"/)![1];
     const filled = sell(await headerAs("maeve", true));
     expect(filled).toContain("bg-accent");
-    // And takes the wider inset only where the bar has room for it.
-    expect(filled).toContain("wide:px-3");
     const stood = sell(await headerAs("maeve", false));
     expect(stood).not.toContain("bg-accent");
     expect(stood).toContain("bg-card");
-    expect(stood).not.toContain("wide:px-3");
   });
 });
 
@@ -843,62 +922,14 @@ describe("sell/me S2: the photo uploader", () => {
     expect(styles.tile().split(" ")).toContain("group");
   });
 
-  it("puts the cover badge and the tools on glass over the photograph", () => {
+  it("puts the cover badge and the tools on paper over the photograph", () => {
     expect(styles.badge().split(" ")).toEqual(["absolute", "top-1", "left-1"]);
-    expect(styles.tool()).toContain("bg-glass");
-    // Glass is a choice a reader can decline, here as everywhere else.
-    expect(styles.tool()).toContain("reduced-transparency:bg-solid");
-    expect(styles.tools()).toContain("absolute");
-  });
-});
-
-describe("sell/me S3: the account's tabs", () => {
-  it("is the kit's Segmented, worn by links that are real URLs", () => {
-    const source = read("pages/MePage.tsx");
-    expect(source).toContain("segmentedStyles().item(");
-    expect(source).toMatch(/<Link[\s\S]*?role="tab"/);
-  });
-
-  it("scrolls sideways rather than wrapping onto a second line", () => {
-    const tabs = meStyles().tabs().split(" ");
-    expect(tabs).toContain("overflow-x-auto");
-    expect(tabs).toContain("scrollbar-none");
-  });
-
-  // A scrolling track clips past its padding, so the ring is drawn inside.
-  it("draws the ring inside a tab, where the scrolling track cannot cut it", () => {
-    const tab = segmentedStyles()
-      .item({ className: meStyles().tab() })
-      .split(" ");
-    expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
-    expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
-    expect(tab).toContain("not-disabled:focus-visible:outline-3");
-    expect(tab).toContain("not-disabled:focus-visible:outline-focus");
-  });
-
-  /*
-   * The number of saved listings, inside the tab that holds them: the plain
-   * number market.css drew, and not the kit's Count, which is a filled badge
-   * for what has not been read yet and would be a new mark on this page.
-   */
-  it("keeps the count inside the tab, as a number", () => {
-    const count = meStyles().count().split(" ");
-    expect(count).toContain("text-caption");
-    // At the tab's own leading and weight, as the design bundle's segmented drew it:
-    // a caption-sized number in the muted ink, and nothing else about it.
-    expect(count).toContain("leading-tight");
-    expect(count).not.toContain("font-normal");
-    expect(meStyles().tab().split(" ")).toContain("leading-tight");
-    expect(read("pages/MePage.tsx")).toContain(
-      "<small className={styles.count",
+    // The kit's paper capsule, which stays paper when it cannot be pressed.
+    expect(read("pages/SellPage.tsx")).toMatch(
+      /variant="pill"\s+icon\s+size="sm"\s+className=\{styles\.tool\(\)\}/,
     );
-  });
-
-  it("is the same inset ring the seller page's own tabs draw", () => {
-    for (const tab of [meStyles().tab(), sellerStyles().tab()])
-      expect(tab.split(" ")).toContain(
-        "not-disabled:focus-visible:-outline-offset-2",
-      );
+    expect(styles.tool()).toContain("disabled:bg-card");
+    expect(styles.tools()).toContain("absolute");
   });
 });
 

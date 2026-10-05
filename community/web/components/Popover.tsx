@@ -7,19 +7,19 @@
 import { Check } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button, type ButtonProps } from "../../../ui";
-import { HOVER, RING, tv } from "../../../ui/tv";
+import { RING, tv } from "../../../ui/tv";
 
 export const popoverStyles = tv({
   slots: {
     base: "relative inline-flex",
+    // The chart's box, hung from its trigger: paper ruled in ink, square.
     panel:
-      "absolute z-popover flex w-max min-w-44 flex-col gap-0.5 rounded-control border border-line bg-card p-1 font-sans shadow-marker",
-    // A row of a panel that is a list of choices.
+      "absolute z-popover flex w-max min-w-44 flex-col border border-ink bg-card paper-grain p-1 font-body shadow-surface animate-menu-in motion-reduce:animate-none",
+    // A row of a panel that is a list of choices: the menu's row, on a hairline.
     item: [
-      "flex min-h-control-sm w-full cursor-pointer items-center gap-2 rounded-control px-2 text-left text-body whitespace-nowrap text-ink-2",
-      "pointer-coarse:min-h-touch",
+      "flex min-h-control-md w-full cursor-pointer items-center gap-2 border-0 border-b border-line px-2 text-left font-display text-body whitespace-nowrap text-ink-2 last:border-b-0",
+      "pointer-coarse:min-h-touch not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta",
       RING,
-      HOVER,
     ],
     check: "ml-auto shrink-0",
   },
@@ -34,7 +34,7 @@ export const popoverStyles = tv({
     // The picker is a grid of faces, not a list of words.
     grid: { true: { panel: "min-w-0 grid grid-cols-6 gap-0.5" } },
     // The choice that stands: heavier, and ticked.
-    chosen: { true: { item: "font-semibold text-ink" } },
+    chosen: { true: { item: "font-semibold text-ink italic" } },
   },
   defaultVariants: { align: "end", side: "bottom" },
 });
@@ -87,7 +87,12 @@ export function PopoverItem({
     >
       {children}
       {chosen && (
-        <Check className={styles.check()} size={14} aria-hidden="true" />
+        <Check
+          className={styles.check()}
+          size={14}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
       )}
     </button>
   );
