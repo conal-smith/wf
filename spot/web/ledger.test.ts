@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import {
+  SKILLS,
+  rateHour,
+  type Agreement,
+  type Rider,
+} from "../../force5/src/stars";
+import { ledger } from "./ledger";
+
+describe("the worked example's ledger", () => {
+  it("comes to the stars rateHour gives, for every level, shore, gust and agreement", () => {
+    let checked = 0;
+    for (const skill of SKILLS)
+      for (const weightKg of [null, 60, 110])
+        for (const wings of [[], [3], [8]]) {
+          const rider: Rider = { skill, weightKg, wings };
+          for (let windKn = 4; windKn <= 38; windKn += 2)
+            for (const factor of [null, 1, 1.3, 1.45, 1.6, 2])
+              for (let from = 0; from < 360; from += 30)
+                for (const agreement of [
+                  null,
+                  "high",
+                  "moderate",
+                  "low",
+                ] as (Agreement | null)[])
+                  for (const facing of [null, 95]) {
+                    const gustKn = factor === null ? null : windKn * factor;
+                    const hour = { windKn, gustKn, from, agreement };
+                    const rated = rateHour(
+                      { ...hour, daylight: true },
+                      { facing },
+                      rider,
+                    )!;
+                    const worked = ledger(hour, facing, rider)!;
+                    expect(
+                      worked.stars,
+                      JSON.stringify({ rider, hour, facing }),
+                    ).toBe(rated.stars);
+                    expect(worked.potential).toBe(rated.potential);
+                    checked++;
+                  }
+        }
+    expect(checked).toBeGreaterThan(100000);
+  });
+
+  it("shows its working", () => {
+    const worked = ledger(
+      { windKn: 12.6, gustKn: 18.9, from: 355, agreement: "moderate" },
+      101,
+      { skill: "intermediate", weightKg: null, wings: [] },
+    )!;
+    expect(worked.lines[0]).toEqual({
+      what: "Rides like",
+      figure: "12.6 + 0.3 × 0.81 × 6.3 = 14.1 kn",
+    });
+    expect(worked.lines.map((line) => line.what)).toContain(
+      "The models differ a little",
+    );
+    expect(worked.lines.find((line) => line.total)?.figure).toMatch(
+      /→ \d★ solid$/,
+    );
+  });
+});

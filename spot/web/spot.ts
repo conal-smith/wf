@@ -8,6 +8,7 @@
 import {
   bestWindow,
   rateHour,
+  windBand,
   shoreAngle,
   type HourRating,
   type Rider,
@@ -16,7 +17,11 @@ import {
 } from "../../force5/src/stars";
 import { sunTimes } from "../../force5/src/sun";
 import { KNOTS, convert, type Units } from "../../force5/src/units";
-import type { ForecastHour } from "../../mcp/api/forecast";
+import {
+  rideChance,
+  type ForecastHour,
+  type SpotForecast,
+} from "../../mcp/api/forecast";
 
 export const HOUR = 3600000;
 export const TIME_ZONE = "Europe/Dublin";
@@ -233,6 +238,24 @@ export interface SpotRow {
   rating: HourRating | null;
   /** How the wind meets the shore, rated or not; null where unknown. */
   shore: ShoreAngle | null;
+  /**
+   * The chance it rides, 0–100: the share of ensemble members whose rideable
+   * wind reaches this rider's floor. Null where no ensemble reaches the hour.
+   */
+  chance: number | null;
+}
+
+/**
+ * The chance for this rider: re-rated from the members when the forecast kept
+ * them, as the page asks it to, or the reduction's own figure (rated for the
+ * 80 kg intermediate) when it did not.
+ */
+export function hourChance(hour: ForecastHour, rider: Rider): number | null {
+  const ensemble = hour.ensemble;
+  if (!ensemble) return null;
+  return ensemble.samples
+    ? rideChance(ensemble.samples, rider)
+    : ensemble.chance_pct;
 }
 
 /** Rate one forecast hour for a rider at a shore, from the consensus line. */
@@ -290,6 +313,7 @@ export function spotRows(
       facing === null || !hour.wind
         ? null
         : shoreAngle(hour.wind.direction_deg, facing),
+    chance: hourChance(hour, rider),
   }));
 }
 
@@ -397,6 +421,17 @@ export interface TideTurn {
   height: number;
 }
 
+/** The published high and low waters, as instants. */
+export function tideTurns(forecast: SpotForecast): TideTurn[] {
+  const tides = forecast.tides;
+  if (!tides || !("events" in tides)) return [];
+  return tides.events.map((event) => ({
+    time: Date.parse(event.time),
+    tide: event.tide,
+    height: event.height_m,
+  }));
+}
+
 /**
  * The tide between two turns, by cosine interpolation: half a cosine wave
  * from one turn to the next, flat at high and low water and steepest at
@@ -493,4 +528,158 @@ export function shadeBands(
       to: Math.min(end, band.to),
     }))
     .filter((band) => band.to > band.from);
+}
+
+// ---- the day's window and the pen's note ----------------------------------------
+
+export const STAR_WORDS = ["no", "one", "two", "three", "four", "five"];
+const capital = (word: string) => word[0].toUpperCase() + word.slice(1);
+
+export interface DayWindow {
+  /** Indexes into the day's rows, inclusive. */
+  first: number;
+  last: number;
+  /** The highest solid stars of the day, which every row of the window has. */
+  stars: number;
+  potential: number;
+  from: number;
+  /** The instant the window ends: the end of its last row. */
+  to: number;
+  /** The wing the first row of it asks for: the rider's own, or the pick. */
+  wing: number;
+  /** Whether it runs to the last daylight row: "till dark". */
+  tillDark: boolean;
+}
+
+/**
+ * The day's best window, as the chart loops it: the longest run of rows at the
+ * day's highest solid stars, the earliest of equals. One row will do; null
+ * when no row of the day earns a star.
+ */
+export function dayWindow(rows: readonly SpotRow[]): DayWindow | null {
+  const top = Math.max(0, ...rows.map((row) => row.rating?.stars ?? 0));
+  if (top === 0) return null;
+  let best: [number, number] | null = null;
+  let start = -1;
+  for (let i = 0; i <= rows.length; i++) {
+    const on = i < rows.length && rows[i].rating?.stars === top;
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) {
+      if (!best || i - 1 - start > best[1] - best[0]) best = [start, i - 1];
+      start = -1;
+    }
+  }
+  const [first, last] = best!;
+  const rating = rows[first].rating!;
+  let lastLight = rows.length - 1;
+  while (lastLight > 0 && !rows[lastLight].rating) lastLight--;
+  return {
+    first,
+    last,
+    stars: top,
+    potential: Math.max(
+      ...rows.slice(first, last + 1).map((row) => row.rating!.potential),
+    ),
+    from: rows[first].time,
+    to: rows[last].time + rows[last].step * HOUR,
+    wing: rating.wing.own ?? rating.wing.recommended,
+    tillDark: last === lastLight && last > first,
+  };
+}
+
+/** "18–19": the window's hours, as the day's header gives them. */
+export function windowHours(window: DayWindow): string {
+  const first = clock(window.from).slice(0, 2);
+  const lastRow = clock(window.to - HOUR).slice(0, 2);
+  return first === lastRow ? first : `${first}–${lastRow}`;
+}
+
+/**
+ * The pen's verdict on a day, in a few words: "Go 18:00 till dark. Four stars
+ * on a 6.5 m." Null on a day with no daylight rated at all.
+ */
+export function penNote(
+  window: DayWindow | null,
+  rows: readonly SpotRow[],
+): string | null {
+  if (!window)
+    return rows.some((row) => row.rating) ? "Leave it on the roof." : null;
+  const span =
+    window.first === window.last && rows[window.first].step === 1
+      ? `at ${clock(window.from)}`
+      : window.tillDark
+        ? `${clock(window.from)} till dark`
+        : `${clock(window.from)}–${clock(window.to)}`;
+  const lead =
+    window.stars >= 4
+      ? `Go ${span}.`
+      : window.stars === 3
+        ? `Worth it ${span}.`
+        : `Thin: ${span}.`;
+  const count = `${capital(STAR_WORDS[window.stars])} star${window.stars > 1 ? "s" : ""}`;
+  return `${lead} ${count} on a ${window.wing} m.`;
+}
+
+/** Morning, afternoon or evening, for the hour a window starts. */
+export const partOfDay = (time: number) => {
+  const hour = dublinHour(time);
+  return hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+};
+
+export interface WeekBest {
+  date: string;
+  window: DayWindow;
+}
+
+/** The best window of the week: most stars, then the longest, then the soonest. */
+export function weekBest(
+  days: readonly { date: string; window: DayWindow | null }[],
+): WeekBest | null {
+  let best: WeekBest | null = null;
+  for (const { date, window } of days) {
+    if (!window) continue;
+    const length = window.last - window.first;
+    if (
+      !best ||
+      window.stars > best.window.stars ||
+      (window.stars === best.window.stars &&
+        length > best.window.last - best.window.first)
+    )
+      best = { date, window };
+  }
+  return best;
+}
+
+/**
+ * The headline's verdict: "a four-star Tuesday evening", "a three-star
+ * evening" today, "a two-star tomorrow morning".
+ */
+export function headlineWhen(best: WeekBest, now: number): string {
+  const names = dayNames(best.date, now);
+  const part = partOfDay(best.window.from);
+  const when =
+    names.relative === "Today"
+      ? `this ${part}`
+      : names.relative === "Tomorrow"
+        ? `tomorrow ${part}`
+        : `${names.long} ${part}`;
+  return `a ${STAR_WORDS[best.window.stars]}-star ${when}`;
+}
+
+/**
+ * Whether a gust jumps far enough over the mean to be the figure to watch:
+ * ten knots or more, or sixty per cent.
+ */
+export const gustJumps = (wind: number, gust: number | null) =>
+  gust !== null && (gust - wind >= 10 || gust >= wind * 1.6);
+
+/** The rider's band in knots, rounded, for the range bar and the tip. */
+export function bandKnots(rider: Rider) {
+  const band = windBand(rider);
+  return {
+    min: Math.round(band.min),
+    sweetLow: Math.round(band.sweetLow),
+    sweetHigh: Math.round(band.sweetHigh),
+    max: Math.round(band.max),
+  };
 }

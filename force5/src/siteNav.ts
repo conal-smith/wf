@@ -61,14 +61,23 @@ export function isAiPath(pathname: string): boolean {
 
 /**
  * `/spot`, `/spot/brandon` and `/spot/brandon/` — but not `/spots` or
- * `/spotify`. The spot page belongs to the map section (the menu marks the map
- * as current there) but is a bundle of its own, so the entry point matches it
- * here beside the sections it also splits off.
+ * `/spotify` — and `/stars`, "How the stars work", which is a page of the same
+ * bundle. Both belong to the map section (the menu marks the map as current
+ * there) but are a bundle of their own, so the entry point matches them here
+ * beside the sections it also splits off.
  */
-const SPOT_PATH = /^\/spot(\/|$)/;
+const SPOT_PATH = /^\/(spot|stars)(\/|$)/;
 
 export function isSpotPath(pathname: string): boolean {
   return SPOT_PATH.test(pathname);
+}
+
+/** "How the stars work": the spot bundle's other page. */
+export const STARS_HREF = "/stars";
+
+/** `/stars` and `/stars/`, which the spot bundle draws as the stars page. */
+export function isStarsPath(pathname: string): boolean {
+  return /^\/stars(\/|$)/.test(pathname);
 }
 
 /**
@@ -101,4 +110,5 @@ export const APP_ROUTES: readonly string[] = [
     (section) => section.href,
   ),
   "/spot",
+  STARS_HREF,
 ];
