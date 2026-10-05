@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Surface — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo content only: what a Surface holds over the map. */
+      .demo__stack {
+        display: grid;
+        gap: var(--sem-space-x4);
+      }
+      .demo__kick {
+        margin: 0 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__spot {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--sem-space-x3);
+        padding: var(--sem-space-x2) 0;
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .demo__name {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+        font-style: italic;
+      }
+      .demo__fig {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Surface</h2>
+
+      <p class="demo__label">rule="double" · the default</p>
+      <div class="demo__map">
+        <div class="wf-surface">
+          <p class="demo__kick">Starred · best Mon</p>
+          <div class="demo__spot">
+            <span class="demo__name">Dollymount</span>
+            <span class="demo__fig">13–14 · WSW 11g20</span>
+          </div>
+          <div class="demo__spot">
+            <span class="demo__name">Brandon Bay</span>
+            <span class="demo__fig">SW 10g15</span>
+          </div>
+          <div class="demo__spot">
+            <span class="demo__name">Rusheen Bay</span>
+            <span class="demo__fig">13–16 · WSW 14g22</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="demo__label">rule="single" · small, or inside another box</p>
+      <div class="demo__map demo__stack">
+        <div class="wf-surface wf-surface--single">
+          <p class="demo__kick">Rusheen Bay · Galway</p>
+          <span class="demo__fig">14 g22 · WSW · 6 m</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Surface · night chart (proposed)</h2>
+      <div class="demo__map demo__stack">
+        <div class="wf-surface">
+          <p class="demo__kick">You look at · best Mon</p>
+          <div class="demo__spot">
+            <span class="demo__name">Keel Beach</span>
+            <span class="demo__fig">13:00 · WSW 13g21</span>
+          </div>
+        </div>
+        <div class="wf-surface wf-surface--single">
+          <span class="demo__fig">Low tide 13:25 · 1.7 m</span>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

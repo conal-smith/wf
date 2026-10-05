@@ -1,0 +1,231 @@
+/* Hour cell — one hour's column of the dock's table: the mockup's `table.tt`
+ * (design/chart/1-the-chart.html). No ui/ primitive yet; drawn as the
+ * signed-off mockup draws it. Consumes --sem-* only.
+ *
+ * The table is a real <table>: a row of hours (column headers), then STARS,
+ * WIND kn, FROM and WING m², each headed by a mono label. An hour is the
+ * column of cells that share its state classes:
+ *   --sel        the selected hour: the column on the second sheet, its hour
+ *                filled in ink with paper figures.
+ *   --night      a dark hour: hatched, its hour faint and light, no stars.
+ *   --past       gone: the column at the past opacity.
+ *   --day-start  the first hour of a day: a heavier ink rule on its left.
+ *   --now        the present-hour cursor: a line of the pen down the column,
+ *                and a flag at its head (`__flag`, in the hour's header cell).
+ *
+ * The wind and its gust are `.wf-wind-figure--cell`, the shore glyph is
+ * `.wf-shore-compass--wind`; load those components' CSS beside this one.
+ * The star is drawn statically with the chart's STAR path, as ui/StarGlyphs
+ * draws it: solid, faded (the wind alone), a dot for each it does not reach. */
+
+/* The strip scrolls sideways under the fixed row labels. */
+.wf-hour-cell__dock {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  /* Room above the hours for the cursor's flag. */
+  padding-top: var(--sem-space-x1);
+}
+.wf-hour-cell__dock::-webkit-scrollbar {
+  display: none;
+}
+.wf-hour-cell__dock:focus-visible {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: calc(var(--sem-ring-offset) * -1);
+}
+
+.wf-hour-cell__table {
+  /* An hour's width: 52 on a phone, 62 from sem.breakpoint.wide. */
+  --wf-hour-cell-w: calc(var(--sem-space-step) * 13);
+  width: max-content;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-mono);
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 720px) {
+  /* sem.breakpoint.wide */
+  .wf-hour-cell__table {
+    --wf-hour-cell-w: calc(var(--sem-space-step) * 15.5);
+  }
+}
+.wf-hour-cell__table col {
+  width: var(--wf-hour-cell-w);
+}
+.wf-hour-cell__table col.wf-hour-cell__col-label {
+  width: calc(var(--sem-space-step) * 16);
+}
+
+/* ---- the row labels: the mono label, a unit beside it in lower case ---- */
+.wf-hour-cell__label {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  padding: 0;
+  background-color: var(--sem-color-ground);
+  background-image: var(--sem-texture-grain);
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wf-hour-cell__unit {
+  margin-left: var(--sem-space-x0-5);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ---- a cell ---- */
+.wf-hour-cell {
+  position: relative;
+  height: var(--sem-space-x5);
+  padding: 0;
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-weight: var(--sem-font-weight-normal);
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The day's head: its name in the display face, the date small. */
+.wf-hour-cell__row--day .wf-hour-cell {
+  height: var(--sem-space-x5);
+  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+  text-align: left;
+  cursor: default;
+}
+.wf-hour-cell__day {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sem-space-x1);
+  padding: 0 var(--sem-space-x1-5);
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-caption);
+}
+.wf-hour-cell__day b {
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-body);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+/* The hour: 11px semibold, an ink rule under the row. */
+.wf-hour-cell__row--hour .wf-hour-cell {
+  height: calc(var(--sem-space-step) * 4.5);
+  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  font-weight: var(--sem-font-weight-semibold);
+}
+.wf-hour-cell__row--wing .wf-hour-cell {
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+/* ---- the stars, as ui/StarGlyphs draws them, at 9.5px a star ---- */
+.wf-hour-cell__stars {
+  display: block;
+  margin: 0 auto;
+  overflow: visible;
+  color: var(--sem-color-ink);
+}
+@media (max-width: 719.98px) {
+  /* sem.breakpoint.wide: a phone's 52px hour holds the five at 8.6px. */
+  .wf-hour-cell__stars {
+    width: calc(var(--sem-space-step) * 11.5);
+    height: auto;
+  }
+}
+.wf-hour-cell__star {
+  fill: currentColor;
+}
+.wf-hour-cell__star--faded {
+  fill: none;
+  stroke: currentColor;
+  opacity: var(--sem-opacity-faded);
+}
+.wf-hour-cell__star--dot {
+  fill: currentColor;
+  opacity: var(--sem-opacity-dot);
+}
+
+/* ---- FROM: the downwind arrow, the point, the shore glyph ---- */
+.wf-hour-cell__from {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.wf-hour-cell__from .wf-wind-figure__arrow {
+  width: var(--sem-space-x3);
+  height: var(--sem-space-x3);
+}
+.wf-hour-cell__from .wf-wind-figure__point {
+  margin: 0 var(--sem-space-x0-5) 0 0;
+}
+
+/* ---- states of the column ---- */
+.wf-hour-cell--day-start {
+  border-left: var(--sem-rule-heavy) solid var(--sem-color-ink);
+}
+.wf-hour-cell--night {
+  background-image: repeating-linear-gradient(135deg, var(--sem-color-hatch) 0 1px, transparent 1px 4px);
+}
+.wf-hour-cell__row--hour .wf-hour-cell--night {
+  color: var(--sem-color-ink-muted);
+  font-weight: var(--sem-font-weight-normal);
+}
+.wf-hour-cell--past {
+  opacity: var(--sem-opacity-past);
+}
+.wf-hour-cell--sel {
+  background-color: var(--sem-color-sunken);
+}
+.wf-hour-cell__row--hour .wf-hour-cell--sel {
+  background-color: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+}
+.wf-hour-cell:not(.wf-hour-cell--sel):hover {
+  background-color: var(--sem-color-sunken);
+}
+
+/* The present-hour cursor: the pen's line down the middle of the column. */
+.wf-hour-cell--now::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: calc(var(--sem-rule-hairline) * -1);
+  left: 50%;
+  z-index: 3;
+  border-left: var(--sem-rule-heavy) solid var(--sem-color-pen);
+  opacity: var(--sem-opacity-pen);
+  pointer-events: none;
+}
+/* From the hour's cell it runs up through the day's head to the flag. */
+.wf-hour-cell__row--hour .wf-hour-cell--now::after {
+  top: calc(var(--sem-space-x5) * -1);
+}
+/* The flag: the hour in the pen, in paper words, at the cursor's head. */
+.wf-hour-cell__flag {
+  position: absolute;
+  bottom: 100%;
+  left: calc(50% + var(--sem-space-x1));
+  z-index: 3;
+  padding: 0 var(--sem-space-x1);
+  background: var(--sem-color-pen-ink);
+  color: var(--sem-color-ink-inverse);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-weight: var(--sem-font-weight-semibold);
+  white-space: nowrap;
+  pointer-events: none;
+}

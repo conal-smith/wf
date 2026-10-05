@@ -1,0 +1,43 @@
+/* Wordmark — ui/Wordmark.tsx (wordmarkStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The nameplate: "wingfoil" in Fraunces at its display cut (the theme's
+ * `optical-display`, opsz 144, whatever size it is drawn at), extrabold and
+ * set tight, then ".ie" in the light italic and the chart's magenta. It is the
+ * only thing on the site set this heavy. Words, not a picture. */
+
+.wf-wordmark {
+  display: inline-block;
+  font-family: var(--sem-font-family-display);
+  /* md (title) is the default size; the explicit weight, leading and
+     tracking below win over the step's own, as the recipe's utilities do. */
+  font-size: var(--sem-font-size-title);
+  line-height: 1;
+  font-weight: var(--sem-font-weight-extrabold);
+  /* tracking-tight on display type */
+  letter-spacing: var(--sem-font-tracking-headline);
+  font-variation-settings: "opsz" 144;
+  white-space: nowrap;
+  color: var(--sem-color-ink);
+}
+
+/* ---- sizes ---- */
+/* A masthead on a phone, and the map's top bar. */
+.wf-wordmark--sm {
+  font-size: var(--sem-font-size-lead);
+}
+/* A masthead with the room (the default). */
+.wf-wordmark--md {
+  font-size: var(--sem-font-size-title);
+}
+/* The menu's head, an about page. */
+.wf-wordmark--lg {
+  font-size: var(--sem-font-size-headline);
+}
+
+/* ---- the domain: light italic, untracked, in the chart's magenta ---- */
+.wf-wordmark__domain {
+  font-weight: var(--sem-font-weight-normal);
+  font-style: italic;
+  letter-spacing: 0;
+  color: var(--sem-color-chart-magenta);
+}

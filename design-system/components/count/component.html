@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Count — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: a rail of channels, each with its count set right. */
+      .demo__rail {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .demo__rail li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--sem-space-x2) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .demo__rail span:first-child {
+        font-family: var(--sem-font-family-display);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Count</h2>
+
+      <p class="demo__label">tone="strong" · tone="quiet"</p>
+      <div class="demo__row">
+        <span class="wf-count">4<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count">12<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count wf-count--quiet">4<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count wf-count--quiet">12<span class="wf-count__label"> unread</span></span>
+      </div>
+
+      <p class="demo__label">Past 99 · 99+</p>
+      <div class="demo__row">
+        <span class="wf-count">99+<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count wf-count--quiet">99+<span class="wf-count__label"> unread</span></span>
+      </div>
+
+      <p class="demo__label">In a rail · loud from a threshold, quiet under it</p>
+      <ul class="demo__rail">
+        <li><span>Dublin Bay</span> <span class="wf-count">14<span class="wf-count__label"> unread</span></span></li>
+        <li><span>Gear</span> <span class="wf-count wf-count--quiet">3<span class="wf-count__label"> unread</span></span></li>
+        <li><span>Rusheen Bay</span> <span class="wf-count wf-count--quiet">1<span class="wf-count__label"> unread</span></span></li>
+      </ul>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Count · night chart (proposed)</h2>
+      <div class="demo__row">
+        <span class="wf-count">4<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count wf-count--quiet">12<span class="wf-count__label"> unread</span></span>
+        <span class="wf-count">99+<span class="wf-count__label"> unread</span></span>
+      </div>
+    </section>
+  </body>
+</html>

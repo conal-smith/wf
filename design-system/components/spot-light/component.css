@@ -1,0 +1,225 @@
+/* Spot light — the spot's light on the chart: the mockup's `.lt`
+ * (design/chart/1-the-chart.html). No ui/ primitive yet; drawn as the
+ * signed-off mockup draws it. Consumes --sem-* only.
+ *
+ * A 20px target, with the glyph drawn at 60px round it (viewBox -30 -30 60 60):
+ * a ring with the hour's stars in it, an arrow blowing downwind, and beside it
+ * the label (the name, and the chart's line in magenta) on a paper halo.
+ * Shape carries the kind; the ring's fill carries the stars, and nothing else.
+ *
+ * The wind is an inline custom property, not a colour: style="--from: 247deg"
+ * (where it blows from); the arrow is turned to point where it blows to.
+ * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
+ * reaches the same rules through :hover and :focus-visible. */
+
+.wf-spot-light {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: var(--sem-space-x5);
+  height: var(--sem-space-x5);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: transparent;
+  color: var(--sem-color-ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* A finger gets a touch-sized target; the glyph does not grow. */
+@media (pointer: coarse) {
+  .wf-spot-light::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--sem-size-touch);
+    height: var(--sem-size-touch);
+    border-radius: var(--sem-radius-full);
+    transform: translate(-50%, -50%);
+  }
+}
+
+.wf-spot-light:focus-visible,
+.wf-spot-light.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  /* The ring clears the glyph, not the 20px target: the mockup's 6px. */
+  outline-offset: var(--sem-space-x1-5);
+}
+
+/* ---- the glyph, 60px round the 20px target ---- */
+.wf-spot-light__glyph {
+  position: absolute;
+  top: calc(var(--sem-space-x5) * -1);
+  left: calc(var(--sem-space-x5) * -1);
+  width: calc(var(--sem-space-step) * 15);
+  height: calc(var(--sem-space-step) * 15);
+  overflow: visible;
+  pointer-events: none;
+  transition-property: transform, opacity;
+  transition-duration: var(--sem-duration-fast), var(--sem-duration-base);
+}
+.wf-spot-light:hover .wf-spot-light__glyph,
+.wf-spot-light:focus-visible .wf-spot-light__glyph,
+.wf-spot-light.is-hover .wf-spot-light__glyph,
+.wf-spot-light.is-focus .wf-spot-light__glyph {
+  transform: scale(1.18);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-spot-light__glyph {
+    transition: none;
+  }
+}
+
+/* The arrow turns by where the wind blows to: from + 180°. */
+.wf-spot-light__wind {
+  transform: rotate(calc(var(--from, 0deg) + 180deg));
+}
+.wf-spot-light__arrow {
+  fill: none;
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wf-spot-light__ring {
+  fill: var(--sem-color-card);
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.1;
+}
+.wf-spot-light__n {
+  fill: var(--sem-color-ink);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  font-weight: var(--sem-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.wf-spot-light__strike {
+  display: none;
+  stroke: var(--sem-color-pen);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* ---- the label: the name, then the chart's line, on a paper halo ---- */
+.wf-spot-light__label {
+  position: absolute;
+  top: calc(var(--sem-space-x1) * -1);
+  left: var(--sem-space-x5);
+  display: none;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  pointer-events: none;
+  /* The halo: the paper round the letters, as a chart clears its soundings. */
+  text-shadow:
+    0 0 2px var(--sem-color-ground),
+    0 0 3px var(--sem-color-ground),
+    0 0 5px var(--sem-color-ground),
+    0 0 8px var(--sem-color-ground);
+}
+.wf-spot-light__name {
+  display: block;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-body);
+  font-style: italic;
+  font-weight: var(--sem-font-weight-semibold);
+}
+.wf-spot-light__line {
+  display: block;
+  margin-top: var(--sem-space-x0-5);
+  color: var(--sem-color-chart-magenta);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  font-weight: var(--sem-font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+/* Named: a featured spot, or the chart zoomed in far enough to name them all. */
+.wf-spot-light--named .wf-spot-light__label,
+.wf-spot-light--sel .wf-spot-light__label {
+  display: block;
+}
+
+/* ---- the stars: the ring's fill says them ---- */
+/* 0: a dashed ring, faint. */
+.wf-spot-light--s0 .wf-spot-light__ring {
+  stroke: var(--sem-color-ink-disabled);
+  stroke-dasharray: 2 1.6;
+}
+.wf-spot-light--s0 .wf-spot-light__n {
+  fill: var(--sem-color-ink-muted);
+  font-weight: var(--sem-font-weight-medium);
+}
+/* 1 and 2: the paper ring (the default). 3 and 4: filled in ink. */
+.wf-spot-light--s3 .wf-spot-light__ring,
+.wf-spot-light--s4 .wf-spot-light__ring {
+  fill: var(--sem-color-inverse);
+}
+.wf-spot-light--s3 .wf-spot-light__n,
+.wf-spot-light--s4 .wf-spot-light__n {
+  fill: var(--sem-color-ink-inverse);
+}
+/* 5: the best, in the chart's magenta. */
+.wf-spot-light--s5 .wf-spot-light__ring {
+  fill: var(--sem-color-chart-magenta);
+  stroke: var(--sem-color-chart-magenta);
+}
+.wf-spot-light--s5 .wf-spot-light__n {
+  fill: var(--sem-color-ink-inverse);
+}
+
+/* Dark: not rated. The ring shaded as the dark hours are, no figure. */
+.wf-spot-light--dark .wf-spot-light__ring {
+  fill: var(--sem-color-hatch);
+  stroke: var(--sem-color-ink-disabled);
+}
+.wf-spot-light--dark .wf-spot-light__arrow {
+  stroke: var(--sem-color-ink-disabled);
+}
+.wf-spot-light--dark .wf-spot-light__n {
+  display: none;
+}
+.wf-spot-light--dark .wf-spot-light__line {
+  color: var(--sem-color-ink-muted);
+}
+
+/* Offshore: struck through in the pen, and said in words on the line. */
+.wf-spot-light--off .wf-spot-light__ring {
+  fill: var(--sem-color-card);
+  stroke: var(--sem-color-pen);
+  stroke-dasharray: none;
+}
+.wf-spot-light--off .wf-spot-light__n {
+  fill: var(--sem-color-pen-ink);
+}
+.wf-spot-light--off .wf-spot-light__strike {
+  display: inline;
+}
+.wf-spot-light--off .wf-spot-light__arrow,
+.wf-spot-light--xoff .wf-spot-light__arrow {
+  stroke: var(--sem-color-pen);
+}
+.wf-spot-light--off .wf-spot-light__line {
+  color: var(--sem-color-pen-ink);
+}
+/* Cross-off: the arrow in the pen, the line muted with "· cross-off". */
+.wf-spot-light--xoff .wf-spot-light__line {
+  color: var(--sem-color-ink-muted);
+}
+
+/* ---- selected, and the field round it ---- */
+.wf-spot-light--sel {
+  z-index: 2;
+}
+/* A field in focus: the selected light stands, the others dim and lose their names. */
+.wf-spot-light-field--focus .wf-spot-light:not(.wf-spot-light--sel) .wf-spot-light__glyph {
+  opacity: var(--sem-opacity-dot);
+}
+.wf-spot-light-field--focus .wf-spot-light:not(.wf-spot-light--sel) .wf-spot-light__label {
+  display: none;
+}

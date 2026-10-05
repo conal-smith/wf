@@ -1,0 +1,48 @@
+{
+  "$comment": "Raw <button>/<input>/<select>/<textarea> in product code outside ui/, per area, that predate the no-raw-primitive rule (scripts/lint-raw-primitives.mjs). The numbers only go down. Regenerate with `node scripts/lint-raw-primitives.mjs --write-baseline` when sections are integrated, and review the diff.",
+  "writtenAt": "2026-10-05",
+  "areas": {
+    "src": {
+      "button": 27,
+      "input": 10,
+      "select": 0,
+      "textarea": 0
+    },
+    "force5/src": {
+      "button": 5,
+      "input": 0,
+      "select": 0,
+      "textarea": 0
+    },
+    "market/web": {
+      "button": 3,
+      "input": 1,
+      "select": 0,
+      "textarea": 0
+    },
+    "community/web": {
+      "button": 6,
+      "input": 2,
+      "select": 0,
+      "textarea": 1
+    },
+    "spot/web": {
+      "button": 4,
+      "input": 0,
+      "select": 0,
+      "textarea": 0
+    },
+    "companion/web": {
+      "button": 1,
+      "input": 0,
+      "select": 0,
+      "textarea": 1
+    },
+    "ai/web": {
+      "button": 0,
+      "input": 0,
+      "select": 0,
+      "textarea": 0
+    }
+  }
+}

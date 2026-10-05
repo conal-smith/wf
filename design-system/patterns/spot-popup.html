@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spot popup — wingfoil-chart pattern</title>
+    <link rel="stylesheet" href="../foundations/tokens.css" />
+    <link rel="stylesheet" href="../components/button/component.css" />
+    <link rel="stylesheet" href="../components/surface/component.css" />
+    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <link rel="stylesheet" href="../components/shore-compass/component.css" />
+    <link rel="stylesheet" href="../components/wind-figure/component.css" />
+    <link rel="stylesheet" href="../components/tide-label/component.css" />
+    <link rel="stylesheet" href="../components/spot-light/component.css" />
+    <link rel="stylesheet" href="../components/pen-loop/component.css" />
+    <link rel="stylesheet" href="../components/pen-note/component.css" />
+    <style>
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      /* A sea-tinted stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* The favourite: the glyph in the pen, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-pen);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-pen);
+      }
+
+      /* ---- the chart under it: sea, a coast, the other lights gone quiet ---- */
+      .pop__map {
+        min-height: calc(var(--sem-space-step) * 110);
+        padding: var(--sem-space-x10) var(--sem-space-x3) 0;
+      }
+      .pop__land {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .pop__coast {
+        fill: var(--sem-color-land);
+        stroke: var(--sem-color-ink);
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+      .pop__other {
+        position: absolute;
+        top: calc(var(--sem-space-step) * 92);
+        left: calc(var(--sem-space-step) * 22);
+      }
+      .pop__stack {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* ---- the popup: the chart's box, with its tip down at the light ---- */
+      .pop {
+        position: relative;
+        width: calc(var(--sem-space-step) * 64);
+        padding: var(--sem-space-x3) var(--sem-space-x4);
+      }
+      .pop::after {
+        content: "";
+        position: absolute;
+        top: calc(100% + var(--sem-rule-hairline));
+        left: 50%;
+        margin-left: calc(var(--sem-space-step) * -2.5);
+        border: calc(var(--sem-space-step) * 2.5) solid transparent;
+        border-top-color: var(--sem-color-ink);
+        border-bottom-width: 0;
+      }
+      .pop__head {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x1-5);
+      }
+      .pop__head > .wf-button--worded {
+        margin-left: calc(var(--sem-space-x1-5) * -1);
+      }
+      .pop__head > .wf-button:last-child {
+        align-self: flex-start;
+        margin-right: calc(var(--sem-space-x1-5) * -1);
+      }
+      .pop__name {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      /* The county sits under the name, clear of the star. */
+      .pop__meta {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        margin: 0 0 0 var(--sem-size-control-sm);
+      }
+      /* The hour: ruled in ink above, a hairline below. */
+      .pop__row {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        margin: var(--sem-space-x2) 0 var(--sem-space-x1-5);
+        padding: var(--sem-space-x0-5) 0;
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .pop__when {
+        margin-right: auto;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        line-height: var(--sem-font-line-label);
+        font-weight: var(--sem-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+      }
+      .pop__row > .wf-button:last-child {
+        margin-right: calc(var(--sem-space-x1-5) * -1);
+      }
+      .pop__ln {
+        margin: var(--sem-space-x1) 0;
+      }
+      .pop__acts {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: var(--sem-space-x2);
+      }
+
+      /* ---- the light it points at, the pen's loop round it and its note ---- */
+      .pop__spot {
+        position: relative;
+        width: var(--sem-space-x5);
+        height: var(--sem-space-x5);
+        margin-top: var(--sem-space-x5);
+      }
+      .pop__loop {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        overflow: visible;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+      .pop__note {
+        position: absolute;
+        top: calc(50% + var(--sem-space-x6));
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="pt__label">The popup · Fri 11:00, the spot in focus</p>
+    <div class="pt__map pop__map wf-spot-light-field--focus">
+      <svg class="pop__land" viewBox="0 0 390 560" preserveAspectRatio="none" aria-hidden="true"><path class="pop__coast" d="M0 0H150C168 60 132 120 150 190C162 240 196 262 186 318C178 370 132 392 118 450C108 500 70 530 0 560Z" /></svg>
+      <div class="pop__other"><button class="wf-spot-light wf-spot-light--s2" type="button" aria-label="Donabate: 2 stars, WSW 11 knots" style="--from: 247deg">
+            <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+            <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">2★ WSW 11</span></span>
+          </button></div>
+      <div class="pop__stack">
+        <div class="wf-surface pop" role="dialog" aria-label="Dollymount at Fri 11:00">
+          <div class="pop__head">
+            <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="true" aria-label="Unstar Dollymount"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+            <h3 class="pop__name">Dollymount</h3>
+            <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></button>
+          </div>
+          <div class="pop__meta"><svg class="wf-shore-compass wf-shore-compass--sm" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces SE, 123°" style="--facing: 123deg"><title>Beach faces SE · 123°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><span class="wf-kicker">Dublin</span></div>
+          <div class="pop__row">
+            <span class="pop__when">Fri 11:00</span>
+            <svg class="wf-star-glyphs wf-star-glyphs--ink" width="73" height="13" viewBox="0 0 73 13" role="img" aria-label="3 of 5 stars, 5 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6.5 6.9) scale(1.25)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(21.5 6.9) scale(1.25)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.5 6.9) scale(1.25)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.76" transform="translate(51.5 6.9) scale(1.25)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.76" transform="translate(66.5 6.9) scale(1.25)" /></svg>
+            <a class="wf-button wf-button--icon wf-button--sm" href="#stars" aria-label="How the stars work"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></a>
+          </div>
+          <div class="pop__ln"><span class="wf-wind-figure wf-wind-figure--line" role="img" aria-label="13 knots gusting 26 from the west, cross-offshore, 6.5 m wing"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 270deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__gust">g26</span><span class="wf-wind-figure__point">W</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 123deg; --from: 270deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><span class="wf-wind-figure__sep">·</span><span><span class="wf-wind-figure__wing">6.5</span> m</span></span></div>
+          <div class="pop__ln"><span class="wf-tide-label wf-tide-label--line" role="img" aria-label="Tide 4.1 m"><svg class="wf-tide-label__wave" viewBox="0 0 14 8" aria-hidden="true"><path class="wf-tide-label__wave-path" d="M0 5 Q3.5 0 7 4 T14 3" /></svg>4.1 m</span></div>
+          <div class="pop__acts"><a class="wf-button wf-button--primary wf-button--sm" href="#spot/dollymount">Spot page →</a></div>
+        </div>
+        <div class="pop__spot">
+          <button class="wf-spot-light wf-spot-light--s3 wf-spot-light--xoff wf-spot-light--sel" type="button" aria-label="Dollymount, Dublin: 11:00 3 stars, W 13 knots, cross-offshore" style="--from: 270deg">
+            <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+            <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13 · cross-off</span></span>
+          </button>
+          <svg class="pop__loop" width="76" height="60" viewBox="0 0 76 60" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M15.6 25.2 L16.4 22.5 L18.2 20.2 L20.4 18.1 L22.6 15.9 L25.1 13.6 L28.2 11.7 L32.0 10.7 L36.0 10.9 L39.8 11.7 L43.3 12.6 L46.7 13.3 L50.1 14.3 L53.0 15.9 L55.2 17.9 L57.2 20.1 L59.4 22.1 L62.0 24.2 L64.1 26.8 L64.8 29.7 L64.1 32.6 L62.5 35.3 L60.7 37.8 L58.8 40.3 L56.3 42.4 L53.1 43.9 L49.4 44.7 L45.9 45.2 L42.6 46.0 L39.1 47.2 L35.3 48.0 L31.3 47.9 L27.6 46.9 L24.2 45.4 L20.8 43.8 L17.5 42.0 L14.9 39.6 L13.6 36.7 L13.7 33.6 L14.1 30.7 L14.2 28.0 L14.0 25.3 L14.3 22.4 L15.6 19.7 L17.8 17.3 L20.2 15.1 L22.6 12.7 L25.5 10.3 L29.1 8.6" pathLength="1" stroke-dasharray="1" /></svg>
+          <div class="pop__note"><p class="wf-pen-note">3★ 08–17, 6 m</p></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+/* PenUnderline — ui/Pen.tsx (penStyles: wrap, under, stroke) with
+ * ui/penPaths.ts (underlinePath), rendered in CSS. Consumes --sem-* only.
+ *
+ * A quick stroke under the word in the pen's note that carries it, bowed up a
+ * little in the middle. The SVG is the word's width and 8px tall (h-2), hung
+ * from the foot of the line box and tucked back up 4px (top-full
+ * -translate-y-1), because a line box hangs below the letters. Its viewBox is
+ * `0 0 w 8` and the path underlinePath(0, 3, w). Drawn in once; simply there
+ * for a reader who asks for less motion. */
+
+.wf-pen-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.wf-pen-underline__mark {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: var(--sem-space-x2);
+  transform: translateY(calc(var(--sem-space-x1) * -1));
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wf-pen-underline__stroke {
+  fill: none;
+  stroke: var(--sem-color-pen);
+  /* stroke-2: two user units, which are pixels here */
+  stroke-width: var(--sem-rule-heavy);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: var(--sem-opacity-pen);
+  animation: var(--sem-animate-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-pen-underline__stroke {
+    animation: none;
+  }
+}
+
+@keyframes ink {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
