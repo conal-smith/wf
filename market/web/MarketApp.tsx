@@ -18,7 +18,7 @@ import { Link, matchRoute, paths, useLocation } from "./router";
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
     // The page measure, and the narrower gutter a phone can spare. Neither
     // gutter goes under a notch: `px-safe-*` takes the device's own inset
     // where it is the larger, as market.css's `max(…, env(…))` did.

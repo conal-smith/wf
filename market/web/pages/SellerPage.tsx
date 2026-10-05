@@ -50,7 +50,7 @@ export const sellerStyles = tv({
     tabs: "inline-flex max-w-full self-start overflow-x-auto scrollbar-none rounded-full bg-sunken p-1",
     tab: [
       "inline-flex h-8.5 shrink-0 cursor-pointer items-center justify-center gap-1",
-      "rounded-full border-0 bg-transparent px-3 py-0 font-sans text-body leading-tight font-semibold",
+      "rounded-full border-0 bg-transparent px-3 py-0 font-body text-body leading-tight font-semibold",
       "whitespace-nowrap text-ink-muted no-underline touch-manipulation",
       "transition-colors duration-fast pointer-coarse:min-h-touch",
       // The track is already sunken, so a hover lifts towards the card.

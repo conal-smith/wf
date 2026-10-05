@@ -55,7 +55,7 @@ export const profileStyles = tv({
     edit: "self-start",
     // The whole row is the switch: a target a thumb finds.
     setting: [
-      "flex min-h-touch w-full cursor-pointer items-center justify-between gap-5 rounded-control border-0 bg-transparent p-0 text-left font-sans text-ink",
+      "flex min-h-touch w-full cursor-pointer items-center justify-between gap-5 rounded-control border-0 bg-transparent p-0 text-left font-body text-ink",
       "disabled:cursor-default",
       RING,
     ],

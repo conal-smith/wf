@@ -33,7 +33,7 @@ import { ReactionPicker, Reactions } from "./Reactions";
 
 export const messageStyles = tv({
   slots: {
-    base: "group relative flex scroll-mt-24 flex-col gap-1 rounded-control px-3 py-3 font-sans transition-colors duration-base motion-reduce:transition-none",
+    base: "group relative flex scroll-mt-24 flex-col gap-1 rounded-control px-3 py-3 font-body transition-colors duration-base motion-reduce:transition-none",
     // The quoted line above a reply, indented to stand over the words, not the face.
     replyTo: [
       "flex min-w-0 items-center gap-1 self-start rounded-control pl-13 text-body text-ink-muted no-underline max-rail:pl-10.5",

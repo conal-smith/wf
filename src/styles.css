@@ -1,11 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
-
 :root {
-  font-family:
-    "DM Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  /* The body face, self-hosted (ui/fonts.css, ui/theme.css). */
+  font-family: var(--font-body);
   color: var(--color-ink);
   background: var(--color-ground);
   font-synthesis: none;
@@ -78,14 +73,24 @@ h2,
 p {
   margin: 0;
 }
+/* Headings are set in the display face, Fraunces, across every section: an
+   element rule, so a utility on the heading (`font-mono` on a kicker that is a
+   heading) still wins. ui/theme.css names the face. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
 svg {
   flex-shrink: 0;
 }
 button svg {
   vertical-align: middle;
 }
+/* The site menu's trigger is the shared chrome's own (force5/src/SiteMenu.tsx,
+   the chart's square instrument) and is not glassed here. */
 .glass,
-.site-header .f5-site-menu > button,
 .map-title-chip,
 .layers-button,
 .map-navigation,
@@ -159,7 +164,7 @@ button svg {
   text-decoration: none;
   color: var(--color-ink);
   letter-spacing: -0.9px;
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-display);
   font-size: 21px;
   font-weight: 800;
 }

@@ -26,7 +26,7 @@ export const bellStyles = tv({
     count: "absolute -top-1 -right-1",
     // Hung from the bell, and never drawn where the page stands in for it.
     panel: [
-      "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 rounded-surface border border-line bg-card p-2 font-sans text-ink shadow-surface max-rail:hidden",
+      "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 rounded-surface border border-line bg-card p-2 font-body text-ink shadow-surface max-rail:hidden",
       NO_RING,
     ],
     head: "flex items-center justify-between gap-2 py-1 pr-1 pl-3",

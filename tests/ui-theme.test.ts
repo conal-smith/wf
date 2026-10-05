@@ -56,54 +56,68 @@ function variable(css: string, name: string): string | null {
   return match ? match[1] : null;
 }
 
-// S5, as the item lists it.
+// The chart (ruling of 2026-10-05, docs/BRAND.md).
 const COLOURS: Record<string, string> = {
-  ground: "#f4f6fa",
-  sea: "#9db0cc",
-  card: "#fff",
-  solid: "#eef2f9",
-  glass: "#eef2f9db",
-  sunken: "#e1e8f3",
-  inverse: "#0b2545",
-  scrim: "#0a1f3c73",
+  ground: "#f3eee3",
+  card: "#f3eee3",
+  solid: "#f3eee3",
+  sunken: "#ede6d6",
+  glass: "#f3eee3eb",
+  inverse: "#1a1d21",
+  scrim: "#1a1d212e",
+  // The sea and the shore, as a chart tints them, shallow to deep.
+  sea: "#d5e6ea",
+  "sea-1": "#a9cbd8",
+  "sea-2": "#c3dae2",
+  "sea-3": "#dae8ea",
+  "sea-4": "#ecf0ea",
+  depth: "#5f8c9c",
+  land: "#ede3c8",
+  relief: "#b59e74",
   // The basemap's two fills, and the bar a forecast cell draws behind its
-  // number. The wash is `sea`'s value under a name of its own: it is a
-  // quantity, not water.
-  "basemap-water": "#c3cfe2",
-  "basemap-land": "#f0f1e8",
-  wash: "#9db0cc",
-  line: "#0a1f3c1a",
-  "line-strong": "#7488a6",
-  ink: "#0a1f3c",
-  "ink-2": "#1f3a5c",
-  "ink-muted": "#4a607c",
-  "ink-disabled": "#7488a6",
-  "ink-inverse": "#fff",
-  accent: "#1463ff",
-  "accent-hover": "#0d4fd1",
-  "accent-ink": "#fff",
-  quiet: "#0b2545",
-  focus: "#0b2545",
-  ok: "#3c8a72",
-  warn: "#854d31",
-  "warn-ground": "#fff4e8",
-  now: "#a8442e",
+  // number: a quantity, so the chart's magenta rather than water.
+  "basemap-water": "#e5edea",
+  "basemap-land": "#ede3c8",
+  wash: "#b0186a",
+  line: "#1a1d2133",
+  "line-strong": "#7c7b78",
+  ink: "#1a1d21",
+  "ink-2": "#3b3c3e",
+  "ink-muted": "#5b5c5b",
+  "ink-disabled": "#7c7b78",
+  "ink-inverse": "#f3eee3",
+  accent: "#1a1d21",
+  "accent-hover": "#b0186a",
+  "accent-ink": "#f3eee3",
+  quiet: "#1a1d21",
+  focus: "#b0186a",
+  "chart-magenta": "#b0186a",
+  pen: "#d43a2c",
+  "pen-ink": "#bf3125",
+  buoy: "#e9b200",
+  ok: "#2a7046",
+  warn: "#b02a1f",
+  "warn-ground": "#efd8cd",
+  now: "#b02a1f",
   // Two marks the palette does not move: the dashed line at the present hour,
   // and the gust cap on a candle. D12.
   "now-marker": "#bf6546",
   gust: "#e0803a",
 };
 
-// S7: size, line height, then weight and tracking where the step has one.
+// Size, line height, then weight and tracking where the step has one.
 const TYPE: Record<string, [string, string, string?, string?]> = {
-  eyebrow: ["9px", "1.5", "600", "1.1px"],
-  caption: ["10px", "1.5"],
-  label: ["11px", "1.3", "600"],
-  body: ["12px", "1.5"],
-  prose: ["14px", "1.5"],
-  lead: ["17px", "1.3", "600"],
-  title: ["25px", "1.3", "600", "-0.7px"],
-  reading: ["48px", "1.3"],
+  eyebrow: ["10px", "1.3", "500", "0.14em"],
+  caption: ["11px", "1.4"],
+  label: ["11px", "1.2", "500", "0.09em"],
+  body: ["13px", "1.4"],
+  prose: ["15px", "1.45"],
+  input: ["16px", "1.3"],
+  lead: ["19px", "1.2", "600"],
+  figure: ["19px", "1", "600", "-0.02em"],
+  title: ["30px", "1.05", "700", "-0.02em"],
+  headline: ["44px", "1", "700", "-0.035em"],
+  reading: ["48px", "1"],
 };
 
 describe("ui/theme.css: how it is wired", () => {
@@ -170,12 +184,11 @@ describe("ui/theme.css: the stock values are gone", () => {
     "rounded-md",
     "shadow-md",
     "shadow-xl",
-    "font-mono",
+    "font-sans",
     "font-serif",
-    // The wildcards in S4 stop short of these four families.
+    // The wildcards in S4 stop short of these families.
     "font-thin",
     "font-light",
-    "font-extrabold",
     "font-black",
     "inset-shadow-sm",
     "drop-shadow-md",
@@ -252,13 +265,17 @@ describe("ui/theme.css: the values", () => {
       expect(variable(css, `--color-wind-${step}`), step).toBe(hex);
   });
 
-  // Plan 13.2: the basemap's water moves onto the neutral ramp, a step lighter
-  // than the ground the map floats on, so the two are read off the ramp rather
-  // than compared to a hex written here a third time.
-  it("puts the basemap's water on the ramp, a step above the ground behind the map", () => {
-    const css = build(["bg-basemap-water", "bg-sea"]);
-    expect(variable(css, "--color-basemap-water")).toBe(neutralStep(300));
-    expect(variable(css, "--color-sea")).toBe(neutralStep(400));
+  // The basemap's deep water is nearly paper, as a chart's is: a step
+  // deeper than the last of the sea's four tints, and lighter than the sea
+  // the map floats on.
+  it("puts the basemap's water past the deepest tint, and above the sea", () => {
+    const css = build(["bg-basemap-water", "bg-sea", "bg-sea-4"]);
+    const light = (name: string) =>
+      parseInt(variable(css, name)!.slice(1, 3), 16);
+    expect(light("--color-basemap-water")).toBeGreaterThan(light("--color-sea"));
+    expect(variable(css, "--color-basemap-water")).not.toBe(
+      variable(css, "--color-sea-4"),
+    );
   });
 
   // The wind grid's bars were drawn with `--color-sea` while the two happened
@@ -301,11 +318,13 @@ describe("ui/theme.css: the values", () => {
     },
   );
 
+  // Square, as print is: a field keeps a whisper of a corner, a pressable
+  // thing is a capsule, and a box is square.
   it.each([
-    ["control", "12px"],
-    ["surface", "20px"],
-    ["pill", "24px"],
-    ["dialog", "30px"],
+    ["control", "2px"],
+    ["surface", "0px"],
+    ["pill", "9999px"],
+    ["dialog", "0px"],
     ["full", "9999px"],
   ])("radius %s is %s", (name, value) => {
     const css = build([`rounded-${name}`]);
@@ -315,15 +334,17 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--radius-${name}`)).toBe(value);
   });
 
+  // Little shadow, and a warm one: paper lifts off paper.
   it.each([
-    ["control", "0px 1px 5px", "#0a1f3c1f"],
-    ["marker", "0px 3px 12px", "#0a1f3c2e"],
-    ["surface", "0px 10px 40px", "#0a1f3c33"],
-    ["dock", "0px -4px 24px", "#0a1f3c33"],
-  ])("shadow %s is drawn in the Atlantic ink", (name, geometry, ink) => {
+    ["control", "0px 1px 0px", "#1a1d210f"],
+    ["marker", "0px 4px 10px -6px", "#3c2d1466"],
+    ["surface", "0px 6px 18px -10px", "#3c2d1459"],
+    ["dock", "0px -8px 22px -16px", "#3c2d1473"],
+  ])("shadow %s is a little warm paper shadow", (name, geometry, ink) => {
     const declarations = rule(build([`shadow-${name}`]), `shadow-${name}`);
+    expect(declarations).toMatch(/--tw-shadow: [^;]+;/);
     expect(declarations).toContain(
-      `--tw-shadow: ${geometry} var(--tw-shadow-color, ${ink});`,
+      `${geometry} var(--tw-shadow-color, ${ink})`,
     );
   });
 
@@ -365,23 +386,37 @@ describe("ui/theme.css: the values", () => {
     expect(variable(css, `--spacing-${name}`)).toBe(value);
   });
 
-  it("font-sans is the site's one family, in the four weights it uses", () => {
+  it("is four faces, each with its job, in the weights they use", () => {
     const css = build([
-      "font-sans",
+      "font-display",
+      "font-body",
+      "font-mono",
+      "font-hand",
       "font-normal",
       "font-medium",
       "font-semibold",
       "font-bold",
+      "font-extrabold",
     ]);
-    expect(rule(css, "font-sans")).toContain("font-family: var(--font-sans);");
-    expect(variable(css, "--font-sans")).toBe(
-      '"DM Sans", -apple-system, BlinkMacSystemFont, sans-serif',
-    );
+    for (const [name, first] of [
+      ["display", '"Fraunces Variable"'],
+      ["body", '"Newsreader Variable"'],
+      ["mono", '"IBM Plex Mono"'],
+      ["hand", '"Kalam"'],
+    ]) {
+      expect(rule(css, `font-${name}`)).toContain(
+        `font-family: var(--font-${name});`,
+      );
+      expect(variable(css, `--font-${name}`)?.startsWith(first), name).toBe(
+        true,
+      );
+    }
     for (const [name, weight] of [
       ["normal", "400"],
       ["medium", "500"],
       ["semibold", "600"],
       ["bold", "700"],
+      ["extrabold", "800"],
     ]) {
       expect(rule(css, `font-${name}`)).toContain(
         `font-weight: var(--font-weight-${name});`,
@@ -390,30 +425,6 @@ describe("ui/theme.css: the values", () => {
     }
   });
 });
-
-/**
- * The navy ramp as the Atlantic ruling lists it (plan 13.1, and the ruling of
- * 2026-09-20 in docs/DESIGN_PRINCIPLES.md), step by step. The theme names the
- * steps it uses by role; this is what those roles are steps of.
- */
-const NAVY: Record<number, string> = {
-  50: "#f4f6fa",
-  100: "#eef2f9",
-  200: "#e1e8f3",
-  300: "#c3cfe2",
-  400: "#9db0cc",
-  500: "#7488a6",
-  600: "#4a607c",
-  700: "#1f3a5c",
-  800: "#0a1f3c",
-  900: "#081830",
-  950: "#050f20",
-};
-function neutralStep(step: number): string {
-  const hex = NAVY[step];
-  if (!hex) throw new Error(`the ramp has no step ${step}`);
-  return hex;
-}
 
 /**
  * `[step, hex]` for each wind band, read from `PALETTE` in

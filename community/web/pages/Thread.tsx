@@ -66,7 +66,7 @@ export const threadStyles = tv({
     headText: "grid min-w-0 flex-1 basis-80 gap-2",
     title: "m-0 text-title text-balance text-ink max-rail:text-lead",
     metaRow: "flex flex-wrap items-center gap-2",
-    meta: "font-sans text-body text-ink-muted",
+    meta: "font-body text-body text-ink-muted",
     started: "max-rail:hidden",
     // On a phone they stand in the way back's row, so the title keeps the width.
     actions:

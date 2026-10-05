@@ -10,7 +10,7 @@ import { parseBody, type Block, type Inline } from "../body";
 
 export const bodyStyles = tv({
   slots: {
-    base: "grid max-w-measure min-w-0 gap-2 font-sans text-prose wrap-anywhere text-ink",
+    base: "grid max-w-measure min-w-0 gap-2 font-body text-prose wrap-anywhere text-ink",
     paragraph: "m-0",
     list: "m-0 grid gap-1 pl-5",
     quote: "m-0 grid gap-2 border-l-2 border-line-strong pl-3 text-ink-muted",

@@ -15,7 +15,7 @@ export function ToolChips({ tools }: { tools: ToolActivity[] }) {
           key={tool.id}
           data-status={tool.status}
           className={[
-            "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1 font-sans text-caption",
+            "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1 font-body text-caption",
             tool.status === "error"
               ? "bg-warn-ground text-warn"
               : "bg-sunken text-ink-2",

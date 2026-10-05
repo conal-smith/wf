@@ -28,7 +28,7 @@ export const spotCardStyles = tv({
   slots: {
     // On the opening post's card, so it takes the ground to stand apart from it.
     base: [
-      "flex min-h-touch max-w-measure items-center gap-3 rounded-control bg-ground px-5 py-3 font-sans text-ink no-underline transition-colors duration-fast",
+      "flex min-h-touch max-w-measure items-center gap-3 rounded-control bg-ground px-5 py-3 font-body text-ink no-underline transition-colors duration-fast",
       "not-disabled:hover:bg-sunken max-rail:px-3 motion-reduce:transition-none",
       RING,
     ],

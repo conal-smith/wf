@@ -14,6 +14,10 @@ marketplace and the community) that are pages rather than chrome. On the map,
 the map is the product, and everything else has to earn the pixels it covers
 the sea with. That one fact decides most of what follows.
 
+Since 2026-10-05 the site is drawn as **the chart**: an Admiralty chart crossed
+with a broadsheet weather report. What it looks like, and how to draw a page in
+it, is [BRAND.md](BRAND.md); this file keeps the rules and the rulings.
+
 ---
 
 ## The accent rule
@@ -22,7 +26,8 @@ the sea with. That one fact decides most of what follows.
 gets one: Play in the dock, Sell in the marketplace header, Retry in an error
 state, never two at once. A second filled button does not add emphasis, it
 removes it. In the kit it is `<Button variant="primary">`, and the kit writes
-the accent fill nowhere else.
+the accent fill nowhere else. On the chart the accent is the ink pill, which
+turns magenta under the pointer.
 
 Everything else that can be pressed is quiet: `text-quiet` with no fill until
 the pointer is over it. Over moving water this is not timidity: a screen of
@@ -38,6 +43,15 @@ taken back.
 things and nothing else: _this instant_ (the now-marker) or _this is degraded_
 (a stale snapshot, a failed fetch, an error, a destructive answer). Warm is
 never used to make something stand out.
+
+## The pen rule
+
+**The red pen marks the one thing that matters, and nothing else.** A loop
+round the best hour, an underline under the word that carries the note, a
+strike through a spot that is offshore, and the note itself in the hand. One
+mark on a view, two at most. It is never a fill, never a control, never a
+status: a warning is `warn`, a different red that means degraded. The pen's
+strokes are `pen`; its handwriting is `pen-ink`, which reads as words.
 
 ## The wind rule
 
@@ -59,71 +73,72 @@ dashed); colour on a marker only ever means wind.
 
 ## What structure is made of
 
-Structure is **surfaces, not lines**. Over the map a thing is separated by
-being a glass pane with an elevation, not by being boxed in; inside a surface,
-division is `border-line` and nothing heavier.
+Structure is **rules, not surfaces** (ruling of 2026-10-05). The site is one
+sheet of paper: the ground, a card and a dialog are the same paper, and a thing
+is set apart by an ink rule round it or under it, as a chart boxes its title
+and a broadsheet heads its columns. Most of a page is sections under a heavy
+rule (`Pane kind="ruled"`, `SectionHeading`), not boxes.
 
-**Glass is for what is laid over something worth seeing**: the moving map, or a
-photograph. A `Surface` is glass; a `Pane` is the content ground's card. On a
-page with no map behind it a white hairline and a translucent fill vanish, so
-the content ground takes `bg-card` on `bg-ground` instead: the card is lighter
-than its ground, which is what makes it read as lifted without glass.
+**A box is the chart's box**: paper with its grain, a 1px ink border, and for
+one that matters (a dialog, anything laid over the map) a second line inside
+it, the double rule (`inset-shadow-frame`). Inside a box, division is
+`border-line`, the hairline, and nothing heavier.
 
-**Four kinds of surface, told apart by radius and elevation, not colour**: the
-pane (`Surface` over the map, `Pane` on a page), the pill, the dock and the
-dialog (`Dialog`). If a new thing fits none of them, the answer is usually that
-it should not be a surface.
+**Over the map, paper is opaque.** A translucent panel over a moving map is a
+second, blurred map, and the blur costs a phone every frame. `Surface` is solid
+paper in a double rule. Glass survives only as a badge over a photograph
+(`Chip tone="glass"`), and goes solid for a reader who asks for less
+transparency.
 
-**Never glass on glass.** Two backdrop blurs stacked compound into mud and cost
-a frame. A control inside a glass surface is raised (`variant="raised"`: the
-raised white and the glass's own hairline) or sunken, never a second blur.
-
-**Every glass surface goes solid for a reader who asks.** Under
-`prefers-reduced-transparency` glass becomes `bg-solid`, and the text ramp is
-measured against that solid ground, so the fallback is the accessible case, not
-a degraded one.
+**Four kinds of box, told apart by their rules, not their fill**: the pane (one
+rule), the chart's box (`Surface`, `Dialog`: the double rule), the pill (a
+capsule, for what is pressed) and the dock (a double rule along its top edge).
+If a new thing fits none of them, the answer is usually that it should be a
+section under a rule instead.
 
 ## Ceilings
 
-**Type.** Eight named steps, 9px to 48px: `eyebrow` 9, `caption` 10, `label`
-11, `body` 12, `prose` 14, `lead` 17, `title` 25, `reading` 48.
+**Type.** Four faces, each with one job (`font-display` Fraunces for names and
+headings, `font-body` Newsreader for sentences, `font-mono` IBM Plex Mono for
+every figure and label, `font-hand` Kalam for the pen), and eleven named steps,
+10px to 48px: `eyebrow` 10, `caption` 11, `label` 11, `body` 13, `prose` 15,
+`input` 16, `lead` 19, `figure` 19, `title` 30, `headline` 44, `reading` 48.
 
-- 9px (`text-eyebrow`) is the floor, and only for tracked uppercase labels and
-  axis ticks. Never a sentence.
-- 10px (`text-caption`) is the floor for anything in sentence case.
-- One `title` per surface. One `reading` per view: the wind speed is the number
-  the product exists to show, and a second thing that size competes with it.
-- Above `title`, only the wind reading. There is no display type besides the
-  wordmark.
-- `prose` is body copy read at length away from the map; `lead` is the one thing
-  a card leads with, or a section heading. Neither is display type.
-- A field on a coarse pointer is set at `lead` (`pointer-coarse:text-lead`, as
-  `ui/control.ts` and `SearchField` do): a phone zooms into a focused field
-  whose text is under 16px, and the scale steps from 14 to 17.
-- Four weights: 400, 500, 600, 700 (`font-normal` to `font-bold`). The
-  half-steps the product once used are retired; where one was load-bearing,
-  round up.
+- 10px (`text-eyebrow`) is the floor, and only for the mono label: tracked
+  capitals, a kicker, a column head, an axis tick. Never a sentence.
+- 11px (`text-caption`) is the floor for anything in sentence case.
+- One `title` per surface. One `headline` per page, and only on a page that is
+  read. One `reading` per view: the wind speed is the number the product exists
+  to show, and a second thing that size competes with it.
+- `prose` is the few sentences there are; `lead` is a section's heading or a
+  card's name, in the display face; `figure` is the number a row is about, in
+  the mono face.
+- A field on a coarse pointer is set at `input` (`pointer-coarse:text-input`,
+  as `ui/control.ts` and `SearchField` do): a phone zooms into a focused field
+  whose text is under 16px.
+- Five weights: 400, 500, 600, 700, and 800 (`font-extrabold`) for the
+  wordmark alone.
 
-**Radius.** `control` 12, `surface` 20, `pill` 24, `dialog` 30, and `full`. A
-view uses at most three, and they nest inward: a control inside a pane inside a
-dialog goes small inside large, never the reverse. A rounded thing inside a
-more-rounded thing reads as a mistake.
+**Radius.** Square, as print is: `surface` and `dialog` are 0, `control` is 2
+(a whisper, so a field reads as a box to write in), and `pill` and `full` are a
+capsule, for what is pressed. A rounded box is a mistake on the chart.
 
-**Elevation.** Four shadows, `control`, `marker`, `surface` and `dock`, and they
-are a hierarchy, not a palette: everything at the same layer casts the same
-shadow. If two things at the same layer look different, one of them is at the
-wrong layer.
+**Elevation.** Four shadows, `control`, `marker`, `surface` and `dock`, all
+small and warm: paper lifts off paper, it does not float. They are a hierarchy,
+not a palette: everything at the same layer casts the same shadow.
 
-**Colour.** One neutral family and one accent (ruling of 2026-09-20 below). The
-navy ramp is the entire structural palette, and the blue accent is the filled
-action and nothing else. The only other families are warm (now or degraded),
+**Colour.** Paper and ink are the structure; the chart's magenta marks the best
+of something (and the focus ring, and the filled action under the pointer); the
+pen is the one mark that matters. The sea tints, the land and the depth ink
+draw the chart itself. The only other families are warm (now or degraded),
 green (`ok`, one liveness mark) and wind (data). A further family is a design
 change, not an implementation detail.
 
 **Text contrast.** `ink-muted` is the floor for text. `line-strong` and
 `ink-disabled` (the same step) are for strokes, icons and disabled controls,
 where 3:1 is the bar, and are never used for text that is merely low priority:
-disabled means unavailable.
+disabled means unavailable. The pen's marks are `pen` (a stroke); its words are
+`pen-ink`.
 
 **Tap targets.** Nothing that is pressed is shorter than 44px on a coarse
 pointer (`min-h-touch`). A control drawn smaller keeps its drawn size and grows
@@ -140,9 +155,11 @@ along the inline one.
 - Don't put a second filled action on a view.
 - Don't use the wind ramp for anything that is not wind speed.
 - Don't use warm to make something stand out.
-- Don't nest glass in glass.
-- Don't restyle a focus ring. There is one: 3px of `focus`, 2px clear of the
-  control (`RING` in `ui/tv.ts`), on every control.
+- Don't lay a translucent panel over the map; it is solid paper.
+- Don't use the pen for more than the one thing that matters on a view, and
+  never as a fill or a status.
+- Don't restyle a focus ring. There is one: 2px of `focus`, the chart's
+  magenta, 2px clear of the control (`RING` in `ui/tv.ts`), on every control.
 - Don't let colour be the only carrier of a state. Status says the status in
   words; markers carry kind as shape; a pressed control is raised and heavier as
   well as filled; the section you are in is raised as well as marked
@@ -229,6 +246,27 @@ than taking `inverse`.
 **2026-09-21 — The marketplace's active filter stays accent.** It is a line,
 not a fill (a border and an inset ring), so it does not rival the one filled
 action, and the second line says it whatever the hue.
+
+**2026-10-05 — The chart: paper, ink, magenta and the red pen** (docs/BRAND.md).
+The owner chose, after several rounds of mockups, an Admiralty chart crossed
+with an old broadsheet weather report: "original… unique… keeps that kind of
+look and feel of old kind of weather report". The reference is the mockup
+`design/chart/1-the-chart.html` in the design worktree. It replaces the
+Atlantic ruling's values, not its rules: one filled action per view (the ink
+pill, magenta under the pointer), warm means now or degraded, wind colours mean
+wind and keep their values. What changes: the site is one paper (`#f3eee3`; the
+ground, a card and the solid fallback are one value) and one ink (`#1a1d21`),
+structure is drawn in rules rather than lifted cards, the map's panels are
+opaque paper rather than glass, boxes are square, the focus ring is 2px of the
+chart's magenta (`#b0186a`), and the type is four self-hosted faces (Fraunces,
+Newsreader, IBM Plex Mono, Kalam) on an eleven-step scale. The red pen
+(`#d43a2c`) is new, and has a rule of its own above.
+
+Measured, not assumed, on paper: `ink` 14.62:1, `ink-2` 9.54:1, `ink-muted`
+5.80:1 (5.40:1 on `sunken`), `line-strong` 3.66:1 (a stroke's bar, not
+text's), `chart-magenta` 5.70:1, `warn` 5.68:1. The pen's mark `pen` is
+4.09:1, which is enough for a stroke and not for words, so its handwriting
+takes `pen-ink` at 4.93:1. Paper on the hovered accent is 5.70:1.
 
 ---
 

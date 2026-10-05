@@ -141,7 +141,7 @@ export function Companion({
         {gust.nudging && !gust.open && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -left-1 rounded-full bg-accent px-2 py-0.5 font-sans text-caption font-bold text-accent-ink shadow-control"
+            className="absolute -top-1 -left-1 rounded-full bg-accent px-2 py-0.5 font-body text-caption font-bold text-accent-ink shadow-control"
           >
             {nudgeStars}★
           </span>
@@ -183,7 +183,7 @@ function Panel({
       aria-label={COMPANION_NAME}
       tabIndex={-1}
       className={[
-        "gust-panel flex flex-col overflow-hidden rounded-surface font-sans text-ink focus:outline-hidden",
+        "gust-panel flex flex-col overflow-hidden rounded-surface font-body text-ink focus:outline-hidden",
         "border border-card/70 bg-glass shadow-surface backdrop-blur-glass backdrop-saturate-145",
         "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
       ].join(" ")}

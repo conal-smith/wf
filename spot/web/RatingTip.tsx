@@ -20,7 +20,7 @@ import { RING, tv } from "../../ui/tv";
 const styles = tv({
   slots: {
     trigger: [
-      "-mx-1 inline-flex min-h-control-sm items-center rounded-control border-0 bg-transparent px-1 font-sans text-ink",
+      "-mx-1 inline-flex min-h-control-sm items-center rounded-control border-0 bg-transparent px-1 font-body text-ink",
       "cursor-help not-disabled:hover:bg-sunken",
       RING,
     ],

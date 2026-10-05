@@ -77,7 +77,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
   if (compact)
     return (
       <article
-        className="flex items-center gap-3 rounded-control border border-line bg-card px-4 py-3 font-sans text-ink shadow-control"
+        className="flex items-center gap-3 rounded-control border border-line bg-card px-4 py-3 font-body text-ink shadow-control"
         aria-label={`${card.name}, ${card.county}`}
         data-spot-card={card.id}
       >
@@ -115,7 +115,7 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
     );
   return (
     <article
-      className="flex flex-col gap-3 rounded-control border border-line bg-card p-4 font-sans text-ink shadow-control"
+      className="flex flex-col gap-3 rounded-control border border-line bg-card p-4 font-body text-ink shadow-control"
       aria-label={`${card.name}, ${card.county}`}
       data-spot-card={card.id}
     >
