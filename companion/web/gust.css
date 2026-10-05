@@ -1,7 +1,9 @@
 /*
  * Gust (companion/web/Gust.tsx) and where he floats. Colours are the theme's
  * own tokens (ui/theme.css) read through var(): the body is ink, the eyes are
- * card white, the wing is the accent.
+ * the paper, the wing's canopy is the chart's magenta with its tube inked
+ * round it. (The accent it used to read is ink now, and the wing vanished
+ * into his body.)
  *
  * Every animation sits behind prefers-reduced-motion: no-preference, so a
  * reader who has asked for less motion gets the same faces, standing still.
@@ -10,8 +12,8 @@
 .gust {
   --gust-fill: var(--color-ink);
   --gust-eye: var(--color-card);
-  --gust-canopy: var(--color-accent);
-  --gust-tube: var(--color-accent-hover);
+  --gust-canopy: var(--color-chart-magenta);
+  --gust-tube: var(--color-ink);
   --gust-shade: var(--color-line);
   flex-shrink: 0;
   overflow: visible;

@@ -15,23 +15,34 @@ export function ToolChips({ tools }: { tools: ToolActivity[] }) {
           key={tool.id}
           data-status={tool.status}
           className={[
-            "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1 font-body text-caption",
+            "inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-caption",
             tool.status === "error"
-              ? "bg-warn-ground text-warn"
-              : "bg-sunken text-ink-2",
+              ? "border-warn bg-warn-ground text-warn"
+              : "border-line bg-sunken text-ink-2",
           ].join(" ")}
           title={tool.summary}
         >
           {tool.status === "running" ? (
             <LoaderCircle
               size={12}
+              strokeWidth={1.5}
               className="gust-spin shrink-0"
               aria-hidden="true"
             />
           ) : tool.status === "done" ? (
-            <Check size={12} className="shrink-0 text-ok" aria-hidden="true" />
+            <Check
+              size={12}
+              strokeWidth={1.5}
+              className="shrink-0 text-ok"
+              aria-hidden="true"
+            />
           ) : (
-            <CircleAlert size={12} className="shrink-0" aria-hidden="true" />
+            <CircleAlert
+              size={12}
+              strokeWidth={1.5}
+              className="shrink-0"
+              aria-hidden="true"
+            />
           )}
           <span className="truncate">
             {tool.status === "done" && tool.summary ? tool.summary : tool.label}
