@@ -21,13 +21,16 @@
     "../../site/shared",
     "../../community/api",
     "../../community/shared",
-    "../../mcp/api"
+    "../../mcp/api",
+    "../../companion/api",
+    "../../companion/shared"
   ],
   "exclude": [
     "src/**/*.test.ts",
     "../../site/**/*.test.ts",
     "../../community/**/*.test.ts",
     "../../mcp/**/*.test.ts",
+    "../../companion/**/*.test.ts",
     "../../mcp/api/testing.ts"
   ]
 }

@@ -12,6 +12,8 @@ import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
 import { dirSource, httpSource } from "../../../mcp/api/source.js";
+import { anthropicClient } from "../../../companion/api/agent.js";
+import { fakeClient } from "../../../companion/api/fake.js";
 import { memoryHub, pgHub } from "../../../community/api/hub.js";
 import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory.js";
 import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
@@ -77,6 +79,19 @@ async function main() {
   if (!forecast)
     console.warn("market: FORECAST_BASE_URL is not set, /api/mcp is off");
 
+  // Gust: the Claude API with a key, the scripted fake in development when
+  // asked for, and otherwise asleep (503 not_configured, never a fake answer).
+  const { companion } = config;
+  const companionClient = companion.fake
+    ? fakeClient()
+    : companion.apiKey
+      ? anthropicClient(companion.apiKey)
+      : null;
+  if (companion.fake)
+    console.warn("market: COMPANION_FAKE=1, Gust answers from a script");
+  else if (!companionClient)
+    console.warn("market: ANTHROPIC_API_KEY is not set, Gust is asleep");
+
   const app = createApp({
     repo,
     community,
@@ -88,6 +103,13 @@ async function main() {
     authMode: config.auth.mode,
     hub,
     forecast,
+    companion: {
+      client: companionClient,
+      model: companion.model,
+      effort: companion.effort,
+      fake: companion.fake,
+      trustClientClock: companion.fake,
+    },
   });
 
   const server = serve(

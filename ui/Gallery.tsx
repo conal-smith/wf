@@ -30,6 +30,11 @@ import {
   TextArea,
   TextInput,
 } from "./index";
+// Gust, the companion, is not part of the kit; he is drawn here so his moods
+// can be looked at side by side.
+import { Gust } from "../companion/web/Gust";
+import { GUST_MOODS } from "../companion/web/mood";
+import { SpotCard } from "../companion/web/SpotCard";
 
 const VARIANTS = [
   "quiet",
@@ -497,6 +502,63 @@ export default function Gallery() {
         >
           Its photos go with it. This cannot be undone.
         </ConfirmDialog>
+      </Section>
+
+      <Section title="Gust, the companion">
+        <Row label="Moods">
+          {GUST_MOODS.map((mood) => (
+            <figure key={mood} className="m-0 grid justify-items-center gap-1">
+              <Gust mood={mood} size={88} />
+              <figcaption className="text-caption text-ink-muted">
+                {mood}
+              </figcaption>
+            </figure>
+          ))}
+        </Row>
+        <Row label="At launcher size">
+          {GUST_MOODS.map((mood) => (
+            <Gust key={mood} mood={mood} size={46} />
+          ))}
+        </Row>
+        <Row label="Spot card">
+          <div className="w-full max-w-dialog">
+            <SpotCard
+              onShow={() => {}}
+              card={{
+                kind: "spot",
+                id: "brandon",
+                name: "Brandon Bay",
+                county: "Kerry",
+                best: {
+                  from: "2026-10-04T13:00:00Z",
+                  to: "2026-10-04T17:00:00Z",
+                  local: "Sat, 4 Oct, 14:00–18:00",
+                  stars: 4,
+                  potential: 5,
+                  wind_kn: 18,
+                  gust_kn: 24,
+                  direction: "WSW",
+                  direction_deg: 248,
+                  wing_m2: 5,
+                  own_wing_m2: 5,
+                  session: "Powered up",
+                  shore: "cross-offshore",
+                  agreement: "moderate",
+                },
+                windows: [
+                  {
+                    from: "2026-10-05T09:00:00Z",
+                    to: "2026-10-05T12:00:00Z",
+                    local: "Sun, 5 Oct, 10:00–13:00",
+                    stars: 3,
+                  },
+                ],
+                rider: { weightKg: 80, assumed: true, skill: "intermediate" },
+                note: null,
+              }}
+            />
+          </div>
+        </Row>
       </Section>
     </main>
   );

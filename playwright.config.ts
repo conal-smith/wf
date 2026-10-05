@@ -81,6 +81,8 @@ export default defineConfig({
         MARKET_AUTH_MODE: "dev",
         MARKET_STORAGE: "local",
         MARKET_UPLOAD_DIR: ".cache/e2e-uploads",
+        // Gust answers from its script, never the Claude API (companion/api/fake.ts).
+        COMPANION_FAKE: "1",
         PORT: String(apiPort),
       },
       timeout: 60000,

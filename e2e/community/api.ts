@@ -17,6 +17,10 @@
  *
  * Everything else a spec needs (threads, replies, follows) it makes over HTTP,
  * as a member would (D23).
+ *
+ * Gust, the companion, answers from its scripted fake (COMPANION_FAKE=1, set by
+ * playwright.config.ts) over the staged e2e site's forecast in .e2e/public, on
+ * the browser's clock: the suite's calendar is frozen in September 2026.
  */
 import { serve } from "@hono/node-server";
 import { createApp } from "../../market/api/src/app.js";
@@ -25,6 +29,8 @@ import { loadConfig } from "../../market/api/src/env.js";
 import { memoryRepo } from "../../market/api/src/repo-memory.js";
 import { localStorage } from "../../market/api/src/storage.js";
 import { memoryHub } from "../../community/api/hub.js";
+import { fakeClient } from "../../companion/api/fake.js";
+import { dirSource } from "../../mcp/api/source.js";
 import { memoryRepo as memoryCommunityRepo } from "../../community/api/repo-memory.js";
 import { devIdentity } from "../../site/api/identity.js";
 import { memoryUsersRepo } from "../../site/api/repo-memory.js";
@@ -63,6 +69,13 @@ function main() {
     authMode: "dev",
     hub,
     limiter: { take: () => {} },
+    forecast: dirSource(".e2e/public"),
+    companion: {
+      client: config.companion.fake ? fakeClient({ delayMs: 15 }) : null,
+      fake: config.companion.fake,
+      trustClientClock: true,
+      limiter: { take: () => {} },
+    },
   });
 
   const server = serve(

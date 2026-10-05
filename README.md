@@ -73,6 +73,53 @@ daylight), `find_wind` (spots ranked by hours in a wind range) and
 install links for Claude, Cursor and VS Code and the lines to paste for the
 rest.
 
+## Gust, the in-app companion
+
+Gust is the little ink blob with a wing in the map's bottom-right corner (above
+the dock and the model picker; a drawer on phones). Tap him, or press
+Cmd/Ctrl+J, and ask where and when to go: "Where's best tomorrow?", "Is
+Brandon on this weekend?", "What wing should I take?". He reads the same
+forecast consensus as the MCP server, rates it with the dock's stars for the
+rider in Display options (saying when he assumes 80 kg), and answers with spot
+cards, window chips and a short word of judgement, including a warning
+whenever the wind is offshore. Cards and chips can move the map (select the
+spot, jump the timeline); Gust only moves it himself when asked. He can
+propose a rider profile, which is saved only when the rider taps Confirm.
+When the selected spot has a four-star window in the next 48 hours, he nudges
+with a badge.
+
+- `companion/api/`: the Hono routes at `/api/companion` (`/status`, `/nudge`,
+  `/chat`), a manual streaming tool-use loop over the Claude API
+  (`@anthropic-ai/sdk`, `claude-opus-5-5`, at most 6 model calls a turn,
+  server-side refusal fallbacks, prompt caching on a frozen system prompt), and
+  five tools: `find_sessions`, `get_spot_forecast`, `list_spots`, `show_on_map`
+  and `propose_rider_profile`. The chat is stateless: the browser sends the
+  last 20 messages and what it is looking at, and keeps the transcript in
+  sessionStorage. Rate-limited per IP.
+- `companion/shared/protocol.ts`: the server-sent events both ends share:
+  `text`, `tool`, `card`, `action`, `proposal`, `error`, `done`.
+- `companion/web/`: Gust himself, the launcher and the panel.
+
+| Variable            | Default           | What it does                                                                                             |
+| ------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | unset             | Wakes Gust. Unset, `/api/companion/chat` answers 503 `not_configured` and the panel says Gust is asleep. |
+| `COMPANION_MODEL`   | `claude-opus-5-5` | The model.                                                                                               |
+| `COMPANION_EFFORT`  | `low`             | `output_config.effort` per call: `low`, `medium`, `high`, `xhigh`, `max`. Low keeps chat quick.          |
+| `COMPANION_FAKE`    | unset             | `1` answers from a scripted fake model over the real tools (demos, e2e). Refused in production.          |
+| `FORECAST_BASE_URL` | `public/` in dev  | Where the forecast is read, as for the MCP server.                                                       |
+
+Try it with a real key:
+
+```bash
+MARKET_DB=memory MARKET_AUTH_MODE=dev MARKET_STORAGE=local \
+  ANTHROPIC_API_KEY=sk-ant-... npm run market:api   # API on :8787
+npm run dev                                         # map on :5173, /api proxied
+```
+
+Or without one, scripted: the same with `COMPANION_FAKE=1` in place of the
+key. The e2e suite runs it that way (`e2e/companion.spec.ts`), over the staged
+sample forecast and on the browser's frozen clock.
+
 ## Run it yourself on one machine
 
 The [local deployment guide](deploy/local/README.md) sets up the whole site on a single
