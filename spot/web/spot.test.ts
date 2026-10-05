@@ -3,18 +3,24 @@ import { DEFAULT_RIDER, type Rider } from "../../force5/src/stars";
 import type { ForecastHour, HourWind } from "../../mcp/api/forecast";
 import {
   HOUR,
+  STAR_WORDS,
   bestIn,
   clock,
   compass,
   darkRuns,
   dayNames,
+  dayWindow,
   daySun,
   dublinDate,
   dublinMidnight,
   goodWindArcs,
   groupDays,
+  gustJumps,
+  headlineWhen,
+  hourChance,
   meanBearing,
   nextMidnight,
+  penNote,
   rowHours,
   shadeBands,
   shoreSummary,
@@ -22,8 +28,10 @@ import {
   tideCurve,
   tideHeightAt,
   tideTrend,
+  weekBest,
   windArcs,
   windIn,
+  windowHours,
   type TideTurn,
 } from "./spot";
 
@@ -302,5 +310,116 @@ describe("daylight", () => {
         10,
       ),
     ).toEqual([{ kind: "night", from: 0, to: 10 }]);
+  });
+});
+
+describe("the day's window and the pen's note", () => {
+  const now = Date.parse("2026-10-09T06:00:00Z");
+  const rider: Rider = { ...DEFAULT_RIDER, wings: [] };
+  // Light all day from the SW onto a beach facing W: cross-onshore. 8 kn in
+  // the morning, a 16 kn sweet spot 13:00–15:00 UTC, then 11 kn till dark.
+  const knots = (h: number) => (h < 12 ? 8 : h <= 15 ? 16 : 11);
+  const rowsFor = (until: number) =>
+    spotRows(
+      Array.from({ length: until - 6 }, (_, i) => {
+        const h = 6 + i;
+        return hour(
+          `2026-10-09T${String(h).padStart(2, "0")}:00:00Z`,
+          knots(h),
+          h >= 7 && h < 18,
+          225,
+        );
+      }),
+      now,
+      270,
+      rider,
+    );
+
+  it("is the longest run at the day's best stars, and the pen says it", () => {
+    const rows = rowsFor(20);
+    const window = dayWindow(rows)!;
+    expect(window.stars).toBe(
+      Math.max(...rows.map((r) => r.rating?.stars ?? 0)),
+    );
+    expect(
+      rows
+        .slice(window.first, window.last + 1)
+        .every((r) => r.rating?.stars === window.stars),
+    ).toBe(true);
+    expect(clock(window.from)).toBe("13:00");
+    expect(clock(window.to)).toBe("17:00");
+    expect(windowHours(window)).toBe("13–16");
+    expect(window.tillDark).toBe(false);
+    expect(penNote(window, rows)).toMatch(
+      /^(Go|Worth it|Thin:) 13:00–17:00\. \w+ stars? on a \d+(\.5)? m\.$/,
+    );
+  });
+
+  it("leaves it on the roof with no stars, and says nothing on a dark day", () => {
+    const calm = spotRows([hour("2026-10-09T12:00:00Z", 2)], now, 270, rider);
+    expect(dayWindow(calm)).toBeNull();
+    expect(penNote(null, calm)).toBe("Leave it on the roof.");
+    const dark = spotRows(
+      [hour("2026-10-09T22:00:00Z", 15, false)],
+      now,
+      270,
+      rider,
+    );
+    expect(penNote(null, dark)).toBeNull();
+  });
+
+  it("picks the week's best by stars, then length, and words the headline", () => {
+    const rows = rowsFor(20);
+    const window = dayWindow(rows)!;
+    const short = { ...window, last: window.first };
+    const best = weekBest([
+      { date: "2026-10-09", window: short },
+      { date: "2026-10-10", window },
+      { date: "2026-10-11", window: null },
+    ])!;
+    expect(best.date).toBe("2026-10-10");
+    expect(headlineWhen(best, now)).toBe(
+      `a ${STAR_WORDS[window.stars]}-star tomorrow afternoon`,
+    );
+  });
+
+  it("marks a gust that jumps ten knots or sixty per cent", () => {
+    expect(gustJumps(8, 13)).toBe(true);
+    expect(gustJumps(20, 29)).toBe(false);
+    expect(gustJumps(20, 30)).toBe(true);
+    expect(gustJumps(12, null)).toBe(false);
+  });
+});
+
+describe("the chance it rides", () => {
+  const rider: Rider = { ...DEFAULT_RIDER, wings: [] };
+  const base = hour("2026-10-09T12:00:00Z", 12);
+
+  it("re-rates the members for the rider when the forecast kept them", () => {
+    const ensemble = {
+      members: 4,
+      models: ["GEFS"],
+      p10_kn: 6,
+      p50_kn: 11,
+      p90_kn: 15,
+      chance_pct: 75,
+      samples: [
+        [6, null],
+        [9.7, 15.6],
+        [11.7, null],
+        [15.6, null],
+      ] as [number, number | null][],
+    };
+    expect(hourChance({ ...base, ensemble }, rider)).toBe(75);
+    expect(
+      hourChance({ ...base, ensemble }, { ...rider, skill: "beginner" }),
+    ).toBe(25);
+    expect(
+      hourChance(
+        { ...base, ensemble: { ...ensemble, samples: undefined } },
+        { ...rider, skill: "beginner" },
+      ),
+    ).toBe(75);
+    expect(hourChance(base, rider)).toBeNull();
   });
 });

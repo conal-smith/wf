@@ -3,10 +3,10 @@
 # `src/main.tsx` reads the pathname and mounts the wind map, the marketplace,
 # the community, the AI page or a riding place's spot page, so /market,
 # /market/sell, /market/listing/:id, /community, /community/t/:id and
-# /spot/:id are real URLs with no file behind them. A host that 404s
+# /spot/:id and /stars are real URLs with no file behind them. A host that 404s
 # them breaks every direct load, refresh and shared link into either section.
 #
-# These eight rules are exactly what that entry point branches on, and nothing
+# These ten rules are exactly what that entry point branches on, and nothing
 # else. A blanket /* rule would be wrong here: this origin also serves the
 # ingest output under /weather and /marine, and every loader in the product
 # gates on `!response.ok` and then parses what it got — a missing snapshot
@@ -26,3 +26,5 @@
 /ai/*           /index.html  200
 /spot           /index.html  200
 /spot/*         /index.html  200
+/stars          /index.html  200
+/stars/*        /index.html  200

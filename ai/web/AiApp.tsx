@@ -5,15 +5,27 @@
  *
  * One click where a client has an install link (Claude, Cursor, VS Code), the
  * lines to paste where it does not. The endpoint itself is mcp/api/server.ts.
+ *
+ * Set as the chart's broadsheet: a headline, sections under a heavy rule, the
+ * clients as ruled boxes with one filled action between them, and the address
+ * and the config in the mono face, as figures are.
  */
 import { Bot, Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { API_ROOT } from "../../shared/web/http";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import { Button, Notice, Pane } from "../../ui";
+import {
+  Button,
+  Headline,
+  Kicker,
+  Notice,
+  Pane,
+  SectionHeading,
+  headlineStyles,
+} from "../../ui";
 import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
-import { tv } from "../../ui/tv";
+import { MONO_LABEL, tv } from "../../ui/tv";
 import {
   EXAMPLE_PROMPTS,
   claudeCodeCommand,
@@ -29,22 +41,24 @@ const styles = tv({
   slots: {
     root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
     page: "mx-auto flex w-full max-w-form flex-1 flex-col px-safe-6 max-wide:px-safe-3",
-    main: "flex flex-col gap-6 pt-3 pb-10",
-    intro: "flex flex-col gap-2",
-    title: "m-0 text-title",
-    lead: "m-0 text-ink-2",
+    main: "flex flex-col gap-8 pt-5 pb-12",
+    intro: "flex flex-col gap-3",
+    lead: "m-0 font-body text-lead font-normal text-ink-2 italic",
+    facts: ["m-0 flex flex-wrap gap-x-4 gap-y-1 text-ink-muted", MONO_LABEL],
     section: "flex flex-col gap-3",
-    heading: "m-0 text-lead",
     clients: "grid grid-cols-2 gap-3 max-wide:grid-cols-1",
     client: "flex flex-col gap-2",
-    clientName: "m-0 text-lead",
-    note: "m-0 text-body text-ink-muted",
+    clientName: "m-0 font-display text-lead text-ink",
+    note: "m-0 font-body text-body text-ink-2",
+    where: "m-0 flex flex-wrap items-baseline gap-2",
+    path: "font-mono text-caption text-ink-muted",
     actions: "mt-auto flex flex-wrap items-center gap-2 pt-1",
-    code: "m-0 overflow-x-auto rounded-control bg-sunken px-3 py-2 text-body whitespace-pre text-ink",
+    code: "m-0 overflow-x-auto border-0 border-l-3 border-ink bg-sunken px-3 py-2 font-mono text-caption whitespace-pre text-ink",
     row: "flex items-center gap-2",
     rowCode: "min-w-0 flex-1",
-    prompts: "m-0 flex list-none flex-col gap-2 p-0",
-    prompt: "rounded-control bg-card px-4 py-3 text-ink-2 shadow-control",
+    prompts: "m-0 flex list-none flex-col p-0",
+    prompt:
+      "border-0 border-b border-line py-2.5 font-body text-prose text-ink-2 italic",
   },
 });
 
@@ -104,19 +118,24 @@ export default function AiApp() {
 
         <main className={s.main()}>
           <div className={s.intro()}>
-            <h1 className={s.title()}>Ask your AI where the wind is</h1>
+            <Headline>
+              Ask your AI{" "}
+              <em className={headlineStyles().soft()}>where the wind is</em>
+            </Headline>
             <p className={s.lead()}>
-              Add wingfoil.ie to Claude, ChatGPT or your coding agent and it can
-              read the same forecast as the map: every weather model for each
-              Irish spot, how well they agree, waves, tides, daylight and sea
-              temperature. It is free, read-only and needs no account.
+              Add wingfoil.ie to Claude, ChatGPT or your coding agent and it
+              reads the same forecast as the map.
+            </p>
+            <p className={s.facts()}>
+              <span>Every model</span>
+              <span>The chance it rides</span>
+              <span>Waves · tides · daylight</span>
+              <span>Free · read-only · no account</span>
             </p>
           </div>
 
           <section className={s.section()} aria-labelledby="ai-url">
-            <h2 id="ai-url" className={s.heading()}>
-              The server
-            </h2>
+            <SectionHeading id="ai-url">The server</SectionHeading>
             <Snippet value={url} label="the server address" />
             <p className={s.note()}>
               An MCP server over Streamable HTTP. Any MCP client can use this
@@ -125,9 +144,7 @@ export default function AiApp() {
           </section>
 
           <section className={s.section()} aria-labelledby="ai-add">
-            <h2 id="ai-add" className={s.heading()}>
-              Add it
-            </h2>
+            <SectionHeading id="ai-add">Add it</SectionHeading>
             <div className={s.clients()}>
               <Pane className={s.client()}>
                 <h3 className={s.clientName()}>Claude</h3>
@@ -195,30 +212,30 @@ export default function AiApp() {
           </section>
 
           <section className={s.section()} aria-labelledby="ai-cli">
-            <h2 id="ai-cli" className={s.heading()}>
-              Command-line agents
-            </h2>
-            <p className={s.note()}>Claude Code: run</p>
+            <SectionHeading id="ai-cli">Command-line agents</SectionHeading>
+            <Kicker>Claude Code</Kicker>
             <Snippet
               value={claudeCodeCommand(url)}
               label="the Claude Code command"
             />
-            <p className={s.note()}>Codex: add to ~/.codex/config.toml</p>
+            <p className={s.where()}>
+              <Kicker as="span">Codex</Kicker>
+              <code className={s.path()}>~/.codex/config.toml</code>
+            </p>
             <Snippet value={codexConfig(url)} label="the Codex config" />
-            <p className={s.note()}>
-              Gemini CLI: add to ~/.gemini/settings.json
+            <p className={s.where()}>
+              <Kicker as="span">Gemini CLI</Kicker>
+              <code className={s.path()}>~/.gemini/settings.json</code>
             </p>
             <Snippet value={geminiConfig(url)} label="the Gemini CLI config" />
           </section>
 
           <section className={s.section()} aria-labelledby="ai-try">
-            <h2 id="ai-try" className={s.heading()}>
-              Then ask
-            </h2>
+            <SectionHeading id="ai-try">Then ask</SectionHeading>
             <ul className={s.prompts()}>
               {EXAMPLE_PROMPTS.map((prompt) => (
                 <li key={prompt} className={s.prompt()}>
-                  {prompt}
+                  &ldquo;{prompt}&rdquo;
                 </li>
               ))}
             </ul>

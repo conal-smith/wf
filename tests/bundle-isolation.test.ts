@@ -200,15 +200,11 @@ describe("the spot page bundle", () => {
     expect(reached(ENTRY, "force5/src/index.ts")).toEqual([]);
     expect(reached(ENTRY, "WindMap")).toEqual([]);
     expect(reached(ENTRY, "maplibre-gl")).toEqual([]);
-    // It borrows two leaf components from the map's sources — the stars and
-    // the weather glyph — and nothing that holds the map's state.
+    // It borrows nothing from the map's sources: its stars come from the kit
+    // and its glyphs are its own (spot/web/glyphs.tsx).
     expect(
       [...staticGraph(ENTRY)].filter((m) => m.startsWith("src/")).sort(),
-    ).toEqual([
-      "src/RowLabel.tsx",
-      "src/StarsRows.tsx",
-      "src/WeatherGlyph.tsx",
-    ]);
+    ).toEqual([]);
   });
 
   it("reaches neither the marketplace nor the community, nor they it", () => {
