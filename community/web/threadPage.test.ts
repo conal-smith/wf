@@ -200,11 +200,11 @@ describe("S2: the opening post is the one card", () => {
   it("the opening post is a pane, a reply is not", () => {
     const opening = drawn({ message: message({ seq: 0 }), opening: true });
     const card = /<article[^>]*>/.exec(opening)?.[0];
-    for (const name of ["bg-card", "border-line", "rounded-surface"])
+    for (const name of ["bg-card", "border-ink", "rounded-surface"])
       expect(card).toContain(name);
     expect(opening).toContain('id="m-0"');
     const reply = drawn({});
-    expect(/<article[^>]*>/.exec(reply)?.[0]).not.toContain("border-line");
+    expect(/<article[^>]*>/.exec(reply)?.[0]).not.toContain("border-ink");
     expect(reply).toContain('id="m-3"');
   });
 

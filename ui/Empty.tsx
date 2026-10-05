@@ -5,16 +5,17 @@ import { tv, type VariantProps } from "./tv";
 
 export const emptyStyles = tv({
   slots: {
-    base: "grid justify-items-center gap-3 px-6 py-16 text-center font-sans text-prose text-ink-muted",
-    // A large control and a gap across, as the design bundle drew the well.
-    icon: "grid size-14.5 place-items-center rounded-full",
-    title: "m-0 text-lead text-ink",
+    base: "grid justify-items-center gap-3 px-6 py-14 text-center font-body text-prose text-ink-muted",
+    // A large control and a gap across, ruled in ink like a chart's light.
+    icon: "grid size-14.5 place-items-center rounded-full border",
+    // The display face's italic: a line, not a heading.
+    title: "m-0 font-display text-lead text-ink italic",
     body: "grid max-w-reading justify-items-center gap-3",
   },
   variants: {
     kind: {
-      info: { icon: "bg-sunken text-ink-muted" },
-      warn: { icon: "bg-warn-ground text-warn" },
+      info: { icon: "border-ink bg-card text-ink" },
+      warn: { icon: "border-warn bg-warn-ground text-warn" },
     },
   },
   defaultVariants: { kind: "info" },

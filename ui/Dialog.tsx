@@ -14,14 +14,15 @@ export const dialogStyles = tv({
   slots: {
     // `open:` and not a bare `grid`: a display of its own would show a closed
     // dialog, which the browser hides with nothing stronger than `display`.
+    // The chart's box: paper with its grain, in a double rule.
     base: [
-      "m-auto w-11/12 gap-5 rounded-dialog border border-line bg-card p-8 font-sans text-ink shadow-surface",
+      "m-auto w-11/12 gap-5 rounded-dialog border border-ink bg-card paper-grain p-7 font-body text-ink shadow-surface inset-shadow-frame max-wide:p-5",
       "open:grid open:animate-dialog-in motion-reduce:animate-none",
       "backdrop:bg-scrim backdrop:backdrop-blur-scrim",
     ],
-    head: "flex items-start justify-between gap-3",
-    title: "m-0 text-lead text-ink",
-    body: "grid gap-3 text-prose text-ink-muted",
+    head: "flex items-start justify-between gap-3 border-b border-ink pb-3",
+    title: "m-0 font-display text-lead text-ink",
+    body: "grid gap-3 text-prose text-ink-2",
     actions: "flex flex-wrap items-center justify-end gap-2",
   },
   variants: {
@@ -213,7 +214,7 @@ export function Dialog({
         </h2>
         {dismissible && (
           <Button
-            variant="pill"
+            variant="quiet"
             size="sm"
             icon
             aria-label="Close"

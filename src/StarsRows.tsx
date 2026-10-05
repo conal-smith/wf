@@ -1,4 +1,5 @@
 import { Sailboat, Star } from "lucide-react";
+import { StarGlyphs as KitStarGlyphs } from "../ui/StarGlyphs";
 import RowLabel from "./RowLabel";
 import type { DockColumn } from "../force5/src/timeline";
 import {
@@ -28,7 +29,14 @@ export const STARS_HELP =
 export const WING_HELP =
   "The wing size the stars assume for that hour, in square metres: your own wing where you have listed them, otherwise what a rider of your weight and level would usually take.";
 
-/** Solid stars, then faded ones, told apart by shape as well as by tone. */
+/**
+ * Solid stars, then faded ones, told apart by shape as well as by tone: the
+ * kit's `StarGlyphs` (ui/StarGlyphs.tsx), drawn in the chart's style, with
+ * the product's own words for a screen reader. It stops at the last faded
+ * star rather than drawing all five places, so the dock's narrow cells keep
+ * the width they were laid out for; a page with the room can ask the kit for
+ * all five.
+ */
 export function StarGlyphs({
   stars,
   potential,
@@ -40,21 +48,14 @@ export function StarGlyphs({
   size?: number;
 }) {
   return (
-    <span
+    <KitStarGlyphs
       className="stars-glyphs"
-      role="img"
-      aria-label={starsText({ stars, potential })}
-    >
-      {Array.from({ length: potential }, (_, index) => (
-        <Star
-          key={index}
-          size={size}
-          aria-hidden="true"
-          className={index < stars ? "star-solid" : "star-faded"}
-          fill={index < stars ? "currentColor" : "none"}
-        />
-      ))}
-    </span>
+      stars={stars}
+      potential={potential}
+      size={size}
+      slots="potential"
+      label={starsText({ stars, potential })}
+    />
   );
 }
 

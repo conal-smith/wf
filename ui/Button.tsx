@@ -6,10 +6,16 @@ import type {
 } from "react";
 import { DISABLED, HOVER, RING, tv, type VariantProps } from "./tv";
 
+/*
+ * Every button speaks in the mono label: tracked capitals in IBM Plex Mono,
+ * as the chart's own controls do. The shapes are the chart's too: a capsule
+ * ruled in ink, filled in ink when it is the one action, and a square box for
+ * an instrument laid over the map.
+ */
 export const buttonStyles = tv({
   base: [
-    "inline-flex shrink-0 items-center justify-center gap-1 border-0 bg-transparent",
-    "font-sans text-label text-quiet no-underline whitespace-nowrap",
+    "inline-flex shrink-0 items-center justify-center gap-1.5 border border-transparent bg-transparent",
+    "font-mono text-label text-quiet uppercase no-underline whitespace-nowrap",
     "cursor-pointer touch-manipulation transition-colors duration-fast",
     // A tap target is never shorter than touch, whatever size was asked for.
     "pointer-coarse:min-h-touch",
@@ -18,45 +24,53 @@ export const buttonStyles = tv({
   ],
   variants: {
     variant: {
-      quiet: ["rounded-control", HOVER],
-      // The one filled control. A view has one of these, or none.
-      primary:
-        "rounded-full bg-accent text-accent-ink not-disabled:hover:bg-accent-hover disabled:bg-sunken",
+      quiet: ["rounded-pill", HOVER],
+      // The one filled control: an ink pill, magenta under the pointer. A
+      // view has one of these, or none.
+      primary: [
+        "rounded-full border-accent bg-accent text-accent-ink",
+        "not-disabled:hover:border-accent-hover not-disabled:hover:bg-accent-hover",
+        "disabled:border-line disabled:bg-sunken",
+      ],
+      // A capsule ruled in ink, which turns to ink under the pointer.
       pill: [
-        "rounded-full border border-line bg-card shadow-control",
-        "disabled:bg-transparent disabled:shadow-none",
-        HOVER,
+        "rounded-full border-ink bg-card",
+        "not-disabled:hover:bg-inverse not-disabled:hover:text-ink-inverse",
+        "disabled:border-line disabled:bg-transparent",
       ],
       /*
-       * The pill's twin for a control that stands on glass, or on the moving
-       * map: a card fill would be an opaque patch there, and sunken grey a
-       * darker one. The raised white and the glass's own white hairline, no
-       * shadow of its own (the glass it stands on has one), and a whiter
-       * white under the pointer. The site menu's trigger is the one reader.
+       * The chart's instrument: a square box ruled in ink, for a control laid
+       * over the moving map (the site menu, zoom, layers), where a capsule
+       * among the coastlines would read as one more shape on the chart. It
+       * casts no shadow of its own; the frame it stands in has one.
        */
       raised: [
-        "rounded-full border border-card/70 bg-card/40",
-        "not-disabled:hover:bg-card/55 disabled:bg-transparent",
+        "rounded-none border-ink bg-card",
+        "not-disabled:hover:bg-inverse not-disabled:hover:text-ink-inverse disabled:bg-transparent",
       ],
-      // A hover names its own background even where it wants none: the site's
-      // reset lays 25% white behind `button:enabled:hover`, and a variant that
-      // stays quiet about it is the one place that white gets through.
-      link: "font-normal underline underline-offset-4 decoration-line-strong not-disabled:hover:bg-transparent not-disabled:hover:text-ink not-disabled:hover:decoration-current",
+      // A way back or on, in the label face, underlined in ink: "<- Chart".
+      // A hover names its own background even where it wants none: the
+      // site's reset lays a wash behind `button:enabled:hover`, and a variant
+      // that stays quiet about it is the one place that wash gets through.
+      link: [
+        "underline decoration-1 underline-offset-4 decoration-ink",
+        "not-disabled:hover:bg-transparent not-disabled:hover:text-chart-magenta not-disabled:hover:decoration-current",
+      ],
       // The destructive answer in a ConfirmDialog, and nowhere else: warm
       // means degraded, and what it confirms cannot be taken back. It lifts
       // under the pointer and keeps its fill, rather than being washed out.
       danger:
-        "rounded-full bg-warn text-ink-inverse not-disabled:hover:bg-warn not-disabled:hover:shadow-marker disabled:bg-sunken",
+        "rounded-full border-warn bg-warn text-ink-inverse not-disabled:hover:bg-warn not-disabled:hover:shadow-marker disabled:border-line disabled:bg-sunken",
     },
     size: {
-      sm: "h-control-sm px-2",
-      md: "h-control-md px-3",
-      lg: "h-control-lg px-5 text-prose font-semibold",
+      sm: "h-control-sm px-3",
+      md: "h-control-md px-4",
+      lg: "h-control-lg px-5 font-semibold",
     },
     icon: { true: "rounded-full p-0 pointer-coarse:min-w-touch" },
     pressed: {
-      // Raised and filled as well as recoloured, and heavier: never colour alone.
-      true: "border-transparent bg-inverse font-bold text-ink-inverse shadow-control not-disabled:hover:bg-inverse disabled:bg-sunken",
+      // Filled in ink as well as recoloured, and heavier: never colour alone.
+      true: "border-ink bg-inverse font-semibold text-ink-inverse shadow-control not-disabled:hover:bg-inverse disabled:bg-sunken",
       /*
        * A toggle that renames itself when it goes on — Save becomes Saved, the
        * heart beside it filled in — has already said so twice, in the word and
@@ -70,6 +84,8 @@ export const buttonStyles = tv({
     { icon: true, size: "sm", class: "w-control-sm" },
     { icon: true, size: "md", class: "w-control-md" },
     { icon: true, size: "lg", class: "w-control-lg" },
+    // The instrument stays square with an icon in it.
+    { icon: true, variant: "raised", class: "rounded-none" },
     /*
      * A link in running text: no box of its own, whatever size was asked for.
      * A thumb still gets a touch-tall target: on a coarse pointer an invisible
@@ -79,7 +95,7 @@ export const buttonStyles = tv({
     {
       variant: "link",
       class: [
-        "relative h-auto rounded-control p-0 pointer-coarse:min-h-0",
+        "relative h-auto rounded-control border-0 p-0 pointer-coarse:min-h-0",
         "pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:top-1/2",
         "pointer-coarse:before:h-touch pointer-coarse:before:-translate-y-1/2",
       ],

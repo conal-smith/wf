@@ -368,7 +368,8 @@ describe("S6: the rail", () => {
     );
     // Past four the badge is filled; up to four it is quiet. Both are numbers.
     expect(row("wings").inner).toContain("bg-inverse");
-    expect(row("foils").inner).toContain("bg-sunken");
+    expect(row("foils").inner).toContain("bg-card");
+    expect(row("foils").inner).not.toContain("bg-inverse");
     expect(row("boards").attributes).not.toContain("font-semibold");
     expect(row("boards").inner).not.toContain("unread");
   });
