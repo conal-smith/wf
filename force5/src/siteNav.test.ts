@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  APP_ROUTES,
   SITE_SECTIONS,
+  isSpotPath,
+  mapSpotHref,
+  spotHref,
+  spotIdFromPath,
   isAiPath,
   isCommunityPath,
   isMarketPath,
@@ -86,5 +91,57 @@ describe("SITE_SECTIONS", () => {
       expect(isCommunityPath(section.href)).toBe(section.id === "community");
       expect(isAiPath(section.href)).toBe(section.id === "ai");
     }
+  });
+});
+
+describe("isSpotPath", () => {
+  it("claims /spot and every place under it", () => {
+    expect(isSpotPath("/spot")).toBe(true);
+    expect(isSpotPath("/spot/")).toBe(true);
+    expect(isSpotPath("/spot/brandon")).toBe(true);
+    expect(isSpotPath("/spot/brandon/")).toBe(true);
+  });
+
+  it("does not claim a path that merely starts with the word", () => {
+    expect(isSpotPath("/spots")).toBe(false);
+    expect(isSpotPath("/spotify")).toBe(false);
+    expect(isSpotPath("/")).toBe(false);
+    expect(isSpotPath("/?spot=brandon")).toBe(false);
+    expect(isSpotPath("/community/spot/brandon")).toBe(false);
+  });
+});
+
+describe("spotIdFromPath", () => {
+  it("reads the one segment after /spot, decoded", () => {
+    expect(spotIdFromPath("/spot/brandon")).toBe("brandon");
+    expect(spotIdFromPath("/spot/brandon/")).toBe("brandon");
+    expect(spotIdFromPath("/spot/fi-inchydoney%20east")).toBe(
+      "fi-inchydoney east",
+    );
+  });
+
+  it("is null for the index, a deeper path, or a malformed escape", () => {
+    expect(spotIdFromPath("/spot")).toBeNull();
+    expect(spotIdFromPath("/spot/")).toBeNull();
+    expect(spotIdFromPath("/spot/brandon/extra")).toBeNull();
+    expect(spotIdFromPath("/spot/%E0%A4%A")).toBeNull();
+  });
+
+  it("round-trips with spotHref", () => {
+    for (const id of ["brandon", "osm-blast-kilcrea", "a b/c"])
+      expect(spotIdFromPath(spotHref(id))).toBe(id);
+  });
+});
+
+describe("mapSpotHref", () => {
+  it("opens the map on a place", () => {
+    expect(mapSpotHref("keel")).toBe("/?spot=keel");
+    expect(mapSpotHref("a b")).toBe("/?spot=a%20b");
+  });
+});
+
+describe("APP_ROUTES", () => {
+  it("is every section with a bundle of its own, then the spot page", () => {
+    expect(APP_ROUTES).toEqual(["/market", "/community", "/ai", "/spot"]);
   });
 });

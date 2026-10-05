@@ -39,7 +39,8 @@ const EXTENSIONS = [
 
 function resolveLocal(from: string, specifier: string): string | null {
   if (!specifier.startsWith(".")) return null;
-  const base = join(dirname(from), specifier);
+  // Node-style TypeScript writes `./source.js` for `./source.ts` (mcp/api).
+  const base = join(dirname(from), specifier).replace(/\.js$/, "");
   for (const ext of EXTENSIONS) {
     const candidate = base + ext;
     if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
@@ -189,5 +190,59 @@ describe("the map bundle", () => {
 
   it("still reaches MapLibre, so the check above is about something", () => {
     expect(staticGraph("src/main.tsx")).toContain("maplibre-gl");
+  });
+});
+
+describe("the spot page bundle", () => {
+  const ENTRY = "spot/web/SpotApp.tsx";
+
+  it("does not statically reach the map, MapLibre or the map's app", () => {
+    expect(reached(ENTRY, "force5/src/index.ts")).toEqual([]);
+    expect(reached(ENTRY, "WindMap")).toEqual([]);
+    expect(reached(ENTRY, "maplibre-gl")).toEqual([]);
+    // It borrows two leaf components from the map's sources — the stars and
+    // the weather glyph — and nothing that holds the map's state.
+    expect(
+      [...staticGraph(ENTRY)].filter((m) => m.startsWith("src/")).sort(),
+    ).toEqual([
+      "src/RowLabel.tsx",
+      "src/StarsRows.tsx",
+      "src/WeatherGlyph.tsx",
+    ]);
+  });
+
+  it("reaches neither the marketplace nor the community, nor they it", () => {
+    expect(
+      [...staticGraph(ENTRY)].filter(
+        (m) => m.startsWith("market/") || m.startsWith("community/"),
+      ),
+    ).toEqual([]);
+    for (const other of [
+      "market/web/MarketApp.tsx",
+      "community/web/CommunityApp.tsx",
+      "src/App.tsx",
+    ])
+      expect(
+        [...staticGraph(other)].filter((m) => m.startsWith("spot/")),
+      ).toEqual([]);
+  });
+
+  // The page reads the forecast through the MCP server's reduction, and the
+  // browser-safe half of its reader: never the half that opens the disk.
+  it("reads the forecast through the shared, browser-safe modules", () => {
+    const graph = staticGraph(ENTRY);
+    expect(graph).toContain("mcp/api/forecast.ts");
+    expect(graph).toContain("mcp/api/httpSource.ts");
+    expect(graph).toContain("force5/src/stars.ts");
+    expect(graph).not.toContain("mcp/api/source.ts");
+    expect([...graph].filter((m) => m.startsWith("node:"))).toEqual([]);
+  });
+
+  it("is reached from the entry point only through its lazy import", () => {
+    const graph = staticGraph("src/main.tsx");
+    expect([...graph].filter((m) => m.startsWith("spot/"))).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/main.tsx"), "utf8")).toMatch(
+      /React\.lazy\(\s*\(\)\s*=>\s*import\("\.\.\/spot\/web\/SpotApp"\)/,
+    );
   });
 });
