@@ -1,11 +1,11 @@
 import { ArrowLeft, ArrowRight, Camera, X } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { Button, Chip } from "../../../ui";
-import { buttonStyles } from "../../../ui/Button";
+import { Button, Chip, Kicker, SectionHeading } from "../../../ui";
 import { RING_WITHIN, tv } from "../../../ui/tv";
 import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
 import {
+  BackLink,
   Field,
   LoadError,
   Notice,
@@ -20,7 +20,7 @@ import {
   usePageTitle,
 } from "../components";
 import ProfileForm from "./ProfileForm";
-import { Link, navigate, paths } from "../router";
+import { navigate, paths } from "../router";
 import {
   CATEGORIES,
   CONDITIONS,
@@ -42,53 +42,50 @@ import {
 export const sellStyles = tv({
   slots: {
     /** Every section of the form, down the page. */
-    page: "flex min-w-0 flex-col gap-6",
-    /** What a pane holds, when it is one thing after another. */
+    page: "flex min-w-0 flex-col gap-8",
+    /** What a box holds, when it is one thing after another. */
     stack: "flex min-w-0 flex-col gap-5",
+    /** A section of the form: its heading on a rule, and its fields. */
+    section: "flex min-w-0 flex-col gap-5",
     /** A heading and whatever explains it. */
     head: "flex flex-col gap-2",
-    step: "m-0 text-eyebrow text-ink-muted uppercase",
-    title: "m-0 text-title text-balance text-ink",
-    lead: "m-0 text-lead text-ink",
+    title: "m-0 font-display text-title text-balance text-ink",
     quiet: "m-0 text-ink-muted",
     meta: "m-0 text-body text-ink-muted",
     /** What is wrong with the photographs, which are not a field. */
     error: "m-0 font-body text-body text-warn",
-    divider: "m-0 border-0 border-t border-line",
     /** Who the listing will go out under, beside the button that publishes it. */
-    signature: "text-body text-ink-muted",
+    signature: "font-body text-body text-ink-muted italic",
 
     // ---- the photo uploader -------------------------------------------------
 
     /** As many tiles as fit, at a photograph's size. */
     tiles: "grid grid-cols-tiles gap-3",
-    tile: "group relative aspect-4/3 overflow-hidden rounded-control bg-sunken",
+    // A photograph on paper, in the hairline frame every photograph here has.
+    tile: "group relative aspect-4/3 overflow-hidden border border-line bg-sunken",
     /** An upload still on its way is dimmed until it has landed. */
     image: "block size-full object-cover group-data-busy:opacity-50",
     badge: "absolute top-1 left-1",
     tools: "absolute inset-x-1 bottom-1 flex justify-between gap-1",
     reorder: "flex items-center gap-1",
     /*
-     * The tools lie on the photograph, so they are glass, as every other mark
-     * over a picture in this kit is. ui/ has no glass Button — one page wanting
-     * one is not yet a variant — so the recipe says it here, in the kit's own
-     * words, including the way out of it for a reader who has declined
-     * transparency.
+     * The tools lie on the photograph: the kit's paper capsule, ruled in ink,
+     * with the deeper shadow a mark over a picture carries.
      */
-    tool: [
-      "border border-card/70 bg-glass backdrop-blur-scrim",
-      "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
-    ],
-    /** The way to add more, in the shape of what it will become. */
+    // A step that cannot be taken stays paper, faded, rather than vanishing
+    // into the photograph under it.
+    tool: "shadow-marker disabled:border-line disabled:bg-card",
+    /** The way to add more, in the shape of what it will become: dashed, as
+     *  the chart draws what is not there yet. */
     add: [
       "relative grid aspect-4/3 cursor-pointer place-items-center overflow-hidden",
-      "rounded-control border-2 border-line-strong border-dashed bg-ground p-2",
+      "border-2 border-line-strong border-dashed bg-ground p-2",
       "text-center text-ink-muted transition-colors duration-fast",
       // A label, not a button, so the site's reset never reaches this hover.
-      "hover:bg-sunken hover:text-ink data-over:bg-sunken data-over:text-ink",
+      "hover:border-ink hover:bg-sunken hover:text-ink data-over:border-ink data-over:bg-sunken data-over:text-ink",
       RING_WITHIN,
     ],
-    addLabel: "flex flex-col items-center gap-1",
+    addLabel: "flex flex-col items-center gap-1.5",
     /** The native file input, over the whole tile and invisible on it. */
     addInput: "absolute inset-0 cursor-pointer opacity-0",
   },
@@ -177,10 +174,10 @@ export default function SellPage({ editId }: { editId?: string }) {
     return (
       <section className={pane(shared.pane(), styles.stack())}>
         <div className={styles.head()}>
+          <Kicker tone="ink">Classifieds</Kicker>
           <h1 className={styles.title()}>Sell your gear</h1>
           <p className={styles.quiet()}>
-            Sign in so buyers can reach you and so you can manage your listings
-            later.
+            Sign in, so buyers can reach you and you can manage what you list.
           </p>
         </div>
         {auth.provider === "none" ? (
@@ -218,13 +215,13 @@ export default function SellPage({ editId }: { editId?: string }) {
   // 409 contact_required without one), so it is asked for here and not before.
   if (!hasContact(me.data.profile)) {
     return (
-      <section className={pane(shared.pane(), styles.page())}>
+      <section className={pane(shared.pane(), styles.stack())}>
         <div className={styles.head()}>
-          <p className={styles.step()}>Step 1 of 2</p>
+          <Kicker>Step 1 of 2</Kicker>
           <h1 className={styles.title()}>First, how buyers reach you</h1>
           <p className={styles.quiet()}>
             Buyers see your name and county on every listing, and your contact
-            details when they ask for them.
+            details when they ask.
           </p>
         </div>
         <ProfileForm
@@ -328,31 +325,31 @@ function ListingForm({
       }}
     >
       {existing && (
-        <div>
-          <Link
-            to={paths.listing(existing.id)}
-            className={buttonStyles({ size: "sm" })}
-          >
-            <ArrowLeft size={15} aria-hidden="true" /> Back to listing
-          </Link>
-        </div>
+        <BackLink to={paths.listing(existing.id)}>Back to listing</BackLink>
       )}
-      <div className={styles.head()}>
-        {!existing && <p className={styles.step()}>Step 2 of 2</p>}
+      <div className={shared.head()}>
+        <div className={shared.dateline()}>
+          <Kicker as="span" tone="ink">
+            {existing ? "Classifieds" : "Sell"}
+          </Kicker>
+          {!existing && <Kicker as="span">Step 2 of 2</Kicker>}
+        </div>
         <h1 className={styles.title()}>
           {existing ? "Edit listing" : "What are you selling?"}
         </h1>
       </div>
 
-      <section
-        className={pane(shared.pane(), shared.form())}
-        aria-label="Photos"
-      >
+      <section className={styles.section()} aria-labelledby="sell-photos">
         <div className={styles.head()}>
-          <h2 className={styles.lead()}>Photos</h2>
+          <SectionHeading
+            id="sell-photos"
+            aside={`${form.photos.length} / ${LIMITS.photosPerListing}`}
+          >
+            Photos
+          </SectionHeading>
           <p className={styles.meta()}>
-            Up to {LIMITS.photosPerListing}. The first is the cover. Show the
-            whole item, any damage, and the size label.
+            The first is the cover. Show the whole thing, any damage, and the
+            size label.
           </p>
         </div>
         <PhotoUploader
@@ -366,11 +363,8 @@ function ListingForm({
         )}
       </section>
 
-      <section
-        className={pane(shared.pane(), shared.form())}
-        aria-label="Details"
-      >
-        <h2 className={styles.lead()}>Details</h2>
+      <section className={styles.section()} aria-labelledby="sell-details">
+        <SectionHeading id="sell-details">Details</SectionHeading>
         <Field label="Title" error={errors.title} htmlFor="listing-title">
           <TextInput
             id="listing-title"
@@ -463,8 +457,10 @@ function ListingForm({
             />
           </Field>
         </div>
-        <hr className={styles.divider()} />
-        <h2 className={styles.lead()}>Price and location</h2>
+      </section>
+
+      <section className={styles.section()} aria-labelledby="sell-price">
+        <SectionHeading id="sell-price">Price and place</SectionHeading>
         <div className={shared.formRow()}>
           <Field
             label="Price"
@@ -529,9 +525,12 @@ function ListingForm({
             />
           </Field>
         </div>
-        <hr className={styles.divider()} />
+      </section>
+
+      <section className={styles.section()} aria-labelledby="sell-desc">
+        <SectionHeading id="sell-desc">Description</SectionHeading>
         <Field
-          label="Description"
+          label="In your words"
           hint={`${form.description.length}/${LIMITS.descriptionMax}`}
           error={errors.description}
           htmlFor="listing-desc"
@@ -554,7 +553,7 @@ function ListingForm({
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </Button>
         <span className={styles.signature()}>
-          Listing as {profile.displayName}
+          as {profile.displayName}
         </span>
       </div>
     </form>
@@ -653,6 +652,7 @@ function PhotoUploader({
           <div className={styles.tools()}>
             <span className={styles.reorder()}>
               <Button
+                variant="pill"
                 icon
                 size="sm"
                 className={styles.tool()}
@@ -663,6 +663,7 @@ function PhotoUploader({
                 <ArrowLeft size={14} aria-hidden="true" />
               </Button>
               <Button
+                variant="pill"
                 icon
                 size="sm"
                 className={styles.tool()}
@@ -674,6 +675,7 @@ function PhotoUploader({
               </Button>
             </span>
             <Button
+              variant="pill"
               icon
               size="sm"
               className={styles.tool()}
@@ -709,8 +711,8 @@ function PhotoUploader({
             }}
           />
           <span className={styles.addLabel()}>
-            <Camera size={22} aria-hidden="true" />
-            <span className={styles.meta()}>Add photos</span>
+            <Camera size={22} strokeWidth={1.5} aria-hidden="true" />
+            <Kicker as="span">Add photos</Kicker>
           </span>
         </label>
       )}
