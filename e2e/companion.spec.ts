@@ -48,9 +48,9 @@ test("Gust answers a suggestion with lookups and a spot card, and shows it on th
 
   await first.getByRole("button", { name: "Show on map" }).click();
   await expect(
-    page.locator(`.spot-marker.active[data-spot-id="${id}"]`),
+    page.locator(`.spot-marker.sel[data-spot-id="${id}"]`),
   ).toBeVisible();
-  await expect(page.locator(".map-footer")).toContainText(name!);
+  await expect(page.locator(".dock .dk-name")).toHaveText(name!);
   // Showing it moves no conversation along and leaves the panel where it was.
   await expect(panel(page)).toBeVisible();
 });
@@ -81,8 +81,12 @@ test("a profile is only saved when the rider confirms it", async ({ page }) => {
     skill: "intermediate",
     wings: [4, 5, 6],
   });
-  // The dock re-rates for the new rider at once.
-  await expect(page.locator(".map-footer")).toContainText("85 kg");
+  // The dock re-rates for the new rider at once, and says who for.
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "About these figures" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "About these figures" }),
+  ).toContainText("85 kg intermediate");
 });
 
 test("the conversation survives a reload, and a new chat clears it", async ({
@@ -122,7 +126,7 @@ test("Ctrl+J toggles Gust and Escape closes him without closing the dock", async
   await page.keyboard.press("Escape");
   await expect(panel(page)).toBeHidden();
   await expect(launcher(page)).toBeFocused();
-  await expect(page.locator(".app-shell")).toHaveClass(/sheet-open/);
+  await expect(page.locator(".dock")).toBeVisible();
   await page.keyboard.press("Control+j");
   await expect(panel(page)).toBeVisible();
   await page.keyboard.press("Control+j");
@@ -134,12 +138,7 @@ test("the launcher covers none of the map's controls or the dock", async ({
 }) => {
   await openMap(page);
   const box = (await launcher(page).boundingBox())!;
-  for (const selector of [
-    ".map-navigation",
-    ".map-model-controls",
-    ".map-footer",
-    ".map-topbar",
-  ]) {
+  for (const selector of [".map-ctrl", ".map-print", ".map-footer", ".map-head"]) {
     const other = (await page.locator(selector).boundingBox())!;
     const overlaps =
       box.x < other.x + other.width &&

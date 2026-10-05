@@ -1273,3 +1273,8 @@
   text-align: left;
   pointer-events: auto;
 }
+.ip-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}

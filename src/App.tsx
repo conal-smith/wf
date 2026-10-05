@@ -320,6 +320,24 @@ export default function App() {
         : 0,
     [strip, selectedTime],
   );
+  /**
+   * A tab left open all morning comes back to an hour already gone: it lands
+   * on now instead, and only then. A time the reader chose ahead is theirs.
+   */
+  const selectedRef = useRef(selectedTime);
+  selectedRef.current = selectedTime;
+  useEffect(() => {
+    const seen = () => {
+      if (document.visibilityState !== "visible") return;
+      const s = stripRef.current;
+      const at = selectedRef.current;
+      const now = Date.now();
+      if (!s.length || !at || Date.parse(at) + 3600000 >= now) return;
+      setSelectedTime(s[openingColumn(s, now)].validTime);
+    };
+    document.addEventListener("visibilitychange", seen);
+    return () => document.removeEventListener("visibilitychange", seen);
+  }, []);
   const selectColumn = useCallback((at: number) => {
     const column = stripRef.current[at];
     if (!column) return;

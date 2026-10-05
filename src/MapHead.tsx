@@ -31,6 +31,8 @@ export default function MapHead({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  /** The list closes a moment after the field loses focus, so a tap on it lands. */
+  const closing = useRef(0);
   const list = useId();
   const hits = useMemo(() => {
     const q = fold(query.trim());
@@ -79,12 +81,19 @@ export default function MapHead({
           }
           value={query}
           onChange={(event) => {
+            clearTimeout(closing.current);
             setQuery(event.target.value);
             setActive(0);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+          onFocus={() => {
+            clearTimeout(closing.current);
+            setOpen(true);
+          }}
+          onBlur={() => {
+            clearTimeout(closing.current);
+            closing.current = window.setTimeout(() => setOpen(false), 150);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               if (query) setQuery("");

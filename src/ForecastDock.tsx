@@ -535,7 +535,12 @@ export default function ForecastDock(props: Props) {
 
   /* ---- the strip scrolls the time, and the time scrolls the strip ---- */
   const fromScroll = useRef(-1);
-  const programmatic = useRef(0);
+  /**
+   * Where the strip is being scrolled to by the time, not by the reader:
+   * until it gets there its scroll events say nothing about the time. The
+   * reader's own wheel, touch or key takes over at once.
+   */
+  const programmatic = useRef<{ left: number; until: number } | null>(null);
   const dragging = useRef(false);
   const scrollFrame = useRef(0);
   const scrollEnd = useRef(0);
@@ -545,7 +550,10 @@ export default function ForecastDock(props: Props) {
     const left = index * cw;
     if (Math.abs(el.scrollLeft - left) < 1) return;
     const animate = smooth && !reducedMotion;
-    programmatic.current = performance.now() + (animate ? 700 : 120);
+    clearTimeout(scrollEnd.current);
+    // Where the browser will actually stop: the strip's own end, at most.
+    const reach = Math.min(left, el.scrollWidth - el.clientWidth);
+    programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
   };
   useLayoutEffect(() => {
@@ -559,7 +567,14 @@ export default function ForecastDock(props: Props) {
   }, [spot.id]);
 
   const onScroll = () => {
-    if (performance.now() < programmatic.current) return;
+    const going = programmatic.current;
+    if (going) {
+      const el = wrap.current;
+      if (el && Math.abs(el.scrollLeft - going.left) < 2)
+        programmatic.current = null;
+      if (performance.now() < going.until) return;
+      programmatic.current = null;
+    }
     if (scrollFrame.current) return;
     scrollFrame.current = requestAnimationFrame(() => {
       scrollFrame.current = 0;
@@ -772,6 +787,24 @@ export default function ForecastDock(props: Props) {
                 ? `Tide: Marine Institute, ${tide.station.name} (${tide.distanceKm.toFixed(1)} km), metres above ${tide.curve.datum}. Prediction only: no surge.`
                 : "No tide station near."}
             </p>
+            {spot.note && <p className="ip-small">{spot.note}</p>}
+            {!!spot.locationSources?.length && (
+              <p className="ip-small ip-sources">
+                {spot.locationSources
+                  .filter((source) => /^https?:\/\//.test(source.url))
+                  .map((source, i) => (
+                    <a
+                      key={`${source.url}/${i}`}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`${source.name} · ${source.licence}`}
+                    >
+                      Source{spot.locationSources!.length > 1 ? ` ${i + 1}` : ""}
+                    </a>
+                  ))}
+              </p>
+            )}
           </InfoPop>
           <button
             ref={filterButton}
@@ -978,6 +1011,10 @@ export default function ForecastDock(props: Props) {
               className="tt-wrap"
               ref={wrap}
               tabIndex={0}
+              onWheel={() => (programmatic.current = null)}
+              onPointerDown={() => (programmatic.current = null)}
+              onTouchStart={() => (programmatic.current = null)}
+              onKeyDown={() => (programmatic.current = null)}
               aria-label="The week hour by hour: scroll sideways to move through time"
               onScroll={onScroll}
               onClick={(event) => {
