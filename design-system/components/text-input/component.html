@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Text input — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Text input</h2>
+
+      <p class="demo__label">Empty · italic placeholder</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" placeholder="Rusheen Bay, Galway" aria-label="Spot" />
+      </div>
+
+      <p class="demo__label">Filled</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" value="Dollymount" aria-label="Spot" />
+      </div>
+
+      <p class="demo__label">Prefix</p>
+      <div class="wf-control">
+        <span class="wf-control__adornment">€</span>
+        <input class="wf-control__input" type="text" inputmode="numeric" value="850" aria-label="Price" />
+      </div>
+
+      <p class="demo__label">Hover (held)</p>
+      <div class="wf-control is-hover">
+        <input class="wf-control__input" type="text" value="Brandon Bay" aria-label="Spot" />
+      </div>
+
+      <p class="demo__label">Focus-within (held): the ring on the box</p>
+      <div class="wf-control is-focus">
+        <input class="wf-control__input" type="text" value="Keel Beach" aria-label="Spot" />
+      </div>
+
+      <p class="demo__label">Active · a filter narrowing the results</p>
+      <div class="wf-control wf-control--active">
+        <span class="wf-control__adornment">€</span>
+        <input class="wf-control__input" type="text" inputmode="numeric" value="1200" aria-label="Most I'd pay" />
+      </div>
+
+      <p class="demo__label">Invalid · aria-invalid</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" value="6,5 m" aria-label="Wing size" aria-invalid="true" />
+      </div>
+
+      <p class="demo__label">Disabled</p>
+      <div class="wf-control">
+        <span class="wf-control__adornment">€</span>
+        <input class="wf-control__input" type="text" value="850" aria-label="Price" disabled />
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Text input · night chart (proposed)</h2>
+      <p class="demo__label">Empty</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" placeholder="Rusheen Bay, Galway" aria-label="Spot" />
+      </div>
+      <p class="demo__label">Active</p>
+      <div class="wf-control wf-control--active">
+        <span class="wf-control__adornment">€</span>
+        <input class="wf-control__input" type="text" value="1200" aria-label="Most I'd pay" />
+      </div>
+      <p class="demo__label">Focus (held)</p>
+      <div class="wf-control is-focus">
+        <input class="wf-control__input" type="text" value="The Burrow" aria-label="Spot" />
+      </div>
+      <p class="demo__label">Invalid</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" value="6,5 m" aria-label="Wing size" aria-invalid="true" />
+      </div>
+      <p class="demo__label">Disabled</p>
+      <div class="wf-control">
+        <input class="wf-control__input" type="text" value="Donabate" aria-label="Spot" disabled />
+      </div>
+    </section>
+  </body>
+</html>

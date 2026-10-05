@@ -1,15 +1,29 @@
 /**
- * The spot a thread names: its name, the way to its forecast on the wind map
- * and, when the map's data can be had, the wind there now.
+ * The spot a thread names, as the chart writes a spot up: its name in the
+ * display face's italic, the county in the mono label, and, when the map's
+ * data can be had, the hour now in figures (its stars, the wind and the gust
+ * raised over it, where it comes from) and the best run of hours left today.
+ * The whole card is the way to the spot on the chart.
  *
- * The reading is the one piece of forecast data the community touches, and the
+ * The forecast is the one piece of weather the community touches, and the
  * browser fetches it: the API stores the spot's id and knows nothing about
  * weather. It is read from the series the map's manifest already publishes for
- * every riding location, so there is no frame to load and no grid to sample.
- * Without it the card is the name and the link, which is all it has to be.
+ * every riding location, so there is no frame to load and no grid to sample,
+ * and rated by the same stars the dock and the spot page draw, for the rider
+ * the reader has set on the map. Without it the card is the name and the link,
+ * which is all it has to be.
  */
-import { ChevronRight, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { loadPrefs } from "../../../force5/src/prefs";
+import { shoreFacing } from "../../../force5/src/shoreFacing";
+import {
+  bestWindow,
+  rateHour,
+  type HourRating,
+  type Rider,
+} from "../../../force5/src/stars";
+import { dayNights } from "../../../force5/src/sun";
 import { forecastUrl } from "../../../force5/src/urls";
 import {
   KNOTS,
@@ -19,28 +33,42 @@ import {
   speed,
   type Manifest,
 } from "../../../force5/src/weather";
-import { RING, tv, type VariantProps } from "../../../ui/tv";
-import { spotLabel, type Spot } from "./NewThreadDialog";
+import { mapSpotHref } from "../../../force5/src/siteNav";
+import { windStop } from "../../../shared/web/windStops";
+import { Figure, StarGlyphs } from "../../../ui";
+import { MONO_LABEL, RING, tv, type VariantProps } from "../../../ui/tv";
+import type { Spot } from "./NewThreadDialog";
 
 export const spotCardStyles = tv({
   slots: {
-    // On the opening post's card, so it takes the ground to stand apart from it.
+    // A box of its own inside the opening post: one ink rule, square.
     base: [
-      "flex min-h-touch max-w-measure items-center gap-3 rounded-control bg-ground px-5 py-3 font-sans text-ink no-underline transition-colors duration-fast",
-      "not-disabled:hover:bg-sunken max-rail:px-3 motion-reduce:transition-none",
+      "group grid min-h-touch max-w-measure gap-2 border border-ink bg-ground px-4 py-3 font-body text-ink no-underline",
+      "max-rail:px-3",
       RING,
     ],
+    head: "flex min-w-0 items-baseline gap-2",
+    name: [
+      "min-w-0 truncate font-display text-lead font-semibold italic transition-colors duration-fast",
+      "group-hover:text-chart-magenta motion-reduce:transition-none",
+    ],
+    county: ["shrink-0 text-ink-muted", MONO_LABEL],
+    // Where the card goes, set right: CHART ->, as the spot page's way back.
+    go: [
+      "ml-auto inline-flex shrink-0 items-center gap-1 self-center text-ink",
+      MONO_LABEL,
+    ],
+    // The hour now, in figures, on a hairline.
+    now: "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-0 border-t border-line pt-2",
     // Wind is data: the swatch takes the ramp, and the number stays in ink.
-    swatch: "h-control-sm w-2 shrink-0 rounded-full",
-    text: "grid min-w-0 flex-1 gap-0.5",
-    name: "flex min-w-0 items-center gap-1 text-prose font-semibold",
-    nameText: "min-w-0 truncate",
-    pin: "shrink-0 text-ink-muted",
-    meta: "truncate text-body text-ink-muted",
-    reading: "shrink-0 text-right text-lead whitespace-nowrap tabular-nums",
-    unit: "text-body font-normal text-ink-muted",
-    now: "max-rail:hidden",
-    chevron: "shrink-0 text-ink-muted max-rail:hidden",
+    swatch: "h-5 w-1.5 shrink-0 rounded-full",
+    from: "font-mono text-caption text-ink-2",
+    label: ["text-ink-muted", MONO_LABEL],
+    dark: "font-mono text-caption text-ink-muted italic",
+    // The best of what is left today.
+    best: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
+    bestTimes: "font-mono text-caption font-semibold text-ink tabular-nums",
+    meta: "font-body text-body text-ink-muted italic",
     hidden: "sr-only",
   },
   variants: {
@@ -67,37 +95,14 @@ export const spotCardStyles = tv({
 
 export type WindStop = NonNullable<VariantProps<typeof spotCardStyles>["wind"]>;
 
-/** Where each stop starts, in knots: the map's ramp, stop for stop. */
-export const WIND_STOPS: readonly (readonly [number, WindStop])[] = [
-  [0, "k00"],
-  [5, "k05"],
-  [9, "k09"],
-  [10, "k10"],
-  [15, "k15"],
-  [20, "k20"],
-  [25, "k25"],
-  [30, "k30"],
-  [35, "k35"],
-  [40, "k40"],
-  [45, "k45"],
-  [50, "k50"],
-  [60, "k60"],
-  [65, "k65"],
-];
-
-/** The stop a speed has reached: 19 kn is drawn at 15, and 20 kn at 20. */
-export function windStop(knots: number): WindStop {
-  let stop = WIND_STOPS[0][1];
-  for (const [from, name] of WIND_STOPS) if (knots >= from) stop = name;
-  return stop;
-}
+// The stops are shared with the spot page, which paints its wind with them too.
+export { WIND_STOPS, windStop } from "../../../shared/web/windStops";
 
 /**
  * The map, opened on a spot. An absolute path, as the site menu's are: crossing
  * sections swaps the bundle, which is a page load and not a push.
  */
-export const mapSpotHref = (spotId: string) =>
-  `/?spot=${encodeURIComponent(spotId)}`;
+export { mapSpotHref } from "../../../force5/src/siteNav";
 
 export interface SpotReading {
   /** Rounded, as shown: the swatch is chosen from the same number. */
@@ -139,7 +144,7 @@ export function readingNow(
   };
 }
 
-/** The line under the name: "WSW · gusting 26 kn". */
+/** The words for the wind now: "WSW · gusting 26 kn". */
 export function readingLine(reading: SpotReading): string {
   return [
     reading.from ?? "Calm",
@@ -151,39 +156,181 @@ export function readingLine(reading: SpotReading): string {
 
 const WHERE = "Forecast on the wind map";
 
+/** What the stars make of the spot today, for the reader's rider. */
+export interface SpotOutlook {
+  /** The hour now, rated. Null in the dark, or with no wind to rate. */
+  now: Pick<HourRating, "stars" | "potential"> | null;
+  /** The best run of hours left today, rated on its weakest. */
+  best: {
+    stars: number;
+    /** The first hour and the instant the run ends, in ms. */
+    from: number;
+    to: number;
+    /** The wing it takes, in m²: the rider's own, or the one picked. */
+    wing: number;
+  } | null;
+}
+
+const HOUR_MS = 3600000;
+const dublinDay = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Dublin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const dublinClock = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Dublin",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** "13:00", Irish time: the clock the rest of the site keeps. */
+export const clock = (time: number) => dublinClock.format(new Date(time));
+
+/**
+ * The hour now and the best of what is left of today, rated as the dock rates
+ * an hour: the run's wind and gust, where it blows from against the way the
+ * shore faces, and the dark left unrated. One model's run, so the models'
+ * agreement is not known and costs nothing.
+ */
+export function spotOutlook(
+  series: SpotSeries,
+  place: { id: string; lat?: number; lon?: number },
+  now: number,
+  rider: Rider,
+  facing: number | null = shoreFacing(place.id),
+): SpotOutlook {
+  const hours = (series ?? []).filter(
+    (hour) => Number.isFinite(hour.u) && Number.isFinite(hour.v),
+  );
+  if (!hours.length) return { now: null, best: null };
+  const times = hours.map((hour) => Date.parse(hour.validTime));
+  const nights =
+    place.lat === undefined || place.lon === undefined
+      ? []
+      : dayNights(
+          place.lat,
+          place.lon,
+          new Date(times[0]),
+          new Date(times[times.length - 1] + HOUR_MS),
+        );
+  const rate = (at: number) => {
+    const hour = hours[at];
+    const time = times[at];
+    return rateHour(
+      {
+        windKn: speed(hour) * KNOTS,
+        gustKn:
+          typeof hour.gust === "number" && Number.isFinite(hour.gust)
+            ? hour.gust * KNOTS
+            : null,
+        from: direction(hour.u, hour.v),
+        agreement: null,
+        daylight: !nights.some(
+          (night) => time >= night.from.getTime() && time < night.to.getTime(),
+        ),
+      },
+      { facing },
+      rider,
+    );
+  };
+
+  const nearest = nearestFrame(hours, now);
+  const covered = Math.abs(times[nearest] - now) <= NOW_WINDOW_MS;
+  const rated = covered ? rate(nearest) : null;
+
+  // What is left of today: from the top of this hour to Irish midnight.
+  const today = dublinDay.format(new Date(now));
+  const from = now - (now % HOUR_MS);
+  const left = times
+    .map((time, at) => ({ time, at }))
+    .filter(
+      ({ time }) => time >= from && dublinDay.format(new Date(time)) === today,
+    );
+  const ratings = left.map(({ at }) => rate(at));
+  const window = bestWindow(ratings);
+  const first = window ? ratings[window.from] : null;
+  return {
+    now: rated && { stars: rated.stars, potential: rated.potential },
+    best:
+      window && first
+        ? {
+            stars: window.stars,
+            from: left[window.from].time,
+            to: left[window.to].time + HOUR_MS,
+            wing: first.wing.own ?? first.wing.recommended,
+          }
+        : null,
+  };
+}
+
 export interface SpotCardViewProps {
   spot: Spot;
   reading: SpotReading | null;
+  outlook?: SpotOutlook | null;
 }
 
 /** The card as drawn. The whole of it is one link to the map. */
-export function SpotCardView({ spot, reading }: SpotCardViewProps) {
+export function SpotCardView({ spot, reading, outlook }: SpotCardViewProps) {
   const styles = spotCardStyles({
     wind: reading ? windStop(reading.knots) : undefined,
   });
+  const best = outlook?.best ?? null;
   return (
     <a className={styles.base()} href={mapSpotHref(spot.id)}>
-      {reading && <span className={styles.swatch()} aria-hidden="true" />}
-      <span className={styles.text()}>
-        <span className={styles.name()}>
-          <MapPin className={styles.pin()} size={14} aria-hidden="true" />
-          <span className={styles.nameText()}>{spotLabel(spot)}</span>
-        </span>
-        <span className={styles.meta()}>
-          {reading ? readingLine(reading) : WHERE}
+      <span className={styles.head()}>
+        <span className={styles.name()}>{spot.name}</span>
+        <span className={styles.county()}>Co. {spot.county}</span>
+        <span className={styles.go()} aria-hidden="true">
+          Chart
+          <ArrowRight size={12} strokeWidth={1.5} />
         </span>
       </span>
-      {reading && (
-        <span className={styles.reading()}>
-          {reading.knots}{" "}
-          <span className={styles.unit()}>
-            kn<span className={styles.now()}> now</span>
+      {reading ? (
+        <span className={styles.now()}>
+          <span className={styles.label()}>Now</span>
+          {outlook &&
+            (outlook.now ? (
+              <StarGlyphs
+                stars={outlook.now.stars}
+                potential={outlook.now.potential}
+                size={12}
+              />
+            ) : (
+              <span className={styles.dark()}>dark</span>
+            ))}
+          <span className={styles.swatch()} aria-hidden="true" />
+          <Figure
+            value={reading.knots}
+            sup={reading.gustKnots ?? undefined}
+            unit="kn"
+            label={`${reading.knots} knots now, ${readingLine(reading)}`}
+          />
+          <span className={styles.from()} aria-hidden="true">
+            {reading.from ?? "Calm"}
           </span>
-          {/* Said where the words above are the wind's and not the link's. */}
+          {/* Said where the figures above are the wind's and not the link's. */}
           <span className={styles.hidden()}>. {WHERE}</span>
         </span>
+      ) : (
+        <span className={styles.meta()}>{WHERE}</span>
       )}
-      <ChevronRight className={styles.chevron()} size={18} aria-hidden="true" />
+      {best && (
+        <span className={styles.best()}>
+          <span className={styles.label()}>Best today</span>
+          <StarGlyphs stars={best.stars} size={12} />
+          <span className={styles.bestTimes()}>
+            {clock(best.from)}–{clock(best.to)}
+          </span>
+          <Figure
+            value={best.wing}
+            unit="m"
+            size="sm"
+            label={`on a ${best.wing} square metre wing`}
+          />
+        </span>
+      )}
     </a>
   );
 }
@@ -206,6 +353,7 @@ export function useSpotCard(
 ): {
   spot: Spot | null;
   reading: SpotReading | null;
+  outlook: SpotOutlook | null;
 } {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [series, setSeries] = useState<SpotSeries | null>(null);
@@ -256,7 +404,15 @@ export function useSpotCard(
     [knownId, series, now],
   );
 
-  return { spot, reading };
+  // The rider the reader has set on the map, read once: the stars are theirs.
+  const rider = useMemo(() => loadPrefs().rider, []);
+  const outlook = useMemo(
+    () =>
+      spot && series && reading ? spotOutlook(series, spot, now, rider) : null,
+    [spot, series, reading, now, rider],
+  );
+
+  return { spot, reading, outlook };
 }
 
 /** Nothing for a thread without a spot, and nothing for a spot the map no longer lists. */
@@ -268,6 +424,8 @@ export function SpotCard({
   /** The page's clock, so the reading keeps up with it. */
   now: Date;
 }) {
-  const { spot, reading } = useSpotCard(spotId, now.getTime());
-  return spot ? <SpotCardView spot={spot} reading={reading} /> : null;
+  const { spot, reading, outlook } = useSpotCard(spotId, now.getTime());
+  return spot ? (
+    <SpotCardView spot={spot} reading={reading} outlook={outlook} />
+  ) : null;
 }

@@ -1,6 +1,7 @@
 /**
  * The HTTP surface. The marketplace lives under /api/market, the community
- * under /api/community, the forecast for AI assistants under /api/mcp and the
+ * under /api/community, the forecast for AI assistants under /api/mcp, Gust
+ * the in-app companion under /api/companion and the
  * site's own routes (/api/me) beside them, so
  * the same routes work behind a same-origin proxy in development and on their
  * own Railway domain in production.
@@ -24,6 +25,10 @@ import type { Hub } from "../../../community/api/hub.js";
 import type { Limiter } from "../../../community/api/limits.js";
 import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
 import { createCommunityRouter } from "../../../community/api/router.js";
+import {
+  createCompanionRouter,
+  type CompanionDeps,
+} from "../../../companion/api/router.js";
 import { createMcpRouter } from "../../../mcp/api/server.js";
 import type { ForecastSource } from "../../../mcp/api/source.js";
 import {
@@ -75,6 +80,11 @@ export interface AppDeps {
    * is not mounted.
    */
   forecast?: ForecastSource;
+  /**
+   * Gust, the companion. Left out, /api/companion is still mounted and says
+   * it is not configured, so the site can show Gust asleep rather than broken.
+   */
+  companion?: Omit<CompanionDeps, "source">;
 }
 
 type Env = { Variables: AuthVariables };
@@ -97,6 +107,18 @@ export function createApp(deps: AppDeps) {
     );
     app.use(path, optionalAuth(deps.verify));
   }
+
+  // Gust is public and carries no credentials, but the site may call it from
+  // another origin in production, as it calls the marketplace.
+  app.use(
+    "/api/companion/*",
+    cors({
+      origin: deps.corsOrigins === "*" ? "*" : deps.corsOrigins,
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowHeaders: ["Content-Type"],
+      maxAge: 600,
+    }),
+  );
 
   app.onError((err, c) => {
     if (err instanceof HTTPException) return err.getResponse();
@@ -524,6 +546,14 @@ export function createApp(deps: AppDeps) {
   );
   if (deps.forecast)
     app.route("/api/mcp", createMcpRouter({ source: deps.forecast }));
+  app.route(
+    "/api/companion",
+    createCompanionRouter({
+      client: null,
+      ...deps.companion,
+      source: deps.forecast ?? null,
+    }),
+  );
   app.route("/api", createSiteRouter(people));
   return app;
 }

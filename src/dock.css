@@ -1,1012 +1,752 @@
 /*
- * Forecast dock: toolbar, shared time header, blend and candle charts, glyph
- * rows and the display filter.
- *
- * Written against docs/DESIGN_PRINCIPLES.md. The rules that matter here:
- *   - one accent per view: Play keeps it, everything else is quiet until hover;
- *   - structure is surfaces and hairlines, never boxes;
- *   - no glass inside glass: the filter is a solid raised surface;
- *   - 9px is only for tracked uppercase and axis ticks, 10px for sentences;
- *   - the wind ramp only ever describes wind speed. Model hues identify a line.
- *
- * Every colour here is a theme variable from ui/theme.css and nothing else: no
- * literal, and an alpha of a role is a color-mix of it with transparent. The
- * eighty-nine literals this file used to hold were fifty-one distinct values
- * reading as seventeen roles; the value-by-value table is in the LOG of
- * backlog/community-forum/2026-09-20-map-theme-dock.md, and it is not repeated
- * here because a literal in a comment is still a literal to the gate.
- *
- * Two marks are not re-themed and keep their own values in the theme, under
- * --color-now-marker and --color-gust. The wind ramp itself and the model hues
- * are not in this file at all: they are built in force5/src/weather.ts
- * (PALETTE) and force5/src/manifests.ts (modelHue), and arrive on the element
- * as an inline style.
+ * The dock: the chosen spot's week as one strip of hours under a fixed
+ * cursor, with the day slider above it, as the chart's mockup draws it.
+ * Paper with a double rule along its top; figures in the mono face.
  */
+.dock {
+  position: relative;
+  padding: 6px 22px 8px;
+  background: var(--color-ground);
+  border: 0;
+  border-top: 3px double var(--color-ink);
+  box-shadow: var(--shadow-dock);
+  color: var(--color-ink);
+}
+.dock-grab {
+  display: none;
+}
 
-/* ---------- toolbar ---------- */
-.compact-layout .dock-toolbar {
+/* ---------- the head ---------- */
+.dk-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 48px;
-  padding: 0 16px;
-  flex-shrink: 0;
-}
-.compact-layout.sheet-open .dock-toolbar {
-  border-bottom: 1px solid var(--line);
-}
-.dock-place {
   min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  line-height: 1.25;
 }
-.dock-place strong {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
+.dk-name {
+  margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  font: 600 22px var(--font-display);
+  letter-spacing: -0.01em;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
-.dock-place small {
-  font-size: 10px;
+.dk-county {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-ink-muted);
+}
+.dk-best {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-line);
+  font: 500 11px var(--font-mono);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.dock-place small span::after {
-  content: " · ";
+.dk-best:empty {
+  display: none;
 }
-
-.dock-views {
+.dk-acts {
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 14px;
-  background: var(--color-sunken);
-  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
 }
-.dock-views button {
-  gap: 5px;
-  height: 28px;
+.dk-view button {
+  height: 26px;
   padding: 0 10px;
-  border-radius: 11px;
-  font-size: 11px;
-  color: var(--color-ink-2);
-  white-space: nowrap;
 }
-.dock-views button[aria-pressed="true"] {
-  background: var(--color-card);
-  color: var(--color-ink);
-  font-weight: 600;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-ink) 12%, transparent);
-}
-.dock-views button:disabled {
-  opacity: 0.45;
-}
-
-.dock-filter {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+.dk-settings,
+.dk-chev {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   padding: 0;
+  border: 1px solid var(--color-ink);
   border-radius: 50%;
-  color: var(--color-ink-2);
-}
-.dock-filter.pressed {
-  background: var(--color-card);
+  background: var(--color-ground);
   color: var(--color-ink);
+  cursor: pointer;
+}
+.dk-settings[aria-expanded="true"] {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-settings:hover,
+  .dk-chev:hover {
+    background: var(--color-ink);
+    color: var(--color-ink-inverse);
+  }
+}
+.dk-chev svg {
+  stroke: currentColor;
+  transition: transform 0.3s;
+}
+.dock.is-folded .dk-chev svg {
+  transform: rotate(180deg);
+}
+.dk-settings:focus-visible,
+.dk-chev:focus-visible,
+.tt-wrap:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
-/* The scrubber is a thin strip under the toolbar, not a control bar of its own. */
-.compact-layout .timeline {
-  padding: 3px 16px 5px;
+/* ---------- the day slider ---------- */
+.scrub {
+  position: relative;
+  margin-top: 5px;
+  border-top: 1px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  user-select: none;
+  -webkit-user-select: none;
 }
-.compact-layout.sheet-open .timeline {
-  padding-bottom: 5px;
+.scrub:has(.scrub-input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
-.compact-layout .timeline .step-button {
-  height: 18px;
+/* The slider a keyboard and a screen reader use; a finger drags the days. */
+.scrub-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
-
-/* ---------- shared header ---------- */
-.compact-layout .forecast-table .forecast-day-groups th {
-  height: 26px;
+.sc-days {
+  position: relative;
+  display: grid;
+  cursor: ew-resize;
+  touch-action: none;
 }
-/* The day label is pinned and paints outside its cell: a group as narrow as one
-   column would otherwise be as wide as its own label, and every view under it
-   reads the columns as evenly spaced. */
-.compact-layout .forecast-day-groups th:not(:first-child) span {
+.sc-day {
+  min-width: 0;
+  padding: 3px 8px 5px;
+  border-left: 1px solid var(--color-line);
+}
+.sc-day:first-child {
+  border-left: 0;
+}
+.sc-day.on {
+  background: color-mix(in srgb, var(--color-ink) 4.5%, transparent);
+}
+.sc-h {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: max-content;
-  overflow: hidden;
-  padding: 4px 10px;
-  line-height: 1.2;
+  gap: 6px;
+  height: 20px;
   white-space: nowrap;
+  overflow: hidden;
 }
-.compact-layout .forecast-table thead th {
-  height: 26px;
+.sc-h b {
+  font: 600 14px var(--font-display);
 }
-.compact-layout .forecast-table thead button {
-  padding: 5px 4px;
-}
-.forecast-day-groups b {
-  font-weight: 600;
-}
-.day-sun {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 9px;
-  letter-spacing: 0.4px;
-  color: var(--color-ink-2);
-  font-variant-numeric: tabular-nums;
-}
-.day-sun svg {
-  opacity: 0.8;
-}
-.day-sun i {
-  font-style: normal;
-  margin-right: 4px;
-}
-/* The day's warmest hour, beside the sun times and deliberately quieter than
-   them: the times are fixed facts, this is a forecast. */
-.day-max {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 2px;
-  font-size: 9px;
-  letter-spacing: 0.4px;
+.sc-h .dt,
+.sc-h .bw {
+  font: 400 9.5px var(--font-mono);
   color: var(--color-ink-muted);
-  font-variant-numeric: tabular-nums;
 }
-.day-max i {
-  font-style: normal;
+.sc-h .st {
+  display: flex;
+  margin-left: auto;
 }
-
-/* A value that sits between two of its run's published steps: the same hairline
-   the chart draws it with, so the reader can see at a glance which columns the
-   model actually published and which the dock read between them. */
-.forecast-table td[data-interpolated] {
-  position: relative;
-  font-style: italic;
-  color: var(--color-ink-2);
+.sc-h .sn {
+  display: none;
+  margin-left: auto;
 }
-.forecast-table td[data-interpolated]::after {
+.sc-strip {
+  display: grid;
+  gap: 1px;
+  height: 10px;
+  margin-top: 2px;
+}
+.sc-strip i {
+  display: block;
+  background: color-mix(
+    in srgb,
+    var(--color-wash) calc(var(--tint, 0) * 100%),
+    color-mix(in srgb, var(--color-ink) 6%, transparent)
+  );
+}
+.sc-strip i.night {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-ink) 18%, transparent) 0 1px,
+    transparent 1px 3px
+  );
+}
+.sc-strip i.past {
+  opacity: 0.35;
+}
+.sc-hand {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-ink);
+  pointer-events: none;
+  transition: left 0.12s;
+}
+.sc-hand::before {
   content: "";
   position: absolute;
-  left: 50%;
-  bottom: 2px;
-  width: 8px;
-  margin-left: -4px;
-  border-bottom: 1px dotted var(--color-line-strong);
+  top: -4px;
+  left: -5.5px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-ink);
 }
-
-/* ---------- model band ----------
-   A hairline under the day band saying which run answers for each stretch of
-   the axis. It is a header row, not decoration, so a screen reader hears the
-   model with the hour; it stays thin so fifteen days cost the dock one line. */
-.compact-layout .forecast-table .forecast-model-band th {
-  height: 15px;
-  text-align: left;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  color: var(--color-ink-2);
-  background: var(--color-solid);
-  border-top: 0;
-  border-bottom: 1px solid var(--line);
-  border-right: 1px solid var(--line);
+.sc-flag {
+  position: absolute;
+  bottom: 1px;
+  left: 4px;
+  padding: 0 4px;
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  font: 600 10px var(--font-mono);
   white-space: nowrap;
 }
-.forecast-model-band th:not(:first-child) span {
-  display: block;
-  position: sticky;
-  left: var(--forecast-label-width);
-  width: max-content;
-  overflow: hidden;
-  padding: 0 10px;
+.sc-hand.flip .sc-flag {
+  left: auto;
+  right: 4px;
 }
-.forecast-model-band i {
-  font-style: normal;
-  font-weight: 450;
-  color: var(--color-warn);
-}
-
-/* The reader has selected an hour the map's own run cannot draw. Offer the run
-   that reaches it; never switch on their behalf.
-
-   It rides in the scrubber's own row, whose height the play button already
-   sets, because it comes and goes as the reader scrubs across the seam: a chip
-   on a line of its own would resize the dock and the map would jump with it. */
+/* Over the chart, just above the dock: a chip that comes and goes as the
+   reader crosses the map model's reach must not move the dock under the map. */
 .map-reach {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
   display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
+  justify-content: center;
+  pointer-events: none;
+}
+.map-reach-chip {
+  pointer-events: auto;
+  box-shadow: var(--shadow-surface);
 }
 .map-reach-chip {
   display: inline-flex;
-  align-items: center;
   gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid color-mix(in srgb, var(--color-card) 66%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-card) 52%, transparent);
+  align-items: center;
+  padding: 2px 10px;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-ground);
   color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 600;
-  max-width: 100%;
-  min-width: 0;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
-.map-reach-chip span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@media (hover: hover) and (pointer: fine) {
+  .map-reach-chip:hover {
+    background: var(--color-ink);
+    color: var(--color-ink-inverse);
+  }
 }
-.map-reach-chip:hover {
-  background: color-mix(in srgb, var(--color-card) 77%, transparent);
-}
-/* No taller than the step buttons beside it, or the row it rides in would grow
-   and the dock with it — which is the whole reason it is in this row. */
-.compact-layout .timeline .map-reach-chip {
-  height: 18px;
-  padding: 0 8px;
-  font-size: 10px;
+@media (prefers-reduced-motion: reduce) {
+  .sc-hand {
+    transition: none;
+  }
 }
 
-/* ---------- chart row ---------- */
-.forecast-table th.chart-gutter {
-  position: sticky;
-  left: 0;
-  padding: 0;
-  height: auto;
+/* ---------- the strip of hours ---------- */
+.dk-body {
+  margin-top: 2px;
 }
-.forecast-table td.chart-cell {
-  padding: 0;
-  height: auto;
-  min-width: 0;
-}
-.chart-holder {
+.dk-grid {
   position: relative;
-  height: var(--chart-height);
-  overflow: hidden;
+  display: grid;
 }
-/* Out of flow on purpose: an in-flow SVG carrying the previous model's width
-   would widen the cell it spans, which would widen every column under it. */
-.blend-chart,
-.candle-chart {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: block;
-  touch-action: pan-x;
-}
-.chart-empty {
-  position: absolute;
-  inset: 0;
+.dk-labs div {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  gap: 3px;
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-ink-muted);
 }
-.axis-scale {
-  position: absolute;
-  left: 7px;
-  width: 3px;
-  border-radius: 2px;
-  opacity: 0.9;
-}
-.axis-ticks {
-  position: absolute;
-  inset: 0 5px 0 12px;
-}
-.axis-ticks i {
-  position: absolute;
-  right: 0;
-  transform: translateY(-50%);
-  font-size: 9px;
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-ink-muted);
-}
-
-.chart-night {
-  fill: var(--color-ink);
-  opacity: 0.09;
-}
-.chart-gridline {
-  stroke: var(--color-line-strong);
-  stroke-width: 1;
-  stroke-dasharray: 2 4;
-  opacity: 0.3;
-}
-.chart-now {
-  stroke: var(--color-now-marker);
-  stroke-width: 2;
-  stroke-dasharray: 4 3;
-}
-.chart-cursor {
-  stroke: var(--color-ink-2);
-  stroke-width: 1;
-  opacity: 0.45;
-}
-.blend-band,
-.blend-gust {
-  stroke: none;
-}
-/* Fewer than three models behind these hours: the band's own edge is dashed,
-   so a narrow band there reads as thin evidence rather than as agreement. */
-.blend-sparse {
-  fill: none;
-  stroke: var(--color-ink-2);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-  opacity: 0.5;
-}
-.model-line {
-  fill: none;
-  stroke-width: 1;
-}
-.model-gust-line {
-  stroke-dasharray: 3 3;
-}
-/* The three marks below are drawn over the band's own wind colour, so they take
-   the ink that reads against a coloured ground, not the card surface's white. */
-.median-line {
-  fill: none;
-  stroke: var(--color-ink-inverse);
-  stroke-width: 1.4;
+.dk-labs small {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: none;
   opacity: 0.75;
 }
-.chart-arrow-halo {
+.dk-stars-q {
+  position: absolute;
+  left: 40px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+.dk-stars-q .help-q {
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+}
+.tt-wrap {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+}
+.tt-wrap::-webkit-scrollbar {
+  display: none;
+}
+table.tt {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tt td {
+  padding: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 11px;
+  cursor: pointer;
+}
+.tt td.sp {
+  cursor: default;
+}
+.tt tr.tt-day td {
+  height: 20px;
+  overflow: visible;
+  text-align: left;
+  cursor: default;
+  border-bottom: 1px solid var(--color-line);
+}
+.tt tr.tt-day td span {
+  position: sticky;
+  left: 6px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0 6px;
+  font: 500 10px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.tt tr.tt-day td b {
+  font: 650 13px var(--font-display);
+  color: var(--color-ink);
+}
+.tt tr.tt-day td i {
+  font-style: normal;
+}
+.tt tr.tt-hour td {
+  height: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-ink);
+  scroll-snap-align: center;
+}
+.tt tr.tt-stars td,
+.tt tr.tt-wind td,
+.tt tr.tt-from td,
+.tt tr.tt-wing td {
+  height: 20px;
+}
+.tt td.d0 {
+  border-left: 1.5px solid var(--color-ink);
+}
+.tt tr.tt-hour td.night {
+  font-weight: 400;
+  color: color-mix(in srgb, var(--color-ink) 38%, transparent);
+}
+.tt td.night {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-ink) 7%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+}
+.tt td.past {
+  opacity: 0.42;
+}
+.tt td.c-sel {
+  background-color: color-mix(in srgb, var(--color-ink) 7%, transparent);
+}
+.tt tr.tt-hour td.c-sel {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+/* The stars' explanation button (ui/RatingTip.tsx), fitted to the row. */
+.tt tr.tt-stars td .star-tip {
+  min-height: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0 1px;
+}
+.tt .kn {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.tt .gu {
+  font-size: 9.5px;
+  color: var(--color-ink-muted);
+}
+.from-cell {
+  display: inline-flex;
+  gap: 1px;
+  align-items: center;
+}
+.from-cell .cmp {
+  margin: 0 1px;
+  font-size: 9px;
+  color: var(--color-ink-muted);
+}
+.tt tr.tt-wing td {
+  font-weight: 600;
+  font-size: 12px;
+}
+.tt tr.tt-tide td {
+  height: 40px;
+  padding: 0;
+  text-align: left;
+  cursor: default;
+}
+.tt tr.tt-blend td {
+  height: 100px;
+  padding: 0;
+  cursor: default;
+}
+.blend-cell {
+  position: relative;
+}
+.blend-empty {
+  margin: 0;
+  padding: 36px 12px;
+  font: italic 13px var(--font-body);
+  color: var(--color-ink-muted);
+}
+.tide-row {
+  display: block;
+  overflow: visible;
+}
+.tide-fill {
+  fill: color-mix(in srgb, var(--color-depth) 16%, transparent);
+}
+.tide-line {
   fill: none;
-  stroke: var(--color-ink);
-  stroke-width: 3.4;
-  stroke-linecap: round;
-  opacity: 0.4;
+  stroke: var(--map-tide);
+  stroke-width: 1.4;
 }
-.chart-arrow {
+.tide-hw {
+  fill: var(--color-ink);
+  stroke: var(--color-ink);
+}
+.tide-lw {
+  fill: var(--color-ground);
+  stroke: var(--color-ink);
+}
+.tide-label {
+  font: 500 9.5px var(--font-mono);
+  fill: var(--color-ink);
+  paint-order: stroke;
+  stroke: var(--color-ground);
+  stroke-width: 3px;
+}
+.tide-none {
+  font: italic 12.5px var(--font-body);
+  fill: var(--color-ink-muted);
+}
+.tt-pen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.pen-loop {
   fill: none;
-  stroke: var(--color-ink-inverse);
-  stroke-width: 1.4;
+  stroke: var(--color-pen);
+  stroke-width: 2;
   stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+  stroke-dasharray: 1;
+  animation: chart-ink 900ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
 }
-.candle-wick {
-  stroke: var(--color-ink-2);
-  stroke-width: 1;
-  opacity: 0.55;
+.tide-dot {
+  fill: var(--color-chart-magenta);
 }
-.candle-body {
-  stroke: var(--color-ink-inverse);
-  stroke-width: 1;
-  stroke-opacity: 0.7;
+/* The cursor: the hour the map shows, fixed in the middle of the strip. */
+.dk-cur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid color-mix(in srgb, var(--color-pen) 85%, transparent);
+  pointer-events: none;
+  z-index: 3;
 }
-.candle-median {
-  stroke: var(--color-ink);
-  stroke-width: 1.4;
+.dk-cur span {
+  position: absolute;
+  top: -1px;
+  left: 4px;
+  padding: 0 4px;
+  background: var(--color-pen);
+  color: var(--color-ink-inverse);
+  font: 600 9.5px var(--font-mono);
+  white-space: nowrap;
 }
-.candle-gust {
-  fill: var(--color-gust);
-  opacity: 0.72;
+@media (prefers-reduced-motion: reduce) {
+  .pen-loop {
+    animation: none;
+  }
 }
 
-/* ---------- glyph rows ---------- */
-/* Matching the compact layout's own `th:first-child` padding rule, which is
-   more specific than a plain row selector. */
-.compact-layout .forecast-table .blend-row th:first-child,
-.compact-layout .forecast-table .marine-row th:first-child {
-  height: 24px;
-  padding: 0 4px;
+/* ---------- a phone: a sheet with a handle, folded to its head ---------- */
+@media (max-width: 720px) {
+  .dock {
+    max-height: 82vh;
+    overflow: auto;
+    padding: 0 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .dock-grab {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .dock-grab::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    width: 44px;
+    height: 4px;
+    margin-left: -22px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--color-ink) 38%, transparent);
+  }
+  .dk-head {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+  .dk-name {
+    max-width: 58vw;
+    font-size: 20px;
+  }
+  .dk-county {
+    display: none;
+  }
+  .dk-best {
+    order: 4;
+    flex-basis: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .dk-acts {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .sc-day {
+    padding: 3px 4px;
+  }
+  .sc-h b {
+    font-size: 13px;
+  }
+  .sc-h .dt,
+  .sc-h .bw,
+  .sc-h .st {
+    display: none;
+  }
+  .sc-h .sn {
+    display: flex;
+  }
+  .sc-flag {
+    font-size: 9px;
+  }
+  .dk-labs div {
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+  }
+  .dk-stars-q {
+    left: 34px;
+  }
 }
-.compact-layout .forecast-table .tide-row th:first-child,
-.compact-layout .forecast-table .wave-row th:first-child {
-  height: 28px;
+@media (max-width: 720px) {
+  .map-reach {
+    bottom: calc(100% + 66px);
+  }
 }
-.forecast-table .blend-row td,
-.forecast-table .marine-row td {
-  height: 24px;
-  padding: 1px 8px;
+
+/* ---------- play, by the day slider ---------- */
+.scrub-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 5px;
+}
+.scrub-row .scrub {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+.play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  cursor: pointer;
+}
+.play svg path {
+  fill: currentColor;
+  stroke: currentColor;
+}
+@media (hover: hover) and (pointer: fine) {
+  .play:hover {
+    background: var(--color-chart-magenta);
+    border-color: var(--color-chart-magenta);
+  }
+}
+.play:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+/* A fortnight of days: the name and the day's best figure, no glyphs. */
+.scrub.many .sc-h .st,
+.scrub.many .sc-h .bw {
+  display: none;
+}
+.scrub.many .sc-h .sn {
+  display: flex;
+}
+.scrub.many .sc-day {
+  padding: 3px 5px 5px;
+}
+
+/* ---------- the rows below the fold ---------- */
+.dk-more {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.dk-more svg {
+  stroke: currentColor;
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-more:hover {
+    color: var(--color-chart-magenta);
+  }
+}
+.dk-more:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.tt tr.tt-more td {
+  height: 20px;
   font-size: 11px;
 }
-.forecast-table .tide-row td,
-.forecast-table .wave-row td {
-  height: 28px;
+.tt tr.tt-waves td {
+  border-top: 1px solid var(--color-line);
 }
-/* Arrow, height and period on one line: the row's whole budget is 28px, and a
-   wrapped period would take a second one. */
+.tt td.more-note {
+  padding-left: 8px;
+  text-align: left;
+  font: italic 12px var(--font-body);
+  color: var(--color-ink-muted);
+  cursor: default;
+}
 .wave-cell {
   display: inline-flex;
-  align-items: center;
   gap: 2px;
-  white-space: nowrap;
+  align-items: center;
 }
 .wave-cell b {
   font-weight: 600;
-  color: var(--color-ink);
 }
 .wave-cell small {
   font-size: 9px;
   color: var(--color-ink-muted);
 }
-/* The ramp's low-wind blue, on the wave arrow: the same value it always had. */
-.wave-arrow {
-  flex: none;
-  color: var(--color-wind-k05);
-  opacity: 0.85;
+.wave-cell svg {
+  color: var(--color-depth);
 }
-
-/* ---------- surface weather cells ---------- */
-/* Rain is tinted by how much of it there is, so a wet band is a shape the eye
-   finds before it reads a number. The tint carries no reading of its own: the
-   millimetres are printed in the cell and the interval is in its tooltip. */
-.forecast-table .marine-row td.rain-cell {
-  background: color-mix(
-    in srgb,
-    var(--color-wind-k05) calc(22% * var(--rain-tint, 0)),
-    transparent
-  );
-  color: var(--color-ink);
-  font-weight: 600;
-}
-/* The whole column's cover as a number, with high, medium and low beside it. */
-.cloud-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-}
-.cloud-cell b {
-  font-weight: 600;
-  color: var(--color-ink);
-}
-.cloud-bars {
-  display: inline-flex;
-  flex: none;
-  flex-direction: column;
-  gap: 1px;
-  width: 9px;
-}
-.cloud-bars s {
-  display: block;
-  height: 2px;
-  background: var(--color-sunken);
-  text-decoration: none;
-}
-/* Each level fills its own bar from the left, so the stack reads as a tiny
-   sounding: high cloud on top, low cloud at the bottom. */
-.cloud-bars s::before {
-  content: "";
-  display: block;
-  width: var(--cover, 0%);
-  height: 100%;
-  background: var(--color-ink-muted);
-}
-.weather-cell {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-ink-2);
-}
-/* An observation is one measurement of the water, so it is one reading at the
-   left of the row rather than a value per forecast column: the cell spans the
-   row, and nothing in it is coloured like a forecast. */
-.forecast-table .marine-row td.observed-cell {
-  text-align: left;
-  white-space: nowrap;
-}
-.observed-reading {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.observed-reading b {
-  font-weight: 600;
-  color: var(--color-ink);
-}
-.observed-reading small {
-  font-size: 9px;
-  color: var(--color-ink-muted);
-}
-/* The last seven days of readings, drawn to their own range: the shape is the
-   point, so it carries no axis and no numbers of its own. */
-.observed-spark {
-  flex: none;
-  overflow: visible;
-}
-.observed-spark polyline {
-  fill: none;
-  stroke: var(--color-wind-k05);
-  stroke-width: 1.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.75;
-}
-
-/* A reading that is a model approximation rather than a measurement is drawn
-   back, and the row's own explanation says why. */
-.forecast-table .marine-row td.proxy-cell {
-  color: var(--color-ink-muted);
-  font-style: italic;
-}
-.row-label {
-  /* Block-level: an inline-flex button in a table cell drags a line box,
-     and its descender space with it, into the row's height. */
-  display: flex;
-  justify-content: flex-start;
-  min-width: 32px;
-  height: 24px;
-  padding: 0 3px;
-  gap: 2px;
-  border-radius: 9px;
-  color: var(--color-ink-2);
-}
-.row-label small {
-  font-size: 9px;
-  color: var(--color-ink-muted);
-}
-.row-tip {
-  position: fixed;
-  z-index: 60;
-  transform: translateY(-50%);
-  width: max-content;
-  max-width: 240px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  background: var(--color-inverse);
-  color: var(--color-ink-inverse);
-  font-size: 11px;
-  line-height: 1.45;
-  box-shadow: 0 8px 26px color-mix(in srgb, var(--color-ink) 24%, transparent);
-  pointer-events: none;
-}
-.row-tip strong {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-ink-inverse) 72%, transparent);
-}
-
-.marine-rows {
-  position: relative;
-}
-.tide-underlay {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-}
-.tide-fill {
-  fill: var(--color-sea);
-  fill-opacity: 0.06;
-  stroke: none;
-}
-.tide-stroke {
-  fill: none;
-  stroke: var(--color-sea);
-  stroke-opacity: 0.22;
-  stroke-width: 1.2;
-}
-/* The chart's wave band: the ramp's 5 kn blue, faint enough to sit under the
-   wind blend without competing with it for the value axis. */
-.wave-band {
-  fill: var(--color-wind-k05);
-  fill-opacity: 0.16;
-  stroke: var(--color-wind-k05);
-  stroke-opacity: 0.4;
-  stroke-width: 1;
-}
-
-/* ---------- hover card ---------- */
-.chart-hover-card {
-  position: fixed;
-  z-index: 60;
-  transform: translate(-50%, -100%);
-  width: max-content;
-  max-width: 240px;
-  padding: 9px 11px;
-  border-radius: 14px;
-  background: var(--color-solid);
-  border: 1px solid var(--color-line);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-ink) 20%, transparent);
-  font-size: 11px;
-  color: var(--color-ink);
-  pointer-events: none;
-}
-.chart-hover-card > strong {
-  display: block;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  margin-bottom: 5px;
-}
-.chart-hover-card dl {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.chart-hover-card dl > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-}
-.chart-hover-card dt {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.chart-hover-card dt i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex: 0 0 7px;
-}
-.chart-hover-card dt small,
-.chart-hover-card dd small {
-  color: var(--color-ink-muted);
-  font-size: 10px;
-  margin-left: 4px;
-}
-.chart-hover-card dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-.chart-hover-card p {
-  margin-top: 6px;
-  padding-top: 5px;
-  border-top: 1px solid var(--line);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-}
-
-/* ---------- credits ---------- */
-.forecast-credits {
-  padding: 0 16px 3px;
-  font-size: 10px;
-  line-height: 1.3;
-  color: var(--color-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.layers-hint {
-  border-top: 1px solid var(--line);
-  margin-top: 10px;
-  padding-top: 12px;
-}
-
-/* ---------- display filter: a solid raised surface, never glass on glass ---------- */
-.display-filter {
-  position: fixed;
-  inset: auto 12px calc(var(--dock-height) + 12px) auto;
-  margin: 0;
-  width: min(330px, calc(100vw - 24px));
-  max-height: min(580px, calc(100dvh - var(--dock-height) - 24px));
-  overflow-y: auto;
-  padding: 16px;
-  border: 1px solid var(--color-line);
-  border-radius: 20px;
-  background: var(--color-solid);
-  box-shadow: 0 14px 44px color-mix(in srgb, var(--color-ink) 20%, transparent);
-  color: var(--color-ink);
-}
-/* A third of the full scrim: this is a panel anchored to the dock, not a dialog
-   over the page, and the map and the chart behind it stay readable. */
-.display-filter::backdrop {
-  background: color-mix(in srgb, var(--color-scrim) 33%, transparent);
-}
-.display-filter h2 {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  margin: 16px 0 6px;
-}
-.filter-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.filter-head h2 {
-  margin: 0;
-}
-.filter-close {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-ink);
-  padding: 5px 9px;
-  border-radius: 10px;
-}
-.filter-switches {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 10px;
-  margin-top: 6px;
-}
-.filter-switch {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 6px 0;
-  font-size: 11px;
-  cursor: pointer;
-}
-.filter-switch input {
-  position: absolute;
-  z-index: 1;
-  left: 0;
-  width: 34px;
-  height: 22px;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-.switch-track {
-  position: relative;
-  flex: 0 0 34px;
-  width: 34px;
-  height: 19px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--color-line-strong) 60%, transparent);
-  transition: background 0.16s ease;
-}
-.switch-track::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: var(--color-card);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-ink) 14%, transparent);
-  transition: left 0.16s ease;
-}
-.filter-switch input:checked + .switch-track {
-  background: var(--color-accent);
-}
-.filter-switch input:checked + .switch-track::after {
-  left: 17px;
-}
-.filter-switch input:focus-visible + .switch-track {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
-}
-.filter-switch input:disabled + .switch-track {
-  opacity: 0.4;
-}
-.switch-text {
-  min-width: 0;
-}
-.filter-switch.is-unavailable .switch-text {
-  color: var(--color-ink-muted);
-}
-.switch-text small {
-  display: block;
-  font-size: 10px;
-  color: var(--color-ink-muted);
-}
-.filter-units {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 14px;
-  background: var(--color-sunken);
-}
-.filter-units button {
-  flex: 1;
-  height: 28px;
-  border-radius: 11px;
-  font-size: 11px;
-  color: var(--color-ink-2);
-}
-.filter-units button[aria-pressed="true"] {
-  background: var(--color-card);
-  color: var(--color-ink);
-  font-weight: 600;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-ink) 12%, transparent);
-}
-.filter-models {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 10px;
-}
-.filter-model {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 0;
-  font-size: 11px;
-  cursor: pointer;
-}
-.filter-model input {
-  accent-color: var(--color-accent);
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  cursor: pointer;
-}
-.filter-model span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.filter-model small {
-  font-size: 10px;
-  color: var(--color-ink-muted);
-}
-.filter-model.is-planned,
-.filter-model.is-unavailable {
-  color: var(--color-ink-muted);
-  cursor: default;
-}
-.model-swatch {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 9px;
-  border-radius: 3px;
-}
-.filter-model.is-planned .model-swatch,
-.filter-model.is-unavailable .model-swatch {
-  opacity: 0.4;
-}
-.filter-note {
-  margin-top: 14px;
-  padding-top: 11px;
-  border-top: 1px solid var(--line);
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--color-ink-muted);
-}
-
-/* ---------- responsive ---------- */
-/* Stars: solid for what the hour is worth here, an outline for the upside the
-   direction, the gusts or the models took away. Shape carries the difference,
-   the tone only repeats it. */
-.stars-glyphs {
+.tt .weather-cell {
   display: inline-flex;
   vertical-align: middle;
 }
-.star-solid {
-  color: var(--color-ink);
+.tt .weather-cell svg {
+  stroke-width: 1.5;
 }
-.star-faded {
-  color: var(--color-ink-disabled);
+.rain-cell {
+  padding: 0 3px;
+  background: color-mix(
+    in srgb,
+    var(--color-depth) calc(var(--rain, 0) * 45%),
+    transparent
+  );
 }
-.stars-none {
+.tt .proxy {
   color: var(--color-ink-muted);
 }
-.forecast-table .wing-row td {
-  font-size: 11px;
-  color: var(--color-ink-2);
+.dk-county.is-point {
+  text-transform: none;
+  letter-spacing: 0.04em;
 }
-.best-window {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 14px;
-  background: var(--color-sunken);
-  font-size: 11px;
-  color: var(--color-ink);
-  white-space: nowrap;
-}
-.best-window:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
-}
-.filter-rider {
-  display: grid;
-  gap: 8px;
-}
-.rider-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-}
-.rider-field span {
-  flex: 0 0 92px;
-}
-.rider-field input {
-  flex: 1;
-  min-width: 0;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-  background: var(--color-card);
-  color: var(--color-ink);
-  font: inherit;
-}
-.rider-field input:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 1px;
-}
-.rider-field small {
-  flex: 0 0 22px;
-  color: var(--color-ink-muted);
-}
-
-@media (max-width: 760px) {
-  .best-window span {
+@media (max-width: 720px) {
+  .scrub.many .sc-h {
+    justify-content: center;
+  }
+  .scrub.many .sc-h .d3,
+  .scrub.many .sc-h .sn {
     display: none;
   }
-  .compact-layout .dock-toolbar {
-    height: 46px;
-    padding: 0 12px;
-    gap: 6px;
+  .scrub.many .sc-h b {
+    font-size: 12px;
   }
-  .dock-views button {
-    padding: 0 8px;
+  .scrub.many .sc-day {
+    padding: 3px 1px 4px;
   }
-  .dock-views button > span {
+  .play {
+    width: 30px;
+    height: 30px;
+  }
+}
+@media (max-width: 720px) {
+  /* The period is in the cell's title on a phone: the height and the arrow fit. */
+  .wave-cell small {
     display: none;
-  }
-  .dock-place strong {
-    font-size: 13px;
-  }
-  .day-sun i {
-    margin-right: 2px;
-  }
-  .forecast-table .blend-row td,
-  .forecast-table .marine-row td {
-    height: 22px;
-  }
-  .forecast-table .tide-row td,
-  .forecast-table .wave-row td,
-  .compact-layout .forecast-table .tide-row th:first-child,
-  .compact-layout .forecast-table .wave-row th:first-child {
-    height: 24px;
-  }
-  .compact-layout .forecast-table .blend-row th:first-child,
-  .compact-layout .forecast-table .marine-row th:first-child {
-    height: 22px;
-  }
-  .row-label {
-    height: 22px;
-  }
-  .forecast-credits {
-    padding: 0 12px 3px;
-  }
-  .display-filter {
-    inset: auto 8px calc(var(--dock-height) + 8px) 8px;
-    width: auto;
-  }
-}
-@media (max-height: 550px) {
-  .compact-layout .dock-toolbar {
-    height: 42px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .switch-track,
-  .switch-track::after {
-    transition: none;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  /* The multiply layers must still read on the opaque fallback ground. */
-  .chart-hover-card,
-  .display-filter {
-    background: var(--color-solid);
   }
 }

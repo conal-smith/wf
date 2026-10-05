@@ -5,10 +5,10 @@
  */
 import { useEffect } from "react";
 import { MarketAuthProvider } from "./auth";
-import { Compass } from "lucide-react";
 import { buttonStyles } from "../../ui/Button";
 import { tv } from "../../ui/tv";
-import { Empty, MarketFooter, MarketHeader, sharedStyles } from "./components";
+import { PenNote, Puffin } from "../../ui";
+import { MarketFooter, MarketHeader } from "./components";
 import BrowsePage from "./pages/BrowsePage";
 import ListingPage from "./pages/ListingPage";
 import MePage from "./pages/MePage";
@@ -18,12 +18,16 @@ import { Link, matchRoute, paths, useLocation } from "./router";
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink antialiased",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink antialiased",
     // The page measure, and the narrower gutter a phone can spare. Neither
     // gutter goes under a notch: `px-safe-*` takes the device's own inset
     // where it is the larger, as market.css's `max(…, env(…))` did.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-safe-6 max-wide:px-safe-3",
     main: "flex min-w-0 flex-1 flex-col gap-6 pt-3 max-wide:gap-5",
+    // A URL that is not a page: the puffin on his rock, and the pen's word.
+    lost: "grid justify-items-center gap-4 py-14 text-center",
+    lostTitle: "m-0 -rotate-1",
+    lostText: "m-0 max-w-reading font-body text-prose text-ink-muted",
   },
   variants: {
     // A form is read down a column, not across a page: it stops well short of
@@ -81,22 +85,24 @@ function Page({ route }: { route: ReturnType<typeof matchRoute> }) {
     case "seller":
       return <SellerPage id={route.id} />;
     default:
-      return (
-        <Empty
-          title="That page does not exist"
-          icon={<Compass size={24} aria-hidden="true" />}
-          className={sharedStyles().emptyPane()}
-        >
-          <p>The link may be old, or the listing may have been removed.</p>
-          <div className={sharedStyles().emptyActions()}>
-            <Link
-              to={paths.browse()}
-              className={buttonStyles({ variant: "primary" })}
-            >
-              Browse listings
-            </Link>
-          </div>
-        </Empty>
-      );
+      return <NotFound />;
   }
+}
+
+function NotFound() {
+  const styles = shellStyles();
+  return (
+    <section className={styles.lost()} aria-labelledby="not-found-title">
+      <Puffin size={88} bob />
+      <h1 className={styles.lostTitle()} id="not-found-title">
+        <PenNote as="span">That page does not exist</PenNote>
+      </h1>
+      <p className={styles.lostText()}>
+        The link may be old, or the listing may have been taken down.
+      </p>
+      <Link to={paths.browse()} className={buttonStyles({ variant: "primary" })}>
+        Browse listings
+      </Link>
+    </section>
+  );
 }

@@ -1,0 +1,22 @@
+/* Text area — ui/TextArea.tsx, controlStyles({ kind: "area" }), rendered in
+ * CSS. Consumes --sem-* only.
+ *
+ * The box, the element and every state (hover, ring, invalid, disabled,
+ * placeholder, the coarse pointer's 16) are the shared `.wf-control` classes
+ * in ../text-input/component.css, which the page links first. This file adds
+ * only what the area kind adds. */
+
+/* The words start at the top of the box, not its middle. */
+.wf-control--area {
+  align-items: flex-start;
+}
+
+/* Three large controls tall before anything is written, as the design bundle
+ * always drew a text area; it grows downward only, and reads at the normal
+ * leading, which the coarse pointer's input step does not override. */
+.wf-control--area .wf-control__input {
+  min-height: calc(var(--sem-space-step) * 34.5);
+  padding-block: var(--sem-space-x3);
+  line-height: var(--sem-font-line-normal);
+  resize: vertical;
+}

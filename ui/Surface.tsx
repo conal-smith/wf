@@ -1,23 +1,33 @@
 import type { HTMLAttributes } from "react";
-import { tv } from "./tv";
+import { tv, type VariantProps } from "./tv";
 
 export const surfaceStyles = tv({
   base: [
-    "rounded-surface border border-card/70 bg-glass p-5 text-ink shadow-surface",
-    // The map's own glass is saturated by 1.45 (src/styles.css), as the
-    // design bundle's surface was; a panel over it matches it exactly.
-    "backdrop-blur-glass backdrop-saturate-145",
-    // Glass is a choice the reader can decline.
-    "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
+    // Paper, opaque, with its grain: over a moving map a translucent panel
+    // is a second, blurred map, and the chart draws its boxes solid.
+    "rounded-surface border border-ink bg-card paper-grain p-5 text-ink shadow-surface",
   ],
+  variants: {
+    /*
+     * The chart's box is a double rule: the border, three of paper, and a
+     * second line inside it. `single` for a box that sits inside another, or
+     * one small enough that two lines would be most of it.
+     */
+    rule: {
+      double: "inset-shadow-frame",
+      single: "",
+    },
+  },
+  defaultVariants: { rule: "double" },
 });
 
-export type SurfaceProps = HTMLAttributes<HTMLDivElement>;
+export type SurfaceProps = HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof surfaceStyles>;
 
 /**
- * Glass, for what floats over the moving map. On the content ground a white
- * hairline and a translucent fill vanish: that is a Pane.
+ * A box laid over the moving map: the search, the layers, a spot's popout.
+ * On a page that is read, the box content sits in is a Pane.
  */
-export function Surface({ className, ...props }: SurfaceProps) {
-  return <div {...props} className={surfaceStyles({ className })} />;
+export function Surface({ rule, className, ...props }: SurfaceProps) {
+  return <div {...props} className={surfaceStyles({ rule, className })} />;
 }

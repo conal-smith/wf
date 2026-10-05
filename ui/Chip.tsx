@@ -1,19 +1,22 @@
 import type { HTMLAttributes } from "react";
 import { tv, type VariantProps } from "./tv";
 
+/*
+ * A tag in the figures' face: mono, in a capsule ruled with a hairline, on the
+ * paper it stands on. It labels; it is never pressed.
+ */
 export const chipStyles = tv({
-  base: "inline-flex items-center gap-1 rounded-full px-3 py-1 font-sans text-caption whitespace-nowrap",
+  base: "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-caption whitespace-nowrap",
   variants: {
     tone: {
-      neutral: "bg-sunken text-ink-2",
+      neutral: "border-line bg-sunken text-ink-2",
       // Warm means now or degraded. A chip that is only a category is neutral.
-      warn: "bg-warn-ground text-warn",
-      // Glass, for a badge laid over a photograph: sunken is a flat grey patch
-      // there, and a fill opaque enough to read would hide the picture it is
-      // labelling. The same choice a Surface makes over the moving map, and
-      // the same way out of it for a reader who has declined transparency.
+      warn: "border-warn bg-warn-ground text-warn",
+      // Paper over a photograph: a badge has to read on whatever the picture
+      // is, so it takes the ink rule and paper that lets a little through, and
+      // goes solid for a reader who has declined transparency.
       glass: [
-        "border border-card/70 bg-glass text-ink-muted shadow-control backdrop-blur-glass",
+        "border-ink bg-glass text-ink backdrop-blur-glass",
         "reduced-transparency:bg-solid reduced-transparency:backdrop-filter-none",
       ],
     },

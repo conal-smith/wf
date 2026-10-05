@@ -19,16 +19,23 @@ export const THEME_NAMES = {
     "label",
     "body",
     "prose",
+    "input",
     "lead",
+    "figure",
     "title",
+    "headline",
     "reading",
   ],
+  // The four faces. Without them the merge reads `font-display` as nothing it
+  // knows, and `font-body` beside a caller's `font-mono` would keep both.
+  font: ["display", "body", "mono", "hand"],
   radius: ["control", "surface", "pill", "dialog", "full"],
   shadow: ["control", "marker", "surface", "dock"],
+  "inset-shadow": ["frame"],
   blur: ["glass", "scrim"],
   container: ["dialog", "dialog-wide", "reading", "measure", "page", "form"],
   spacing: ["control-sm", "control-md", "control-lg", "touch"],
-  animate: ["pulse", "dialog-in", "menu-in"],
+  animate: ["pulse", "dialog-in", "menu-in", "ink", "bob"],
   "transition-duration": ["fast", "base"],
   "z-index": ["popover", "panel", "header", "dialog"],
 } as const;
@@ -59,17 +66,24 @@ export const tv = createTV({
  * `focus-visible:outline-hidden` is enough to take the map's ring off a field.
  */
 
-/** The one focus ring: 3px of focus, 2px clear of the control. */
+/** The one focus ring: 2px of the chart's magenta, 2px clear of the control. */
 export const RING =
-  "not-disabled:focus-visible:outline-3 not-disabled:focus-visible:outline-offset-2 not-disabled:focus-visible:outline-focus";
+  "not-disabled:focus-visible:outline-2 not-disabled:focus-visible:outline-offset-2 not-disabled:focus-visible:outline-focus";
 
 /** The same ring on a box whose field holds the focus, which then draws none. */
 export const RING_WITHIN =
-  "focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus";
+  "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus";
 export const NO_RING = "focus-visible:outline-hidden";
 
 /** What a quiet control does under the pointer. */
 export const HOVER = "not-disabled:hover:bg-sunken";
+
+/**
+ * The mono label: a kicker, a column head, a control's words. Tracked
+ * capitals in IBM Plex Mono, at the eyebrow step. Spread into a recipe where
+ * a slot is a label; `Kicker` is the same thing as a component.
+ */
+export const MONO_LABEL = "font-mono text-eyebrow uppercase";
 
 /** Disabled is said in ink and cursor; the reset's fade is taken back off. */
 export const DISABLED =

@@ -1,0 +1,144 @@
+/* Wind figure — the wind and its gust as the site writes them. No ui/ primitive
+ * of its own: it is ui/Figure.tsx (figureStyles: value, sup, unit, alarm) with
+ * the mockup's downwind arrow (arrowSVG) and compass point beside it, in the
+ * three places the mockup writes it (design/chart/1-the-chart.html):
+ *
+ *   row  (the default, the spot page's `.ht td.w`): 12²¹ ↗ WSW. The mean at
+ *        the figure step, the gust raised small after it (Figure size md).
+ *   --cell (the dock's `.tt tr.wd`): 14 g22. The knots at body semibold
+ *        (Figure size sm), "g22" at the caption step, muted.
+ *   --line (the popup's `.pp .ln`): → 13 g26 W [shore] · 6.5 m. One line of
+ *        mono at the body step, the knots and the wing set semibold.
+ *
+ * The wind's direction is an inline custom property, not a colour:
+ * style="--from: 270deg" (where it blows from); the arrow points downwind.
+ * Consumes --sem-* only. */
+
+.wf-wind-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sem-space-x0-5);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- Figure's parts ---- */
+/* The mean: Figure md, the figure step. */
+.wf-wind-figure__value {
+  font-size: var(--sem-font-size-figure);
+  line-height: var(--sem-font-line-figure);
+  font-weight: var(--sem-font-weight-figure);
+  letter-spacing: var(--sem-font-tracking-figure);
+}
+/* The gust raised over it. */
+.wf-wind-figure__sup {
+  align-self: flex-start;
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-weight: var(--sem-font-weight-medium);
+}
+/* A unit or a quiet word after a figure: kn, m. */
+.wf-wind-figure__unit {
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+}
+/* Alarm: the gust is a big jump over the mean. Pen's words, and heavier. */
+.wf-wind-figure--alarm .wf-wind-figure__sup {
+  color: var(--sem-color-pen-ink);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+/* ---- the direction: an arrow blowing downwind, the point it comes from ---- */
+.wf-wind-figure__dir {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sem-space-x0-5);
+  align-self: center;
+  margin-left: var(--sem-space-x2);
+}
+.wf-wind-figure__arrow {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+  overflow: visible;
+  vertical-align: middle;
+}
+.wf-wind-figure__arrow-turn {
+  transform: rotate(calc(var(--from, 0deg) + 180deg));
+}
+.wf-wind-figure__arrow-path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The compass point, small and muted: a label in capitals, so the eyebrow step. */
+.wf-wind-figure__point {
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-normal);
+}
+
+/* ---- --cell: the dock's 14 g22 ---- */
+.wf-wind-figure--cell {
+  gap: var(--sem-space-x1);
+}
+.wf-wind-figure--cell .wf-wind-figure__value {
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: 0;
+}
+.wf-wind-figure__gust {
+  color: var(--sem-color-ink-muted);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+}
+/* On an ink fill (a selected cell): the paper's words. */
+.wf-wind-figure--inverse,
+.wf-wind-figure--inverse .wf-wind-figure__gust,
+.wf-wind-figure--inverse .wf-wind-figure__sup,
+.wf-wind-figure--inverse .wf-wind-figure__point {
+  color: var(--sem-color-ink-inverse);
+}
+
+/* ---- --line: the popup's one line ---- */
+.wf-wind-figure--line {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sem-space-x1-5);
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-normal);
+}
+.wf-wind-figure--line .wf-wind-figure__value,
+.wf-wind-figure__wing {
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: 0;
+}
+.wf-wind-figure--line .wf-wind-figure__gust {
+  color: var(--sem-color-ink);
+  font-size: inherit;
+  line-height: inherit;
+}
+.wf-wind-figure--line .wf-wind-figure__point {
+  color: var(--sem-color-ink);
+  font-size: inherit;
+  line-height: inherit;
+}
+.wf-wind-figure--line .wf-wind-figure__arrow {
+  width: calc(var(--sem-space-step) * 3.25);
+  height: calc(var(--sem-space-step) * 3.25);
+}
+.wf-wind-figure__sep {
+  color: var(--sem-color-ink-muted);
+}

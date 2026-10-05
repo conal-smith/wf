@@ -375,17 +375,24 @@ async function settle(page: Page) {
       [...document.images].map((image) => image.decode().catch(() => {})),
     );
   });
-  // The site's type is fetched, not bundled (src/styles.css imports it), and a
-  // fallback face moves every line of every shot. `document.fonts.check` is no
-  // use — it answers true for a family nobody has — so ask the set itself.
-  expect(
-    await page.evaluate(() =>
-      [...document.fonts].some(
-        (f) => f.family.includes("DM Sans") && f.status === "loaded",
-      ),
-    ),
-    "DM Sans loaded",
-  ).toBe(true);
+  // The site's type is fetched, not bundled (ui/fonts.css), and a fallback
+  // face moves every line of every shot. `document.fonts.check` is no use — it
+  // answers true for a family nobody has — so ask the set itself, for the
+  // three faces every view sets: the names, the sentences and the figures.
+  for (const family of ["Fraunces", "Newsreader", "IBM Plex Mono"])
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            (name) =>
+              [...document.fonts].some(
+                (f) => f.family.includes(name) && f.status === "loaded",
+              ),
+            family,
+          ),
+        { message: `${family} loaded` },
+      )
+      .toBe(true);
   // Every view is shot from the top. The header is sticky, so a page left
   // scrolled — the sell form scrolls its first bad field into view — would be
   // recorded with the header sitting across the middle of it.
@@ -422,6 +429,11 @@ export const test = base.extend<{ baseline: Baseline; shoot: Shoot }>({
         await pinMemberSince(page);
         await prepare(page);
         await settle(page);
+        // Off the page, so nothing is left under it. A tap or a click leaves
+        // the pressed control hovered, and a full-page shot re-emulates the
+        // window without touch: the kit's mouse-only hover then matches, and
+        // a tapped pill would be shot inked as no phone ever draws it.
+        await page.mouse.move(-10, -10);
         await page.screenshot({
           path: `${BASELINE}/${view}-${width}.png`,
           fullPage: !options.viewportOnly,

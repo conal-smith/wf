@@ -20,11 +20,11 @@ export const tagPillsStyles = tv({
       "max-rail:-mx-3 max-rail:flex-nowrap max-rail:overflow-x-auto max-rail:px-3 max-rail:py-1",
     ],
     item: "shrink-0",
-    pill: "text-body",
+    pill: "",
   },
   variants: {
     // The ones that are off are quiet: the kit's pressed pill says the rest.
-    on: { false: { pill: "font-normal shadow-none" } },
+    on: { false: { pill: "shadow-none" } },
   },
 });
 

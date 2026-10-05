@@ -152,10 +152,10 @@ describe("S1: home", () => {
     expect(membersLine(1284)).toBe("1,284 members");
   });
 
-  it("names the channel on each row", () => {
+  it("names the channel on each row, in its dateline", () => {
     const out = row(thread("a"));
-    expect(out).toMatch(/lucide-hash[^>]*>.*?<\/svg>Wings<\/span>/);
-    expect(row(thread("a"), false)).not.toContain("lucide-hash");
+    expect(out).toMatch(/<p class="[^"]*uppercase[^"]*">.*?>Wings<\/span>/);
+    expect(row(thread("a"), false)).not.toContain(">Wings</span>");
   });
 
   it("reads the latest feed, a search and a channel's list, each by cursor", async () => {
@@ -332,7 +332,7 @@ describe("S2: a channel", () => {
     const on = pills.filter((p) => p.attributes.includes("aria-current"));
     expect(on.map((p) => p.label)).toEqual([picked.label]);
     expect(on[0].attributes).toContain("bg-inverse");
-    expect(on[0].attributes).toContain("font-bold");
+    expect(on[0].attributes).toContain("font-semibold");
   });
 
   it("draws no filter for a channel with no tags, and reads a stray tag as All", () => {
@@ -384,12 +384,16 @@ describe("S3: a thread row", () => {
     thumbnail: { id: "ph1", url: "/uploads/a.jpg", width: 1600, height: 1200 },
   });
 
-  it("is one link to the thread, with the author's face and the title as a heading", () => {
+  it("is one link to the thread, a letter: the title as a heading, in the display face, and its author", () => {
     const out = row(busy);
     expect(out).toMatch(/^<a href="\/community\/t\/q\/thread-q"/);
     expect(out.match(/<a /g)).toHaveLength(1);
-    expect(out).toMatch(/<h2[^>]*>.*5m or 6m as a one-wing quiver\?.*<\/h2>/);
-    expect(out).toContain(">AK</span>");
+    expect(out).toMatch(
+      /<h2 class="[^"]*font-display[^"]*">.*5m or 6m as a one-wing quiver\?.*<\/h2>/,
+    );
+    expect(out).toMatch(/<span class="[^"]*font-display[^"]*">Aoife K<\/span>/);
+    // A list of letters, not of faces: the byline names them.
+    expect(out).not.toContain(">AK</span>");
   });
 
   it("says unread in weight, a dot and a count, and none of them when read", () => {
@@ -414,7 +418,7 @@ describe("S3: a thread row", () => {
     // The opening post is the author's own, who is named under it.
     expect(previewLine(thread("a"))).toBe("I’m buying my first wing.");
     expect(previewLine(thread("a", { preview: null }))).toBeNull();
-    expect(row(thread("a", { preview: null }))).not.toContain("<p");
+    expect(row(thread("a", { preview: null }))).not.toContain("truncate");
   });
 
   it("names a mentioned member it knows, and never shows a raw token", () => {
@@ -436,23 +440,22 @@ describe("S3: a thread row", () => {
     expect(out).toContain(">Question</span>");
     expect(out).toContain(">Sizing</span>");
     expect(out).toContain("Aoife K");
+    // The count is a figure, named for a screen reader.
     expect(out).toMatch(
-      /lucide-message-circle.*?<\/svg>24<span class="sr-only"> replies</,
+      /role="img" aria-label="24 replies"><span class="[^"]*text-figure[^"]*">24<\/span>/,
     );
     expect(out).toContain("24 replies");
     const quiet = row(thread("a"));
-    expect(quiet).not.toContain("lucide-message-circle");
+    expect(quiet).not.toContain("tabular-nums text-ink");
     expect(quiet).not.toMatch(/repl(y|ies)/);
     expect(row(thread("b", { replyCount: 1 }))).toContain("1 reply");
   });
 
-  it("shows up to three participants, the time, and a 76 by 57 thumbnail when there is a photo", () => {
+  it("dates the row, and shows a 76 by 57 thumbnail when there is a photo", () => {
     const out = row(busy);
-    const faces = out.match(/ring-2 ring-card/g) ?? [];
-    expect(faces).toHaveLength(3);
-    expect(out).toContain(">CM</span>");
-    expect(out).toContain(">TB</span>");
-    expect(out).toMatch(/<time dateTime="[^"]+">4 min ago<\/time>/);
+    expect(out).toMatch(
+      /<time class="[^"]*" dateTime="[^"]+">4 min ago<\/time>/,
+    );
     expect(out).toMatch(
       /<img class="[^"]*h-14\.25 w-19[^"]*" src="\/uploads\/a\.jpg" alt=""/,
     );
@@ -479,12 +482,13 @@ describe("S4: on a phone", () => {
     expect(styles.thumb()).toContain("max-rail:hidden");
     expect(styles.stats()).toContain("max-rail:hidden");
     expect(styles.inline()).toBe("rail:hidden");
-    expect(styles.avatar()).toContain("max-rail:size-control-sm");
-    expect(styles.row()).toContain("max-rail:p-3");
+    expect(styles.row()).toContain("max-rail:py-3");
     // Both tellings are in the markup; a width shows one of them.
     const out = row(thread("q", { replyCount: 3, unread: 2 }));
     expect(out.match(/2 new/g)).toHaveLength(2);
-    expect(out).toMatch(/<span class="rail:hidden"> · 3 replies · <time/);
+    expect(out).toMatch(
+      /<span class="rail:hidden">·[^<]*(<!-- -->)?3 replies<\/span>/,
+    );
   });
 
   it("the tag pills are one line that scrolls", () => {
@@ -870,14 +874,17 @@ describe("S7: a page with nothing to list", () => {
 });
 
 describe("S8 and the pages", () => {
-  it("home is a title, a line about the place and the count", async () => {
+  it("home is a dateline, a title and the count: figures, not a line about the place", async () => {
     const out = await pageAs("aoife", "home", {
       channels: channelsReady,
       pathname: "/community",
       search: new URLSearchParams(),
     });
-    expect(out).toMatch(/<h1[^>]*>Community<\/h1>/);
-    expect(out).toContain("from wingfoilers around Ireland.");
+    expect(out).toMatch(/<h1[^>]*>Latest<\/h1>/);
+    expect(out).toMatch(
+      /<p class="[^"]*uppercase[^"]*"><span>\w{3} \d{1,2} \w{3} \d{4}<\/span>/,
+    );
+    expect(out).not.toContain("from wingfoilers around Ireland.");
     expect(out).toContain("1,284 members");
     const few = await pageAs("aoife", "home", {
       channels: { ...channelsReady, memberCount: 12 },
@@ -893,8 +900,8 @@ describe("S8 and the pages", () => {
       pathname: "/community",
       search: new URLSearchParams("q=gybes"),
     });
-    expect(out).toMatch(/<h1[^>]*>Search<\/h1>/);
-    expect(out).toContain("Threads that mention “gybes”.");
+    expect(out).toMatch(/<h1[^>]*><span[^>]*>“gybes”<\/span><\/h1>/);
+    expect(out).toContain("<span>Search</span>");
     expect(out).toContain("Loading the search results…");
   });
 
@@ -906,14 +913,16 @@ describe("S8 and the pages", () => {
       pathname: "/community/c/wings",
       search: new URLSearchParams(),
     });
-    expect(out).toMatch(/<h1[^>]*>.*?<\/svg>Wings<\/h1>/);
+    expect(out).toMatch(/<h1[^>]*>Wings<\/h1>/);
+    expect(out).toContain(">Gear</span>");
     expect(out).toContain(wings.description);
     expect(out).toContain("0 threads · 0 following");
     expect(out).toMatch(
       /<button type="button"[^>]*aria-pressed="false"[^>]*>.*?Follow channel/,
     );
     expect(out).toContain('aria-label="Filter by tag"');
-    expect(out).toContain("Most recent activity first");
+    // The one order needs no saying: the newest activity is at the top.
+    expect(out).not.toContain("Most recent activity first");
     expect(out).toContain('href="/community/c/wings?new=1"');
   });
 

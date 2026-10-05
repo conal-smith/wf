@@ -4,7 +4,8 @@
  * There are four apps on one origin — the wind map, the second-hand gear
  * marketplace, the community and the page that adds the forecast to an AI
  * assistant — and `src/main.tsx` picks between them from
- * the pathname at load time. That single fact is why this module exists twice
+ * the pathname at load time (and a fifth bundle, a riding place's spot page,
+ * which belongs to the map section; see `isSpotPath` below). That single fact is why this module exists twice
  * over: it is what the entry point matches on, and it is what the shared site
  * menu marks as the current section, so the two can never disagree about where
  * the reader is.
@@ -57,3 +58,70 @@ const AI_PATH = /^\/ai(\/|$)/;
 export function isAiPath(pathname: string): boolean {
   return AI_PATH.test(pathname);
 }
+
+/**
+ * `/spot`, `/spot/brandon` and `/spot/brandon/` — but not `/spots` or
+ * `/spotify` — and `/stars`, "How the stars work", which is a page of the same
+ * bundle. Both belong to the map section (the menu marks the map as current
+ * there) but are a bundle of their own, so the entry point matches them here
+ * beside the sections it also splits off.
+ */
+const SPOT_PATH = /^\/(spot|stars)(\/|$)/;
+
+export function isSpotPath(pathname: string): boolean {
+  return SPOT_PATH.test(pathname);
+}
+
+/**
+ * Every path that `src/main.tsx` splits off from the map: everything else is
+ * the map's. The build's preload hint for the map's chunk (vite.config.ts)
+ * reads this list, so the hint and the entry point agree on which paths are
+ * the map's; a new section with a bundle of its own goes in it.
+ */
+export const OWN_BUNDLE_PATHS: readonly RegExp[] = [
+  MARKET_PATH,
+  COMMUNITY_PATH,
+  AI_PATH,
+  SPOT_PATH,
+];
+
+/** "How the stars work": the spot bundle's other page. */
+export const STARS_HREF = "/stars";
+
+/** `/stars` and `/stars/`, which the spot bundle draws as the stars page. */
+export function isStarsPath(pathname: string): boolean {
+  return /^\/stars(\/|$)/.test(pathname);
+}
+
+/**
+ * The riding place a spot path names, decoded, or null for `/spot` itself (the
+ * index of every place) and for anything deeper than one segment.
+ */
+export function spotIdFromPath(pathname: string): string | null {
+  const match = /^\/spot\/([^/]+)\/?$/.exec(pathname);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+/** A riding place's own page. Absolute: it is a page load from the map. */
+export const spotHref = (id: string) => `/spot/${encodeURIComponent(id)}`;
+
+/** The map, opened on a riding place, as every link back to it is written. */
+export const mapSpotHref = (id: string) => `/?spot=${encodeURIComponent(id)}`;
+
+/**
+ * Every path with no file behind it that the entry point draws, as the SPA
+ * fallback in public/_redirects lists them: each section with a bundle of its
+ * own, and the spot page.
+ */
+export const APP_ROUTES: readonly string[] = [
+  ...SITE_SECTIONS.filter((section) => section.href !== "/").map(
+    (section) => section.href,
+  ),
+  "/spot",
+  STARS_HREF,
+];

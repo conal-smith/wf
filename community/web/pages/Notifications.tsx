@@ -6,9 +6,10 @@
 import type { ReactNode } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
-import { Button, Notice, Pane } from "../../../ui";
+import { Button, Notice } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import { MembersOnly } from "../components/MembersOnly";
+import { PageHead, dateline } from "../components/PageHead";
 import {
   NotificationRows,
   NotificationTools,
@@ -18,12 +19,7 @@ import { useBell } from "../hooks";
 
 export const notificationsStyles = tv({
   slots: {
-    head: "flex items-start justify-between gap-5",
-    text: "grid min-w-0 gap-2",
-    title: "m-0 text-title text-ink",
-    lede: "m-0 text-prose text-ink-2",
-    base: "flex flex-col gap-3",
-    pane: "p-2",
+    base: "flex flex-col gap-4",
     more: "self-center",
   },
 });
@@ -48,19 +44,14 @@ export function Notifications(props: NotificationsProps) {
   );
 }
 
-function Head({ tools }: { tools?: ReactNode }) {
-  const styles = notificationsStyles();
+function Head({ tools, unread }: { tools?: ReactNode; unread?: number }) {
   return (
-    <div className={styles.head()}>
-      <div className={styles.text()}>
-        <h1 className={styles.title()}>Notifications</h1>
-        <p className={styles.lede()}>
-          Replies to what you follow, mentions of you, and new threads in the
-          channels you follow.
-        </p>
-      </div>
-      {tools}
-    </div>
+    <PageHead
+      dateline={dateline(new Date())}
+      figures={unread ? `${unread} unread` : undefined}
+      title="Notifications"
+      actions={tools}
+    />
   );
 }
 
@@ -75,17 +66,16 @@ function Inbox({ unread, onUnread }: NotificationsProps) {
   return (
     <>
       <Head
+        unread={unread}
         tools={<NotificationTools allRead={allRead} onMarkAll={rows.markAll} />}
       />
       {rows.failure && <Notice kind="warn">{rows.failure}</Notice>}
       <div className={styles.base()}>
-        <Pane className={styles.pane()}>
-          <NotificationRows
-            state={state}
-            onOpen={rows.open}
-            onRetry={rows.reload}
-          />
-        </Pane>
+        <NotificationRows
+          state={state}
+          onOpen={rows.open}
+          onRetry={rows.reload}
+        />
         {state.status === "ready" && state.more.status === "error" && (
           <Notice kind="warn">
             <p>{state.more.message}</p>

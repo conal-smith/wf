@@ -1,0 +1,97 @@
+/* Segmented — ui/Segmented.tsx (segmentedStyles), rendered in CSS. Consumes
+ * --sem-* only.
+ *
+ * The chart's switch, as the dock's TABLE | RIBBON: one capsule ruled in ink,
+ * the words in mono capitals, and the one that is on filled in ink. Stacked,
+ * a ruled column of choices with one row filled.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
+ * reaches the same rules through :hover and :focus-visible. */
+
+.wf-segmented {
+  display: inline-flex;
+  box-sizing: border-box;
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-card);
+}
+
+.wf-segmented__item {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: var(--sem-size-control-sm);
+  align-items: center;
+  justify-content: center;
+  gap: var(--sem-space-x1);
+  margin: 0;
+  padding: 0 var(--sem-space-x3);
+  border: 0;
+  border-radius: var(--sem-radius-full);
+  background: transparent;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-label);
+  line-height: var(--sem-font-line-label);
+  font-weight: var(--sem-font-weight-label);
+  letter-spacing: var(--sem-font-tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition-property: color, background-color, border-color, outline-color;
+  transition-duration: var(--sem-duration-fast);
+}
+
+/* A tap target is never shorter than touch. */
+@media (pointer: coarse) {
+  .wf-segmented__item {
+    min-height: var(--sem-size-touch);
+  }
+}
+
+.wf-segmented__item:not(:disabled):hover,
+.wf-segmented__item.is-hover {
+  background: var(--sem-color-sunken);
+}
+
+/* The one ring: 2px of the chart's magenta, 2px clear (RING). */
+.wf-segmented__item:not(:disabled):focus-visible,
+.wf-segmented__item.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* Disabled is said in ink and cursor, not a fade (DISABLED). */
+.wf-segmented__item:disabled {
+  cursor: default;
+  color: var(--sem-color-ink-disabled);
+  opacity: 1;
+}
+
+/* The chosen one is filled in ink and set heavier: not colour alone. It stays
+ * filled under the pointer. */
+.wf-segmented__item[aria-pressed="true"],
+.wf-segmented__item[aria-pressed="true"]:not(:disabled):hover,
+.wf-segmented__item[aria-pressed="true"].is-hover {
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+/* ---- stack: a column of choices, a ruled list with one row filled ---- */
+.wf-segmented--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: var(--sem-radius-surface);
+}
+.wf-segmented--stack .wf-segmented__item {
+  height: var(--sem-size-control-md);
+  justify-content: flex-start;
+  padding: 0 var(--sem-space-x4);
+  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+  border-radius: var(--sem-radius-surface);
+}
+.wf-segmented--stack .wf-segmented__item:last-child {
+  border-bottom-width: 0;
+}

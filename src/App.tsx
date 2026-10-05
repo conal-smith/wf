@@ -1,114 +1,257 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+// The map's own stylesheets, in its chunk: src/main.tsx lazy-loads this file,
+// and the other sections never ask for MapLibre's CSS or the chart's.
+import "maplibre-gl/dist/maplibre-gl.css";
+import "./map.css";
+import "./dock.css";
+import "./panels.css";
 import {
-  ArrowUpRight,
-  ChevronRight,
-  Info,
-  Layers3,
-  MapPin,
-  Search,
-  Wind,
-  X,
-} from "lucide-react";
-import { WindMap, Force5Brand, SiteMenu } from "../force5/src";
-import ForecastDock from "./ForecastDock";
-import ModelPicker from "./ModelPicker";
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { X } from "lucide-react";
+import { WindMap } from "../force5/src";
+import type {
+  ChartLayers,
+  MapControls as Controls,
+} from "../force5/src/WindMap";
+import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
+import type { LightState } from "../force5/src/lights";
+import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
+import ForecastDock, { type DockView } from "./ForecastDock";
+import MapControls from "./MapControls";
+import MapHead from "./MapHead";
+import SidePanel, { type SideTab } from "./SidePanel";
+import SpotCard from "./SpotCard";
+import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
+import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
+import { useRatings } from "./useRatings";
+import { usePointSeries } from "./usePointSeries";
+import {
+  offshoreMark,
+  pointHours as pointHoursFrom,
+  type PlaceHour,
+  type RatedPlace,
+} from "./ratings";
+import {
+  clock,
+  dayBest,
+  nearestColumn,
+  openingColumn,
+  stripColumns,
+  stripDays,
+} from "./strip";
 import { ridingLocations, spotFromSearch } from "./locations";
 import { forecastUrl } from "../force5/src/urls";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
-import { useModelAvailability } from "./useBlend";
+// Gust is a launcher in the corner until he is asked: his code comes once
+// the chart is up, not before it.
+const Companion = lazy(() =>
+  import("../companion/web/Companion").then((m) => ({ default: m.Companion })),
+);
+import type { MapAction } from "../companion/shared/protocol";
+import { parseRider } from "../force5/src/prefs";
 import {
   dockColumns,
   frameForTime,
   type ColumnModel,
-  type DockColumn,
 } from "../force5/src/timeline";
+import { tideAt } from "../force5/src/tides";
+import { favourites } from "../shared/web/favourites";
 import {
-  convert,
+  compass,
   dayLabel,
   defaultPrefs,
   freshness,
   loadFrame,
   loadPrefs,
   nearestFrame,
-  sample,
   savePrefs,
-  speed,
   timeLabel,
   validateManifest,
   type Frame,
   type Manifest,
-  type Point,
   type Prefs,
   type Spot,
 } from "../force5/src";
 
-const initialPoint: Point = {
-  id: "brandon",
-  name: "Brandon Bay",
-  county: "Kerry",
-  lat: 52.276,
-  lon: -10.024,
+const FIRST_SPOT = "brandon";
+const WIND_KEY = "wingfoil.map.wind.v1";
+const LAYERS_KEY = "wingfoil.map.layers.v1";
+const MORE_KEY = "wingfoil.map.more.v1";
+/** The focus is on the point tapped on the map, not a riding place. */
+const AT_POINT = "@point";
+
+/** A point tapped on the map, as the dock names it. */
+interface Picked {
+  lon: number;
+  lat: number;
+  name: string;
+  coords: string;
+}
+const degrees = (lat: number, lon: number) =>
+  `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
+const PHONE = "(max-width: 720px)";
+/** Width the side panel and its gap take from the map, on a wide screen. */
+const SIDE_INSET = 380;
+
+const store = {
+  get(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Best effort: the choice still holds for this page.
+    }
+  },
 };
 
+const DEFAULT_LAYERS: ChartLayers = {
+  tints: true,
+  soundings: true,
+  relief: true,
+  names: true,
+};
+
+function useMedia(query: string) {
+  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const change = () => setMatch(media.matches);
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, [query]);
+  return match;
+}
+
+/** Follows a value at most every `ms` while it keeps changing, then settles on it. */
+function useThrottled<T>(value: T, ms: number): T {
+  const [out, setOut] = useState(value);
+  const last = useRef(0);
+  useEffect(() => {
+    const wait = last.current + ms - performance.now();
+    if (wait <= 0) {
+      last.current = performance.now();
+      setOut(value);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      last.current = performance.now();
+      setOut(value);
+    }, wait);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return out;
+}
+
 export default function App() {
-  // Display preferences drive the dock, the table and the map readouts alike.
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   useEffect(() => setPrefs(loadPrefs()), []);
   const changePrefs = (next: Prefs) => {
     setPrefs(next);
     savePrefs(next);
   };
-  const units = prefs.units;
-  const [manifest, setManifest] = useState<Manifest | null>(null),
-    [spots, setSpots] = useState<Spot[]>([]);
-  const [frame, setFrame] = useState<Frame | null>(null),
-    // The reader's place in the forecast is a valid time, never an index. An
-    // index only means something inside one run of one model, and the dock's
-    // columns will outlive both; the map frame and the dock column are derived.
-    [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [point, setPoint] = useState<Point>(initialPoint);
-  const [error, setError] = useState(""),
-    [frameError, setFrameError] = useState(""),
-    [retry, setRetry] = useState(0);
-  const [search, setSearch] = useState(""),
-    [playing, setPlaying] = useState(false);
-  const [showLayers, setShowLayers] = useState(false),
-    [showWind, setShowWind] = useState(true),
-    [particles, setParticles] = useState(true),
-    [showSpots, setShowSpots] = useState(true);
+  const rider = prefs.rider;
+  const [manifest, setManifest] = useState<Manifest | null>(null);
+  const [spots, setSpots] = useState<Spot[]>([]);
+  const [frame, setFrame] = useState<Frame | null>(null);
+  // The reader's place in the forecast is a valid time, never an index.
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const chosenTime = useRef(false);
+  const [point, setPoint] = useState<Spot | null>(null);
+  const [error, setError] = useState("");
+  const [frameError, setFrameError] = useState("");
+  const [retry, setRetry] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(true);
-  const [spotInfoOpen, setSpotInfoOpen] = useState(false);
-  const searchInput = useRef<HTMLInputElement>(null);
-  const searchTrigger = useRef<HTMLButtonElement>(null);
+  const phone = useMedia(PHONE);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Picked | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [more, setMore] = useState(() => store.get(MORE_KEY) === "1");
+  const chooseMore = (next: boolean) => {
+    setMore(next);
+    store.set(MORE_KEY, next ? "1" : "0");
+  };
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [keyOpen, setKeyOpen] = useState(false);
+  const [sideTab, setSideTab] = useState<SideTab>("yours");
+  const [folded, setFolded] = useState(() => window.matchMedia(PHONE).matches);
+  const [view, setView] = useState<DockView>("table");
+  const [windStyle, setWindStyle] = useState<WindStyle>(() => {
+    const saved = store.get(WIND_KEY) as WindStyle | null;
+    return saved && WIND_STYLES.includes(saved) ? saved : "ink";
+  });
+  const [layers, setLayers] = useState<ChartLayers>(() => {
+    try {
+      return {
+        ...DEFAULT_LAYERS,
+        ...JSON.parse(store.get(LAYERS_KEY) ?? "{}"),
+      };
+    } catch {
+      return DEFAULT_LAYERS;
+    }
+  });
+  const chooseWind = (style: WindStyle) => {
+    setWindStyle(style);
+    store.set(WIND_KEY, style);
+  };
+  const chooseLayers = (next: ChartLayers) => {
+    setLayers(next);
+    store.set(LAYERS_KEY, JSON.stringify(next));
+  };
+  const controls = useRef<Controls | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [scale, setScale] = useState("");
+  // Gust comes once the chart is drawn and the page has a moment to spare.
+  const [gustDue, setGustDue] = useState(false);
   useEffect(() => {
-    if (searchOpen) searchInput.current?.focus();
-  }, [searchOpen]);
+    if (!mapReady || gustDue) return;
+    const idle =
+      window.requestIdleCallback ??
+      ((f: () => void) => window.setTimeout(f, 1200));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const handle = idle(() => setGustDue(true), { timeout: 3000 });
+    return () => cancel(handle);
+  }, [mapReady, gustDue]);
 
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
-  // A coarse clock. The Now line has its own; this one decides which runs have
-  // expired, so it only has to be right to the minute.
-  const [clock, setClock] = useState(() => Date.now());
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const modelRequest = useRef<AbortController | null>(null);
   const [pendingModel, setPendingModel] = useState<ModelId | null>(null);
   const [modelError, setModelError] = useState("");
   const [modelNotice, setModelNotice] = useState("");
+  const modelEpoch = useRef(0);
   useEffect(() => {
     if (!modelNotice) return;
     const timer = window.setTimeout(() => setModelNotice(""), 6000);
     return () => clearTimeout(timer);
   }, [modelNotice]);
-  const modelEpoch = useRef(0);
-
   useEffect(() => () => modelRequest.current?.abort(), []);
 
+  /* ---- the rider's spots ---- */
+  const fav = favourites();
+  const favState = useSyncExternalStore(fav.subscribe, fav.get);
+  const starred = favState.starred;
+  const frequent = useMemo(() => fav.frequent(6), [favState]);
+
+  /* ---- the first load: the map model's manifest and the places ---- */
   useEffect(() => {
     const controller = new AbortController();
     Promise.all(
@@ -117,10 +260,7 @@ export default function App() {
           path.startsWith("weather/")
             ? forecastUrl(path)
             : `${import.meta.env.BASE_URL}${path}`,
-          {
-            signal: controller.signal,
-            cache: "no-cache",
-          },
+          { signal: controller.signal, cache: "no-cache" },
         ).then(async (r) => {
           if (!r.ok)
             throw new Error(
@@ -134,17 +274,20 @@ export default function App() {
         if (controller.signal.aborted) return;
         const validated = validateManifest(m);
         setManifest(validated);
-        const places = ridingLocations(s);
+        const places = ridingLocations(s) as Spot[];
         setSpots(places);
         setSelectedTime(
           validated.frames[nearestFrame(validated.frames)].validTime,
         );
-        // A link that names a spot opens on it; any other opens where it always has.
+        const linked = spotFromSearch(location.search, places) as
+          Spot | undefined;
         setPoint(
-          spotFromSearch(location.search, places) ||
-            s.find((spot: Spot) => spot.id === initialPoint.id) ||
-            initialPoint,
+          linked ?? places.find((spot) => spot.id === FIRST_SPOT) ?? places[0],
         );
+        if (linked) {
+          setFocusId(linked.id);
+          setPopupOpen(true);
+        }
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -157,12 +300,9 @@ export default function App() {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const change = () => {
-      setReducedMotion(media.matches);
-      if (media.matches) setPlaying(false);
-    };
+    const change = () => setReducedMotion(media.matches);
     media.addEventListener("change", change);
-    const now = () => setClock(Date.now());
+    const now = () => setClockNow(Date.now());
     const interval = window.setInterval(now, 60000);
     document.addEventListener("visibilitychange", now);
     window.addEventListener("focus", now);
@@ -181,69 +321,10 @@ export default function App() {
     );
     observer.observe(dock.current);
     return () => observer.disconnect();
-  }, [error]);
+  }, [error, !!manifest]);
 
-  /** True when the clock has already overtaken the hour on screen. */
-  const selectionIsPast = (now = Date.now()) =>
-    selectedTime !== null && Date.parse(selectedTime) < now;
-  /**
-   * Where "now" lands, on the dock's own axis rather than the map model's
-   * frames: the axis is what the reader is looking at, and it outlives whatever
-   * run the map happens to be drawing. One helper, so a run swap and a tab
-   * coming back cannot land on two different hours.
-   */
-  const columnAtNow = (now = Date.now()): string | null =>
-    columnsRef.current.length
-      ? columnsRef.current[nearestFrame(columnsRef.current, now)].validTime
-      : null;
-
-  // A newer run replaces the one on screen: metadata, map, series and time
-  // commit together, exactly as a model switch does.
-  const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
-    modelEpoch.current++;
-    setManifest(next);
-    setFrame(nextFrame);
-    // The reader's hour is theirs. A new run does not move it — the map simply
-    // loads its own nearest reachable frame for the same time, and a selection
-    // out past this run keeps its columns from whoever owns them. Only an hour
-    // the clock has already overtaken goes back to now: nobody came back to a
-    // tab to read more about this morning.
-    if (selectionIsPast()) {
-      const now = columnAtNow();
-      if (now) setSelectedTime(now);
-    }
-    setFrameError("");
-    setModelError("");
-    setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
-  };
-
-  // The frame the map is painting right now, by its own hour.
-  const paintedIndex =
-    manifest && frame
-      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
-      : -1;
-  /**
-   * The map frame the selected time asks for. Nothing stores this: a run swap
-   * or a model switch changes which frame a time lands on, and deriving it is
-   * what keeps the reader's place through both.
-   *
-   * A time this run cannot reach — the dock's columns run fifteen days and
-   * HARMONIE sixty hours — leaves the map exactly where it is. The dock offers
-   * the run that does reach it; nothing switches on the reader's behalf.
-   */
-  const requestedIndex =
-    manifest && selectedTime
-      ? (frameForTime(manifest.frames, Date.parse(selectedTime)) ??
-        (paintedIndex >= 0
-          ? paintedIndex
-          : nearestFrame(manifest.frames, Date.parse(selectedTime))))
-      : 0;
-
-  // The sweep lives here rather than in the dock because the dock's columns are
-  // built from every model's manifest, not just the one the map is drawing.
-  const { models, resolved: modelsResolved } = useModelAvailability(
-    playing || !!pendingModel,
-  );
+  /* ---- the week's columns, and the strip of them the dock shows ---- */
+  const { models } = useModelAvailability(!!pendingModel);
   const columnModels = useMemo<ColumnModel[]>(() => {
     const list = models
       .filter((model) => model.wind !== null)
@@ -253,66 +334,96 @@ export default function App() {
         ensemble: model.entry.ensemble,
       }));
     if (!manifest) return list;
-    // The run on screen is the authority for its own model: a run swap must not
-    // wait for the next five-minute sweep before the columns agree with the map.
     const mine = { id: manifest.model, manifest, ensemble: false };
     const at = list.findIndex((model) => model.id === manifest.model);
     if (at === -1) return [...list, mine];
     return list.map((model, index) => (index === at ? mine : model));
   }, [models, manifest]);
   const columns = useMemo(() => {
-    const built = dockColumns(columnModels, clock);
-    // Until the sweep resolves there is one manifest to go on, and it is the
-    // map's. The selection survives the change because it is a time.
+    const built = dockColumns(columnModels, clockNow);
     return built.length
       ? built
       : manifest
-        ? manifest.frames.map((frame) => ({
-            validTime: frame.validTime,
+        ? manifest.frames.map((f) => ({
+            validTime: f.validTime,
             model: manifest.model,
           }))
         : [];
-  }, [columnModels, manifest, clock]);
-  // Kept by identity so a minute's tick, or a sweep that says the same thing,
-  // does not rebuild every chart and re-run the dock's measurement pass. The
-  // key is what actually changed, and nothing is read or written through a ref
-  // while rendering.
-  const columnsKey = columns
-    .map((column) => `${column.validTime}|${column.model}`)
-    .join(",");
-  const stable = useMemo(() => columns, [columnsKey]);
-  // The handlers that need the columns outside a render read them here.
-  const columnsRef = useRef<DockColumn[]>(stable);
-  useEffect(() => {
-    columnsRef.current = stable;
-  }, [stable]);
+  }, [columnModels, manifest, clockNow]);
+  const stripKey = columns.map((c) => `${c.validTime}|${c.model}`).join(",");
+  const strip = useMemo(
+    () => stripColumns(columns, clockNow),
+    [stripKey, clockNow - (clockNow % 3600000)],
+  );
+  const days = useMemo(() => stripDays(strip), [strip]);
+  const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
+  const stripRef = useRef(strip);
+  stripRef.current = strip;
 
+  // The page opens on now, or first light when it is dark; after that the
+  // time is the reader's.
+  useEffect(() => {
+    if (chosenTime.current || !strip.length) return;
+    setSelectedTime(strip[openingColumn(strip, Date.now())].validTime);
+  }, [strip]);
+  const selected = useMemo(
+    () =>
+      strip.length && selectedTime
+        ? nearestColumn(strip, Date.parse(selectedTime))
+        : 0,
+    [strip, selectedTime],
+  );
   /**
-   * A tab left open all morning comes back to an hour that has already been and
-   * gone. Returning to it lands on now instead — and only then: a time the
-   * reader deliberately chose in the future is what they left the tab on.
-   *
-   * The listener is installed once and reads the current state through a ref,
-   * so returning to the tab never depends on a re-render having happened first.
+   * A tab left open all morning comes back to an hour already gone: it lands
+   * on now instead, and only then. A time the reader chose ahead is theirs.
    */
-  const backToNow = useRef<() => void>(() => {});
-  backToNow.current = () => {
-    // Never mid-gesture: playback owns the selection while it runs, and a model
-    // switch is about to commit one of its own.
-    if (playing || pendingModel) return;
-    const now = Date.now();
-    if (!selectionIsPast(now)) return;
-    const at = columnAtNow(now);
-    if (at) setSelectedTime(at);
-  };
+  const selectedRef = useRef(selectedTime);
+  selectedRef.current = selectedTime;
   useEffect(() => {
     const seen = () => {
-      if (document.visibilityState === "visible") backToNow.current();
+      if (document.visibilityState !== "visible") return;
+      const s = stripRef.current;
+      const at = selectedRef.current;
+      const now = Date.now();
+      if (!s.length || !at || Date.parse(at) + 3600000 >= now) return;
+      setSelectedTime(s[openingColumn(s, now)].validTime);
     };
     document.addEventListener("visibilitychange", seen);
     return () => document.removeEventListener("visibilitychange", seen);
   }, []);
+  const selectColumn = useCallback((at: number) => {
+    const column = stripRef.current[at];
+    if (!column) return;
+    chosenTime.current = true;
+    setModelNotice("");
+    setSelectedTime(column.validTime);
+  }, []);
 
+  /* ---- the map's frame follows the time, a little behind a fast scrub ---- */
+  const mapTime = useThrottled(selectedTime, 200);
+  const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
+    modelEpoch.current++;
+    setManifest(next);
+    setFrame(nextFrame);
+    if (selectedTime && Date.parse(selectedTime) + 3600000 < Date.now()) {
+      const s = stripRef.current;
+      if (s.length) setSelectedTime(s[openingColumn(s, Date.now())].validTime);
+    }
+    setFrameError("");
+    setModelError("");
+    setModelNotice(`Updated to the ${runLabel(next.runTime)} run.`);
+  };
+  const paintedIndex =
+    manifest && frame
+      ? manifest.frames.findIndex((f) => f.hour === frame.hour)
+      : -1;
+  const requestedIndex =
+    manifest && mapTime
+      ? (frameForTime(manifest.frames, Date.parse(mapTime)) ??
+        (paintedIndex >= 0
+          ? paintedIndex
+          : nearestFrame(manifest.frames, Date.parse(mapTime))))
+      : 0;
   useEffect(() => {
     if (!manifest || pendingModel) return;
     const controller = new AbortController();
@@ -329,9 +440,6 @@ export default function App() {
       })
       .catch(async (e) => {
         if (!current()) return;
-        // The server keeps only the newest run, so a frame that has gone usually
-        // means a newer run replaced it: open that run at the same time instead
-        // of reporting an error about a forecast nobody should be reading.
         const swap = await loadNewerRun(
           manifest,
           manifest.frames[requestedIndex].validTime,
@@ -340,225 +448,403 @@ export default function App() {
         if (!current()) return;
         if (swap) return commitRun(swap);
         setFrameError(e.message);
-        setPlaying(false);
       });
     return () => controller.abort();
   }, [manifest, requestedIndex, retry, pendingModel]);
 
   const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;
-  useEffect(() => {
-    if (!playing || !manifest || loading || frameError) return;
-    const timeout = window.setTimeout(() => {
-      // Playback steps through the map model's own frames, by time.
-      const next = manifest.frames[requestedIndex + 1];
-      if (!next) setPlaying(false);
-      else setSelectedTime(next.validTime);
-    }, 1600);
-    return () => clearTimeout(timeout);
-  }, [playing, manifest, requestedIndex, loading, frameError]);
-
   const forecast = manifest?.frames[activeIndex];
-  const isStale = manifest ? freshness(manifest) : "fresh";
-  const visibleSpots = spots.filter((s) =>
-    `${s.name} ${s.county} ${(s.aliases || []).join(" ")}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
-  /** The one way the reader's place moves: a valid time, from any control. */
-  const selectTime = (validTime: string) => {
-    if (pendingModel) return;
-    setModelNotice("");
-    setPlaying(false);
-    setSelectedTime(validTime);
-  };
-  const selectSpot = (spot: Point) => {
-    setPoint(spot);
-    setSearchOpen(false);
-    setSheetOpen(true);
-    setSpotInfoOpen(!!spot.id);
-  };
-  const closeSpotInfo = () => {
-    setSpotInfoOpen(false);
-    requestAnimationFrame(() => {
-      if (point.id)
-        document
-          .querySelector<HTMLButtonElement>(
-            `[data-spot-id="${CSS.escape(point.id)}"]`,
-          )
-          ?.focus({ preventScroll: true });
-    });
-  };
-  const closeSearch = () => {
-    setSearchOpen(false);
-    requestAnimationFrame(() => searchTrigger.current?.focus());
-  };
-  useEffect(() => {
-    const escape = (event: KeyboardEvent) => {
-      // A dialog of our own - the source sheet or the display filter - owns
-      // Escape while it is open.
-      if (event.key !== "Escape" || document.querySelector("dialog[open]"))
-        return;
-      if (searchOpen) {
-        closeSearch();
-      } else if (showLayers) setShowLayers(false);
-      else if (spotInfoOpen) closeSpotInfo();
-      else {
-        setSheetOpen(false);
-        document
-          .querySelector<HTMLCanvasElement>(".maplibregl-canvas")
-          ?.focus();
-      }
-    };
-    window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, [searchOpen, showLayers, spotInfoOpen, point.id]);
-  const openInfo = () => dialog.current?.showModal();
+  const staleness = manifest ? freshness(manifest) : "fresh";
+
   const chooseModel = async (id: ModelId, wanted?: string) => {
     if (!manifest || !frame || (id === manifest.model && !wanted)) return;
     modelRequest.current?.abort();
     const controller = new AbortController();
     modelRequest.current = controller;
     modelEpoch.current++;
-    setPlaying(false);
     setPendingModel(id);
     setModelError("");
     setModelNotice("");
     setFrameError("");
-    const targetTime = wanted ?? frame.validTime;
-    setSelectedTime(targetTime);
+    const targetTime = wanted ?? selectedTime ?? frame.validTime;
     try {
       const next = await loadModel(id, targetTime, controller.signal);
       if (controller.signal.aborted) return;
-      // React batches these together: metadata, map, series and time commit atomically.
       setManifest(next.manifest);
       setFrame(next.frame);
-      setSelectedTime(next.frame.validTime);
-      if (next.frame.validTime !== targetTime)
+      if (
+        Math.abs(Date.parse(next.frame.validTime) - Date.parse(targetTime)) >
+        3600000
+      )
         setModelNotice(
-          `Showing the nearest ${next.manifest.modelName} forecast: ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}. Model forecast times and ranges differ.`,
+          `${next.manifest.modelName} on the map from ${dayLabel(next.frame.validTime)} ${timeLabel(next.frame.validTime)}.`,
         );
-    } catch (error) {
+    } catch (e) {
       if (!controller.signal.aborted)
         setModelError(
-          `Could not switch to ${MODELS.find((m) => m.id === id)?.name}. ${manifest.modelName} is still shown. ${error instanceof Error ? error.message : "Please try again."}`,
+          `Could not switch to ${MODELS.find((m) => m.id === id)?.name}. ${manifest.modelName} is still shown. ${e instanceof Error ? e.message : ""}`,
         );
     } finally {
       if (modelRequest.current === controller) setPendingModel(null);
     }
   };
-  // A tab left open follows the runs. The check is silent unless it finds a new
-  // one, and the swap is the same atomic manifest/frame/time commit a model
-  // switch makes, at the frame nearest the time the reader had selected.
   useRunRefresh({
     manifest,
     validTime: selectedTime ?? frame?.validTime ?? null,
     switching: !!pendingModel,
-    playing,
+    playing: false,
     onRun: commitRun,
   });
-  const togglePlayback = () => {
-    if (!playing && manifest && requestedIndex === manifest.frames.length - 1)
-      setSelectedTime(manifest.frames[0].validTime);
+
+  /* ---- every place's hours, rated: the lights, the dock and the panel ---- */
+  const places = useMemo<RatedPlace[]>(
+    () =>
+      spots.map((s) => ({
+        id: s.id,
+        lat: s.lat,
+        lon: s.lon,
+        facing: s.facing ?? null,
+      })),
+    [spots],
+  );
+  const first = useMemo(
+    () => [point?.id ?? FIRST_SPOT, ...starred, ...frequent.map((v) => v.id)],
+    [point?.id, starred, frequent],
+  );
+  const { hours, version } = useRatings(
+    models,
+    prefs.blendModels,
+    places,
+    axis,
+    rider,
+    first,
+  );
+  const lights = useMemo(() => {
+    const out = new Map<string, LightState>();
+    for (const spot of spots) {
+      const row = hours.get(spot.id);
+      const hour = row?.[selected];
+      out.set(spot.id, {
+        pending: !row,
+        stars: hour?.rating ? hour.rating.stars : null,
+        dark: !!hour && !hour.daylight,
+        from: hour?.from ?? null,
+        windKn: hour?.windKn ?? null,
+        compass: hour?.from != null ? compass(hour.from) : null,
+        mark: offshoreMark(hour?.rating ?? null, rider),
+      });
+    }
+    return out;
+  }, [spots, hours, version, selected, rider]);
+  const named = useMemo(() => new Set(starred), [starred]);
+  const column = strip[selected];
+  const lightLabel = useCallback(
+    (spot: Spot, s: LightState | undefined) =>
+      `${spot.name}${spot.county ? `, ${spot.county}` : ""}${
+        !s || s.pending
+          ? ""
+          : `: ${column ? clock(column.time) : ""} ${
+              s.dark || s.stars === null
+                ? "dark"
+                : `${s.stars} star${s.stars === 1 ? "" : "s"}`
+            }${s.compass && s.windKn !== null ? `, ${s.compass} ${Math.round(s.windKn)} knots` : ""}${
+              s.mark === "struck"
+                ? ", offshore"
+                : s.mark === "cross-off"
+                  ? ", cross-offshore"
+                  : ""
+            }`
+      }`,
+    [column?.time],
+  );
+  const rideStops = useMemo(
+    () => rideStopsFor(rider, getComputedStyle(document.documentElement)),
+    [JSON.stringify(rider)],
+  );
+  const selectedDay = days.find(
+    (d) => selected >= d.start && selected < d.start + d.count,
+  );
+
+  /* ---- choosing a spot ---- */
+  const tide = useSpotTide(picked ? undefined : point?.id);
+  const selectSpot = (spot: Spot, fly = true) => {
+    setPicked(null);
+    setPoint(spot);
+    setPopupOpen(true);
+    setFocusId(spot.id);
+    setKeyOpen(false);
+    fav.visit(spot.id);
+    if (phone) setFolded(true);
+    if (fly) controls.current?.flyTo(spot);
+  };
+  /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
+  const pickPoint = (at: {
+    lon: number;
+    lat: number;
+    place: string | null;
+  }) => {
+    const coords = degrees(at.lat, at.lon);
+    setPicked({
+      lon: at.lon,
+      lat: at.lat,
+      name: at.place ?? coords,
+      coords: at.place ? coords : "",
+    });
+    setFocusId(AT_POINT);
+    setPopupOpen(false);
+    setKeyOpen(false);
+  };
+  const clearFocus = () => {
+    setFocusId(null);
+    setPopupOpen(false);
+  };
+  const toIreland = () => {
+    clearFocus();
+    controls.current?.fitIreland();
+  };
+  useEffect(() => {
+    if (!mapReady) return;
+    controls.current?.fitIreland(0);
+    const map = controls.current?.map;
+    if (!map) return;
+    const update = () => {
+      const c = map.getCenter();
+      const mpp =
+        (40075016.686 * Math.cos((c.lat * Math.PI) / 180)) /
+        (512 * 2 ** map.getZoom());
+      let n = mpp * 3779.5;
+      const p = 10 ** (Math.floor(Math.log10(n)) - 1);
+      n = Math.round(n / p) * p;
+      setScale(`SCALE 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
+    };
+    update();
+    map.on("moveend", update);
+    return () => {
+      map.off("moveend", update);
+    };
+  }, [mapReady]);
+  // A linked spot is flown to once the chart is up.
+  useEffect(() => {
+    if (mapReady && point && focusId === point.id)
+      controls.current?.flyTo(point);
+  }, [mapReady]);
+
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || document.querySelector("dialog[open]"))
+        return;
+      if (layersOpen) setLayersOpen(false);
+      else if (keyOpen) setKeyOpen(false);
+      else clearFocus();
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [layersOpen, keyOpen]);
+
+  /* ---- Gust moving the map, at the rider's ask ---- */
+  const highlightTimer = useRef<number | undefined>(undefined);
+  const companionAction = (action: MapAction) => {
+    if (action.type === "select_spot") {
+      const spot = spots.find((s) => s.id === action.id);
+      if (spot) selectSpot(spot);
+    } else if (action.type === "set_time") {
+      if (strip.length)
+        selectColumn(nearestColumn(strip, Date.parse(action.iso)));
+    } else {
+      clearTimeout(highlightTimer.current);
+      const marked = action.ids.flatMap((id) => [
+        ...document.querySelectorAll<HTMLElement>(
+          `.spot-marker[data-spot-id="${CSS.escape(id)}"]`,
+        ),
+      ]);
+      document
+        .querySelectorAll(".spot-marker.gust-highlight")
+        .forEach((el) => el.classList.remove("gust-highlight"));
+      marked.forEach((el) => el.classList.add("gust-highlight"));
+      highlightTimer.current = window.setTimeout(
+        () => marked.forEach((el) => el.classList.remove("gust-highlight")),
+        4500,
+      );
+    }
+  };
+  useEffect(() => () => clearTimeout(highlightTimer.current), []);
+
+  /* ---- a point tapped on the map: read out of the map model's frames ---- */
+  const pickedPoint = useMemo(
+    () =>
+      picked ? { name: picked.name, lat: picked.lat, lon: picked.lon } : null,
+    [picked],
+  );
+  const series = usePointSeries(picked ? manifest : null, pickedPoint);
+  const pickedHours = useMemo<PlaceHour[] | undefined>(
+    () =>
+      picked && manifest
+        ? pointHoursFrom(manifest.frames, series.values, picked, axis)
+        : undefined,
+    [picked, manifest, series.values, axis],
+  );
+  const dockSpot: Spot | null = picked
+    ? {
+        id: "",
+        name: picked.name,
+        county: picked.coords,
+        lat: picked.lat,
+        lon: picked.lon,
+        note: "",
+        facing: null,
+      }
+    : point;
+
+  /* ---- what the pen writes beside the selected light ---- */
+  const pointHours: PlaceHour[] | undefined = picked
+    ? pickedHours
+    : point
+      ? hours.get(point.id)
+      : undefined;
+  const penNote = useMemo(() => {
+    if (!dockSpot || !pointHours || !selectedDay) return "";
+    const best = dayBest(
+      pointHours.map((h) => h.rating),
+      selectedDay,
+      clockNow,
+      strip.map((c) => c.time),
+    );
+    if (!best) return "";
+    if (!best.stars) return "no stars";
+    const r = pointHours[best.from].rating!;
+    const span =
+      best.from === best.to
+        ? clock(strip[best.from].time)
+        : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`;
+    return `${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m`;
+  }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
+
+  /* ---- playing through the hours ---- */
+  useEffect(() => {
+    if (!playing) return;
+    const step = window.setInterval(() => {
+      const s = stripRef.current;
+      const at = selectedRef.current
+        ? nearestColumn(s, Date.parse(selectedRef.current))
+        : 0;
+      if (at >= s.length - 1) {
+        setPlaying(false);
+        return;
+      }
+      chosenTime.current = true;
+      setSelectedTime(s[at + 1].validTime);
+    }, 1100);
+    // Any touch of the page but the button itself takes the hours back.
+    const stop = (event: Event) => {
+      if ((event.target as HTMLElement | null)?.closest?.(".play")) return;
+      setPlaying(false);
+    };
+    document.addEventListener("pointerdown", stop, true);
+    document.addEventListener("wheel", stop, { capture: true, passive: true });
+    document.addEventListener("keydown", stop, true);
+    return () => {
+      clearInterval(step);
+      document.removeEventListener("pointerdown", stop, true);
+      document.removeEventListener("wheel", stop, true);
+      document.removeEventListener("keydown", stop, true);
+    };
+  }, [playing]);
+  const togglePlay = () => {
+    if (!playing && selected >= strip.length - 1) selectColumn(0);
     setPlaying((v) => !v);
   };
+  const marine = useMarineModels(more && mapReady);
+  const focusAt =
+    focusId === AT_POINT
+      ? picked
+      : focusId && point && focusId === point.id
+        ? point
+        : null;
+
+  /* ---- the run that reaches the hour, when the map's does not ---- */
+  const beyondMap =
+    !!manifest &&
+    !!column &&
+    frameForTime(manifest.frames, column.time) === null;
+  const reachable =
+    beyondMap && column
+      ? (MODELS.find((m) => m.id === column.model) ?? null)
+      : null;
+
+  const spotById = useMemo(
+    () => new Map(spots.map((s) => [s.id, s] as const)),
+    [spots],
+  );
+  const dayStars = (id: string) => {
+    const row = hours.get(id);
+    if (!row || !selectedDay) return null;
+    return (
+      dayBest(
+        row.map((h) => h.rating),
+        selectedDay,
+      )?.stars ?? null
+    );
+  };
+
+  const sources = (
+    <>
+      <h5>Sources</h5>
+      <ul>
+        <li>
+          Wind: {manifest?.modelName ?? "HARMONIE"} on the map
+          {manifest ? ` (${runLabel(manifest.runTime)} run)` : ""}; the stars
+          blend {prefs.blendModels.length} models
+        </li>
+        <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
+        <li>
+          Coast and places: ©{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+          >
+            OpenStreetMap
+          </a>
+          ,{" "}
+          <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">
+            OpenFreeMap
+          </a>
+        </li>
+        <li>Tides: Marine Institute predictions</li>
+        <li>
+          Places: Fáilte Ireland (CC BY 4.0), OpenStreetMap (ODbL) and linked
+          guides; not verified launches
+        </li>
+      </ul>
+      <p className="ip-small">
+        A model cannot see every headland. Check{" "}
+        <a href="https://www.met.ie/warnings" target="_blank" rel="noreferrer">
+          Met Éireann warnings
+        </a>{" "}
+        and the water before you go. Not for navigation.
+      </p>
+    </>
+  );
+
+  const popupHour = point ? pointHours?.[selected] : undefined;
+  const popupTide =
+    tide.tide && column ? tideAt(tide.tide.curve, column.time) : null;
+  const status = pendingModel
+    ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
+    : modelError || modelNotice
+      ? modelError || modelNotice
+      : frameError
+        ? frameError
+        : null;
 
   return (
     <div
-      className={`app-shell compact-layout ${sheetOpen ? "sheet-open" : ""}`}
+      className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
       style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
     >
-      <header className="site-header">
-        {/*
-          The two round controls share a row, and the row stands down entirely
-          while the search panel is open so the panel keeps the header's full
-          width and its usual height below the top inset.
-        */}
-        <div className="site-header-controls" hidden={searchOpen}>
-          <SiteMenu current="map" />
-          <button
-            ref={searchTrigger}
-            className="search-trigger glass"
-            aria-label="Open spot search"
-            aria-expanded={searchOpen}
-            aria-controls="spot-search-results"
-            hidden={searchOpen}
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search size={20} />
-          </button>
-        </div>
-        {searchOpen && (
-          <div className="search-panel">
-            <div className="search-box glass">
-              <Search size={18} />
-              <input
-                ref={searchInput}
-                type="search"
-                aria-label="Search Irish spots"
-                aria-expanded={searchOpen}
-                aria-controls="spot-search-results"
-                placeholder="Find a spot or county"
-                value={search}
-                onFocus={() => setSearchOpen(true)}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setSearchOpen(true);
-                }}
-              />
-              <button
-                aria-label={
-                  searchOpen ? "Close spot search" : "Browse Irish spots"
-                }
-                onClick={closeSearch}
-              >
-                {searchOpen ? <X size={17} /> : <MapPin size={17} />}
-              </button>
-            </div>
-            {searchOpen && (
-              <section
-                id="spot-search-results"
-                className="search-results glass"
-                aria-label="Irish spots"
-              >
-                <div className="section-label">
-                  EXPLORE THE COAST <span>{visibleSpots.length} locations</span>
-                </div>
-                {visibleSpots.map((spot) => {
-                  const w = frame ? sample(frame, spot.lon, spot.lat) : null;
-                  return (
-                    <button
-                      key={spot.id}
-                      className="spot-row"
-                      onClick={() => selectSpot(spot)}
-                    >
-                      <MapPin size={16} />
-                      <span className="spot-row-name">
-                        {spot.name}
-                        <small>{spot.county}</small>
-                      </span>
-                      <span className="spot-row-wind">
-                        {w ? Math.round(convert(speed(w), units)) : "—"}{" "}
-                        <small>{units}</small>
-                      </span>
-                      <ChevronRight size={16} />
-                    </button>
-                  );
-                })}
-                {!visibleSpots.length && (
-                  <p className="empty-spots">
-                    No matching spots. Try a county, or select a point on the
-                    map.
-                  </p>
-                )}
-              </section>
-            )}
-          </div>
-        )}
-      </header>
       {error ? (
-        <main className="fatal-error">
-          <Wind size={36} />
+        <main className="fatal-error chart-box">
           <h1>The forecast isn’t ready yet.</h1>
           <p role="alert">{error}</p>
           <button className="primary-button" onClick={() => location.reload()}>
@@ -567,447 +853,206 @@ export default function App() {
         </main>
       ) : (
         <main className="workspace">
-          <section className="map-panel" aria-label="Wind explorer">
+          <section className="map-panel" aria-label="Wind chart">
+            <MapHead
+              spots={spots}
+              starred={starred}
+              dayStars={dayStars}
+              onPick={(spot) => selectSpot(spot)}
+            />
+            <MapControls
+              onZoomIn={() => controls.current?.zoomIn()}
+              onZoomOut={() => controls.current?.zoomOut()}
+              onIreland={toIreland}
+              layersOpen={layersOpen}
+              onLayers={setLayersOpen}
+              phone={phone}
+              keyOpen={keyOpen}
+              onKey={() => {
+                setKeyOpen((v) => !v);
+                setSideTab("key");
+              }}
+              windStyle={windStyle}
+              onWindStyle={chooseWind}
+              layers={layers}
+              onLayersChange={chooseLayers}
+              rideStops={rideStops}
+              rider={rider}
+              model={manifest?.model}
+              modelDisabled={!frame || !!pendingModel}
+              onModel={(id) => void chooseModel(id)}
+            />
+            {
+              <SidePanel
+                spots={spotById}
+                starred={starred}
+                frequent={frequent}
+                hours={hours}
+                columns={strip}
+                day={selectedDay}
+                now={clockNow}
+                onGo={(spot) => selectSpot(spot)}
+                onToggleStar={(id) => fav.toggle(id)}
+                tab={phone ? "key" : sideTab}
+                onTab={setSideTab}
+                strip={phone && !keyOpen}
+                rideStops={rideStops}
+                rider={rider}
+                scale={scale}
+                sources={sources}
+              />
+            }
+            {/* After the boxes: the keys reach the menu, the search and the
+                controls before the lights. */}
             <WindMap
               frame={frame}
               spots={spots}
-              selected={point}
-              units={units}
-              onSelect={selectSpot}
-              showWind={showWind}
-              particles={particles}
-              showSpots={showSpots}
+              lights={lights}
+              named={named}
+              lightLabel={lightLabel}
+              selectedId={picked ? null : (point?.id ?? null)}
+              focus={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
+              mark={focusAt ? { lon: focusAt.lon, lat: focusAt.lat } : null}
+              picked={picked ? { lon: picked.lon, lat: picked.lat } : null}
+              onPick={pickPoint}
+              windStyle={windStyle}
+              rideStops={rideStops}
+              layers={layers}
               reducedMotion={reducedMotion}
-              selectionOpen={sheetOpen}
-              spotInfoOpen={spotInfoOpen}
-              onCloseSpotInfo={closeSpotInfo}
-              bottomInset={dockHeight}
+              bottomInset={dockHeight + (phone ? 54 : 0)}
+              rightInset={phone ? 0 : SIDE_INSET}
+              phone={phone}
+              penNote={focusAt ? penNote : null}
+              onSelect={(spot) => selectSpot(spot)}
+              onReady={(c) => {
+                controls.current = c;
+                setMapReady(!!c);
+              }}
+              popup={
+                point && popupOpen && !picked ? (
+                  <SpotCard
+                    spot={point}
+                    time={column?.time ?? null}
+                    hour={popupHour}
+                    tide={popupTide}
+                    starred={starred.includes(point.id)}
+                    onToggleStar={() => fav.toggle(point.id)}
+                    onClose={() => setPopupOpen(false)}
+                    rider={rider}
+                    units={prefs.units}
+                  />
+                ) : null
+              }
+              onPopupClose={() => setPopupOpen(false)}
             />
-            <div className="map-topbar">
-              <button
-                className="platform-brand"
-                aria-label="About Force5"
-                onClick={openInfo}
-              >
-                <Force5Brand />
-              </button>
-              <div className="map-top-actions">
-                <button
-                  className={`layers-button ${showLayers ? "pressed" : ""}`}
-                  aria-label="Layers"
-                  aria-expanded={showLayers}
-                  onClick={() => {
-                    setShowLayers((v) => !v);
-                    setSearchOpen(false);
-                  }}
-                >
-                  <Layers3 size={17} />
-                  <span>Layers</span>
-                </button>
-              </div>
-            </div>
-            {showLayers && (
-              <div className="layers-panel">
-                <div className="section-label">
-                  MAP DISPLAY
-                  <button
-                    aria-label="Close layers"
-                    onClick={() => setShowLayers(false)}
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-                <label>
-                  <span>Wind colours</span>
-                  <input
-                    type="checkbox"
-                    checked={showWind}
-                    onChange={(e) => setShowWind(e.target.checked)}
-                  />
-                </label>
-                <label>
-                  <span>Moving particles</span>
-                  <input
-                    type="checkbox"
-                    checked={particles && !reducedMotion}
-                    disabled={reducedMotion}
-                    onChange={(e) => setParticles(e.target.checked)}
-                  />
-                </label>
-                <label>
-                  <span>Wind-sport locations</span>
-                  <input
-                    type="checkbox"
-                    checked={showSpots}
-                    onChange={(e) => {
-                      setShowSpots(e.target.checked);
-                      if (!e.target.checked) setSpotInfoOpen(false);
-                    }}
-                  />
-                </label>
-                {reducedMotion && (
-                  <p>
-                    Animation is off to respect your reduced-motion setting.
-                  </p>
-                )}
-                <p className="layers-hint">
-                  Wind units live in the forecast dock&rsquo;s display options.
-                </p>
-              </div>
-            )}
-            {(pendingModel || modelError || modelNotice) && (
+            {(status || (loading && frame)) && (
               <div
-                className={`frame-status model-status ${modelError ? "is-error" : ""}`}
+                className={`frame-status chart-box${modelError || frameError ? " is-error" : ""}`}
                 role="status"
               >
-                {pendingModel ? (
-                  <>
-                    <span className="spinner" />
-                    Loading {
-                      MODELS.find((m) => m.id === pendingModel)?.name
-                    }… {manifest?.modelName} is still shown.
-                    <button
-                      onClick={() => {
-                        modelRequest.current?.abort();
-                        setPendingModel(null);
-                      }}
-                    >
-                      Cancel switch
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {modelError || modelNotice}
-                    <button
-                      aria-label="Dismiss model message"
-                      onClick={() => {
-                        setModelError("");
-                        setModelNotice("");
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
+                <span>
+                  {status ??
+                    `Loading ${forecast ? timeLabel(manifest!.frames[requestedIndex].validTime) : "wind"}…`}
+                </span>
+                {pendingModel && (
+                  <button
+                    onClick={() => {
+                      modelRequest.current?.abort();
+                      setPendingModel(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+                {frameError && !pendingModel && (
+                  <button onClick={() => setRetry((v) => v + 1)}>Retry</button>
+                )}
+                {(modelError || modelNotice) && (
+                  <button
+                    aria-label="Dismiss"
+                    onClick={() => {
+                      setModelError("");
+                      setModelNotice("");
+                    }}
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
                 )}
               </div>
             )}
-            {(loading || frameError) &&
-              !pendingModel &&
-              !modelError &&
-              !modelNotice && (
-                <div
-                  className={`frame-status ${frameError ? "is-error" : ""}`}
-                  role="status"
-                >
-                  {frameError ? (
-                    <>
-                      {frameError}
-                      <button onClick={() => setRetry((v) => v + 1)}>
-                        Retry
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="spinner" /> Loading{" "}
-                      {manifest
-                        ? timeLabel(manifest.frames[requestedIndex].validTime)
-                        : "wind data"}
-                      …{frame && " Previous frame is still shown."}
-                    </>
-                  )}
-                </div>
-              )}
-            <div className="map-footer" ref={dock}>
-              {manifest && (
-                <ForecastDock
-                  manifest={manifest}
-                  columns={stable}
-                  models={models}
-                  modelsResolved={modelsResolved}
-                  point={point}
-                  prefs={prefs}
-                  onPrefsChange={changePrefs}
-                  selectedTime={
-                    selectedTime ?? manifest.frames[requestedIndex].validTime
-                  }
-                  // A frame that failed must not drag the dock to a column the
-                  // map never reached; the last good one keeps the view.
-                  scrollTime={
-                    frameError ? (forecast?.validTime ?? null) : selectedTime
-                  }
-                  onSelect={selectTime}
-                  // The chip is the only way a far column changes the map, and
-                  // it is the reader's own decision: nothing switches by itself.
-                  onShowOnMap={(id, validTime) =>
-                    void chooseModel(id, validTime)
-                  }
-                  open={sheetOpen}
-                  onClose={() => {
-                    setSheetOpen(false);
-                    document
-                      .querySelector<HTMLCanvasElement>(".maplibregl-canvas")
-                      ?.focus();
-                  }}
-                  playing={playing}
-                  onTogglePlay={togglePlayback}
-                  busy={!!pendingModel}
-                  playDisabled={!!frameError || !!pendingModel}
-                  reducedMotion={reducedMotion}
-                />
-              )}
-            </div>
-            <div className="map-model-controls">
-              <ModelPicker
-                model={manifest?.model}
-                disabled={!frame || !!pendingModel}
-                onSelect={(id) => void chooseModel(id)}
-              />
-              <button
-                className="model-info"
-                onClick={openInfo}
-                aria-label="Forecast data and sources"
-              >
-                <Info size={14} />
-                <span>
-                  {manifest?.modelName || "HARMONIE"} ·{" "}
-                  {manifest?.resolutionLabel ||
-                    `${manifest?.resolutionKm || 2} km`}
-                </span>
-              </button>
-              <span className="site-footer" role="status">
-                {isStale === "expired"
-                  ? "Archived snapshot"
-                  : isStale === "stale"
-                    ? (forecast?.hour || 0) >= 168
-                      ? "Older run · long-range outlook"
-                      : "Older model run"
-                    : (forecast?.hour || 0) >= 168
-                      ? "Long-range outlook · less certain"
-                      : ""}
+            <div className="map-print">
+              <InfoPop label="Sources and small print" wide>
+                {sources}
+              </InfoPop>
+              <span className="map-model" data-run-state={staleness}>
+                {manifest?.modelName ?? ""}
+                {staleness === "expired"
+                  ? " · archived"
+                  : staleness === "stale"
+                    ? " · older run"
+                    : ""}
               </span>
             </div>
-            <div className="map-credits" aria-label="Map attribution">
-              <a
-                href="https://openmaptiles.org/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                © OpenMapTiles
-              </a>
-              {" · "}
-              <a
-                href="https://www.openstreetmap.org/copyright"
-                target="_blank"
-                rel="noreferrer"
-              >
-                © OpenStreetMap contributors
-              </a>
+            <div className="map-footer" ref={dock}>
+              {dockSpot && strip.length > 0 && (
+                <ForecastDock
+                  spot={dockSpot}
+                  isPoint={!!picked}
+                  pointPending={!!picked && series.pending}
+                  playing={playing}
+                  onTogglePlay={togglePlay}
+                  more={more}
+                  onMore={chooseMore}
+                  marine={marine}
+                  columns={strip}
+                  days={days}
+                  hours={pointHours}
+                  selected={selected}
+                  onSelect={(at) => selectColumn(at)}
+                  now={clockNow}
+                  prefs={prefs}
+                  onPrefsChange={changePrefs}
+                  models={models}
+                  starred={!picked && starred.includes(dockSpot.id)}
+                  onToggleStar={() => fav.toggle(dockSpot.id)}
+                  tide={picked ? null : tide.tide}
+                  folded={folded}
+                  onFold={setFolded}
+                  phone={phone}
+                  view={view}
+                  onView={setView}
+                  reducedMotion={reducedMotion}
+                  reachable={reachable}
+                  onShowOnMap={() =>
+                    reachable && column
+                      ? void chooseModel(reachable.id, column.validTime)
+                      : undefined
+                  }
+                  mapModel={manifest?.modelName ?? "HARMONIE"}
+                />
+              )}
             </div>
           </section>
         </main>
       )}
-      <dialog
-        ref={dialog}
-        className="info-dialog"
-        onClick={(e) => {
-          if (e.target === dialog.current) dialog.current.close();
-        }}
-      >
-        <button
-          className="dialog-close"
-          aria-label="Close forecast information"
-          onClick={() => dialog.current?.close()}
-        >
-          <X size={20} />
-        </button>
-        <Force5Brand />
-        <div className="eyebrow">BEHIND THE FORECAST</div>
-        <h2>A clearer picture of the wind.</h2>
-        <p>
-          Force5 powers this wind map using real {manifest?.provider || "DWD"}{" "}
-          {manifest?.modelDetail || manifest?.modelName || "ICON-EU"} model
-          output, cropped to Ireland. Colours, particle direction and spot
-          readings all use the same 10 m wind grid.
-        </p>
-        {manifest && (
-          <dl>
-            <div>
-              <dt>Model resolution</dt>
-              <dd>
-                {manifest.resolutionLabel ||
-                  `${manifest.resolutionKm} km native`}{" "}
-                · display grid {manifest.grid.dx}° × {manifest.grid.dy}°
-              </dd>
-            </div>
-            <div>
-              <dt>Model initialised</dt>
-              <dd>{new Date(manifest.runTime).toUTCString()}</dd>
-            </div>
-            <div>
-              <dt>Forecast coverage</dt>
-              <dd>
-                {dayLabel(manifest.frames[0].validTime)}{" "}
-                {timeLabel(manifest.frames[0].validTime)} →{" "}
-                {dayLabel(manifest.frames.at(-1)!.validTime)}{" "}
-                {timeLabel(manifest.frames.at(-1)!.validTime)}
-              </dd>
-            </div>
-            <div>
-              <dt>Forecast intervals</dt>
-              <dd>
-                {manifest.stepRanges
-                  ? "3-hourly through day 6; 6-hourly through day 15"
-                  : `${manifest.stepHours}-hourly`}
-              </dd>
-            </div>
-            <div>
-              <dt>Snapshot prepared</dt>
-              <dd>{new Date(manifest.generatedAt).toUTCString()}</dd>
-            </div>
-          </dl>
-        )}
-        <p>
-          <strong>What you’re seeing.</strong> Wind is interpolated between
-          model grid points. Direction labels show where wind comes from;
-          particles and arrows travel downwind. Particle speed is illustrative.
-        </p>
-        <p>
-          <strong>Two kinds of gust.</strong> Most sources publish a modelled{" "}
-          <em>maximum over an accumulation window</em> ending at the forecast
-          time
-          {manifest?.gustKind !== "instantaneous" && forecast?.gustIntervalHours
-            ? ` (+${forecast.gustIntervalHours[0]} to +${forecast.gustIntervalHours[1]} hours from the model run)`
-            : ""}
-          ; others publish an <em>instantaneous</em> gust, a point value at the
-          forecast time itself, which has a reading at initialization where a
-          window-based gust has none.{" "}
-          {manifest?.gustKind === "instantaneous"
-            ? `${manifest.modelName} publishes instantaneous gusts.`
-            : manifest?.gustAvailable === false
-              ? `${manifest.modelName} publishes no usable gust speed.`
-              : `${manifest?.modelName ?? "This model"} publishes window maxima.`}{" "}
-          Neither kind is a continuous measurement.
-        </p>
-        {manifest?.gustDescription && (
-          <p>
-            <strong>Gust availability.</strong> {manifest.gustDescription}
-          </p>
-        )}
-        {manifest?.processing && (
-          <p>
-            <strong>Map processing.</strong> {manifest.processing}
-          </p>
-        )}
-        <p>
-          <strong>Before heading out.</strong> Even a high-resolution model
-          cannot fully resolve an individual launch, headland or sheltered bay.
-          This prototype does not include waves, tides or warning feeds. Check{" "}
-          <a
-            href="https://www.met.ie/warnings"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Met Éireann warnings
-          </a>{" "}
-          and local conditions.
-        </p>
-        {point.note && (
-          <p className="spot-note">
-            <MapPin size={16} />
-            <span>
-              <strong>{point.name}:</strong> {point.note}
-            </span>
-          </p>
-        )}
-        {!!point.locationSources?.length && (
-          <div className="location-sources">
-            <strong>Selected location sources</strong>
-            {point.locationSources.map((source) => (
-              <p key={source.url}>
-                <a href={source.url} target="_blank" rel="noreferrer">
-                  {source.name}
-                </a>
-                {" · "}
-                {source.licence}
-              </p>
-            ))}
-          </div>
-        )}
-        <p className="location-attribution">
-          Location directory: contains Irish Public Sector Data from{" "}
-          <a
-            href="https://data.gov.ie/ga/dataset/tourism-activities-and-attractions/resource/7a6245fd-d07a-4b2f-82a7-19373eb648b6"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Fáilte Ireland
-          </a>{" "}
-          under{" "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            CC BY 4.0
-          </a>
-          ;{" "}
-          <a
-            href="https://www.openstreetmap.org/copyright"
-            target="_blank"
-            rel="noreferrer"
-          >
-            © OpenStreetMap contributors (ODbL)
-          </a>
-          ; and individually linked web references. The public layer shows
-          riding-location references, not business listings. Source-listed
-          locations are not verified launches.
-        </p>
-        <p>
-          <strong>Refreshing the snapshot.</strong> Run{" "}
-          <code>
-            {manifest?.model === "harmonie"
-              ? "npm run weather:refresh:harmonie"
-              : manifest?.model === "ecmwf"
-                ? "npm run weather:refresh:ecmwf"
-                : "npm run weather:refresh"}
-          </code>
-          , then reload. Forecasts are not automatically downloaded by the
-          website yet; the previous successful snapshot is kept if a refresh
-          fails.
-        </p>
-        <div className="source-links">
-          {manifest?.termsUrl && (
-            <a href={manifest.termsUrl} target="_blank" rel="noreferrer">
-              Provider terms <ArrowUpRight size={14} />
-            </a>
-          )}
-          <a
-            href={
-              manifest?.sourceUrl ||
-              "https://opendata.dwd.de/weather/nwp/icon-eu/grib/"
+      {!error && gustDue && (
+        <Suspense fallback={null}>
+          <Companion
+            context={{
+              spot:
+                point && !picked ? { id: point.id, name: point.name } : null,
+              time: selectedTime,
+              rider: prefs.rider,
+            }}
+            onAction={companionAction}
+            onRiderSaved={(r) =>
+              changePrefs({ ...prefs, rider: parseRider(r) })
             }
-            target="_blank"
-            rel="noreferrer"
-          >
-            {manifest?.provider || "DWD"} forecast data{" "}
-            <ArrowUpRight size={14} />
-          </a>
-          <a
-            href={
-              manifest?.licenseUrl ||
-              "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"
-            }
-            target="_blank"
-            rel="noreferrer"
-          >
-            Data licence <ArrowUpRight size={14} />
-          </a>
-          <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">
-            OpenFreeMap basemap <ArrowUpRight size={14} />
-          </a>
-        </div>
-        <small>{manifest?.attribution}</small>
-      </dialog>
+            launcherBottom={dockHeight + (phone ? 70 : 24)}
+            panelBottom={dockHeight + 12}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

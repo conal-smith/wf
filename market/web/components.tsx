@@ -9,19 +9,28 @@ import {
   Camera,
   Image as ImageIcon,
   LogIn,
-  MapPin,
   PlusCircle,
   RotateCw,
-  Star,
-  StarHalf,
   UserRound,
-  Wind,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { usePageTitle as useSitePageTitle } from "../../shared/web/usePageTitle";
-import { Button, Chip, Empty, Skeleton } from "../../ui";
+import {
+  Avatar as KitAvatar,
+  Button,
+  Chip,
+  Empty,
+  Figure,
+  PenLoop,
+  PenNote,
+  PenStrike,
+  Skeleton,
+  StarGlyphs,
+} from "../../ui";
+import { Masthead, MastheadMark, mastheadStyles } from "../../ui/Masthead";
 import { buttonStyles } from "../../ui/Button";
+import { kickerStyles } from "../../ui/Kicker";
 import { linkStyles } from "../../ui/Link";
 import { paneStyles } from "../../ui/Pane";
 import { skeletonStyles } from "../../ui/Skeleton";
@@ -92,32 +101,17 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 
 // ---- header ----------------------------------------------------------------
 
+/*
+ * The site's masthead (ui/Masthead.tsx) with the marketplace's own few
+ * actions. The bar's insets and the nameplate step down on a phone, so the
+ * menu, the nameplate and both actions share 390px without a label wrapping.
+ */
 export const headerStyles = tv({
   slots: {
-    // The bar sits clear of a notch: the top inset is the larger of the two.
-    base: "sticky top-0 z-header pt-safe-3 pb-3",
-    // A card, not glass: there is no map under it to show through, and white
-    // reads as lifted where glass over the content ground reads as disabled.
-    bar: [
-      "flex min-h-control-lg items-center gap-2 rounded-pill border border-line bg-card py-1 pr-2 pl-3 shadow-marker",
-      // The site menu now starts the bar. Below the label breakpoint the bar's
-      // own insets pay for it rather than a label being squeezed onto two
-      // lines: a round control needs less inset than a word does anyway.
-      "max-wide:gap-1 max-wide:px-1",
-    ],
-    brand: [
-      "inline-flex items-center gap-2 rounded-control font-sans text-lead whitespace-nowrap text-ink no-underline",
-      RING,
-    ],
-    domain: "font-normal text-ink-muted",
-    actions: "ml-auto flex items-center gap-1",
     // The word beside the icon, where the row is wide enough to hold it.
     label: "hidden wide:inline",
     user: "inline-flex items-center px-2",
     name: "hidden items-center px-2 text-body text-ink-muted wide:inline-flex",
-    // Only where the bar has room: at 390px these eight pixels are the
-    // difference between "Sign in" on one line and on two.
-    sell: "wide:px-3",
   },
 });
 
@@ -128,27 +122,23 @@ export const headerStyles = tv({
 export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
   const auth = useMarketAuth();
   const styles = headerStyles();
+  const masthead = mastheadStyles();
   return (
-    <header className={styles.base()}>
-      <div className={styles.bar()}>
+    <Masthead>
         <SiteMenu current="market" size="sm" ground="content" />
         <Link
           to={paths.browse()}
-          className={styles.brand()}
+          className={masthead.brand()}
           aria-label="wingfoil.ie Market, home"
         >
-          <Wind size={22} aria-hidden="true" />
-          <span>
-            wingfoil<span className={styles.domain()}>.ie</span>
-          </span>
-          <Chip eyebrow>Market</Chip>
+          <MastheadMark section="Market" />
         </Link>
         {/*
           The wind map is reached through the site menu at the start of the bar,
           not a button of its own here: one control per destination. The footer
           link stays — it is at the other end of the page, not beside it.
         */}
-        <nav className={styles.actions()} aria-label="Marketplace">
+        <nav className={masthead.actions()} aria-label="Marketplace">
           {/*
             The kit's Button is an anchor when it is given an href, but the
             marketplace's router takes a link over through its own <Link>. So a
@@ -159,11 +149,10 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
             className={buttonStyles({
               variant: accentSell ? "primary" : "pill",
               size: "sm",
-              className: accentSell ? styles.sell() : undefined,
             })}
             to={paths.sell()}
           >
-            <PlusCircle size={15} aria-hidden="true" />
+            <PlusCircle size={15} strokeWidth={1.5} aria-hidden="true" />
             <span>Sell</span>
           </Link>
           {auth.signedIn ? (
@@ -172,7 +161,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
                 className={buttonStyles({ variant: "pill", size: "sm" })}
                 to={paths.me()}
               >
-                <UserRound size={15} aria-hidden="true" />
+                <UserRound size={15} strokeWidth={1.5} aria-hidden="true" />
                 <span className={styles.label()}>My listings</span>
               </Link>
               {auth.provider === "clerk" ? (
@@ -195,13 +184,12 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
                   : undefined
               }
             >
-              <LogIn size={15} aria-hidden="true" />
+              <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
               <span>Sign in</span>
             </Button>
           )}
         </nav>
-      </div>
-    </header>
+    </Masthead>
   );
 }
 
@@ -215,63 +203,55 @@ export const conditionLabel = (id: string) =>
 // ---- stars -------------------------------------------------------------------
 
 /**
- * The three ways a rating is drawn: read back as five marks, summarised beside
- * them, and picked. S3 gives all three the one pair of colours — the accent
- * for what has been earned, the strong line for what has not — and a star is
- * filled as well as recoloured, so none of them is said in colour alone.
+ * A rating, in the chart's own star (ui/StarGlyphs): solid for what has been
+ * earned, an outline for the half a star an average reaches past, and a dot
+ * for each of the five it does not. The shape carries it, never the colour,
+ * and the figure beside it says it again in the mono face.
  */
 export const ratingStyles = tv({
   slots: {
-    marks: "inline-flex items-center gap-0.5 text-accent",
-    empty: "text-line-strong",
-    summary: "flex flex-wrap items-center gap-1",
-    quiet: "text-body text-ink-muted",
+    summary: "inline-flex flex-wrap items-center gap-x-1.5 gap-y-1",
+    // "4.5 · 2": the average and how many it is the average of.
+    figure: "font-mono text-caption text-ink-2 tabular-nums",
+    // Nobody has rated them: a line of small print, not five empty marks.
+    quiet: "font-body text-body text-ink-muted italic",
     picker: "inline-flex gap-1",
     // Under the pointer a star is lit, and a lit star draws no box: the run
-    // of filled marks is what answers the hover, as it always did.
-    star: "text-line-strong not-disabled:hover:bg-transparent",
+    // of solid marks is what answers the hover.
+    star: "text-ink-muted not-disabled:hover:bg-transparent",
   },
   variants: {
-    /** Earned, or about to be: under the pointer the whole run lights up. */
-    lit: { true: { star: "text-accent" } },
+    /** Earned, or about to be: under the pointer the whole run fills in. */
+    lit: { true: { star: "text-ink" } },
   },
 });
 
+/**
+ * An average as whole stars and the half it reaches past: 4.5 is four solid
+ * and an outline, 4.2 is four, 4.8 is five. The thresholds are the quarter
+ * either side, which is where the old half-star drew its line.
+ */
+export function starsOf(value: number): { stars: number; potential: number } {
+  const v = Math.max(0, Math.min(5, value));
+  const stars = Math.floor(v + 0.25);
+  return { stars, potential: v - stars >= 0.25 ? stars + 1 : stars };
+}
+
 export function Stars({
   value,
-  size = 14,
+  size = 12,
 }: {
   value: number | null;
   size?: number;
 }) {
-  const v = value ?? 0;
-  const styles = ratingStyles();
+  const { stars, potential } = starsOf(value ?? 0);
   return (
-    <span
-      className={styles.marks()}
-      role="img"
-      aria-label={value == null ? "Not yet rated" : `${v} out of 5`}
-    >
-      {[1, 2, 3, 4, 5].map((n) =>
-        v >= n - 0.25 ? (
-          <Star key={n} size={size} fill="currentColor" aria-hidden="true" />
-        ) : v >= n - 0.75 ? (
-          <StarHalf
-            key={n}
-            size={size}
-            fill="currentColor"
-            aria-hidden="true"
-          />
-        ) : (
-          <Star
-            key={n}
-            className={styles.empty()}
-            size={size}
-            aria-hidden="true"
-          />
-        ),
-      )}
-    </span>
+    <StarGlyphs
+      stars={stars}
+      potential={potential}
+      size={size}
+      label={value == null ? "Not yet rated" : `${value} out of 5`}
+    />
   );
 }
 
@@ -297,22 +277,25 @@ export function RatingPicker({
           <Button
             key={n}
             icon
-            size="sm"
+            size="md"
             role="radio"
             aria-checked={value === n}
             aria-label={`${n} star${n === 1 ? "" : "s"}: ${labels[n]}`}
-            // The colour is the mark's, not the control's: a radio is not a
-            // toggle, so the box stays quiet and the star says the rating.
+            // The mark says the rating, not the control: a radio is not a
+            // toggle, so the box stays quiet.
             className={ratingStyles({ lit }).star()}
             onMouseEnter={() => setHover(n)}
             onFocus={() => setHover(n)}
             onBlur={() => setHover(0)}
             onClick={() => onChange(n)}
           >
-            <Star
+            {/* One star, solid when lit and an outline when not. */}
+            <StarGlyphs
+              stars={lit ? 1 : 0}
+              potential={1}
+              slots="potential"
               size={22}
-              fill={lit ? "currentColor" : "none"}
-              aria-hidden="true"
+              label=""
             />
           </Button>
         );
@@ -323,7 +306,7 @@ export function RatingPicker({
 
 export function SellerRating({
   seller,
-  size = 12,
+  size = 11,
 }: {
   seller: SellerSummary;
   size?: number;
@@ -334,26 +317,117 @@ export function SellerRating({
   return (
     <span className={styles.summary()}>
       <Stars value={seller.ratingAvg} size={size} />
-      <span className={styles.quiet()}>
-        {seller.ratingAvg?.toFixed(1)} ({seller.ratingCount})
+      <span className={styles.figure()}>
+        {seller.ratingAvg?.toFixed(1)}
+        <span aria-hidden="true"> · </span>
+        <span className={sr()}> from </span>
+        {seller.ratingCount}
+        <span className={sr()}>
+          {" "}
+          review{seller.ratingCount === 1 ? "" : "s"}
+        </span>
       </span>
     </span>
   );
 }
 
+/** Said to a screen reader and not drawn. */
+const sr = tv({ base: "sr-only" });
+
+// ---- ages --------------------------------------------------------------------
+
+/**
+ * How old something is, as the chart writes a figure: `3d`, `2w`, `5mo`. The
+ * full words go to a screen reader beside it (`relativeAge`).
+ */
+export function shortAge(iso: string, now = Date.now()): string {
+  const minutes = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days}d`;
+  if (days < 60) return `${Math.round(days / 7)}w`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.round(months / 12)}y`;
+}
+
+/** The age figure, with its words for a screen reader. */
+export function Age({ iso, prefix = "Listed" }: { iso: string; prefix?: string }) {
+  return (
+    <time dateTime={iso}>
+      <span aria-hidden="true">{shortAge(iso)}</span>
+      <span className={sr()}>
+        {prefix} {relativeAge(iso)}
+      </span>
+    </time>
+  );
+}
+
+/** How recent a listing has to be for the pen to call it new: a week. */
+export const FRESH_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * The one listing on a page the pen loops "new" round: the newest of them, if
+ * it went up within the week. One mark on a view (docs/BRAND.md), so never
+ * more than one card, and none where nothing is recent.
+ */
+export function newestFresh(
+  listings: Listing[],
+  now = Date.now(),
+): string | null {
+  let best: Listing | null = null;
+  for (const l of listings)
+    if (
+      l.status === "active" &&
+      (!best || Date.parse(l.createdAt) > Date.parse(best.createdAt))
+    )
+      best = l;
+  return best && now - Date.parse(best.createdAt) < FRESH_MS ? best.id : null;
+}
+
+// ---- the price -------------------------------------------------------------
+
+/**
+ * The price, as a figure: the mono face's tabular digits, the number a card
+ * and a listing are about. A sold one is struck through in the pen, which is
+ * the one mark that view carries.
+ */
+export function Price({
+  listing,
+  size = "md",
+  strike = false,
+  className,
+}: {
+  listing: Pick<Listing, "priceCents" | "currency">;
+  size?: "sm" | "md" | "lg";
+  strike?: boolean;
+  className?: string;
+}) {
+  const figure = (
+    <Figure
+      size={size}
+      className={className}
+      value={formatPrice(listing.priceCents, listing.currency)}
+    />
+  );
+  return strike ? <PenStrike>{figure}</PenStrike> : figure;
+}
+
+// ---- the face ----------------------------------------------------------------
+
 /*
- * The face beside a seller's name: one initial on the inverse ground, a large
- * control tall, or a large control and an inset on the seller's own page. Not
- * the kit's Avatar, which writes two initials and has neither of these sizes;
- * a second face in the kit for one page would be more than one page wants.
- * The steps bring a line height and the title its tracking, where the face
- * had neither of its own: it took the page's 1.5 and no tracking, and a
- * single letter sits by both, so both are put back.
+ * The face beside a seller's name: the kit's monogram, an initial in the
+ * display face's italic in an ink ring. The one size a listing's seller row
+ * wants, and the large one for the seller's own page.
  */
 export const faceStyles = tv({
-  base: "inline-grid size-control-lg shrink-0 place-items-center rounded-full bg-inverse text-lead leading-normal text-ink-inverse",
+  base: "",
   variants: {
-    large: { true: "size-17.5 text-title leading-normal tracking-normal" },
+    // The kit's large face, a size down on a phone beside a title-sized name.
+    large: { true: "max-wide:size-14 max-wide:text-lead" },
   },
 });
 
@@ -364,46 +438,57 @@ export function Avatar({
   name: string;
   large?: boolean;
 }) {
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
   return (
-    <span className={faceStyles({ large })} aria-hidden="true">
-      {initial}
-    </span>
+    <KitAvatar
+      name={name}
+      size={large ? "lg" : "md"}
+      className={faceStyles({ large })}
+    />
   );
 }
 
 // ---- listing card ------------------------------------------------------------
 
-/** As many 240px columns as fit, two on a phone; dimmed while it is replaced. */
+/**
+ * The classifieds: as many 240px columns as fit, two on a phone, each ad
+ * under a heavy rule of its own. Dimmed while a newer result replaces it.
+ */
 export const listingGridStyles = tv({
   base: [
-    "grid grid-cols-cards gap-5 transition-opacity duration-fast",
-    "aria-busy:opacity-60 max-wide:grid-cols-2 max-wide:gap-3",
+    "grid grid-cols-cards gap-x-6 gap-y-8 transition-opacity duration-fast",
+    "aria-busy:opacity-60 max-wide:grid-cols-2 max-wide:gap-x-3 max-wide:gap-y-6",
   ],
 });
 
 export const listingCardStyles = tv({
   slots: {
-    card: [
-      "group relative flex flex-col overflow-hidden rounded-surface border border-line bg-card",
-      "text-ink no-underline shadow-control max-wide:rounded-control",
-    ],
+    // A ruled Pane (ui/Pane `kind="ruled"`): the broadsheet's heavy rule over
+    // each ad, and no box round it. The photograph stands in its own frame.
+    card: "group relative flex min-w-0 flex-col gap-2 text-ink no-underline",
+    // Where it is and how long it has been up, in the mono label, over the
+    // photograph the way a classified's section line heads it.
+    kicker: "flex min-w-0 items-baseline justify-between gap-2 text-ink-muted",
+    where: "truncate",
+    // The photograph on paper, in a hairline frame.
     media:
-      "relative grid aspect-4/3 place-items-center overflow-hidden bg-sunken text-line-strong",
+      "relative grid aspect-4/3 place-items-center overflow-hidden border border-line bg-sunken text-ink-muted",
     // Sold is said by the badge as well as by the colour draining out of it.
     image: "block size-full object-cover group-data-sold:grayscale",
     noPhoto: "flex min-w-0 flex-col items-center gap-1",
-    badge: "absolute top-3 left-3",
-    count: "absolute right-3 bottom-3",
-    body: "flex flex-1 flex-col gap-1 p-3",
-    price: "m-0 text-lead text-ink",
-    // The prose step at the tight leading, and never more than two lines.
-    title: "m-0 line-clamp-2 text-prose leading-tight font-normal",
-    meta: "mt-auto flex items-center justify-between gap-2 pt-2 text-body text-ink-muted",
-    where: "flex min-w-0 items-center gap-1",
-    place: "truncate",
-    rating: "inline-flex items-center gap-1 text-ink-2",
-    quiet: "m-0 text-body text-ink-muted",
+    badge: "absolute top-2 left-2",
+    count: "absolute right-2 bottom-2",
+    body: "flex flex-1 flex-col gap-1",
+    // The price, and the pen's "new" beside it on the one card it marks.
+    // The pen's loop reaches 12px past what it rings, so it stands that far
+    // off the price.
+    head: "flex min-h-7 items-center gap-5",
+    fresh: "inline-block",
+    // The name of the thing in the display face, never more than two lines.
+    title:
+      "m-0 line-clamp-2 font-display text-prose leading-tight font-semibold text-balance",
+    meta: "mt-auto flex min-w-0 items-center justify-between gap-2 pt-1 text-ink-muted",
+    condition: "truncate",
+    quiet: "m-0",
     hidden: "sr-only",
     // The three lines of a placeholder, as long as what they stand for.
     linePrice: "w-2/5",
@@ -412,17 +497,16 @@ export const listingCardStyles = tv({
   },
   variants: {
     /**
-     * A card that is a link lifts under the pointer and pushes into its cover
-     * a little; a placeholder does neither. Both stand still for a reader who
-     * has asked for less movement.
+     * A card that is a link answers the pointer the way a page does: the
+     * name underlines and the photograph leans in a little. Paper does not
+     * float, so nothing lifts. A placeholder does neither; both stand still
+     * for a reader who has asked for less movement.
      */
     linked: {
       true: {
-        card: [
-          "transition duration-base motion-reduce:transition-none",
-          "not-disabled:hover:shadow-surface motion-safe:not-disabled:hover:-translate-y-1",
-          RING,
-        ],
+        card: RING,
+        title:
+          "decoration-1 underline-offset-3 group-hover:underline",
         image: [
           "transition duration-base motion-reduce:transition-none",
           "motion-safe:group-hover:scale-104",
@@ -438,21 +522,30 @@ export const listingCardStyles = tv({
 export function ListingCard({
   listing,
   showStatus = false,
+  fresh = false,
 }: {
   listing: Listing;
   showStatus?: boolean;
+  /** The pen loops "new" beside the price: one card on a view, at most. */
+  fresh?: boolean;
 }) {
   const cover = listing.photos[0];
-  const where = listing.town
-    ? `${listing.town}, ${listing.county}`
-    : listing.county;
   const styles = listingCardStyles();
+  const label = kickerStyles;
   return (
     <Link
       to={paths.listing(listing.id)}
-      className={styles.card()}
+      className={paneStyles({ kind: "ruled", className: styles.card() })}
       data-sold={listing.status === "sold" ? "" : undefined}
     >
+      <span className={label({ className: styles.kicker() })}>
+        <span className={styles.where()}>
+          <span className={styles.hidden()}>In </span>
+          {listing.town ? `${listing.town}, ` : ""}
+          {listing.county}
+        </span>
+        <Age iso={listing.createdAt} />
+      </span>
       <div className={styles.media()}>
         {cover ? (
           <img
@@ -466,51 +559,51 @@ export function ListingCard({
           />
         ) : (
           <span className={styles.noPhoto()}>
-            <ImageIcon size={28} aria-hidden="true" />
-            <span className={styles.quiet()}>No photo</span>
+            <ImageIcon size={24} strokeWidth={1.5} aria-hidden="true" />
+            <span className={label()}>No photo</span>
           </span>
         )}
         {showStatus && listing.status !== "active" ? (
-          <Chip tone="glass" className={styles.badge()}>
+          <Chip tone="glass" eyebrow className={styles.badge()}>
             {listing.status === "sold" ? "Sold" : "Removed"}
           </Chip>
         ) : listing.saved ? (
-          <Chip tone="glass" className={styles.badge()}>
+          <Chip tone="glass" eyebrow className={styles.badge()}>
             <Heart size={10} fill="currentColor" aria-hidden="true" /> Saved
           </Chip>
         ) : null}
         {listing.photos.length > 1 && (
           <Chip tone="glass" className={styles.count()}>
-            <Camera size={10} aria-hidden="true" />
+            <Camera size={11} strokeWidth={1.5} aria-hidden="true" />
             <span className={styles.hidden()}>Photos:</span>{" "}
             {listing.photos.length}
           </Chip>
         )}
       </div>
       <div className={styles.body()}>
-        <p className={styles.price()}>
-          {formatPrice(listing.priceCents, listing.currency)}
-        </p>
+        <div className={styles.head()}>
+          <Price listing={listing} />
+          {fresh && (
+            <PenLoop className={styles.fresh()} seed={7}>
+              <PenNote as="span" size="sm">
+                new
+              </PenNote>
+            </PenLoop>
+          )}
+        </div>
         <h3 className={styles.title()}>{listing.title}</h3>
         <div className={styles.meta()}>
-          <span className={styles.where()}>
-            <MapPin size={12} aria-hidden="true" />
-            <span className={styles.place()}>{where}</span>
+          <span className={label({ className: styles.condition() })}>
+            {conditionLabel(listing.condition)}
           </span>
           {listing.seller.ratingCount > 0 && (
             <span
-              className={styles.rating()}
               title={`Seller rated ${listing.seller.ratingAvg?.toFixed(1)} from ${listing.seller.ratingCount} review${listing.seller.ratingCount === 1 ? "" : "s"}`}
             >
-              <Star size={11} fill="currentColor" aria-hidden="true" />
-              <span className={styles.hidden()}>Seller rating</span>
-              {listing.seller.ratingAvg?.toFixed(1)}
+              <Stars value={listing.seller.ratingAvg} size={9} />
             </span>
           )}
         </div>
-        <p className={styles.quiet()}>
-          {conditionLabel(listing.condition)} · {relativeAge(listing.createdAt)}
-        </p>
       </div>
     </Link>
   );
@@ -519,17 +612,26 @@ export function ListingCard({
 export function ListingGrid({
   listings,
   showStatus,
+  markNew = false,
   busy = false,
 }: {
   listings: Listing[];
   showStatus?: boolean;
+  /** Let the pen loop "new" round the newest, if it is from this week. */
+  markNew?: boolean;
   /** A newer result is on its way; what is shown is about to be replaced. */
   busy?: boolean;
 }) {
+  const fresh = markNew ? newestFresh(listings) : null;
   return (
     <div className={listingGridStyles()} aria-busy={busy}>
       {listings.map((l) => (
-        <ListingCard key={l.id} listing={l} showStatus={showStatus} />
+        <ListingCard
+          key={l.id}
+          listing={l}
+          showStatus={showStatus}
+          fresh={l.id === fresh}
+        />
       ))}
     </div>
   );
@@ -544,7 +646,11 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
       aria-label="Loading listings"
     >
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className={styles.card()} aria-hidden="true">
+        <div
+          key={i}
+          className={paneStyles({ kind: "ruled", className: styles.card() })}
+          aria-hidden="true"
+        >
           <div className={styles.media()} />
           <div className={styles.body()}>
             <Skeleton className={styles.linePrice()} />
@@ -556,6 +662,34 @@ export function GridSkeleton({ count = 8 }: { count?: number }) {
     </div>
   );
 }
+
+// ---- tabs --------------------------------------------------------------------
+
+/*
+ * The account's sections and a seller's history: a row of mono labels on a
+ * hairline, the one being read underlined in ink and set heavier, as a
+ * broadsheet heads the column you are in. A tablist is not one of the kit's
+ * parts (ui/Segmented is a group of toggles), so it is drawn here, once, for
+ * both pages. The row scrolls sideways where the words do not fit, so the
+ * ring is drawn inside a tab, where the scrolling row cannot clip it.
+ */
+export const tabStyles = tv({
+  slots: {
+    list: "flex max-w-full overflow-x-auto scrollbar-none border-0 border-b border-ink",
+    tab: [
+      "inline-flex h-control-md shrink-0 cursor-pointer items-center gap-1.5 px-3",
+      "border-0 border-b-3 border-transparent bg-transparent",
+      "font-mono text-label whitespace-nowrap text-ink-muted uppercase no-underline",
+      "touch-manipulation transition-colors duration-fast pointer-coarse:min-h-touch",
+      "not-disabled:hover:bg-transparent not-disabled:hover:text-ink",
+      "aria-selected:border-ink aria-selected:font-semibold aria-selected:text-ink",
+      RING,
+      "not-disabled:focus-visible:-outline-offset-2",
+    ],
+    // How many are in it, as a figure in the tab.
+    count: "font-mono text-caption tabular-nums",
+  },
+});
 
 // ---- the kit's own, under the names the pages already call them -------------
 
@@ -582,18 +716,16 @@ export {
 export const sharedStyles = tv({
   slots: {
     /*
-     * The marketplace's content pane: the kit's Pane, at the page inset rather
-     * than a panel's, and lifted off the content ground as every other box on
-     * these pages is. The phone takes the panel inset back, there being less
-     * page to spend.
+     * The marketplace's box, for what stands alone (a form, a gate): the
+     * kit's Pane, one ink rule on grain, at the page inset rather than a
+     * panel's. The phone takes the panel inset back, there being less page.
      */
-    pane: "p-6 shadow-control max-wide:p-5",
+    pane: "p-6 max-wide:p-5",
     /*
-     * The same pane under an empty state, which brings a generous inset of its
-     * own on a wide screen and so is given only the lift. A phone takes the
-     * pane's inset back here too: there is not room for both.
+     * The same box under an empty state, which brings a generous inset of its
+     * own on a wide screen. A phone takes the pane's inset back here too.
      */
-    emptyPane: "shadow-control max-wide:p-5",
+    emptyPane: "max-wide:p-5",
     /*
      * The row of ways out of an empty state. Inside `Empty`'s own body, which
      * is a centred column, so this only has to lay its own buttons out — and
@@ -611,6 +743,16 @@ export const sharedStyles = tv({
     formRow: "grid grid-cols-fields gap-x-3 gap-y-5",
     /** What a form is answered with, and whatever is said beside it. */
     formActions: "flex flex-wrap items-center gap-x-3 gap-y-2",
+    /*
+     * The broadsheet's dateline over a page's head: what the page is on the
+     * left, its figures on the right, in the mono label on a hairline.
+     */
+    dateline:
+      "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-0 border-b border-line pb-1.5",
+    /** A page's head: the dateline, the headline and what stands under it. */
+    head: "flex min-w-0 flex-col gap-3",
+    /** The way back, on a line of its own. */
+    back: "flex",
   },
 });
 
@@ -659,7 +801,7 @@ export function LoadError({
       <Empty
         kind="warn"
         title={title}
-        icon={<AlertTriangle size={24} />}
+        icon={<AlertTriangle size={24} strokeWidth={1.5} />}
         className={styles.emptyPane()}
       >
         <p>{message}</p>
@@ -681,13 +823,15 @@ export function LoadError({
 export const footerStyles = tv({
   slots: {
     base: [
-      // The last row on the page, so its foot clears a home bar.
-      "mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line pt-6 pb-safe-6",
+      // The page's foot: the broadsheet's double rule, and the last row on the
+      // page, so its foot clears a home bar.
+      "mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-3",
+      "border-0 border-t-3 border-double border-ink pt-4 pb-safe-6",
       // A phone has no room for two ends of a row, so they become two rows.
       "max-wide:flex-col max-wide:items-start",
     ],
-    note: "m-0 text-body text-ink-muted",
-    links: "flex flex-wrap gap-x-5 gap-y-2 text-body text-ink-muted",
+    note: "m-0 text-ink-muted",
+    links: "flex flex-wrap gap-x-5 gap-y-2 font-body text-body text-ink-2",
   },
 });
 
@@ -697,7 +841,9 @@ export function MarketFooter() {
   const link = linkStyles({ plain: true });
   return (
     <footer className={styles.base()}>
-      <p className={styles.note()}>© {new Date().getFullYear()} wingfoil.ie</p>
+      <p className={kickerStyles({ className: styles.note() })}>
+        © {new Date().getFullYear()} wingfoil.ie
+      </p>
       <nav className={styles.links()} aria-label="Footer">
         <Link className={link} to={paths.browse()}>
           Browse gear
@@ -710,6 +856,23 @@ export function MarketFooter() {
         </a>
       </nav>
     </footer>
+  );
+}
+
+/** The way back to the classifieds, as the chart writes "← Chart". */
+export function BackLink({
+  to = paths.browse(),
+  children = "All listings",
+}: {
+  to?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={sharedStyles().back()}>
+      <Link to={to} className={buttonStyles({ variant: "link", size: "sm" })}>
+        <span aria-hidden="true">←</span> {children}
+      </Link>
+    </div>
   );
 }
 
@@ -736,6 +899,7 @@ export function SaveButton({
     >
       <Heart
         size={16}
+        strokeWidth={1.5}
         fill={saved ? "currentColor" : "none"}
         aria-hidden="true"
       />

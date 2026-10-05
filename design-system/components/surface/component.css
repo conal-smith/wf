@@ -1,0 +1,25 @@
+/* Surface — ui/Surface.tsx (surfaceStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The chart's box laid over the moving map: opaque paper with its grain, a
+ * hairline of ink round it and, by default, a second line inside it three of
+ * paper in (the double rule). Over the map, paper is opaque: a translucent
+ * panel would be a second, blurred map. */
+
+.wf-surface {
+  box-sizing: border-box;
+  padding: var(--sem-space-x5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-surface);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain);
+  background-repeat: repeat;
+  color: var(--sem-color-ink);
+  /* rule="double" (the default): the frame's inner line, then the lift. */
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+}
+
+/* rule="single": a box inside another, or one small enough that two lines
+ * would be most of it. The lift stays; only the inner line goes. */
+.wf-surface--single {
+  box-shadow: var(--sem-shadow-surface);
+}

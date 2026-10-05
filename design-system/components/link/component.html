@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Link — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Link</h2>
+
+      <p class="demo__label">In running text · underlined</p>
+      <p>Best today 13:00–16:00 on a 6&nbsp;m. Low tide 13:25 · 1.7&nbsp;m; the <a class="wf-link" href="#tide">tide table</a> has the week.</p>
+
+      <p class="demo__label">Hover (held) · the words and the line go magenta</p>
+      <p>Cross-shore at <a class="wf-link is-hover" href="#rusheen">Rusheen Bay</a> until the squall.</p>
+
+      <p class="demo__label">Focus-visible (held)</p>
+      <p>Four stars at <a class="wf-link is-focus" href="#keel">Keel Beach</a>, 14 g22 · WSW.</p>
+
+      <p class="demo__label">Plain · a list of nothing but links</p>
+      <div class="demo__row">
+        <a class="wf-link wf-link--plain" href="#dollymount">Dollymount</a>
+        <a class="wf-link wf-link--plain" href="#brandon">Brandon Bay</a>
+        <a class="wf-link wf-link--plain is-hover" href="#burrow">The Burrow</a>
+        <a class="wf-link wf-link--plain is-focus" href="#donabate">Donabate</a>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Link · night chart (proposed)</h2>
+      <p>Low tide 13:25 · 1.7&nbsp;m; the <a class="wf-link" href="#tide">tide table</a> has the week, and <a class="wf-link is-hover" href="#rusheen">Rusheen Bay</a> the best of it.</p>
+      <div class="demo__row">
+        <a class="wf-link wf-link--plain" href="#dollymount">Dollymount</a>
+        <a class="wf-link wf-link--plain is-focus" href="#donabate">Donabate</a>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,10 +1,13 @@
 import { tv, type VariantProps } from "./tv";
 
 export const skeletonStyles = tv({
-  base: "block animate-pulse bg-sunken motion-reduce:animate-none",
+  // The hairline's ink, which shows on grained paper where the second sheet
+  // does not.
+  base: "block animate-pulse bg-line motion-reduce:animate-none",
   variants: {
     shape: {
-      line: "h-3 rounded-full",
+      // Square, as a line of type is.
+      line: "h-3 rounded-control",
       block: "min-h-32 rounded-surface",
       circle: "size-control-md rounded-full",
     },

@@ -1,0 +1,44 @@
+/* Count — ui/Count.tsx (countStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A number in a badge, drawn as the chart draws a spot's light: a figure in a
+ * ring. Unread is said in fill and weight together, never colour alone. Past
+ * 99 the number stops being read, so it stops being counted ("99+"). Nothing
+ * is drawn for zero. */
+
+/* tone="strong" (the default): filled in ink. */
+.wf-count {
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  height: var(--sem-space-x5);
+  min-width: var(--sem-space-x5);
+  padding: 0 var(--sem-space-x1);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: 1;
+  font-weight: var(--sem-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* tone="quiet": ruled in ink on paper. */
+.wf-count--quiet {
+  background: var(--sem-color-card);
+  color: var(--sem-color-ink);
+}
+
+/* What is counted, for a screen reader only ("4 unread"). */
+.wf-count__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

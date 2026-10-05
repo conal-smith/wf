@@ -1,0 +1,101 @@
+/* Shore compass — the mockup's compassSVG and shoreSVG (design/chart/1-the-chart.html),
+ * in CSS. No ui/ primitive yet; drawn as the signed-off mockup draws them.
+ * Consumes --sem-* only.
+ *
+ * Two glyphs of one idea, which way the beach faces:
+ *   .wf-shore-compass        a paper disc ringed in ink, a north tick, and,
+ *                            turned by the facing, the sea (a depth wedge)
+ *                            and the beach (a heavy ink line). viewBox -10 -10 20 20.
+ *   .wf-shore-compass--wind  the wind against that beach: the beach below (a
+ *                            land band, hatched, under an ink line) and an
+ *                            arrow blowing downwind over it, in the pen when the
+ *                            wind is offshore or cross-off. viewBox -9 -9 18 18.
+ *
+ * The angles are inline custom properties, not colours:
+ *   style="--facing: 247deg"                 the way the beach faces
+ *   style="--facing: 247deg; --from: 22deg"  and where the wind comes from
+ * Stroke widths are the drawing's geometry, in viewBox units. */
+
+.wf-shore-compass {
+  display: inline-block;
+  flex-shrink: 0;
+  width: calc(var(--sem-space-step) * 4.5);
+  height: calc(var(--sem-space-step) * 4.5);
+  vertical-align: middle;
+}
+.wf-shore-compass--sm {
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+}
+.wf-shore-compass--lg {
+  width: var(--sem-space-x5);
+  height: var(--sem-space-x5);
+}
+
+/* ---- the compass: which way the beach faces ---- */
+.wf-shore-compass__disc {
+  fill: var(--sem-color-card);
+  stroke: var(--sem-color-ink);
+  stroke-width: 0.9;
+}
+.wf-shore-compass__north {
+  fill: none;
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.3;
+}
+/* The sea and the beach turn together, by the facing. */
+.wf-shore-compass__face {
+  transform: rotate(var(--facing, 0deg));
+}
+.wf-shore-compass__sea {
+  fill: var(--sem-color-depth);
+}
+.wf-shore-compass__beach {
+  fill: none;
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+/* ---- the wind against the beach: 16 by default (the popup), 14 in the dock, 18 on the spot page ---- */
+.wf-shore-compass--wind {
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+}
+.wf-shore-compass--wind.wf-shore-compass--sm {
+  width: calc(var(--sem-space-step) * 3.5);
+  height: calc(var(--sem-space-step) * 3.5);
+}
+.wf-shore-compass--wind.wf-shore-compass--lg {
+  width: calc(var(--sem-space-step) * 4.5);
+  height: calc(var(--sem-space-step) * 4.5);
+}
+.wf-shore-compass__land {
+  fill: var(--sem-color-land);
+}
+.wf-shore-compass__hatch {
+  fill: none;
+  stroke: var(--sem-color-line-strong);
+  stroke-width: 0.6;
+}
+.wf-shore-compass__shore {
+  fill: none;
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.1;
+}
+/* The arrow sits a little above the beach and points downwind, relative to it. */
+.wf-shore-compass__wind {
+  transform: translate(0, -2.2px) rotate(calc(var(--from, 0deg) - var(--facing, 0deg) + 180deg));
+}
+.wf-shore-compass__arrow {
+  fill: none;
+  stroke: var(--sem-color-ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Off the beach is the pen's: it takes you out, not in. The words say it too. */
+.wf-shore-compass--offshore .wf-shore-compass__arrow,
+.wf-shore-compass--cross-off .wf-shore-compass__arrow {
+  stroke: var(--sem-color-pen);
+}

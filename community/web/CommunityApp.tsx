@@ -4,10 +4,13 @@
  * /community, so neither the map nor the marketplace pays for it.
  *
  * Two columns and no third (D22): the channels, and the page. Below the rail
- * breakpoint there is room for one, so the channels are the page at /community
- * and every other page stands alone with a way back to them.
+ * breakpoint there is room for one, and it is the page's: a phone opens on
+ * the latest threads, not on the index of channels. The channels are one tap
+ * away, under a Channels control at the head of every page but a thread
+ * (whose way back is to its own channel), and fold away again once one is
+ * chosen.
  */
-import { ArrowLeft, Compass } from "lucide-react";
+import { ChevronDown, Compass, List } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SiteAuthProvider } from "../../shared/web/auth";
 import { usePageTitle } from "../../shared/web/usePageTitle";
@@ -41,21 +44,34 @@ import {
 
 export const shellStyles = tv({
   slots: {
-    root: "flex min-h-dvh flex-col bg-ground font-sans text-prose text-ink",
+    root: "flex min-h-dvh flex-col bg-ground paper-grain font-body text-prose text-ink",
     // The marketplace's page measure, and its narrower gutter on a phone.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-6 max-rail:px-3",
+    // On a phone the rows sit at the top: stretched, the grid would hand its
+    // spare height to the row the Channels control is in.
     shell:
-      "grid flex-1 grid-cols-1 items-start gap-8 pt-3 pb-8 max-rail:gap-5 rail:grid-cols-shell",
+      "grid flex-1 grid-cols-1 items-start gap-8 pt-4 pb-8 max-rail:content-start max-rail:gap-5 rail:grid-cols-shell",
     rail: "",
     main: "flex min-w-0 flex-col gap-5",
-    // Only where the rail is not beside the page.
-    back: "self-start rail:hidden",
+    // The way to the channels where they are not beside the page, a finger's
+    // height as the rows it opens are. Open, it is on the second sheet, as
+    // the menu's current row is.
+    channels:
+      "min-h-touch self-start justify-self-start rail:hidden aria-expanded:bg-sunken",
+    chevron: "transition-transform duration-fast motion-reduce:transition-none",
   },
   variants: {
-    // Away from /community a phone shows the page, not the channels.
-    railIsPage: { false: { rail: "max-rail:hidden" } },
+    // On a phone the channels are folded away until they are asked for.
+    channelsOpen: {
+      false: { rail: "max-rail:hidden" },
+      true: { chevron: "rotate-180" },
+    },
   },
+  defaultVariants: { channelsOpen: false },
 });
+
+/** The rail's id, for the Channels control that unfolds it on a phone. */
+const RAIL_ID = "community-channels";
 
 export default function CommunityApp() {
   return (
@@ -83,7 +99,11 @@ function Shell() {
 
   const channels = useChannels();
   const bell = useNotificationsCount();
-  const home = route.page === "home";
+  // A phone's channels, unfolded. Choosing one, or searching, is a new page,
+  // and the list folds away so the page is what the reader sees.
+  const [channelsOpen, setChannelsOpen] = useState(false);
+  const where = `${pathname}?${search.toString()}`;
+  useEffect(() => setChannelsOpen(false), [where]);
   // A channel the site's team posts in offers New thread to them alone, which
   // is the one thing here that needs the member's role: asked only there.
   const open =
@@ -91,7 +111,7 @@ function Shell() {
   const role = useViewerRole(open?.postPolicy === "staff");
   // A thread's channel is known once its page has loaded, and told to the rail.
   const [threadChannel, setThreadChannel] = useState<string | null>(null);
-  const styles = shellStyles({ railIsPage: home });
+  const styles = shellStyles({ channelsOpen });
 
   return (
     <div className={styles.root()}>
@@ -110,24 +130,34 @@ function Shell() {
           pathname={pathname}
         />
         <div className={styles.shell()}>
+          {/* A thread's way back is its own, to its channel. */}
+          {route.page !== "thread" && (
+            <Button
+              variant="pill"
+              size="sm"
+              className={styles.channels()}
+              aria-expanded={channelsOpen}
+              aria-controls={RAIL_ID}
+              onClick={() => setChannelsOpen(!channelsOpen)}
+            >
+              <List size={15} strokeWidth={1.5} aria-hidden="true" />
+              <span>Channels</span>
+              <ChevronDown
+                className={styles.chevron()}
+                size={13}
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+            </Button>
+          )}
           <Rail
+            id={RAIL_ID}
             className={styles.rail()}
             state={channels.state}
             reload={channels.reload}
             current={railCurrent(route, threadChannel)}
           />
           <main id="community-main" className={styles.main()}>
-            {/* A thread's way back is its own, to its channel. */}
-            {!home && route.page !== "thread" && (
-              <Button
-                {...routed(paths.home())}
-                size="sm"
-                className={styles.back()}
-              >
-                <ArrowLeft size={15} aria-hidden="true" />
-                <span>Channels</span>
-              </Button>
-            )}
             <Page
               route={route}
               onThreadChannel={setThreadChannel}
@@ -195,7 +225,7 @@ function NotFound() {
   return (
     <Empty
       title="That page does not exist"
-      icon={<Compass size={24} aria-hidden="true" />}
+      icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
     >
       <p>The link may be old, or the thread may have been removed.</p>
       <Button {...routed(paths.home())} variant="primary">

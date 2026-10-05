@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StarGlyphs — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+    <style>
+      /* Demo only: the words the marks and labels sit in. */
+      .demo__caption {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__stack {
+        display: grid;
+        justify-items: start;
+        gap: var(--sem-space-x1);
+      }
+      .demo__inverse {
+        display: inline-flex;
+        padding: var(--sem-space-x1) var(--sem-space-x2);
+        background: var(--sem-color-inverse);
+      }
+      /* A run of hours, as the dock's table draws it: the dark hatched, unrated. */
+      .demo__hours {
+        display: grid;
+        width: 100%;
+        max-width: var(--sem-container-dialog);
+      }
+      .demo__hour {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x3);
+        padding: var(--sem-space-x1-5) var(--sem-space-x2);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .demo__hour--dark {
+        background-image: repeating-linear-gradient(135deg, var(--sem-color-hatch) 0 1px, transparent 1px 4px);
+      }
+      .demo__ist {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-body);
+        line-height: var(--sem-font-line-body);
+        font-weight: var(--sem-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">StarGlyphs</h2>
+
+      <p class="demo__label">0 to 5 · solid, faded (the wind alone), dots to five</p>
+      <div class="demo__row">
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="0 of 5 stars"><circle class="wf-star-glyphs__dot" cx="6" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="20" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="34" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="48" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="1 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(34 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="48" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(34 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="48" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(62 6.4) scale(1.1538)" /></svg>
+      </div>
+
+      <p class="demo__label">The dark · an empty slot, not rated</p>
+      <div class="demo__hours">
+        <div class="demo__hour"><span class="demo__ist">18</span><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg></div>
+        <div class="demo__hour"><span class="demo__ist">19</span><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg></div>
+        <div class="demo__hour"><span class="demo__ist">20</span><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(34 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="48" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg></div>
+        <div class="demo__hour demo__hour--dark"><span class="demo__ist">21</span><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="Dark: not rated"></svg></div>
+      </div>
+
+      <p class="demo__label">Sizes · 9.5, 10, 12 (default), 14</p>
+      <div class="demo__row">
+        <div class="demo__stack"><svg class="wf-star-glyphs" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg><span class="demo__caption">9.5</span></div>
+        <div class="demo__stack"><svg class="wf-star-glyphs" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(38 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg><span class="demo__caption">10</span></div>
+        <div class="demo__stack"><svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg><span class="demo__caption">12</span></div>
+        <div class="demo__stack"><svg class="wf-star-glyphs" width="78" height="14" viewBox="0 0 78 14" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(7 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(23 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(39 7.4) scale(1.3462)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.7057" transform="translate(55 7.4) scale(1.3462)" /><circle class="wf-star-glyphs__dot" cx="71" cy="7" r="0.98" /></svg><span class="demo__caption">14</span></div>
+      </div>
+
+      <p class="demo__label">Tones · ink, inverse on an ink fill, magenta (the best, once)</p>
+      <div class="demo__row">
+        <svg class="wf-star-glyphs wf-star-glyphs--ink" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <span class="demo__inverse"><svg class="wf-star-glyphs wf-star-glyphs--inverse" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 5 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(62 6.4) scale(1.1538)" /></svg></span>
+        <svg class="wf-star-glyphs wf-star-glyphs--magenta" width="78" height="14" viewBox="0 0 78 14" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(7 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(23 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(39 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(55 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(71 7.4) scale(1.3462)" /></svg>
+      </div>
+
+      <p class="demo__label">Slots · five (default), potential (a narrow cell)</p>
+      <div class="demo__row">
+        <svg class="wf-star-glyphs" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(27 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg>
+        <svg class="wf-star-glyphs" width="32" height="10" viewBox="0 0 32 10" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(27 5.4) scale(0.9615)" /></svg>
+        <svg class="wf-star-glyphs" width="10" height="10" viewBox="0 0 10 10" role="img" aria-label="0 of 5 stars"><circle class="wf-star-glyphs__dot" cx="5" cy="5" r="0.7" /></svg>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">StarGlyphs · night chart (proposed)</h2>
+      <div class="demo__row">
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="1 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(34 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="48" cy="6" r="0.84" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(48 6.4) scale(1.1538)" /><circle class="wf-star-glyphs__dot" cx="62" cy="6" r="0.84" /></svg>
+        <svg class="wf-star-glyphs wf-star-glyphs--magenta" width="78" height="14" viewBox="0 0 78 14" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(7 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(23 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(39 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(55 7.4) scale(1.3462)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(71 7.4) scale(1.3462)" /></svg>
+        <span class="demo__inverse"><svg class="wf-star-glyphs wf-star-glyphs--inverse" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="3 of 5 stars, 5 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(6 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(20 6.4) scale(1.1538)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(48 6.4) scale(1.1538)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.8233" transform="translate(62 6.4) scale(1.1538)" /></svg></span>
+      </div>
+    </section>
+  </body>
+</html>

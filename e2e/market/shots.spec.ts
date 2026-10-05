@@ -35,7 +35,7 @@ test("browse: the grid, and the filters open on a phone", async ({
     await shoot("browse", width, { as: BUYER }, async (page) => {
       await page.goto("/market");
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Second-hand wingfoil gear, across Ireland",
+        "Second-hand gear: across Ireland",
       );
       // Seven of the eight: the eighth is sold, and browse does not keep those.
       await expect(page.getByText("7 listings")).toBeVisible();

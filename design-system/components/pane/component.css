@@ -1,0 +1,60 @@
+/* Pane — ui/Pane.tsx (paneStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The box content sits in on a page that is read. Four kinds of box are told
+ * apart by their rules, not their fill: the card pane has one ink rule, the
+ * sunken pane none (it is the paper's second sheet), and the ruled pane is the
+ * broadsheet's section, a heavy rule above and nothing at the sides. Over the
+ * map the box is a Surface. */
+
+/* kind="card" (the default): a box ruled in ink, on paper with its grain. */
+.wf-pane {
+  box-sizing: border-box;
+  padding: var(--sem-space-x5);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-surface);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain);
+  background-repeat: repeat;
+  color: var(--sem-color-ink);
+}
+
+/* kind="sunken": the paper's second sheet, with no rule: a well, an aside. */
+.wf-pane--sunken {
+  border: 0;
+  background-color: var(--sem-color-sunken);
+  background-image: none;
+}
+
+/* kind="ruled": a heavy rule above, nothing at the sides, and no inset of its
+ * own, so it lines up with the column it is in. Most of a page is this. */
+.wf-pane--ruled {
+  border: 0;
+  border-top: var(--sem-rule-heavy) solid var(--sem-color-ink);
+  background-color: transparent;
+  background-image: none;
+  padding: var(--sem-space-x3) 0 0;
+}
+
+/* double: a second rule inside the first, the chart's box, for one that
+ * matters. */
+.wf-pane--double {
+  box-shadow: var(--sem-shadow-frame);
+}
+
+/* standing: a pane on the page on its own rather than in a column of panes.
+ * It lifts off the paper a little and takes the wider inset where the width
+ * pays for it. */
+.wf-pane--standing {
+  padding: var(--sem-space-x6);
+  box-shadow: var(--sem-shadow-surface);
+}
+.wf-pane--standing.wf-pane--double {
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+}
+
+/* max-wide: under sem.breakpoint.wide (45rem) the narrow inset comes back. */
+@media (max-width: 719.98px) {
+  .wf-pane--standing {
+    padding: var(--sem-space-x5);
+  }
+}

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Field — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../text-input/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Field</h2>
+
+      <p class="demo__label">Label and control</p>
+      <div class="wf-field">
+        <label class="wf-field__label" for="f-spot">Spot</label>
+        <div class="wf-control">
+          <input class="wf-control__input" id="f-spot" type="text" placeholder="Rusheen Bay, Galway" />
+        </div>
+      </div>
+
+      <p class="demo__label">With a hint on the label's line</p>
+      <div class="wf-field">
+        <label class="wf-field__label" for="f-price">Price <small class="wf-field__hint">whole euro</small></label>
+        <div class="wf-control">
+          <span class="wf-control__adornment">€</span>
+          <input class="wf-control__input" id="f-price" type="text" inputmode="numeric" value="850" />
+        </div>
+      </div>
+
+      <p class="demo__label">Error · data-invalid turns the control warm</p>
+      <div class="wf-field" data-invalid="">
+        <label class="wf-field__label" for="f-wing">Wing size <small class="wf-field__hint">m²</small></label>
+        <div class="wf-control">
+          <input class="wf-control__input" id="f-wing" type="text" value="6,5" aria-invalid="true" aria-describedby="f-wing-err" />
+        </div>
+        <span class="wf-field__error" id="f-wing-err" role="alert">Write it as 6.5</span>
+      </div>
+
+      <p class="demo__label">Focus (held)</p>
+      <div class="wf-field">
+        <label class="wf-field__label" for="f-title">Title <small class="wf-field__hint">a few words</small></label>
+        <div class="wf-control is-focus">
+          <input class="wf-control__input" id="f-title" type="text" value="5 m wing, one season" />
+        </div>
+      </div>
+
+      <p class="demo__label">Disabled</p>
+      <div class="wf-field">
+        <label class="wf-field__label" for="f-county">County</label>
+        <div class="wf-control">
+          <input class="wf-control__input" id="f-county" type="text" value="Galway" disabled />
+        </div>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Field · night chart (proposed)</h2>
+      <div class="wf-field">
+        <label class="wf-field__label" for="n-price">Price <small class="wf-field__hint">whole euro</small></label>
+        <div class="wf-control">
+          <span class="wf-control__adornment">€</span>
+          <input class="wf-control__input" id="n-price" type="text" value="850" />
+        </div>
+      </div>
+      <p class="demo__label">Error</p>
+      <div class="wf-field" data-invalid="">
+        <label class="wf-field__label" for="n-wing">Wing size <small class="wf-field__hint">m²</small></label>
+        <div class="wf-control">
+          <input class="wf-control__input" id="n-wing" type="text" value="6,5" aria-invalid="true" aria-describedby="n-wing-err" />
+        </div>
+        <span class="wf-field__error" id="n-wing-err" role="alert">Write it as 6.5</span>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,222 @@
+/* Button — ui/Button.tsx (buttonStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * Every button speaks in the mono label: tracked capitals in IBM Plex Mono.
+ * The shapes are the chart's: a capsule ruled in ink, filled in ink when it is
+ * the one action, and a square box for an instrument laid over the map.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
+ * reaches the same rules through :hover and :focus-visible. */
+
+.wf-button {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sem-space-x1-5);
+  box-sizing: border-box;
+  height: var(--sem-size-control-md);
+  padding: 0 var(--sem-space-x4);
+  border: var(--sem-rule-hairline) solid transparent;
+  border-radius: var(--sem-radius-pill);
+  background: transparent;
+  color: var(--sem-color-quiet);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-label);
+  line-height: var(--sem-font-line-label);
+  font-weight: var(--sem-font-weight-label);
+  letter-spacing: var(--sem-font-tracking-label);
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition-property: color, background-color, border-color, text-decoration-color;
+  transition-duration: var(--sem-duration-fast);
+}
+
+/* A tap target is never shorter than touch, whatever size was asked for. */
+@media (pointer: coarse) {
+  .wf-button {
+    min-height: var(--sem-size-touch);
+  }
+}
+
+.wf-button:not(:disabled):focus-visible,
+.wf-button.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* Disabled is said in ink and cursor, not a fade. */
+.wf-button:disabled {
+  cursor: default;
+  color: var(--sem-color-ink-disabled);
+  opacity: 1;
+}
+
+/* ---- sizes ---- */
+.wf-button--sm {
+  height: var(--sem-size-control-sm);
+  padding: 0 var(--sem-space-x3);
+}
+.wf-button--lg {
+  height: var(--sem-size-control-lg);
+  padding: 0 var(--sem-space-x5);
+  font-weight: var(--sem-font-weight-semibold);
+}
+
+/* ---- quiet (the default): no fill until the pointer is over it ---- */
+.wf-button:not(:disabled):hover,
+.wf-button.is-hover {
+  background: var(--sem-color-sunken);
+}
+
+/* ---- primary: the one filled control, an ink pill, magenta under the pointer ---- */
+.wf-button--primary {
+  border-radius: var(--sem-radius-full);
+  border-color: var(--sem-color-accent-primary);
+  background: var(--sem-color-accent-primary);
+  color: var(--sem-color-accent-ink);
+}
+.wf-button--primary:not(:disabled):hover,
+.wf-button--primary.is-hover {
+  border-color: var(--sem-color-accent-hover);
+  background: var(--sem-color-accent-hover);
+}
+.wf-button--primary:disabled {
+  border-color: var(--sem-color-line);
+  background: var(--sem-color-sunken);
+}
+
+/* ---- pill: a capsule ruled in ink, which turns to ink under the pointer ---- */
+.wf-button--pill {
+  border-radius: var(--sem-radius-full);
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-card);
+}
+.wf-button--pill:not(:disabled):hover,
+.wf-button--pill.is-hover {
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+}
+.wf-button--pill:disabled {
+  border-color: var(--sem-color-line);
+  background: transparent;
+}
+
+/* ---- raised: the chart's instrument over the map, a square box ruled in ink ---- */
+.wf-button--raised {
+  border-radius: var(--sem-radius-surface);
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-card);
+}
+.wf-button--raised:not(:disabled):hover,
+.wf-button--raised.is-hover {
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+}
+.wf-button--raised:disabled {
+  background: transparent;
+}
+
+/* ---- link: a way back or on, underlined in ink ("← Chart") ---- */
+.wf-button--link {
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sem-radius-control);
+  text-decoration: underline;
+  text-decoration-thickness: var(--sem-rule-hairline);
+  text-underline-offset: var(--sem-space-x1);
+  text-decoration-color: var(--sem-color-ink);
+}
+.wf-button--link:not(:disabled):hover,
+.wf-button--link.is-hover {
+  background: transparent;
+  color: var(--sem-color-chart-magenta);
+  text-decoration-color: currentColor;
+}
+@media (pointer: coarse) {
+  .wf-button--link {
+    min-height: 0;
+  }
+  /* A touch-tall band across the words: the target grows, nothing moves. */
+  .wf-button--link::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: var(--sem-size-touch);
+    transform: translateY(-50%);
+  }
+}
+
+/* ---- danger: the destructive answer in a confirm dialog, and nowhere else ---- */
+.wf-button--danger {
+  border-radius: var(--sem-radius-full);
+  border-color: var(--sem-color-warn);
+  background: var(--sem-color-warn);
+  color: var(--sem-color-ink-inverse);
+}
+.wf-button--danger:not(:disabled):hover,
+.wf-button--danger.is-hover {
+  background: var(--sem-color-warn);
+  box-shadow: var(--sem-shadow-marker);
+}
+.wf-button--danger:disabled {
+  border-color: var(--sem-color-line);
+  background: var(--sem-color-sunken);
+}
+
+/* ---- pressed: a toggle that is on — filled in ink and heavier, never colour alone ---- */
+.wf-button[aria-pressed="true"],
+.wf-button[aria-current="true"] {
+  border-color: var(--sem-color-ink);
+  background: var(--sem-color-inverse);
+  color: var(--sem-color-ink-inverse);
+  font-weight: var(--sem-font-weight-semibold);
+  box-shadow: var(--sem-shadow-control);
+}
+.wf-button[aria-pressed="true"]:not(:disabled):hover {
+  background: var(--sem-color-inverse);
+}
+.wf-button[aria-pressed="true"]:disabled {
+  background: var(--sem-color-sunken);
+}
+/* A toggle whose own words say it is on (Save -> Saved) keeps its quiet box. */
+.wf-button--worded[aria-pressed="true"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sem-color-quiet);
+  font-weight: var(--sem-font-weight-label);
+  box-shadow: none;
+}
+
+/* ---- icon: a square-sized capsule, which needs an aria-label ---- */
+.wf-button--icon {
+  width: var(--sem-size-control-md);
+  padding: 0;
+  border-radius: var(--sem-radius-full);
+}
+.wf-button--icon.wf-button--sm {
+  width: var(--sem-size-control-sm);
+}
+.wf-button--icon.wf-button--lg {
+  width: var(--sem-size-control-lg);
+}
+/* The instrument stays square with an icon in it. */
+.wf-button--icon.wf-button--raised {
+  border-radius: var(--sem-radius-surface);
+}
+@media (pointer: coarse) {
+  .wf-button--icon {
+    min-width: var(--sem-size-touch);
+  }
+}
+
+.wf-button__icon {
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+  flex-shrink: 0;
+}
