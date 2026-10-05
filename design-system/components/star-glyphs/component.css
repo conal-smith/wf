@@ -1,0 +1,49 @@
+/* StarGlyphs — ui/StarGlyphs.tsx (starGlyphsStyles), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * An hour's stars as the chart draws them: solid for what the hour is worth
+ * for this rider, an outline for what the wind alone would have given, and a
+ * small dot for each of the five it does not reach. Shape carries the
+ * difference; the tone only repeats it. The dark is not rated: an empty SVG of
+ * the same width, so a row of hours stays in line.
+ *
+ * The geometry is the component's and lives in the SVG: the star path at
+ * radius 5, scaled by size / 10.4 and set 0.4 below centre; a gap of
+ * max(1, floor(size / 6)); an outline of 0.95 / scale; a dot of size * 0.07.
+ * Only paint lives here, and it is currentColor. */
+
+.wf-star-glyphs {
+  display: inline-block;
+  flex-shrink: 0;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+/* ---- tones: none, by default, is whatever the text round it is ---- */
+.wf-star-glyphs--ink {
+  color: var(--sem-color-ink);
+}
+/* On an ink fill: a selected column, a light. */
+.wf-star-glyphs--inverse {
+  color: var(--sem-color-ink-inverse);
+}
+/* The best of the week, where magenta marks it. */
+.wf-star-glyphs--magenta {
+  color: var(--sem-color-chart-magenta);
+}
+
+/* ---- the three marks ---- */
+.wf-star-glyphs__solid {
+  fill: currentColor;
+}
+/* What the wind alone would give: an outline, faded. */
+.wf-star-glyphs__faded {
+  fill: none;
+  stroke: currentColor;
+  opacity: var(--sem-opacity-faded);
+}
+/* A place the hour does not reach. */
+.wf-star-glyphs__dot {
+  fill: currentColor;
+  opacity: var(--sem-opacity-dot);
+}

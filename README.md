@@ -1183,6 +1183,17 @@ The bundled runs' horizons have passed, so `worker.py --publish-only` refuses th
 through the worker; for HARMONIE and ICON-EU call
 `validate_bundle(public, model, now=<a time inside the run>)` directly.
 
+## Design
+
+The site is drawn as **the chart**: an Admiralty chart crossed with an old broadsheet weather report. [`docs/BRAND.md`](docs/BRAND.md) is how to draw in it and [`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md) the rules and their dated rulings. Every design value is written once, in `ui/theme.css`, and every control comes from the kit in `ui/` (gallery at `/ui` under the dev server).
+
+`design-system/` restates the theme and the kit as a SprintEngine Studio design-system bundle (tokens, principles, components, patterns, glyphs and a catalog at `design-system/catalog/index.html`), to open in the Studio's Design door: point it at the `design-system/` folder. [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) explains how the two are kept equal.
+
+```sh
+npm run ui:lint       # theme only, theme == bundle, no new raw controls, the bundle's own lint
+npm run design:build  # regenerate the bundle's tokens.css and catalog after a token or component change
+```
+
 ## Verify / build
 
 ```sh

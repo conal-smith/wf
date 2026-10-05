@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chip — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: a listing's photograph, stood in for by bands of the chart's
+         sea and land tints, with its badges laid over it as the market does. */
+      .demo__photo {
+        position: relative;
+        height: calc(var(--sem-space-step) * 48);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        background: linear-gradient(
+          172deg,
+          var(--sem-color-sea-4) 0 30%,
+          var(--sem-color-sea-2) 30% 48%,
+          var(--sem-color-sea-1) 48% 64%,
+          var(--sem-color-depth) 64% 70%,
+          var(--sem-color-land) 70% 86%,
+          var(--sem-color-relief) 86% 100%
+        );
+      }
+      .demo__photo .wf-chip {
+        position: absolute;
+      }
+      .demo__tl {
+        top: var(--sem-space-x2);
+        left: var(--sem-space-x2);
+      }
+      .demo__tr {
+        top: var(--sem-space-x2);
+        right: var(--sem-space-x2);
+      }
+      .demo__bl {
+        bottom: var(--sem-space-x2);
+        left: var(--sem-space-x2);
+      }
+      .demo__sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Chip</h2>
+
+      <p class="demo__label">tone="neutral" · a category, a figure</p>
+      <div class="demo__row">
+        <span class="wf-chip">Gear</span>
+        <span class="wf-chip">Dublin Bay</span>
+        <span class="wf-chip">6 m</span>
+        <span class="wf-chip">14 g22</span>
+      </div>
+
+      <p class="demo__label">tone="warn" · now, or degraded</p>
+      <div class="demo__row">
+        <span class="wf-chip wf-chip--warn">Sold</span>
+        <span class="wf-chip wf-chip--warn" role="alert">Failed</span>
+      </div>
+
+      <p class="demo__label">eyebrow · tracked capitals</p>
+      <div class="demo__row">
+        <span class="wf-chip wf-chip--eyebrow">Galway</span>
+        <span class="wf-chip wf-chip--warn wf-chip--eyebrow">Stale</span>
+      </div>
+
+      <p class="demo__label">tone="glass" · over a photograph only</p>
+      <div class="demo__photo">
+        <span class="wf-chip wf-chip--glass demo__tl">
+          <svg class="wf-chip__icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+          Saved
+        </span>
+        <span class="wf-chip wf-chip--glass demo__tr">
+          <svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg>
+          <span class="demo__sr">Photos:</span> 4
+        </span>
+        <span class="wf-chip wf-chip--glass wf-chip--eyebrow demo__bl">Cover</span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Chip · night chart (proposed)</h2>
+      <div class="demo__row">
+        <span class="wf-chip">Gear</span>
+        <span class="wf-chip">6 m</span>
+        <span class="wf-chip wf-chip--warn">Sold</span>
+        <span class="wf-chip wf-chip--eyebrow">Galway</span>
+      </div>
+      <p class="demo__label">glass</p>
+      <div class="demo__photo">
+        <span class="wf-chip wf-chip--glass wf-chip--eyebrow demo__tl">Cover</span>
+        <span class="wf-chip wf-chip--glass demo__tr">
+          <svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg>
+          <span class="demo__sr">Photos:</span> 4
+        </span>
+      </div>
+    </section>
+  </body>
+</html>

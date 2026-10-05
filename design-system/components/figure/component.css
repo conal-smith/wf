@@ -1,0 +1,59 @@
+/* Figure — ui/Figure.tsx (figureStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The number first and large in the mono face's tabular digits, its unit
+ * small after it and, where there is one, a second figure raised after it the
+ * way the chart writes a gust over the mean (14 g22 -> 14²²). */
+
+.wf-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sem-space-x0-5);
+  font-family: var(--sem-font-family-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--sem-color-ink);
+}
+
+/* ---- the value, by size (md, the figure step, is the default) ---- */
+.wf-figure__value {
+  font-size: var(--sem-font-size-figure);
+  line-height: var(--sem-font-line-figure);
+  font-weight: var(--sem-font-weight-figure);
+  letter-spacing: var(--sem-font-tracking-figure);
+}
+.wf-figure--sm .wf-figure__value {
+  font-size: var(--sem-font-size-body);
+  line-height: var(--sem-font-line-body);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: inherit;
+}
+/* The reading: one a view, the wind speed. */
+.wf-figure--lg .wf-figure__value {
+  font-size: var(--sem-font-size-reading);
+  line-height: var(--sem-font-line-reading);
+  font-weight: var(--sem-font-weight-semibold);
+  letter-spacing: inherit;
+}
+
+/* ---- the raised figure: the gust over the mean ---- */
+.wf-figure__sup {
+  align-self: flex-start;
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-weight: var(--sem-font-weight-medium);
+  color: var(--sem-color-ink-muted);
+}
+/* The one to watch: a gust well over the mean, in the pen's ink and heavier. */
+.wf-figure--alarm .wf-figure__sup {
+  font-weight: var(--sem-font-weight-semibold);
+  color: var(--sem-color-pen-ink);
+}
+
+/* ---- the unit: kn, m, €, % ---- */
+.wf-figure__unit {
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  color: var(--sem-color-ink-muted);
+}

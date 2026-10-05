@@ -1,0 +1,26 @@
+/* Kicker — ui/Kicker.tsx (kickerStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The mono label (MONO_LABEL in ui/tv.ts): tracked capitals in IBM Plex Mono
+ * at the eyebrow step, as a chart names its parts and a broadsheet heads its
+ * columns. STARS · WIND KN · BEST MON. A word or two; never a sentence. */
+
+.wf-kicker {
+  margin: 0;
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-eyebrow);
+  line-height: var(--sem-font-line-eyebrow);
+  font-weight: var(--sem-font-weight-eyebrow);
+  letter-spacing: var(--sem-font-tracking-eyebrow);
+  text-transform: uppercase;
+  /* tone muted, the default */
+  color: var(--sem-color-ink-muted);
+}
+
+/* ---- tones ---- */
+.wf-kicker--ink {
+  color: var(--sem-color-ink);
+}
+/* The pen's ink, for the label of the one thing that matters. */
+.wf-kicker--pen {
+  color: var(--sem-color-pen-ink);
+}

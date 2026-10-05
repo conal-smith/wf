@@ -1,0 +1,50 @@
+/* Checkbox — ui/Checkbox.tsx (checkboxStyles), rendered in CSS. Consumes
+ * --sem-* only.
+ *
+ * The platform's own box and tick, inked in the kit's inverse, and the words
+ * beside it part of the target: the whole row is a <label>, never shorter
+ * than a thumb.
+ *
+ * `.is-focus` holds the ring still for the catalog; the product reaches the
+ * same rule through :focus-visible. */
+
+.wf-checkbox {
+  display: inline-flex;
+  box-sizing: border-box;
+  min-height: var(--sem-size-touch);
+  align-items: center;
+  gap: var(--sem-space-x2);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-prose);
+  cursor: pointer;
+}
+.wf-checkbox:has(:disabled) {
+  color: var(--sem-color-ink-disabled);
+  cursor: default;
+}
+
+/* The tick is what says checked, so the fill under it is the kit's ink and
+ * not the accent: a checkbox is never the one filled action. */
+.wf-checkbox__input {
+  width: calc(var(--sem-space-step) * 4.5);
+  height: calc(var(--sem-space-step) * 4.5);
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--sem-color-inverse);
+}
+.wf-checkbox__input:not(:disabled):focus-visible,
+.wf-checkbox__input.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+.wf-checkbox__input:disabled {
+  cursor: default;
+  color: var(--sem-color-ink-disabled);
+  opacity: 1;
+}
+
+.wf-checkbox__label {
+  min-width: 0;
+}

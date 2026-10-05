@@ -1,0 +1,74 @@
+/* Puffin — ui/Puffin.tsx (puffinStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The Almanac's own bird, on his rock at the foot of the pen's note. He signs
+ * the house's word; he does not talk, and there is one of him on a view at
+ * most. Drawn in the chart's inks: ink, paper, the pen's red, a buoy's yellow
+ * for his beak and land buff for the rock. The drawing (viewBox 0 0 120 130,
+ * its stroke widths and two faint ink lines) lives in the SVG; every fill and
+ * stroke colour lives here. Height is the size; width is size * 120 / 130. */
+
+.wf-puffin {
+  display: inline-block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* The bird, without his rock: an SVG group turns about its own box only when told to. */
+.wf-puffin__figure {
+  transform-box: fill-box;
+  transform-origin: bottom;
+}
+/* He shifts his weight now and then. Held still for a reader who asks. */
+.wf-puffin--bob .wf-puffin__figure {
+  animation: var(--sem-animate-bob);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-puffin--bob .wf-puffin__figure {
+    animation: none;
+  }
+}
+
+/* ---- the inks ---- */
+.wf-puffin__ink {
+  fill: var(--sem-color-ink);
+}
+.wf-puffin__ink-line {
+  fill: none;
+  stroke: var(--sem-color-ink);
+}
+.wf-puffin__paper {
+  fill: var(--sem-color-ground);
+  stroke: var(--sem-color-ink);
+}
+.wf-puffin__paper-line {
+  fill: none;
+  stroke: var(--sem-color-ground);
+}
+/* The wing's hatching: the pattern is its fill, so this names a stroke only. */
+.wf-puffin__hatched {
+  stroke: var(--sem-color-ground);
+}
+.wf-puffin__pen {
+  fill: var(--sem-color-pen);
+  stroke: var(--sem-color-ink);
+}
+.wf-puffin__buoy {
+  fill: var(--sem-color-buoy);
+  stroke: var(--sem-color-ink);
+}
+.wf-puffin__rock {
+  fill: var(--sem-color-land);
+  stroke: var(--sem-color-ink);
+}
+
+@keyframes bob {
+  0%,
+  46%,
+  54%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+}

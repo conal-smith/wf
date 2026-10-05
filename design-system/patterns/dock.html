@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dock — wingfoil-chart pattern</title>
+    <link rel="stylesheet" href="../foundations/tokens.css" />
+    <link rel="stylesheet" href="../components/button/component.css" />
+    <link rel="stylesheet" href="../components/segmented/component.css" />
+    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <link rel="stylesheet" href="../components/shore-compass/component.css" />
+    <link rel="stylesheet" href="../components/wind-figure/component.css" />
+    <link rel="stylesheet" href="../components/hour-cell/component.css" />
+    <link rel="stylesheet" href="../components/tide-label/component.css" />
+    <link rel="stylesheet" href="../components/pen-loop/component.css" />
+    <style>
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      /* A sea-tinted stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* The favourite: the glyph in the pen, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-pen);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-pen);
+      }
+
+      /* ---- the dock: paper along the foot of the map, a double rule along its top ---- */
+      .dock__map {
+        height: calc(var(--sem-space-step) * 24);
+        background: var(--sem-color-sea-3);
+      }
+      .dock {
+        position: relative;
+        box-sizing: border-box;
+        padding: 0 var(--sem-space-x3) var(--sem-space-x2);
+        /* The double rule runs along one edge: every side zeroed first. */
+        border: 0 double var(--sem-color-ink);
+        border-top-width: var(--sem-rule-double);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        box-shadow: var(--sem-shadow-dock);
+        color: var(--sem-color-ink);
+      }
+
+      /* The phone's handle: pull the hours up. */
+      .dock__grab {
+        position: relative;
+        display: block;
+        width: 100%;
+        height: var(--sem-space-x5);
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      .dock__grab::before {
+        content: "";
+        position: absolute;
+        top: calc(var(--sem-space-step) * 1.75);
+        left: 50%;
+        width: calc(var(--sem-space-step) * 11);
+        height: var(--sem-space-x1);
+        margin-left: calc(var(--sem-space-step) * -5.5);
+        border-radius: var(--sem-radius-full);
+        background: var(--sem-color-line-strong);
+      }
+      .dock__grab:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: calc(var(--sem-ring-offset) * -1);
+      }
+
+      /* ---- the head: star, name, compass, then the switch and the one filled action ---- */
+      .dock__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x1) var(--sem-space-x2);
+        min-width: 0;
+      }
+      .dock__head > .wf-button--worded {
+        margin-left: calc(var(--sem-space-x1-5) * -1);
+      }
+      .dock__name {
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .dock__county {
+        display: none;
+        white-space: nowrap;
+      }
+      /* On a phone the verdict takes a line of its own, under the switch. */
+      .dock__best {
+        order: 4;
+        flex-basis: 100%;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sem-space-x1-5);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-weight: var(--sem-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .dock__acts {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+        width: 100%;
+      }
+
+      /* ---- the week: five days, each a strip of fourteen hours tinted by their stars ---- */
+      .dock__week {
+        margin-top: var(--sem-space-x1-5);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        cursor: ew-resize;
+        touch-action: none;
+      }
+      .dock__week:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .dock__days {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .dock__day {
+        --pad: var(--sem-space-x1);
+        position: relative;
+        min-width: 0;
+        padding: var(--sem-space-x1) var(--pad);
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .dock__day:first-child {
+        border-left: 0;
+      }
+      .dock__day--on {
+        background-color: var(--sem-color-sunken);
+      }
+      .dock__dh {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x1-5);
+        height: var(--sem-space-x5);
+        white-space: nowrap;
+      }
+      .dock__dn {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-body);
+        line-height: var(--sem-font-line-body);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .dock__dt,
+      .dock__bw {
+        display: none;
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+      }
+      .dock__dst {
+        display: none;
+        margin-left: auto;
+      }
+      /* The phone says a day's best in a figure: 5★. */
+      .dock__sn {
+        margin-left: auto;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .dock__strip {
+        display: grid;
+        grid-template-columns: repeat(14, minmax(0, 1fr));
+        gap: var(--sem-rule-hairline);
+        height: var(--sem-space-x2-5);
+        margin-top: var(--sem-space-x0-5);
+      }
+      /* An hour: faint ink when it has no stars, the chart's magenta by its stars. */
+      .dock__h {
+        display: block;
+        background-color: var(--sem-color-hatch);
+        opacity: var(--o, 1);
+      }
+      .dock__h--s1 { --o: var(--sem-opacity-strip-1); background-color: var(--sem-color-chart-magenta); }
+      .dock__h--s2 { --o: var(--sem-opacity-strip-2); background-color: var(--sem-color-chart-magenta); }
+      .dock__h--s3 { --o: var(--sem-opacity-strip-3); background-color: var(--sem-color-chart-magenta); }
+      .dock__h--s4 { --o: var(--sem-opacity-strip-4); background-color: var(--sem-color-chart-magenta); }
+      .dock__h--s5 { --o: var(--sem-opacity-strip-5); background-color: var(--sem-color-chart-magenta); }
+      /* The dark hours: hatched, never rated. */
+      .dock__h--night {
+        background-color: transparent;
+        background-image: repeating-linear-gradient(135deg, var(--sem-color-line) 0 1px, transparent 1px 3px);
+      }
+      .dock__h--past {
+        opacity: calc(var(--o, 1) * var(--sem-opacity-past));
+      }
+      /* The hand: an ink line at the hour shown, a notch at its head, the time on a flag. */
+      .dock__hand {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: calc(var(--pad) + (100% - 2 * var(--pad)) * 6.5 / 14);
+        width: 0;
+        border-left: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        pointer-events: none;
+      }
+      .dock__hand::before {
+        content: "";
+        position: absolute;
+        top: calc(var(--sem-space-x1) * -1);
+        left: calc(var(--sem-rule-heavy) / -2 - var(--sem-space-step) * 1.25);
+        border: calc(var(--sem-space-step) * 1.25) solid transparent;
+        border-top-color: var(--sem-color-ink);
+      }
+      .dock__flag {
+        position: absolute;
+        bottom: var(--sem-rule-hairline);
+        left: var(--sem-space-x1);
+        padding: 0 var(--sem-space-x1);
+        background: var(--sem-color-inverse);
+        color: var(--sem-color-ink-inverse);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      /* ---- the hours: the hour-cell table, the pen's loop round the best run ---- */
+      .dock__hours {
+        margin-top: var(--sem-space-x0-5);
+      }
+      .dock__loop {
+        position: absolute;
+        top: calc(var(--sem-space-x3) * -1);
+        left: calc(var(--sem-space-x3) * -1);
+        z-index: 2;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .dock__loop--wide {
+        display: none;
+      }
+
+      /* The tide row: the curve laid out in hours' columns, so it keeps to the table. */
+      .dock__tide-cell {
+        height: var(--sem-space-x10);
+        padding: 0;
+      }
+      .dock__tide-plot {
+        position: relative;
+        width: calc(var(--wf-hour-cell-w) * 10);
+        height: var(--sem-space-x10);
+      }
+      .dock__tide-curve {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .dock__tide-day {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: calc(var(--wf-hour-cell-w) * 9);
+        border-left: var(--sem-rule-heavy) solid var(--sem-color-ink);
+      }
+      .dock__turn {
+        position: absolute;
+        left: calc(var(--wf-hour-cell-w) * var(--x));
+        transform: translate(calc(var(--sem-space-x1-5) / -2), -50%);
+      }
+      .dock__turn--end {
+        flex-direction: row-reverse;
+        transform: translate(calc(-100% + var(--sem-space-x1-5) / 2), -50%);
+      }
+      .dock__tide-cursor {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: calc(var(--wf-hour-cell-w) * 1.5);
+        border-left: var(--sem-rule-heavy) solid var(--sem-color-pen);
+        opacity: var(--sem-opacity-pen);
+      }
+      .dock__tide-now {
+        position: absolute;
+        left: calc(var(--wf-hour-cell-w) * 1.5 + var(--sem-rule-heavy) / 2);
+        width: calc(var(--sem-space-step) * 1.75);
+        height: calc(var(--sem-space-step) * 1.75);
+        overflow: visible;
+        transform: translate(-50%, -50%);
+      }
+
+      /* ---- from sem.breakpoint.wide (45rem): one line of head, the days in full ---- */
+      @media (min-width: 720px) {
+        .dock__map {
+          height: calc(var(--sem-space-step) * 16);
+        }
+        .dock {
+          padding: var(--sem-space-x1-5) var(--sem-space-x6) var(--sem-space-x2);
+        }
+        .dock__grab {
+          display: none;
+        }
+        .dock__head {
+          flex-wrap: nowrap;
+        }
+        .dock__county {
+          display: inline;
+        }
+        .dock__best {
+          order: 0;
+          flex-basis: auto;
+          margin-left: var(--sem-space-x2-5);
+          padding-left: var(--sem-space-x3);
+          border-left: var(--sem-rule-hairline) solid var(--sem-color-line);
+        }
+        .dock__acts {
+          flex: none;
+          width: auto;
+          margin-left: auto;
+          justify-content: flex-end;
+        }
+        .dock__day {
+          --pad: var(--sem-space-x2);
+        }
+        .dock__dt,
+        .dock__bw,
+        .dock__dst {
+          display: inline-flex;
+        }
+        .dock__sn {
+          display: none;
+        }
+        .dock__loop--phone {
+          display: none;
+        }
+        .dock__loop--wide {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p class="pt__label">The dock · at the foot of the map</p>
+    <div class="dock__map" aria-hidden="true"></div>
+    <section class="dock" aria-label="Forecast for Rusheen Bay">
+      <button class="dock__grab" type="button" aria-label="Open the hours" aria-expanded="true"></button>
+      <div class="dock__head">
+        <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="false" aria-label="Star Rusheen Bay"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+        <h2 class="dock__name">Rusheen Bay</h2>
+        <svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces SW, 247°" style="--facing: 247deg"><title>Beach faces SW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <span class="wf-kicker dock__county">Galway</span>
+        <span class="dock__best">Best today 13:00–16:00 · <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(49 5.4) scale(0.9615)" /></svg> · 6 m</span>
+        <div class="dock__acts">
+          <div class="wf-segmented" role="group" aria-label="Show the hours as">
+            <button class="wf-segmented__item" type="button" aria-pressed="true">Table</button>
+            <button class="wf-segmented__item" type="button" aria-pressed="false">Ribbon</button>
+          </div>
+          <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="About these figures"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg></button>
+          <a class="wf-button wf-button--primary wf-button--sm" href="#spot/rusheen">Spot page →</a>
+        </div>
+      </div>
+      <div class="dock__week" tabindex="0" role="slider" aria-label="Forecast day and hour" aria-valuemin="0" aria-valuemax="69" aria-valuenow="6" aria-valuetext="Monday 5 October, 13:00">
+        <div class="dock__days">
+              <div class="dock__day dock__day--on">
+                <div class="dock__dh"><b class="dock__dn">Mon</b><span class="dock__dt">5</span><span class="dock__dst"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span><span class="dock__bw">best 11–12</span><span class="dock__sn">5★</span></div>
+                <div class="dock__strip"><i class="dock__h dock__h--night dock__h--past"></i><i class="dock__h dock__h--s3 dock__h--past"></i><i class="dock__h dock__h--s4 dock__h--past"></i><i class="dock__h dock__h--s4 dock__h--past"></i><i class="dock__h dock__h--s5 dock__h--past"></i><i class="dock__h dock__h--s5 dock__h--past"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s2"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--night"></i></div><span class="dock__hand" aria-hidden="true"><span class="dock__flag">Mon 13:00</span></span>
+              </div>
+              <div class="dock__day">
+                <div class="dock__dh"><b class="dock__dn">Tue</b><span class="dock__dt">6</span><span class="dock__dst"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="1 of 5 stars, 2 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.0978" transform="translate(14.5 4.9) scale(0.8654)" /><circle class="wf-star-glyphs__dot" cx="24.5" cy="4.5" r="0.63" /><circle class="wf-star-glyphs__dot" cx="34.5" cy="4.5" r="0.63" /><circle class="wf-star-glyphs__dot" cx="44.5" cy="4.5" r="0.63" /></svg></span><span class="dock__bw">best 08:00</span><span class="dock__sn">1★</span></div>
+                <div class="dock__strip"><i class="dock__h dock__h--night"></i><i class="dock__h dock__h--s1"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h dock__h--night"></i></div>
+              </div>
+              <div class="dock__day">
+                <div class="dock__dh"><b class="dock__dn">Wed</b><span class="dock__dt">7</span><span class="dock__dst"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.0978" transform="translate(24.5 4.9) scale(0.8654)" /><circle class="wf-star-glyphs__dot" cx="34.5" cy="4.5" r="0.63" /><circle class="wf-star-glyphs__dot" cx="44.5" cy="4.5" r="0.63" /></svg></span><span class="dock__bw">best 12:00</span><span class="dock__sn">2★</span></div>
+                <div class="dock__strip"><i class="dock__h dock__h--night"></i><i class="dock__h"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s2"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s1"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h"></i><i class="dock__h dock__h--night"></i></div>
+              </div>
+              <div class="dock__day">
+                <div class="dock__dh"><b class="dock__dn">Thu</b><span class="dock__dt">8</span><span class="dock__dst"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span><span class="dock__bw">best 18:00</span><span class="dock__sn">5★</span></div>
+                <div class="dock__strip"><i class="dock__h dock__h--night"></i><i class="dock__h dock__h--s1"></i><i class="dock__h dock__h--s2"></i><i class="dock__h dock__h--s2"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s5"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--night"></i></div>
+              </div>
+              <div class="dock__day">
+                <div class="dock__dh"><b class="dock__dn">Fri</b><span class="dock__dt">9</span><span class="dock__dst"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span><span class="dock__bw">best 11–12</span><span class="dock__sn">5★</span></div>
+                <div class="dock__strip"><i class="dock__h dock__h--night"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s5"></i><i class="dock__h dock__h--s5"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s4"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s3"></i><i class="dock__h dock__h--s2"></i><i class="dock__h dock__h--night"></i></div>
+              </div>
+        </div>
+      </div>
+      <div class="wf-hour-cell__dock dock__hours" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
+        <table class="wf-hour-cell__table">
+          <colgroup><col class="wf-hour-cell__col-label" /><col /><col /><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
+          <tbody>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--day">
+              <td class="wf-hour-cell__label"></td>
+              <td class="wf-hour-cell" colspan="9"><span class="wf-hour-cell__day"><b>Mon</b>5</span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start" colspan="1"><span class="wf-hour-cell__day"><b>Tue</b>6</span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--hour">
+              <th class="wf-hour-cell__label" scope="row"></th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--past">12</th><th scope="col" class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now" aria-current="time">13<span class="wf-hour-cell__flag" aria-hidden="true">Mon 13:00</span></th><th scope="col" class="wf-hour-cell">14</th><th scope="col" class="wf-hour-cell">15</th><th scope="col" class="wf-hour-cell">16</th><th scope="col" class="wf-hour-cell">17</th><th scope="col" class="wf-hour-cell">18</th><th scope="col" class="wf-hour-cell">19</th><th scope="col" class="wf-hour-cell wf-hour-cell--night">20</th><th scope="col" class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start">07</th>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--stars">
+              <th class="wf-hour-cell__label" scope="row">Stars</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="5 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(46.75 5.15) scale(0.9135)" /></svg></td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(46.75 5.15) scale(0.9135)" /></svg><svg class="dock__loop dock__loop--phone" width="232" height="64" viewBox="0 0 232 64" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M21.4 20.4 L29.1 16.7 L40.6 13.7 L53.3 11.0 L66.3 8.0 L81.1 5.2 L98.8 3.4 L117.9 3.6 L135.7 5.2 L151.7 7.2 L167.0 9.0 L182.1 10.9 L194.7 13.7 L203.6 17.1 L210.4 20.7 L218.4 24.2 L228.1 27.8 L235.4 32.0 L235.7 36.5 L228.8 40.7 L218.4 44.4 L207.6 47.9 L195.8 51.2 L181.0 53.7 L163.2 55.0 L145.2 55.2 L128.4 55.4 L111.8 56.3 L93.7 57.1 L74.8 56.9 L57.5 55.2 L42.3 52.6 L27.8 49.7 L13.6 46.5 L2.6 42.6 L-1.5 38.0 L1.2 33.4 L6.5 29.1 L10.1 25.0 L12.3 20.9 L17.0 16.7 L26.6 13.0 L39.5 9.9 L53.1 7.0 L67.3 3.8 L84.0 1.0 L103.7 -0.3 L123.8 0.4 L142.1 2.4" pathLength="1" stroke-dasharray="1" /></svg><svg class="dock__loop dock__loop--wide" width="272" height="64" viewBox="0 0 272 64" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M24.2 20.4 L33.3 16.7 L46.9 13.7 L61.9 11.0 L77.2 8.0 L94.7 5.2 L115.7 3.4 L138.2 3.6 L159.3 5.2 L178.1 7.2 L196.3 9.0 L214.1 10.9 L229.1 13.7 L239.5 17.1 L247.5 20.7 L257.0 24.2 L268.5 27.8 L277.1 32.0 L277.5 36.5 L269.3 40.7 L257.0 44.4 L244.2 47.9 L230.3 51.2 L212.8 53.7 L191.8 55.0 L170.5 55.2 L150.7 55.4 L131.0 56.3 L109.6 57.1 L87.4 56.9 L66.8 55.2 L48.9 52.6 L31.8 49.7 L15.0 46.5 L2.0 42.6 L-2.9 38.0 L0.4 33.4 L6.6 29.1 L10.8 25.0 L13.4 20.9 L19.0 16.7 L30.4 13.0 L45.6 9.9 L61.7 7.0 L78.5 3.8 L98.2 1.0 L121.4 -0.3 L145.2 0.4 L166.9 2.4" pathLength="1" stroke-dasharray="1" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="1 of 5 stars, 2 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td><td class="wf-hour-cell wf-hour-cell--night"></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wind">
+              <th class="wf-hour-cell__label" scope="row">Wind<span class="wf-hour-cell__unit">kn</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="14 knots gusting 23"><span class="wf-wind-figure__value">14</span><span class="wf-wind-figure__gust">g23</span></span></td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="14 knots gusting 22"><span class="wf-wind-figure__value">14</span><span class="wf-wind-figure__gust">g22</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="13 knots gusting 22"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__gust">g22</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="13 knots gusting 21"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__gust">g21</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="12 knots gusting 20"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__gust">g20</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="11 knots gusting 18"><span class="wf-wind-figure__value">11</span><span class="wf-wind-figure__gust">g18</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="10 knots gusting 17"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__gust">g17</span></span></td><td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="9 knots gusting 16"><span class="wf-wind-figure__value">9</span><span class="wf-wind-figure__gust">g16</span></span></td><td class="wf-hour-cell wf-hour-cell--night"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 15"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g15</span></span></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 14"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g14</span></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--from">
+              <th class="wf-hour-cell__label" scope="row">From</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell wf-hour-cell--night"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wing">
+              <th class="wf-hour-cell__label" scope="row">Wing<span class="wf-hour-cell__unit">m²</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past">5.5</td><td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now">6</td><td class="wf-hour-cell">6</td><td class="wf-hour-cell">6</td><td class="wf-hour-cell">6.5</td><td class="wf-hour-cell">7</td><td class="wf-hour-cell">7.5</td><td class="wf-hour-cell">8</td><td class="wf-hour-cell wf-hour-cell--night"></td><td class="wf-hour-cell wf-hour-cell--night wf-hour-cell--day-start"></td>
+            </tr>
+            <tr class="dock__tide">
+              <th class="wf-hour-cell__label" scope="row">Tide<span class="wf-hour-cell__unit">m</span></th>
+              <td class="dock__tide-cell" colspan="10"><div class="dock__tide-plot" role="img" aria-label="Tide: high 13:25 4.2 m, low 20:10 1.7 m; now 4.2 m"><svg class="dock__tide-curve" viewBox="0 0 10 40" preserveAspectRatio="none" aria-hidden="true"><path class="wf-tide-label__sea" d="M0.000 11.94L0.167 11.56L0.333 11.21L0.500 10.88L0.667 10.59L0.833 10.32L1.000 10.09L1.167 9.90L1.333 9.74L1.500 9.62L1.667 9.54L1.833 9.51L2.000 9.51L2.167 9.55L2.333 9.64L2.500 9.77L2.667 9.94L2.833 10.15L3.000 10.41L3.167 10.70L3.333 11.03L3.500 11.39L3.667 11.79L3.833 12.21L4.000 12.67L4.167 13.14L4.333 13.65L4.500 14.16L4.667 14.70L4.833 15.25L5.000 15.80L5.167 16.37L5.333 16.93L5.500 17.50L5.667 18.06L5.833 18.61L6.000 19.15L6.167 19.68L6.333 20.19L6.500 20.68L6.667 21.15L6.833 21.59L7.000 22.00L7.167 22.38L7.333 22.72L7.500 23.03L7.667 23.31L7.833 23.54L8.000 23.73L8.167 23.89L8.333 24.00L8.500 24.06L8.667 24.08L8.833 24.06L9.000 23.99L9 40L0 40Z" /><path class="wf-tide-label__level" d="M0.000 11.94L0.167 11.56L0.333 11.21L0.500 10.88L0.667 10.59L0.833 10.32L1.000 10.09L1.167 9.90L1.333 9.74L1.500 9.62L1.667 9.54L1.833 9.51L2.000 9.51L2.167 9.55L2.333 9.64L2.500 9.77L2.667 9.94L2.833 10.15L3.000 10.41L3.167 10.70L3.333 11.03L3.500 11.39L3.667 11.79L3.833 12.21L4.000 12.67L4.167 13.14L4.333 13.65L4.500 14.16L4.667 14.70L4.833 15.25L5.000 15.80L5.167 16.37L5.333 16.93L5.500 17.50L5.667 18.06L5.833 18.61L6.000 19.15L6.167 19.68L6.333 20.19L6.500 20.68L6.667 21.15L6.833 21.59L7.000 22.00L7.167 22.38L7.333 22.72L7.500 23.03L7.667 23.31L7.833 23.54L8.000 23.73L8.167 23.89L8.333 24.00L8.500 24.06L8.667 24.08L8.833 24.06L9.000 23.99" vector-effect="non-scaling-stroke" /><path class="wf-tide-label__sea" d="M9.000 18.98L9.167 19.42L9.333 19.83L9.500 20.22L9.667 20.58L9.833 20.92L10.000 21.22L10 40L9 40Z" /><path class="wf-tide-label__level" d="M9.000 18.98L9.167 19.42L9.333 19.83L9.500 20.22L9.667 20.58L9.833 20.92L10.000 21.22" vector-effect="non-scaling-stroke" /></svg><span class="dock__tide-day" aria-hidden="true"></span><span class="wf-tide-label wf-tide-label--high dock__turn" style="--x: 1.917; top: 9.5px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>High tide 13:25 · 4.2 m</span><span class="wf-tide-label wf-tide-label--low dock__turn dock__turn--end" style="--x: 8.667; top: 24.1px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>Low tide 20:10 · 1.7 m</span><span class="dock__tide-cursor" aria-hidden="true"></span><svg class="dock__tide-now" viewBox="-3.5 -3.5 7 7" aria-hidden="true" style="top: 9.6px"><circle class="wf-tide-label__now" r="3.4" /></svg></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>
