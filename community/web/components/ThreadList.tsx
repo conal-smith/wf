@@ -1,25 +1,25 @@
 /**
- * A list of threads in one pane, rows divided by hairlines, and everything a
- * list can be instead: loading, failed, or empty. The pages after the first
+ * A list of threads as the letters page sets them: no box, rows divided by
+ * hairlines under the page's rule, and everything a list can be instead:
+ * loading, failed, or empty. The pages after the first
  * arrive as the reader nears the end of the list; the button that asks for them
  * stays, for a browser that cannot watch for that and for a keyboard.
  */
 import { CloudOff } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Button, Empty, Notice, Pane, Skeleton } from "../../../ui";
+import { Button, Empty, Notice, Skeleton } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import type { FeedState } from "../hooks";
 import { ThreadRow } from "./ThreadRow";
 
 export const threadListStyles = tv({
   slots: {
-    base: "flex flex-col gap-3",
-    pane: "overflow-hidden p-0",
+    base: "flex flex-col gap-4",
     list: "m-0 flex list-none flex-col p-0",
-    item: "border-t border-line first:border-t-0",
-    loading: "flex items-center gap-5 p-5 max-rail:gap-3 max-rail:p-3",
-    lines: "grid flex-1 gap-2",
-    short: "w-1/3",
+    // The shape of a row while it loads: a dateline, a title, a byline.
+    loading: "grid gap-2 border-b border-line py-4 max-rail:py-3",
+    short: "w-1/4",
+    long: "h-4 w-3/4",
     more: "self-center",
     hidden: "sr-only",
   },
@@ -89,18 +89,16 @@ export function ThreadList({
 
   if (state.status === "loading")
     return (
-      <Pane className={styles.pane()} aria-busy="true">
+      <div aria-busy="true">
         <span className={styles.hidden()}>Loading {subject}…</span>
         {[0, 1, 2, 3].map((row) => (
           <div key={row} className={styles.loading()}>
-            <Skeleton shape="circle" />
-            <span className={styles.lines()}>
-              <Skeleton />
-              <Skeleton className={styles.short()} />
-            </span>
+            <Skeleton className={styles.short()} />
+            <Skeleton className={styles.long()} />
+            <Skeleton className={styles.short()} />
           </div>
         ))}
-      </Pane>
+      </div>
     );
 
   if (state.status === "error")
@@ -108,7 +106,7 @@ export function ThreadList({
       <Empty
         kind="warn"
         title={`We could not load ${subject}`}
-        icon={<CloudOff size={24} aria-hidden="true" />}
+        icon={<CloudOff size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p role="alert">{state.message}</p>
         <Button variant="pill" onClick={onRetry}>
@@ -121,20 +119,18 @@ export function ThreadList({
 
   return (
     <div className={styles.base()}>
-      <Pane className={styles.pane()}>
-        <ul className={styles.list()}>
-          {state.items.map((thread) => (
-            <li key={thread.id} className={styles.item()}>
-              <ThreadRow
-                thread={thread}
-                showChannel={showChannel}
-                pinnedLine={pinnedLines}
-                now={now}
-              />
-            </li>
-          ))}
-        </ul>
-      </Pane>
+      <ul className={styles.list()}>
+        {state.items.map((thread) => (
+          <li key={thread.id}>
+            <ThreadRow
+              thread={thread}
+              showChannel={showChannel}
+              pinnedLine={pinnedLines}
+              now={now}
+            />
+          </li>
+        ))}
+      </ul>
       {state.more.status === "error" && (
         <Notice kind="warn">
           <p>{state.more.message}</p>

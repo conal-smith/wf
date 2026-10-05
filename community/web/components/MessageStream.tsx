@@ -12,14 +12,14 @@ import type { StreamRow } from "../thread";
 
 export const streamStyles = tv({
   slots: {
-    base: "flex flex-col gap-1",
+    base: "flex flex-col",
+    // A day, as the chart heads one: its name in the mono label between rules.
     divider: [
-      "flex items-center gap-3 px-3 py-2 font-body text-eyebrow text-ink-muted uppercase",
+      "flex items-center gap-3 pt-5 pb-1 font-mono text-eyebrow text-ink-muted uppercase",
       "before:flex-1 before:border-t before:border-line after:flex-1 after:border-t after:border-line",
     ],
     // Filled as well as worded, as an unread count is everywhere else.
-    fresh:
-      "rounded-full bg-inverse px-2 py-0.5 text-caption font-semibold tracking-normal text-ink-inverse normal-case",
+    fresh: "rounded-full bg-inverse px-2 py-0.5 font-semibold text-ink-inverse",
     more: "flex justify-center py-1",
     // Where a page is asked for, and where the newest message counts as seen.
     sentinel: "h-px",
@@ -28,7 +28,7 @@ export const streamStyles = tv({
     // The line the viewer had read to: a stronger rule either side of it.
     strong: {
       true: {
-        divider: "before:border-line-strong after:border-line-strong",
+        divider: "before:border-ink after:border-ink",
       },
     },
   },

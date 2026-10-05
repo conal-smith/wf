@@ -1,62 +1,72 @@
 /**
- * A thread, as a row of a list: who started it, what it is called, the last
- * thing said in it, and how much of it is new to the reader. The whole row is
- * one link to the thread.
+ * A thread, as a row of a list: a letter on the letters page. A dateline in
+ * the mono label (its channel, its tags, when it last moved), the title in the
+ * display face, the last thing said in it, and who started it. The whole row
+ * is one link to the thread.
  *
- * One markup for both widths. Beside the rail a row ends in a thumbnail and a
- * column of numbers; below the rail breakpoint those stand down and the same
- * numbers are written into the line under the title.
+ * One markup for both widths. Beside the rail a row ends in a thumbnail and
+ * a column of figures; below the rail breakpoint those stand down and the same
+ * figures are written into the byline.
  */
-import { Bell, Hash, MessageCircle, Pin } from "lucide-react";
-import { Avatar, Chip } from "../../../ui";
-import { RING, tv } from "../../../ui/tv";
+import { Pin } from "lucide-react";
+import type { ReactNode } from "react";
+import { Figure } from "../../../ui";
+import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import type { FollowReason, Member, Thread } from "../../shared/types";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { paths, routed } from "../router";
 
 export const threadRowStyles = tv({
   slots: {
+    // Rows divided by hairlines, on the page's own paper: no box round them.
     row: [
-      "flex items-center gap-5 p-5 text-ink no-underline transition-colors duration-fast",
-      "not-disabled:hover:bg-ground max-rail:items-start max-rail:gap-3 max-rail:p-3",
-      // Inside the pane's clipped corners, so the ring is drawn inwards.
+      "group flex items-start gap-5 border-b border-line py-4 text-ink no-underline transition-colors duration-fast",
+      "max-rail:gap-3 max-rail:py-3",
       RING,
-      "not-disabled:focus-visible:-outline-offset-3",
+      "not-disabled:focus-visible:-outline-offset-2",
     ],
-    avatar: "self-start max-rail:size-control-sm max-rail:text-caption",
     main: "grid min-w-0 flex-1 gap-1",
-    title:
-      "m-0 flex items-baseline gap-2 text-lead font-normal text-ink-2 max-rail:text-prose",
-    dot: "size-2 shrink-0 -translate-y-px rounded-full bg-accent",
+    // The letter's dateline: where it was sent from, and when it last moved.
+    dateline: [
+      "m-0 flex min-w-0 items-baseline gap-2 text-ink-muted tabular-nums",
+      MONO_LABEL,
+    ],
+    where: "flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2",
+    channel: "font-semibold text-ink-2",
+    why: "text-ink-2",
+    when: "shrink-0 whitespace-nowrap",
+    title: [
+      "m-0 flex items-baseline gap-2 font-display text-lead font-normal text-balance text-ink-2",
+      "transition-colors duration-fast group-hover:text-chart-magenta max-rail:text-prose",
+    ],
+    dot: "size-2 shrink-0 -translate-y-0.5 rounded-full bg-accent",
     titleText: "min-w-0",
-    preview: "m-0 truncate text-prose text-ink-muted",
-    meta: "flex flex-wrap items-center gap-x-2 gap-y-1 pt-1",
-    channel:
-      "inline-flex items-center gap-0.5 text-body font-semibold text-ink-2",
-    why: "inline-flex items-center gap-1 text-body font-semibold text-ink-2",
-    by: "text-body text-ink-muted",
-    // The numbers, written into the line: only where the column is not drawn.
+    preview: "m-0 truncate font-body text-prose text-ink-muted",
+    byline:
+      "m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-caption text-ink-muted tabular-nums",
+    by: "font-display text-body font-semibold text-ink-2",
+    // The figures, written into the byline: only where the column is not drawn.
     inline: "rail:hidden",
     thumb:
-      "h-14.25 w-19 shrink-0 rounded-control bg-sunken object-cover max-rail:hidden",
-    stats: "grid w-28 shrink-0 justify-items-end gap-2 max-rail:hidden",
-    counts: "flex items-center gap-1",
-    fresh:
-      "inline-flex h-5 items-center rounded-full bg-inverse px-2 text-caption leading-none font-semibold whitespace-nowrap text-ink-inverse tabular-nums",
-    replies:
-      "inline-flex items-center gap-1 text-body font-semibold text-ink-2 tabular-nums",
-    faces: "flex -space-x-2",
-    face: "ring-2 ring-card",
-    when: "text-body whitespace-nowrap text-ink-muted",
+      "h-14.25 w-19 shrink-0 border border-line bg-sunken object-cover max-rail:hidden",
+    // The column of figures: replies, and how many of them are new.
+    stats:
+      "grid w-20 shrink-0 justify-items-end gap-1 pt-4 text-right max-rail:hidden",
+    statsLabel: ["text-ink-muted", MONO_LABEL],
+    fresh: [
+      "inline-flex h-5 items-center rounded-full bg-inverse px-2 leading-none whitespace-nowrap text-ink-inverse tabular-nums",
+      MONO_LABEL,
+    ],
     hidden: "sr-only",
     pinned: [
-      "flex min-h-touch items-center gap-3 bg-ground px-5 py-3 text-prose text-ink no-underline transition-colors duration-fast",
-      "not-disabled:hover:bg-sunken max-rail:px-3",
+      "group flex min-h-touch items-center gap-3 border-b border-line py-2 text-prose text-ink no-underline transition-colors duration-fast",
       RING,
-      "not-disabled:focus-visible:-outline-offset-3",
+      "not-disabled:focus-visible:-outline-offset-2",
     ],
     pin: "shrink-0 text-ink-muted",
-    pinnedTitle: "min-w-0 flex-1 truncate font-semibold",
+    pinnedTitle:
+      "min-w-0 flex-1 truncate font-display font-semibold italic transition-colors duration-fast group-hover:text-chart-magenta",
+    pinnedLabel: ["shrink-0 text-ink-muted", MONO_LABEL],
   },
   variants: {
     // Unread is weight, a dot and a count, never colour alone.
@@ -131,6 +141,20 @@ export function previewLine(thread: Thread): string | null {
     : text;
 }
 
+/** Parts of a line, with the chart's middle dot between them. */
+function dot(parts: ReactNode[]): ReactNode[] {
+  return parts.flatMap((part, i) =>
+    i
+      ? [
+          <span key={`dot-${i}`} aria-hidden="true">
+            ·
+          </span>,
+          part,
+        ]
+      : [part],
+  );
+}
+
 export interface ThreadRowProps {
   thread: Thread;
   /** Name the channel on the row: everywhere but inside the channel itself. */
@@ -153,64 +177,65 @@ export function ThreadRow({
   if (pinnedLine && thread.pinned)
     return (
       <a {...to} className={styles.pinned()}>
-        <Pin className={styles.pin()} size={16} aria-hidden="true" />
+        <Pin
+          className={styles.pin()}
+          size={15}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
         <span className={styles.pinnedTitle()}>{thread.title}</span>
         {unread > 0 && (
           <span className={styles.fresh()}>{newCount(unread)}</span>
         )}
-        <Chip>Pinned</Chip>
+        <span className={styles.pinnedLabel()}>Pinned</span>
       </a>
     );
 
   const preview = previewLine(thread);
-  const when = (
-    <time dateTime={thread.lastMessageAt}>
-      {ago(thread.lastMessageAt, now)}
-    </time>
-  );
+  const replies = thread.replyCount;
   return (
     <a {...to} className={styles.row()}>
-      <Avatar
-        name={thread.author.displayName}
-        src={thread.author.avatarUrl}
-        className={styles.avatar()}
-      />
       <div className={styles.main()}>
+        <p className={styles.dateline()}>
+          <span className={styles.where()}>
+            {dot(
+              [
+                showChannel && (
+                  <span key="channel" className={styles.channel()}>
+                    {thread.channel.name}
+                  </span>
+                ),
+                ...thread.tags.map((tag) => (
+                  <span key={tag.id}>{tag.label}</span>
+                )),
+                thread.why && (
+                  <span key="why" className={styles.why()}>
+                    {WHY[thread.why]}
+                  </span>
+                ),
+              ].filter(Boolean),
+            )}
+          </span>
+          <time className={styles.when()} dateTime={thread.lastMessageAt}>
+            {ago(thread.lastMessageAt, now)}
+          </time>
+        </p>
         <h2 className={styles.title()}>
           {unread > 0 && <span className={styles.dot()} aria-hidden="true" />}
           <span className={styles.titleText()}>{thread.title}</span>
         </h2>
         {preview && <p className={styles.preview()}>{preview}</p>}
-        <div className={styles.meta()}>
-          {showChannel && (
-            <span className={styles.channel()}>
-              <Hash size={12} aria-hidden="true" />
-              {thread.channel.name}
-            </span>
+        <p className={styles.byline()}>
+          <span className={styles.by()}>{thread.author.displayName}</span>
+          {replies > 0 && (
+            <span className={styles.inline()}>· {replyWords(replies)}</span>
           )}
-          {thread.tags.map((tag) => (
-            <Chip key={tag.id}>{tag.label}</Chip>
-          ))}
-          {thread.why && (
-            <span className={styles.why()}>
-              <Bell size={13} aria-hidden="true" />
-              {WHY[thread.why]}
-            </span>
-          )}
-          <span className={styles.by()}>
-            {thread.author.displayName}
-            <span className={styles.inline()}>
-              {thread.replyCount > 0 && ` · ${replyWords(thread.replyCount)}`}
-              {" · "}
-              {when}
-            </span>
-          </span>
           {unread > 0 && (
             <span className={styles.fresh({ className: styles.inline() })}>
               {newCount(unread)}
             </span>
           )}
-        </div>
+        </p>
       </div>
       {thread.thumbnail && (
         <img
@@ -221,34 +246,17 @@ export function ThreadRow({
         />
       )}
       <div className={styles.stats()}>
-        <span className={styles.counts()}>
-          {unread > 0 && (
-            <span className={styles.fresh()}>{newCount(unread)}</span>
-          )}
-          {thread.replyCount > 0 && (
-            <span className={styles.replies()}>
-              <MessageCircle size={14} aria-hidden="true" />
-              {thread.replyCount}
-              <span className={styles.hidden()}>
-                {thread.replyCount === 1 ? " reply" : " replies"}
-              </span>
+        {replies > 0 && (
+          <>
+            <Figure value={replies} label={replyWords(replies)} />
+            <span className={styles.statsLabel()} aria-hidden="true">
+              {replies === 1 ? "reply" : "replies"}
             </span>
-          )}
-        </span>
-        {thread.participants.length > 0 && (
-          <span className={styles.faces()}>
-            {thread.participants.slice(0, 3).map((member) => (
-              <Avatar
-                key={member.id}
-                name={member.displayName}
-                src={member.avatarUrl}
-                size="sm"
-                className={styles.face()}
-              />
-            ))}
-          </span>
+          </>
         )}
-        <span className={styles.when()}>{when}</span>
+        {unread > 0 && (
+          <span className={styles.fresh()}>{newCount(unread)}</span>
+        )}
       </div>
     </a>
   );

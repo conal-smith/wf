@@ -1,21 +1,13 @@
 /**
  * The channel rail: search, the three feeds, then every channel under its
- * category. No pane: the rail stands on the ground, and the channel you are in
- * is the one lifted thing in it, the way the site menu marks a section.
+ * category. The broadsheet's index: no pane, names in the display face on
+ * hairlines, each category under its mono label, and the channel you are in
+ * set as the site menu sets its section: italic, heavier, on the second sheet.
  */
-import {
-  AtSign,
-  Bell,
-  ChevronDown,
-  Hash,
-  Home,
-  Lock,
-  Megaphone,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Button, Count, Notice, SearchField, Skeleton } from "../../ui";
-import { HOVER, RING, tv } from "../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import type { Channel } from "../shared/types";
 import type { ChannelsState, RailGroup } from "./hooks";
 import { navigate, paths, routed, type Route } from "./router";
@@ -23,40 +15,40 @@ import { navigate, paths, routed, type Route } from "./router";
 export const railStyles = tv({
   slots: {
     base: "flex min-w-0 flex-col gap-5 font-body",
-    group: "flex flex-col gap-0.5",
-    list: "m-0 flex list-none flex-col gap-0.5 p-0",
+    group: "flex flex-col",
+    list: "m-0 flex list-none flex-col p-0",
     heading: "m-0",
+    // A category: its mono label over a rule in ink, as a column head is.
     head: [
-      "group flex min-h-control-sm w-full cursor-pointer items-center justify-start gap-1 rounded-control px-3",
-      "text-eyebrow text-ink-muted uppercase pointer-coarse:min-h-touch",
+      "group flex min-h-control-sm w-full cursor-pointer items-center justify-start gap-1 border-0 border-b border-ink px-2",
+      "text-ink-muted pointer-coarse:min-h-touch not-disabled:hover:bg-transparent not-disabled:hover:text-ink",
+      MONO_LABEL,
       RING,
-      HOVER,
     ],
     chevron:
-      "-rotate-90 text-line-strong transition-transform duration-fast group-aria-expanded:rotate-0 motion-reduce:transition-none",
+      "-rotate-90 transition-transform duration-fast group-aria-expanded:rotate-0 motion-reduce:transition-none",
     row: [
-      "flex min-h-9 items-center gap-2 rounded-control pr-2 pl-3",
-      "text-prose whitespace-nowrap text-ink-muted no-underline transition-colors duration-fast",
+      "flex min-h-9 items-center gap-2 border-b border-line px-2",
+      "font-display text-prose whitespace-nowrap text-ink-2 no-underline transition-colors duration-fast",
+      "not-disabled:hover:text-chart-magenta",
       // A row is a tap target on a phone, where the rail is the whole page.
       "max-rail:min-h-touch pointer-coarse:min-h-touch",
       RING,
-      HOVER,
     ],
-    icon: "text-line-strong",
     name: "min-w-0 flex-1 truncate",
     lock: "inline-flex text-ink-muted",
     hidden: "sr-only",
-    loading: "flex flex-col gap-3 px-3 py-2",
+    loading: "flex flex-col gap-3 px-2 py-2",
     retry: "mt-1",
   },
   variants: {
     // Unread is weight and a count, never colour alone.
     unread: { true: { row: "font-semibold text-ink" } },
-    // Raised and filled as well as heavier, and said with `aria-current`.
+    // The menu's current row: italic, heavier, on the paper's second sheet,
+    // with a little lift, and said with `aria-current`.
     current: {
       true: {
-        row: "bg-card font-semibold text-ink shadow-control not-disabled:hover:bg-card",
-        icon: "text-ink-2",
+        row: "bg-sunken font-semibold text-ink italic shadow-control",
       },
     },
   },
@@ -92,14 +84,12 @@ const LOUD_FROM = 5;
 
 function Row({
   to,
-  icon: Icon,
   current,
   unread = 0,
   locked = false,
   children,
 }: {
   to: string;
-  icon: LucideIcon;
   current: boolean;
   unread?: number;
   locked?: boolean;
@@ -115,11 +105,10 @@ function Row({
         className={styles.row()}
         aria-current={current ? "page" : undefined}
       >
-        <Icon className={styles.icon()} size={16} aria-hidden="true" />
         <span className={styles.name()}>{children}</span>
         {locked && (
           <span className={styles.lock()}>
-            <Lock size={12} aria-hidden="true" />
+            <Lock size={12} strokeWidth={1.5} aria-hidden="true" />
             <span className={styles.hidden()}>staff posts only</span>
           </span>
         )}
@@ -144,7 +133,6 @@ function ChannelRow({
   return (
     <Row
       to={paths.channel(channel.slug)}
-      icon={staffOnly ? Megaphone : Hash}
       current={current === channelKey(channel.slug)}
       unread={channel.unread}
       locked={staffOnly}
@@ -179,6 +167,7 @@ function Group({
           <ChevronDown
             className={styles.chevron()}
             size={11}
+            strokeWidth={1.5}
             aria-hidden="true"
           />
           {group.category.name}
@@ -222,21 +211,13 @@ export function Rail({ state, reload, current, className }: RailProps) {
         />
       </form>
       <ul className={styles.list()}>
-        <Row to={paths.home()} icon={Home} current={current === "home"}>
+        <Row to={paths.home()} current={current === "home"}>
           Latest
         </Row>
-        <Row
-          to={paths.following()}
-          icon={Bell}
-          current={current === "following"}
-        >
+        <Row to={paths.following()} current={current === "following"}>
           Following
         </Row>
-        <Row
-          to={paths.mentions()}
-          icon={AtSign}
-          current={current === "mentions"}
-        >
+        <Row to={paths.mentions()} current={current === "mentions"}>
           Mentions
         </Row>
       </ul>
