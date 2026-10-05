@@ -121,6 +121,9 @@ const ROWS = {
   rain: 20,
   sea: 20,
 };
+/** The table's rows under the hours: a point in open water has no stars or wing. */
+const tableRows = (isPoint: boolean) =>
+  (isPoint ? 0 : ROWS.stars + ROWS.wing) + ROWS.wind + ROWS.from;
 const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 const MORE_LABEL: Record<MoreRow, [string, string]> = {
@@ -133,6 +136,13 @@ const MORE_LABEL: Record<MoreRow, [string, string]> = {
 /** Rain, in millimetres over one step, that saturates a cell's tint. */
 const RAIN_FULL_MM = 4;
 /** Star cells' colours on the day slider: magenta by how many. */
+/**
+ * Pixels per star for an hour's cell: the row's size where the column is wide
+ * enough, else as large as five stars and their gaps fit with a little air.
+ */
+const starSize = (width: number, full: number) =>
+  Math.max(4, Math.min(full < 60 ? 8.6 : 9.5, (width - 6) / 5.4));
+
 const STAR_TINT = [0.08, 0.16, 0.3, 0.5, 0.72, 0.95];
 
 const range = (cols: readonly StripColumn[], best: DayBest) =>
@@ -314,23 +324,24 @@ const StripTable = memo(function StripTable({
           </tr>
         ) : (
           <>
-            <tr className="tt-stars">
-              {sp}
-              {cells("s", (hour, column, at) =>
-                hour?.rating ? (
-                  <HourStars
-                    hour={hour}
-                    time={column.time}
-                    facing={facing}
-                    rider={rider}
-                    size={full < 60 ? 8.6 : 9.5}
-                    slots="potential"
-                    compact={g.w[at] < full}
-                  />
-                ) : null,
-              )}
-              {sp}
-            </tr>
+            {!isPoint && (
+              <tr className="tt-stars">
+                {sp}
+                {cells("s", (hour, column, at) =>
+                  hour?.rating ? (
+                    <HourStars
+                      hour={hour}
+                      time={column.time}
+                      facing={facing}
+                      rider={rider}
+                      size={starSize(g.w[at], full)}
+                      slots="potential"
+                    />
+                  ) : null,
+                )}
+                {sp}
+              </tr>
+            )}
             <tr className="tt-wind">
               {sp}
               {cells("w", (hour) =>
@@ -360,15 +371,17 @@ const StripTable = memo(function StripTable({
               )}
               {sp}
             </tr>
-            <tr className="tt-wing">
-              {sp}
-              {cells("g", (hour) =>
-                hour?.rating?.potential
-                  ? (hour.rating.wing.own ?? hour.rating.wing.recommended)
-                  : "",
-              )}
-              {sp}
-            </tr>
+            {!isPoint && (
+              <tr className="tt-wing">
+                {sp}
+                {cells("g", (hour) =>
+                  hour?.rating?.potential
+                    ? (hour.rating.wing.own ?? hour.rating.wing.recommended)
+                    : "",
+                )}
+                {sp}
+              </tr>
+            )}
           </>
         )}
         <tr className="tt-tide">
@@ -439,7 +452,11 @@ function MoreRows({
   columns: readonly StripColumn[];
   cells: (
     key: string,
-    render: (hour: PlaceHour | undefined, column: StripColumn, at: number) => React.ReactNode,
+    render: (
+      hour: PlaceHour | undefined,
+      column: StripColumn,
+      at: number,
+    ) => React.ReactNode,
   ) => React.ReactNode;
   sp: React.ReactNode;
   waves: SpotWaves;
@@ -504,11 +521,18 @@ function MoreRows({
                   />
                 )}
                 <b>{height.toFixed(1)}</b>
-                {typeof period === "number" && <small>{Math.round(period)}s</small>}
+                {typeof period === "number" && (
+                  <small>{Math.round(period)}s</small>
+                )}
               </span>
             );
           })
-        : span("waves", waves.published ? "No wave model reaches this spot" : "Waves: reading…")}
+        : span(
+            "waves",
+            waves.published
+              ? "No wave model reaches this spot"
+              : "Waves: reading…",
+          )}
       {fields
         ? row("sky", (column) => {
             const reading = presentWeather(at(column, fields.present));
@@ -520,7 +544,12 @@ function MoreRows({
               "–"
             );
           })
-        : span("sky", weather.published ? "No weather model reaches this spot" : "Weather: reading…")}
+        : span(
+            "sky",
+            weather.published
+              ? "No weather model reaches this spot"
+              : "Weather: reading…",
+          )}
       {fields
         ? row("air", (column) => {
             const value = at(column, fields.air);
@@ -556,7 +585,10 @@ function MoreRows({
               return value === null ? (
                 "–"
               ) : (
-                <span className="proxy" title="The model's skin temperature: approximate, not a measurement">
+                <span
+                  className="proxy"
+                  title="The model's skin temperature: approximate, not a measurement"
+                >
                   ~{Math.round(value)}°
                 </span>
               );
@@ -761,16 +793,7 @@ export default function ForecastDock(props: Props) {
         />
       </Suspense>
     );
-  }, [
-    view,
-    blend,
-    columns,
-    g,
-    prefs.units,
-    reducedMotion,
-    spot.lat,
-    spot.lon,
-  ]);
+  }, [view, blend, columns, g, prefs.units, reducedMotion, spot.lat, spot.lon]);
 
   useLayoutEffect(() => {
     const el = wrap.current;
@@ -967,9 +990,7 @@ export default function ForecastDock(props: Props) {
     const top =
       ROWS.day +
       ROWS.hour +
-      (view === "blend"
-        ? ROWS.blend
-        : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing);
+      (view === "blend" ? ROWS.blend : tableRows(isPoint));
     return {
       x: spacer + centre(selected),
       y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
@@ -1009,7 +1030,7 @@ export default function ForecastDock(props: Props) {
         )}
         <DockBest
           columns={columns}
-          hours={hours}
+          hours={isPoint ? undefined : hours}
           day={days[selectedDayIndex]}
           now={now}
         />
@@ -1025,16 +1046,20 @@ export default function ForecastDock(props: Props) {
             onChange={onView}
           />
           <InfoPop label="About these figures">
-            <p>
-              Solid stars: the hour as forecast for you. Outlined: what the wind
-              alone would give. Dark hours aren&rsquo;t rated.
-            </p>
-            <p className="ip-fig">{riderLine(prefs.rider)}</p>
+            {!isPoint && (
+              <>
+                <p>
+                  Solid stars: the hour as forecast for you. Outlined: what the
+                  wind alone would give. Dark hours aren&rsquo;t rated.
+                </p>
+                <p className="ip-fig">{riderLine(prefs.rider)}</p>
+              </>
+            )}
             {isPoint ? (
               <p className="ip-small">
-                A point on the map, not a riding place: rated on the wind
-                alone, with no shore to face. Read from {props.mapModel} alone;
-                the hours it does not reach stay empty.
+                A point on the map, not a riding place, so it has no beach to
+                rate against and no stars. Read from {props.mapModel} alone; the
+                hours it does not reach stay empty.
               </p>
             ) : (
               <p className="ip-small">
@@ -1113,154 +1138,158 @@ export default function ForecastDock(props: Props) {
       </div>
 
       <div className="scrub-row">
-      <button
-        type="button"
-        className="play"
-        aria-label={playing ? "Pause forecast" : "Play forecast"}
-        aria-pressed={playing}
-        onClick={onTogglePlay}
-      >
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          {playing ? (
-            <path d="M3 2v8M9 2v8" strokeWidth="2.2" strokeLinecap="round" />
-          ) : (
-            <path d="M3 1.6L10.4 6L3 10.4Z" strokeLinejoin="round" />
-          )}
-        </svg>
-      </button>
-      <div
-        className={`scrub${days.length > 8 ? " many" : ""}`}
-        ref={scrub}
-      >
-        <input
-          type="range"
-          className="scrub-input"
-          aria-label="Forecast time"
-          min={0}
-          max={Math.max(0, columns.length - 1)}
-          step={1}
-          value={selected}
-          aria-valuetext={
-            column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
-          }
-          onChange={(event) => onSelect(Number(event.target.value), true)}
-          onKeyDown={(event) => {
-            // A day at a time, as the mockup's slider steps.
-            if (event.key !== "PageUp" && event.key !== "PageDown") return;
-            event.preventDefault();
-            const to =
-              days[
-                Math.max(
-                  0,
-                  Math.min(
-                    days.length - 1,
-                    selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
-                  ),
-                )
-              ];
-            const offset = selected - (selectedDay?.start ?? 0);
-            onSelect(to.start + Math.min(offset, to.count - 1), true);
-          }}
-        />
-        <div
-          className="sc-days"
-          style={{
-            gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
-          }}
-          onPointerDown={(event) => {
-            dragging.current = true;
-            event.currentTarget.setPointerCapture(event.pointerId);
-            onSelect(columnAt(event.clientX), false);
-          }}
-          onPointerMove={(event) => {
-            if (dragging.current) onSelect(columnAt(event.clientX), false);
-          }}
-          onPointerUp={() => {
-            if (!dragging.current) return;
-            dragging.current = false;
-            onSelect(selected, true);
-          }}
-          onPointerCancel={() => {
-            dragging.current = false;
-          }}
+        <button
+          type="button"
+          className="play"
+          aria-label={playing ? "Pause forecast" : "Play forecast"}
+          aria-pressed={playing}
+          onClick={onTogglePlay}
         >
-          {days.map((day, d) => {
-            const best = ratings ? dayBest(ratings, day) : null;
-            return (
-              <div
-                key={day.date}
-                className={`sc-day${d === selectedDayIndex ? " on" : ""}`}
-              >
-                <div className="sc-h">
-                  <b>
-                    {dayShort(day.noon).slice(0, 2)}
-                    <span className="d3">{dayShort(day.noon).slice(2)}</span>
-                  </b>
-                  <span className="dt">{Number(day.date.slice(8))}</span>
-                  {best && (
-                    <>
-                      <span className="st">
-                        <StarGlyphs
-                          stars={best.stars}
-                          potential={ratings![best.from]!.potential}
-                          size={9}
-                        />
-                      </span>
-                      {best.stars > 0 && (
-                        <span className="bw">
-                          best {shortRange(columns, best)}
-                        </span>
-                      )}
-                      <span className="sn">{best.stars}★</span>
-                    </>
-                  )}
-                </div>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            {playing ? (
+              <path d="M3 2v8M9 2v8" strokeWidth="2.2" strokeLinecap="round" />
+            ) : (
+              <path d="M3 1.6L10.4 6L3 10.4Z" strokeLinejoin="round" />
+            )}
+          </svg>
+        </button>
+        <div className={`scrub${days.length > 8 ? " many" : ""}`} ref={scrub}>
+          <input
+            type="range"
+            className="scrub-input"
+            aria-label="Forecast time"
+            min={0}
+            max={Math.max(0, columns.length - 1)}
+            step={1}
+            value={selected}
+            aria-valuetext={
+              column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
+            }
+            onChange={(event) => onSelect(Number(event.target.value), true)}
+            onKeyDown={(event) => {
+              // A day at a time, as the mockup's slider steps.
+              if (event.key !== "PageUp" && event.key !== "PageDown") return;
+              event.preventDefault();
+              const to =
+                days[
+                  Math.max(
+                    0,
+                    Math.min(
+                      days.length - 1,
+                      selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
+                    ),
+                  )
+                ];
+              const offset = selected - (selectedDay?.start ?? 0);
+              onSelect(to.start + Math.min(offset, to.count - 1), true);
+            }}
+          />
+          <div
+            className="sc-days"
+            style={{
+              gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+            }}
+            onPointerDown={(event) => {
+              dragging.current = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              onSelect(columnAt(event.clientX), false);
+            }}
+            onPointerMove={(event) => {
+              if (dragging.current) onSelect(columnAt(event.clientX), false);
+            }}
+            onPointerUp={() => {
+              if (!dragging.current) return;
+              dragging.current = false;
+              onSelect(selected, true);
+            }}
+            onPointerCancel={() => {
+              dragging.current = false;
+            }}
+          >
+            {days.map((day, d) => {
+              const best = ratings ? dayBest(ratings, day) : null;
+              return (
                 <div
-                  className="sc-strip"
-                  style={{
-                    gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))`,
-                  }}
+                  key={day.date}
+                  className={`sc-day${d === selectedDayIndex ? " on" : ""}`}
                 >
-                  {Array.from({ length: day.count }, (_, k) => {
-                    const at = day.start + k;
-                    const r = ratings?.[at];
-                    const h = hours?.[at];
-                    return (
-                      <i
-                        key={at}
-                        className={
-                          [
-                            !h || !h.daylight ? "night" : "",
-                            columns[at].time + 3600000 <= now ? "past" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ") || undefined
-                        }
-                        style={
-                          r
-                            ? ({
-                                "--tint": STAR_TINT[r.stars],
-                              } as React.CSSProperties)
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
+                  <div className="sc-h">
+                    <b>
+                      {dayShort(day.noon).slice(0, 2)}
+                      <span className="d3">{dayShort(day.noon).slice(2)}</span>
+                    </b>
+                    <span className="dt">{Number(day.date.slice(8))}</span>
+                    {best && (
+                      <>
+                        <span className="st">
+                          <StarGlyphs
+                            stars={best.stars}
+                            potential={ratings![best.from]!.potential}
+                            size={9}
+                          />
+                        </span>
+                        {best.stars > 0 && (
+                          <span className="bw">
+                            best {shortRange(columns, best)}
+                          </span>
+                        )}
+                        <span className="sn">
+                          <StarGlyphs
+                            stars={best.stars}
+                            potential={ratings![best.from]!.potential}
+                            size={7}
+                            slots="potential"
+                          />
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div
+                    className="sc-strip"
+                    style={{
+                      gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {Array.from({ length: day.count }, (_, k) => {
+                      const at = day.start + k;
+                      const r = ratings?.[at];
+                      const h = hours?.[at];
+                      return (
+                        <i
+                          key={at}
+                          className={
+                            [
+                              !h || !h.daylight ? "night" : "",
+                              columns[at].time + 3600000 <= now ? "past" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ") || undefined
+                          }
+                          style={
+                            r
+                              ? ({
+                                  "--tint": STAR_TINT[r.stars],
+                                } as React.CSSProperties)
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
+              );
+            })}
+            {handLeft !== null && (
+              <div
+                className={`sc-hand${selectedDayIndex === days.length - 1 && column && column.hour > 15 ? " flip" : ""}`}
+                style={{ left: handLeft }}
+                aria-hidden="true"
+              >
+                <span className="sc-flag">{flag}</span>
               </div>
-            );
-          })}
-          {handLeft !== null && (
-            <div
-              className={`sc-hand${selectedDayIndex === days.length - 1 && column && column.hour > 15 ? " flip" : ""}`}
-              style={{ left: handLeft }}
-              aria-hidden="true"
-            >
-              <span className="sc-flag">{flag}</span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       {reachable && (
@@ -1291,14 +1320,22 @@ export default function ForecastDock(props: Props) {
                 </div>
               ) : (
                 <>
-                  <div aria-hidden="true" style={{ height: ROWS.stars }}>Stars</div>
+                  {!isPoint && (
+                    <div aria-hidden="true" style={{ height: ROWS.stars }}>
+                      Stars
+                    </div>
+                  )}
                   <div aria-hidden="true" style={{ height: ROWS.wind }}>
                     Wind<small>{prefs.units}</small>
                   </div>
-                  <div aria-hidden="true" style={{ height: ROWS.from }}>From</div>
-                  <div aria-hidden="true" style={{ height: ROWS.wing }}>
-                    Wing<small>m²</small>
+                  <div aria-hidden="true" style={{ height: ROWS.from }}>
+                    From
                   </div>
+                  {!isPoint && (
+                    <div aria-hidden="true" style={{ height: ROWS.wing }}>
+                      Wing<small>m²</small>
+                    </div>
+                  )}
                 </>
               )}
               <div aria-hidden="true" style={{ height: ROWS.tide }}>
@@ -1306,32 +1343,43 @@ export default function ForecastDock(props: Props) {
               </div>
               {more &&
                 MORE_ROWS.map((key) => (
-                  <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
+                  <div
+                    key={key}
+                    aria-hidden="true"
+                    style={{ height: ROWS[key] }}
+                  >
                     {MORE_LABEL[key][0]}
                     <small>{MORE_LABEL[key][1]}</small>
                   </div>
                 ))}
-            <button
-              type="button"
-              className="dk-more"
-              aria-expanded={more}
-              aria-label={more ? "Hide waves, sky and sea" : "Show waves, sky and sea"}
-              onClick={() => onMore(!more)}
-            >
-              {more ? "Less" : "More"}
-              <svg width="10" height="6" viewBox="0 0 14 9" aria-hidden="true">
-                <path
-                  d={more ? "M1 7.5L7 1.5L13 7.5" : "M1 1.5L7 7.5L13 1.5"}
-                  fill="none"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+              <button
+                type="button"
+                className="dk-more"
+                aria-expanded={more}
+                aria-label={
+                  more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
+                }
+                onClick={() => onMore(!more)}
+              >
+                {more ? "Less" : "More"}
+                <svg
+                  width="10"
+                  height="6"
+                  viewBox="0 0 14 9"
+                  aria-hidden="true"
+                >
+                  <path
+                    d={more ? "M1 7.5L7 1.5L13 7.5" : "M1 1.5L7 7.5L13 1.5"}
+                    fill="none"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
 
-            {view === "table" && (
+            {view === "table" && !isPoint && (
               // The "?" sits on the Stars label, outside the hidden labels.
               <span
                 className="dk-stars-q"
@@ -1382,9 +1430,7 @@ export default function ForecastDock(props: Props) {
                 height={
                   ROWS.day +
                   ROWS.hour +
-                  (view === "blend"
-                    ? ROWS.blend
-                    : ROWS.stars + ROWS.wind + ROWS.from + ROWS.wing) +
+                  (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
                   ROWS.tide +
                   (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
                 }

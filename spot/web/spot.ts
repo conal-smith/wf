@@ -530,10 +530,7 @@ export function shadeBands(
     .filter((band) => band.to > band.from);
 }
 
-// ---- the day's window and the pen's note ----------------------------------------
-
-export const STAR_WORDS = ["no", "one", "two", "three", "four", "five"];
-const capital = (word: string) => word[0].toUpperCase() + word.slice(1);
+// ---- the day's window ------------------------------------------------------------
 
 export interface DayWindow {
   /** Indexes into the day's rows, inclusive. */
@@ -594,38 +591,6 @@ export function windowHours(window: DayWindow): string {
   return first === lastRow ? first : `${first}–${lastRow}`;
 }
 
-/**
- * The pen's verdict on a day, in a few words: "Go 18:00 till dark. Four stars
- * on a 6.5 m." Null on a day with no daylight rated at all.
- */
-export function penNote(
-  window: DayWindow | null,
-  rows: readonly SpotRow[],
-): string | null {
-  if (!window)
-    return rows.some((row) => row.rating) ? "Leave it on the roof." : null;
-  const span =
-    window.first === window.last && rows[window.first].step === 1
-      ? `at ${clock(window.from)}`
-      : window.tillDark
-        ? `${clock(window.from)} till dark`
-        : `${clock(window.from)}–${clock(window.to)}`;
-  const lead =
-    window.stars >= 4
-      ? `Go ${span}.`
-      : window.stars === 3
-        ? `Worth it ${span}.`
-        : `Thin: ${span}.`;
-  const count = `${capital(STAR_WORDS[window.stars])} star${window.stars > 1 ? "s" : ""}`;
-  return `${lead} ${count} on a ${window.wing} m.`;
-}
-
-/** Morning, afternoon or evening, for the hour a window starts. */
-export const partOfDay = (time: number) => {
-  const hour = dublinHour(time);
-  return hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
-};
-
 export interface WeekBest {
   date: string;
   window: DayWindow;
@@ -648,22 +613,6 @@ export function weekBest(
       best = { date, window };
   }
   return best;
-}
-
-/**
- * The headline's verdict: "a four-star Tuesday evening", "a three-star
- * evening" today, "a two-star tomorrow morning".
- */
-export function headlineWhen(best: WeekBest, now: number): string {
-  const names = dayNames(best.date, now);
-  const part = partOfDay(best.window.from);
-  const when =
-    names.relative === "Today"
-      ? `this ${part}`
-      : names.relative === "Tomorrow"
-        ? `tomorrow ${part}`
-        : `${names.long} ${part}`;
-  return `a ${STAR_WORDS[best.window.stars]}-star ${when}`;
 }
 
 /**

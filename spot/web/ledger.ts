@@ -19,8 +19,6 @@ import {
   type Rider,
 } from "../../force5/src/stars";
 
-const GUST_SHARE = { beginner: 0.2, intermediate: 0.3, advanced: 0.35 };
-
 export interface LedgerLine {
   what: string;
   /** The figure, as the page sets it: "−1.5", "4.06 → 4★ faded". */
@@ -45,7 +43,10 @@ export interface LedgerHour {
 }
 
 const minus = (value: number) =>
-  value === 0 ? "0" : `−${Number(value.toFixed(2))}`;
+  value === 0 ? "none" : `−${Number(value.toFixed(2))}`;
+const atMost = (cap: number) => (cap ? `${cap} star at most` : "no stars");
+/** 1.62 → "62%". */
+const over = (factor: number) => `${Math.round((factor - 1) * 100)}%`;
 const one = (value: number) => value.toFixed(1);
 
 /** Null in the dark or without wind, as rateHour is. */
@@ -63,26 +64,21 @@ export function ledger(
 
   const ride = rideableWind(windKn, gustKn, rider);
   if (gustKn !== null && gustKn > windKn) {
-    const fade = Math.min(
-      1,
-      Math.max(0, (band.sweetHigh - windKn) / (band.sweetHigh - band.min)),
-    );
-    const gap = Math.min(gustKn - windKn, windKn);
     lines.push({
-      what: "Rides like",
-      figure: `${one(windKn)} + ${GUST_SHARE[rider.skill]} × ${fade.toFixed(2)} × ${one(gap)} = ${one(ride)} kn`,
+      what: `${one(windKn)} kn gusting ${one(gustKn)} rides like`,
+      figure: `${one(ride)} kn`,
     });
   } else
     lines.push({
-      what: "Rides like",
-      figure: `${one(ride)} kn, no gust to lift it`,
+      what: `${one(windKn)} kn with no gusts rides like`,
+      figure: `${one(ride)} kn`,
     });
 
   const base = windScore(ride, band);
   const potential = Math.round(base);
   lines.push({
-    what: "On the wind alone",
-    figure: `${base.toFixed(2)} → ${potential}★ faded`,
+    what: "Stars for that wind",
+    figure: `${base.toFixed(1)}, so ${potential} outlined`,
   });
 
   let score = base;
@@ -92,7 +88,7 @@ export function ledger(
     const off = Math.round(
       Math.abs(((((hour.from - facing!) % 360) + 540) % 360) - 180),
     );
-    const what = `From ${Math.round(hour.from)}°, ${off}° off straight onshore: ${SHORE_LABEL[angle]}`;
+    const what = `Wind ${SHORE_LABEL[angle].toLowerCase()}, ${off}° from straight onshore`;
     let cost = 0;
     if (angle === "offshore") cap = beginner ? 0 : 1;
     else if (angle === "cross-off")
@@ -102,16 +98,20 @@ export function ledger(
     score -= cost;
     lines.push({
       what,
-      figure: angle === "offshore" ? `at most ${cap}★` : minus(cost),
+      figure: angle === "offshore" ? atMost(cap) : minus(cost),
     });
-  } else lines.push({ what: "Facing unknown: the wind alone", figure: "0" });
+  } else
+    lines.push({
+      what: "We don't know which way this beach faces",
+      figure: "none",
+    });
 
   if (gustKn !== null && windKn > 0) {
     const factor = gustKn / windKn;
     if (gustKn > band.max) {
       score -= 1;
       lines.push({
-        what: `Gusts past your ${Math.round(band.max)} kn ceiling`,
+        what: `Gusts over your ${Math.round(band.max)} kn maximum`,
         figure: "−1",
       });
     } else if (beginner) {
@@ -120,14 +120,14 @@ export function ledger(
       if (penalty) {
         score -= penalty * 1.5;
         lines.push({
-          what: `Gusty for a learner: ×${factor.toFixed(2)}`,
+          what: `Gusty for a learner: gusts ${over(factor)} over the average`,
           figure: minus(penalty * 1.5),
         });
       }
     } else if (factor > 1.7 && windKn >= band.sweetLow) {
       score -= 0.5;
       lines.push({
-        what: `Gusty and already powered: ×${factor.toFixed(2)}`,
+        what: `Gusty when already powered: gusts ${over(factor)} over the average`,
         figure: "−0.5",
       });
     }
@@ -135,7 +135,7 @@ export function ledger(
 
   if (hour.agreement === "low") {
     score -= 1;
-    lines.push({ what: "The models disagree", figure: "−1" });
+    lines.push({ what: "The forecast models disagree", figure: "−1" });
   } else if (hour.agreement === "moderate") {
     score -= 0.25;
     lines.push({ what: "The models differ a little", figure: "−0.25" });
@@ -144,7 +144,7 @@ export function ledger(
   if (rating.wing.fit !== "fits") {
     score -= 1;
     lines.push({
-      what: `Your wings don't fit: about ${rating.wing.recommended} m² would`,
+      what: `None of your wings suits it: about ${rating.wing.recommended} m² would`,
       figure: "−1",
     });
   }
@@ -154,8 +154,8 @@ export function ledger(
     Math.max(0, Math.round(Math.min(score, cap))),
   );
   lines.push({
-    what: "Left",
-    figure: `${score.toFixed(2)}${cap < 5 ? `, at most ${cap}` : ""} → ${stars}★ solid`,
+    what: "Rating",
+    figure: `${Math.max(0, score).toFixed(1)}${cap < 5 ? `, ${atMost(cap)}` : ""}, so ${stars} solid`,
     total: true,
   });
   lines.push({

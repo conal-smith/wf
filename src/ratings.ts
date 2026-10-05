@@ -66,7 +66,11 @@ function medianStep(at: readonly number[]): number {
  * `framePosition` and the gap rule of `interpolateSeries`, for a whole axis:
  * index −1 is a column outside the run or across a gap it cannot bridge.
  */
-function planFor(at: readonly number[], axis: readonly number[], axisKey: string) {
+function planFor(
+  at: readonly number[],
+  axis: readonly number[],
+  axisKey: string,
+) {
   const key = `${at.length}|${at[0]}|${at[at.length - 1]}|${axisKey}`;
   const hit = plans.get(key);
   if (hit) return hit;
@@ -349,19 +353,22 @@ export function offshoreMark(
 /**
  * A bare point's columns: no model publishes a series for it, so it is read
  * from the map model's own frames as they are sampled (src/usePointSeries.ts),
- * bridging no further than that run's cadence, and rated on the wind alone,
- * since a point in open water has no shore to face.
+ * bridging no further than that run's cadence. Not rated: stars are for a
+ * riding place, measured against its beach, and a point has none.
  */
 export function pointHours(
   frames: readonly { hour: number; validTime: string }[],
-  values: readonly ({ u: number; v: number; gust: number | null } | null | undefined)[],
+  values: readonly (
+    { u: number; v: number; gust: number | null } | null | undefined
+  )[],
   place: Pick<RatedPlace, "lat" | "lon">,
   axis: readonly string[],
-  rider: Rider,
 ): PlaceHour[] {
   const points = frames.flatMap((frame, index) => {
     const wind = values[index];
-    return wind ? [{ hour: frame.hour, validTime: frame.validTime, ...wind }] : [];
+    return wind
+      ? [{ hour: frame.hour, validTime: frame.validTime, ...wind }]
+      : [];
   });
   const at = parsed(frames);
   const maxGap = 2 * medianStep(at);
@@ -378,7 +385,10 @@ export function pointHours(
     if (right >= 0) {
       const exact = known[right] === t;
       const left = exact ? right : right - 1;
-      if (left >= 0 && (exact || (known[right] - known[left]) / HOUR <= maxGap + 1e-9)) {
+      if (
+        left >= 0 &&
+        (exact || (known[right] - known[left]) / HOUR <= maxGap + 1e-9)
+      ) {
         const a = points[left];
         const b = points[right];
         const f = exact ? 0 : (t - known[left]) / (known[right] - known[left]);
@@ -398,11 +408,8 @@ export function pointHours(
       from,
       agreement: null,
       daylight: light[c],
-      rating: rateHour(
-        { windKn, gustKn, from, agreement: null, daylight: light[c] },
-        { facing: null },
-        rider,
-      ),
+      // No beach to face, so nothing to rate against.
+      rating: null,
     };
   });
 }

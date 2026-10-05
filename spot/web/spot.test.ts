@@ -3,7 +3,6 @@ import { DEFAULT_RIDER, type Rider } from "../../force5/src/stars";
 import type { ForecastHour, HourWind } from "../../mcp/api/forecast";
 import {
   HOUR,
-  STAR_WORDS,
   bestIn,
   clock,
   compass,
@@ -16,11 +15,9 @@ import {
   goodWindArcs,
   groupDays,
   gustJumps,
-  headlineWhen,
   hourChance,
   meanBearing,
   nextMidnight,
-  penNote,
   rowHours,
   shadeBands,
   shoreSummary,
@@ -350,25 +347,9 @@ describe("the day's window and the pen's note", () => {
     expect(clock(window.to)).toBe("17:00");
     expect(windowHours(window)).toBe("13–16");
     expect(window.tillDark).toBe(false);
-    expect(penNote(window, rows)).toMatch(
-      /^(Go|Worth it|Thin:) 13:00–17:00\. \w+ stars? on a \d+(\.5)? m\.$/,
-    );
   });
 
-  it("leaves it on the roof with no stars, and says nothing on a dark day", () => {
-    const calm = spotRows([hour("2026-10-09T12:00:00Z", 2)], now, 270, rider);
-    expect(dayWindow(calm)).toBeNull();
-    expect(penNote(null, calm)).toBe("Leave it on the roof.");
-    const dark = spotRows(
-      [hour("2026-10-09T22:00:00Z", 15, false)],
-      now,
-      270,
-      rider,
-    );
-    expect(penNote(null, dark)).toBeNull();
-  });
-
-  it("picks the week's best by stars, then length, and words the headline", () => {
+  it("picks the week's best by stars, then length", () => {
     const rows = rowsFor(20);
     const window = dayWindow(rows)!;
     const short = { ...window, last: window.first };
@@ -378,9 +359,6 @@ describe("the day's window and the pen's note", () => {
       { date: "2026-10-11", window: null },
     ])!;
     expect(best.date).toBe("2026-10-10");
-    expect(headlineWhen(best, now)).toBe(
-      `a ${STAR_WORDS[window.stars]}-star tomorrow afternoon`,
-    );
   });
 
   it("marks a gust that jumps ten knots or sixty per cent", () => {

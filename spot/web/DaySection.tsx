@@ -1,10 +1,9 @@
 /**
  * One Irish day, as the broadsheet's table sets it: a header that sticks while
- * its hours scroll under it, with the day's best stars and window and the
- * pen's verdict; then a row per daylight hour, the dark folded either side;
+ * its hours scroll under it, with the day's best stars and window; then a row per daylight hour, the dark folded either side;
  * then the tide and the light. Each row is figures, not words: the time, the
  * stars, the wind with its gust raised, where it comes from, the sky and the
- * chance it rides. A tap opens the hour's second line, with the session, the
+ * chance it rides, and the waves with the way they come from. A tap opens the hour's second line, with the session, the
  * wing, what it rides like, the waves, the models' spread and every reason a
  * star came off. The pen loops the day's best window.
  *
@@ -29,10 +28,10 @@ import { RangeAxis, RangeBar, type Band } from "./RangeBar";
 import {
   HOUR,
   clock,
+  compass,
   darkRuns,
   dayNames,
   gustJumps,
-  penNote,
   windIn,
   windowHours,
   type DaySun,
@@ -74,7 +73,7 @@ const styles = tv({
     range: "w-28 max-wide:hidden",
     shore: "w-8 max-wide:hidden",
     wing: "w-14 max-wide:hidden",
-    waves: "w-20 max-wide:hidden",
+    waves: "w-24 max-wide:hidden",
     wingText: "text-body font-semibold text-ink",
     wavesText: "text-caption text-ink-2",
     sky: "w-16",
@@ -169,7 +168,6 @@ export function DaySection(props: DaySectionProps) {
     return () => watch.disconnect();
   }, [shown]);
 
-  const note = penNote(window, day.rows);
   const dayOfMonth = names.date.split(" ")[0];
   const light = day.rows.filter((row) => row.hour.daylight).length;
 
@@ -209,11 +207,6 @@ export function DaySection(props: DaySectionProps) {
             </PenNote>
           )}
         </div>
-        {note && (
-          <PenNote size="sm" data-pen-note>
-            {note}
-          </PenNote>
-        )}
       </header>
       {shown ? (
         <DayBody {...props} />
@@ -444,6 +437,14 @@ function DayBody({
           <td className={s.cell({ className: [s.waves(), s.wavesText()] })}>
             {hour.waves?.height_m != null ? (
               <>
+                {hour.waves.direction_deg != null && (
+                  <span title={`From ${compass(hour.waves.direction_deg)}`}>
+                    <WindArrow from={hour.waves.direction_deg} size={14} />
+                    <span className="sr-only">
+                      from {compass(hour.waves.direction_deg)}
+                    </span>
+                  </span>
+                )}{" "}
                 {hour.waves.height_m.toFixed(1)}
                 <span className={s.unit()}>m</span>
                 {hour.waves.period_s != null && (

@@ -55,8 +55,7 @@ const styles = tv({
     glyph: "inline-flex items-center gap-2",
     section: "flex flex-col gap-2 pt-4",
     p: "m-0 font-body text-prose text-ink-2",
-    formula:
-      "m-0 border-0 border-l-3 border-ink bg-sunken px-3 py-2 font-mono text-body font-medium text-ink",
+    examples: "m-0 list-none p-0 font-body text-prose text-ink-2",
     figures: "m-0 font-mono text-caption text-ink-muted tabular-nums",
     table: "w-full border-collapse font-body text-body",
     th: [
@@ -98,80 +97,107 @@ export default function StarsPage() {
           How the stars <em className={h.soft()}>work</em>
         </Headline>
         <p className={s.deck()}>
-          Every daylight hour gets up to five stars, for one rider.
+          We rate every daylight hour out of five stars. The rating depends on
+          your level and your weight, so set those first.
         </p>
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
-            <StarGlyphs stars={3} potential={5} size={14} /> 3 solid: the hour
-            as forecast · 2 faded: the wind alone
+            <StarGlyphs stars={3} potential={5} size={14} /> Solid stars are
+            the rating. Outlined stars are what the wind speed alone would have
+            earned, before anything was taken off.
           </li>
           <li className={s.glyph()}>
-            <StarGlyphs stars={null} size={14} /> Dark: not rated
+            <StarGlyphs stars={null} size={14} /> Hours in the dark are not
+            rated.
           </li>
         </ul>
 
         <section className={s.section()} aria-labelledby="ride">
           <SectionHeading id="ride">
-            1. The wind you can <em className="font-normal">ride</em>
+            1. Gusts help, <em className="font-normal">up to a point</em>
           </SectionHeading>
           <p className={s.p()}>
-            On a foil a gust is a free pump, so the mean is lifted part of the
-            way to the gusts: all the way on a light day, not at all at the top
-            of your sweet spot.
+            On a light day the gusts are what get you up on the foil, and once
+            you are up you can glide through the lulls. So in light wind we
+            count the wind as a little stronger than its average. The stronger
+            the wind, the less we add, and once you are well powered we add
+            nothing: there, gusts are just more power to hold.
           </p>
-          <p className={s.formula()}>
-            rides like = mean + share × fade × (gust − mean)
+          <p className={s.p()}>
+            Learners get the smallest boost, because they still drop off the
+            foil in the lulls. Advanced riders get the most.
           </p>
           <RideExamples rider={rider} />
         </section>
 
         <section className={s.section()} aria-labelledby="band">
           <SectionHeading id="band">
-            2. Against your <em className="font-normal">band</em>
+            2. How much wind <em className="font-normal">suits you</em>
           </SectionHeading>
+          <p className={s.p()}>
+            Each level has its own range. Below the minimum you cannot stay up
+            on the foil for long. In the middle of the sweet spot the hour gets
+            five stars. Past the maximum it is more than you will want to hold.
+          </p>
           <ScoreChart rider={rider} width={width} />
           <BandTable rider={rider} />
         </section>
 
         <section className={s.section()} aria-labelledby="beach">
           <SectionHeading id="beach">
-            3. The wind against the <em className="font-normal">beach</em>
+            3. Wind <em className="font-normal">direction</em>
           </SectionHeading>
           <p className={s.p()}>
-            Measured from straight in off the sea, either side.
+            What matters is the angle between the wind and the beach. Onshore
+            wind blows straight in from the sea. Offshore wind blows straight
+            out to sea, and that is the dangerous one: if you fall or break
+            something, it carries you away from land.
           </p>
           <Sectors width={width} />
           <ShoreTable rider={rider} />
+          <p className={s.p()}>
+            Cross-offshore costs learners the most, because a learner drifts
+            downwind and ends up further out. An advanced rider can get back
+            upwind, so it costs them least. Straight offshore never gets more
+            than one star, and none for a learner.
+          </p>
         </section>
 
         <section className={s.section()} aria-labelledby="off">
           <SectionHeading id="off">
-            4. What else comes <em className="font-normal">off</em>
+            4. What else <em className="font-normal">takes stars off</em>
           </SectionHeading>
           <OtherTable rider={rider} />
           <p className={s.small()}>
-            Solid stars never pass the faded ones, and every star taken off is
-            given as a reason under the hour.
+            Hover over or tap an hour&rsquo;s stars to see what it lost, and
+            why.
           </p>
         </section>
 
         <section className={s.section()} aria-labelledby="wing">
           <SectionHeading id="wing">
-            5. The <em className="font-normal">wing</em>
+            5. Which <em className="font-normal">wing</em>
           </SectionHeading>
-          <p className={s.formula()}>5.5 m² at 15 kn · 4.5 at 20 · 3 at 30</p>
-          <p className={s.figures()}>
-            For 80 kg, to the half metre; a size up learning, a little smaller
-            advanced. With your wings listed, the smallest that is not much too
-            small.
+          <p className={s.p()}>
+            We suggest a wing size for every hour. For an 80 kg rider that is
+            about 5.5 m² at 15 knots, 4.5 m² at 20 knots and 3 m² at 30 knots.
+            Learners get a size bigger, advanced riders a little smaller.
+          </p>
+          <p className={s.p()}>
+            If you have told us which wings you own, we pick the smallest one
+            that is big enough. If none of them suits the wind, the hour loses
+            a star.
           </p>
         </section>
 
         <section className={s.section()} aria-labelledby="example">
           <SectionHeading id="example">
-            6. Worked <em className="font-normal">example</em>
+            6. An <em className="font-normal">example</em>
           </SectionHeading>
+          <p className={s.p()}>
+            One hour from the live forecast, worked through step by step.
+          </p>
           <WorkedExample spotId={spotId} rider={rider} />
         </section>
 
@@ -183,24 +209,20 @@ export default function StarsPage() {
 
 function RideExamples({ rider }: { rider: Rider }) {
   const s = styles();
-  const share = { beginner: 0.2, intermediate: 0.3, advanced: 0.35 };
   const pairs: [number, number][] = [
     [9, 17],
     [14, 22],
     [20, 30],
   ];
   return (
-    <p className={s.figures()} data-ride-examples>
-      {pairs
-        .map(
-          ([w, g]) => `${w} g${g} → ${rideableWind(w, g, rider).toFixed(1)} kn`,
-        )
-        .join(" · ")}{" "}
-      · share{" "}
-      {(Object.keys(share) as Skill[])
-        .map((k) => `${SKILL_LABEL[k].toLowerCase()} ${share[k]}`)
-        .join(", ")}
-    </p>
+    <ul className={s.examples()} data-ride-examples>
+      {pairs.map(([w, g]) => (
+        <li key={w}>
+          {w} knots gusting {g} rides like{" "}
+          <b>{rideableWind(w, g, rider).toFixed(1)} knots</b>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -278,8 +300,8 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
       <path className={c.line()} d={path} strokeWidth={1.8} />
       {(
         [
-          [band.min, "floor"],
-          [band.max, "ceiling"],
+          [band.min, "minimum"],
+          [band.max, "maximum"],
         ] as const
       ).map(([k, word]) => (
         <g key={word}>
@@ -342,9 +364,9 @@ function BandTable({ rider }: { rider: Rider }) {
         <thead>
           <tr>
             <th className={s.th()}>Level</th>
-            <th className={s.th()}>Floor</th>
+            <th className={s.th()}>Minimum</th>
             <th className={s.th()}>Sweet spot</th>
-            <th className={s.th()}>Ceiling</th>
+            <th className={s.th()}>Maximum</th>
           </tr>
         </thead>
         <tbody>
@@ -376,9 +398,8 @@ function BandTable({ rider }: { rider: Rider }) {
         </tbody>
       </table>
       <p className={s.figures()}>
-        Knots, for {rider.weightKg === null ? "~" : ""}
-        {kg} kg. Heavier needs more: the floor rises with the square root of the
-        weight.
+        In knots, for someone who weighs {kg} kg. Heavier riders need more
+        wind, lighter riders less.
       </p>
     </>
   );
@@ -433,14 +454,22 @@ const SHORE_COST: Record<
   (typeof SECTORS)[number]["name"],
   Record<Skill, string>
 > = {
-  onshore: { beginner: "−1", intermediate: "−1", advanced: "−1" },
-  "cross-on": { beginner: "—", intermediate: "—", advanced: "—" },
-  cross: { beginner: "−0.5", intermediate: "—", advanced: "—" },
-  "cross-off": { beginner: "−3", intermediate: "−1.5", advanced: "−1" },
+  onshore: {
+    beginner: "−1 star",
+    intermediate: "−1 star",
+    advanced: "−1 star",
+  },
+  "cross-on": { beginner: "none", intermediate: "none", advanced: "none" },
+  cross: { beginner: "−½ star", intermediate: "none", advanced: "none" },
+  "cross-off": {
+    beginner: "−3 stars",
+    intermediate: "−1½ stars",
+    advanced: "−1 star",
+  },
   offshore: {
-    beginner: "0★",
-    intermediate: "at most 1★",
-    advanced: "at most 1★",
+    beginner: "no stars",
+    intermediate: "1 star at most",
+    advanced: "1 star at most",
   },
 };
 
@@ -571,7 +600,7 @@ function ShoreTable({ rider }: { rider: Rider }) {
     <table className={s.table()} data-shore-table>
       <thead>
         <tr>
-          <th className={s.th()}>Wind from</th>
+          <th className={s.th()}>Wind</th>
           {SKILLS.map((skill) => (
             <th
               key={skill}
@@ -614,19 +643,28 @@ function OtherTable({ rider }: { rider: Rider }) {
   const s = styles();
   const learning = rider.skill === "beginner";
   const rows: [string, string, string][] = [
-    ["Gusts past your ceiling", "−1", "−1"],
-    ["Gusts ×1.7 when already powered", "−0.5", "—"],
-    ["Gusts ×1.35 / ×1.5 / ×1.7, any speed", "—", "−0.75 / −1.5 / −2.25"],
-    ["Models disagree / differ a little", "−1 / −0.25", "−1 / −0.25"],
-    ["Your wings don't fit", "−1", "−1"],
+    ["Gusts stronger than your maximum", "−1 star", "−1 star"],
+    [
+      "Gusts 70% over the average, when you are already well powered",
+      "−½ star",
+      "none",
+    ],
+    [
+      "Gusts 35%, 50% or 70% over the average, at any wind speed",
+      "none",
+      "−¾, −1½ or −2¼ stars",
+    ],
+    ["The forecast models disagree", "−1 star", "−1 star"],
+    ["The models differ a little", "−¼ star", "−¼ star"],
+    ["None of your wings suits the wind", "−1 star", "−1 star"],
   ];
   return (
     <table className={s.table()} data-other-table>
       <thead>
         <tr>
-          <th className={s.th()}>When</th>
+          <th className={s.th()}>If</th>
           <th className={s.th({ className: learning ? undefined : s.you() })}>
-            Riding, advanced
+            Riding or advanced
           </th>
           <th className={s.th({ className: learning ? s.you() : undefined })}>
             Learning
@@ -752,8 +790,8 @@ function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
   if (!picked)
     return (
       <p className={s.small()}>
-        No daylight hour with a forecast at {example.spot.name} in the next two
-        days to work through.
+        There is no daylight hour with a forecast at {example.spot.name} in the
+        next two days to show.
       </p>
     );
   const { hour, result } = picked;
@@ -774,11 +812,11 @@ function WorkedExample({ spotId, rider }: { spotId: string; rider: Rider }) {
           size={14}
           label={starsText(result.rating)}
         />{" "}
-        as the{" "}
+        on the{" "}
         <a className={s.link()} href={spotHref(example.spot.id)}>
           spot page
-        </a>{" "}
-        shows it, for {riderWords(rider)}, from the live forecast.
+        </a>
+        , for {riderWords(rider)}.
       </p>
     </>
   );
