@@ -45,7 +45,7 @@ const LINE = "Ireland's wind, read for riders.";
 /** Title cards over the film, in film seconds: where we are, and who is here. */
 const CAPTIONS = [
   { text: "Brandon Bay, Co. Kerry", from: 1.8, to: 8.4 },
-  { text: "Fifty riders. One breeze.", from: 13.5, to: 20 },
+  { text: "Thirteen riders. One breeze.", from: 14, to: 20 },
 ];
 
 const section = (id: string) => SITE_SECTIONS.find((s) => s.id === id)!;

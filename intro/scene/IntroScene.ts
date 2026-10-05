@@ -1,5 +1,5 @@
 /**
- * The opening film: flat evening water, an island, cliffs, and fifty wing
+ * The opening film: flat evening water, an island, cliffs, and thirteen wing
  * foilers riding into the sunset. See camera.ts for the shot list and
  * fleet.ts for who is on the water.
  *
@@ -63,6 +63,7 @@ export interface IntroHandle {
 /** The haze: thin enough to keep the island, thick enough to lose the mountains. */
 const HAZE_DENSITY = 0.00009;
 const EXPOSURE = 0.56;
+const BLOOM = 0.22;
 
 export async function startIntro(
   canvas: HTMLCanvasElement,
@@ -248,7 +249,7 @@ export async function startIntro(
   const shafts = new ShaftPass();
   composer.addPass(shafts);
   // Only what is truly bright blooms: the sun, its glitter, a backlit wing.
-  const bloom = new UnrealBloomPass(new Vector2(width(), height()), 0.22, 0.4, 2.4);
+  const bloom = new UnrealBloomPass(new Vector2(width(), height()), BLOOM, 0.4, 2.4);
   // Bloom is a wide blur; at half resolution it looks the same and costs a
   // quarter (it was the single most expensive pass at full size).
   const bloomSize = bloom.setSize.bind(bloom);
@@ -335,7 +336,7 @@ export async function startIntro(
 
     sunFar.copy(camera.position).addScaledVector(sun, 10000);
     const finale = MathUtils.smoothstep(t, 20, 26);
-    shafts.update(sunFar, camera, camera.aspect, MathUtils.lerp(0.3, 0.7, finale));
+    shafts.update(sunFar, camera, camera.aspect, MathUtils.lerp(0.18, 0.7, finale));
     const s = sunFar.clone().project(camera);
     grade.uniforms.sunUv.value.set(s.x * 0.5 + 0.5, s.y * 0.5 + 0.5);
     const onScreen = Math.abs(s.x) < 1.1 && Math.abs(s.y) < 1.1 && s.z < 1;
@@ -343,7 +344,12 @@ export async function startIntro(
     // Stop down with the sun in the frame, as a camera's meter would: the sky
     // keeps its colour and everything in front of the sun goes to silhouette.
     const inFrame = s.z < 1 ? 1 - MathUtils.smoothstep(Math.max(Math.abs(s.x), Math.abs(s.y)), 0.7, 1.3) : 0;
-    renderer.toneMappingExposure *= MathUtils.lerp(1, 0.7, inFrame);
+    // Hardest on the water, where a rider crossing the sun should be a black
+    // shape against orange sky rather than lost in white glare.
+    const skimming = 1 - MathUtils.smoothstep(t, 14, 16);
+    renderer.toneMappingExposure *= MathUtils.lerp(1, MathUtils.lerp(0.7, 0.38, skimming), inFrame);
+    // And a smaller halo, so the sun outlines the rider instead of eating them.
+    bloom.strength = MathUtils.lerp(BLOOM, 0.06, inFrame * skimming);
 
     water.update(t, camera, sun, sunColor);
     wakes.update(t, foam, (height() * pixelRatio) / (2 * Math.tan(MathUtils.degToRad(camera.fov / 2))));

@@ -51,20 +51,23 @@ The [location research](data/locations/README.md) retains 46 sourced records alo
 ## Opening film
 
 A first visit to the map on a desktop opens with a short film instead of the
-map: flat evening water in a breeze, an island and a coast of cliffs, three
-riders overtaking the lens (pink wing, then green, then orange), the camera
-rising over fifty more, then turning to the sunset as `wingfoil.ie` and the
-three ways in (wind map, marketplace, community) come up. It is three.js,
-built entirely in code: a planar-mirror water shader with wind ripples and
-drifting gust patches but no swell, a Preetham sky with clouds, a Skellig-like
-island with sea stacks and islands fading into the haze, and riders posed by
-two-bone IK, backlit with rim light and glowing sailcloth. The lens is a film
-camera's: true per-object motion blur (the scene is posed a 1/40 s shutter
-earlier, so it is exact at any frame rate), light shafts and flare from the
-sun, auto-exposure, bloom, chromatic fringe and grain. Titles decode into
-place, and an optional sound toggle plays procedural wind, water, a whoosh as
-each rider passes and a chord for the sunset. Everything is in [`intro/`](intro/): `scene/` is
-the film, `web/` the frame around it and the rule for when it plays.
+map: flat evening water in a breeze, an island and a coast of cliffs, and no
+one on it; then one rider overtakes the lens, a silhouette crossing the low
+sun, then two more together (green, then orange), and as the camera lifts ten
+more come through underneath it from behind, before it turns to the sunset as
+`wingfoil.ie` and the three ways in (wind map, marketplace, community) come
+up. It is three.js, built entirely in code: a planar-mirror water shader with
+wind ripples and drifting gust patches but no swell, a Preetham sky with
+clouds, a Skellig-like island with sea stacks and islands fading into the
+haze, and riders posed by two-bone IK on wings shaped like real ones (square
+tips, a taped leading edge, handles down the strut), backlit with rim light
+and glowing sailcloth. The lens is a film camera's: true per-object motion
+blur (the scene is posed a 1/40 s shutter earlier, so it is exact at any frame
+rate), light shafts and flare from the sun, auto-exposure, bloom, chromatic
+fringe and grain. Titles decode into place, and an optional sound toggle plays
+procedural wind, water, a whoosh as each rider passes and a chord for the
+sunset. Everything is in [`intro/`](intro/): `scene/` is the film, `web/` the
+frame around it and the rule for when it plays.
 
 It plays once, and only on `/`; it never plays on a phone or tablet, for a
 reader who prefers reduced motion, without WebGL 2, or under automation, so
