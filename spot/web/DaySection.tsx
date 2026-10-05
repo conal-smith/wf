@@ -50,7 +50,7 @@ const styles = tv({
     head: "sticky top-0 z-panel flex flex-col gap-0.5 border-0 border-b-2 border-ink bg-ground paper-grain pt-2 pb-1.5",
     headLine: "flex flex-wrap items-center gap-x-2.5 gap-y-0.5",
     title: "m-0 font-display text-lead text-ink",
-    when: ["text-ink-muted", MONO_LABEL],
+    when: ["ml-2 align-middle text-ink-muted", MONO_LABEL],
     best: "inline-flex items-center gap-1.5 font-mono text-caption font-medium text-ink tabular-nums",
     none: "font-mono text-caption text-ink-muted",
     wrap: "relative",
@@ -186,10 +186,10 @@ export function DaySection(props: DaySectionProps) {
         <div className={s.headLine()}>
           <h2 id={`day-title-${day.date}`} className={s.title()}>
             {names.long} {dayOfMonth}
+            {(names.relative === "Today" || names.relative === "Tomorrow") && (
+              <span className={s.when()}> {names.relative}</span>
+            )}
           </h2>
-          {(names.relative === "Today" || names.relative === "Tomorrow") && (
-            <span className={s.when()}>{names.relative}</span>
-          )}
           {window ? (
             <span className={s.best()} data-day-best>
               <StarGlyphs
@@ -211,9 +211,9 @@ export function DaySection(props: DaySectionProps) {
           )}
         </div>
         {note && (
-          <PenNote size="sm" data-pen-note>
-            {note}
-          </PenNote>
+          <div data-pen-note>
+            <PenNote size="sm">{note}</PenNote>
+          </div>
         )}
       </header>
       {shown ? (
