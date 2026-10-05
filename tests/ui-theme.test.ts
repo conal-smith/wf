@@ -173,6 +173,71 @@ describe("ui/theme.css: how it is wired", () => {
   });
 });
 
+/**
+ * Every `:hover` selector in a stylesheet, with whether it sits inside the
+ * one media query a hover is allowed under. Comments are dropped first; the
+ * walk keeps the stack of open blocks, so a rule inside the query, at any
+ * depth, counts as held.
+ */
+const HOVER_GATE = /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)/;
+function hovers(css: string): { selector: string; gated: boolean }[] {
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const open: string[] = [];
+  const found: { selector: string; gated: boolean }[] = [];
+  let from = 0;
+  for (const match of source.matchAll(/[{}]/g)) {
+    const at = match.index;
+    if (match[0] === "{") {
+      const head = source.slice(from, at).split(/[;}]/).pop()!.trim();
+      if (head.includes(":hover") && !head.startsWith("@"))
+        found.push({
+          selector: head,
+          gated: open.some((outer) => HOVER_GATE.test(outer)),
+        });
+      open.push(head);
+    } else open.pop();
+    from = at + 1;
+  }
+  return found;
+}
+
+// A tap leaves the browser hovering over what was pressed. `(hover: hover)`
+// alone is answered yes by touch laptops, tablets with a trackpad and some
+// phones, and there a tapped pill stayed inked; a fine pointer is a mouse.
+describe("a hover is for a mouse", () => {
+  it("holds the kit's hover, and the variants built from it, to a fine pointer", () => {
+    const found = hovers(
+      build([
+        "hover:bg-sunken",
+        "not-disabled:hover:bg-inverse",
+        "group-hover:text-chart-magenta",
+      ]),
+    );
+    expect(found.length).toBeGreaterThanOrEqual(3);
+    expect(found.filter((h) => !h.gated)).toEqual([]);
+  });
+
+  it("holds every hand-written hover on the site to the same query", () => {
+    const sheets = [
+      "src/styles.css",
+      "src/map.css",
+      "src/dock.css",
+      "src/panels.css",
+      "companion/web/gust.css",
+    ];
+    const ungated = sheets.flatMap((sheet) =>
+      hovers(readFileSync(resolve(ROOT, sheet), "utf8"))
+        .filter((h) => !h.gated)
+        .map((h) => `${sheet}: ${h.selector}`),
+    );
+    expect(ungated).toEqual([]);
+    // And the walk finds them, so the check above is about something.
+    expect(
+      hovers(readFileSync(resolve(ROOT, "src/map.css"), "utf8")).length,
+    ).toBeGreaterThan(5);
+  });
+});
+
 describe("ui/theme.css: the stock values are gone", () => {
   it.each([
     "bg-red-500",
@@ -272,7 +337,9 @@ describe("ui/theme.css: the values", () => {
     const css = build(["bg-basemap-water", "bg-sea", "bg-sea-4"]);
     const light = (name: string) =>
       parseInt(variable(css, name)!.slice(1, 3), 16);
-    expect(light("--color-basemap-water")).toBeGreaterThan(light("--color-sea"));
+    expect(light("--color-basemap-water")).toBeGreaterThan(
+      light("--color-sea"),
+    );
     expect(variable(css, "--color-basemap-water")).not.toBe(
       variable(css, "--color-sea-4"),
     );

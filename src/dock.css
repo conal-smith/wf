@@ -75,11 +75,16 @@
   color: var(--color-ink);
   cursor: pointer;
 }
-.dk-settings[aria-expanded="true"],
-.dk-settings:hover,
-.dk-chev:hover {
+.dk-settings[aria-expanded="true"] {
   background: var(--color-ink);
   color: var(--color-ink-inverse);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-settings:hover,
+  .dk-chev:hover {
+    background: var(--color-ink);
+    color: var(--color-ink-inverse);
+  }
 }
 .dk-chev svg {
   stroke: currentColor;
@@ -244,9 +249,11 @@
   text-transform: uppercase;
   cursor: pointer;
 }
-.map-reach-chip:hover {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+@media (hover: hover) and (pointer: fine) {
+  .map-reach-chip:hover {
+    background: var(--color-ink);
+    color: var(--color-ink-inverse);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .sc-hand {
@@ -619,9 +626,11 @@ table.tt {
   fill: currentColor;
   stroke: currentColor;
 }
-.play:hover {
-  background: var(--color-chart-magenta);
-  border-color: var(--color-chart-magenta);
+@media (hover: hover) and (pointer: fine) {
+  .play:hover {
+    background: var(--color-chart-magenta);
+    border-color: var(--color-chart-magenta);
+  }
 }
 .play:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -657,8 +666,10 @@ table.tt {
 .dk-more svg {
   stroke: currentColor;
 }
-.dk-more:hover {
-  color: var(--color-chart-magenta);
+@media (hover: hover) and (pointer: fine) {
+  .dk-more:hover {
+    color: var(--color-chart-magenta);
+  }
 }
 .dk-more:focus-visible {
   outline: 2px solid var(--color-focus);

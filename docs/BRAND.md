@@ -123,6 +123,10 @@ optical size from the font size.
   `pathLength="1" strokeDasharray="1"`), `animate-bob` (the puffin), always
   with `motion-reduce:animate-none`.
 - **Focus.** One ring: 2px of magenta, 2px clear (`RING` in `ui/tv.ts`).
+- **Hover** is for a mouse. `hover:` only applies under
+  `(hover: hover) and (pointer: fine)`, so a finger's tap never leaves a pill
+  inked; a hover in plain CSS goes inside the same `@media` (the map's
+  stylesheets do, and `tests/ui-theme.test.ts` checks them).
 
 ## The kit
 

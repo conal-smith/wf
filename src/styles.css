@@ -42,7 +42,9 @@ button:disabled {
   opacity: 0.4;
   cursor: default;
 }
-@media (hover: hover) {
+/* Every hover on the site is held to a mouse or a trackpad, as the kit's
+   `hover:` is (ui/theme.css): a finger's tap leaves one behind. */
+@media (hover: hover) and (pointer: fine) {
   button:enabled:hover {
     background-color: color-mix(in srgb, var(--color-card) 25%, transparent);
   }

@@ -121,21 +121,22 @@ describe("ui/tv.ts: the shared states", () => {
     expect(css).toContain(`${selector("disabled:opacity-100")}:disabled {`);
   });
 
-  // The kit's hover holds itself to a device that can hover; the reset's wash
+  // The kit's hover holds itself to a mouse (ui/theme.css); the reset's wash
   // has to as well, or on a phone a tapped button keeps the wash in place of
   // the fill the kit named for it: a primary's accent under white words.
   it("lays the reset's hover wash only where the kit's hover reaches", () => {
+    const GATE = "@media (hover: hover) and (pointer: fine)";
     const css = build([HOVER]);
     const kit = css.indexOf(`${selector(HOVER)}:not(:disabled):hover {`);
     expect(kit).toBeGreaterThan(-1);
-    expect(css.lastIndexOf("@media (hover: hover)", kit)).toBeGreaterThan(-1);
+    expect(css.lastIndexOf(GATE, kit)).toBeGreaterThan(-1);
 
     const reset = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
     const washes = [...reset.matchAll(/^(\s*)button:enabled:hover \{/gm)];
     expect(washes).toHaveLength(1);
     const at = washes[0].index!;
-    const guard = reset.lastIndexOf("@media (hover: hover) {", at);
-    expect(guard, "inside @media (hover: hover)").toBeGreaterThan(-1);
+    const guard = reset.lastIndexOf(`${GATE} {`, at);
+    expect(guard, `inside ${GATE}`).toBeGreaterThan(-1);
     expect(reset.slice(guard, at)).not.toContain("}");
   });
 });
@@ -308,7 +309,7 @@ describe("ui/theme.css: blur, measures and animation", () => {
   it("grains the paper with one tile, as a background image only", () => {
     const css = flat(build(["paper-grain"]));
     expect(css).toContain(".paper-grain {");
-    expect(css).toContain("background-image: url(\"data:image/svg+xml,");
+    expect(css).toContain('background-image: url("data:image/svg+xml,');
     expect(css).toContain("feTurbulence");
     expect(css).not.toMatch(/\.paper-grain \{[^}]*background-color/);
   });

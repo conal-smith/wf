@@ -69,11 +69,8 @@ export const browseStyles = tv({
       "hidden",
       "max-wide:inline-flex max-wide:h-touch max-wide:flex-1 max-wide:shrink",
       "max-wide:rounded-control max-wide:border-line-strong max-wide:shadow-none",
-      // A tap leaves a phone "hovering" over what it pressed, and the pill's
-      // hover inks it in beside the view's one filled action. This replaces
-      // it (the recipes merge): under a finger, and open, it is on the second
-      // sheet, with the panel it opened.
-      "not-disabled:hover:bg-sunken not-disabled:hover:text-ink aria-expanded:bg-sunken",
+      // Open, it is on the second sheet, with the panel it opened.
+      "aria-expanded:bg-sunken",
     ],
     panel:
       "flex flex-auto flex-wrap items-center gap-2 max-wide:order-3 max-wide:hidden max-wide:basis-full",

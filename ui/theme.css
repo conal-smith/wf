@@ -420,6 +420,25 @@
 }
 
 /*
+ * Hover, for a pointer that hovers and is fine: a mouse or a trackpad. A tap
+ * leaves the browser "hovering" over what was pressed until the next tap
+ * lands elsewhere. Tailwind's own `hover:` is held to `(hover: hover)`, which
+ * a phone answers no to, but a touch laptop, a tablet with a trackpad and
+ * some phones answer yes, and there a tapped pill stayed inked. Holding it
+ * to a fine pointer as well keeps a finger's tap from leaving a hover behind.
+ * `group-hover:` and `peer-hover:` are built from this. The map's own CSS
+ * gates its hovers on the same query (src/styles.css, map.css, dock.css,
+ * panels.css).
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
  * The paper's grain: a faint fractal noise, multiplied into whatever paper
  * the element is filled with. It is a background image only, so it sits with
  * `bg-ground` or `bg-card` rather than replacing them: an opaque surface that
