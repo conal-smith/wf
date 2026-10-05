@@ -53,6 +53,15 @@ async function hideBasemap(page: Page) {
   });
 }
 
+/**
+ * Gust, in the corner. He comes once the chart is drawn and the page has a
+ * moment to spare (src/App.tsx), so a shutter that does not wait for him
+ * catches him in some states and not in others, by timing alone.
+ */
+async function gustArrived(page: Page) {
+  await expect(page.locator(".gust-launcher")).toBeVisible({ timeout: 10000 });
+}
+
 /** The chart, open and drawn: every light placed and rated, nothing loading. */
 async function openMap(page: Page, path = "/") {
   await hideBasemap(page);
@@ -64,6 +73,7 @@ async function openMap(page: Page, path = "/") {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);
+  await gustArrived(page);
 }
 
 /** Nothing is moving any more: the boxes and a light read the same twice. */
@@ -288,6 +298,7 @@ for (const { width, height } of [
         timeout: 30000,
       });
       await expect(page.locator(".spot-marker")).toHaveCount(146);
+      await gustArrived(page);
       await shoot(page, "stale", width);
     });
 
