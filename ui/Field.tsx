@@ -12,7 +12,12 @@ export const fieldStyles = tv({
     // hint beside it goes back to the body face's italic, in sentence case.
     label:
       "flex items-baseline justify-between gap-2 font-mono text-eyebrow leading-tight text-ink-muted uppercase",
-    hint: "text-right font-body text-body leading-tight font-normal tracking-normal text-ink-muted normal-case italic",
+    // The hint's face stands taller than the mono label's, and in a row
+    // aligned on the baseline it would deepen the row: the label 2px lower and
+    // the control under it 3.6px lower than a field without a hint. Drawn in
+    // by 2px above and below, it fits the label's line exactly; a hint long
+    // enough to wrap still takes the room its second line needs.
+    hint: "-my-0.5 text-right font-body text-body leading-tight font-normal tracking-normal text-ink-muted normal-case italic",
     error: "font-body text-body text-warn italic",
   },
 });
