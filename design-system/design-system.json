@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "wingfoil-chart",
+  "version": "0.1.0",
+  "summary": "wingfoil.ie as an Admiralty chart crossed with an old broadsheet weather report: one paper and one ink, the chart's magenta for the best of something and the focus, a red pen for the one thing that matters, thin ink rules and double-rule frames, Fraunces, Newsreader, IBM Plex Mono and Kalam, and the puffin. Figures over prose, mobile first. Light is the product; dark is a proposed night chart.",
+  "modes": ["light", "dark"],
+  "namingGrammar": {
+    "tokens": "<tier>.<group...>.<name> — tier is 'ref' or 'sem'; every segment is lowercase kebab-case; nesting follows DTCG groups; aliases reference the full dotted path as {tier.group.name}. A sem colour carries the Tailwind name from ui/theme.css unchanged (--color-ink-muted -> sem.color.ink-muted), except the accent family, which is a group (--color-accent -> sem.color.accent.primary, --color-accent-hover -> sem.color.accent.hover); a type step's parts split by family (--text-lead -> sem.font.size.lead, --text-lead--line-height -> sem.font.line.lead, --text-lead--font-weight -> sem.font.weight.lead, --text-lead--letter-spacing -> sem.font.tracking.lead); spacing steps are sem.space.x<n> for Tailwind's *-<n>",
+    "cssVariables": "'--' plus the token path with '.' replaced by '-' (sem.color.ink-muted -> --sem-color-ink-muted, the product's --color-ink-muted); components consume only the --sem-* set",
+    "components": "kebab-case directory under components/, containing component.html, component.css, and component.md; a component that renders a ui/ primitive is named after it (ui/SearchField.tsx -> search-field); classes are .wf-<component> with __part and --modifier",
+    "glyphs": "kebab-case concept name, one concept per SVG; strokes and fills use currentColor"
+  },
+  "contents": {
+    "foundations": ["foundations/tokens.tokens.json", "foundations/principles.md"],
+    "components": [],
+    "patterns": [],
+    "glyphs": [],
+    "assets": []
+  },
+  "derived": {
+    "foundations/tokens.css": "scripts/build-tokens.mjs",
+    "catalog/index.html": "scripts/build-catalog.mjs"
+  },
+  "provenance": {
+    "authoredBy": "derived from the product by an agent, for review",
+    "derivedFrom": [
+      "ui/theme.css (every design value; the drift check scripts/lint-design-tokens.mjs holds the two equal)",
+      "ui/*.tsx (the kit's primitives and their tailwind-variants recipes)",
+      "design/chart/1-the-chart.html in the wingfoil-design worktree, with design/chart/shots/1-*.jpg (the signed-off reference mockup)",
+      "docs/BRAND.md and docs/DESIGN_PRINCIPLES.md (the rules and dated rulings)"
+    ],
+    "derivedAt": "2026-10-05",
+    "sourceLibraryId": null,
+    "sourceLibraryVersion": null,
+    "releasedAt": null,
+    "attachedAt": null
+  }
+}
