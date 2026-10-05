@@ -38,7 +38,7 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
   return (
     <Empty
       title={`Sign in to see ${what}`}
-      icon={<LogIn size={24} aria-hidden="true" />}
+      icon={<LogIn size={24} strokeWidth={1.5} aria-hidden="true" />}
     >
       {auth.provider === "none" ? (
         <p>Sign-in is not configured on this build.</p>
@@ -47,7 +47,7 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
           <p>Reading needs no account. This page is a member’s own.</p>
           {/* Quiet, as in the header: signing in is offered, not pushed. */}
           <Button variant="pill" onClick={auth.signIn}>
-            <LogIn size={15} aria-hidden="true" />
+            <LogIn size={15} strokeWidth={1.5} aria-hidden="true" />
             <span>Sign in</span>
           </Button>
         </>

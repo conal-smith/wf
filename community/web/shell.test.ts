@@ -17,6 +17,7 @@ import { messageStyles } from "./components/Message";
 import { streamStyles } from "./components/MessageStream";
 import { newThreadStyles } from "./components/NewThreadDialog";
 import { notificationRowStyles } from "./components/NotificationRow";
+import { pageHeadStyles } from "./components/PageHead";
 import { popoverStyles } from "./components/Popover";
 import { reactionStyles } from "./components/Reactions";
 import { spotCardStyles } from "./components/SpotCard";
@@ -59,6 +60,7 @@ const RECIPES = {
   newThreadStyles,
   notificationRowStyles,
   notificationsStyles,
+  pageHeadStyles,
   popoverStyles,
   profileStyles,
   railStyles,
