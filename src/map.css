@@ -1,0 +1,1275 @@
+/*
+ * The map at /, drawn as the chart (docs/BRAND.md, and the signed-off mockup
+ * design/chart/1-the-chart.html): paper boxes ruled in ink over the chart, a
+ * neatline round it, the lights, the popup and the small print. Every value
+ * is the theme's, through var(); the map's own are in the "map" block at the
+ * end of ui/theme.css.
+ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.app-shell,
+.workspace,
+.map-panel {
+  position: fixed;
+  inset: 0;
+}
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  background: var(--map-d200);
+}
+.map-canvas:focus-visible,
+.maplibregl-canvas:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -4px;
+}
+
+/* The box everything over the chart is drawn in: paper, a rule, a gap of
+   paper and a second rule, and a small warm shadow. */
+.chart-box {
+  background: var(--color-ground);
+  border: 1px solid var(--color-ink);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-surface);
+}
+
+/* ---------- the chart's layers over the map ---------- */
+.particle-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+.map-canvas .maplibregl-marker {
+  z-index: 3;
+}
+.map-pen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 4;
+}
+.map-canvas .maplibregl-popup {
+  z-index: 6;
+}
+.map-pen-loop {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.88;
+  stroke-dasharray: 1;
+  animation: chart-ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
+}
+.map-pen-note {
+  font: 18px var(--font-hand);
+  fill: var(--color-pen-ink);
+  paint-order: stroke;
+  stroke: var(--color-ground);
+  stroke-width: 4.5px;
+  stroke-linejoin: round;
+  animation: chart-fade 400ms ease 450ms both;
+}
+@keyframes chart-ink {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The neatline: alternate ink and paper along the edges, with the degrees. */
+.map-neat {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.map-neat .nl-a {
+  fill: var(--color-ink);
+}
+.map-neat .nl-b {
+  fill: var(--color-ground);
+}
+.map-neat .nl-frame {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1;
+}
+.map-neat .nl-inner {
+  stroke-width: 0.8;
+}
+.map-neat .nl-t {
+  font: 500 9px var(--font-mono);
+  fill: var(--color-ink);
+  paint-order: stroke;
+  stroke: var(--map-halo);
+  stroke-width: 3px;
+}
+
+.map-loading,
+.map-error {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  padding: 10px 14px;
+  font: italic 15px var(--font-body);
+  color: var(--color-ink-muted);
+  background: var(--color-ground);
+  border: 1px solid var(--color-ink);
+  box-shadow: var(--inset-shadow-frame);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.map-error {
+  color: var(--color-warn);
+  font-style: normal;
+}
+.map-error button,
+.frame-status button,
+.primary-button {
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-ground);
+  padding: 4px 12px;
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.map-error button:hover,
+.frame-status button:hover,
+.primary-button:hover {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+
+/* ---------- the lights ---------- */
+.lt {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.lt svg {
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+  overflow: visible;
+  transition:
+    opacity 0.45s,
+    transform 0.2s;
+}
+.lt-arrow {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lt-ring {
+  fill: var(--color-ground);
+  stroke: var(--color-ink);
+  stroke-width: 1.1;
+}
+.lt-n {
+  font: 600 9.5px var(--font-mono);
+  fill: var(--color-ink);
+}
+.lt-strike {
+  display: none;
+  stroke: var(--color-pen);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.lt.s0 .lt-ring,
+.lt.pending .lt-ring {
+  stroke: color-mix(in srgb, var(--color-ink) 50%, transparent);
+  stroke-dasharray: 2 1.6;
+}
+.lt.pending .lt-ring {
+  stroke-dasharray: 1 2;
+}
+.lt.s0 .lt-n {
+  fill: color-mix(in srgb, var(--color-ink) 50%, transparent);
+  font-weight: 500;
+}
+.lt.s3 .lt-ring,
+.lt.s4 .lt-ring,
+.lt-key.s3 .lt-ring,
+.lt-key.s4 .lt-ring {
+  fill: var(--color-ink);
+}
+.lt.s3 .lt-n,
+.lt.s4 .lt-n,
+.lt-key.s3 .lt-n,
+.lt-key.s4 .lt-n {
+  fill: var(--color-ground);
+}
+.lt.s5 .lt-ring,
+.lt-key.s5 .lt-ring {
+  fill: var(--color-chart-magenta);
+  stroke: var(--color-chart-magenta);
+}
+.lt.s5 .lt-n,
+.lt-key.s5 .lt-n {
+  fill: var(--color-ground);
+}
+.lt.dark .lt-ring {
+  fill: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+.lt.dark .lt-arrow,
+.lt.pending .lt-arrow {
+  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+.lt.off .lt-ring,
+.lt-key.off .lt-ring {
+  fill: var(--color-ground);
+  stroke: var(--color-pen);
+  stroke-dasharray: none;
+}
+.lt.off .lt-n,
+.lt-key.off .lt-n {
+  fill: var(--color-pen);
+}
+.lt.off .lt-strike,
+.lt-key.off .lt-strike {
+  display: block;
+}
+.lt.off .lt-arrow,
+.lt.xoff .lt-arrow,
+.lt-key.xoff .lt-arrow {
+  stroke: var(--color-pen);
+}
+.lt-lab {
+  position: absolute;
+  left: 19px;
+  top: -4px;
+  display: none;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1.05;
+  text-align: left;
+  color: var(--color-ink);
+  text-shadow:
+    0 0 2px var(--map-halo),
+    0 0 3px var(--map-halo),
+    0 0 5px var(--map-halo),
+    0 0 8px var(--map-halo);
+}
+.lt-lab b {
+  display: block;
+  font: italic 600 12px var(--font-display);
+}
+.lt-lab i {
+  font: 500 10px var(--font-mono);
+  font-style: normal;
+  color: var(--color-chart-magenta);
+}
+.lt.off .lt-lab i {
+  color: var(--color-pen-ink);
+}
+.lt.xoff .lt-lab i {
+  color: var(--color-ink-muted);
+}
+.lt.named .lt-lab,
+.lt.sel .lt-lab,
+.map-canvas.z-hi .lt .lt-lab {
+  display: block;
+}
+.map-canvas.no-names .lt:not(.sel) .lt-lab {
+  display: none;
+}
+.map-canvas.z-lo .lt svg {
+  transform: scale(0.74);
+}
+.map-canvas.z-lo .lt .lt-lab {
+  left: 14px;
+}
+.lt:hover svg,
+.lt:focus-visible svg {
+  transform: scale(1.18);
+}
+.lt:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 6px;
+}
+.lt.sel {
+  z-index: 2;
+}
+/* Focus: the other lights and their names go quiet; the wind does not. */
+.map-canvas.is-focus .lt:not(.sel) svg {
+  opacity: 0.26;
+}
+.map-canvas.is-focus .lt:not(.sel) .lt-lab {
+  display: none;
+}
+/* Gust pointing at a few places: a ring that breathes for a moment. */
+.lt.gust-highlight svg {
+  filter: drop-shadow(0 0 4px var(--color-chart-magenta));
+  transform: scale(1.25);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lt svg {
+    transition: none;
+  }
+  .map-pen-loop,
+  .map-pen-note {
+    animation: none;
+  }
+}
+
+/* ---------- top left: the menu, the name, "Find a spot…" ---------- */
+.map-head {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 360px;
+  padding: 7px 10px 7px 7px;
+}
+.map-brand {
+  color: inherit;
+  text-decoration: none;
+  flex: none;
+}
+.map-brand:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.find {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.find .results {
+  position: absolute;
+  left: -8px;
+  right: -10px;
+  top: calc(100% + 14px);
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: min(420px, 60vh);
+  overflow: auto;
+}
+.results li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 10px;
+  align-items: center;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.results li b {
+  font: italic 600 15px var(--font-display);
+}
+.results li small {
+  grid-column: 1;
+  font: 10px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.results li svg {
+  grid-row: 1 / 3;
+  grid-column: 2;
+}
+.results li[aria-selected="true"],
+.results li:hover {
+  background: color-mix(in srgb, var(--color-chart-magenta) 8%, transparent);
+}
+.results .none {
+  font-style: italic;
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+
+/* ---------- top right: zoom, Ireland, layers ---------- */
+.map-ctrl {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 21;
+}
+.zbox {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+.zbox button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: 500 18px/1 var(--font-mono);
+  cursor: pointer;
+}
+.zbox button + button {
+  border-top: 1px solid var(--color-line);
+}
+.zbox button svg {
+  stroke: currentColor;
+}
+.zbox button:hover,
+.zbox button[aria-pressed="true"],
+.zbox button[aria-expanded="true"] {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+.zbox button.txt {
+  font: 500 8.5px var(--font-mono);
+  letter-spacing: 0.1em;
+}
+.zbox button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.layers {
+  position: absolute;
+  right: 50px;
+  top: 0;
+  width: 250px;
+  max-height: calc(100vh - var(--dock-height) - 40px);
+  overflow: auto;
+  padding: 12px 16px 12px;
+}
+.layers h3 {
+  margin: 10px 0 4px;
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.layers h3:first-child {
+  margin-top: 0;
+}
+.layers label {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 2px 0;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+.layers input {
+  accent-color: var(--color-chart-magenta);
+  margin: 0;
+}
+.layers .sw {
+  display: inline-block;
+  width: 30px;
+  height: 8px;
+  margin-left: auto;
+}
+.layers .sw-ink {
+  background: linear-gradient(
+    90deg,
+    var(--color-ink) 0 30%,
+    transparent 30% 45%,
+    var(--color-ink) 45% 75%,
+    transparent 75%
+  );
+  height: 2px;
+}
+.layers .sw-arrows {
+  background: linear-gradient(
+    90deg,
+    var(--ride-light),
+    var(--ride-good),
+    var(--ride-best),
+    var(--ride-top),
+    var(--ride-over)
+  );
+  height: 3px;
+}
+.layers .sw-wash {
+  background: linear-gradient(
+    90deg,
+    var(--ride-light),
+    var(--ride-good),
+    var(--ride-best),
+    var(--ride-top),
+    var(--ride-over)
+  );
+  opacity: 0.55;
+}
+.layers .models {
+  display: flex;
+  flex-direction: column;
+}
+.layers .models button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: none;
+  text-align: left;
+  font: 600 14px var(--font-display);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.layers .models button small {
+  font: 400 9.5px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.layers .models button[aria-pressed="true"] {
+  font-style: italic;
+  background: var(--color-sunken);
+}
+.layers .models button[aria-pressed="true"]::before {
+  content: "●";
+  color: var(--color-chart-magenta);
+  font-size: 9px;
+  margin-right: -2px;
+}
+.layers .models button:hover:not(:disabled) {
+  color: var(--color-chart-magenta);
+}
+
+/* The rider's wind scale, in the key and the layers. */
+.knot-scale {
+  margin: 6px 0 2px;
+}
+.ks-bar {
+  height: 8px;
+  border: 1px solid var(--color-line);
+}
+.ks-ticks {
+  position: relative;
+  height: 14px;
+  font: 500 9px var(--font-mono);
+  color: var(--color-ink);
+}
+.ks-ticks span {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+}
+.ks-ticks i {
+  position: absolute;
+  right: 0;
+  top: 1px;
+  font: italic 10px var(--font-body);
+}
+
+/* ---------- the side panel: your spots | key ---------- */
+.side {
+  position: absolute;
+  right: 66px;
+  top: 18px;
+  z-index: 19;
+  width: 292px;
+  max-height: calc(100vh - var(--dock-height) - 36px);
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 6px 14px 12px;
+}
+.side .tabs {
+  display: flex;
+  gap: 16px;
+  margin: 0 0 4px;
+  border-bottom: 1px solid var(--color-ink);
+}
+.side .tabs button {
+  margin-bottom: -1px;
+  padding: 6px 0 5px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: 500 14px var(--font-display);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+.side .tabs button[aria-selected="true"] {
+  color: var(--color-ink);
+  font-style: italic;
+  font-weight: 650;
+  border-bottom-color: var(--color-ink);
+}
+.side .tabs .when {
+  margin-left: auto;
+  align-self: center;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+}
+.side h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 9px 0 1px;
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.fvl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fvl li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 0 6px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.fv-go {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.fv-go b {
+  display: block;
+  font: italic 600 15px var(--font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fv-go span {
+  display: block;
+  overflow: hidden;
+  font: 400 10.5px var(--font-mono);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fv-go span i {
+  font-style: normal;
+  opacity: 0.7;
+}
+.fv-go:hover b {
+  color: var(--color-chart-magenta);
+}
+.fvl .none {
+  display: block;
+  padding: 6px 0;
+  border: 0;
+  font: italic 13px var(--font-body);
+  color: var(--color-ink-muted);
+}
+.side .sign {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font: 400 10.5px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.sbest {
+  display: none;
+}
+/* The key */
+.key .k-t1 {
+  margin: 8px 0 0;
+  padding-left: 0.3em;
+  font: 700 19px var(--font-display);
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.key .k-t2 {
+  margin: 0;
+  font: italic 400 12.5px var(--font-display);
+  text-align: center;
+}
+.key .k-scale {
+  margin: 2px 0 4px;
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+.key dl {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.key dt {
+  display: grid;
+  place-items: center;
+}
+.key dd {
+  margin: 0;
+}
+.k-wind path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-ink) 55%, transparent);
+  stroke-linecap: round;
+}
+.k-wind path.faint {
+  stroke: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+.k-loop path {
+  fill: none;
+  stroke: var(--color-pen);
+  stroke-linecap: round;
+}
+.key .tints {
+  display: flex;
+  margin: 10px 0 2px;
+  border: 1px solid color-mix(in srgb, var(--color-depth) 60%, transparent);
+}
+.key .tints span {
+  flex: 1;
+  height: 14px;
+  font: italic 9.5px/14px var(--font-body);
+  text-align: center;
+  color: var(--color-ink-2);
+}
+.key .datum {
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
+.key .kf {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ---------- small round buttons: i for the small print, ? for the stars ---------- */
+.info-i,
+.help-q {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 40%, transparent);
+  border-radius: 50%;
+  background: var(--color-ground);
+  color: var(--color-ink-muted);
+  font: italic 600 12px/1 var(--font-body);
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  position: relative;
+}
+.help-q {
+  font: 600 10.5px/1 var(--font-mono);
+}
+.info-i:hover,
+.help-q:hover,
+.info-i[aria-expanded="true"] {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+.info-i:focus-visible,
+.help-q:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  /* A finger's target round the small glyph, without moving it. */
+  .info-i::after,
+  .help-q::after,
+  .star-toggle::after {
+    content: "";
+    position: absolute;
+    inset: -13px;
+  }
+}
+.info-pop {
+  position: fixed;
+  z-index: 70;
+  width: 280px;
+  padding: 11px 13px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.info-pop.is-wide {
+  width: 320px;
+}
+.info-pop p {
+  margin: 0 0 6px;
+}
+.info-pop p:last-child {
+  margin-bottom: 0;
+}
+.info-pop h5 {
+  margin: 0 0 5px;
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.info-pop ul {
+  margin: 0 0 6px;
+  padding-left: 16px;
+}
+.info-pop a {
+  color: inherit;
+}
+.ip-fig {
+  font: 500 11px var(--font-mono);
+}
+.ip-small {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+/* The red star a rider keeps a spot with. */
+.star-toggle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.star-toggle svg path {
+  fill: none;
+  stroke: var(--color-pen);
+}
+.star-toggle:hover svg path {
+  fill: color-mix(in srgb, var(--color-pen) 18%, transparent);
+}
+.star-toggle[aria-pressed="true"] svg path {
+  fill: var(--color-pen);
+}
+.star-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* ---------- the glyphs ---------- */
+.g-paper {
+  fill: var(--color-ground);
+}
+.g-stroke {
+  fill: none;
+  stroke: var(--color-ink);
+}
+.g-paper.g-stroke {
+  fill: var(--color-ground);
+}
+.g-sea {
+  fill: var(--color-depth);
+}
+.g-facing {
+  vertical-align: middle;
+  flex: none;
+}
+.g-arrow {
+  vertical-align: -2px;
+  flex: none;
+}
+.g-arrow path {
+  stroke: var(--color-ink);
+}
+.g-shore {
+  vertical-align: middle;
+  flex: none;
+}
+.g-shore .g-land {
+  fill: var(--color-land);
+}
+.g-shore .g-hatch {
+  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  stroke-width: 0.8;
+}
+.g-shore-arrow {
+  stroke: var(--color-ink);
+}
+.g-shore.is-off .g-shore-arrow {
+  stroke: var(--color-pen);
+}
+.g-tide path {
+  stroke: var(--map-tide);
+}
+
+/* ---------- the popup ---------- */
+.chart-popup .maplibregl-popup-content {
+  width: 250px;
+  padding: 11px 14px 12px;
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-ground);
+  box-shadow: var(--inset-shadow-frame), var(--shadow-surface);
+  font-family: var(--font-body);
+  color: var(--color-ink);
+}
+.chart-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.chart-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.chart-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--color-ink);
+}
+.chart-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.chart-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.chart-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--color-ink);
+}
+.chart-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--color-ink);
+}
+.chart-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--color-ink);
+}
+.spot-card .sc-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.spot-card h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 600 20px/1.05 var(--font-display);
+  letter-spacing: -0.01em;
+}
+.sc-close {
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+.sc-close:hover {
+  color: var(--color-ink);
+}
+.sc-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 3px 0 0 26px;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.sc-when {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 6px;
+  padding: 5px 0;
+  border-top: 1px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-line);
+}
+.sc-when .when {
+  margin-right: auto;
+  font: 600 11px var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.sc-dark {
+  font: 11px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.sc-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 0;
+  font: 400 12.5px var(--font-mono);
+}
+.sc-line b {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.sc-acts {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 9px;
+}
+
+/* The card the stars open (spot/web/RatingTip.tsx), in the chart's words. */
+.rating-detail {
+  font-size: 13px;
+  line-height: 1.35;
+}
+.rd-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-ink);
+  font: 600 11.5px var(--font-mono);
+}
+.rd-verdict {
+  margin: 0 0 5px;
+  font-size: 14px;
+}
+.rd-verdict i {
+  font-family: var(--font-display);
+}
+.rd-verdict b {
+  font-family: var(--font-mono);
+}
+.rating-detail ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 400 11.5px var(--font-mono);
+}
+.rating-detail li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0;
+}
+.rating-detail li.rd-reason {
+  align-items: flex-start;
+  font: italic 13px var(--font-body);
+  color: var(--color-pen-ink);
+}
+.rating-detail li.rd-none {
+  color: var(--color-ink-muted);
+}
+.rd-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin: 7px 0 0;
+  font: 400 10px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.rd-foot a {
+  color: var(--color-ink);
+}
+
+/* ---------- status, and the small print ---------- */
+.frame-status {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 6px 12px;
+  font: 500 11px var(--font-mono);
+}
+.frame-status.is-error {
+  color: var(--color-warn);
+}
+.map-print {
+  position: absolute;
+  left: 16px;
+  bottom: calc(var(--dock-height) + 12px);
+  z-index: 18;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.map-print .info-i {
+  width: 20px;
+  height: 20px;
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-ink-inverse);
+  font-style: normal;
+  font-weight: 700;
+}
+.map-model {
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+  background: color-mix(in srgb, var(--color-ground) 85%, transparent);
+  padding: 1px 4px;
+}
+.map-model[data-run-state="stale"],
+.map-model[data-run-state="expired"] {
+  color: var(--color-warn);
+}
+.map-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 25;
+}
+
+.fatal-error {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  max-width: 360px;
+  padding: 20px 24px;
+  text-align: center;
+}
+.fatal-error h1 {
+  margin: 0 0 8px;
+  font: 600 22px var(--font-display);
+}
+
+/* ---------- a phone: the boxes close in, your spots become a strip ---------- */
+@media (max-width: 720px) {
+  .map-head {
+    top: 10px;
+    left: 10px;
+    right: 56px;
+    width: auto;
+    padding: 5px 8px 5px 5px;
+    gap: 8px;
+  }
+  .map-ctrl {
+    top: 10px;
+    right: 10px;
+  }
+  .zbox button {
+    width: 30px;
+    height: 28px;
+  }
+  .layers {
+    right: 44px;
+    width: min(250px, calc(100vw - 70px));
+  }
+  .side {
+    top: 62px;
+    right: 52px;
+    left: 10px;
+    width: auto;
+    max-height: calc(100vh - var(--dock-height) - 74px);
+  }
+  .side.side-strip {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--dock-height) + 6px);
+    display: flex;
+    gap: 4px;
+    max-height: none;
+    padding: 3px 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow:
+      inset 0 0 0 2px var(--color-ground),
+      inset 0 0 0 3px var(--color-ink);
+  }
+  .side-strip .sbest {
+    display: block;
+    align-self: center;
+    padding: 0 2px;
+    font: 500 9px var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+  .side-strip .fvl {
+    display: flex;
+    gap: 4px;
+  }
+  .side-strip .fvl li {
+    display: flex;
+    flex: none;
+    gap: 4px;
+    align-items: center;
+    padding: 2px 8px 2px 0;
+    border: 0;
+    border-right: 1px solid var(--color-line);
+    white-space: nowrap;
+  }
+  .side-strip .fv-go b {
+    font-size: 14px;
+    overflow: visible;
+  }
+  .side-strip .fv-go span {
+    display: none;
+  }
+  .side-strip .fvl .none {
+    padding: 4px 6px;
+    border: 0;
+  }
+  .map-print {
+    left: 12px;
+    bottom: calc(var(--dock-height) + 60px);
+  }
+  .frame-status {
+    top: 62px;
+  }
+}
+
+/* ---------- the stars' explanation (src/StarTip.tsx) ---------- */
+.star-tip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin: 0 -2px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: help;
+}
+.star-tip:hover {
+  background: var(--color-sunken);
+}
+.star-tip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.star-tip-card {
+  position: fixed;
+  z-index: 70;
+  padding: 11px 13px 10px;
+  text-align: left;
+  pointer-events: auto;
+}

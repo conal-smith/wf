@@ -278,16 +278,13 @@ describe("ui/theme.css: the values", () => {
     );
   });
 
-  // The wind grid's bars were drawn with `--color-sea` while the two happened
-  // to be one value, which would have moved them the day the water moved.
-  it("keeps the forecast cell's wash off the water", () => {
-    const styles = readFileSync(resolve(ROOT, "src/styles.css"), "utf8");
-    expect(styles).toMatch(
-      /\.forecast-table \.wind-cell \{[^}]*var\(--color-wash\)/,
-    );
-    expect(styles).not.toMatch(
-      /\.forecast-table \.wind-cell \{[^}]*var\(--color-sea\)/,
-    );
+  // A quantity's bar takes the wash, never a sea tint: the dock's day slider
+  // paints each hour's stars in it, and was once drawn with `--color-sea`
+  // while the two happened to be one value.
+  it("keeps the dock's star bars off the water", () => {
+    const dock = readFileSync(resolve(ROOT, "src/dock.css"), "utf8");
+    expect(dock).toMatch(/\.sc-strip i \{[^}]*var\(--color-wash\)/);
+    expect(dock).not.toMatch(/\.sc-strip i \{[^}]*var\(--color-sea\)/);
   });
 
   // index.html cannot read a CSS variable, so the browser chrome's colour is
