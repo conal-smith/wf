@@ -15,27 +15,12 @@
  * this one file of force5/src (and none of the map's), so its classes resolve
  * in every bundle.
  */
-import {
-  Bot,
-  Menu,
-  MessagesSquare,
-  Store,
-  Wind,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Button, buttonStyles } from "../../ui/Button";
+import { Button } from "../../ui/Button";
 import { surfaceStyles } from "../../ui/Surface";
-import { tv } from "../../ui/tv";
+import { RING, tv } from "../../ui/tv";
 import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
-
-const ICONS: Record<SiteSectionId, LucideIcon> = {
-  map: Wind,
-  market: Store,
-  community: MessagesSquare,
-  ai: Bot,
-};
 
 /*
  * The one hook left on the menu, and it draws nothing: e2e/site-menu.spec.ts
@@ -59,49 +44,42 @@ export const siteMenuStyles = tv({
       "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-1/2",
       "pointer-coarse:after:h-touch pointer-coarse:after:-translate-y-1/2",
     ],
-    // Hung below the trigger by a gap, from its leading edge, padded tight so
-    // the rows carry the padding.
+    // The chart's box, hung below the trigger by a gap from its leading
+    // edge, padded tight so the rows carry the padding.
     panel: [
-      "absolute top-full left-0 z-panel mt-2 min-w-max p-1",
+      "absolute top-full left-0 z-panel mt-2 min-w-60 p-2",
       "animate-menu-in motion-reduce:animate-none",
     ],
-    list: "m-0 flex list-none flex-col gap-1 p-0",
+    list: "m-0 flex list-none flex-col p-0",
     /*
-     * A row is the menu's own: a full-width link the height of touch, icon
-     * then label, which lifts to the raised white under the pointer. One
-     * component asks for it, so it is written here on the quiet button rather
-     * than made a kit variant.
+     * A row is a section's name in the display face, on a hairline, the height
+     * of touch: the index of a broadsheet, not a list of buttons. It goes
+     * magenta under the pointer, as every link on the chart does.
      */
-    row: "flex h-touch w-full justify-start gap-2 not-disabled:hover:bg-card/55",
-    icon: "shrink-0 text-ink-muted",
+    row: [
+      "flex h-touch w-full items-center gap-2 border-b border-line px-2",
+      "font-display text-prose font-semibold text-ink no-underline",
+      "transition-colors duration-fast not-disabled:hover:text-chart-magenta",
+      RING,
+    ],
   },
   variants: {
     /*
-     * What the menu stands on. Glass over the map, and in the community's
-     * header; on the marketplace's header, which is a card, the trigger is the
-     * card pill its neighbours are and the panel takes the solid fill glass
-     * falls back to, unblurred.
+     * What the menu stands on: the moving map or a page. Both are paper now
+     * (the chart draws its boxes solid), so the ground only says how far the
+     * menu sits into the bar it starts.
      */
     ground: {
       map: {},
-      content: { panel: "bg-solid backdrop-filter-none" },
+      content: {},
     },
     /*
-     * The section you are in is raised and filled, as a pressed control is:
-     * elevation and fill, so the state is not said by colour alone. The
+     * The section you are in: set in the italic, heavier, on the paper's
+     * second sheet, so the state is not said by colour alone. The
      * machine-readable half is `aria-current="page"`.
      */
-    current: { true: { row: "bg-card/40 text-ink shadow-control" } },
+    current: { true: { row: "bg-sunken font-bold italic" } },
   },
-  compoundVariants: [
-    // On glass the section you are in keeps its fill under the pointer; on
-    // the card every row takes the same hover, that one included.
-    {
-      ground: "map",
-      current: true,
-      class: { row: "not-disabled:hover:bg-card/40" },
-    },
-  ],
   defaultVariants: { ground: "map" },
 });
 
@@ -115,9 +93,9 @@ export function SiteMenu({
   /** The trigger's control height, so it sits in scale with its neighbours. */
   size = "md",
   /**
-   * What the menu stands on. Its pill and panel are glass, drawn for chrome
-   * over a moving map; on a content page's card they take the card and the
-   * solid fill instead (`siteMenuStyles`), so nothing there is blurred or lost.
+   * What the menu stands on: the moving map, or a page's masthead. The
+   * trigger is the chart's square instrument either way, and the panel the
+   * chart's double-ruled box.
    */
   ground = "map",
 }: {
@@ -185,7 +163,7 @@ export function SiteMenu({
     >
       <Button
         ref={trigger}
-        variant={ground === "content" ? "pill" : "raised"}
+        variant="raised"
         size={size}
         icon
         className={styles.trigger()}
@@ -212,24 +190,16 @@ export function SiteMenu({
         >
           <ul className={styles.list()}>
             {SITE_SECTIONS.map((section, index) => {
-              const Icon = ICONS[section.id];
               const here = section.id === current;
               return (
                 <li key={section.id}>
                   <a
                     ref={index === 0 ? firstLink : undefined}
-                    className={buttonStyles({
-                      className: styles.row({ current: here }),
-                    })}
+                    className={styles.row({ current: here })}
                     href={section.href}
                     aria-current={here ? "page" : undefined}
                   >
-                    <Icon
-                      size={16}
-                      className={styles.icon()}
-                      aria-hidden="true"
-                    />
-                    <span>{section.label}</span>
+                    {section.label}
                   </a>
                 </li>
               );

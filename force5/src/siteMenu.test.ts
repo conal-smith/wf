@@ -72,134 +72,85 @@ describe("the site menu's recipe", () => {
   });
 });
 
-describe("the two grounds", () => {
-  it("on the map and in the community, a raised pill over a glass panel", () => {
-    const html_ = html({ current: "map" });
-    const trigger = buttonStyles({ variant: "raised", size: "md", icon: true });
-    for (const name of ["bg-card/40", "border-card/70", "rounded-full"])
-      expect(trigger.split(" ")).toContain(name);
-    expect(trigger).not.toContain("shadow-control");
-    expect(html_).toContain("bg-card/40");
-    // The panel is only drawn open; the recipe says what it will be.
-    const panel = siteMenuStyles({ ground: "map" }).panel();
-    expect(panel).not.toContain("bg-solid");
-    expect(panel).not.toContain("backdrop-filter-none");
-  });
-
-  it("on the marketplace's card, the card pill and a solid, unblurred panel", () => {
-    const markup = html({ current: "market", size: "sm", ground: "content" });
-    expect(markup).toContain("shadow-control");
-    expect(markup).toContain("bg-card ");
-    expect(markup).not.toContain("bg-card/40");
-    const panel = siteMenuStyles({ ground: "content" }).panel().split(" ");
-    expect(panel).toContain("bg-solid");
-    expect(panel).toContain("backdrop-filter-none");
-  });
-
+describe("on the chart", () => {
   /*
    * The trigger is the kit's own button, not one that looks like it: every
-   * class of the kit's variant, its hover included, and only the menu's hit
-   * band on top. On the marketplace that hover is the one its header
-   * neighbours have (ruled a colour-only alignment in review, 2026-09-22).
+   * class of the kit's instrument (the square ink box laid over the map), its
+   * hover and ring included, and only the menu's hit band on top. It is the
+   * same box on a page's masthead: the chart draws its controls one way.
    */
-  it("draws the trigger as exactly the kit's button on each ground, hover and ring included", () => {
+  it("draws the trigger as exactly the kit's square instrument, on either ground", () => {
     const classOf = (markup: string) =>
       markup
         .match(/<button[^>]*\bclass="([^"]+)"/)?.[1]
         .split(" ")
         .sort();
     const cases = [
-      [{ current: "map", size: "md", ground: "map" }, "raised", "md"],
-      [{ current: "market", size: "sm", ground: "content" }, "pill", "sm"],
+      [{ current: "map", size: "md", ground: "map" }, "md"],
+      [{ current: "market", size: "sm", ground: "content" }, "sm"],
     ] as const;
-    for (const [props, variant, size] of cases) {
+    for (const [props, size] of cases) {
       const kit = buttonStyles({
-        variant,
+        variant: "raised",
         size,
         icon: true,
         className: siteMenuStyles({ ground: props.ground }).trigger(),
       });
-      expect(classOf(html(props)), variant).toEqual(kit.split(" ").sort());
+      const drawn = classOf(html(props));
+      expect(drawn, props.ground).toEqual(kit.split(" ").sort());
+      for (const name of [
+        "rounded-none",
+        "border-ink",
+        "bg-card",
+        "not-disabled:hover:bg-inverse",
+        "not-disabled:focus-visible:outline-focus",
+      ])
+        expect(drawn, `${props.ground} ${name}`).toContain(name);
     }
-    const onCard = classOf(
-      html({ current: "market", size: "sm", ground: "content" }),
-    );
-    expect(onCard).toContain("not-disabled:hover:bg-sunken");
-    expect(onCard).toContain("border-line");
-    expect(onCard).toContain("not-disabled:focus-visible:outline-focus");
-    const onGlass = classOf(html({ current: "map" }));
-    expect(onGlass).toContain("not-disabled:hover:bg-card/55");
-    expect(onGlass).toContain("not-disabled:focus-visible:outline-focus");
   });
 
   /*
-   * The panel is a Surface with the menu's placement on it. Drawn only when
-   * open, so the composition the component writes is asked for here: glass
-   * that goes solid for a reader who asks, drops in and holds still for one
-   * who asks that, and on the card is solid with no blur left at all.
+   * The panel is a Surface with the menu's placement on it: the chart's
+   * double-ruled paper box, solid on either ground, dropping in and holding
+   * still for a reader who asks for less motion.
    */
-  it("composes the panel from the Surface: glass on the map, solid on the card, both declinable", () => {
-    const panel = (ground: "map" | "content") =>
-      surfaceStyles({ className: siteMenuStyles({ ground }).panel() }).split(
-        " ",
-      );
+  it("composes the panel from the Surface: the chart's box, solid, declinable motion", () => {
+    expect(SOURCE).toContain("surfaceStyles({ className: styles.panel() })");
     for (const ground of ["map", "content"] as const) {
-      const classes = panel(ground);
+      const classes = surfaceStyles({
+        className: siteMenuStyles({ ground }).panel(),
+      }).split(" ");
       for (const name of [
         "animate-menu-in",
         "motion-reduce:animate-none",
-        "reduced-transparency:bg-solid",
-        "reduced-transparency:backdrop-filter-none",
+        "bg-card",
+        "paper-grain",
+        "inset-shadow-frame",
         "absolute",
         "top-full",
         "mt-2",
-        "p-1",
+        "p-2",
       ])
         expect(classes, `${ground} ${name}`).toContain(name);
       expect(classes, ground).not.toContain("p-5");
+      expect(classes.join(" "), ground).not.toMatch(/glass|backdrop/);
     }
-    expect(panel("map")).toContain("bg-glass");
-    expect(panel("map")).toContain("backdrop-blur-glass");
-    expect(panel("content")).toContain("bg-solid");
-    expect(panel("content")).not.toContain("bg-glass");
-    expect(SOURCE).toContain("surfaceStyles({ className: styles.panel() })");
   });
 
-  /*
-   * The merge keeps the Surface's blur beside `backdrop-filter-none` (they are
-   * different properties to it), so on the card it is the stylesheet's order
-   * that takes the blur off: at one class each, the later rule wins. Asked of
-   * the compiled theme, so a reorder shows up here and not on a phone.
-   */
-  it("takes the blur off the card's panel by the order the theme compiles in", async () => {
-    const classes = surfaceStyles({
-      className: siteMenuStyles({ ground: "content" }).panel(),
-    }).split(" ");
-    const css = (await compileTheme())(classes);
-    const at = (name: string) => {
-      const index = css.search(
-        new RegExp(`\\.${name.replace(/[^\w-]/g, "\\\\$&")} \\{`),
-      );
-      expect(index, name).toBeGreaterThan(-1);
-      return index;
-    };
-    const none = at("backdrop-filter-none");
-    expect(none).toBeGreaterThan(at("backdrop-blur-glass"));
-    expect(none).toBeGreaterThan(at("backdrop-saturate-145"));
+  it("names the sections in the display face, on hairlines, with no icons", () => {
+    const row = siteMenuStyles().row().split(" ");
+    for (const name of ["font-display", "border-b", "border-line", "h-touch"])
+      expect(row).toContain(name);
+    expect(SOURCE).not.toMatch(/from "lucide-react";[\s\S]*Store/);
   });
 
-  it("raises the section you are in, and keeps it raised under the pointer on glass only", () => {
-    const here = siteMenuStyles({ ground: "map", current: true })
-      .row()
-      .split(" ");
-    for (const name of ["bg-card/40", "text-ink", "shadow-control"])
+  it("sets the section you are in in the italic, heavier, on the second sheet", () => {
+    const here = siteMenuStyles({ current: true }).row().split(" ");
+    for (const name of ["italic", "font-bold", "bg-sunken"])
       expect(here).toContain(name);
-    expect(here).toContain("not-disabled:hover:bg-card/40");
-    const onCard = siteMenuStyles({ ground: "content", current: true }).row();
-    expect(onCard.split(" ")).toContain("not-disabled:hover:bg-card/55");
-    const other = siteMenuStyles({ ground: "map" }).row().split(" ");
-    expect(other).toContain("not-disabled:hover:bg-card/55");
-    expect(other).not.toContain("shadow-control");
+    const other = siteMenuStyles().row().split(" ");
+    for (const name of ["italic", "font-bold", "bg-sunken"])
+      expect(other).not.toContain(name);
   });
 
   it("keeps a row the height of touch, and the trigger's own size on a finger", () => {

@@ -10,6 +10,7 @@ import { checkboxStyles } from "../../ui/Checkbox";
 import { controlStyles } from "../../ui/control";
 import { segmentedStyles } from "../../ui/Segmented";
 import { fieldStyles } from "../../ui/Field";
+import { mastheadStyles } from "../../ui/Masthead";
 import { compileTheme, holds } from "../../ui/theme.testkit";
 import type { Listing } from "../shared/types";
 import {
@@ -264,7 +265,8 @@ describe("S2: the shell's measures", () => {
     expect(page).not.toContain("px-6");
     expect(page).not.toContain("max-wide:px-3");
 
-    expect(headerStyles().base().split(" ")).toContain("pt-safe-3");
+    // The header is the site's masthead now, and it keeps the notch clear too.
+    expect(mastheadStyles().base().split(" ")).toContain("pt-safe-2");
     expect(footerStyles().base()).toContain("pb-safe-6");
   });
 });
@@ -281,7 +283,7 @@ describe("S3: what a phone drops, at 720px", () => {
     const styles = headerStyles();
     expect(styles.label()).toBe("hidden wide:inline");
     expect(styles.name()).toContain("wide:inline-flex");
-    expect(styles.bar()).toContain("max-wide:px-1");
+    expect(mastheadStyles().bar()).toContain("max-wide:gap-2");
   });
 
   it("scrolls the category rail on one line, bleeding to the edge", () => {
@@ -475,7 +477,7 @@ describe("the seller's tabs", () => {
     const tab = sellerStyles().tab().split(" ");
     expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
     expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
-    expect(tab).toContain("not-disabled:focus-visible:outline-3");
+    expect(tab).toContain("not-disabled:focus-visible:outline-2");
     expect(sellerStyles().tabs().split(" ")).toContain("overflow-x-auto");
   });
 });
@@ -554,9 +556,9 @@ describe("S3: the accent is for what was earned, the line for what was not", () 
     expect(buttonStyles({ variant: "pill", pressed: "worded" })).not.toContain(
       "bg-accent",
     );
-    expect(buttonStyles({ variant: "pill", pressed: "worded" })).not.toContain(
-      "bg-inverse",
-    );
+    expect(
+      buttonStyles({ variant: "pill", pressed: "worded" }).split(" "),
+    ).not.toContain("bg-inverse");
   });
 });
 
@@ -621,7 +623,8 @@ describe("S4: the sign-in gate", () => {
     // on the inverse ground, and is not a pressed button.
     const toggle = out.match(/<button[^>]*aria-pressed="true"[^>]*>/)?.[0];
     expect(toggle).toBeDefined();
-    expect(toggle).not.toContain("bg-inverse");
+    // Its hover inks it (`not-disabled:hover:bg-inverse`); at rest it is not.
+    expect(toggle).not.toMatch(/[\s"]bg-inverse[\s"]/);
   });
 });
 
@@ -724,12 +727,9 @@ describe("S4: the header, and its one filled action", () => {
       out.match(/<a href="\/market\/sell" class="([^"]*)"/)![1];
     const filled = sell(await headerAs("maeve", true));
     expect(filled).toContain("bg-accent");
-    // And takes the wider inset only where the bar has room for it.
-    expect(filled).toContain("wide:px-3");
     const stood = sell(await headerAs("maeve", false));
     expect(stood).not.toContain("bg-accent");
     expect(stood).toContain("bg-card");
-    expect(stood).not.toContain("wide:px-3");
   });
 });
 
@@ -872,7 +872,7 @@ describe("sell/me S3: the account's tabs", () => {
       .split(" ");
     expect(tab).toContain("not-disabled:focus-visible:-outline-offset-2");
     expect(tab).not.toContain("not-disabled:focus-visible:outline-offset-2");
-    expect(tab).toContain("not-disabled:focus-visible:outline-3");
+    expect(tab).toContain("not-disabled:focus-visible:outline-2");
     expect(tab).toContain("not-disabled:focus-visible:outline-focus");
   });
 
