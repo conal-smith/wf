@@ -12,6 +12,7 @@ import {
   isMarketPath,
   isSpotPath,
 } from "../force5/src/siteNav";
+import { COMING_SOON } from "../force5/src/comingSoon";
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
@@ -23,6 +24,16 @@ const isMarket = isMarketPath(window.location.pathname);
 // /community, and nothing of it in the map's chunk or the marketplace's.
 const CommunityApp = React.lazy(() => import("../community/web/CommunityApp"));
 const isCommunity = isCommunityPath(window.location.pathname);
+
+// A section that is not open yet answers with "coming soon" in place of its
+// bundle (force5/src/comingSoon.ts), so none of it is downloaded.
+const ComingSoon = React.lazy(() => import("../shared/web/ComingSoon"));
+const soon =
+  isMarket && COMING_SOON.has("market")
+    ? "market"
+    : isCommunity && COMING_SOON.has("community")
+      ? "community"
+      : null;
 
 // The page that adds the forecast to an AI assistant, at /ai: a fourth bundle,
 // split off the same way.
@@ -73,7 +84,9 @@ else if (isMarket || isCommunity || isAi || isSpot)
   root.render(
     <React.StrictMode>
       <Suspense fallback={null}>
-        {isMarket ? (
+        {soon ? (
+          <ComingSoon section={soon} />
+        ) : isMarket ? (
           <MarketApp />
         ) : isCommunity ? (
           <CommunityApp />

@@ -20,7 +20,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../../ui/Button";
 import { Puffin } from "../../ui/Puffin";
 import { surfaceStyles } from "../../ui/Surface";
-import { RING, tv } from "../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../ui/tv";
+import { COMING_SOON } from "./comingSoon";
 import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
 
 /*
@@ -54,6 +55,7 @@ export const siteMenuStyles = tv({
     list: "m-0 flex list-none flex-col p-0",
     // The Almanac signs the menu: the puffin and one line in the house's
     // voice, under the sections, as the chart's menu does.
+    soon: ["ml-auto font-normal text-ink-muted", MONO_LABEL],
     almanac:
       "m-0 flex max-w-60 items-center gap-2 px-2 pt-3 pb-1 font-body text-body text-ink-muted italic",
     /*
@@ -205,6 +207,9 @@ export function SiteMenu({
                     aria-current={here ? "page" : undefined}
                   >
                     {section.label}
+                    {COMING_SOON.has(section.id) && (
+                      <span className={styles.soon()}>Soon</span>
+                    )}
                   </a>
                 </li>
               );

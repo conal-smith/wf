@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "map:shots": "MAP_SHOTS=1 playwright test --project=map-shots",
     "shots:compare": "node scripts/shots-compare.mjs",
-    "preview:e2e": "node scripts/e2e-site.mjs && E2E_SITE=1 VITE_MARKET_DEV_SWITCH=1 npm run build && E2E_SITE=1 npm run preview --",
+    "preview:e2e": "node scripts/e2e-site.mjs && E2E_SITE=1 VITE_MARKET_DEV_SWITCH=1 VITE_OPEN_SECTIONS=1 npm run build && E2E_SITE=1 npm run preview --",
     "format": "prettier --write src tests e2e scripts *.ts *.md index.html package.json",
     "ui:lint": "node scripts/lint-ui.mjs && node scripts/lint-ui.mjs --probe && node scripts/lint-design-tokens.mjs && node scripts/lint-design-tokens.mjs --probe && node scripts/lint-raw-primitives.mjs && node scripts/lint-raw-primitives.mjs --probe && node design-system/scripts/lint.mjs",
     "design:build": "node design-system/scripts/build-tokens.mjs && node design-system/scripts/build-catalog.mjs",
