@@ -1305,7 +1305,8 @@ function colourWind() {
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
   cc.parentNode.insertBefore(canvas, cc.nextSibling);
   const ctx = canvas.getContext('2d');
-  const BIN = 4, NB = 10, COL = Array.from({ length: NB }, (_, i) => `rgba(${toned(i * BIN + BIN / 2).join(',')},.9)`);
+  // The same scale as the wash, a shade darker so a thin stroke still reads on paper.
+  const BIN = 2, NB = 22, COL = Array.from({ length: NB }, (_, i) => `rgba(${washColor(i * BIN + BIN / 2).map(v => Math.round(v * .82)).join(',')},.95)`);
   let time = tNow(), w = 0, h = 0, field = null, fw = 0, fh = 0, cloud = [], raf = 0, stopped = true, last = 0;
   const STEP = 10;
   const resize = () => { const r = host.getBoundingClientRect(); w = r.width; h = r.height; const dpr = Math.min(devicePixelRatio, 2); canvas.width = w * dpr; canvas.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
@@ -1363,7 +1364,21 @@ function colourWind() {
   document.addEventListener('visibilitychange', restart);
   return { setTime(ms) { time = ms; restart(); }, stop() { stopped = true; cancelAnimationFrame(raf); raf = 0; ctx.clearRect(0, 0, w, h); }, start() { stopped = false; restart(); } };
 }
-/* the faint wash: the wind field painted in the product's colours, under the coast and the contours */
+/* the wash's own scale, read against the rider's band: blue too light, greens good
+   (deepening through the sweet spot), yellow getting a lot, orange to red too much */
+const WASH_STOPS = () => [
+  [0, [92, 122, 176]], [BAND.min - .01, [138, 176, 206]],
+  [BAND.min, [170, 206, 150]], [BAND.sweetLow, [104, 178, 102]], [BAND.sweetHigh, [48, 138, 72]],
+  [BAND.sweetHigh + 1.5, [214, 204, 74]], [BAND.max - 1, [232, 176, 58]], [BAND.max, [226, 128, 52]],
+  [BAND.max + 4, [204, 62, 52]], [BAND.max + 12, [150, 42, 92]],
+];
+function washColor(kn) {
+  const S = WASH_STOPS(), k = clamp(kn, 0, S[S.length - 1][0]); let i = 1;
+  while (i < S.length - 1 && k > S[i][0]) i++;
+  const [a, ca] = S[i - 1], [b, cb] = S[i], f = b > a ? (k - a) / (b - a) : 1;
+  return ca.map((v, c) => Math.round(v + (cb[c] - v) * f));
+}
+/* the faint wash: the wind field painted on the rider's scale, under the coast and the contours */
 const WW = window.WFWIND, WASHB = { west: WW.west, south: WW.south, east: WW.west + (WW.nx - 1) * WW.d, north: WW.south + (WW.ny - 1) * WW.d };
 const washCanvas = Object.assign(document.createElement('canvas'), { width: 214, height: 160 });
 function washURL(ms) {
@@ -1374,8 +1389,8 @@ function washURL(ms) {
     for (let x = 0; x < Wd; x++) {
       const lon = WASHB.west + (WASHB.east - WASHB.west) * (x + .5) / Wd, uv = K.windUV(lon, lat, ms);
       if (!uv) continue;
-      const c3 = toned(Math.hypot(uv.u, uv.v) * 1.944), i = (y * Wd + x) * 4;
-      img.data[i] = c3[0]; img.data[i + 1] = c3[1]; img.data[i + 2] = c3[2]; img.data[i + 3] = 46;
+      const c3 = washColor(Math.hypot(uv.u, uv.v) * 1.944), i = (y * Wd + x) * 4;
+      img.data[i] = c3[0]; img.data[i + 1] = c3[1]; img.data[i + 2] = c3[2]; img.data[i + 3] = Math.round(150 * Math.min(1, Math.min(x, Wd - 1 - x, y, Ht - 1 - y) / 14)); // feathered, so the field's edge never shows as a box
     }
   }
   x2.putImageData(img, 0, 0);
@@ -1389,7 +1404,7 @@ function paintWash() {
   const url = washURL(t);
   if (!map.getSource('wash')) {
     map.addSource('wash', { type: 'image', url, coordinates: washCoords });
-    map.addLayer({ id: 'wash', type: 'raster', source: 'wash', paint: { 'raster-opacity': .9, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, 'sand');
+    map.addLayer({ id: 'wash', type: 'raster', source: 'wash', paint: { 'raster-opacity': .85, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, 'sand');
   } else map.getSource('wash').updateImage({ url, coordinates: washCoords });
 }
 function setWindStyle(st, save = true) {
@@ -1406,14 +1421,16 @@ function setWindStyle(st, save = true) {
 }
 function drawKnotScale() {
   const wsh = WST === 'wash';
+  const col = washColor;
   let g = '<defs><linearGradient id="kg">';
-  for (let k = 0; k <= 40; k += 2.5) g += `<stop offset="${k / 40}" stop-color="rgb(${toned(k).join(',')})"/>`;
-  g += `</linearGradient></defs><rect x="4" y="2" width="200" height="8" fill="url(#kg)" opacity="${wsh ? .5 : 1}" stroke="rgba(26,29,33,.4)" stroke-width=".6"/>`;
-  for (let k = 0; k <= 40; k += 10) g += `<text x="${4 + k * 5}" y="22" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:#1A1D21">${k}</text>`;
+  for (let k = 0; k <= 40; k += .5) g += `<stop offset="${k / 40}" stop-color="rgb(${col(k).join(',')})"/>`;
+  g += `</linearGradient></defs><rect x="4" y="2" width="200" height="8" fill="url(#kg)" stroke="rgba(26,29,33,.4)" stroke-width=".6"/>`;
+  const ticks = [BAND.min, BAND.sweetLow, BAND.sweetHigh, BAND.max];
+  for (const k of ticks) g += `<line x1="${4 + k * 5}" x2="${4 + k * 5}" y1="10" y2="13" stroke="#1A1D21" stroke-width=".8"/><text x="${4 + k * 5}" y="22" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:#1A1D21">${k}</text>`;
   g += `<text x="212" y="10" style="font:italic 10px Newsreader;fill:#1A1D21">kn</text>`;
   $('#kbar').innerHTML = g;
-  $('#sw-arrows').style.background = `linear-gradient(90deg,${[4, 12, 20, 28].map(k => `rgb(${toned(k).join(',')})`).join(',')})`;
-  $('#sw-wash').style.background = `linear-gradient(90deg,${[4, 12, 20, 28].map(k => `rgba(${toned(k).join(',')},.35)`).join(',')})`;
+  $('#sw-arrows').style.background = `linear-gradient(90deg,${[6, 12, 20, 27, 33].map(k => `rgb(${washColor(k).map(v => Math.round(v * .82)).join(',')})`).join(',')})`;
+  $('#sw-wash').style.background = `linear-gradient(90deg,${[6, 12, 20, 27, 33].map(k => `rgba(${washColor(k).join(',')},.75)`).join(',')})`;
 }
 $$('#layers input[name=wst]').forEach(i => i.addEventListener('change', () => i.checked && setWindStyle(i.value)));
 
