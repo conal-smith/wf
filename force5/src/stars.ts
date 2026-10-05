@@ -330,11 +330,15 @@ export function rateHour(
     }
   }
 
+  // Models that differ a little cost a quarter, which only shows when it tips
+  // the hour below a whole star; it is a reason only then.
+  let doubt = false;
   if (hour.agreement === "low") {
     score -= 1;
     reasons.push("The models disagree, so this hour is a guess.");
   } else if (hour.agreement === "moderate") {
     score -= 0.25;
+    doubt = true;
   }
 
   if (wing.fit === "underpowered") {
@@ -350,7 +354,11 @@ export function rateHour(
   }
 
   const potential = Math.round(base);
-  const stars = clamp(Math.round(Math.min(score, cap)), 0, potential);
+  const starsFrom = (x: number) =>
+    clamp(Math.round(Math.min(x, cap)), 0, potential);
+  const stars = starsFrom(score);
+  if (doubt && stars < starsFrom(score + 0.25))
+    reasons.push("The models differ a little, enough to hold back a star.");
   return {
     rideKn,
     liftKn: rideKn - hour.windKn,
