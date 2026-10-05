@@ -14,3 +14,14 @@ EMODnet's depths are referenced to Lowest Astronomical Tide where the surveys al
 which is the datum of the Marine Institute tide predictions the product already shows,
 so depth + tide height is the water over the bottom (an estimate: the tide station is
 rarely at the beach).
+
+## The depth tiles (data/bathy.pmtiles)
+
+4. `bash fetch-fine.sh`: EMODnet at its own 1/16′ (~115 m) for the whole coast, Northern
+   Ireland included, in 1° tiles (`tif/fine/`, ~110 MB).
+5. `node --max-old-space-size=12000 tiles.mjs` (`npm i geojson-vt vt-pbf` too): bands,
+   contours, soundings and relief as vector tiles, z5–9 from the 0.0025° grid and z10–12
+   from the 115 m one, into `../tiles/bathy/`.
+6. `python pack.py ../tiles/bathy ../data/bathy.pmtiles` (`pip install pmtiles`): one
+   gzip-compressed PMTiles archive (~11.5 MB). Pages read it by HTTP range requests, so
+   it needs a server that supports them (`npx http-server`, not `python -m http.server`).
