@@ -11,6 +11,7 @@ export default defineConfig({
       "community/**/*.test.ts",
       "mcp/**/*.test.ts",
       "ai/**/*.test.ts",
+      "spot/**/*.test.ts",
       "ui/**/*.test.{ts,tsx}",
     ],
   },

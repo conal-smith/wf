@@ -32,9 +32,12 @@ export const WING_HELP =
 export function StarGlyphs({
   stars,
   potential,
+  size = 10,
 }: {
   stars: number;
   potential: number;
+  /** Pixels per star: the dock's cells take 10, the spot page more. */
+  size?: number;
 }) {
   return (
     <span
@@ -45,7 +48,7 @@ export function StarGlyphs({
       {Array.from({ length: potential }, (_, index) => (
         <Star
           key={index}
-          size={10}
+          size={size}
           aria-hidden="true"
           className={index < stars ? "star-solid" : "star-faded"}
           fill={index < stars ? "currentColor" : "none"}

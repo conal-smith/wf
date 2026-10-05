@@ -43,6 +43,7 @@ const DIRS = [
   "market/web",
   "community/web",
   "ai/web",
+  "spot/web",
   "force5/src/SiteMenu.tsx",
 ];
 const EXTENSIONS = new Set([

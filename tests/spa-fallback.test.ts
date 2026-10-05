@@ -3,10 +3,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  SITE_SECTIONS,
+  APP_ROUTES,
   isAiPath,
   isCommunityPath,
   isMarketPath,
+  isSpotPath,
 } from "../force5/src/siteNav";
 
 /**
@@ -26,13 +27,11 @@ const rules = readFileSync(join(ROOT, "public/_redirects"), "utf8")
   .map((line) => line.split(/\s+/));
 
 describe("the SPA fallback", () => {
-  it("has the section's root and everything under it, for each section with a bundle of its own", () => {
-    const expected = SITE_SECTIONS.filter((s) => s.href !== "/").flatMap(
-      (s) => [
-        [s.href, "/index.html", "200"],
-        [`${s.href}/*`, "/index.html", "200"],
-      ],
-    );
+  it("has the root and everything under it, for each section with a bundle of its own and the spot page", () => {
+    const expected = APP_ROUTES.flatMap((href) => [
+      [href, "/index.html", "200"],
+      [`${href}/*`, "/index.html", "200"],
+    ]);
     expect(rules).toEqual(expected);
   });
 
@@ -40,7 +39,10 @@ describe("the SPA fallback", () => {
     for (const [from] of rules) {
       const path = from.replace(/\*$/, "anything");
       expect(
-        isMarketPath(path) || isCommunityPath(path) || isAiPath(path),
+        isMarketPath(path) ||
+          isCommunityPath(path) ||
+          isAiPath(path) ||
+          isSpotPath(path),
         from,
       ).toBe(true);
     }
