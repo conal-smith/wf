@@ -10,7 +10,7 @@
  */
 import { AtSign, Flag, Hash, MessageCircle, Settings } from "lucide-react";
 import { Avatar, Button, Notice, Skeleton } from "../../../ui";
-import { RING, tv } from "../../../ui/tv";
+import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import type { Notification } from "../../shared/types";
 import type { PagedState } from "../hooks";
 import { paths, routed } from "../router";
@@ -18,30 +18,34 @@ import { ago } from "./ThreadRow";
 
 export const notificationRowStyles = tv({
   slots: {
+    // A note on the hairline under the last: who, what, where, and when.
     row: [
-      "flex items-start gap-3 rounded-control p-3 text-ink no-underline transition-colors duration-fast",
-      "not-disabled:hover:bg-sunken",
+      "group flex items-start gap-3 border-b border-line px-1 py-3 text-ink no-underline transition-colors duration-fast",
       RING,
+      "not-disabled:focus-visible:-outline-offset-2",
     ],
     faces: "flex shrink-0 -space-x-2",
     face: "ring-2 ring-card",
-    text: "grid min-w-0 flex-1 gap-0.5 text-prose",
+    text: "grid min-w-0 flex-1 gap-1 font-body text-prose text-ink-2",
     line: "m-0",
-    strong: "font-semibold",
-    quote: "m-0 truncate text-body text-ink-muted",
-    meta: "m-0 flex items-center gap-1 text-body text-ink-muted",
+    strong: "font-display font-semibold text-ink group-hover:text-chart-magenta",
+    quote: "m-0 truncate text-body text-ink-muted italic",
+    meta: [
+      "m-0 flex items-center gap-1 text-ink-muted tabular-nums",
+      MONO_LABEL,
+    ],
     dot: "mt-2 size-2 shrink-0 rounded-full bg-accent",
-    list: "m-0 grid list-none gap-0.5 p-0",
-    loading: "flex items-center gap-3 p-3",
+    list: "m-0 grid list-none p-0",
+    loading: "flex items-center gap-3 border-b border-line px-1 py-3",
     lines: "grid flex-1 gap-2",
     short: "w-1/3",
-    nothing: "m-0 p-3 text-prose text-ink-muted",
+    nothing: "m-0 px-1 py-3 font-body text-prose text-ink-muted italic",
     tools: "flex items-center gap-1",
     hidden: "sr-only",
   },
   variants: {
     // Unread is a dot, a tint and a word a screen reader hears: never colour alone.
-    unread: { true: { row: "bg-ground" } },
+    unread: { true: { row: "bg-sunken" } },
   },
 });
 
@@ -173,7 +177,7 @@ export function NotificationRow({ row, onOpen, now }: NotificationRowProps) {
         </span>
         {row.excerpt && <span className={styles.quote()}>{row.excerpt}</span>}
         <span className={styles.meta()}>
-          {Icon && <Icon size={12} aria-hidden="true" />}
+          {Icon && <Icon size={12} strokeWidth={1.5} aria-hidden="true" />}
           {label && `${label} · `}
           <time dateTime={row.updatedAt}>{ago(row.updatedAt, now)}</time>
         </span>
@@ -270,7 +274,7 @@ export function NotificationTools({
         icon
         aria-label="Notification settings"
       >
-        <Settings size={15} aria-hidden="true" />
+        <Settings size={15} strokeWidth={1.5} aria-hidden="true" />
       </Button>
     </div>
   );

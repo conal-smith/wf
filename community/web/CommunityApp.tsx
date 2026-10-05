@@ -32,6 +32,7 @@ import { Rail, railCurrent } from "./Rail";
 import {
   BASE,
   NEW_THREAD,
+  QUERY,
   matchRoute,
   paths,
   routed,
@@ -45,7 +46,7 @@ export const shellStyles = tv({
     // The marketplace's page measure, and its narrower gutter on a phone.
     page: "mx-auto flex w-full max-w-page flex-1 flex-col px-6 max-rail:px-3",
     shell:
-      "grid flex-1 grid-cols-1 items-start gap-8 pt-3 pb-8 max-rail:gap-5 rail:grid-cols-shell",
+      "grid flex-1 grid-cols-1 items-start gap-8 pt-4 pb-8 max-rail:gap-5 rail:grid-cols-shell",
     rail: "",
     main: "flex min-w-0 flex-col gap-5",
     // Only where the rail is not beside the page.
@@ -83,7 +84,9 @@ function Shell() {
 
   const channels = useChannels();
   const bell = useNotificationsCount();
-  const home = route.page === "home";
+  // On a phone the channels are the page at /community; a search is a page
+  // of its own, whose results would otherwise wait under the whole index.
+  const home = route.page === "home" && !search.get(QUERY)?.trim();
   // A channel the site's team posts in offers New thread to them alone, which
   // is the one thing here that needs the member's role: asked only there.
   const open =
@@ -121,10 +124,10 @@ function Shell() {
             {!home && route.page !== "thread" && (
               <Button
                 {...routed(paths.home())}
-                size="sm"
+                variant="link"
                 className={styles.back()}
               >
-                <ArrowLeft size={15} aria-hidden="true" />
+                <ArrowLeft size={15} strokeWidth={1.5} aria-hidden="true" />
                 <span>Channels</span>
               </Button>
             )}
@@ -195,7 +198,7 @@ function NotFound() {
   return (
     <Empty
       title="That page does not exist"
-      icon={<Compass size={24} aria-hidden="true" />}
+      icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
     >
       <p>The link may be old, or the thread may have been removed.</p>
       <Button {...routed(paths.home())} variant="primary">

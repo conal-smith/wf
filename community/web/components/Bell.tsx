@@ -26,13 +26,13 @@ export const bellStyles = tv({
     count: "absolute -top-1 -right-1",
     // Hung from the bell, and never drawn where the page stands in for it.
     panel: [
-      "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 rounded-surface border border-line bg-card p-2 font-body text-ink shadow-surface max-rail:hidden",
+      "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 border border-ink bg-card paper-grain p-3 font-body text-ink shadow-surface inset-shadow-frame max-rail:hidden",
       NO_RING,
     ],
-    head: "flex items-center justify-between gap-2 py-1 pr-1 pl-3",
-    title: "m-0 text-lead text-ink",
+    head: "flex items-center justify-between gap-2 border-0 border-b-2 border-ink pb-1",
+    title: "m-0 font-display text-lead text-ink",
     foot: [
-      "block rounded-control p-3 text-center text-body text-ink-muted no-underline transition-colors duration-fast not-disabled:hover:text-ink",
+      "block p-2 text-center font-mono text-label text-ink uppercase underline decoration-1 underline-offset-4 transition-colors duration-fast not-disabled:hover:text-chart-magenta",
       RING,
     ],
   },
@@ -221,7 +221,7 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
         aria-expanded={wide && !onPage ? open : undefined}
         aria-current={onPage ? "page" : undefined}
       >
-        <BellIcon size={15} aria-hidden="true" />
+        <BellIcon size={15} strokeWidth={1.5} aria-hidden="true" />
         <Count value={unread} className={styles.count()} />
       </Button>
       {open && (

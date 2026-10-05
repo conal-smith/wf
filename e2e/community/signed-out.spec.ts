@@ -18,7 +18,7 @@ test("a signed-out reader browses home, a channel and a thread, and is offered s
   await member(CIAN).reply(thread, "Plenty, on a big enough foil.");
 
   await page.goto("/community");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Community");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Latest");
   const actions = page.getByRole("navigation", { name: "Community" });
   await expect(actions.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(actions.getByText("New thread")).toHaveCount(0);

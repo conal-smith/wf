@@ -3,16 +3,17 @@
  * threads in the one order there is: pinned first, then most recent activity,
  * so a reply bumps a thread.
  */
-import { Bell, BellRing, Compass, Hash, Megaphone, Tag } from "lucide-react";
+import { Bell, BellRing, Compass, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
 import type { UserRole } from "../../../site/shared/types";
-import { Button, Empty, Notice, Skeleton } from "../../../ui";
+import { Button, Empty, Notice, Puffin, Skeleton } from "../../../ui";
 import { tv } from "../../../ui/tv";
 import type { Channel as ChannelData } from "../../shared/types";
 import { useApi } from "../api";
 import { NewThread, NewThreadPill } from "../components/NewThreadDialog";
+import { PageHead } from "../components/PageHead";
 import { currentTag, TagPills } from "../components/TagPills";
 import { ThreadList } from "../components/ThreadList";
 import {
@@ -25,18 +26,9 @@ import { NEW_THREAD, TAG, paths, routed } from "../router";
 
 export const channelStyles = tv({
   slots: {
-    head: "flex items-start justify-between gap-5",
-    text: "grid min-w-0 gap-2",
-    title: "m-0 flex items-center gap-2 text-title text-ink",
-    hash: "shrink-0 text-line-strong",
-    lede: "m-0 text-prose text-ink-2",
     // On a phone the head is the name and the bell: mockup 6b.
     aside: "max-rail:hidden",
-    meta: "m-0 text-body text-ink-muted tabular-nums",
-    actions: "flex shrink-0 items-center gap-2",
     followLabel: "max-rail:sr-only",
-    controls: "flex flex-wrap items-center justify-between gap-3",
-    order: "text-body text-ink-muted max-rail:hidden",
     loading: "grid gap-3",
     short: "w-1/3",
     hidden: "sr-only",
@@ -108,7 +100,7 @@ export function Channel({
     return (
       <Empty
         title="That channel does not exist"
-        icon={<Compass size={24} aria-hidden="true" />}
+        icon={<Compass size={24} strokeWidth={1.5} aria-hidden="true" />}
       >
         <p>The link may be old, or the channel may have been archived.</p>
         <Button {...routed(paths.home())} variant="pill">
@@ -158,7 +150,12 @@ function Listed({
   const feed = useThreadFeed(source);
 
   const canStart = auth.provider !== "none" && canStartThread(channel, role);
-  const Mark = channel.postPolicy === "staff" ? Megaphone : Hash;
+  const category =
+    channels.status === "ready"
+      ? channels.groups.find((group) =>
+          group.channels.some((listed) => listed.id === channel.id),
+        )?.category.name
+      : undefined;
 
   const follow = async () => {
     // Signed out, following is what signing in is for.
@@ -178,23 +175,17 @@ function Listed({
 
   return (
     <>
-      <div className={styles.head()}>
-        <div className={styles.text()}>
-          <h1 className={styles.title()}>
-            <Mark className={styles.hash()} size={24} aria-hidden="true" />
-            {channel.name}
-          </h1>
-          {channel.description && (
-            <p className={styles.lede({ className: styles.aside() })}>
-              {channel.description}
-            </p>
-          )}
-          <p className={styles.meta({ className: styles.aside() })}>
-            {countsLine(channel)}
-          </p>
-        </div>
-        {auth.provider !== "none" && (
-          <div className={styles.actions()}>
+      <PageHead
+        dateline={category}
+        figures={countsLine(channel)}
+        title={channel.name}
+        lede={
+          channel.description && (
+            <span className={styles.aside()}>{channel.description}</span>
+          )
+        }
+        actions={
+          auth.provider !== "none" && (
             <Button
               variant="pill"
               size="sm"
@@ -203,21 +194,18 @@ function Listed({
               onClick={follow}
             >
               {channel.following ? (
-                <BellRing size={15} aria-hidden="true" />
+                <BellRing size={15} strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <Bell size={15} aria-hidden="true" />
+                <Bell size={15} strokeWidth={1.5} aria-hidden="true" />
               )}
               {/* Pressed says which; the words stay the same, as a toggle's do. */}
               <span className={styles.followLabel()}>Follow channel</span>
             </Button>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
       {failure && <Notice kind="warn">{failure}</Notice>}
-      <div className={styles.controls()}>
-        <TagPills slug={channel.slug} tags={channel.tags} current={tagId} />
-        <span className={styles.order()}>Most recent activity first</span>
-      </div>
+      <TagPills slug={channel.slug} tags={channel.tags} current={tagId} />
       <ThreadList
         state={feed.state}
         subject={`the threads in ${channel.name}`}
@@ -229,20 +217,17 @@ function Listed({
           tag ? (
             <Empty
               title={`No threads tagged ${tag.label}`}
-              icon={<Tag size={24} aria-hidden="true" />}
+              icon={<Tag size={24} strokeWidth={1.5} aria-hidden="true" />}
             >
               <Button {...routed(paths.channel(channel.slug))} variant="pill">
                 Show every thread
               </Button>
             </Empty>
           ) : (
-            <Empty
-              title="No threads yet"
-              icon={<Mark size={24} aria-hidden="true" />}
-            >
+            <Empty title="No threads yet" icon={<Puffin size={40} />}>
               {canStart ? (
                 <>
-                  <p>Nobody has started one here. It could be you.</p>
+                  <p>Nobody has written in here. It could be you.</p>
                   {/* Quiet: the view's filled New thread is the header's, or
                       the floating one on a phone. */}
                   <Button

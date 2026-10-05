@@ -159,7 +159,9 @@ test("the rail is reachable by keyboard, and aria-current follows the open chann
     walked.push(
       await page.evaluate(() => {
         const el = document.activeElement!;
-        return `${el.tagName.toLowerCase()} ${el.firstChild?.nextSibling?.textContent ?? el.textContent}`;
+        // A row's name is its first span; a category head is its words.
+        const name = el.querySelector("span") ?? el;
+        return `${el.tagName.toLowerCase()} ${name.textContent}`;
       }),
     );
   }
