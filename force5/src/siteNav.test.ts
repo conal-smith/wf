@@ -10,7 +10,38 @@ import {
   isAiPath,
   isCommunityPath,
   isMarketPath,
+  OWN_BUNDLE_PATHS,
 } from "./siteNav";
+
+describe("OWN_BUNDLE_PATHS", () => {
+  const claimed = (path: string) => OWN_BUNDLE_PATHS.some((p) => p.test(path));
+
+  // The build preloads the map's chunk wherever none of these match, so it
+  // must claim exactly what the entry point splits off.
+  it("claims every path the entry point gives a bundle of its own", () => {
+    for (const path of [
+      "/market",
+      "/market/sell",
+      "/community/c/general",
+      "/ai",
+      "/spot/brandon",
+      "/stars",
+    ]) {
+      expect(claimed(path)).toBe(true);
+      expect(
+        isMarketPath(path) ||
+          isCommunityPath(path) ||
+          isAiPath(path) ||
+          isSpotPath(path),
+      ).toBe(true);
+    }
+  });
+
+  it("leaves the map's paths alone", () => {
+    for (const path of ["/", "", "/?spot=brandon", "/spots", "/marketplace"])
+      expect(claimed(path)).toBe(false);
+  });
+});
 
 describe("isMarketPath", () => {
   it("claims /market and everything under it", () => {
