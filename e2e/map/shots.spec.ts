@@ -129,7 +129,7 @@ async function pick(page: Page, words: string) {
 }
 
 for (const { width, height } of [
-  { width: 1440, height: 900 },
+  { width: 1440, height: 1000 },
   { width: 390, height: 844 },
 ]) {
   test.describe(`at ${width}px`, () => {
