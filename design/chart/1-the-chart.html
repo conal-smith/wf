@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>wingfoil.ie · The Chart</title>
-<meta name="description" content="The wing foil forecast for Ireland as it is laid out today, redrawn as an Admiralty chart.">
+<meta name="description" content="The wing foil forecast for Ireland, drawn as an Admiralty chart.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600&family=Kalam:wght@300;400;700&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.css" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.js"}}</script>
 <script src="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.js"></script>
 <script src="../directions/data.js"></script>
 <script src="data/tides.js"></script>
+<script src="data/models.js"></script>
 <script src="data/wind.js"></script>
 <script src="data/bathy-ireland.js"></script>
 <script src="data/bathy-bays.js"></script>
 <script src="data/soundings.js"></script>
-<script src="data/bathy-grids.js"></script>
 <script src="chart-kit.js"></script>
 <style>
 :root{
@@ -25,7 +26,7 @@
   --muted:rgba(26,29,33,.62); --faint:rgba(26,29,33,.38); --hair:rgba(26,29,33,.2);
   --f-disp:'Fraunces',Georgia,serif; --f-body:'Newsreader',Georgia,serif;
   --f-mono:'IBM Plex Mono',ui-monospace,monospace; --f-hand:'Kalam',cursive;
-  --dock:300px; --sheet:min(780px,58vw); --nl:7px;
+  --dock:220px; --sheet:min(960px,68vw); --strip:0px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--paper)}
@@ -40,9 +41,17 @@ button{font:inherit;color:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mono{font-family:var(--f-mono);font-feature-settings:"tnum" 1}
 .hand{font-family:var(--f-hand);color:var(--red)}
+.g{color:var(--muted)}
 .kick{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-/* the double rule every printed box on the chart shares */
 .boxed{background:var(--paper);border:1px solid var(--ink);box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--ink),0 1px 0 rgba(0,0,0,.04),0 6px 18px -10px rgba(60,45,20,.35)}
+/* little round buttons: i for the small print, ? for the stars */
+.ii,.q{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--faint);background:var(--paper);color:var(--muted);font:italic 600 12px var(--f-body);text-decoration:none;cursor:pointer;padding:0;line-height:1;flex:none;vertical-align:middle}
+.q{font:600 10.5px var(--f-mono);font-style:normal}
+.ii:hover,.q:hover{border-color:var(--ink);color:var(--ink)}
+.favb{border:0;background:none;padding:2px;cursor:pointer;display:inline-grid;place-items:center;flex:none}
+.favb svg{display:block}
+.favb:hover svg path{fill:rgba(212,58,44,.18)}
+.favb[aria-pressed=true]:hover svg path{fill:#D43A2C}
 
 /* ---------- the chart itself ---------- */
 #map{position:fixed;inset:0;z-index:0;background:#F3F1EA}
@@ -51,7 +60,7 @@ button{font:inherit;color:inherit}
 #map .wf-pen{z-index:4}
 #map .maplibregl-popup{z-index:6}
 .wf-pen text{paint-order:stroke;stroke:#F3EEE3;stroke-width:4.5px;stroke-linejoin:round}
-.maplibregl-ctrl-bottom-left{bottom:calc(var(--dock) + 4px);left:8px;transition:bottom .35s}
+.maplibregl-ctrl-bottom-left{bottom:calc(var(--dock) + var(--strip) + 4px);left:8px;transition:bottom .35s}
 body.on-sheet .maplibregl-ctrl-bottom-left{bottom:4px}
 .maplibregl-ctrl-attrib.maplibregl-compact{background:rgba(243,238,227,.9);font-family:var(--f-body);font-size:11px}
 #neat{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none}
@@ -72,7 +81,7 @@ body.on-sheet .maplibregl-ctrl-bottom-left{bottom:4px}
 .lt .lab{position:absolute;left:19px;top:-4px;white-space:nowrap;pointer-events:none;display:none;line-height:1.05;
   text-shadow:0 0 2px #F1EFE6,0 0 3px #F1EFE6,0 0 5px #F1EFE6,0 0 8px #F1EFE6}
 .lt .lab b{font:italic 600 12px var(--f-disp);display:block}
-.lt .lab i{font:italic 500 10.5px var(--f-body);color:var(--mag)}
+.lt .lab i{font:500 10px var(--f-mono);font-style:normal;color:var(--mag)}
 .lt.feat .lab,.lt.sel .lab,#map.z-hi .lt .lab{display:block}
 body.no-names .lt:not(.sel) .lab{display:none!important}
 #map.z-lo .lt svg{transform:scale(.74)}
@@ -83,19 +92,18 @@ body.no-names .lt:not(.sel) .lab{display:none!important}
 .lt:focus-visible{outline-offset:6px}
 
 /* ---------- top-left: menu, nameplate, search ---------- */
-#head{position:fixed;top:18px;left:18px;z-index:20;display:flex;align-items:stretch;width:388px;padding:7px 10px 7px 7px;gap:10px}
+#head{position:fixed;top:18px;left:18px;z-index:20;display:flex;align-items:stretch;width:360px;padding:7px 10px 7px 7px;gap:10px}
 .ib{border:1px solid var(--ink);background:var(--paper);width:34px;height:34px;display:grid;place-items:center;cursor:pointer;padding:0;flex:none}
 .ib:hover{background:var(--ink);color:var(--paper)}
 .nameplate{font-family:var(--f-disp);font-variation-settings:"opsz" 144;font-weight:800;font-size:26px;line-height:1;letter-spacing:-.035em;text-decoration:none;align-self:center;white-space:nowrap}
 .nameplate .ie{font-style:italic;font-weight:400;color:var(--mag);letter-spacing:-.01em}
 .find{position:relative;flex:1;align-self:center;min-width:0}
-.find input{width:100%;border:0;border-bottom:1px solid var(--ink);background:transparent;font:italic 15px var(--f-body);padding:5px 2px 4px 40px;color:var(--ink);outline:none}
+.find input{width:100%;border:0;border-bottom:1px solid var(--ink);background:transparent;font:italic 15px var(--f-body);padding:5px 2px 4px 2px;color:var(--ink);outline:none}
 .find input::placeholder{color:var(--faint)}
-.find label{position:absolute;left:0;top:7px;font:500 9.5px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .find input:focus{border-bottom-color:var(--mag)}
 #results{position:absolute;left:-8px;right:-10px;top:calc(100% + 12px);list-style:none;margin:0;padding:6px 0;display:none;max-height:min(420px,60vh);overflow:auto}
 #results.on{display:block}
-#results li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:5px 14px;cursor:pointer;align-items:center}
+#results li{display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:5px 14px;cursor:pointer;align-items:center}
 #results li small{grid-column:1;font:10px var(--f-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 #results li b{font:italic 600 15px var(--f-disp)}
 #results li .stars{grid-row:1/3;grid-column:2}
@@ -103,95 +111,122 @@ body.no-names .lt:not(.sel) .lab{display:none!important}
 #results .none{font-style:italic;color:var(--muted);cursor:default}
 
 /* ---------- top-right: zoom and layers ---------- */
-#ctrl{position:fixed;top:18px;right:18px;z-index:20;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+#ctrl{position:fixed;top:18px;right:18px;z-index:21;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
 .zbox{display:flex;flex-direction:column;padding:4px}
-.zbox button{border:0;background:transparent;width:32px;height:30px;cursor:pointer;font:500 18px var(--f-mono);line-height:1}
+.zbox button{border:0;background:transparent;width:32px;height:30px;cursor:pointer;font:500 18px var(--f-mono);line-height:1;display:grid;place-items:center}
 .zbox button+button{border-top:1px solid var(--hair)}
 .zbox button:hover{background:var(--ink);color:var(--paper)}
 .zbox button.txt{font:500 8.5px var(--f-mono);letter-spacing:.1em}
-#layers{position:absolute;right:50px;top:0;width:250px;padding:14px 16px 12px;display:none}
+#key-b{display:none!important}
+#layers{position:absolute;right:50px;top:0;width:236px;padding:12px 16px 10px;display:none}
 #layers.on{display:block}
-#layers h3{margin:0 0 6px;font:500 10px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-#layers label{display:flex;gap:9px;align-items:baseline;padding:3px 0;font-size:14.5px;cursor:pointer}
-#layers label small{display:block;font-size:12px;color:var(--muted);font-style:italic}
-#layers input{accent-color:var(--mag)}
+#layers h3{margin:8px 0 4px;font:500 9.5px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#layers h3:first-child{margin-top:0}
+#layers label{display:flex;gap:9px;align-items:center;padding:2px 0;font-size:14.5px;cursor:pointer}
+#layers input{accent-color:var(--mag);margin:0}
+#layers .sw{display:inline-block;width:30px;height:8px;border-radius:1px;margin-left:auto}
 
-/* ---------- the cartouche ---------- */
-#cart{position:fixed;right:68px;top:18px;z-index:19;width:252px;padding:12px 15px 10px;max-height:calc(100vh - var(--dock) - 36px);overflow:auto;scrollbar-width:none;transition:opacity .3s}
-#cart .t1{font:700 22px var(--f-disp);letter-spacing:.3em;text-align:center;margin:2px 0 0;padding-left:.3em}
-#cart .t2{font:italic 400 13px var(--f-disp);text-align:center;margin:0 0 8px}
-#cart .rule{border-top:1px solid var(--ink);margin:7px 0}
-#cart .when{font:600 11px var(--f-mono);text-align:center;letter-spacing:.05em}
-#cart .small{font-size:11.5px;text-align:center;line-height:1.3;margin:3px 0}
-#cart .datum{font-size:12px;text-align:center;font-style:italic;margin:3px 0}
-#cart .scale{font:500 9px var(--f-mono);letter-spacing:.14em;text-align:center;color:var(--muted);margin-top:4px}
-#cart .scalebar{display:block;margin:4px auto 0}
-#cart .kt{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-#cart .kt h3{margin:0;font:500 10px var(--f-mono);letter-spacing:.14em;text-transform:uppercase}
-#cart .kt button{border:0;background:none;font:500 10px var(--f-mono);letter-spacing:.08em;cursor:pointer;color:var(--muted);text-transform:uppercase;padding:2px 0}
-#cart dl{display:grid;grid-template-columns:36px 1fr;gap:3px 7px;margin:6px 0 0;font-size:12px;line-height:1.2;align-items:center}
-#cart dt{display:grid;place-items:center}
-#cart dd{margin:0}
-#cart dd em{color:var(--mag);font-family:var(--f-mono);font-style:normal;font-size:11px}
-#cart .tints{display:flex;margin:10px 0 2px;border:1px solid rgba(95,140,156,.6)}
-#cart .tints span{flex:1;height:14px;font:italic 9.5px var(--f-body);text-align:center;line-height:14px;color:#2f5563}
-#cart .tcap{font-size:11.5px;color:var(--muted);line-height:1.25;margin:4px 0 0}
-#cart .tcap b{color:var(--red);font-family:var(--f-hand);font-weight:400;font-size:13px}
-#cart .src{font-size:10.5px;color:var(--muted);line-height:1.3;margin:6px 0 0;border-top:1px solid var(--hair);padding-top:5px}
-#cart .src .long{display:none}
-@media (min-height:960px){#cart .src .long{display:inline}#cart .src .short{display:none}}
-#cart.fold .key{display:none}
-body.on-sheet #cart{opacity:0;pointer-events:none}
-
-/* ---------- the dock: a strip of tide-table ---------- */
-#dock{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--paper);border-top:3px double var(--ink);padding:6px 22px 8px;
-  box-shadow:0 -8px 22px -16px rgba(60,45,20,.45);transition:transform .4s cubic-bezier(.2,.7,.2,1)}
-body.on-sheet #dock{transform:translateY(110%)}
-.dk-head{display:flex;align-items:baseline;gap:14px;flex-wrap:nowrap;min-width:0}
-.dk-head h2{margin:0;font:600 22px var(--f-disp);font-variation-settings:"opsz" 72;letter-spacing:-.01em;white-space:nowrap}
-.dk-head h2 em{font-weight:400}
-.dk-meta{font-style:italic;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
-.dk-acts{display:flex;gap:8px;align-items:center;margin-left:auto;flex:none}
-.btn{border:1px solid var(--ink);background:var(--paper);border-radius:999px;padding:5px 13px;font:500 10.5px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+/* ---------- the side panel: your spots | key ---------- */
+#side{position:fixed;right:66px;top:18px;z-index:19;width:292px;padding:6px 14px 12px;max-height:calc(100vh - var(--dock) - 36px);overflow:auto;scrollbar-width:none;transition:opacity .3s}
+body.on-sheet #side{opacity:0;pointer-events:none}
+.tabs{display:flex;gap:16px;border-bottom:1px solid var(--ink);margin:0 0 4px}
+.tabs button{border:0;background:none;padding:6px 0 5px;font:500 14px var(--f-disp);color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected=true]{color:var(--ink);font-style:italic;font-weight:650;border-bottom-color:var(--ink)}
+.tabs .when{margin-left:auto;align-self:center;font:500 10px var(--f-mono);letter-spacing:.06em;color:var(--muted)}
+#side h4{display:flex;justify-content:space-between;align-items:center;margin:9px 0 1px;font:500 9.5px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.fvl{list-style:none;margin:0;padding:0}
+.fvl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:0 6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--hair)}
+.fv-go{border:0;background:none;text-align:left;cursor:pointer;padding:0;min-width:0}
+.fv-go b{display:block;font:italic 600 15px var(--f-disp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fv-go span{display:block;font:400 10.5px var(--f-mono);color:var(--muted);white-space:nowrap}
+.fv-go span i{font-style:normal;color:var(--faint)}
+.fv-go:hover b{color:var(--mag)}
+.fvl .none{display:block;font:italic 13px var(--f-body);color:var(--muted);padding:6px 0}
+.sign{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font:400 10.5px var(--f-mono);color:var(--muted)}
+.sign b{color:var(--ink);font-weight:500}
+.sign .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3d8a5a;margin-right:4px}
+.btn{border:1px solid var(--ink);background:var(--paper);border-radius:999px;padding:5px 12px;font:500 10.5px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.btn.sm{padding:3px 9px;font-size:9.5px}
 .btn:hover{background:var(--ink);color:var(--paper)}
 .btn.solid{background:var(--ink);color:var(--paper)}
 .btn.solid:hover{background:var(--mag);border-color:var(--mag)}
-.grab{display:none}
+/* the key */
+#tp-key .t1{font:700 19px var(--f-disp);letter-spacing:.3em;text-align:center;margin:8px 0 0;padding-left:.3em}
+#tp-key .t2{font:italic 400 12.5px var(--f-disp);text-align:center;margin:0 0 6px}
+#tp-key .scale{font:500 9px var(--f-mono);letter-spacing:.12em;text-align:center;color:var(--muted);margin:2px 0 0}
+#tp-key .scalebar{display:block;margin:2px auto 4px}
+#tp-key dl{display:grid;grid-template-columns:36px 1fr;gap:4px 8px;margin:6px 0 0;font-size:13px;line-height:1.2;align-items:center}
+#tp-key dt{display:grid;place-items:center}
+#tp-key dd{margin:0}
+#tp-key .tints{display:flex;margin:10px 0 2px;border:1px solid rgba(95,140,156,.6)}
+#tp-key .tints span{flex:1;height:14px;font:italic 9.5px var(--f-body);text-align:center;line-height:14px;color:#2f5563}
+#tp-key .datum{font-size:12px;text-align:center;font-style:italic;margin:3px 0 0}
+#tp-key .kf{display:flex;justify-content:flex-end;margin-top:6px}
 
-/* the scrubber, set like the day blocks of a tide table */
-.scrub{display:grid;grid-template-columns:76px 1fr;margin-top:4px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);user-select:none;-webkit-user-select:none;outline:none}
+/* the knot scale, for the coloured wind */
+#kscale{position:fixed;left:18px;bottom:calc(var(--dock) + 40px);z-index:18;padding:6px 10px 4px;display:none}
+body.wcol #kscale{display:block}
+body.on-sheet #kscale{display:none}
+#kscale svg{display:block}
+
+/* popovers: the small print and the stars */
+#infop,#tip{position:fixed;z-index:70;width:270px;padding:11px 13px 10px;display:none;font-size:13px;line-height:1.35}
+#infop.on,#tip.on{display:block}
+#infop p{margin:0 0 6px}
+#infop h5,#tip h5{margin:0 0 5px;font:500 9.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#infop ul{margin:0;padding-left:16px}
+#tip .tp-h{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--ink);padding-bottom:5px;margin-bottom:6px;font:600 11.5px var(--f-mono)}
+#tip .tp-v{margin:0 0 5px;font-size:14px}
+#tip .tp-v i{font-family:var(--f-disp)}
+#tip ul{list-style:none;margin:0;padding:0;font:400 11.5px var(--f-mono)}
+#tip li{display:flex;gap:6px;align-items:center;padding:2px 0}
+#tip li.rs{font:italic 13px var(--f-body);color:var(--red);align-items:flex-start}
+#tip .tp-f{margin:7px 0 0;font:400 10px var(--f-mono);color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:center}
+#tip .tp-f a{color:var(--ink)}
+
+/* ---------- the dock ---------- */
+#dock{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--paper);border-top:3px double var(--ink);padding:6px 22px 8px;
+  box-shadow:0 -8px 22px -16px rgba(60,45,20,.45);transition:transform .4s cubic-bezier(.2,.7,.2,1)}
+body.on-sheet #dock{transform:translateY(110%)}
+.dk-head{display:flex;align-items:center;gap:8px;min-width:0}
+.dk-head h2{margin:0;font:600 22px var(--f-disp);font-variation-settings:"opsz" 72;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dk-county{font:500 10px var(--f-mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.dk-acts{display:flex;gap:8px;align-items:center;margin-left:auto;flex:none}
+.seg{display:inline-flex;border:1px solid var(--ink);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:none;padding:4px 10px;font:500 10px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.chev{width:30px;height:30px;border-radius:50%}
+.chev svg{transition:transform .3s}
+body.fold .chev svg{transform:rotate(180deg)}
+.grab{display:none}
+.scrub{margin-top:5px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);user-select:none;-webkit-user-select:none;outline:none}
 .scrub:focus-visible{box-shadow:0 0 0 2px var(--mag)}
-.sc-lab{font:500 9.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:7px 0 0;line-height:1.5}
 .sc-days{display:grid;grid-template-columns:repeat(5,1fr);position:relative;cursor:ew-resize;touch-action:none}
-.sc-day{padding:4px 8px 6px;border-left:1px solid var(--hair);min-width:0}
-.sc-day:first-child{border-left:1px solid var(--ink)}
+.sc-day{padding:3px 8px 5px;border-left:1px solid var(--hair);min-width:0}
+.sc-day:first-child{border-left:0}
 .sc-day.on{background:rgba(26,29,33,.045)}
-.sc-h{display:flex;align-items:center;gap:7px;white-space:nowrap}
-.sc-h b{font:600 15px var(--f-disp)}
-.sc-h .dt{font:400 9.5px var(--f-mono);color:var(--muted);letter-spacing:.06em}
+.sc-h{display:flex;align-items:center;gap:6px;white-space:nowrap;height:20px}
+.sc-h b{font:600 14px var(--f-disp)}
+.sc-h .dt{font:400 9.5px var(--f-mono);color:var(--muted)}
 .sc-h .st{margin-left:auto;display:flex}
+.sc-h .bw{font:500 9.5px var(--f-mono);color:var(--muted)}
 .sc-h .sn{display:none;font:600 10px var(--f-mono);margin-left:auto}
-.sc-t{font:400 9.5px var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:1px 0 3px;letter-spacing:.01em}
-.sc-t .hw{color:var(--ink);font-weight:500}
-.sc-strip{display:grid;grid-template-columns:repeat(14,1fr);gap:1px;height:11px}
+.sc-strip{display:grid;grid-template-columns:repeat(14,1fr);gap:1px;height:10px;margin-top:2px}
 .sc-strip i{display:block;background:rgba(26,29,33,.06)}
 .sc-strip i.night{background:repeating-linear-gradient(135deg,rgba(26,29,33,.18) 0 1px,transparent 1px 3px)}
 .sc-strip i.past{opacity:.35}
-.sc-ticks{display:none;grid-template-columns:repeat(14,1fr);font:400 8px var(--f-mono);color:var(--faint);margin-top:1px;height:10px}
-.sc-ticks span{text-align:center}
 .sc-hand{position:absolute;top:0;bottom:0;width:0;border-left:1.5px solid var(--ink);pointer-events:none;transition:left .12s}
 .sc-hand::before{content:"";position:absolute;top:-4px;left:-5.5px;border:5px solid transparent;border-top-color:var(--ink)}
-.sc-flag{position:absolute;bottom:2px;left:4px;font:600 10px var(--f-mono);background:var(--ink);color:var(--paper);padding:1px 4px;white-space:nowrap}
+.sc-flag{position:absolute;bottom:1px;left:4px;font:600 10px var(--f-mono);background:var(--ink);color:var(--paper);padding:0 4px;white-space:nowrap}
 .sc-hand.flip .sc-flag{left:auto;right:4px}
-
-/* the hours */
-.dk-body{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:18px;margin-top:4px}
+.dk-body{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px;margin-top:4px}
 .tt-wrap{position:relative;min-width:0;overflow-x:auto;scrollbar-width:thin}
 #ttpen,#shpen{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
 table.tt{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--f-mono);font-feature-settings:"tnum" 1}
-.tt th{width:76px;text-align:left;font:500 9px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 4px 0 0;white-space:nowrap;vertical-align:middle}
+.tt th{width:64px;text-align:left;font:500 9px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 4px 0 0;white-space:nowrap;vertical-align:middle}
 .tt th small{font-size:8px;letter-spacing:.04em;text-transform:none;margin-left:3px;color:var(--faint)}
-.tt td{text-align:center;padding:0 1px;height:17px;vertical-align:middle;white-space:nowrap;font-size:11px;cursor:pointer}
+.tt th .q{width:14px;height:14px;font-size:9px;margin-left:4px}
+.tt td{text-align:center;padding:0 1px;height:19px;vertical-align:middle;white-space:nowrap;font-size:11px;cursor:pointer}
 .tt tr.hr td{font-size:11px;font-weight:600;border-bottom:1px solid var(--ink);height:17px}
 .tt td .stars{display:block;margin:0 auto}
 .tt tr.hr td.night{font-weight:400;color:var(--faint)}
@@ -200,116 +235,129 @@ table.tt{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(
 .tt td.past{opacity:.42}
 .tt td.night{background-image:repeating-linear-gradient(135deg,rgba(26,29,33,.07) 0 1px,transparent 1px 4px)}
 .tt .kn{font-weight:600;font-size:12.5px}
-.tt .g{font-size:9.5px;color:var(--muted)}
-.tt .cmp{font-size:9px;color:var(--muted);margin-left:2px}
+.tt .g{font-size:9.5px}
+.tt .cmp{font-size:9px;color:var(--muted);margin:0 1px}
+.tt td svg{vertical-align:middle}
 .tt tr.wg td{font-weight:600;font-size:12px}
-.tt tr.wg small{font-weight:400;font-size:9px;color:var(--muted)}
-.tt tr.ss td{font:italic 400 12.5px var(--f-disp);color:var(--ink);padding:0 4px;cursor:default}
-.tt tr.ss td span{display:flex;align-items:center;gap:5px}
-.tt tr.ss td span::before,.tt tr.ss td span::after{content:"";flex:1;height:5px;border-top:1px solid var(--faint)}
-.tt tr.ss td span::before{border-left:1px solid var(--faint)}
-.tt tr.ss td span::after{border-right:1px solid var(--faint)}
-.tt tr.ss td.dark{color:var(--faint);font-size:11px}
-.tt tr.wv td,.tt tr.sk td{font-size:10px;color:rgba(26,29,33,.78)}
-.tt .rain{color:var(--depth);font-size:9.5px}
 .tt tr.td td{height:38px;padding:0;cursor:default}
 .tt tr.td svg{display:block;width:100%;height:38px;overflow:visible}
-.tt .tnote{position:sticky;left:72px;display:inline-block;font:italic 12.5px var(--f-body);color:var(--muted);padding-left:6px;white-space:nowrap}
-.tt tr.td td:has(.tnote){text-align:left}
-.tt tr.note td{font:italic 12.5px var(--f-body);color:var(--muted);text-align:left;padding:4px 2px;cursor:default;white-space:normal;height:auto}
-.tt tr.note td b{color:var(--ink);font-style:normal;font-family:var(--f-mono);font-size:11px;font-weight:600}
+.tt tr.note td{font:400 11px var(--f-mono);color:var(--muted);text-align:left;padding:3px 2px;cursor:default}
 .dk-margin{position:relative;border-left:1px solid var(--hair);padding:2px 0 0 16px;min-height:0}
-#dk-note{margin:0;font-size:17.5px;line-height:1.22;transform:rotate(-1.6deg);transform-origin:0 0}
+#dk-note{margin:0;font-size:17.5px;line-height:1.2;transform:rotate(-1.6deg);transform-origin:0 0;padding-right:44px}
 #dk-note .u{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
-#dk-note small{display:block;font-size:14px;color:rgba(212,58,44,.85);margin-top:5px;line-height:1.2}
-.dk-pf{position:absolute;right:-6px;bottom:-6px;width:58px;height:63px}
+#dk-note small{display:block;font-size:14px;color:rgba(212,58,44,.85);margin-top:4px;line-height:1.2}
+.dk-pf{position:absolute;right:-6px;bottom:-6px;width:52px;height:57px}
 .dk-pf svg{width:100%;height:100%;overflow:visible;transform-origin:50% 95%;animation:bob 6s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:none}46%{transform:none}50%{transform:translateY(-3px) rotate(-2deg)}54%{transform:none}}
-.dk-foot{font-size:11.5px;color:var(--muted);font-style:italic;margin:8px 0 0;line-height:1.3;padding-right:50px}
-body.fold .dk-body,body.fold .dk-foot{display:none}
+body.fold .dk-body{display:none}
+/* the ribbon: an experiment */
+#rib{position:relative;height:150px;display:none;overflow:hidden;touch-action:none;cursor:grab;border-bottom:1px solid var(--hair)}
+#rib:active{cursor:grabbing}
+body.v-ribbon #rib{display:block}
+body.v-ribbon #tt-wrap{display:none}
+#rib canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+#rib-read{position:absolute;left:0;top:2px;font:500 11px var(--f-mono);display:flex;gap:8px;align-items:center;background:rgba(243,238,227,.86);padding:2px 6px 2px 0;pointer-events:none}
+#rib-read b{font:600 12px var(--f-mono)}
+#rib-read i{font:italic 13px var(--f-disp)}
+#rib-days span{position:absolute;bottom:2px;font:600 11px var(--f-disp);transform:translateX(-50%);pointer-events:none;white-space:nowrap}
+#rib-days span small{font:400 9px var(--f-mono);color:var(--muted);margin-left:3px}
+#rib-guides span{position:absolute;right:4px;font:500 8.5px var(--f-mono);color:var(--muted);transform:translateY(-50%);pointer-events:none}
+#rib-load{position:absolute;inset:0;display:grid;place-items:center;font:italic 13px var(--f-body);color:var(--muted)}
 
-/* ---------- a spot's chart-style popup ---------- */
-.cpop .maplibregl-popup-content{background:var(--paper);border:1px solid var(--ink);box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--ink),0 8px 22px -12px rgba(60,45,20,.5);border-radius:0;padding:13px 16px 13px;font-family:var(--f-body);width:272px}
+/* ---------- popup ---------- */
+.cpop .maplibregl-popup-content{background:var(--paper);border:1px solid var(--ink);box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--ink),0 8px 22px -12px rgba(60,45,20,.5);border-radius:0;padding:11px 14px 12px;font-family:var(--f-body);width:250px}
 .cpop.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,.cpop.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,.cpop.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{border-top-color:var(--ink)}
 .cpop.maplibregl-popup-anchor-top .maplibregl-popup-tip,.cpop.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,.cpop.maplibregl-popup-anchor-top-right .maplibregl-popup-tip{border-bottom-color:var(--ink)}
 .cpop.maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:var(--ink)}
 .cpop.maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:var(--ink)}
-.pp .x{position:absolute;right:9px;top:8px;border:0;background:none;font-size:18px;cursor:pointer;line-height:1;padding:4px;color:var(--muted)}
+.pp-h{display:flex;align-items:center;gap:6px}
+.pp-h h3{margin:0;font:600 20px var(--f-disp);letter-spacing:-.01em;line-height:1.05;flex:1;min-width:0}
+.pp .x{border:0;background:none;font-size:18px;cursor:pointer;line-height:1;padding:2px 2px;color:var(--muted);align-self:flex-start}
 .pp .x:hover{color:var(--ink)}
-.pp h3{margin:2px 0 1px;font:600 21px var(--f-disp);letter-spacing:-.01em;line-height:1.05;padding-right:16px}
-.pp .ch{font:italic 500 12.5px var(--f-body);color:var(--mag)}
-.pp .row{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--ink);border-bottom:1px solid var(--hair);padding:5px 0;margin:8px 0 6px}
-.pp .row .when{font:600 11px var(--f-mono);letter-spacing:.04em}
-.pp p{margin:2px 0;font-size:14px;line-height:1.3}
-.pp p.m{color:var(--muted);font-style:italic;font-size:13px}
-.pp .mono{font-size:12.5px}
-.pp .acts{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.pp .acts .co{font:10px var(--f-mono);color:var(--faint);letter-spacing:.04em}
+.pp-m{display:flex;gap:8px;align-items:center;margin:3px 0 0 26px;font:500 10px var(--f-mono);letter-spacing:.1em;color:var(--muted)}
+.pp .row{display:flex;gap:8px;align-items:center;border-top:1px solid var(--ink);border-bottom:1px solid var(--hair);padding:5px 0;margin:8px 0 6px}
+.pp .row .when{font:600 11px var(--f-mono);letter-spacing:.04em;margin-right:auto}
+.pp .ln{margin:3px 0;font:400 12.5px var(--f-mono);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pp .ln b{font-weight:600;font-size:13.5px}
+.pp .acts{margin-top:9px;display:flex;justify-content:flex-end}
 
-/* ---------- the spot page: a sheet laid over the chart ---------- */
+/* ---------- the spot page ---------- */
 #sheet{position:fixed;top:0;right:0;bottom:0;width:var(--sheet);z-index:30;background:var(--paper);border-left:3px double var(--ink);overflow:auto;transform:translateX(104%);transition:transform .5s cubic-bezier(.2,.7,.2,1);box-shadow:-16px 0 30px -24px rgba(60,45,20,.6);overscroll-behavior:contain}
 body.on-sheet #sheet{transform:none}
-.sh-in{padding:16px 40px 40px}
-.sh-top{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:8px}
-.sh-top a.back{font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-bottom:1.5px solid var(--ink);padding-bottom:1px}
+.sh-in{padding:14px 32px 40px}
+.sh-top{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.sh-top a.back{font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;border-bottom:1.5px solid var(--ink);padding-bottom:1px;margin-right:auto}
 .sh-top a.back:hover{color:var(--mag);border-color:var(--mag)}
-.headline{font-family:var(--f-disp);font-variation-settings:"opsz" 144;font-weight:700;font-size:52px;line-height:.98;letter-spacing:-.035em;margin:20px 0 12px;text-wrap:balance}
+.sh-top .favb{gap:5px;display:inline-flex;font:500 10px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.headline{font-family:var(--f-disp);font-variation-settings:"opsz" 144;font-weight:700;font-size:44px;line-height:1;letter-spacing:-.035em;margin:16px 0 8px;text-wrap:balance}
 .headline em{font-weight:400;font-style:italic;letter-spacing:-.02em}
 .headline .c{color:var(--mag)}
-.deck{font-style:italic;font-size:19px;line-height:1.33;margin:0 0 12px;text-wrap:pretty}
-.byline{display:flex;flex-wrap:wrap;gap:3px 16px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--ink);border-bottom:1px solid var(--hair);padding:7px 0;margin-bottom:20px}
-.byline b{font-family:var(--f-disp);font-weight:600;color:var(--ink);font-style:italic}
-.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin:24px 0 0}
-.sec-h h2{margin:0;font:600 23px var(--f-disp);letter-spacing:-.01em}
-.sec-h h2 em{font-weight:400}
-.sec-h .aside{font:400 10.5px var(--f-mono);color:var(--muted);letter-spacing:.04em;text-align:right}
-.week{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--ink)}
-.dcard{padding:9px 10px 10px;border-left:1px solid var(--hair);cursor:pointer;background:none;border-top:0;border-right:0;border-bottom:0;text-align:left;font:inherit;min-width:0}
+.meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font:500 11px var(--f-mono);color:var(--muted);letter-spacing:.06em;margin-bottom:12px}
+.meta b{color:var(--ink);font-weight:600}
+.meta span{display:inline-flex;gap:5px;align-items:center}
+.week{display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--ink)}
+.dcard{padding:7px 9px 8px;border:0;border-left:1px solid var(--hair);cursor:pointer;background:none;text-align:left;font:inherit;min-width:0}
 .dcard:first-child{border-left:0}
 .dcard:hover{background:rgba(176,24,106,.05)}
 .dcard.on{background:rgba(26,29,33,.06);box-shadow:inset 0 -3px 0 var(--ink)}
-.dcard .dn{font:650 18px var(--f-disp);display:flex;flex-wrap:wrap;gap:0 6px;justify-content:space-between;align-items:baseline}
-.dcard .dn small{font:400 9.5px var(--f-mono);color:var(--muted);letter-spacing:.06em}
-.dcard .stars{margin:6px 0 5px}
-.dcard .se{font:italic 14px var(--f-disp)}
-.dcard .dl{font:400 11px var(--f-mono);color:var(--muted);margin-top:2px;line-height:1.35}
+.dcard .dn{font:650 16px var(--f-disp);display:flex;gap:6px;align-items:baseline}
+.dcard .dn small{font:400 9.5px var(--f-mono);color:var(--muted)}
+.dcard .stars{margin:5px 0 3px;display:block}
+.dcard .dl{font:400 10.5px var(--f-mono);color:var(--muted);white-space:nowrap}
 .dcard .dl b{color:var(--ink);font-weight:600}
-.sh-tt-wrap{position:relative;margin-top:2px}
-table.ht{width:100%;border-collapse:collapse;font-size:13.5px}
-.ht thead th{font:500 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 4px 5px;border-bottom:1px solid var(--ink);white-space:nowrap}
-.ht td{padding:4px 4px;border-bottom:1px solid var(--hair);white-space:nowrap;vertical-align:middle}
-.ht tr{cursor:pointer}
-.ht tr:hover td{background:rgba(176,24,106,.04)}
-.ht tr.sel td{background:rgba(26,29,33,.07)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;font:400 10px var(--f-mono);color:var(--muted);margin:14px 0 4px}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.sh-tt-wrap{position:relative;overflow-x:auto}
+table.ht{width:100%;border-collapse:collapse;font-family:var(--f-mono);font-feature-settings:"tnum" 1;font-size:12px}
+.ht thead th{font:500 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 4px 4px;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:bottom;position:sticky;top:0;background:var(--paper);z-index:2}
+.ht thead th .q{width:14px;height:14px;font-size:9px}
+.ht td{padding:0 4px;height:26px;border-bottom:1px solid var(--hair);white-space:nowrap;vertical-align:middle}
+.ht tr.hrow{cursor:pointer}
+.ht tr.hrow:hover td{background:rgba(176,24,106,.04)}
+.ht tr.sel td:not(.tide){background:rgba(26,29,33,.07)}
 .ht tr.sel td.t{box-shadow:inset 3px 0 0 var(--ink)}
-.ht tr.past td{opacity:.45}
-.ht tr.night td{color:var(--faint)}
-.ht td.t{font:600 13px var(--f-mono)}
-.ht .se{font:italic 13.5px var(--f-disp)}
-.ht .kn{font:600 15px var(--f-mono)}
-.ht .g{font:11px var(--f-mono);color:var(--muted)}
-.ht .wg{font:600 14px var(--f-mono)}
-.ht .wg small{font-weight:400;color:var(--muted);font-size:10px}
-.ht .sm{font:11px var(--f-mono)}
-.ht .rs{font:italic 12.5px var(--f-body);color:var(--muted);white-space:normal;max-width:180px;line-height:1.2}
-.sh-note{font-family:var(--f-hand);color:var(--red);font-size:18px;line-height:1.2;transform:rotate(-1deg);text-align:right;margin:6px 0 2px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:28px}
-.fig{margin:8px 0 0}
-.fig svg{display:block;width:100%;height:auto;overflow:visible}
-.fig figcaption,.cap{font-size:13px;color:var(--muted);font-style:italic;margin-top:6px;line-height:1.35}
-.cap b{font-style:normal;color:var(--ink);font-family:var(--f-mono);font-size:11.5px;font-weight:600}
-table.sun{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
-.sun th{font:500 9px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;border-bottom:1px solid var(--ink);padding:3px 4px}
-.sun td{padding:3px 4px;border-bottom:1px solid var(--hair);font:12px var(--f-mono)}
-.sun td:first-child{font:600 13px var(--f-disp)}
-.colo{margin-top:30px;border-top:3px double var(--ink);padding-top:10px;font-size:12px;color:var(--muted);columns:2;column-gap:28px;line-height:1.4}
-.colo p{margin:0 0 7px;break-inside:avoid}
+.ht tr.past td:not(.tide){opacity:.45}
+.ht td.t{font:600 12.5px var(--f-mono);width:34px}
+.ht td.st{width:66px}
+.ht .kn{font:600 14px var(--f-mono)}
+.ht .g{font-size:10.5px}
+.ht td.wg{font-weight:600;font-size:13px}
+.ht td.tide{padding:0;width:104px;vertical-align:top;border-left:1px solid var(--hair);border-bottom:0}
+.ht td.tide svg{display:block;width:104px;overflow:visible}
+.ht td.rg svg,.ht td.ch svg{display:block}
+.ht td.ch{width:76px}
+.ht td.ch span{display:inline-block;width:30px;text-align:right;margin-right:4px}
+.ht td.ch svg{display:inline-block;vertical-align:middle}
+.ht .dots{letter-spacing:-1px;font-size:9px;color:var(--ink)}
+.ht .dots i{font-style:normal;color:var(--faint)}
+.ht tr.dh td{height:auto;padding:14px 4px 4px;border-bottom:2px solid var(--ink);font:650 18px var(--f-disp);background:none!important;opacity:1!important}
+.ht tr.dh td .mono{font-size:10.5px;color:var(--muted);font-weight:400;margin-left:10px;letter-spacing:.04em}
+.ht tr.dh td .pn{float:right;font:400 16px var(--f-hand);color:var(--red);transform:rotate(-1deg);margin-top:2px}
+.ht tr.nt td{height:22px;font:400 10.5px var(--f-mono);color:var(--muted);background-image:repeating-linear-gradient(135deg,rgba(26,29,33,.06) 0 1px,transparent 1px 4px);border-bottom:0}
+.colo{margin-top:24px;border-top:3px double var(--ink);padding-top:8px;font-size:12px;color:var(--muted)}
+/* the stars explained */
+.ex{max-width:720px}
+.ex h2{font:600 22px var(--f-disp);margin:26px 0 6px;border-bottom:2px solid var(--ink);padding-bottom:4px}
+.ex h2 em{font-weight:400}
+.ex p{margin:6px 0;font-size:16px;line-height:1.45}
+.ex .deck{font-style:italic;font-size:19px;margin:0 0 6px}
+.ex .f{font:500 14px var(--f-mono);background:rgba(26,29,33,.04);border-left:3px solid var(--ink);padding:8px 12px;margin:10px 0}
+.ex table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0}
+.ex th{font:500 9.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;border-bottom:1px solid var(--ink);padding:4px 6px}
+.ex td{border-bottom:1px solid var(--hair);padding:5px 6px;vertical-align:top}
+.ex td.n{font-family:var(--f-mono);white-space:nowrap}
+.ex tr.you td{background:rgba(176,24,106,.07)}
+.ex tr.you td:first-child::after{content:" you";font:400 14px var(--f-hand);color:var(--red)}
+.ex .ledger td:last-child{text-align:right;font-family:var(--f-mono);white-space:nowrap}
+.ex .ledger tr.tot td{border-top:2px solid var(--ink);font-weight:600}
+.ex .glyphs{display:flex;gap:22px;flex-wrap:wrap;margin:8px 0;font-size:14px}
+.ex .glyphs span{display:inline-flex;gap:8px;align-items:center}
+.ex svg.chart{display:block;width:100%;height:auto;margin:6px 0}
 
 /* ---------- menu ---------- */
-#menu{position:fixed;top:0;left:0;bottom:0;width:340px;z-index:40;padding:18px 24px;overflow:auto;transform:translateX(-105%);transition:transform .4s cubic-bezier(.2,.7,.2,1);border-right:3px double var(--ink);background:var(--paper)}
+#menu{position:fixed;top:0;left:0;bottom:0;width:320px;z-index:40;padding:18px 24px;overflow:auto;transform:translateX(-105%);transition:transform .4s cubic-bezier(.2,.7,.2,1);border-right:3px double var(--ink);background:var(--paper)}
 body.menu-on #menu{transform:none}
-#menu .nameplate{font-size:40px;display:inline-block;margin:6px 0 2px}
-#menu .tag{font:italic 14px var(--f-body);color:var(--muted);margin:0 0 16px}
+#menu .nameplate{font-size:40px;display:inline-block;margin:6px 0 10px}
 #menu h3{font:500 10px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:18px 0 4px;border-bottom:1px solid var(--ink);padding-bottom:4px}
 #menu ul{list-style:none;margin:0;padding:0}
 #menu li a,#menu li span{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--hair);text-decoration:none;font:600 16px var(--f-disp)}
@@ -317,56 +365,63 @@ body.menu-on #menu{transform:none}
 #menu li a small{font:400 10px var(--f-mono);color:var(--muted);letter-spacing:.06em}
 #menu li span{color:var(--faint);font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
 #menu li span small{font:13px var(--f-hand);color:var(--red);letter-spacing:0;text-transform:none}
-#menu p{font-size:13.5px;line-height:1.4;margin:8px 0}
 #menu .x{position:absolute;right:14px;top:14px}
 #scrim{position:fixed;inset:0;z-index:39;background:rgba(26,29,33,.18);opacity:0;pointer-events:none;transition:opacity .3s}
 body.menu-on #scrim{opacity:1;pointer-events:auto}
 
 /* ---------- phone ---------- */
 @media (max-width:720px){
-  :root{--sheet:100vw;--nl:5px}
+  :root{--sheet:100vw;--strip:46px}
   #head{top:10px;left:10px;right:56px;width:auto;padding:5px 8px 5px 5px;gap:8px}
   .nameplate{font-size:20px}
-  .find input{padding-left:2px;font-size:16px}
-  .find label{display:none}
+  .find input{font-size:16px}
   #ctrl{top:10px;right:10px}
   .zbox button{width:30px;height:28px}
-  #layers{right:44px;width:230px}
-  #cart{display:none;right:10px;left:10px;top:66px;width:auto;max-height:calc(100vh - var(--dock) - 80px)}
-  body.cart-on #cart{display:block}
-  #dock{padding:0 12px calc(8px + env(safe-area-inset-bottom));border-top:3px double var(--ink);max-height:82vh;overflow:auto;border-radius:0}
-  .grab{display:block;width:100%;height:22px;border:0;background:none;cursor:pointer;position:relative}
-  .grab::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:4px;margin-left:-22px;border-radius:2px;background:var(--faint)}
-  .dk-head{flex-wrap:wrap;gap:2px 10px}
-  .dk-head h2{font-size:21px}
-  .dk-meta{flex-basis:100%;order:3;font-size:13px}
-  .dk-acts .btn.fold{display:none}
-  .scrub{grid-template-columns:1fr}
-  .sc-lab{display:none}
-  .sc-day{padding:4px 4px 3px}
-  .sc-h{gap:3px}.sc-h b{font-size:13px}.sc-h .dt{display:none}
+  #key-b{display:grid!important}
+  #layers{right:44px;width:226px}
+  #side{left:8px;right:8px;top:auto;bottom:calc(var(--dock) + 6px);width:auto;max-height:none;padding:3px 6px;overflow-x:auto;overflow-y:hidden;box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px var(--ink)}
+  #side .tabs,#side h4,#side .sign,#tp-key{display:none}
+  #tp-yours{display:flex;gap:4px}
+  #side .fvl{display:flex;gap:4px}
+  #side .fvl li{grid-template-columns:20px auto auto;border:0;border-right:1px solid var(--hair);padding:2px 8px 2px 0;white-space:nowrap}
+  #side .fvl,#side .fvl li{flex:none}
+  #side .fvl li{display:flex;gap:4px;align-items:center}
+  #side .fv-go{min-width:auto}
+  #side .fv-go b{font-size:14px;overflow:visible}
+  #side .fv-go span{display:none}
+  #side .fvl .none{display:none}
+  body.key-on #side{top:62px;right:52px;bottom:auto;max-height:calc(100vh - var(--dock) - 74px);overflow:auto;padding:6px 14px 12px}
+  body.key-on #side .tabs,body.key-on #side h4,body.key-on #side .sign{display:flex}
+  body.key-on #tp-yours{display:block}
+  body.key-on #side .fvl{display:block}
+  body.key-on #side .fvl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;border:0;border-bottom:1px solid var(--hair);padding:5px 0}
+  body.key-on #side .fv-go span{display:block}
+  body.key-on #tp-key:not([hidden]){display:block}
+  body.key-on #tp-yours[hidden]{display:none}
+  #kscale{left:10px;bottom:auto;top:62px}
+  #dock{padding:0 12px calc(8px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto}
+  .grab{display:block;width:100%;height:20px;border:0;background:none;cursor:pointer;position:relative}
+  .grab::before{content:"";position:absolute;left:50%;top:7px;width:44px;height:4px;margin-left:-22px;border-radius:2px;background:var(--faint)}
+  .dk-head{flex-wrap:wrap;gap:4px 8px}
+  .dk-head h2{font-size:20px;max-width:58vw}
+  .dk-county{display:none}
+  .dk-acts{width:100%;justify-content:space-between}
+  .chev{display:none!important}
+  .sc-day{padding:3px 4px 3px}
+  .sc-h b{font-size:13px}.sc-h .dt,.sc-h .bw{display:none}
   .sc-h .st{display:none}.sc-h .sn{display:block}
-  .sc-flag{font-size:9px;bottom:1px}
-  .sc-t{display:none}
-  .sc-ticks{display:none}
+  .sc-flag{font-size:9px}
   .dk-body{grid-template-columns:1fr;gap:8px}
-  table.tt{width:940px}
-  .tt .tnote{white-space:normal;width:300px;line-height:1.2;font-size:12px}
-  .tt th{position:sticky;left:0;background:var(--paper);z-index:1;width:64px}
-  .dk-margin{border-left:0;border-top:1px solid var(--hair);padding:8px 64px 6px 0;min-height:70px}
-  .dk-pf{right:0;bottom:0;width:52px;height:56px}
-  .sh-in{padding:12px 16px 40px}
-  .sh-top .kick:last-child{display:none}
-  .sh-top a.back{white-space:nowrap}
-  #sheet{top:22vh;border-left:0;border-top:3px double var(--ink);transform:translateY(105%)}
-  .headline{font-size:36px;margin-top:14px}
-  .deck{font-size:17px}
-  .week{grid-template-columns:repeat(5,minmax(104px,1fr));overflow-x:auto}
-  .two{grid-template-columns:1fr}
-  .sh-tt-wrap{overflow-x:auto}
-  table.ht{min-width:640px}
-  .colo{columns:1}
-  .sec-h{flex-wrap:wrap}
+  table.tt{width:820px}
+  .tt th{position:sticky;left:0;background:var(--paper);z-index:1;width:58px}
+  .dk-margin{border-left:0;border-top:1px solid var(--hair);padding:8px 0 6px 0;min-height:66px}
+  .sh-in{padding:10px 14px 40px}
+  #sheet{top:18vh;border-left:0;border-top:3px double var(--ink);transform:translateY(105%)}
+  .headline{font-size:32px;margin-top:12px}
+  .week{grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto}
+  table.ht{min-width:860px}
+  .ht thead th{position:static}
+  .ht tr.dh td .pn{float:none;display:block}
   #menu{width:86vw}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -380,8 +435,8 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   <button class="ib" id="menu-b" aria-label="Menu" aria-controls="menu" aria-expanded="false"><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M0 1h16M0 6h16M0 11h16" stroke="currentColor" stroke-width="1.4"/></svg></button>
   <a class="nameplate" href="#map">wingfoil<span class="ie">.ie</span></a>
   <div class="find" role="combobox" aria-expanded="false" aria-owns="results" aria-haspopup="listbox">
-    <label for="q">Find</label>
-    <input id="q" type="search" placeholder="a spot or a county…" autocomplete="off" aria-autocomplete="list" aria-controls="results">
+    <label for="q" class="sr">Find a spot</label>
+    <input id="q" type="search" placeholder="Find a spot…" autocomplete="off" aria-autocomplete="list" aria-controls="results">
     <ul id="results" class="boxed" role="listbox" aria-label="Spots"></ul>
   </div>
 </header>
@@ -391,93 +446,102 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
     <button id="zin" aria-label="Zoom in">+</button>
     <button id="zout" aria-label="Zoom out">−</button>
     <button id="zirl" class="txt" aria-label="Show all of Ireland" title="All of Ireland">IRL</button>
-    <button id="lay-b" class="txt" aria-label="Layers" aria-controls="layers" aria-expanded="false" title="Layers"><svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M8 1L15 4.5L8 8L1 4.5Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M1 8L8 11.5L15 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
-    <button id="key-b" class="txt" aria-label="Title and key" aria-controls="cart" title="Title and key">KEY</button>
+    <button id="lay-b" aria-label="Layers" aria-controls="layers" aria-expanded="false" title="Layers"><svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true"><path d="M8 1L15 4.5L8 8L1 4.5Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M1 8L8 11.5L15 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+    <button id="key-b" class="txt" aria-label="Your spots and key">KEY</button>
   </div>
   <div id="layers" class="boxed" role="group" aria-label="Layers">
-    <h3>On the chart</h3>
-    <label><input type="checkbox" data-l="wind" checked><span>Wind lines<small>the forecast for the hour shown</small></span></label>
-    <label><input type="checkbox" data-l="tint" checked><span>Depth tints<small>darker blue, shallower water</small></span></label>
-    <label><input type="checkbox" data-l="sound" checked><span>Contours and soundings</span></label>
+    <h3>Wind</h3>
+    <label><input type="radio" name="wst" value="ink"><span>Ink</span><span class="sw" style="background:linear-gradient(90deg,#1A1D21 0 30%,transparent 30% 45%,#1A1D21 45% 75%,transparent 75%)"></span></label>
+    <label><input type="radio" name="wst" value="arrows"><span>Coloured arrows</span><span class="sw" id="sw-arrows"></span></label>
+    <label><input type="radio" name="wst" value="wash"><span>Faint wash</span><span class="sw" id="sw-wash"></span></label>
+    <h3>Chart</h3>
+    <label><input type="checkbox" data-l="tint" checked><span>Depth tints</span></label>
+    <label><input type="checkbox" data-l="sound" checked><span>Contours, soundings</span></label>
     <label><input type="checkbox" data-l="relief" checked><span>Land relief</span></label>
     <label><input type="checkbox" data-l="names" checked><span>Spot names</span></label>
   </div>
 </div>
 
-<aside id="cart" class="boxed" aria-label="Title and key">
-  <p class="t1">IRELAND</p>
-  <p class="t2">Wing Foil Chart · All Coasts</p>
-  <div class="rule"></div>
-  <p class="when" id="c-when">MON 5 OCT · 13:00 IST</p>
-  <p class="small">Lights: each spot's best hour that day. Wind lines: the hour itself.</p>
-  <p class="datum">Depths in metres below chart datum<br><span style="font-size:11px">(Lowest Astronomical Tide)</span></p>
-  <p class="scale" id="c-scale">SCALE 1 : 2 400 000</p>
-  <svg class="scalebar" id="c-bar" width="210" height="22" aria-hidden="true"></svg>
-  <div class="kt"><h3>Key</h3><button id="key-fold" aria-expanded="true">Fold</button></div>
-  <div class="key">
+<aside id="side" class="boxed" aria-label="Your spots and the key">
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-yours" aria-selected="true" aria-controls="tp-yours">Your spots</button>
+    <button role="tab" id="tab-key" aria-selected="false" aria-controls="tp-key">Key</button>
+    <span class="when" id="side-when"></span>
+  </div>
+  <div id="tp-yours" role="tabpanel" aria-labelledby="tab-yours"></div>
+  <div id="tp-key" role="tabpanel" aria-labelledby="tab-key" hidden>
+    <p class="t1">IRELAND</p>
+    <p class="t2">Wing Foil Chart</p>
+    <p class="scale" id="c-scale">SCALE 1 : 2 400 000</p>
+    <svg class="scalebar" id="c-bar" width="210" height="22" aria-hidden="true"></svg>
     <dl>
       <dt><svg width="34" height="34" viewBox="-17 -22 34 34" aria-hidden="true"><path d="M0 -1 C3.4 -6 6 -13 0 -20 C-6 -13 -3.4 -6 0 -1Z" transform="translate(0 -4) rotate(30 0 4)" fill="#B0186A"/><circle r="7.6" fill="#1A1D21"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#F3EEE3">4</text></svg></dt>
-      <dd><em>Fl(4)Mg 8s</em> flashes four times: four stars at the day's best hour. Lit from three.</dd>
+      <dd>Best stars that day. Lit from 3★, one flash per star.</dd>
       <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1.1"/><text y="3.4" text-anchor="middle" style="font:600 9.5px 'IBM Plex Mono';fill:#1A1D21">2</text></svg></dt>
-      <dd>One or two stars: unlit, rideable.</dd>
+      <dd>1–2★</dd>
       <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><circle r="7.6" fill="#F3EEE3" stroke="rgba(26,29,33,.45)" stroke-width="1.1" stroke-dasharray="2 1.6"/><text y="3.4" text-anchor="middle" style="font:500 9.5px 'IBM Plex Mono';fill:rgba(26,29,33,.45)">0</text></svg></dt>
-      <dd>Not worth rigging all day.</dd>
+      <dd>No stars</dd>
       <dt><svg width="34" height="26" viewBox="-17 -13 34 26" aria-hidden="true"><circle r="10.5" fill="none" stroke="#1A1D21" stroke-width=".8"/><circle r="7.6" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1.1"/></svg></dt>
-      <dd>Surveyed: hours, tides, fine depths.</dd>
+      <dd>Hour by hour</dd>
       <dt><svg width="34" height="20" viewBox="0 0 34 20" aria-hidden="true"><path d="M3 15 C10 13 16 8 31 5" fill="none" stroke="rgba(26,29,33,.55)" stroke-width="1.4" stroke-linecap="round"/><path d="M5 18 C12 16 18 12 26 10" fill="none" stroke="rgba(26,29,33,.3)" stroke-width="1" stroke-linecap="round"/></svg></dt>
-      <dd>Wind lines, running downwind.</dd>
+      <dd>Wind, at the hour shown</dd>
       <dt><svg width="34" height="24" viewBox="-17 -12 34 24" aria-hidden="true"><path d="M-14 4 C-10 -9 10 -10 13 3 C11 10 -10 11 -14 4Z" fill="none" stroke="#D43A2C" stroke-width="1.6" stroke-linecap="round"/></svg></dt>
-      <dd>The red pen: the best window at your spot.</dd>
+      <dd>Best window</dd>
     </dl>
     <div class="tints" id="tints"></div>
-    <p class="tcap"><b>A 90 cm mast touches down in about 1.2 m:</b> add the tide.</p>
-    <p class="src"><span class="long">Depths: EMODnet Bathymetry, finer (~115 m) in the five surveyed bays. Coast: OpenStreetMap. Wind: Met Éireann HARMONIE, then ECMWF. Tides: Marine Institute. Stars for an 80 kg intermediate. Not for navigation.</span><span class="short">Sources: EMODnet depths · OpenStreetMap coast · Met Éireann and ECMWF wind · Marine Institute tides. Not for navigation.</span></p>
+    <p class="datum">Depths in metres below chart datum</p>
+    <div class="kf"><a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a>&nbsp;<button class="ii" data-info="key" aria-label="Sources">i</button></div>
   </div>
 </aside>
 
+<div id="kscale" class="boxed" aria-label="Wind speed scale"><svg id="kbar" width="232" height="26" aria-hidden="true"></svg></div>
+
 <section id="dock" aria-label="Forecast for the chosen spot">
-  <button class="grab" id="grab" aria-label="Open the hour-by-hour table" aria-expanded="false"></button>
+  <button class="grab" id="grab" aria-label="Open the hours" aria-expanded="false"></button>
   <div class="dk-head">
+    <button class="favb" data-fav="" aria-pressed="false" aria-label="Star this spot"></button>
     <h2 id="dk-name">Rusheen Bay</h2>
-    <span class="dk-meta" id="dk-meta"></span>
+    <span id="dk-face"></span>
+    <span class="dk-county" id="dk-county"></span>
     <div class="dk-acts">
-      <a class="btn solid" id="dk-open" href="#spot/rusheen">Open spot page →</a>
-      <button class="btn fold" id="dk-fold" aria-expanded="true">Fold the table</button>
+      <div class="seg" role="group" aria-label="Show the hours as"><button data-v="table" aria-pressed="true">Table</button><button data-v="ribbon" aria-pressed="false">Ribbon</button></div>
+      <button class="ii" data-info="dock" aria-label="About these figures">i</button>
+      <a class="btn solid" id="dk-open" href="#spot/rusheen">Spot page →</a>
+      <button class="ib chev" id="dk-fold" aria-label="Fold the hours" aria-expanded="true"><svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true"><path d="M1 1.5L7 7.5L13 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
   </div>
   <div class="scrub" id="scrub" tabindex="0" role="slider" aria-label="Forecast day and hour" aria-valuemin="0" aria-valuemax="69">
-    <div class="sc-lab">Tide-table<br>of wind<br><span style="color:var(--ink)">IST</span></div>
     <div class="sc-days" id="sc-days"></div>
   </div>
   <div class="dk-body">
-    <div class="tt-wrap" id="tt-wrap"><table class="tt" id="tt"></table><svg id="ttpen" aria-hidden="true"></svg></div>
+    <div>
+      <div class="tt-wrap" id="tt-wrap"><table class="tt" id="tt"></table><svg id="ttpen" aria-hidden="true"></svg></div>
+      <div id="rib" aria-label="The week as a ribbon: drag to move through time"><div id="rib-load">Drawing the ribbon…</div><div id="rib-guides"></div><div id="rib-days"></div><div id="rib-read"></div></div>
+    </div>
     <div class="dk-margin"><p id="dk-note" class="hand" aria-live="polite"></p>
-      <p class="dk-foot" id="dk-foot"></p>
-      <div class="dk-pf" title="The Almanac keeps the margin"><svg viewBox="0 0 120 130" aria-hidden="true"><use href="#puffin-art"/></svg></div>
+      <div class="dk-pf" title="The Almanac's note"><svg viewBox="0 0 120 130" aria-hidden="true"><use href="#puffin-art"/></svg></div>
     </div>
   </div>
 </section>
 
 <aside id="sheet" aria-label="Spot page"><div class="sh-in" id="sh-in"></div></aside>
+<div id="tip" class="boxed" role="tooltip"></div>
+<div id="infop" class="boxed" role="dialog" aria-label="Small print"></div>
 
 <div id="scrim"></div>
 <nav id="menu" aria-label="Menu">
   <button class="ib x" id="menu-x" aria-label="Close the menu">×</button>
   <a class="nameplate" href="#map">wingfoil<span class="ie">.ie</span></a>
-  <p class="tag">The wing foil forecast for Ireland: 146 spots, five days, every daylight hour rated out of five.</p>
-  <h3>Forecast</h3>
-  <ul><li><a href="#map">The chart <small>ALL COASTS</small></a></li></ul>
-  <h3>Surveyed spots</h3>
+  <ul><li><a href="#map">The chart</a></li><li><a href="#stars">How the stars work</a></li></ul>
+  <h3>Hour by hour</h3>
   <ul id="menu-feat"></ul>
   <h3>Next edition</h3>
   <ul><li><span>Community <small>next edition</small></span></li><li><span>Marketplace <small>next edition</small></span></li></ul>
-  <h3>About this chart</h3>
-  <p>Every spot is a light: the more stars its best hour has, the more it flashes. Drag the tide-table along the bottom to move the wind and the lights through the week. Pick a spot to see its hours; the red pen circles the window worth driving for.</p>
-  <p style="color:var(--muted);font-size:12.5px">Hour-by-hour ratings, tides and the fine bay surveys cover the five surveyed spots in this mockup. The other 141 show each day's best hour, and the wind the lines are drawn from.</p>
 </nav>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
+    <pattern id="lh" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#EDE3C8"/><line x1="0" y1="0" x2="0" y2="3" stroke="rgba(26,29,33,.35)" stroke-width=".8"/></pattern>
     <pattern id="ph" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)"><line x1="0" y1="0" x2="0" y2="2.4" stroke="#F3EEE3" stroke-width=".55"/></pattern>
     <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="rgba(26,29,33,.16)" stroke-width="1"/></pattern>
     <g id="puffin-art">
@@ -503,10 +567,11 @@ body.menu-on #scrim{opacity:1;pointer-events:auto}
   </defs>
 </svg>
 
+
 <script>
 (() => {
 'use strict';
-const W = window.WF, K = window.WFChart;
+const W = window.WF, K = window.WFChart, WM = window.WFMODELS;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS = 'http://www.w3.org/2000/svg';
 const $ = (s, r = document) => r.querySelector(s);
@@ -516,21 +581,20 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rn = v => Math.round(v);
 const pad2 = n => String(n).padStart(2, '0');
 const phone = () => innerWidth <= 720;
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
 /* ---------- words ---------- */
 const WORDS = ['no', 'one', 'two', 'three', 'four', 'five'];
 const C16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const d2c = d => C16[Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
 const c2d = c => C16.indexOf(c) * 22.5;
-const DIRWORD = ['Northerly','North-easterly','Easterly','South-easterly','Southerly','South-westerly','Westerly','North-westerly'];
-const dirWord = d => DIRWORD[Math.round((((d % 360) + 360) % 360) / 45) % 8];
 const FACE8 = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round((((d % 360) + 360) % 360) / 45) % 8];
 const SHORE = { onshore: 'onshore', 'cross-on': 'cross-onshore', cross: 'cross-shore', 'cross-off': 'cross-offshore', offshore: 'offshore' };
 const shoreW = x => x ? SHORE[x] || x : '';
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DOWL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-/* ---------- time: five days, 07:00 to 20:00 Irish time ---------- */
+/* ---------- time: five days, hours 07 to 20 Irish time ---------- */
 const DAYS = W.spots[0].days.map(x => x.date);
 const HRS = Array.from({ length: 14 }, (_, i) => i + 7);
 const dOf = i => new Date(DAYS[i] + 'T12:00:00Z');
@@ -538,6 +602,7 @@ const dayS = i => DOW[dOf(i).getUTCDay()];
 const dayL = i => DOWL[dOf(i).getUTCDay()];
 const dom = i => +DAYS[i].slice(8);
 const msOf = (d, h) => Date.parse(DAYS[d] + 'T00:00:00Z') + (h - 1) * 36e5; // IST = UTC+1
+const T0 = Date.parse(DAYS[0] + 'T00:00:00Z'); // the week's first hour, Mon 01:00 IST
 const NOW = Date.parse(W.now);
 const NOW_D = DAYS.indexOf(W.now.slice(0, 10));
 const NOW_H = new Date(NOW).getUTCHours() + 1;
@@ -546,9 +611,9 @@ const hh = h => pad2(h) + ':00';
 const ist = ms => { const t = new Date(ms + 36e5); return pad2(t.getUTCHours()) + ':' + pad2(t.getUTCMinutes()); };
 const istDay = ms => DAYS.indexOf(new Date(ms + 36e5).toISOString().slice(0, 10));
 const rel = d => d === NOW_D ? 'Today' : d === NOW_D + 1 ? 'Tomorrow' : dayL(d);
-const relLow = d => d === NOW_D ? 'today' : d === NOW_D + 1 ? 'tomorrow' : dayL(d);
 const part = h => h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
 const range = w => w.a === w.b ? hh(w.a) : `${hh(w.a)}–${hh(w.b)}`;
+const hr = w => w.a === w.b ? hh(w.a) : `${pad2(w.a)}–${pad2(w.b)}`;
 
 /* ---------- spots ---------- */
 const BYID = Object.fromEntries(W.spots.map(s => [s.id, s]));
@@ -566,8 +631,10 @@ for (const [id, f] of Object.entries(W.featured)) {
   F[id] = { ...f, at, ev, sun };
 }
 const tidesOn = (id, d) => (F[id] ? F[id].ev.filter(e => istDay(e.ms) === d) : []);
+const tideOK = (id, ms) => { const f = F[id]; return !!(f && f.ev.length && ms >= f.ev[0].ms && ms <= f.ev[f.ev.length - 1].ms); };
+const ratedHours = (id, d) => Array.from({ length: 24 }, (_, h) => h).filter(h => F[id].at[d][h] && F[id].at[d][h].rating);
 
-/** The best window of a day at a surveyed spot: the longest run of its top-rated hours. Today, from now on. */
+/** The best window of a day: the longest run of its top-rated hours. Today, from now on unless `all`. */
 function windowOf(id, d, all = false) {
   const f = F[id];
   if (!f) {
@@ -588,6 +655,72 @@ function windowOf(id, d, all = false) {
   const x = f.at[d][best.a], r = x.rating;
   return { ...best, stars: M, pot: r.potential, kn: x.wind.kn, gust: x.wind.gust, dir: x.wind.dir, compass: x.wind.compass, wing: r.wing, session: r.session, shore: r.shore, reasons: r.reasons, x };
 }
+function bestOfWeek(id) {
+  let best = null;
+  DAYS.forEach((_, d) => { const w = windowOf(id, d); if (w && (!best || w.stars > best.stars || (w.stars === best.stars && w.b - w.a > best.b - best.a))) best = { ...w, d }; });
+  return best;
+}
+
+/* ---------- the rating, as the product computes it (80 kg intermediate) ---------- */
+const BAND = { min: 10, sweetLow: 14, sweetHigh: 24, max: 30 };
+const rideOf = (w, g) => g == null || g <= w ? w : w + 0.3 * clamp((BAND.sweetHigh - w) / (BAND.sweetHigh - BAND.min), 0, 1) * Math.min(g - w, w);
+const ramp = (x, x0, x1, y0, y1) => y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
+function windScore(k) {
+  const { min, sweetLow, sweetHigh, max } = BAND;
+  if (k < min - 2) return 0;
+  if (k < min) return ramp(k, min - 2, min, 0, 1);
+  if (k < sweetLow) return ramp(k, min, sweetLow, 1, 4);
+  if (k <= sweetHigh) { const q = (sweetHigh - sweetLow) / 4; if (k < sweetLow + q) return ramp(k, sweetLow, sweetLow + q, 4, 5); if (k > sweetHigh - q) return ramp(k, sweetHigh - q, sweetHigh, 5, 4); return 5; }
+  if (k <= max) return ramp(k, sweetHigh, max, 4, 2);
+  return ramp(k, max, max + 6, 2, 0);
+}
+const shoreOf = (from, f) => { const off = Math.abs(((((from - f) % 360) + 540) % 360) - 180); return off < 30 ? 'onshore' : off < 70 ? 'cross-on' : off < 110 ? 'cross' : off < 150 ? 'cross-off' : 'offshore'; };
+
+/* ---------- every model behind the blend, and the ensembles ---------- */
+const mT = s => Date.parse(`2026-${s.slice(0, 5)}T${s.slice(6, 8)}:00:00Z`);
+const MOD = {};
+function modOf(id) {
+  if (id in MOD) return MOD[id];
+  const m = WM && WM.spots && WM.spots[id];
+  if (!m) return (MOD[id] = null);
+  const lines = Object.fromEntries(Object.entries(m.models).map(([k, a]) => [k, a.map(r => ({ ms: mT(r[0]), kn: r[1], g: r[2] }))]));
+  const E = Object.values(m.ensembles || {});
+  const ens = E.length ? E[0].map(row => {
+    const ms = mT(row[0]), w = [], g = [];
+    E.forEach(e => { const r = e.find(x => mT(x[0]) === ms); if (r) { w.push(...r[1]); g.push(...r[2]); } });
+    return { ms, w, g };
+  }) : [];
+  return (MOD[id] = { lines, ens });
+}
+function lineAt(a, ms) {
+  if (!a.length || ms < a[0].ms || ms > a[a.length - 1].ms) return null;
+  let i = 0; while (i < a.length - 1 && a[i + 1].ms < ms) i++;
+  const p = a[i], q = a[Math.min(i + 1, a.length - 1)];
+  if (q.ms - p.ms > 6 * 36e5) return null;
+  const t = q.ms === p.ms ? 0 : (ms - p.ms) / (q.ms - p.ms);
+  return p.kn + (q.kn - p.kn) * t;
+}
+const pctl = (arr, p) => { const s = [...arr].sort((a, b) => a - b); const i = (s.length - 1) * p, lo = Math.floor(i); return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (i - lo); };
+const SC = {};
+/** The spread at an hour: the deterministic models' range, the ensembles' middle 80%, and the share of
+ *  members whose wind, lifted by their gusts as the stars do, reaches the rider's band. */
+function statsAt(id, ms) {
+  const key = id + ms; if (key in SC) return SC[key];
+  const m = modOf(id); if (!m) return (SC[key] = null);
+  const vals = Object.values(m.lines).map(a => lineAt(a, ms)).filter(v => v != null);
+  const out = { models: vals.length, lo: vals.length ? Math.min(...vals) : null, hi: vals.length ? Math.max(...vals) : null, n: 0 };
+  const E = m.ens;
+  if (E.length && ms >= E[0].ms && ms <= E[E.length - 1].ms) {
+    let j = 0; while (j < E.length - 1 && E[j + 1].ms < ms) j++;
+    const p = E[j], q = E[Math.min(j + 1, E.length - 1)], t = q.ms === p.ms ? 0 : (ms - p.ms) / (q.ms - p.ms);
+    const w = p.w.map((v, i) => v + (q.w[i] - v) * t), g = p.g.map((v, i) => v + (q.g[i] - v) * t);
+    const ride = w.map((v, i) => rideOf(v, g[i]));
+    const n = ride.length, share = [0, 0, 0, 0];
+    ride.forEach(r => share[r < 10 ? 0 : r < 14 ? 1 : r <= 24 ? 2 : 3]++);
+    Object.assign(out, { n, q10: pctl(w, .1), q90: pctl(w, .9), share: share.map(s => s / n), p10: ride.filter(r => r >= 10).length / n });
+  }
+  return (SC[key] = out);
+}
 
 /* ---------- glyphs ---------- */
 const STAR = 'M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z';
@@ -606,18 +739,23 @@ function starsSVG(stars, potential, size = 12, gap = 2) {
   return `<svg class="stars" role="img" aria-label="${lab}" width="${w}" height="${size}" viewBox="0 0 ${w} ${size}">${g}</svg>`;
 }
 const arrowSVG = (dir, s = 13) => `<svg width="${s}" height="${s}" viewBox="-7 -7 14 14" aria-hidden="true" style="vertical-align:-2px"><g transform="rotate(${(dir + 180).toFixed(0)})"><path d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" fill="none" stroke="#1A1D21" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
-/** Cloud cover the way a station plot gives it: a circle filled by eighths. */
+/** Which way the beach faces: a compass, the beach and the sea beyond it. */
+const compassSVG = (f, s = 18) => f == null ? '' : `<svg width="${s}" height="${s}" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ${FACE8(f)}, ${f}°" style="vertical-align:middle"><title>Beach faces ${FACE8(f)} · ${f}°</title><circle r="8.8" fill="#F3EEE3" stroke="#1A1D21" stroke-width=".9"/><path d="M0 -8.8V-6.4" stroke="#1A1D21" stroke-width="1.3"/><g transform="rotate(${f})"><path d="M0 -7.6L3.1 .2H-3.1Z" fill="#5F8C9C"/><path d="M-5.2 3H5.2" stroke="#1A1D21" stroke-width="1.7" stroke-linecap="round"/></g></svg>`;
+/** The wind against this beach: sea above, beach below, the arrow blowing downwind. */
+const shoreSVG = (dir, f, s = 17) => f == null ? '<span class="g">—</span>' : (() => { const a = shoreOf(dir, f); return `<svg width="${s}" height="${s}" viewBox="-9 -9 18 18" role="img" aria-label="${shoreW(a)}" style="vertical-align:middle"><title>${shoreW(a)}</title><rect x="-8.5" y="4.2" width="17" height="4.6" fill="url(#lh)"/><path d="M-8.5 4.2H8.5" stroke="#1A1D21" stroke-width="1.1"/><g transform="translate(0 -2.2) rotate(${(dir - f + 180).toFixed(0)})"><path d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" fill="none" stroke="${a === 'offshore' || a === 'cross-off' ? '#D43A2C' : '#1A1D21'}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`; })();
 function oktaSVG(pct, s = 11) {
   const o = Math.round(pct / 12.5), r = 4.6;
   let fill = '';
   if (o >= 8) fill = `<circle r="${r}" fill="#1A1D21"/>`;
   else if (o > 0) { const a = o / 8 * Math.PI * 2, x = Math.sin(a) * r, y = -Math.cos(a) * r; fill = `<path d="M0 0V${-r}A${r} ${r} 0 ${o > 4 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}Z" fill="#1A1D21"/>`; }
-  return `<svg width="${s}" height="${s}" viewBox="-6 -6 12 12" aria-label="cloud ${o} eighths" style="vertical-align:-2px">${fill}<circle r="${r}" fill="none" stroke="#1A1D21" stroke-width=".9"/></svg>`;
+  return `<svg width="${s}" height="${s}" viewBox="-6 -6 12 12" role="img" aria-label="cloud ${o} eighths" style="vertical-align:-2px">${fill}<circle r="${r}" fill="none" stroke="#1A1D21" stroke-width=".9"/></svg>`;
 }
-/** Sky and air for an hour; the data's weather stops on Wednesday afternoon. */
-const skyCell = x => x && x.weather ? `${oktaSVG(x.weather.cloud_pct)} ${x.weather.air_c}°${x.weather.rain_mm >= .1 ? ` <span class="rain">${x.weather.rain_mm.toFixed(1)}</span>` : ''}` : '<span class="g" title="No sky or air temperature in this data after Wednesday 14:00">—</span>';
+const redStar = (on, s = 17) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" fill="${on ? '#D43A2C' : 'none'}" stroke="#D43A2C" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+const tideGlyph = '<svg width="14" height="8" viewBox="0 0 14 8" aria-hidden="true" style="vertical-align:middle"><path d="M0 5 Q3.5 0 7 4 T14 3" fill="none" stroke="#3F6E7E" stroke-width="1.3"/></svg>';
+const PROBC = ['rgba(26,29,33,.14)', 'rgba(176,24,106,.38)', '#B0186A', '#1A1D21'];
+const probBar = (share, w = 34, h = 6) => { let x = 0, g = ''; share.forEach((s, i) => { if (s > 0) g += `<rect x="${x.toFixed(1)}" y="0" width="${(s * w).toFixed(1)}" height="${h}" fill="${PROBC[i]}"/>`; x += s * w; }); return `<svg width="${w}" height="${h}" aria-hidden="true">${g}</svg>`; };
 const FLARE = 'M0 -1 C3.4 -6 6 -13 0 -20 C-6 -13 -3.4 -6 0 -1Z';
-// Light characters: Fl(n) flashes n times in a period of n + 4 seconds (from A).
+// Lights flash once per star: n flashes in n + 4 seconds.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: (() => {
   let css = '';
   for (let n = 1; n <= 5; n++) {
@@ -627,9 +765,18 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   }
   return css;
 })() }));
-const charOf = n => `Fl(${n})Mg ${n + 4}s`;
 
-/* hand-drawn red-pen loop, shared with the kit */
+/* the product's wind palette, toned for paper */
+const PALETTE = [[0, [53, 88, 151]], [5, [42, 118, 184]], [9, [46, 151, 190]], [10, [32, 158, 120]], [15, [50, 167, 79]], [20, [91, 180, 55]], [25, [146, 193, 52]], [30, [191, 204, 58]], [35, [232, 190, 48]], [40, [234, 134, 45]], [45, [221, 78, 56]], [50, [190, 51, 79]], [60, [146, 61, 152]], [65, [114, 66, 151]]];
+function windColor(kn) {
+  const k = clamp(kn, 0, 65); let i = 1;
+  while (i < PALETTE.length - 1 && k > PALETTE[i][0]) i++;
+  const [a, ca] = PALETTE[i - 1], [b, cb] = PALETTE[i];
+  return ca.map((v, c) => Math.round(v + ((cb[c] - v) * (k - a)) / (b - a)));
+}
+const toned = kn => { const c = windColor(kn), gr = (c[0] + c[1] + c[2]) / 3; return c.map((v, i) => Math.round((v * .82 + gr * .18) * .86 + [26, 29, 33][i] * .14)); };
+
+/* hand-drawn red-pen loop */
 let seed = 3;
 function inkPath(svg, d, o = {}) {
   const p = document.createElementNS(NS, 'path');
@@ -648,31 +795,76 @@ function inkPath(svg, d, o = {}) {
 }
 
 /* ======================================================================
-   STATE
+   STATE, AND THE RIDER'S SPOTS
    ====================================================================== */
-const S = { spot: 'rusheen', d: NOW_D, h: clamp(NOW_H, 7, 20), sheet: null };
+const S = { spot: 'rusheen', d: NOW_D, h: clamp(NOW_H, 7, 20), sheet: null, back: '#map' };
 const tNow = () => msOf(S.d, S.h);
+const FKEY = 'wf1.yours.v1';
+function seedYours() {
+  // A believable first visit for the demo: two spots starred, a few looked at.
+  const now = Date.now(), D = 864e5;
+  return { v: 1, seeded: true, signedIn: false, starred: ['dollymount', 'brandon'], seen: { rusheen: { n: 9, last: now - .2 * D }, keel: { n: 4, last: now - 2.2 * D }, inch: { n: 3, last: now - 1.3 * D }, 'the-burrow': { n: 2, last: now - 6 * D } } };
+}
+let YOURS = null;
+try { YOURS = JSON.parse(store.get(FKEY)); } catch { YOURS = null; }
+if (!YOURS || YOURS.v !== 1) YOURS = seedYours();
+const saveYours = () => store.set(FKEY, JSON.stringify(YOURS));
+saveYours();
+const isFav = id => YOURS.starred.includes(id);
+function toggleFav(id) {
+  if (!BYID[id]) return;
+  YOURS.starred = isFav(id) ? YOURS.starred.filter(x => x !== id) : [...YOURS.starred, id];
+  saveYours(); refreshFavs();
+}
+function bump(id) {
+  const e = YOURS.seen[id] || { n: 0, last: 0 };
+  e.n++; e.last = Date.now(); YOURS.seen[id] = e; saveYours(); renderYours();
+}
+const favBtn = (id, label) => `<button class="favb" data-fav="${id}" aria-pressed="${isFav(id)}" aria-label="${isFav(id) ? 'Unstar' : 'Star'} ${esc(nameOf(BYID[id]))}">${redStar(isFav(id))}${label ? `<span>${isFav(id) ? 'Starred' : 'Star'}</span>` : ''}</button>`;
+function refreshFavs() {
+  renderYours();
+  $$('[data-fav]').forEach(b => { const id = b.dataset.fav; if (!id) return; const on = isFav(id); b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', `${on ? 'Unstar' : 'Star'} ${nameOf(BYID[id])}`); const lab = b.querySelector('span'); b.innerHTML = redStar(on) + (lab ? `<span>${on ? 'Starred' : 'Star'}</span>` : ''); });
+}
+
+/* ---------- the side panel ---------- */
+function yourEntry(id, seen) {
+  const s = BYID[id]; if (!s) return '';
+  const w = windowOf(id, S.d);
+  const line = !w ? 'done for today' : !w.stars ? `no stars · ${w.compass} ${rn(w.kn)}g${rn(w.gust)}` : `${hr(w)} · ${w.compass} ${rn(w.kn)}g${rn(w.gust)}`;
+  return `<li>${favBtn(id)}<button class="fv-go" data-go="${id}"><b>${esc(nameOf(s))}</b><span>${line}${seen ? ` <i>· ${seen.n}×</i>` : ''}</span></button>${w ? starsSVG(w.stars, w.daily ? w.stars : w.pot, 10, 1.4) : ''}</li>`;
+}
+function renderYours() {
+  const D = 864e5, now = Date.now();
+  const seen = Object.entries(YOURS.seen).filter(([id]) => BYID[id] && !isFav(id))
+    .map(([id, e]) => ({ id, e, sc: e.n * 0.5 ** ((now - e.last) / D / 10) })).sort((a, b) => b.sc - a.sc).slice(0, 4);
+  $('#tp-yours').innerHTML = `<h4>Starred <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></h4>
+    <ul class="fvl">${YOURS.starred.length ? YOURS.starred.map(id => yourEntry(id)).join('') : '<li class="none">Tap the red star on a spot to keep it here.</li>'}</ul>
+    <h4>You look at</h4>
+    <ul class="fvl">${seen.length ? seen.map(x => yourEntry(x.id, x.e)).join('') : '<li class="none">Spots you open show up here.</li>'}</ul>
+    <div class="sign">${YOURS.signedIn ? '<span><span class="dot"></span><b>Signed in</b> · every device</span><button class="btn sm" data-sign>Sign out</button>' : '<span>On this device</span><button class="btn sm" data-sign>Sign in</button>'}<button class="ii" data-info="yours" aria-label="About your spots">i</button></div>`;
+  $('#side-when').textContent = `${dayS(S.d).toUpperCase()} ${dom(S.d)}`;
+}
+function sideTab(t) {
+  $('#tab-yours').setAttribute('aria-selected', t === 'yours'); $('#tab-key').setAttribute('aria-selected', t === 'key');
+  $('#tp-yours').hidden = t !== 'yours'; $('#tp-key').hidden = t !== 'key';
+}
+$('#tab-yours').onclick = () => sideTab('yours');
+$('#tab-key').onclick = () => sideTab('key');
 
 /* ======================================================================
    THE SCRUBBER
    ====================================================================== */
 const scDays = $('#sc-days');
-scDays.innerHTML = DAYS.map((_, d) => `<div class="sc-day" data-d="${d}"><div class="sc-h"><b>${dayS(d)}</b><span class="dt">${dom(d)} OCT</span><span class="st"></span><span class="sn"></span></div><div class="sc-t"></div><div class="sc-strip">${HRS.map(h => `<i data-h="${h}"></i>`).join('')}</div><div class="sc-ticks">${HRS.map(h => `<span>${h % 3 === 0 ? pad2(h) : ''}</span>`).join('')}</div></div>`).join('') + `<div class="sc-hand" id="sc-hand"><span class="sc-flag" id="sc-flag"></span></div>`;
+scDays.innerHTML = DAYS.map((_, d) => `<div class="sc-day" data-d="${d}"><div class="sc-h"><b>${dayS(d)}</b><span class="dt">${dom(d)}</span><span class="st"></span><span class="bw"></span><span class="sn"></span></div><div class="sc-strip">${HRS.map(h => `<i data-h="${h}"></i>`).join('')}</div></div>`).join('') + `<div class="sc-hand" id="sc-hand"><span class="sc-flag" id="sc-flag"></span></div>`;
 const MAGS = [.08, .16, .3, .5, .72, .95];
-
 function paintScrub() {
-  const id = S.spot, f = F[id], s = BYID[id];
+  const id = S.spot, f = F[id];
   $$('.sc-day', scDays).forEach((el, d) => {
     el.classList.toggle('on', d === S.d);
     const w = windowOf(id, d, true);
     $('.st', el).innerHTML = w ? starsSVG(w.stars, f ? w.pot : w.stars, 9, 1.4) : '';
+    $('.bw', el).textContent = w && w.stars ? hr(w) : '';
     $('.sn', el).textContent = w ? `${w.stars}★` : '';
-    const tides = tidesOn(id, d).filter(e => e.ms >= msOf(d, 6) && e.ms <= msOf(d, 21));
-    let t = '';
-    if (tides.length) t = tides.map(e => `<span class="${e.hw ? 'hw' : ''}">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}</span>`).join(' · ');
-    else if (f && f.sun[DAYS[d]]) t = `sunrise ${f.sun[DAYS[d]].rise} · sunset ${f.sun[DAYS[d]].set}`;
-    else if (w) t = `best ${hh(w.a)} · ${w.compass} ${rn(w.kn)} g${rn(w.gust)}`;
-    $('.sc-t', el).innerHTML = t;
     $$('.sc-strip i', el).forEach(c => {
       const h = +c.dataset.h;
       let st = null, night = false;
@@ -680,15 +872,15 @@ function paintScrub() {
       else { night = h < 8 || h > 19; st = w && w.a === h ? w.stars : null; }
       c.className = (night ? 'night' : '') + (isPast(d, h) ? ' past' : '');
       c.style.background = st != null ? `rgba(176,24,106,${MAGS[st]})` : '';
-      c.title = `${dayS(d)} ${hh(h)}` + (st != null ? `: ${st}★` : night ? ': dark' : '');
+      c.title = `${dayS(d)} ${hh(h)}` + (st != null ? ` · ${st}★` : night ? ' · dark' : '');
     });
   });
   placeHand();
 }
 function placeHand() {
   const hand = $('#sc-hand'), day = $$('.sc-day', scDays)[S.d];
-  const x = day.offsetLeft + 8 + (day.clientWidth - 16) * ((S.h - 7 + .5) / 14);
-  hand.style.left = (phone() ? x - 4 * 0 : x) + 'px';
+  const p = phone() ? 4 : 8;
+  hand.style.left = (day.offsetLeft + p + (day.clientWidth - 2 * p) * ((S.h - 7 + .5) / 14)) + 'px';
   hand.classList.toggle('flip', S.d === 4 && S.h > 15);
   $('#sc-flag').textContent = `${dayS(S.d)} ${hh(S.h)}`;
   const sc = $('#scrub');
@@ -700,9 +892,8 @@ function timeFromX(clientX) {
   for (let d = 0; d < days.length; d++) {
     const r = days[d].getBoundingClientRect();
     if (clientX < r.right || d === days.length - 1) {
-      const pad = phone() ? 4 : 8;
-      const f = (clientX - r.left - pad) / (r.width - 2 * pad);
-      return { d, h: clamp(7 + Math.floor(f * 14), 7, 20) };
+      const p = phone() ? 4 : 8;
+      return { d, h: clamp(7 + Math.floor((clientX - r.left - p) / (r.width - 2 * p) * 14), 7, 20) };
     }
   }
 }
@@ -722,15 +913,15 @@ $('#scrub').addEventListener('keydown', e => {
 });
 
 /* ======================================================================
-   THE DOCK: the chosen spot's day, set as tide-table
+   THE DOCK: the chosen spot's day
    ====================================================================== */
 const tt = $('#tt');
 function renderDock() {
   const id = S.spot, s = BYID[id], f = F[id], d = S.d;
-  $('#dk-name').innerHTML = esc(nameOf(s));
-  const facing = s.facing != null ? `beach faces ${FACE8(s.facing)} ${s.facing}°` : 'facing not recorded';
-  const tideNote = f && f.tides && f.tides.station ? ` · tides at ${f.tides.station}, ${f.tides.distance_km.toFixed(0)} km` : '';
-  $('#dk-meta').textContent = `${s.county} · ${f ? 'surveyed spot' : 'daily ratings'} · ${facing}${tideNote}`;
+  $('#dk-name').textContent = nameOf(s);
+  $('#dk-face').innerHTML = compassSVG(s.facing, 20);
+  $('#dk-county').textContent = s.county;
+  const fb = $('.dk-head .favb'); fb.dataset.fav = id; fb.setAttribute('aria-pressed', isFav(id)); fb.setAttribute('aria-label', `${isFav(id) ? 'Unstar' : 'Star'} ${nameOf(s)}`); fb.innerHTML = redStar(isFav(id), 19);
   $('#dk-open').href = `#spot/${id}`;
   let rows = '';
   const cls = (h, extra = '') => `class="${extra}${h === S.h ? ' c-sel' : ''}${isPast(d, h) ? ' past' : ''}" data-h="${h}"`;
@@ -738,41 +929,25 @@ function renderDock() {
     const X = HRS.map(h => f.at[d][h]);
     const night = h => !f.at[d][h] || !f.at[d][h].rating;
     rows += `<tr class="hr"><th>${dayS(d)} ${dom(d)}</th>${HRS.map(h => `<td ${cls(h, night(h) ? 'night' : '')}>${pad2(h)}</td>`).join('')}</tr>`;
-    rows += `<tr class="st"><th>Stars</th>${HRS.map((h, i) => `<td ${cls(h, night(h) ? 'night' : '')}>${X[i] && X[i].rating ? starsSVG(X[i].rating.stars, X[i].rating.potential, 9.5, 1.5) : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="st"><th>Stars<a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></th>${HRS.map((h, i) => `<td ${cls(h, night(h) ? 'night' : '')}${X[i] && X[i].rating ? ` data-tip="${id}|${d}|${h}"` : ''}>${X[i] && X[i].rating ? starsSVG(X[i].rating.stars, X[i].rating.potential, 9.5, 1.5) : ''}</td>`).join('')}</tr>`;
     rows += `<tr class="wd"><th>Wind<small>kn</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] ? `<span class="kn">${rn(X[i].wind.kn)}</span> <span class="g">g${rn(X[i].wind.gust)}</span>` : ''}</td>`).join('')}</tr>`;
-    rows += `<tr class="dr"><th>From</th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] ? arrowSVG(X[i].wind.dir) + `<span class="cmp">${X[i].wind.compass}</span>` : ''}</td>`).join('')}</tr>`;
-    rows += `<tr class="wg"><th>Wing<small>m²</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] && X[i].rating ? `${X[i].rating.wing}` : ''}</td>`).join('')}</tr>`;
-    // sessions, bracketed across the hours they hold for, as a tide table brackets its springs
-    let ss = '', i = 0;
-    while (i < HRS.length) {
-      const key = h => (f.at[d][h] && f.at[d][h].rating ? f.at[d][h].rating.session : 'dark') + (isPast(d, h) ? '|p' : '');
-      let j = i; while (j + 1 < HRS.length && key(HRS[j + 1]) === key(HRS[i])) j++;
-      const k = key(HRS[i]).split('|')[0], n = j - i + 1;
-      ss += `<td colspan="${n}" class="${k === 'dark' ? 'dark' : ''}${isPast(d, HRS[i]) ? ' past' : ''}">${n > 1 || k.length < 9 ? `<span>${esc(k)}</span>` : `<span title="${esc(k)}">${esc(k.split(' ')[0])}</span>`}</td>`;
-      i = j + 1;
-    }
-    rows += `<tr class="ss"><th>Session</th>${ss}</tr>`;
-    rows += `<tr class="wv"><th>Waves<small>m · s</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] && X[i].waves ? `${X[i].waves.height_m.toFixed(1)} · ${X[i].waves.period_s}` : '<span class="g">—</span>'}</td>`).join('')}</tr>`;
-    rows += `<tr class="sk"><th>Sky · air</th>${HRS.map((h, i) => `<td ${cls(h)}>${skyCell(X[i])}</td>`).join('')}</tr>`;
-    rows += `<tr class="td"><th>Tide<small>m · CD</small></th><td colspan="14"><svg id="tide-row"></svg></td></tr>`;
+    rows += `<tr class="dr"><th>From</th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] ? `${arrowSVG(X[i].wind.dir, 12)}<span class="cmp">${X[i].wind.compass}</span>${shoreSVG(X[i].wind.dir, s.facing, 15)}` : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="wg"><th>Wing<small>m²</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${X[i] && X[i].rating ? X[i].rating.wing : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="td"><th>Tide<small>m</small></th><td colspan="14"><svg id="tide-row"></svg></td></tr>`;
   } else {
     const w = windowOf(id, d, true);
     const fw = HRS.map(h => K.windAt(s.lon, s.lat, msOf(d, h)));
     const night = h => h < 8 || h > 19;
     rows += `<tr class="hr"><th>${dayS(d)} ${dom(d)}</th>${HRS.map(h => `<td ${cls(h, night(h) ? 'night' : '')}>${pad2(h)}</td>`).join('')}</tr>`;
-    rows += `<tr class="st"><th>Stars</th>${HRS.map(h => `<td ${cls(h, night(h) ? 'night' : '')}>${w && w.a === h ? starsSVG(w.stars, w.stars, 9.5, 1.5) : ''}</td>`).join('')}</tr>`;
-    rows += `<tr class="wd"><th>Wind<small>kn*</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${fw[i] ? `<span class="kn">${rn(fw[i].kn)}</span>` : ''}</td>`).join('')}</tr>`;
-    rows += `<tr class="dr"><th>From</th>${HRS.map((h, i) => `<td ${cls(h)}>${fw[i] ? arrowSVG(fw[i].dir) + `<span class="cmp">${d2c(fw[i].dir)}</span>` : ''}</td>`).join('')}</tr>`;
-    rows += `<tr class="note"><th>Best</th><td colspan="14">${w ? `<b>${hh(w.a)}</b> ${WORDS[w.stars]} star${w.stars === 1 ? '' : 's'}, ${w.compass} ${rn(w.kn)} gusting ${rn(w.gust)} knots. This spot is rated once a day, at its best hour; sessions, wings, waves and tides are kept for the five surveyed spots.` : 'No rating for this day.'}</td></tr>`;
+    rows += `<tr class="st"><th>Stars<a class="q" href="#stars" aria-label="How the stars work">?</a></th>${HRS.map(h => `<td ${cls(h, night(h) ? 'night' : '')}>${w && w.a === h ? starsSVG(w.stars, w.stars, 9.5, 1.5) : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="wd"><th>Wind<small>kn</small></th>${HRS.map((h, i) => `<td ${cls(h)}>${fw[i] ? `<span class="kn">${rn(fw[i].kn)}</span>` : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="dr"><th>From</th>${HRS.map((h, i) => `<td ${cls(h)}>${fw[i] ? `${arrowSVG(fw[i].dir, 12)}<span class="cmp">${d2c(fw[i].dir)}</span>${shoreSVG(fw[i].dir, s.facing, 15)}` : ''}</td>`).join('')}</tr>`;
+    rows += `<tr class="note"><th></th><td colspan="14">${w ? `best ${hh(w.a)} · ${w.compass} ${rn(w.kn)} g${rn(w.gust)}` : ''}</td></tr>`;
   }
   tt.innerHTML = rows;
   $$('td[data-h]', tt).forEach(td => td.addEventListener('click', () => setTime(S.d, +td.dataset.h, true)));
-  $('#dk-foot').textContent = f
-    ? 'Solid stars: the hour as forecast for you. Outlined: what the wind alone would give. The dark is not rated.'
-    : '* The model wind here, hour by hour: the field the wind lines are drawn from, without gusts.';
-  requestAnimationFrame(() => {
-    drawTideRow(); inkDock(); scrollToHour();
-  });
+  requestAnimationFrame(() => { drawTideRow(); inkDock(); scrollToHour(); });
+  if (RIB) RIB.build(id);
 }
 function scrollToHour() {
   const wrap = $('#tt-wrap'), c = $('tr.hr td.c-sel', tt);
@@ -785,40 +960,34 @@ function drawTideRow() {
   svg.setAttribute('viewBox', `0 0 ${W2} ${H}`);
   const ev = f.ev;
   const xOf = ms => ((ms - msOf(d, 7)) / 36e5 + .5) * cw;
-  if (!ev.length || !tidesOn(id, d).length && !(ev[0].ms < msOf(d, 20) && ev[ev.length - 1].ms > msOf(d, 7))) {
-    svg.parentNode.innerHTML = `<span class="tnote">No tide predictions for this spot on ${dayL(d)}.</span>`;
-    return;
-  }
+  if (!ev.length) { svg.innerHTML = ''; return; }
   const y = h => H - 6 - h / 4.6 * (H - 12);
   const a = Math.max(ev[0].ms, msOf(d, 6) + 18e5), b = Math.min(ev[ev.length - 1].ms, msOf(d, 20) + 18e5);
-  let p = '', area = '';
-  for (let ms = a; ms <= b + 1; ms += 6e5) { const X = xOf(ms).toFixed(1), Y = y(K.tideAt(id, ms)).toFixed(1); p += (p ? 'L' : 'M') + X + ' ' + Y; }
-  area = p + `L${xOf(b).toFixed(1)} ${H}L${xOf(a).toFixed(1)} ${H}Z`;
+  let p = '';
+  for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + xOf(ms).toFixed(1) + ' ' + y(K.tideAt(id, ms)).toFixed(1);
   let g = `<line x1="0" x2="${W2}" y1="${y(0)}" y2="${y(0)}" stroke="rgba(95,140,156,.5)" stroke-dasharray="2 3"/>`;
-  g += `<path d="${area}" fill="rgba(95,140,156,.16)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.4"/>`;
+  g += `<path d="${p}L${xOf(b).toFixed(1)} ${H}L${xOf(a).toFixed(1)} ${H}Z" fill="rgba(95,140,156,.16)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.4"/>`;
   for (const e of tidesOn(id, d)) {
     const X = xOf(e.ms), Y = y(e.h);
     if (X < 0 || X > W2) continue;
-    const lab = `${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)} m`;
-    const right = X < W2 - 110;
+    const right = X < W2 - 90;
     g += `<circle cx="${X.toFixed(1)}" cy="${Y.toFixed(1)}" r="2.6" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21" stroke-width="1"/>`;
-    g += `<text x="${(X + (right ? 6 : -6)).toFixed(1)}" y="${(e.hw ? Y + 13 : Y - 5).toFixed(1)}" text-anchor="${right ? 'start' : 'end'}" style="font:500 9.5px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${lab}</text>`;
+    g += `<text x="${(X + (right ? 6 : -6)).toFixed(1)}" y="${(e.hw ? Y + 13 : Y - 5).toFixed(1)}" text-anchor="${right ? 'start' : 'end'}" style="font:500 9.5px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}</text>`;
   }
-  const xs = xOf(tNow());
-  if (tNow() >= a && tNow() <= b) g += `<circle cx="${xs.toFixed(1)}" cy="${y(K.tideAt(id, tNow())).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
+  if (tNow() >= a && tNow() <= b) g += `<circle cx="${xOf(tNow()).toFixed(1)}" cy="${y(K.tideAt(id, tNow())).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
   svg.innerHTML = g;
 }
 
-/* the red pen in the dock: a loop round the best window, a note in the margin */
+/* the red pen in the dock */
 function inkDock() {
   const svg = $('#ttpen'), wrap = $('#tt-wrap');
   svg.innerHTML = '';
   svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
-  const id = S.spot, s = BYID[id], d = S.d, w = windowOf(id, d);
+  const id = S.spot, d = S.d, w = windowOf(id, d);
   const note = $('#dk-note');
-  if (!w) { note.innerHTML = `${rel(d)} is done.<small>Pick a later day on the tide-table.</small>`; return; }
+  if (!w) { note.innerHTML = `${rel(d)} is done.`; return; }
   const ca = $(`tr.st td[data-h="${w.a}"]`, tt), cb = $(`tr.st td[data-h="${w.b}"]`, tt), cw = $(`tr.wd td[data-h="${w.b}"]`, tt);
-  if (ca && cb && w.stars > 0 && !document.body.classList.contains('fold')) {
+  if (ca && cb && w.stars > 0 && !document.body.classList.contains('fold') && wrap.offsetParent) {
     const R = wrap.getBoundingClientRect(), A = ca.getBoundingClientRect(), B = cb.getBoundingClientRect(), Wd = cw.getBoundingClientRect();
     const x1 = A.left - R.left + wrap.scrollLeft, x2 = B.right - R.left + wrap.scrollLeft, y1 = A.top - R.top, y2 = Wd.bottom - R.top;
     seed++;
@@ -826,24 +995,24 @@ function inkDock() {
   }
   note.innerHTML = noteText(id, d, w);
 }
+/** The Almanac's margin note: the one place the dock speaks in sentences. */
 function noteText(id, d, w) {
   const f = F[id], day = rel(d);
   if (w.daily) {
-    if (!w.stars) return `${day}: nothing worth rigging.<small>Its best hour, ${hh(w.a)}, rates no stars.</small>`;
+    if (!w.stars) return `${day}: nothing worth rigging.`;
     const gone = isPast(d, w.a);
-    return `${gone ? `Today's best was ${hh(w.a)}` : `${day}, ${hh(w.a)}`}: <span class="u">${WORDS[w.stars]} star${w.stars > 1 ? 's' : ''}</span>.<small>${w.compass} ${rn(w.kn)} gusting ${rn(w.gust)}${gone ? '. Try a later day on the tide-table.' : '. The day is rated at its best hour only.'}</small>`;
+    return `${gone ? `Today's best was ${hh(w.a)}` : `${day}, ${hh(w.a)}`}: <span class="u">${WORDS[w.stars]} star${w.stars > 1 ? 's' : ''}</span>.<small>${w.compass} ${rn(w.kn)} g${rn(w.gust)}</small>`;
   }
-  const reason = w.reasons && w.reasons[0] ? w.reasons[0] : '';
-  if (!w.stars) return `${day}: leave it on the roof.<small>${reason || (w.pot ? `The wind alone would give ${WORDS[w.pot]}.` : 'Too little wind to fly.')}</small>`;
+  if (!w.stars) return `${day}: leave it on the roof.<small>${w.reasons && w.reasons[0] ? esc(w.reasons[0]) : ''}</small>`;
   const last = HRS.filter(h => f.at[d][h] && f.at[d][h].rating).pop();
-  const sun = f.sun[DAYS[d]];
-  const till = w.b === last && sun ? `till the light goes, ${sun.set}` : w.a === w.b ? `at ${hh(w.a)}` : range(w);
-  const lead = w.stars >= 4 ? (w.a === w.b ? `Go at ${hh(w.a)}.` : `Go ${w.a === w.b ? 'at ' + hh(w.a) : range(w)}.`) : w.stars === 3 ? `Worth it ${w.a === w.b ? 'at ' + hh(w.a) : range(w)}.` : `Thin: ${range(w)}.`;
-  const tides = tidesOn(id, d).filter(e => e.ms >= msOf(d, w.a) - 3 * 36e5 && e.ms <= msOf(d, w.b) + 3 * 36e5);
-  const tideBit = tides.length ? ` ${tides[0].hw ? 'High water' : 'Low water'} ${ist(tides[0].ms)}.` : '';
+  const dark = w.b === last && w.a !== w.b;
+  const span = w.a === w.b ? `at ${hh(w.a)}` : dark ? `${hh(w.a)} till dark` : range(w);
+  const lead = w.stars >= 4 ? `Go ${span}.` : w.stars === 3 ? `Worth it ${span}.` : `Thin: ${span}.`;
   const Wd = WORDS[w.stars][0].toUpperCase() + WORDS[w.stars].slice(1);
-  return `${lead} <span class="u">${Wd} star${w.stars > 1 ? 's' : ''}</span>, ${w.session.toLowerCase()} on a ${w.wing} m${w.b === last && sun && w.a !== w.b ? ', ' + till : ''}.<small>${w.compass} ${rn(w.kn)} g${rn(w.gust)}${w.shore ? ', ' + shoreW(w.shore) : ''}.${tideBit}${w.pot > w.stars && reason ? ' ' + reason : ''}</small>`;
+  const tides = tidesOn(id, d).filter(e => e.ms >= msOf(d, w.a) - 3 * 36e5 && e.ms <= msOf(d, w.b) + 3 * 36e5);
+  return `${lead} <span class="u">${Wd} star${w.stars > 1 ? 's' : ''}</span> on a ${w.wing} m.<small>${w.compass} ${rn(w.kn)} g${rn(w.gust)}${w.shore ? ' · ' + shoreW(w.shore) : ''}${tides.length ? ` · ${tides[0].hw ? 'HW' : 'LW'} ${ist(tides[0].ms)}` : ''}</small>`;
 }
+const shortNote = (id, d, w) => noteText(id, d, w).replace(/<small>.*<\/small>/, '').replace(/<[^>]+>/g, '');
 
 /* ======================================================================
    THE CHART
@@ -851,17 +1020,15 @@ function noteText(id, d, w) {
 const IRL = [[-10.75, 51.38], [-5.42, 55.42]];
 function dockH() { return document.body.classList.contains('on-sheet') ? 0 : $('#dock').getBoundingClientRect().height; }
 function pad(extra = {}) {
-  if (phone()) return { top: 70, bottom: dockH() + 14, left: 14, right: 14, ...extra };
-  const cartOn = !$('#cart').classList.contains('hid');
-  return { top: 80, bottom: dockH() + 22, left: 40, right: cartOn ? 350 : 70, ...extra };
+  if (phone()) return { top: 70, bottom: dockH() + 62, left: 14, right: 14, ...extra };
+  return { top: 80, bottom: dockH() + 22, left: 40, right: $('#side').getBoundingClientRect().width + 100, ...extra };
 }
 const map = K.createMap($('#map'), { center: [-8.1, 53.4], zoom: 6, dragRotate: false, pitchWithRotate: false, maxPitch: 0 });
 map.touchZoomRotate.disableRotation();
 map.keyboard.disableRotation();
 map.on('error', e => console.warn('map:', e.error && e.error.message));
-let wind = null, pen = null, popup = null;
+let wind = null, cwind = null, pen = null, popup = null;
 const MK = {};
-
 function zoomClass() {
   const z = map.getZoom(), el = map.getContainer();
   el.classList.toggle('z-lo', z < 7.3);
@@ -871,15 +1038,13 @@ map.on('zoom', zoomClass);
 
 /* the lights */
 function buildMarkers() {
-  // surveyed spots last, so they sit on top
   const order = [...W.spots].sort((a, b) => FEAT.has(a.id) - FEAT.has(b.id));
   for (const s of order) {
     const el = document.createElement('div');
     el.className = 'lt' + (FEAT.has(s.id) ? ' feat' : '');
     el.tabIndex = 0; el.setAttribute('role', 'button');
-    const fa = s.facing ?? 30;
-    el.innerHTML = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g transform="rotate(${fa})"><path class="flare" d="${FLARE}" transform="translate(0 -5.5) scale(1.05)"/></g>${FEAT.has(s.id) ? '<circle class="r2" r="10.6"/>' : ''}<circle class="r1" r="7.6"/><text class="n" y="3.4" text-anchor="middle"></text></svg><span class="lab"><b>${esc(nameOf(s))}</b><i class="ch"></i></span>`;
-    const go = e => { e.stopPropagation(); e.preventDefault(); selectSpot(s.id, { fly: true, popup: true }); };
+    el.innerHTML = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g transform="rotate(${s.facing ?? 30})"><path class="flare" d="${FLARE}" transform="translate(0 -5.5) scale(1.05)"/></g>${FEAT.has(s.id) ? '<circle class="r2" r="10.6"/>' : ''}<circle class="r1" r="7.6"/><text class="n" y="3.4" text-anchor="middle"></text></svg><span class="lab"><b>${esc(nameOf(s))}</b><i class="ch"></i></span>`;
+    const go = e => { e.stopPropagation(); e.preventDefault(); selectSpot(s.id, { fly: true, popup: true, user: true }); };
     el.addEventListener('click', go);
     el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); });
     const m = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map);
@@ -896,83 +1061,73 @@ function paintMarkers() {
     k.n.textContent = n;
     k.flare.setAttribute('class', 'flare' + (n >= 3 && !RM ? ` fl${n}` : ''));
     k.flare.style.animationDelay = `-${k.delay.toFixed(2)}s`;
-    k.ch.textContent = n >= 3 ? `${charOf(n)} · ${b.at}` : n ? `${n}★ at ${b.at}` : 'unlit';
-    k.el.setAttribute('aria-label', `${s.name}, ${s.county}: ${dayL(S.d)} best ${n} star${n === 1 ? '' : 's'}${b ? ` at ${b.at}, ${b.dir} ${rn(b.wind)} gusting ${rn(b.gust)}` : ''}`);
+    k.ch.textContent = n ? `${n}★ ${b.at}` : '';
+    k.el.setAttribute('aria-label', `${s.name}, ${s.county}: ${dayL(S.d)} best ${n} star${n === 1 ? '' : 's'}${b ? ` at ${b.at}` : ''}`);
   }
 }
-
-/* the red pen on the chart */
 function inkMap() {
   if (!pen) return;
   pen.clear();
+  if (S.sheet === 'stars') return;
   const s = BYID[S.spot], w = windowOf(S.spot, S.d);
   const ll = [s.lon, s.lat];
   pen.circle(ll, 21, { duration: 800 });
-  const txt = !w ? `${rel(S.d)}: done` : !w.stars ? `${rel(S.d)}: no stars` : w.daily ? `${w.stars}★ at ${hh(w.a)}` : `${w.stars}★ ${range(w)}${w.wing ? `, ${w.wing} m` : ''}`;
+  const txt = !w ? `${rel(S.d)}: done` : !w.stars ? `${rel(S.d)}: no stars` : w.daily ? `${w.stars}★ at ${hh(w.a)}` : `${w.stars}★ ${hr(w)}, ${w.wing} m`;
   pen.note(ll, txt, { offset: [0, 44], size: 18, anchor: 'middle', rotate: -2, delay: 500 });
 }
 
-/* the popup */
+/* the popup: the hour, at a glance */
 function popHTML(id) {
   const s = BYID[id], f = F[id], b = s.days[S.d].best;
-  const n = b ? b.stars : 0;
   let body = '';
   if (f) {
     const x = f.at[S.d][S.h], r = x && x.rating;
-    body += `<div class="row"><span class="when">${dayS(S.d)} ${dom(S.d)} · ${hh(S.h)}</span>${r ? starsSVG(r.stars, r.potential, 13, 2) : '<i style="color:var(--muted);font-size:13px">dark, not rated</i>'}</div>`;
-    if (x) body += `<p class="mono">${arrowSVG(x.wind.dir)} ${x.wind.compass} ${rn(x.wind.kn)} gusting ${rn(x.wind.gust)} kn</p>`;
-    if (r) body += `<p><i>${esc(r.session)}</i> on a <b class="mono">${r.wing} m</b>${r.shore ? ', ' + shoreW(r.shore) : ''}</p>`;
-    if (r && r.reasons[0]) body += `<p class="m">${esc(r.reasons[0])}</p>`;
-    const tide = K.tideAt(id, tNow());
-    if (tide != null && f.ev.length && tNow() >= f.ev[0].ms && tNow() <= f.ev[f.ev.length - 1].ms) body += `<p class="m">Tide ${tide.toFixed(1)} m above chart datum at ${f.tides.station}.</p>`;
+    body += `<div class="row"><span class="when">${dayS(S.d)} ${hh(S.h)}</span>${r ? `<span data-tip="${id}|${S.d}|${S.h}">${starsSVG(r.stars, r.potential, 13, 2)}</span>` : '<span class="g mono" style="font-size:11px">dark</span>'}<a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></div>`;
+    if (x) body += `<div class="ln">${arrowSVG(x.wind.dir)} <b>${rn(x.wind.kn)}</b> g${rn(x.wind.gust)} ${x.wind.compass} ${shoreSVG(x.wind.dir, s.facing, 15)}${r ? ` · <b>${r.wing}</b> m` : ''}</div>`;
+    if (tideOK(id, tNow())) body += `<div class="ln">${tideGlyph} ${K.tideAt(id, tNow()).toFixed(1)} m</div>`;
   } else {
     const fw = K.windAt(s.lon, s.lat, tNow());
-    body += `<div class="row"><span class="when">${dayS(S.d)} ${dom(S.d)} · best ${b ? b.at : '—'}</span>${starsSVG(n, n, 13, 2)}</div>`;
-    if (b) body += `<p class="mono">${arrowSVG(c2d(b.dir))} ${b.dir} ${rn(b.wind)} gusting ${rn(b.gust)} kn</p>`;
-    if (fw) body += `<p class="m">At ${hh(S.h)} the wind lines give ${d2c(fw.dir)} ${rn(fw.kn)} kn here.</p>`;
+    body += `<div class="row"><span class="when">${dayS(S.d)} best ${b ? b.at : '—'}</span>${starsSVG(b ? b.stars : 0, b ? b.stars : 0, 13, 2)}<a class="q" href="#stars" aria-label="How the stars work">?</a></div>`;
+    if (b) body += `<div class="ln">${arrowSVG(c2d(b.dir))} <b>${rn(b.wind)}</b> g${rn(b.gust)} ${b.dir}</div>`;
+    if (fw) body += `<div class="ln g">${hh(S.h)} ${arrowSVG(fw.dir, 11)} ${rn(fw.kn)} kn</div>`;
   }
-  return `<div class="pp"><button class="x" data-act="close-pop" aria-label="Close">×</button>
-    <div class="kick">${f ? 'Surveyed spot' : 'Spot'} · ${esc(s.county)}</div>
-    <h3>${esc(nameOf(s))}</h3>
-    <div class="ch">${n >= 3 ? charOf(n) : n ? 'Unlit' : 'Unlit, not worth rigging'}${s.facing != null ? ` · faces ${FACE8(s.facing)} ${s.facing}°` : ''}</div>
+  return `<div class="pp"><div class="pp-h">${favBtn(id)}<h3>${esc(nameOf(s))}</h3><button class="x" data-act="close-pop" aria-label="Close">×</button></div>
+    <div class="pp-m">${compassSVG(s.facing, 16)}<span>${esc(s.county.toUpperCase())}</span></div>
     ${body}
-    <div class="acts"><span class="co">${s.lat.toFixed(3)}°N ${Math.abs(s.lon).toFixed(3)}°W</span><a class="btn solid" href="#spot/${s.id}">Open spot page →</a></div></div>`;
+    <div class="acts"><a class="btn solid" href="#spot/${s.id}">Spot page →</a></div></div>`;
 }
 function openPopup(id) {
   closePopup();
   const s = BYID[id];
-  popup = new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 20, maxWidth: '300px', className: 'cpop', focusAfterOpen: false })
+  popup = new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 20, maxWidth: '290px', className: 'cpop', focusAfterOpen: false })
     .setLngLat([s.lon, s.lat]).setHTML(popHTML(id)).addTo(map);
   popup._wfid = id;
   popup.on('close', () => { popup = null; });
 }
 function closePopup() { if (popup) { const p = popup; popup = null; p.remove(); } }
-document.addEventListener('click', e => { if (e.target.closest('[data-act=close-pop]')) closePopup(); });
 
 /* ---------- moving about ---------- */
-/** A little out to sea from the spot, so the bay fills the view rather than the land behind it. */
 function seaward(s, m = 900) {
   if (s.facing == null) return [s.lon, s.lat];
   const a = s.facing * Math.PI / 180;
   return [s.lon + m * Math.sin(a) / (111320 * Math.cos(s.lat * Math.PI / 180)), s.lat + m * Math.cos(a) / 111320];
 }
-function flyToSpot(id, extra) {
+function flyToSpot(id) {
   const s = BYID[id];
-  const z = FEAT.has(id) ? 11.3 : 10.2;
-  map.flyTo({ center: seaward(s, 500), zoom: z, padding: pad(extra), duration: RM ? 0 : 2400, curve: 1.5, essential: true });
+  map.flyTo({ center: seaward(s, 500), zoom: FEAT.has(id) ? 11.3 : 10.2, padding: pad(), duration: RM ? 0 : 2400, curve: 1.5, essential: true });
 }
 function fitIreland(dur = 1600) { map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }); map.fitBounds(IRL, { padding: pad(), duration: RM ? 0 : dur }); }
-
 function selectSpot(id, o = {}) {
   if (!BYID[id]) return;
   const changed = S.spot !== id;
   S.spot = id;
   for (const k in MK) MK[k].el.classList.toggle('sel', k === id);
   if (changed || o.force) { paintScrub(); renderDock(); }
+  if (o.user) bump(id);
   inkMap();
   if (o.fly) {
-    if (!phone() && innerWidth < 1600) foldKey(true);
     if (phone() && !document.body.classList.contains('fold')) { document.body.classList.add('fold'); $('#grab').setAttribute('aria-expanded', 'false'); afterDock(); }
+    if (!phone() && document.body.classList.contains('fold')) { document.body.classList.remove('fold'); afterDock(); }
     flyToSpot(id);
   }
   if (o.popup) {
@@ -980,59 +1135,175 @@ function selectSpot(id, o = {}) {
     if (o.fly && !RM) map.once('moveend', () => { if (S.spot === id && !S.sheet) openPopup(id); });
     else openPopup(id);
   }
-  if (o.hash !== false && !S.sheet) history.replaceState(null, '', '#map/' + id);
+  if (o.hash !== false && !S.sheet) history.replaceState(null, '', '#map/' + id + windHash());
 }
+
+/* ======================================================================
+   WIND: ink, coloured arrows, or a faint wash
+   ====================================================================== */
+const WSTYLES = ['ink', 'arrows', 'wash'];
+let WST = (() => { const m = location.hash.match(/wind=(ink|arrows|wash)/); if (m) return m[1]; const v = store.get('wf1.wind'); return WSTYLES.includes(v) ? v : 'ink'; })();
+const windHash = () => WST === 'ink' ? '' : `&wind=${WST}`;
+/** The ink arrows' own recipe (the kit's), drawn with each streak coloured by its speed. */
+function colourWind() {
+  const host = map.getContainer(), cc = map.getCanvasContainer();
+  const canvas = document.createElement('canvas');
+  canvas.className = 'wf-wind';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+  cc.parentNode.insertBefore(canvas, cc.nextSibling);
+  const ctx = canvas.getContext('2d');
+  const BIN = 4, NB = 10, COL = Array.from({ length: NB }, (_, i) => `rgba(${toned(i * BIN + BIN / 2).join(',')},.9)`);
+  let time = tNow(), w = 0, h = 0, field = null, fw = 0, fh = 0, cloud = [], raf = 0, stopped = true, last = 0;
+  const STEP = 10;
+  const resize = () => { const r = host.getBoundingClientRect(); w = r.width; h = r.height; const dpr = Math.min(devicePixelRatio, 2); canvas.width = w * dpr; canvas.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  const spawn = () => ({ x: Math.random() * w, y: Math.random() * h, age: Math.random() * 60 });
+  const build = () => {
+    resize();
+    fw = Math.ceil(w / STEP) + 1; fh = Math.ceil(h / STEP) + 1;
+    field = new Float32Array(fw * fh * 3);
+    const mpp = (40075016 * Math.cos((map.getCenter().lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    const k = 18 / Math.max(mpp, 1) ** 0.35 / 30;
+    for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+      const ll = map.unproject([x * STEP, y * STEP]), uv = K.windUV(ll.lng, ll.lat, time), i = (y * fw + x) * 3;
+      field[i] = uv ? uv.u * k : NaN; field[i + 1] = uv ? -uv.v * k : NaN; field[i + 2] = uv ? Math.hypot(uv.u, uv.v) : 0;
+    }
+    cloud = Array.from({ length: Math.round(w * h / 1000 * .45) }, spawn);
+    ctx.clearRect(0, 0, w, h);
+  };
+  const at = (px, py) => {
+    const gx = px / STEP, gy = py / STEP, x0 = Math.floor(gx), y0 = Math.floor(gy);
+    if (x0 < 0 || y0 < 0 || x0 >= fw - 1 || y0 >= fh - 1) return null;
+    const ax = gx - x0, ay = gy - y0, s = [0, 0, 0];
+    for (const [dx, dy, wt] of [[0, 0, (1 - ax) * (1 - ay)], [1, 0, ax * (1 - ay)], [0, 1, (1 - ax) * ay], [1, 1, ax * ay]]) {
+      const i = ((y0 + dy) * fw + x0 + dx) * 3; if (Number.isNaN(field[i])) return null;
+      s[0] += field[i] * wt; s[1] += field[i + 1] * wt; s[2] += field[i + 2] * wt;
+    }
+    return s;
+  };
+  const frame = now => {
+    raf = 0;
+    if (stopped || map.isMoving() || document.hidden) return;
+    raf = requestAnimationFrame(frame);
+    if (now - last < 30) return;
+    last = now;
+    if (!field) build();
+    ctx.globalCompositeOperation = 'destination-in'; ctx.fillStyle = 'rgba(0,0,0,.93)'; ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'source-over'; ctx.lineCap = 'round';
+    const segs = Array.from({ length: NB }, () => []);
+    for (const p of cloud) {
+      const s = at(p.x, p.y);
+      if (!s || p.age > 70) { Object.assign(p, spawn(), { age: 0 }); continue; }
+      const b = clamp(Math.floor(s[2] * 1.944 / BIN), 0, NB - 1);
+      segs[b].push(p.x, p.y, p.x + s[0], p.y + s[1]);
+      p.x += s[0]; p.y += s[1]; p.age++;
+    }
+    segs.forEach((a, b) => {
+      if (!a.length) return;
+      ctx.beginPath();
+      for (let i = 0; i < a.length; i += 4) { ctx.moveTo(a[i], a[i + 1]); ctx.lineTo(a[i + 2], a[i + 3]); }
+      ctx.strokeStyle = COL[b]; ctx.lineWidth = b * BIN >= 8 ? 1.7 : 1.2; ctx.stroke();
+    });
+  };
+  const restart = () => { field = null; if (!raf && !stopped) raf = requestAnimationFrame(frame); };
+  map.on('movestart', () => ctx.clearRect(0, 0, w, h));
+  map.on('moveend', restart); map.on('resize', restart);
+  document.addEventListener('visibilitychange', restart);
+  return { setTime(ms) { time = ms; restart(); }, stop() { stopped = true; cancelAnimationFrame(raf); raf = 0; ctx.clearRect(0, 0, w, h); }, start() { stopped = false; restart(); } };
+}
+/* the faint wash: the wind field painted in the product's colours, under the coast and the contours */
+const WW = window.WFWIND, WASHB = { west: WW.west, south: WW.south, east: WW.west + (WW.nx - 1) * WW.d, north: WW.south + (WW.ny - 1) * WW.d };
+const washCanvas = Object.assign(document.createElement('canvas'), { width: 214, height: 160 });
+function washURL(ms) {
+  const c = washCanvas, x2 = c.getContext('2d'), Wd = c.width, Ht = c.height, img = x2.createImageData(Wd, Ht);
+  const my = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)), yN = my(WASHB.north), yS = my(WASHB.south);
+  for (let y = 0; y < Ht; y++) {
+    const lat = (2 * Math.atan(Math.exp(yN + (yS - yN) * (y + .5) / Ht)) - Math.PI / 2) * 180 / Math.PI;
+    for (let x = 0; x < Wd; x++) {
+      const lon = WASHB.west + (WASHB.east - WASHB.west) * (x + .5) / Wd, uv = K.windUV(lon, lat, ms);
+      if (!uv) continue;
+      const c3 = toned(Math.hypot(uv.u, uv.v) * 1.944), i = (y * Wd + x) * 4;
+      img.data[i] = c3[0]; img.data[i + 1] = c3[1]; img.data[i + 2] = c3[2]; img.data[i + 3] = 46;
+    }
+  }
+  x2.putImageData(img, 0, 0);
+  return c.toDataURL();
+}
+const washCoords = [[WASHB.west, WASHB.north], [WASHB.east, WASHB.north], [WASHB.east, WASHB.south], [WASHB.west, WASHB.south]];
+let washAt = null;
+function paintWash() {
+  if (WST !== 'wash' || !map.isStyleLoaded()) return;
+  const t = tNow(); if (washAt === t) return; washAt = t;
+  const url = washURL(t);
+  if (!map.getSource('wash')) {
+    map.addSource('wash', { type: 'image', url, coordinates: washCoords });
+    map.addLayer({ id: 'wash', type: 'raster', source: 'wash', paint: { 'raster-opacity': .9, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, 'sand');
+  } else map.getSource('wash').updateImage({ url, coordinates: washCoords });
+}
+function setWindStyle(st, save = true) {
+  if (!WSTYLES.includes(st)) return;
+  WST = st; if (save) store.set('wf1.wind', st);
+  document.body.classList.toggle('wcol', st !== 'ink');
+  $$('#layers input[name=wst]').forEach(i => { i.checked = i.value === st; });
+  drawKnotScale();
+  if (!wind) return;
+  if (st === 'arrows') { wind.stop(); cwind.setTime(tNow()); cwind.start(); } else { cwind.stop(); wind.start(); }
+  if (map.getLayer('wash')) map.setLayoutProperty('wash', 'visibility', st === 'wash' ? 'visible' : 'none');
+  if (st === 'wash') { washAt = null; paintWash(); }
+  if (location.hash.includes('wind=') || st !== 'ink') history.replaceState(null, '', location.hash.replace(/[&?]?wind=\w+/, '') + windHash());
+}
+function drawKnotScale() {
+  const wsh = WST === 'wash';
+  let g = '<defs><linearGradient id="kg">';
+  for (let k = 0; k <= 40; k += 2.5) g += `<stop offset="${k / 40}" stop-color="rgb(${toned(k).join(',')})"/>`;
+  g += `</linearGradient></defs><rect x="4" y="2" width="200" height="8" fill="url(#kg)" opacity="${wsh ? .5 : 1}" stroke="rgba(26,29,33,.4)" stroke-width=".6"/>`;
+  for (let k = 0; k <= 40; k += 10) g += `<text x="${4 + k * 5}" y="22" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:#1A1D21">${k}</text>`;
+  g += `<text x="212" y="10" style="font:italic 10px Newsreader;fill:#1A1D21">kn</text>`;
+  $('#kbar').innerHTML = g;
+  $('#sw-arrows').style.background = `linear-gradient(90deg,${[4, 12, 20, 28].map(k => `rgb(${toned(k).join(',')})`).join(',')})`;
+  $('#sw-wash').style.background = `linear-gradient(90deg,${[4, 12, 20, 28].map(k => `rgba(${toned(k).join(',')},.35)`).join(',')})`;
+}
+$$('#layers input[name=wst]').forEach(i => i.addEventListener('change', () => i.checked && setWindStyle(i.value)));
 
 let lastWind = 0, windTimer = 0;
 function pushWind(force) {
   if (!wind) return;
-  const now = performance.now();
+  const go = () => { lastWind = performance.now(); wind.setTime(tNow()); cwind.setTime(tNow()); paintWash(); };
   clearTimeout(windTimer);
-  if (force || now - lastWind > 180) { lastWind = now; wind.setTime(tNow()); }
-  else windTimer = setTimeout(() => { lastWind = performance.now(); wind.setTime(tNow()); }, 180);
+  if (force || performance.now() - lastWind > 200) go(); else windTimer = setTimeout(go, 200);
 }
-function setTime(d, h, final) {
+function setTime(d, h, final, src) {
   const dayChanged = d !== S.d, hourChanged = h !== S.h;
   if (!dayChanged && !hourChanged && !final) return;
   S.d = d; S.h = h;
-  if (dayChanged) { paintMarkers(); paintScrub(); renderDock(); inkMap(); if (S.sheet) renderSheet(); }
+  if (dayChanged) { paintMarkers(); paintScrub(); renderDock(); renderYours(); inkMap(); }
   else {
     placeHand();
     $$('td[data-h]', tt).forEach(td => td.classList.toggle('c-sel', +td.dataset.h === h));
     if (hourChanged) drawTideRow();
-    if (S.sheet) $$('#ht tbody tr').forEach(tr => tr.classList.toggle('sel', +tr.dataset.h === h));
   }
+  if (S.sheet && S.sheet !== 'stars') updateSheetSel(dayChanged);
+  if (RIB && (src !== 'ribbon' || final)) RIB.to(fOf(), false);
   pushWind(final);
   if (popup) popup.setHTML(popHTML(popup._wfid));
-  updateCart();
 }
 
-/* ---------- cartouche, neatline ---------- */
+/* ---------- key: scale and neatline ---------- */
 const tints = [[0, '0'], [1, '1'], [2, '2'], [5, '5'], [10, '10'], [20, '20'], [50, '50+']];
 $('#tints').innerHTML = tints.map(([d, l]) => `<span style="background:${(K.TINTS.find(t => t[0] === d) || [0, '#F3F1EA'])[1]}">${l}</span>`).join('');
-function updateCart() {
-  $('#c-when').textContent = `${dayS(S.d).toUpperCase()} ${dom(S.d)} OCT · ${hh(S.h)} IST`;
-}
 function updateScale() {
   const c = map.getCenter(), z = map.getZoom();
   const mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * 2 ** z);
   let n = mpp * 3779.5;
   const p = 10 ** (Math.floor(Math.log10(n)) - 1); n = Math.round(n / p) * p;
-  const latS = `${Math.floor(Math.abs(c.lat))}°${pad2(Math.round((Math.abs(c.lat) % 1) * 60) % 60)}′N`;
-  $('#c-scale').textContent = `SCALE 1 : ${n.toLocaleString('en-IE').replace(/,/g, ' ')} AT ${latS}`;
-  // a bar in nautical miles, as the latitude scale would give them
-  const nmPx = 1852 / mpp;
-  const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
-  const unit = [...steps].reverse().find(v => v * nmPx * 4 <= 130) || steps[0];
-  const seg0 = unit * nmPx; if (seg0 * 4 > 150) { /* keep the bar inside the box */ }
-  const seg = unit * nmPx;
+  $('#c-scale').textContent = `SCALE 1 : ${n.toLocaleString('en-IE').replace(/,/g, ' ')}`;
+  const nmPx = 1852 / mpp, steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+  const unit = [...steps].reverse().find(v => v * nmPx * 4 <= 130) || steps[0], seg = unit * nmPx;
   let g = '';
   for (let i = 0; i < 4; i++) g += `<rect x="${(10 + i * seg).toFixed(1)}" y="4" width="${seg.toFixed(1)}" height="4" fill="${i % 2 ? '#F3EEE3' : '#1A1D21'}" stroke="#1A1D21" stroke-width=".7"/>`;
-  for (let i = 0; i < 4; i += 2) g += `<text x="${(10 + i * seg).toFixed(1)}" y="18" text-anchor="middle" style="font:500 8.5px 'IBM Plex Mono';fill:#1A1D21">${+(unit * i).toFixed(1)}</text>`;
-  g += `<text x="${(10 + 4 * seg).toFixed(1)}" y="18" text-anchor="middle" style="font:500 8.5px 'IBM Plex Mono';fill:#1A1D21">${+(unit * 4).toFixed(1)}</text><text x="${(16 + 4 * seg).toFixed(1)}" y="9" style="font:italic 10px Newsreader;fill:#1A1D21">sea miles</text>`;
+  for (let i = 0; i <= 4; i += 2) g += `<text x="${(10 + i * seg).toFixed(1)}" y="18" text-anchor="middle" style="font:500 8.5px 'IBM Plex Mono';fill:#1A1D21">${+(unit * i).toFixed(1)}</text>`;
+  g += `<text x="${(16 + 4 * seg).toFixed(1)}" y="9" style="font:italic 10px Newsreader;fill:#1A1D21">sea miles</text>`;
   $('#c-bar').innerHTML = g;
 }
-/** The chart's border: alternate black and white by minutes of arc, labelled, as on the sheet's neatline. */
 function drawNeat() {
   const svg = $('#neat'), w = innerWidth, H = innerHeight, b = phone() ? 5 : 7;
   const bottom = Math.min(H, H - dockH());
@@ -1042,14 +1313,13 @@ function drawNeat() {
   const pxLon = w / (br.lng - tl.lng), pxLat = bottom / (tl.lat - br.lat);
   const sLon = STEPS.find(s => s * pxLon >= 44) || 5, sLat = STEPS.find(s => s * pxLat >= 44) || 5;
   let g = '';
-  // top and bottom: longitude
   for (let v = Math.floor(tl.lng / sLon) * sLon, i = Math.floor(tl.lng / sLon); v < br.lng; v += sLon, i++) {
     const x1 = Math.max(0, map.project([v, tl.lat]).x), x2 = Math.min(w, map.project([v + sLon, tl.lat]).x);
     const fill = ((i % 2) + 2) % 2 ? '#F3EEE3' : '#1A1D21';
     g += `<rect x="${x1.toFixed(1)}" y="0" width="${(x2 - x1).toFixed(1)}" height="${b}" fill="${fill}"/>`;
     if (!phone()) g += `<rect x="${x1.toFixed(1)}" y="${bottom - b}" width="${(x2 - x1).toFixed(1)}" height="${b}" fill="${fill}"/>`;
     const lx = map.project([v, tl.lat]).x;
-    if (lx > 420 && lx < w - 360 && (i % 2 === 0 || sLon * pxLon > 90)) g += `<text x="${lx.toFixed(1)}" y="${b + 11}" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3F1EA;stroke-width:3px">${fmt(v, 'W')}</text>`;
+    if (lx > 400 && lx < w - 400 && (i % 2 === 0 || sLon * pxLon > 90)) g += `<text x="${lx.toFixed(1)}" y="${b + 11}" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3F1EA;stroke-width:3px">${fmt(v, 'W')}</text>`;
   }
   for (let v = Math.floor(br.lat / sLat) * sLat, i = Math.floor(br.lat / sLat); v < tl.lat; v += sLat, i++) {
     const y1 = Math.min(bottom, map.project([tl.lng, v]).y), y2 = Math.max(0, map.project([tl.lng, v + sLat]).y);
@@ -1062,8 +1332,7 @@ function drawNeat() {
   svg.innerHTML = g;
 }
 let neatRaf = 0;
-const neatSoon = () => { if (!neatRaf) neatRaf = requestAnimationFrame(() => { neatRaf = 0; drawNeat(); }); };
-map.on('move', neatSoon);
+map.on('move', () => { if (!neatRaf) neatRaf = requestAnimationFrame(() => { neatRaf = 0; drawNeat(); }); });
 map.on('moveend', updateScale);
 
 /* ---------- search ---------- */
@@ -1074,19 +1343,20 @@ function search() {
   const v = norm(q.value.trim());
   if (!v) { res.classList.remove('on'); q.parentNode.setAttribute('aria-expanded', 'false'); return; }
   hits = W.spots.filter(s => norm(s.name).includes(v) || norm(s.county).startsWith(v))
-    .sort((a, b) => (norm(b.name).startsWith(v) - norm(a.name).startsWith(v)) || (FEAT.has(b.id) - FEAT.has(a.id)) || a.name.localeCompare(b.name)).slice(0, 9);
+    .sort((a, b) => (norm(b.name).startsWith(v) - norm(a.name).startsWith(v)) || (isFav(b.id) - isFav(a.id)) || (FEAT.has(b.id) - FEAT.has(a.id)) || a.name.localeCompare(b.name)).slice(0, 9);
   hi = 0;
-  res.innerHTML = hits.length ? hits.map((s, i) => { const b = s.days[S.d].best; return `<li role="option" id="r-${i}" aria-selected="${i === hi}" data-id="${s.id}"><b>${esc(nameOf(s))}</b><small>${esc(s.county)}${FEAT.has(s.id) ? ' · surveyed' : ''}</small>${starsSVG(b ? b.stars : 0, b ? b.stars : 0, 10, 1.6)}</li>`; }).join('')
-    : `<li class="none">No spot by that name. Try a county: Kerry, Galway, Donegal…</li>`;
+  res.innerHTML = hits.length ? hits.map((s, i) => { const b = s.days[S.d].best; return `<li role="option" id="r-${i}" aria-selected="${i === hi}" data-id="${s.id}"><b>${esc(nameOf(s))}</b><small>${esc(s.county)}</small>${starsSVG(b ? b.stars : 0, b ? b.stars : 0, 10, 1.6)}</li>`; }).join('')
+    : `<li class="none">No spot by that name.</li>`;
   res.classList.add('on'); q.parentNode.setAttribute('aria-expanded', 'true');
 }
-function pick(id) { q.value = ''; res.classList.remove('on'); q.blur(); if (S.sheet) location.hash = '#map/' + id; else selectSpot(id, { fly: true, popup: true }); }
+function goSpot(id) { if (S.sheet) location.hash = '#map/' + id; else selectSpot(id, { fly: true, popup: true, user: true }); }
+function pick(id) { q.value = ''; res.classList.remove('on'); q.blur(); goSpot(id); }
 q.addEventListener('input', search);
 q.addEventListener('keydown', e => {
   if (!res.classList.contains('on') || !hits.length) { if (e.key === 'Escape') q.blur(); return; }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); hi = (hi + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length; $$('li', res).forEach((li, i) => li.setAttribute('aria-selected', i === hi)); q.setAttribute('aria-activedescendant', 'r-' + hi); }
   else if (e.key === 'Enter') { e.preventDefault(); pick(hits[hi].id); }
-  else if (e.key === 'Escape') { res.classList.remove('on'); }
+  else if (e.key === 'Escape') res.classList.remove('on');
 });
 res.addEventListener('pointerdown', e => { const li = e.target.closest('li[data-id]'); if (li) { e.preventDefault(); pick(li.dataset.id); } });
 q.addEventListener('blur', () => setTimeout(() => res.classList.remove('on'), 120));
@@ -1097,229 +1367,346 @@ $('#zin').onclick = () => map.zoomIn();
 $('#zout').onclick = () => map.zoomOut();
 $('#zirl').onclick = () => { closePopup(); if (S.sheet) location.hash = '#map'; fitIreland(); };
 $('#lay-b').onclick = () => { const on = $('#layers').classList.toggle('on'); $('#lay-b').setAttribute('aria-expanded', on); };
-function foldKey(fold) { $('#cart').classList.toggle('fold', fold); $('#key-fold').textContent = fold ? 'Open' : 'Fold'; $('#key-fold').setAttribute('aria-expanded', !fold); }
-$('#key-fold').onclick = () => foldKey(!$('#cart').classList.contains('fold'));
-$('#key-b').onclick = () => {
-  if (phone()) { document.body.classList.toggle('cart-on'); foldKey(false); return; }
-  const c = $('#cart'); const hid = c.classList.toggle('hid'); c.style.display = hid ? 'none' : '';
-};
+$('#key-b').onclick = () => { const on = document.body.classList.toggle('key-on'); sideTab(on ? 'key' : 'yours'); };
 const SOUND = ['contours', 'contours-dashed', 'bay-contours', 'bay-contours-dashed', 'contour-labels', 'bay-contour-labels', 'soundings', 'soundings-fine'];
-$$('#layers input').forEach(inp => inp.addEventListener('change', () => {
+$$('#layers input[data-l]').forEach(inp => inp.addEventListener('change', () => {
   const on = inp.checked, l = inp.dataset.l;
-  if (l === 'wind' && wind) on ? wind.start() : wind.stop();
   if (l === 'tint') { map.setPaintProperty('bands', 'fill-opacity', on ? 1 : 0); map.setPaintProperty('bay-bands', 'fill-opacity', on ? ['interpolate', ['linear'], ['zoom'], 8.5, 0, 9.5, 1] : 0); }
   if (l === 'sound') SOUND.forEach(id => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   if (l === 'relief') map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
   if (l === 'names') document.body.classList.toggle('no-names', !on);
 }));
-document.addEventListener('pointerdown', e => {
-  if (!e.target.closest('#layers,#lay-b')) { $('#layers').classList.remove('on'); $('#lay-b').setAttribute('aria-expanded', 'false'); }
-});
-$('#dk-fold').onclick = () => {
-  const f = document.body.classList.toggle('fold');
-  $('#dk-fold').textContent = f ? 'Open the table' : 'Fold the table';
-  $('#dk-fold').setAttribute('aria-expanded', !f);
-  requestAnimationFrame(() => { inkDock(); drawTideRow(); afterDock(); });
-};
-$('#grab').onclick = () => {
-  const f = document.body.classList.toggle('fold');
+function setFold(f) {
+  document.body.classList.toggle('fold', f);
+  $('#dk-fold').setAttribute('aria-expanded', !f); $('#dk-fold').setAttribute('aria-label', f ? 'Open the hours' : 'Fold the hours');
   $('#grab').setAttribute('aria-expanded', !f);
-  requestAnimationFrame(() => { drawTideRow(); scrollToHour(); inkDock(); afterDock(); });
-};
+  requestAnimationFrame(() => { drawTideRow(); scrollToHour(); inkDock(); afterDock(); if (RIB) RIB.resize(); });
+}
+$('#dk-fold').onclick = () => setFold(!document.body.classList.contains('fold'));
+$('#grab').onclick = () => setFold(!document.body.classList.contains('fold'));
 function afterDock() { document.documentElement.style.setProperty('--dock', dockH() + 'px'); drawNeat(); placeHand(); }
 new ResizeObserver(afterDock).observe($('#dock'));
 addEventListener('resize', () => { paintScrub(); drawTideRow(); inkDock(); });
 
+/* clicks that belong to no one element */
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('[data-act=close-pop]')) { closePopup(); return; }
+  const fv = t.closest('[data-fav]'); if (fv && fv.dataset.fav) { e.preventDefault(); e.stopPropagation(); toggleFav(fv.dataset.fav); return; }
+  const go = t.closest('[data-go]'); if (go) { document.body.classList.remove('key-on'); goSpot(go.dataset.go); return; }
+  if (t.closest('[data-sign]')) { YOURS.signedIn = !YOURS.signedIn; saveYours(); renderYours(); return; }
+  const inf = t.closest('[data-info]'); if (inf) { showInfo(inf); return; }
+  const v = t.closest('.seg [data-v]'); if (v) { setView(v.dataset.v); return; }
+  const tip = t.closest('[data-tip]'); if (tip) { showTip(tip); }
+  if (!t.closest('#infop')) $('#infop').classList.remove('on');
+  if (!t.closest('#tip,[data-tip]')) hideTip();
+}, true);
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('#layers,#lay-b')) { $('#layers').classList.remove('on'); $('#lay-b').setAttribute('aria-expanded', 'false'); }
+});
+
+/* ---------- the small print, behind an i ---------- */
+const runOf = s => { const d = new Date(s.run); return `${DOW[d.getUTCDay()]} ${pad2(d.getUTCHours())}:00 UTC`; };
+const INFO = {
+  key: () => `<h5>Sources</h5><ul><li>Depths: EMODnet Bathymetry, ~115 m in the five hour-by-hour bays</li><li>Coast: OpenStreetMap, OpenFreeMap</li><li>Wind: Met Éireann HARMONIE, then ECMWF</li><li>Tides: Marine Institute</li><li>Stars: wingfoil.ie, 80 kg intermediate</li></ul><p class="g" style="margin:6px 0 0">Not for navigation.</p>`,
+  dock: () => { const f = F[S.spot]; return f ? `<p>Solid stars: the hour as forecast for you. Outlined: what the wind alone would give. Dark hours aren't rated.</p><p>Wing and stars for an 80 kg intermediate.</p>${f.tides.station ? `<p class="g">Tide: Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.</p>` : ''}` : `<p>This spot is rated once a day, at its best hour.</p><p class="g">The hourly wind is the model field behind the wind on the chart, without gusts. Hour-by-hour stars, wings and tides cover five spots in this mockup.</p>`; },
+  yours: () => `<p>Starred spots and the ones you open stay on this device. Signing in keeps them on every device (a mock-up here).</p><p class="g">First visit: a few spots are filled in for the demo.</p>`,
+  sheet: () => { const f = F[S.sheet]; return `<h5>Wind</h5><p>Eight-model blend. The range bar: the dot is the blend, the pink tick its gust, the black bar the six models, the blue bar the middle 80% of 56 ensemble members.</p><p class="g">${WM ? Object.values(WM.sources).map(s => `${esc(s.name)} ${runOf(s)}`).join(' · ') : ''}</p><h5>Rides</h5><p>Share of the 56 ensemble members (ECMWF 25, GEFS 31; 6-hourly, interpolated to the hour) whose wind, lifted by the gusts as the stars do, reaches 10 kn.</p>${f && f.tides.station ? `<h5>Tide</h5><p class="g">Marine Institute, ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km), metres above chart datum.</p>` : ''}<p class="g">Sky and air temperature stop at Wed 14:00 in this data. Not for navigation.</p>`; },
+};
+function placePop(el, r) {
+  el.classList.add('on');
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8) + 'px';
+  el.style.top = (r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+}
+function showInfo(btn) {
+  const el = $('#infop');
+  if (el.classList.contains('on') && el._for === btn) { el.classList.remove('on'); return; }
+  el._for = btn; el.innerHTML = INFO[btn.dataset.info]();
+  placePop(el, btn.getBoundingClientRect());
+}
+
+/* ---------- why these stars: the hour's verdict and every reason ---------- */
+function tipHTML(id, d, h) {
+  const f = F[id], x = f && f.at[d][h], r = x && x.rating; if (!r) return '';
+  const fac = f.spot.facing, lift = r.rideKn - x.wind.kn;
+  const why = r.reasons.length ? r.reasons.map(t => `<li class="rs">− ${esc(t)}</li>`).join('') : (r.stars === r.potential ? '<li class="g">Nothing taken off</li>' : '');
+  return `<div class="tp-h"><span>${dayS(d)} ${dom(d)} · ${hh(h)}</span>${starsSVG(r.stars, r.potential, 12, 2)}</div>
+    <p class="tp-v"><i>${esc(r.session)}</i> on a <b class="mono">${r.wing} m</b></p>
+    <ul><li>${arrowSVG(x.wind.dir, 12)} ${x.wind.compass} ${rn(x.wind.kn)} g${rn(x.wind.gust)} kn${lift >= .95 ? ` → rides like <b>${rn(r.rideKn)}</b>` : ''}</li>
+    <li>${shoreSVG(x.wind.dir, fac, 15)} ${r.shore ? shoreW(r.shore) : 'facing unknown: wind alone'}</li>${why}</ul>
+    <p class="tp-f"><span>80 kg intermediate · best 14–24 kn</span><a href="#stars">How?</a></p>`;
+}
+let tipT = 0;
+function showTip(el) {
+  const [id, d, h] = el.dataset.tip.split('|'), html = tipHTML(id, +d, +h); if (!html) return;
+  clearTimeout(tipT);
+  const tip = $('#tip'); tip.innerHTML = html;
+  placePop(tip, el.getBoundingClientRect());
+}
+function hideTip() { $('#tip').classList.remove('on'); }
+document.addEventListener('pointerover', e => {
+  if (e.pointerType === 'touch') return;
+  const t = e.target.closest('[data-tip]');
+  if (t) showTip(t); else if (e.target.closest('#tip')) clearTimeout(tipT);
+});
+document.addEventListener('pointerout', e => { if (e.pointerType !== 'touch' && e.target.closest('[data-tip],#tip')) { clearTimeout(tipT); tipT = setTimeout(hideTip, 260); } });
+
 /* menu */
-$('#menu-feat').innerHTML = [...FEAT].map(id => { const w = windowOf(id, NOW_D, true); return `<li><a href="#spot/${id}">${esc(nameOf(BYID[id]))} <small>${esc(BYID[id].county.toUpperCase())}</small></a></li>`; }).join('');
+$('#menu-feat').innerHTML = [...FEAT].map(id => `<li><a href="#spot/${id}">${esc(nameOf(BYID[id]))} <small>${esc(BYID[id].county.toUpperCase())}</small></a></li>`).join('');
 const menu = on => { document.body.classList.toggle('menu-on', on); $('#menu-b').setAttribute('aria-expanded', on); if (on) $('#menu-x').focus(); };
 $('#menu-b').onclick = () => menu(true);
 $('#menu-x').onclick = () => menu(false);
 $('#scrim').onclick = () => menu(false);
 $('#menu').addEventListener('click', e => { if (e.target.closest('a')) menu(false); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { menu(false); closePopup(); if (S.sheet) location.hash = '#map/' + S.sheet; } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { menu(false); closePopup(); hideTip(); $('#infop').classList.remove('on'); document.body.classList.remove('key-on'); if (S.sheet) location.hash = S.sheet === 'stars' ? S.back : '#map/' + S.sheet; } });
 
 /* ======================================================================
-   THE SPOT PAGE: a sheet laid over the chart
+   THE SPOT PAGE: every hour of the week
    ====================================================================== */
-function bestOfWeek(id) {
-  let best = null;
-  DAYS.forEach((_, d) => { const w = windowOf(id, d); if (w && (!best || w.stars > best.stars || (w.stars === best.stars && w.b - w.a > best.b - best.a))) best = { ...w, d }; });
-  return best;
+const RX = k => 3 + clamp(k, 0, 30) / 30 * 106;
+function rangeSVG(x, st) {
+  let g = `<rect x="${RX(14).toFixed(1)}" y="0" width="${(RX(24) - RX(14)).toFixed(1)}" height="18" fill="rgba(176,24,106,.08)"/><line x1="${RX(10).toFixed(1)}" x2="${RX(10).toFixed(1)}" y1="2" y2="16" stroke="rgba(176,24,106,.5)" stroke-dasharray="2 2"/>`;
+  let title = `blend ${rn(x.wind.kn)} g${rn(x.wind.gust)} kn`;
+  if (st && st.n) { g += `<rect x="${RX(st.q10).toFixed(1)}" y="5.5" width="${Math.max(1, RX(st.q90) - RX(st.q10)).toFixed(1)}" height="7" rx="1" fill="rgba(95,140,156,.42)"/>`; title += ` · ensembles ${rn(st.q10)}–${rn(st.q90)}`; }
+  if (st && st.models >= 2) { g += `<rect x="${RX(st.lo).toFixed(1)}" y="8" width="${Math.max(1, RX(st.hi) - RX(st.lo)).toFixed(1)}" height="2" fill="#1A1D21" opacity=".7"/>`; title += ` · models ${rn(st.lo)}–${rn(st.hi)}`; }
+  g += `<line x1="${RX(x.wind.gust).toFixed(1)}" x2="${RX(x.wind.gust).toFixed(1)}" y1="3" y2="15" stroke="#C93D72" stroke-width="1.7"/><circle cx="${RX(x.wind.kn).toFixed(1)}" cy="9" r="3" fill="#1A1D21"/>`;
+  return `<svg width="112" height="18" role="img" aria-label="${title}"><title>${title}</title>${g}</svg>`;
 }
-function profileOf(id) {
-  const s = BYID[id];
-  if (s.facing == null || !window.WFGRIDS || !window.WFGRIDS[id]) return null;
-  const a = s.facing * Math.PI / 180, pts = [];
-  for (let m = 0; m <= 2400; m += 20) {
-    const lat = s.lat + m * Math.cos(a) / 111320, lon = s.lon + m * Math.sin(a) / (111320 * Math.cos(s.lat * Math.PI / 180));
-    pts.push({ m, d: K.depthAt(lon, lat) });
-  }
-  // start where the survey first finds the foreshore (no more than 4 m above datum)
-  let i0 = pts.findIndex(p => p.d != null && p.d > -4);
-  if (i0 < 0) return null;
-  // and past any point of land the line crosses close in (above the highest tide)
-  const hw = F[id] && F[id].ev.length ? Math.max(...F[id].ev.map(e => e.h)) : 4;
-  for (let i = i0; i < Math.min(pts.length, i0 + 45); i++) if (pts[i].d != null && -pts[i].d > hw) i0 = i + 1;
-  return pts.slice(i0, i0 + 76).map(p => ({ m: p.m - pts[i0].m, d: p.d }));
+const rangeAxis = () => `<svg width="112" height="20" aria-hidden="true" style="display:block"><rect x="${RX(14)}" y="12" width="${RX(24) - RX(14)}" height="6" fill="rgba(176,24,106,.12)"/>${[0, 10, 14, 24, 30].map(k => `<text x="${RX(k) - (k === 30 ? 4 : 0)}" y="9" text-anchor="middle" style="font:500 8px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${k === 30 ? '30kn' : k}</text><line x1="${RX(k)}" x2="${RX(k)}" y1="12" y2="18" stroke="rgba(26,29,33,.4)"/>`).join('')}</svg>`;
+const DOTS = { high: '●●●', moderate: '●●<i>●</i>', low: '●<i>●●</i>' };
+function hourRow(id, d, h, span) {
+  const f = F[id], s = f.spot, x = f.at[d][h], r = x.rating, st = statsAt(id, x.time ? Date.parse(x.time) : msOf(d, h));
+  const sel = d === S.d && h === S.h;
+  const ag = x.wind.agreement;
+  return `<tr class="hrow${isPast(d, h) ? ' past' : ''}${sel ? ' sel' : ''}" data-d="${d}" data-h="${h}">
+    <td class="t">${pad2(h)}</td>
+    <td class="st" data-tip="${id}|${d}|${h}">${starsSVG(r.stars, r.potential, 10.5, 1.6)}</td>
+    <td><span class="kn">${rn(x.wind.kn)}</span> <span class="g">g${rn(x.wind.gust)}</span></td>
+    <td class="rg">${rangeSVG(x, st)}</td>
+    <td class="ch">${st && st.n ? `<span>${rn(st.p10 * 100)}%</span>${probBar(st.share)}` : '<span class="g">—</span>'}</td>
+    <td class="dots" title="Models agree: ${ag}${st && st.models >= 2 ? ` · ${rn(st.lo)}–${rn(st.hi)} kn` : ''}">${DOTS[ag] || ''}</td>
+    <td>${arrowSVG(x.wind.dir, 12)} <span class="g">${x.wind.compass}</span></td>
+    <td>${shoreSVG(x.wind.dir, s.facing, 17)}</td>
+    <td class="wg">${r.wing}</td>
+    <td>${x.waves ? `${x.waves.height_m.toFixed(1)}<span class="g">m</span> ${x.waves.period_s}<span class="g">s</span>` : '—'}</td>
+    <td>${x.weather ? `${oktaSVG(x.weather.cloud_pct)}${x.weather.rain_mm >= .1 ? ` <span style="color:var(--depth)">${x.weather.rain_mm.toFixed(1)}</span>` : ''}` : '<span class="g">—</span>'}</td>
+    <td>${x.weather ? `${x.weather.air_c}°` : '<span class="g">—</span>'}</td>
+    ${span ? `<td class="tide" rowspan="${span}"><svg data-td="${d}"></svg></td>` : ''}
+  </tr>`;
+}
+function weekTable(id) {
+  const f = F[id];
+  let rows = '';
+  DAYS.forEach((_, d) => {
+    const hrs = ratedHours(id, d); if (!hrs.length) return;
+    const sun = f.sun[DAYS[d]];
+    rows += `<tr class="dh" data-d="${d}"><td colspan="13">${dayL(d)} ${dom(d)}<span class="mono">☀ ${sun.rise}–${sun.set}</span><span class="pn" id="pn-${d}"></span></td></tr>`;
+    hrs.forEach((h, k) => { rows += hourRow(id, d, h, k === 0 ? hrs.length : 0); });
+    const nxt = d + 1 < DAYS.length ? ratedHours(id, d + 1) : [];
+    if (nxt.length) {
+      const a = msOf(d, hrs[hrs.length - 1]) + 18e5, b = msOf(d + 1, nxt[0]) - 18e5, ns = f.sun[DAYS[d + 1]];
+      const turns = f.ev.filter(e => e.ms > a && e.ms < b).map(e => `${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}`).join(' · ');
+      rows += `<tr class="nt"><td colspan="13">☾ ${sun.set}–${ns.rise}${turns ? ` · ${turns}` : ''}</td></tr>`;
+    }
+  });
+  return `<table class="ht" id="ht"><thead><tr><th>IST</th><th>Stars <a class="q" href="#stars" aria-label="How the stars work" title="How the stars work">?</a></th><th>Wind</th><th>${rangeAxis()}</th><th title="Chance it rides: 10 kn or more for you">Rides</th><th title="How well the models agree">Sure</th><th>From</th><th title="The wind against the beach">Shore</th><th>Wing</th><th>Waves</th><th>Sky</th><th>Air</th><th>Tide m</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function drawSheetTides(id) {
+  $$('#ht svg[data-td]').forEach(svg => {
+    const d = +svg.dataset.td, td = svg.parentNode, rows = $$(`#ht tr.hrow[data-d="${d}"]`);
+    const R = td.getBoundingClientRect(), H = R.height, Wd = 104, X0 = 6, X1 = 58;
+    svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`);
+    const cy = rows.map(r => { const b = r.getBoundingClientRect(); return { h: +r.dataset.h, y: b.top + b.height / 2 - R.top, hh: b.height }; });
+    const yOf = ms => {
+      const hf = (ms - msOf(d, 0)) / 36e5;
+      let i = 0; while (i < cy.length - 2 && cy[i + 1].h < hf) i++;
+      const a = cy[i], b = cy[Math.min(i + 1, cy.length - 1)];
+      return a === b ? a.y + (hf - a.h) * a.hh : a.y + (hf - a.h) / (b.h - a.h) * (b.y - a.y);
+    };
+    const x = h => X0 + clamp(h, 0, 5) / 5 * (X1 - X0);
+    const f = F[id], first = msOf(d, cy[0].h) - 18e5, last = msOf(d, cy[cy.length - 1].h) + 18e5;
+    if (!f.ev.length) { svg.innerHTML = ''; return; }
+    const a = Math.max(first, f.ev[0].ms), b = Math.min(last, f.ev[f.ev.length - 1].ms);
+    let p = '';
+    for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + x(K.tideAt(id, ms)).toFixed(1) + ' ' + yOf(ms).toFixed(1);
+    let g = `<line x1="${x(0)}" x2="${x(0)}" y1="0" y2="${H}" stroke="rgba(95,140,156,.6)" stroke-dasharray="2 3"/>`;
+    g += `<path d="${p}L${x(0)} ${yOf(b).toFixed(1)}L${x(0)} ${yOf(a).toFixed(1)}Z" fill="rgba(95,140,156,.16)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.5"/>`;
+    f.ev.filter(e => e.ms >= a && e.ms <= b).forEach(e => {
+      const ex = x(e.h), ey = yOf(e.ms);
+      g += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="2.8" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21"/><text x="${Wd - 2}" y="${(ey - 1).toFixed(1)}" text-anchor="end" style="font:600 9px 'IBM Plex Mono';fill:#1A1D21">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)}</text><text x="${Wd - 2}" y="${(ey + 9).toFixed(1)}" text-anchor="end" style="font:400 9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${e.h.toFixed(1)} m</text>`;
+    });
+    if (d === S.d && tideOK(id, tNow())) g += `<circle cx="${x(K.tideAt(id, tNow())).toFixed(1)}" cy="${yOf(tNow()).toFixed(1)}" r="3.4" fill="#B0186A"/>`;
+    svg.innerHTML = g;
+  });
+}
+function inkSheet(id) {
+  const svg = $('#shpen'), wrap = $('#sh-wrap'); if (!svg || !wrap) return;
+  svg.innerHTML = '';
+  svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
+  $$('#ht .pn').forEach(p => { p.textContent = ''; });
+  let R = wrap.getBoundingClientRect();
+  const loop = (d, w, label, delay) => {
+    const a = $(`#ht tr.hrow[data-d="${d}"][data-h="${w.a}"] td.t`), b = $(`#ht tr.hrow[data-d="${d}"][data-h="${w.b}"] td.st`);
+    if (!a || !b) return;
+    const A = a.getBoundingClientRect(), B = b.getBoundingClientRect();
+    const x1 = A.left - R.left + wrap.scrollLeft, x2 = B.right - R.left + wrap.scrollLeft, y1 = A.top - R.top, y2 = B.bottom - R.top;
+    inkPath(svg, K.loopPath((x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2 + 9, (y2 - y1) / 2 + 8, d * 7 + w.a), { dur: 900, delay });
+    if (label) { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x2 + 14); t.setAttribute('y', (y1 + y2) / 2 + 5); t.setAttribute('style', "font:16px Kalam;fill:#D43A2C;paint-order:stroke;stroke:#F3EEE3;stroke-width:4px"); t.textContent = label; svg.appendChild(t); }
+  };
+  const w = windowOf(id, S.d);
+  // the note goes in first: on a phone it takes a line of its own and moves the rows below it
+  if (w && w.stars) { const pn = $(`#pn-${S.d}`); if (pn) pn.textContent = shortNote(id, S.d, w); }
+  R = wrap.getBoundingClientRect();
+  if (w && w.stars) loop(S.d, w, '', 150);
+  const bw = bestOfWeek(id);
+  if (bw && bw.stars && !(bw.d === S.d && w && bw.a === w.a)) loop(bw.d, bw, 'best of the week', 500);
+}
+function sheetHead(id) {
+  const s = BYID[id], f = F[id], bw = bestOfWeek(id);
+  if (!bw || !bw.stars) return { head: `${esc(nameOf(s))}<span class="c">:</span> <em>a quiet week</em>`, deck: '' };
+  const when = bw.d === NOW_D ? `this ${part(bw.a)}` : `${dayL(bw.d)} ${part(bw.a)}`;
+  const head = `${esc(nameOf(s))}<span class="c">:</span> a ${WORDS[bw.stars]}-star ${when}${bw.wing ? ` <em>on a ${bw.wing}m</em>` : ''}`;
+  let deck = `${bw.compass} ${rn(bw.kn)} g${rn(bw.gust)}`;
+  if (f) { const last = HRS.filter(h => f.at[bw.d][h] && f.at[bw.d][h].rating).pop(); deck += `${bw.shore ? ' · ' + shoreW(bw.shore) : ''} · ${bw.b === last && bw.a !== bw.b ? `${hh(bw.a)} till dark` : range(bw)}`; }
+  else deck += ` · ${hh(bw.a)}`;
+  return { head, deck };
 }
 function renderSheet() {
-  const id = S.sheet, s = BYID[id], f = F[id], d = S.d;
-  const top = `<div class="sh-top"><a class="back" href="#map/${id}">← Back to the chart</a><span class="kick">${esc(s.county)} · ${f ? 'surveyed spot' : 'daily ratings'}</span><span class="kick">${s.facing != null ? `Beach faces ${FACE8(s.facing)} · ${s.facing}°` : 'Facing not recorded'}</span></div>`;
-  let head = '', deck = '';
-  const bw = bestOfWeek(id);
-  if (bw && bw.stars) {
-    const when = bw.d === NOW_D ? `${part(bw.a) === 'morning' ? 'this morning' : part(bw.a) === 'afternoon' ? 'this afternoon' : 'this evening'}` : `${dayL(bw.d)} ${part(bw.a)}`;
-    head = `${esc(nameOf(s))}<span class="c">:</span> a ${WORDS[bw.stars]}-star ${when}${bw.wing ? ` <em>on a ${bw.wing}m</em>` : ''}`;
-    if (f) {
-      const sun = f.sun[DAYS[bw.d]], last = HRS.filter(h => f.at[bw.d][h] && f.at[bw.d][h].rating).pop();
-      const span = bw.b === last && sun ? `${bw.a === bw.b ? `at ${hh(bw.a)}` : `from ${hh(bw.a)}`} until the light goes at ${sun.set}` : bw.a === bw.b ? `at ${hh(bw.a)}` : `from ${hh(bw.a)} to ${hh(bw.b)}`;
-      deck = `${dirWord(bw.dir)} ${rn(bw.kn)} knots, gusting ${rn(bw.gust)}${bw.shore ? ', ' + shoreW(bw.shore) : ''}, ${span}: ${bw.session.toLowerCase()}.`;
-      const today = windowOf(id, NOW_D);
-      if (bw.d !== NOW_D && today) deck += ` Today ${today.stars ? `gives ${WORDS[today.stars]} star${today.stars > 1 ? 's' : ''} at best, ${range(today)}` : 'gives no stars from here on'}.`;
-    } else {
-      deck = `${dirWord(bw.dir)} ${rn(bw.kn)} knots, gusting ${rn(bw.gust)}, at ${hh(bw.a)}: its best hour of the week.`;
-    }
-  } else { head = `${esc(nameOf(s))}<span class="c">:</span> <em>a quiet week</em>`; deck = 'No stars at any hour from here to Friday.'; }
-  const by = `<div class="byline"><span>By <b>the Almanac</b>, wingfoil.ie</span><span>Eight-model blend: HARMONIE, AROME, ARPEGE, ECMWF, ICON-EU, GFS, AIFS, ensembles</span>${f && f.tides.station ? `<span>Tides: ${f.tides.station}, ${f.tides.distance_km.toFixed(1)} km</span>` : ''}<span>Rated for an 80 kg intermediate</span></div>`;
-
-  // the week
+  const id = S.sheet, s = BYID[id], f = F[id];
+  const { head, deck } = sheetHead(id);
   const cards = DAYS.map((_, i) => {
     const w = windowOf(id, i, true);
-    const sun = f && f.sun[DAYS[i]];
-    return `<button class="dcard${i === d ? ' on' : ''}" data-d="${i}"><div class="dn">${dayS(i)}<small>${dom(i)} OCT${i === NOW_D ? ' · TODAY' : ''}</small></div>${w ? starsSVG(w.stars, f ? w.pot : w.stars, 13, 2) : ''}
-      <div class="se">${w && w.session ? esc(w.session) : w ? (w.stars ? 'Best hour' : 'Not worth it') : ''}</div>
-      <div class="dl">${w ? `<b>${range(w)}</b> ${w.compass} ${rn(w.kn)} g${rn(w.gust)}${w.wing ? ` · ${w.wing} m` : ''}` : ''}${sun ? `<br>light ${sun.rise}–${sun.set}` : ''}</div></button>`;
+    return `<button class="dcard${i === S.d ? ' on' : ''}" data-d="${i}"><div class="dn">${dayS(i)}<small>${dom(i)}</small></div>${w ? starsSVG(w.stars, f ? w.pot : w.stars, 12, 2) : ''}<div class="dl">${w && w.stars ? `<b>${hr(w)}</b>${w.wing ? ` · ${w.wing} m` : ''}` : '—'}</div></button>`;
   }).join('');
-
-  // hour by hour
-  let hours = '';
-  const w = windowOf(id, d);
+  const sun = f && f.sun[DAYS[S.d]];
+  const legend = f ? `<div class="legend"><span>${rangeSVG({ wind: { kn: 13, gust: 19 } }, { n: 1, q10: 9, q90: 15, models: 6, lo: 11, hi: 14 })}</span><span><svg width="8" height="8"><circle cx="4" cy="4" r="3" fill="#1A1D21"/></svg>blend</span><span><svg width="4" height="12"><line x1="2" x2="2" y1="0" y2="12" stroke="#C93D72" stroke-width="1.7"/></svg>gust</span><span><svg width="14" height="4"><rect width="14" height="2" y="1" fill="#1A1D21" opacity=".7"/></svg>models</span><span><svg width="14" height="7"><rect width="14" height="7" fill="rgba(95,140,156,.42)"/></svg>ensembles 80%</span><span><svg width="14" height="8"><rect width="14" height="8" fill="rgba(176,24,106,.12)"/></svg>14–24 kn</span><span>${probBar([.2, .3, .4, .1])} &lt;10 · 10–14 · 14–24 · 24+</span><button class="ii" data-info="sheet" aria-label="About these figures">i</button></div>` : '';
+  const table = f ? `<div class="sh-tt-wrap" id="sh-wrap">${weekTable(id)}<svg id="shpen" aria-hidden="true"></svg></div>`
+    : `<p class="legend" style="font-size:12px">Rated once a day here · hour by hour: ${[...FEAT].map(i => `<a href="#spot/${i}">${esc(nameOf(BYID[i]))}</a>`).join(' · ')}</p>`;
+  $('#sh-in').innerHTML = `<div class="sh-top"><a class="back" href="#map/${id}">← Chart</a>${favBtn(id, true)}<button class="ii" data-info="${f ? 'sheet' : 'dock'}" aria-label="Sources">i</button></div>
+    <h1 class="headline">${head}</h1>
+    <div class="meta"><span>${compassSVG(s.facing, 22)}${s.facing != null ? `<b>${FACE8(s.facing)}</b> ${s.facing}°` : ''}</span><span>${esc(s.county.toUpperCase())}</span>${sun ? `<span>☀ ${sun.rise}–${sun.set}</span>` : ''}<span>${esc(deck)}</span></div>
+    <div class="week">${cards}</div>${legend}${table}`;
+  $$('.dcard', $('#sh-in')).forEach(b => b.addEventListener('click', () => { const nd = +b.dataset.d, ww = windowOf(id, nd, true); setTime(nd, ww ? clamp(ww.a, 7, 20) : S.h, true); scrollSheetTo(nd); }));
+  $$('#ht tr.hrow').forEach(tr => tr.addEventListener('click', () => setTime(+tr.dataset.d, clamp(+tr.dataset.h, 7, 20), true)));
   if (f) {
-    hours = `<div class="sh-tt-wrap" id="sh-wrap"><table class="ht" id="ht"><thead><tr><th>IST</th><th>Rating</th><th>Session</th><th>Wind · gust</th><th>From</th><th>Shore</th><th>Wing</th><th>Waves</th><th>Sky · air</th><th title="metres above chart datum">Tide m</th></tr></thead><tbody>${HRS.map(h => {
-      const x = f.at[d][h]; if (!x) return '';
-      const r = x.rating, tide = f.ev.length && msOf(d, h) >= f.ev[0].ms && msOf(d, h) <= f.ev[f.ev.length - 1].ms ? K.tideAt(id, msOf(d, h)) : null;
-      return `<tr data-h="${h}" class="${r ? '' : 'night'}${isPast(d, h) ? ' past' : ''}${h === S.h ? ' sel' : ''}"><td class="t">${hh(h)}</td><td class="st">${r ? starsSVG(r.stars, r.potential, 12, 2) : '<i class="se" style="font-size:13px">dark</i>'}</td><td class="se">${r ? esc(r.session) : ''}</td><td><span class="kn">${rn(x.wind.kn)}</span> <span class="g">g${rn(x.wind.gust)}</span></td><td class="sm">${arrowSVG(x.wind.dir)} ${x.wind.compass}</td><td class="sm" style="font-family:var(--f-body);font-style:italic;font-size:12.5px">${r ? shoreW(r.shore).replace('-shore', '') : ''}</td><td class="wg">${r ? `${r.wing}<small> m</small>` : ''}</td><td class="sm">${x.waves ? `${x.waves.height_m.toFixed(1)}<span class="g"> m</span> ${x.waves.period_s}<span class="g"> s</span>` : '—'}</td><td class="sm">${skyCell(x)}</td><td class="sm">${tide != null ? tide.toFixed(1) : '<span style="color:var(--faint)">—</span>'}</td></tr>`;
-    }).join('')}</tbody></table><svg id="shpen" aria-hidden="true"></svg></div>`;
-  } else {
-    const b = s.days[d].best;
-    hours = `<p class="cap" style="font-size:15px">${b ? `<b>${b.at}</b> is ${dayL(d)}'s best hour: ${WORDS[b.stars]} star${b.stars === 1 ? '' : 's'}, ${b.dir} ${rn(b.wind)} gusting ${rn(b.gust)} knots.` : ''} Hour-by-hour ratings, sessions, wings, waves and tides are kept for the five surveyed spots in this mockup: ${[...FEAT].map(i => `<a href="#spot/${i}">${esc(nameOf(BYID[i]))}</a>`).join(', ')}.</p>`;
+    requestAnimationFrame(() => { drawSheetTides(id); inkSheet(id); });
+    // once the faces have loaded the rows settle; draw the tide and the pen again on the final layout
+    document.fonts.ready.then(() => setTimeout(() => { if (S.sheet === id) { drawSheetTides(id); inkSheet(id); } }, 650));
   }
-
-  // tide and daylight; depth off the beach
-  let tideFig = '', depthFig = '';
-  if (f) {
-    tideFig = `<figure class="fig"><svg id="tide-fig" viewBox="0 0 330 150" role="img" aria-label="Tide curve and daylight"></svg><figcaption id="tide-cap"></figcaption></figure>
-      <table class="sun"><thead><tr><th>Day</th><th>Sunrise</th><th>Sunset</th><th>Light</th></tr></thead><tbody>${DAYS.map((x, i) => { const sn = f.sun[x]; if (!sn) return ''; const [a1, a2] = sn.rise.split(':').map(Number), [b1, b2] = sn.set.split(':').map(Number); const mins = (b1 * 60 + b2) - (a1 * 60 + a2); return `<tr><td>${dayS(i)} ${dom(i)}</td><td>${sn.rise}</td><td>${sn.set}</td><td>${Math.floor(mins / 60)} h ${pad2(mins % 60)}</td></tr>`; }).join('')}</tbody></table>`;
-    depthFig = `<figure class="fig"><svg id="depth-fig" viewBox="0 0 330 190" role="img" aria-label="Depth off the beach"></svg><figcaption id="depth-cap"></figcaption></figure>`;
-  }
-  const colo = `<div class="colo"><p>Wind: an eight-model blend for the hour, rated hour by hour for an 80 kg intermediate. Solid stars are the hour as forecast for you; outlined stars what the wind alone would give. The dark is not rated.</p><p>Depths: EMODnet Bathymetry's survey grid, about 115 m apart in this bay, in metres below chart datum (Lowest Astronomical Tide). Tides: Marine Institute predictions${f && f.tides.station ? ` for ${f.tides.station}` : ''}, CC BY 4.0. The tide station is rarely at the beach; read both as estimates.</p><p>The hourly wind, ratings and tides run to Friday night; this mockup's sky and air temperatures stop at Wednesday 14:00.</p><p>Not for navigation. Ride within your own depth.</p></div>`;
-
-  $('#sh-in').innerHTML = `${top}<h1 class="headline">${head}</h1><p class="deck">${deck}</p>${by}
-    <div class="sec-h"><h2>The week <em>at a glance</em></h2><span class="aside">solid ★ rated · outline ☆ the wind alone</span></div><div class="week">${cards}</div>
-    <div class="sec-h"><h2>${dayL(d)} <em>hour by hour</em></h2><span class="aside">${f ? (f.tides.station ? `IST · tide in m above datum, ${esc(f.tides.station)}` : 'IST · no tide predictions here') : ''}</span></div>${f ? '<p class="sh-note" id="sh-note"></p>' : ''}${hours}
-    ${f ? `<div class="two"><div><div class="sec-h"><h2>Tide <em>and daylight</em></h2></div>${tideFig}</div><div><div class="sec-h"><h2>Depth <em>off the beach</em></h2></div>${depthFig}</div></div>` : ''}
-    ${colo}`;
-  $$('.dcard', $('#sh-in')).forEach(b => b.addEventListener('click', () => { const nd = +b.dataset.d; const ww = windowOf(id, nd, true); setTime(nd, ww ? ww.a : S.h, true); }));
-  $$('#ht tbody tr').forEach(tr => tr.addEventListener('click', () => setTime(S.d, +tr.dataset.h, true)));
-  if (f) { drawTideFig(id); drawDepthFig(id); }
-  requestAnimationFrame(() => inkSheet(id, d, w));
 }
-function inkSheet(id, d, w) {
-  const note = $('#sh-note'), svg = $('#shpen');
-  if (!note) return;
-  if (!w) { note.innerHTML = `${rel(d)} is done.`; return; }
-  note.innerHTML = noteText(id, d, w).replace(/<small>.*<\/small>/, '');
-  if (!svg || !w.stars) return;
-  const wrap = $('#sh-wrap'), R = wrap.getBoundingClientRect();
-  const ra = $(`#ht tr[data-h="${w.a}"] td.st`), rb = $(`#ht tr[data-h="${w.b}"] td.st`), ta = $(`#ht tr[data-h="${w.a}"] td.t`);
-  if (!ra || !rb) return;
-  svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
-  svg.innerHTML = '';
-  const A = ta.getBoundingClientRect(), B = rb.getBoundingClientRect();
-  const x1 = A.left - R.left, x2 = B.right - R.left, y1 = A.top - R.top, y2 = B.bottom - R.top;
-  inkPath(svg, K.loopPath((x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2 + 8, (y2 - y1) / 2 + 9, 11), { dur: 1000, delay: 250 });
+function scrollSheetTo(d) {
+  const dh = $(`#ht tr.dh[data-d="${d}"]`); if (!dh) return;
+  const sh = $('#sheet'), top = dh.getBoundingClientRect().top - sh.getBoundingClientRect().top + sh.scrollTop - 40;
+  sh.scrollTo({ top, behavior: RM ? 'auto' : 'smooth' });
 }
-function drawTideFig(id) {
-  const svg = $('#tide-fig'), f = F[id], d0 = S.d;
-  const X0 = 26, X1 = 322, Y0 = 12, Y1 = 118;
-  const y = h => Y1 - h / 5 * (Y1 - Y0);
-  let g = '';
-  const sun = f.sun[DAYS[d0]];
-  // night shading
-  const msAt = (hhmm) => { const [a, b] = hhmm.split(':').map(Number); return Date.parse(DAYS[d0] + 'T00:00:00Z') + ((a - 1) * 60 + b) * 6e4; };
-  const rise = msAt(sun.rise), set = msAt(sun.set);
-  const mid = Date.parse(DAYS[d0] + 'T00:00:00Z') - 36e5;
-  const xx = ms => X0 + (ms - mid) / (24 * 36e5) * (X1 - X0);
-  g += `<rect x="${X0}" y="${Y0}" width="${(xx(rise) - X0).toFixed(1)}" height="${Y1 - Y0}" fill="url(#hatch)"/><rect x="${xx(set).toFixed(1)}" y="${Y0}" width="${(X1 - xx(set)).toFixed(1)}" height="${Y1 - Y0}" fill="url(#hatch)"/>`;
-  for (let hv = 0; hv <= 5; hv++) g += `<line x1="${X0}" x2="${X1}" y1="${y(hv)}" y2="${y(hv)}" stroke="${hv ? 'rgba(26,29,33,.1)' : 'rgba(95,140,156,.7)'}" ${hv ? '' : 'stroke-dasharray="3 2"'}/><text x="${X0 - 5}" y="${y(hv) + 3}" text-anchor="end" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${hv}</text>`;
-  for (let h = 0; h <= 24; h += 6) g += `<text x="${xx(mid + h * 36e5).toFixed(1)}" y="${Y1 + 13}" text-anchor="middle" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${pad2(h)}</text>`;
-  const dayEv = f.ev.filter(e => e.ms >= mid - 3 * 36e5 && e.ms <= mid + 27 * 36e5);
-  if (dayEv.length >= 2) {
-    const a = Math.max(dayEv[0].ms, mid), b = Math.min(dayEv[dayEv.length - 1].ms, mid + 24 * 36e5);
-    let p = '';
-    for (let ms = a; ms <= b + 1; ms += 6e5) p += (p ? 'L' : 'M') + xx(ms).toFixed(1) + ' ' + y(K.tideAt(id, ms)).toFixed(1);
-    g += `<path d="${p}L${xx(b).toFixed(1)} ${Y1}L${xx(a).toFixed(1)} ${Y1}Z" fill="rgba(95,140,156,.18)"/><path d="${p}" fill="none" stroke="#3F6E7E" stroke-width="1.6"/>`;
-    dayEv.filter(e => e.ms >= mid && e.ms <= mid + 24 * 36e5).forEach(e => { const ex = xx(e.ms), ey = y(e.h); g += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3" fill="${e.hw ? '#1A1D21' : '#F3EEE3'}" stroke="#1A1D21"/><text x="${ex.toFixed(1)}" y="${(e.hw ? ey - 7 : ey + 14).toFixed(1)}" text-anchor="middle" style="font:500 9.5px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${e.hw ? 'HW' : 'LW'} ${ist(e.ms)} ${e.h.toFixed(1)}</text>`; });
-    const nx = xx(d0 === NOW_D ? NOW : tNow()), nl = d0 === NOW_D && S.h === NOW_H ? 'NOW' : hh(S.h);
-    g += `<line x1="${nx.toFixed(1)}" x2="${nx.toFixed(1)}" y1="${Y0}" y2="${Y1}" stroke="#B0186A" stroke-width="1.2"/><text x="${(nx - 3).toFixed(1)}" y="${Y0 + 9}" text-anchor="end" style="font:600 8.5px 'IBM Plex Mono';fill:#B0186A;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${nl}</text>`;
-    $('#tide-cap').innerHTML = `${dayL(d0)} ${dom(d0)} October at ${esc(f.tides.station)} (${f.tides.distance_km.toFixed(1)} km away), metres above chart datum; hatched, the dark. Pick a day above to change it.`;
-  } else {
-    g += `<text x="${(X0 + X1) / 2}" y="${(Y0 + Y1) / 2}" text-anchor="middle" style="font:italic 13px Newsreader;fill:rgba(26,29,33,.6)">Not in the tide predictions</text>`;
-    $('#tide-cap').innerHTML = `No tide predictions for ${esc(nameOf(BYID[id]))} on ${dayL(d0)}; hatched, the dark.`;
-  }
-  svg.innerHTML = g;
-}
-function drawDepthFig(id) {
-  const svg = $('#depth-fig'), f = F[id], cap = $('#depth-cap');
-  const prof = profileOf(id);
-  if (!prof) { svg.style.display = 'none'; cap.innerHTML = `${esc(nameOf(BYID[id]))}'s spot record has no beach facing, so there's no line to draw out from the beach. The bay's depths are on the chart.`; return; }
-  const dEv = tidesOn(id, S.d), lwE = dEv.filter(e => !e.hw), hwE = dEv.filter(e => e.hw);
-  const lw = lwE.length ? Math.min(...lwE.map(e => e.h)) : null, hw = hwE.length ? Math.max(...hwE.map(e => e.h)) : null;
-  const maxD = clamp(Math.max(...prof.map(p => p.d ?? 0)), 4, 12), top = Math.max(hw ?? 0, ...prof.map(p => -(p.d ?? 0))) + .4;
-  const X0 = 30, X1 = 322, Y0 = 30, Y1 = 166, M = prof[prof.length - 1].m;
-  const x = m => X0 + m / M * (X1 - X0), y = z => Y0 + (top - z) / (top + maxD) * (Y1 - Y0); // z: height above datum
-  let g = '';
-  const bed = prof.filter(p => p.d != null).map(p => `${x(p.m).toFixed(1)} ${y(Math.max(-p.d, -maxD)).toFixed(1)}`);
-  if (hw != null) g += `<rect x="${X0}" y="${y(hw).toFixed(1)}" width="${X1 - X0}" height="${(Y1 - y(hw)).toFixed(1)}" fill="rgba(95,140,156,.13)"/><rect x="${X0}" y="${y(lw).toFixed(1)}" width="${X1 - X0}" height="${(Y1 - y(lw)).toFixed(1)}" fill="rgba(95,140,156,.16)"/>`;
-  g += `<path d="M${bed.join('L')}L${X1} ${Y1 + 4}L${X0} ${Y1 + 4}Z" fill="#EADCB4" stroke="#1A1D21" stroke-width="1.2" stroke-linejoin="round"/>`;
-  const lab = (z, t, col, dash, left) => `<line x1="${X0}" x2="${X1}" y1="${y(z).toFixed(1)}" y2="${y(z).toFixed(1)}" stroke="${col}" stroke-width="1" ${dash ? `stroke-dasharray="${dash}"` : ''}/><text x="${left ? X1 - 70 : X1}" y="${(y(z) + (left ? 11 : -3)).toFixed(1)}" text-anchor="end" style="font:500 9px 'IBM Plex Mono';fill:${col};paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${t}</text>`;
-  g += lab(0, 'CHART DATUM 0', 'rgba(26,29,33,.7)', '2 3', true);
-  if (hw != null) { g += lab(hw, `HW ${hw.toFixed(1)}`, '#3F6E7E'); g += lab(lw, `LW ${lw.toFixed(1)}`, '#3F6E7E', '5 3'); }
-  for (let m = 0; m <= M; m += 500) g += `<text x="${x(m).toFixed(1)}" y="${Y1 + 16}" text-anchor="middle" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${m ? (m >= 1000 ? (m / 1000) + ' km' : m + ' m') : 'beach'}</text>`;
-  for (let z = Math.ceil((-maxD + .6) / 2) * 2; z <= top; z += 2) g += `<text x="${X0 - 5}" y="${(y(z) + 3).toFixed(1)}" text-anchor="end" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.55)">${z > 0 ? '+' + z : -z}</text>`;
-  g += `<text x="${X0 - 5}" y="${Y1 + 16}" text-anchor="end" style="font:italic 9.5px Newsreader;fill:rgba(26,29,33,.55)">m</text>`;
-  // where a 90 cm mast touches down at low water: under 1.2 m of water
-  let txt = '';
-  if (lw != null) {
-    const shallow = prof.filter(p => p.d != null && p.d + lw < 1.2);
-    const lastShallow = shallow.length ? shallow[shallow.length - 1].m : null;
-    const firstDeep = prof.find(p => p.d != null && p.d + lw >= 1.2);
-    if (lastShallow != null && firstDeep) {
-      const a = shallow[0].m, b = Math.min(lastShallow, M);
-      g += `<path id="pk" d="M${x(a).toFixed(1)} ${(y(lw) - 9).toFixed(1)} q${((x(b) - x(a)) / 2).toFixed(1)} -6 ${(x(b) - x(a)).toFixed(1)} 0" fill="none" stroke="#D43A2C" stroke-width="1.8" stroke-linecap="round"/>`;
-      g += `<text x="${clamp((x(a) + x(b)) / 2, X0 + 80, X1 - 80).toFixed(1)}" y="${(y(hw) - 8).toFixed(1)}" text-anchor="middle" style="font:15px Kalam;fill:#D43A2C;paint-order:stroke;stroke:#F3EEE3;stroke-width:4px">mast touches at low water</text>`;
-      txt = `At ${dayL(S.d)}'s lowest water, ${lw.toFixed(1)} m above datum, a 90 cm mast finds bottom for the first <b>${firstDeep.m < 1000 ? firstDeep.m + ' m' : (firstDeep.m / 1000).toFixed(1) + ' km'}</b> out${shallow.some(p => p.m > firstDeep.m) ? ', and again on the banks further out' : ''}. At high water (${hw.toFixed(1)} m) there's room from the beach.`;
-    } else txt = `Even at ${dayL(S.d)}'s lowest water (${lw.toFixed(1)} m above datum) there's more than 1.2 m from the beach out: room for a long mast.`;
-  } else txt = 'No tide predictions here, so only the depths at chart datum.';
-  cap.innerHTML = `Straight out from the beach (${BYID[id].facing}°) on the bay's survey grid: depths below chart datum, drying heights marked +. ${txt}`;
-  svg.innerHTML = g;
+function updateSheetSel(dayChanged) {
+  $$('#ht tr.hrow').forEach(tr => tr.classList.toggle('sel', +tr.dataset.d === S.d && +tr.dataset.h === S.h));
+  $$('.dcard').forEach(c => c.classList.toggle('on', +c.dataset.d === S.d));
+  if (F[S.sheet]) { drawSheetTides(S.sheet); if (dayChanged) inkSheet(S.sheet); }
 }
 
+/* ======================================================================
+   HOW THE STARS WORK
+   ====================================================================== */
+function ledger(id, d, h) {
+  const f = F[id], x = f.at[d][h], w = x.wind, r = x.rating, fac = f.spot.facing;
+  const fade = clamp((BAND.sweetHigh - w.kn) / (BAND.sweetHigh - BAND.min), 0, 1), gap = Math.min(w.gust - w.kn, w.kn), ride = w.kn + .3 * fade * gap;
+  const base = windScore(ride), pot = Math.round(base);
+  const rows = [[`${nameOf(BYID[id])}, ${dayS(d)} ${dom(d)} Oct ${hh(h)}`, `${w.compass} ${w.kn.toFixed(1)} g${w.gust.toFixed(1)} kn`],
+    ['Rides like', `${w.kn.toFixed(1)} + 0.3 × ${fade.toFixed(2)} × ${gap.toFixed(1)} = ${ride.toFixed(1)} kn`],
+    ['On the wind alone', `${base.toFixed(2)} → ${pot}★ faded`]];
+  let sc = base, cap = 5;
+  const a = fac == null ? null : shoreOf(w.dir, fac);
+  if (a) {
+    const v = a === 'offshore' ? 'max 1' : a === 'cross-off' ? -1.5 : a === 'onshore' ? -1 : 0;
+    if (a === 'offshore') cap = 1; else sc += v;
+    rows.push([`From ${w.dir}°, beach faces ${fac}°: ${shoreW(a)}`, typeof v === 'number' ? (v ? v.toFixed(2) : '0') : v]);
+  }
+  if (w.gust > BAND.max) { sc -= 1; rows.push(['Gusts past 30 kn', '−1']); }
+  else if (w.gust / w.kn > 1.7 && w.kn >= BAND.sweetLow) { sc -= .5; rows.push(['Gusty and already powered', '−0.5']); }
+  if (w.agreement === 'low') { sc -= 1; rows.push(['Models disagree', '−1']); }
+  else if (w.agreement === 'moderate') { sc -= .25; rows.push(['Models differ a little', '−0.25']); }
+  const stars = clamp(Math.round(Math.min(sc, cap)), 0, pot);
+  rows.push(['Left', `${sc.toFixed(2)} → ${stars}★ solid`]);
+  rows.push(['Wing', `${r.wing} m² · ${r.session}`]);
+  return `<table class="ledger"><tbody>${rows.map((rw, i) => `<tr class="${i === rows.length - 2 ? 'tot' : ''}"><td>${esc(rw[0])}</td><td>${esc(String(rw[1]).replace('-', '−'))}</td></tr>`).join('')}</tbody></table><p class="g mono" style="font-size:12px">${starsSVG(r.stars, r.potential, 14, 2)} as published${stars === r.stars ? '' : ' (differs)'}</p>`;
+}
+function scoreChart() {
+  const Wd = 640, H = 150, X = k => 34 + k / 40 * (Wd - 50), Y = s => H - 26 - s / 5 * (H - 44);
+  let g = `<rect x="${X(14)}" y="${Y(5)}" width="${X(24) - X(14)}" height="${Y(0) - Y(5)}" fill="rgba(176,24,106,.08)"/>`;
+  for (let s = 0; s <= 5; s++) g += `<line x1="${X(0)}" x2="${X(40)}" y1="${Y(s)}" y2="${Y(s)}" stroke="rgba(26,29,33,.08)"/><text x="${X(0) - 6}" y="${Y(s) + 3}" text-anchor="end" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${s}★</text>`;
+  for (let k = 0; k <= 40; k += 5) g += `<text x="${X(k) + (k === 40 ? 8 : 0)}" y="${H - 10}" text-anchor="${k === 40 ? 'end' : 'middle'}" style="font:9px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${k === 40 ? '40 kn' : k}</text>`;
+  let p = ''; for (let k = 0; k <= 40; k += .25) p += (p ? 'L' : 'M') + X(k).toFixed(1) + ' ' + Y(windScore(k)).toFixed(1);
+  g += `<path d="${p}" fill="none" stroke="#1A1D21" stroke-width="1.8"/>`;
+  [[10, 'floor'], [30, 'ceiling']].forEach(([k, t]) => { g += `<line x1="${X(k)}" x2="${X(k)}" y1="${Y(5)}" y2="${Y(0)}" stroke="rgba(176,24,106,.5)" stroke-dasharray="3 3"/><text x="${X(k) + 4}" y="${Y(4.6)}" style="font:9px 'IBM Plex Mono';fill:#B0186A">${t}</text>`; });
+  g += `<text x="${(X(14) + X(24)) / 2}" y="${Y(5) - 5}" text-anchor="middle" style="font:9px 'IBM Plex Mono';fill:#B0186A">sweet spot</text>`;
+  return `<svg class="chart" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Stars on the wind alone against the wind you can ride, for an 80 kg intermediate">${g}</svg>`;
+}
+function renderStars() {
+  const f = F.brandon;
+  const clean = [1, 18], cut = [0, 13];
+  $('#sh-in').innerHTML = `<div class="sh-top"><a class="back" href="${S.back}">← Back</a></div>
+  <div class="ex">
+    <h1 class="headline">How the stars <em>work</em></h1>
+    <p class="deck">Every daylight hour gets up to five stars, for one rider: here, an 80 kg intermediate.</p>
+    <div class="glyphs"><span>${starsSVG(3, 5, 15, 2)} 3 solid: the hour as forecast</span><span>2 faded: what the wind alone would add</span><span>Dark hours: not rated</span></div>
+    <h2>1. The wind you can <em>ride</em></h2>
+    <p>A gust is a free pump on a foil, so the mean is lifted part of the way to the gusts. Fully on a light day, not at all at 24 kn.</p>
+    <p class="f">rides like = mean + 0.3 × fade × (gust − mean)</p>
+    <p class="g mono" style="font-size:13px">9 g17 → ${rideOf(9, 17).toFixed(1)} kn · 20 g30 → ${rideOf(20, 30).toFixed(1)} kn · learning 0.2, advanced 0.35</p>
+    <h2>2. Against your <em>band</em></h2>
+    ${scoreChart()}
+    <table><thead><tr><th>Level</th><th>Floor</th><th>Sweet spot</th><th>Ceiling</th></tr></thead><tbody><tr><td>Learning</td><td class="n">12</td><td class="n">14–20</td><td class="n">24</td></tr><tr class="you"><td>Riding</td><td class="n">10</td><td class="n">14–24</td><td class="n">30</td></tr><tr><td>Advanced</td><td class="n">8</td><td class="n">13–28</td><td class="n">35</td></tr></tbody></table>
+    <p class="g" style="font-size:14px">Knots, for 80 kg. Heavier riders need more wind: the floor rises with the square root of the weight.</p>
+    <h2>3. What comes <em>off</em></h2>
+    <table><thead><tr><th>When</th><th>Riding</th><th>Learning</th></tr></thead><tbody>
+      <tr><td>Offshore</td><td class="n">max 1★</td><td class="n">0★</td></tr>
+      <tr><td>Cross-offshore</td><td class="n">−1.5 (adv. −1)</td><td class="n">−3</td></tr>
+      <tr><td>Onshore</td><td class="n">−1</td><td class="n">−1</td></tr>
+      <tr><td>Cross-shore</td><td class="n">—</td><td class="n">−0.5</td></tr>
+      <tr><td>Gusts past your ceiling</td><td class="n">−1</td><td class="n">−1</td></tr>
+      <tr><td>Gusts ×1.7 when already powered</td><td class="n">−0.5</td><td class="n">−0.75 to −2.25</td></tr>
+      <tr><td>Models disagree / differ a little</td><td class="n">−1 / −0.25</td><td class="n">−1 / −0.25</td></tr>
+      <tr><td>Your wings don't fit</td><td class="n">−1</td><td class="n">−1</td></tr></tbody></table>
+    <h2>4. Worked <em>examples</em></h2>
+    ${ledger('brandon', ...clean)}
+    ${ledger('brandon', ...cut)}
+    <h2>5. The <em>wing</em></h2>
+    <p>5.5 m² at 15 kn, 4.5 at 20, 3 at 30, for 80 kg. A size up learning, a little smaller advanced; to the half metre.</p>
+    <p class="g" style="font-size:13px;margin-top:20px">wingfoil.ie star rating, version 2 (October 2026).</p>
+  </div>`;
+}
+
+/* ======================================================================
+   SHEETS AND ROUTES
+   ====================================================================== */
 function openSheet(id) {
-  closePopup();
+  closePopup(); hideTip();
+  const first = S.sheet !== id;
   S.sheet = id;
   if (S.spot !== id) { S.spot = id; paintMarkers(); paintScrub(); renderDock(); }
+  if (first) bump(id);
   inkMap();
   document.body.classList.add('on-sheet');
   renderSheet();
   $('#sheet').scrollTop = 0;
+  if (F[id] && S.d > 0) requestAnimationFrame(() => scrollSheetTo(S.d));
   afterDock();
-  const s = BYID[id];
-  const sw = $('#sheet').getBoundingClientRect().width;
-  if (phone()) map.flyTo({ center: [s.lon, s.lat], zoom: FEAT.has(id) ? 11 : 10, padding: { top: 30, bottom: innerHeight * .78 + 10, left: 10, right: 10 }, duration: RM ? 0 : 2000 });
-  else map.flyTo({ center: seaward(s, 1100), zoom: FEAT.has(id) ? 11.5 : 10.4, padding: { top: 90, bottom: 40, left: 40, right: sw + 30 }, duration: RM ? 0 : 2200, essential: true });
+  const s = BYID[id], sw = $('#sheet').getBoundingClientRect().width;
+  if (phone()) map.flyTo({ center: [s.lon, s.lat], zoom: FEAT.has(id) ? 11 : 10, padding: { top: 30, bottom: innerHeight * .82 + 10, left: 10, right: 10 }, duration: RM ? 0 : 2000 });
+  else map.flyTo({ center: seaward(s, 900), zoom: FEAT.has(id) ? 11.3 : 10.2, padding: { top: 90, bottom: 40, left: 30, right: sw + 20 }, duration: RM ? 0 : 2200, essential: true });
   document.title = `${nameOf(s)} · wingfoil.ie`;
+}
+function openStars() {
+  closePopup(); hideTip();
+  if (S.sheet !== 'stars') S.back = S.sheet && S.sheet !== 'stars' ? `#spot/${S.sheet}` : `#map/${S.spot}`;
+  S.sheet = 'stars';
+  document.body.classList.add('on-sheet');
+  renderStars();
+  $('#sheet').scrollTop = 0;
+  afterDock();
+  document.title = 'How the stars work · wingfoil.ie';
 }
 function closeSheet() {
   if (!S.sheet) return;
@@ -1328,38 +1715,202 @@ function closeSheet() {
   document.title = 'wingfoil.ie · The Chart';
   requestAnimationFrame(afterDock);
 }
-
-/* ---------- routes: #map, #map/<id>, #spot/<id> ---------- */
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
+  const wm = h.match(/wind=(ink|arrows|wash)/);
+  if (wm && wm[1] !== WST) setWindStyle(wm[1]);
+  const path = h.split(/[&?]/)[0];
   let m;
-  if ((m = h.match(/^spot\/([\w-]+)/)) && BYID[m[1]]) { openSheet(m[1]); return; }
+  if (path === 'stars') { openStars(); return; }
+  if ((m = path.match(/^spot\/([\w-]+)/)) && BYID[m[1]]) { openSheet(m[1]); return; }
   const wasSheet = !!S.sheet;
   closeSheet();
-  if ((m = h.match(/^map\/([\w-]+)/)) && BYID[m[1]]) { setTimeout(() => selectSpot(m[1], { fly: true, popup: true, hash: false }), wasSheet ? 60 : 0); return; }
-  if (wasSheet) setTimeout(() => fitIreland(), 60);
+  if ((m = path.match(/^map\/([\w-]+)/)) && BYID[m[1]]) { setTimeout(() => selectSpot(m[1], { fly: true, popup: true, hash: false }), wasSheet ? 60 : 0); inkMap(); return; }
+  if (wasSheet) { inkMap(); setTimeout(() => fitIreland(), 60); }
 }
 addEventListener('hashchange', route);
 
+/* ======================================================================
+   THE RIBBON: an experiment. The cursor stays put; the week slides under it.
+   ====================================================================== */
+let RIB = null;
+const fOf = () => (tNow() - T0) / 36e5;
+function setView(v) {
+  document.body.classList.toggle('v-ribbon', v === 'ribbon');
+  $$('.seg [data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  if (v === 'ribbon') {
+    if (!RIB) import('three').then(THREE => { RIB = makeRibbon(THREE, $('#rib')); RIB.build(S.spot); RIB.to(fOf(), true); $('#rib-load').remove(); })
+      .catch(() => { $('#rib-load').textContent = 'The ribbon needs three.js, which did not load.'; });
+    else { RIB.resize(); RIB.to(fOf(), true); }
+  } else requestAnimationFrame(() => { inkDock(); drawTideRow(); });
+  afterDock();
+}
+function ribHours(id) {
+  const f = F[id], s = BYID[id];
+  return Array.from({ length: 120 }, (_, i) => {
+    const ms = T0 + i * 36e5, d = istDay(ms), h = new Date(ms + 36e5).getUTCHours();
+    if (f) { const x = d >= 0 ? f.at[d][h] : null; if (!x) return null; return { kn: x.wind.kn, gust: x.wind.gust, dir: x.wind.dir, cmp: x.wind.compass, r: x.rating, day: !!x.rating, d, h }; }
+    const w = K.windAt(s.lon, s.lat, ms); if (!w) return null;
+    const b = d >= 0 ? s.days[d].best : null;
+    const best = b && +b.at.slice(0, 2) === h;
+    return { kn: w.kn, gust: null, dir: w.dir, cmp: d2c(w.dir), r: best ? { stars: b.stars, potential: b.stars, wing: null, session: 'best hour' } : null, day: h >= 8 && h <= 19, d, h };
+  });
+}
+function makeRibbon(THREE, host) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  host.insertBefore(renderer.domElement, host.firstChild);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(22, 1, .5, 400);
+  const KY = .15, RW = 1.4, BASE = .3, XS = 1, D2R = Math.PI / 180;
+  cam.position.set(-2.6, 3.3, 15); cam.lookAt(0, 2.05, 0);
+  const world = new THREE.Group(); scene.add(world);
+  const STARC = ['#F7F3EA', '#EADCDF', '#DFBFCD', '#D290B2', '#C2558E', '#B0186A'].map(c => new THREE.Color(c));
+  const NIGHT = new THREE.Color('#E6E0D2'), PLAIN = new THREE.Color('#F1ECE1');
+  const ribMat = new THREE.ShaderMaterial({
+    side: THREE.DoubleSide,
+    vertexShader: 'attribute vec3 aC; attribute float aH, aE, aN; varying vec3 vC; varying float vH, vE, vN; void main(){ vC = aC; vH = aH; vE = aE; vN = aN; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `varying vec3 vC; varying float vH, vE, vN;
+    void main(){
+      vec3 c = gl_FrontFacing ? vC : vC * vec3(.9, .88, .85);
+      vec3 ink = vec3(.10, .11, .13);
+      float fh = fwidth(vH);
+      float d = abs(fract(vH + .5) - .5); c = mix(c, ink, (1. - smoothstep(0., fh * 1.2, d)) * .13);
+      float dd = abs(fract((vH + 1.) / 24. + .5) - .5) * 24.; c = mix(c, ink, (1. - smoothstep(0., fh * 1.8, dd)) * .85);
+      float q = vH * 1.7 + vE * 1.1, fq = fwidth(q); float hl = 1. - smoothstep(.07, .07 + fq * 1.2, .5 - abs(fract(q) - .5));
+      c = mix(c, ink, vN * hl * .16);
+      float fe = fwidth(vE); c = mix(c, ink, (1. - smoothstep(0., fe * 1.6, 1. - abs(vE))) * .85);
+      gl_FragColor = vec4(c, 1.);
+    }`,
+  });
+  const gustMat = new THREE.ShaderMaterial({ side: THREE.DoubleSide, transparent: true, depthWrite: false,
+    vertexShader: 'attribute float aT; varying float vT; void main(){ vT = aT; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: 'varying float vT; void main(){ gl_FragColor = vec4(.89, .45, .62, .06 + .30 * vT); }' });
+  const lineMat = (hex, op) => new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: op, depthWrite: false });
+  const segs = (arr, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); return new THREE.LineSegments(g, mat); };
+  // the cursor, fixed in the scene
+  const top = BASE + 36 * KY;
+  scene.add(segs([0, 0, 0, 0, top, 0], lineMat(0xD43A2C, .95)));
+  const bead = new THREE.Mesh(new THREE.SphereGeometry(.17, 18, 12), new THREE.MeshBasicMaterial({ color: 0xD43A2C }));
+  scene.add(bead);
+  let H = [], i0 = 0, i1 = 119, ctr = [], SUB = 4, cur = 0, target = 0, raf = 0, drag = null, w = 0, h = 0, pph = 30;
+  const cr = (p0, p1, p2, p3, t) => .5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+  function build(id) {
+    world.children.slice().forEach(o => { world.remove(o); o.geometry && o.geometry.dispose(); });
+    H = ribHours(id);
+    i0 = H.findIndex(x => x); i1 = H.length - 1 - [...H].reverse().findIndex(x => x);
+    const val = (a, i) => a[clamp(i, i0, i1)];
+    const kn = H.map(x => x ? x.kn : 0), gu = H.map(x => x ? (x.gust ?? x.kn) : 0);
+    const ud = []; H.forEach((x, i) => { const dir = x ? x.dir : (ud[i - 1] ?? 0); ud.push(i && ud[i - 1] != null ? ud[i - 1] + ((((dir - ud[i - 1]) % 360) + 540) % 360 - 180) : dir); });
+    const pos = [], col = [], aH = [], aE = [], aN = [], gpos = [], gT = [], gl = [], idx = [];
+    ctr = [];
+    const N = (i1 - i0) * SUB + 1;
+    for (let n = 0; n < N; n++) {
+      const fi = i0 + n / SUB, i = Math.floor(fi), t = fi - i;
+      const k = Math.max(0, cr(val(kn, i - 1), val(kn, i), val(kn, i + 1), val(kn, i + 2), t));
+      const g = Math.max(k, cr(val(gu, i - 1), val(gu, i), val(gu, i + 1), val(gu, i + 2), t));
+      const a = cr(val(ud, i - 1), val(ud, i), val(ud, i + 1), val(ud, i + 2), t) * D2R;
+      const x = fi * XS, y = BASE + k * KY, oz = Math.cos(a) * RW / 2, oy = Math.sin(a) * RW / 2;
+      pos.push(x, y + oy, oz, x, y - oy, -oz);
+      const hA = H[clamp(Math.round(fi - .5 + 1e-6), i0, i1)] || {};
+      const c = !hA.day ? NIGHT : hA.r ? STARC[clamp(hA.r.stars, 0, 5)] : PLAIN;
+      col.push(c.r, c.g, c.b, c.r, c.g, c.b); aH.push(fi, fi); aE.push(1, -1); aN.push(hA.day ? 0 : 1, hA.day ? 0 : 1);
+      ctr.push(y);
+      gpos.push(x, y, 0, x, BASE + g * KY, 0); gT.push(0, 1); gl.push(x, BASE + g * KY, 0);
+    }
+    for (let n = 0; n < N - 1; n++) { const a = n * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('aC', new THREE.Float32BufferAttribute(col, 3));
+    geo.setAttribute('aH', new THREE.Float32BufferAttribute(aH, 1));
+    geo.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1));
+    geo.setAttribute('aN', new THREE.Float32BufferAttribute(aN, 1));
+    geo.setIndex(idx);
+    world.add(new THREE.Mesh(geo, ribMat));
+    if (F[id]) {
+      const gg = new THREE.BufferGeometry();
+      gg.setAttribute('position', new THREE.Float32BufferAttribute(gpos, 3)); gg.setAttribute('aT', new THREE.Float32BufferAttribute(gT, 1)); gg.setIndex(idx);
+      const gm = new THREE.Mesh(gg, gustMat); gm.renderOrder = 2; world.add(gm);
+      const ln = []; for (let n = 0; n < gl.length / 3 - 1; n++) ln.push(...gl.slice(n * 3, n * 3 + 6));
+      world.add(segs(ln, lineMat(0xC93D72, .7)));
+    }
+    const posts = [], foot = [x0(i0), 0, 0, x0(i1), 0, 0], guide = [];
+    for (let i = i0; i <= i1; i++) if (H[i] && H[i].h % 3 === 0) posts.push(i * XS, 0, 0, i * XS, BASE + kn[i] * KY, 0);
+    for (let i = i0; i <= i1; i++) if ((i + 1) % 24 === 0) foot.push(i * XS + XS, 0, -RW, i * XS + XS, 0, RW);
+    [10, 14, 24].forEach(k => guide.push(x0(i0), BASE + k * KY, -RW * 1.2, x0(i1), BASE + k * KY, -RW * 1.2));
+    world.add(segs(posts, lineMat(0x1A1D21, .22)));
+    world.add(segs(foot, lineMat(0x1A1D21, .7)));
+    world.add(segs(guide, lineMat(0xB0186A, .22)));
+    $('#rib-days').innerHTML = DAYS.map((_, d) => `<span data-i="${d * 24 + 11}">${dayS(d)}<small>${dom(d)}</small></span>`).join('');
+    resize();
+  }
+  const x0 = i => i * XS;
+  const yAt = f => { const n = clamp((f - i0) * SUB, 0, ctr.length - 1), a = Math.floor(n), b = Math.min(a + 1, ctr.length - 1); return ctr[a] + (ctr[b] - ctr[a]) * (n - a); };
+  const proj = v => { const p = v.clone().project(cam); return [(p.x + 1) / 2 * w, (1 - p.y) / 2 * h]; };
+  function labels() {
+    $$('#rib-days span').forEach(s => { const [x] = proj(new THREE.Vector3(+s.dataset.i * XS - cur * XS, 0, RW)); s.style.left = x + 'px'; s.style.display = x > 30 && x < w - 30 ? '' : 'none'; });
+  }
+  function readout() {
+    const x = H[clamp(Math.round(cur), i0, i1)]; if (!x) return;
+    const r = x.r;
+    $('#rib-read').innerHTML = `<b>${dayS(x.d)} ${hh(x.h)}</b>${r ? starsSVG(r.stars, r.potential, 11, 1.6) : `<span class="g">${x.day ? '' : 'dark'}</span>`} ${arrowSVG(x.dir, 12)} ${x.cmp} <b>${rn(x.kn)}</b>${x.gust != null ? ` g${rn(x.gust)}` : ''} kn${r && r.wing ? ` · ${r.wing} m · <i>${esc(r.session)}</i>` : ''}`;
+  }
+  function frame() {
+    raf = 0;
+    if (!drag) { const d = target - cur; cur = Math.abs(d) > .003 ? cur + d * .2 : target; }
+    world.position.x = -cur * XS;
+    bead.position.y = yAt(cur);
+    renderer.render(scene, cam);
+    labels(); readout();
+    if (!drag && Math.abs(target - cur) > .003) raf = requestAnimationFrame(frame);
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+  function resize() {
+    const r = host.getBoundingClientRect(); if (!r.width) return;
+    w = r.width; h = r.height;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+    const a = proj(new THREE.Vector3(0, BASE, 0)), b = proj(new THREE.Vector3(1, BASE, 0)); pph = Math.max(4, b[0] - a[0]);
+    $('#rib-guides').innerHTML = [10, 14, 24].map(k => `<span style="top:${proj(new THREE.Vector3(30, BASE + k * KY, -RW))[1]}px">${k}${k === 24 ? ' kn' : ''}</span>`).join('');
+    kick();
+  }
+  new ResizeObserver(resize).observe(host);
+  const commit = final => {
+    const i = Math.round(cur), x = H[clamp(i, i0, i1)]; if (!x || x.d < 0) return;
+    if (final) setTime(x.d, clamp(x.h, 7, 20), true, 'ribbon');
+    else if (x.h >= 7 && x.h <= 20) setTime(x.d, x.h, false, 'ribbon');
+  };
+  host.addEventListener('pointerdown', e => { drag = { x: e.clientX, f: cur }; host.setPointerCapture(e.pointerId); });
+  host.addEventListener('pointermove', e => { if (!drag) return; cur = target = clamp(drag.f - (e.clientX - drag.x) / pph, i0, i1); frame(); commit(false); });
+  const up = () => { if (!drag) return; drag = null; commit(true); };
+  host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
+  let wt = 0;
+  host.addEventListener('wheel', e => { e.preventDefault(); target = clamp(target + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / pph, i0, i1); kick(); clearTimeout(wt); wt = setTimeout(() => { cur = target; commit(true); }, 220); }, { passive: false });
+  return { build, to(f, now) { target = clamp(f, i0, i1); if (now) cur = target; kick(); }, resize };
+}
+
 /* ---------- start ---------- */
-if (phone()) { document.body.classList.add('fold'); }
+if (phone()) document.body.classList.add('fold');
 document.body.classList.remove('fold-init');
-paintScrub(); renderDock(); updateCart();
+renderYours(); paintScrub(); renderDock();
 afterDock();
 fitIreland(0);
 zoomClass();
+drawKnotScale();
+setWindStyle(WST, false);
 map.on('load', () => {
   wind = K.wind(map, { time: tNow(), alpha: .5, density: .4 });
+  cwind = colourWind();
   pen = K.pen(map);
   buildMarkers(); paintMarkers(); zoomClass();
   updateScale(); drawNeat();
+  setWindStyle(WST, false);
   inkMap();
   const at = $('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
   route();
   window.ready = true;
 });
-// for screenshots and links: WF1.set(d, h), WF1.pick(id)
-window.WF1 = { set: (d, h) => setTime(d, h, true), pick: id => selectSpot(id, { fly: true, popup: true }), map, S };
+// for screenshots and links
+window.WF1 = { set: (d, h) => setTime(d, h, true), pick: id => selectSpot(id, { fly: true, popup: true, user: true }), map, S, wind: setWindStyle, view: setView, tab: sideTab };
 })();
 </script>
 </body>
