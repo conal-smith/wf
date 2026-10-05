@@ -1,0 +1,2963 @@
+{
+  "ref": {
+    "color": {
+      "paper": {
+        "100": {
+          "$type": "color",
+          "$value": "#f3eee3",
+          "$description": "The chart's paper. Every ground, card and the solid fallback are this one sheet."
+        },
+        "200": {
+          "$type": "color",
+          "$value": "#ede6d6",
+          "$description": "The paper's second sheet: a well, a tinted row, the current menu row."
+        },
+        "glass": {
+          "$type": "color",
+          "$value": "#f3eee3eb",
+          "$description": "Paper at 92%, laid over a photograph so a little of it shows through."
+        }
+      },
+      "ink": {
+        "500": {
+          "$type": "color",
+          "$value": "#7c7b78",
+          "$description": "A stroke's ink: a field's box, a disabled icon. 3.7:1 on paper; never words."
+        },
+        "600": {
+          "$type": "color",
+          "$value": "#5b5c5b",
+          "$description": "Muted ink, the floor for words. 5.8:1 on paper, 5.4:1 on the second sheet."
+        },
+        "700": {
+          "$type": "color",
+          "$value": "#3b3c3e",
+          "$description": "Second ink, for secondary text. 9.5:1 on paper."
+        },
+        "900": {
+          "$type": "color",
+          "$value": "#1a1d21",
+          "$description": "The ink: text, rules, the filled action. 14.6:1 on paper."
+        },
+        "a20": {
+          "$type": "color",
+          "$value": "#1a1d2133",
+          "$description": "Ink at 20%: the hairline between rows."
+        },
+        "a18": {
+          "$type": "color",
+          "$value": "#1a1d212e",
+          "$description": "Ink at 18%: the scrim behind a dialog, which barely softens the page."
+        },
+        "a09": {
+          "$type": "color",
+          "$value": "#1a1d2117",
+          "$description": "Ink at 9%: the hatch a chart shades the dark hours with."
+        }
+      },
+      "magenta": {
+        "600": {
+          "$type": "color",
+          "$value": "#b0186a",
+          "$description": "The chart's magenta. 5.7:1 on paper; paper on it is 5.7:1."
+        }
+      },
+      "pen": {
+        "500": {
+          "$type": "color",
+          "$value": "#d43a2c",
+          "$description": "The red pen's stroke. 4.1:1 on paper: a mark, not words."
+        },
+        "600": {
+          "$type": "color",
+          "$value": "#bf3125",
+          "$description": "The red pen's handwriting, darkened to read as words. 4.9:1 on paper."
+        }
+      },
+      "warm": {
+        "100": {
+          "$type": "color",
+          "$value": "#efd8cd",
+          "$description": "Warm ground under a warning or an invalid field."
+        },
+        "700": {
+          "$type": "color",
+          "$value": "#b02a1f",
+          "$description": "Warm red for degraded and now. 5.7:1 on paper. Not the pen."
+        }
+      },
+      "green": {
+        "700": {
+          "$type": "color",
+          "$value": "#2a7046",
+          "$description": "Liveness green, one mark at a time."
+        }
+      },
+      "buoy": {
+        "500": {
+          "$type": "color",
+          "$value": "#e9b200",
+          "$description": "A buoy's yellow: the puffin's beak and feet, a light on the chart. Never text."
+        }
+      },
+      "sea": {
+        "1": {
+          "$type": "color",
+          "$value": "#a9cbd8",
+          "$description": "Depth tint: drying and under a metre, where a foil mast touches down."
+        },
+        "2": {
+          "$type": "color",
+          "$value": "#c3dae2",
+          "$description": "Depth tint: about three metres."
+        },
+        "3": {
+          "$type": "color",
+          "$value": "#dae8ea",
+          "$description": "Depth tint: about ten metres."
+        },
+        "4": {
+          "$type": "color",
+          "$value": "#ecf0ea",
+          "$description": "Depth tint: thirty metres and beyond, nearly paper as on a chart."
+        },
+        "ground": {
+          "$type": "color",
+          "$value": "#d5e6ea",
+          "$description": "The sea the map floats on, what shows in a tile gap."
+        },
+        "depth": {
+          "$type": "color",
+          "$value": "#5f8c9c",
+          "$description": "Contour and sounding ink, a stroke on the tints."
+        },
+        "basemap": {
+          "$type": "color",
+          "$value": "#e5edea",
+          "$description": "Deep water as the basemap paints it, nearly paper."
+        }
+      },
+      "land": {
+        "buff": {
+          "$type": "color",
+          "$value": "#ede3c8",
+          "$description": "Land buff."
+        },
+        "relief": {
+          "$type": "color",
+          "$value": "#b59e74",
+          "$description": "The relief lines drawn on the land."
+        }
+      },
+      "mark": {
+        "now": {
+          "$type": "color",
+          "$value": "#bf6546",
+          "$description": "The present-hour line the map and the dock both draw. Not re-themed."
+        },
+        "gust": {
+          "$type": "color",
+          "$value": "#e0803a",
+          "$description": "The gust cap on a candle (D12). Not re-themed."
+        }
+      },
+      "wind": {
+        "k00": {
+          "$type": "color",
+          "$value": "#355897",
+          "$description": "Wind speed stop at 0 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k05": {
+          "$type": "color",
+          "$value": "#2a76b8",
+          "$description": "Wind speed stop at 5 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k09": {
+          "$type": "color",
+          "$value": "#2e97be",
+          "$description": "Wind speed stop at 9 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k10": {
+          "$type": "color",
+          "$value": "#209e78",
+          "$description": "Wind speed stop at 10 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k15": {
+          "$type": "color",
+          "$value": "#32a74f",
+          "$description": "Wind speed stop at 15 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k20": {
+          "$type": "color",
+          "$value": "#5bb437",
+          "$description": "Wind speed stop at 20 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k25": {
+          "$type": "color",
+          "$value": "#92c134",
+          "$description": "Wind speed stop at 25 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k30": {
+          "$type": "color",
+          "$value": "#bfcc3a",
+          "$description": "Wind speed stop at 30 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k35": {
+          "$type": "color",
+          "$value": "#e8be30",
+          "$description": "Wind speed stop at 35 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k40": {
+          "$type": "color",
+          "$value": "#ea862d",
+          "$description": "Wind speed stop at 40 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k45": {
+          "$type": "color",
+          "$value": "#dd4e38",
+          "$description": "Wind speed stop at 45 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k50": {
+          "$type": "color",
+          "$value": "#be334f",
+          "$description": "Wind speed stop at 50 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k60": {
+          "$type": "color",
+          "$value": "#923d98",
+          "$description": "Wind speed stop at 60 kn (PALETTE in force5/src/weather.ts)."
+        },
+        "k65": {
+          "$type": "color",
+          "$value": "#724297",
+          "$description": "Wind speed stop at 65 kn (PALETTE in force5/src/weather.ts)."
+        }
+      },
+      "night": {
+        "ground": {
+          "$type": "color",
+          "$value": "#1d1c19",
+          "$description": "Proposed night chart: the paper, as warm dark ink. Not blue-shifted."
+        },
+        "sheet": {
+          "$type": "color",
+          "$value": "#26241f",
+          "$description": "Proposed night chart: the second sheet."
+        },
+        "glass": {
+          "$type": "color",
+          "$value": "#1d1c19eb",
+          "$description": "Proposed night chart: dark paper at 92% over a photograph."
+        },
+        "ink": {
+          "$type": "color",
+          "$value": "#ece5d6",
+          "$description": "Proposed night chart: text and rules, in paper. 13.6:1 on the night ground."
+        },
+        "ink-2": {
+          "$type": "color",
+          "$value": "#d2cbbb",
+          "$description": "Proposed night chart: secondary text. 10.6:1."
+        },
+        "muted": {
+          "$type": "color",
+          "$value": "#a8a194",
+          "$description": "Proposed night chart: the floor for words. 6.7:1, 6.1:1 on the night sheet."
+        },
+        "stroke": {
+          "$type": "color",
+          "$value": "#827d72",
+          "$description": "Proposed night chart: a stroke's 3:1 step (4.2:1). Never words."
+        },
+        "line": {
+          "$type": "color",
+          "$value": "#ece5d633",
+          "$description": "Proposed night chart: the hairline, paper at 20%."
+        },
+        "scrim": {
+          "$type": "color",
+          "$value": "#00000073",
+          "$description": "Proposed night chart: the scrim behind a dialog."
+        },
+        "hatch": {
+          "$type": "color",
+          "$value": "#ece5d617",
+          "$description": "Proposed night chart: the dark-hours hatch, paper at 9%."
+        },
+        "magenta": {
+          "$type": "color",
+          "$value": "#e6609f",
+          "$description": "Proposed night chart: magenta lifted to clear 5:1 on the night ground."
+        },
+        "pen": {
+          "$type": "color",
+          "$value": "#ef5f4f",
+          "$description": "Proposed night chart: the pen's stroke. 5.2:1."
+        },
+        "pen-ink": {
+          "$type": "color",
+          "$value": "#f2766a",
+          "$description": "Proposed night chart: the pen's handwriting. 6.2:1."
+        },
+        "warn": {
+          "$type": "color",
+          "$value": "#f07565",
+          "$description": "Proposed night chart: degraded and now. 6.0:1."
+        },
+        "warn-ground": {
+          "$type": "color",
+          "$value": "#3b231e",
+          "$description": "Proposed night chart: the warm ground under a warning."
+        },
+        "ok": {
+          "$type": "color",
+          "$value": "#6dbb88",
+          "$description": "Proposed night chart: liveness green. 7.4:1."
+        },
+        "sea": {
+          "$type": "color",
+          "$value": "#1e2a2d",
+          "$description": "Proposed night chart: the sea the map floats on."
+        },
+        "sea-1": {
+          "$type": "color",
+          "$value": "#2d4a54",
+          "$description": "Proposed night chart: depth tint, under a metre."
+        },
+        "sea-2": {
+          "$type": "color",
+          "$value": "#283e46",
+          "$description": "Proposed night chart: depth tint, about three metres."
+        },
+        "sea-3": {
+          "$type": "color",
+          "$value": "#23333a",
+          "$description": "Proposed night chart: depth tint, about ten metres."
+        },
+        "sea-4": {
+          "$type": "color",
+          "$value": "#1f2a2e",
+          "$description": "Proposed night chart: depth tint, thirty metres and beyond."
+        },
+        "depth": {
+          "$type": "color",
+          "$value": "#7fa9b8",
+          "$description": "Proposed night chart: contour and sounding ink."
+        },
+        "land": {
+          "$type": "color",
+          "$value": "#2c2920",
+          "$description": "Proposed night chart: land."
+        },
+        "relief": {
+          "$type": "color",
+          "$value": "#8a7652",
+          "$description": "Proposed night chart: relief lines."
+        },
+        "basemap-water": {
+          "$type": "color",
+          "$value": "#202727",
+          "$description": "Proposed night chart: deep water on the basemap."
+        }
+      }
+    },
+    "font": {
+      "family": {
+        "display": {
+          "$type": "fontFamily",
+          "$value": [
+            "Fraunces Variable",
+            "Fraunces",
+            "Georgia",
+            "Times New Roman",
+            "serif"
+          ],
+          "$description": "Fraunces, with its optical-size axis: names, headings, the wordmark."
+        },
+        "body": {
+          "$type": "fontFamily",
+          "$value": [
+            "Newsreader Variable",
+            "Newsreader",
+            "Georgia",
+            "Times New Roman",
+            "serif"
+          ],
+          "$description": "Newsreader: the few sentences there are."
+        },
+        "mono": {
+          "$type": "fontFamily",
+          "$value": [
+            "IBM Plex Mono",
+            "ui-monospace",
+            "SFMono-Regular",
+            "Menlo",
+            "monospace"
+          ],
+          "$description": "IBM Plex Mono: every figure, and every label in tracked capitals."
+        },
+        "hand": {
+          "$type": "fontFamily",
+          "$value": [
+            "Kalam",
+            "Bradley Hand",
+            "Segoe Print",
+            "cursive"
+          ],
+          "$description": "Kalam: the red pen's handwriting, and nothing else."
+        }
+      },
+      "weight": {
+        "400": {
+          "$type": "fontWeight",
+          "$value": 400,
+          "$description": "Regular."
+        },
+        "500": {
+          "$type": "fontWeight",
+          "$value": 500,
+          "$description": "Medium: the mono label."
+        },
+        "600": {
+          "$type": "fontWeight",
+          "$value": 600,
+          "$description": "Semibold: a lead, a figure, a pressed control."
+        },
+        "700": {
+          "$type": "fontWeight",
+          "$value": 700,
+          "$description": "Bold: a title and a headline."
+        },
+        "800": {
+          "$type": "fontWeight",
+          "$value": 800,
+          "$description": "Extrabold: the wordmark alone."
+        }
+      },
+      "size": {
+        "10": {
+          "$type": "dimension",
+          "$value": "10px",
+          "$description": "10px: the floor, for tracked capitals only."
+        },
+        "11": {
+          "$type": "dimension",
+          "$value": "11px",
+          "$description": "11px: the floor for sentence case."
+        },
+        "13": {
+          "$type": "dimension",
+          "$value": "13px",
+          "$description": "13px."
+        },
+        "15": {
+          "$type": "dimension",
+          "$value": "15px",
+          "$description": "15px."
+        },
+        "16": {
+          "$type": "dimension",
+          "$value": "16px",
+          "$description": "16px: what a phone will not zoom a focused field past."
+        },
+        "19": {
+          "$type": "dimension",
+          "$value": "19px",
+          "$description": "19px."
+        },
+        "30": {
+          "$type": "dimension",
+          "$value": "30px",
+          "$description": "30px."
+        },
+        "44": {
+          "$type": "dimension",
+          "$value": "44px",
+          "$description": "44px."
+        },
+        "48": {
+          "$type": "dimension",
+          "$value": "48px",
+          "$description": "48px."
+        }
+      },
+      "line": {
+        "100": {
+          "$type": "number",
+          "$value": 1,
+          "$description": "Solid leading."
+        },
+        "105": {
+          "$type": "number",
+          "$value": 1.05,
+          "$description": "Title leading."
+        },
+        "120": {
+          "$type": "number",
+          "$value": 1.2,
+          "$description": "Tight leading."
+        },
+        "130": {
+          "$type": "number",
+          "$value": 1.3,
+          "$description": "Label leading."
+        },
+        "140": {
+          "$type": "number",
+          "$value": 1.4,
+          "$description": "Body leading."
+        },
+        "145": {
+          "$type": "number",
+          "$value": 1.45,
+          "$description": "Prose leading."
+        },
+        "175": {
+          "$type": "number",
+          "$value": 1.75,
+          "$description": "Loose leading."
+        }
+      },
+      "tracking": {
+        "neg-035": {
+          "$type": "dimension",
+          "$value": "-0.035em",
+          "$description": "Headline tracking: set tight."
+        },
+        "neg-020": {
+          "$type": "dimension",
+          "$value": "-0.02em",
+          "$description": "Title and figure tracking."
+        },
+        "pos-009": {
+          "$type": "dimension",
+          "$value": "0.09em",
+          "$description": "A control's tracked capitals."
+        },
+        "pos-014": {
+          "$type": "dimension",
+          "$value": "0.14em",
+          "$description": "The mono label's tracked capitals."
+        }
+      }
+    },
+    "space": {
+      "unit": {
+        "$type": "dimension",
+        "$value": "4px",
+        "$description": "One spacing step. The root font size is 14px, so the step is pinned in px, not rem."
+      }
+    },
+    "size": {
+      "30": {
+        "$type": "dimension",
+        "$value": "30px",
+        "$description": "Small control height."
+      },
+      "40": {
+        "$type": "dimension",
+        "$value": "40px",
+        "$description": "Medium control height."
+      },
+      "44": {
+        "$type": "dimension",
+        "$value": "44px",
+        "$description": "The tap-target floor on a coarse pointer."
+      },
+      "46": {
+        "$type": "dimension",
+        "$value": "46px",
+        "$description": "Large control height."
+      }
+    },
+    "radius": {
+      "0": {
+        "$type": "dimension",
+        "$value": "0px",
+        "$description": "Square, as print is."
+      },
+      "2": {
+        "$type": "dimension",
+        "$value": "2px",
+        "$description": "A whisper of a corner."
+      },
+      "round": {
+        "$type": "dimension",
+        "$value": "9999px",
+        "$description": "A capsule."
+      }
+    },
+    "rule": {
+      "1": {
+        "$type": "dimension",
+        "$value": "1px",
+        "$description": "One-pixel rule."
+      },
+      "2": {
+        "$type": "dimension",
+        "$value": "2px",
+        "$description": "Two-pixel rule."
+      },
+      "3": {
+        "$type": "dimension",
+        "$value": "3px",
+        "$description": "Three-pixel rule: the double rule's whole width, and a notice's edge."
+      }
+    },
+    "shadow": {
+      "control": {
+        "$type": "shadow",
+        "$value": "0px 1px 0px #1a1d210f",
+        "$description": "A pressed control's lip."
+      },
+      "marker": {
+        "$type": "shadow",
+        "$value": "0px 4px 10px -6px #3c2d1466",
+        "$description": "A marker lifting off the chart."
+      },
+      "surface": {
+        "$type": "shadow",
+        "$value": "0px 1px 0px #0000000a, 0px 6px 18px -10px #3c2d1459",
+        "$description": "A box lifting off the paper, warm and small."
+      },
+      "dock": {
+        "$type": "shadow",
+        "$value": "0px -8px 22px -16px #3c2d1473",
+        "$description": "The dock's shadow, cast upward over the map."
+      },
+      "frame": {
+        "$type": "shadow",
+        "$value": "inset 0 0 0 3px #f3eee3, inset 0 0 0 4px #1a1d21",
+        "$description": "The double rule's inner line: three of paper, then one of ink."
+      },
+      "frame-night": {
+        "$type": "shadow",
+        "$value": "inset 0 0 0 3px #1d1c19, inset 0 0 0 4px #ece5d6",
+        "$description": "Proposed night chart: the double rule's inner line."
+      }
+    },
+    "blur": {
+      "2": {
+        "$type": "dimension",
+        "$value": "2px",
+        "$description": "Scrim blur."
+      },
+      "12": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "Glass blur."
+      }
+    },
+    "duration": {
+      "150": {
+        "$type": "duration",
+        "$value": "150ms",
+        "$description": "Fast."
+      },
+      "250": {
+        "$type": "duration",
+        "$value": "250ms",
+        "$description": "Base."
+      }
+    },
+    "z": {
+      "6": {
+        "$type": "number",
+        "$value": 6,
+        "$description": "Popover layer."
+      },
+      "15": {
+        "$type": "number",
+        "$value": 15,
+        "$description": "Panel layer."
+      },
+      "20": {
+        "$type": "number",
+        "$value": 20,
+        "$description": "Header layer."
+      },
+      "30": {
+        "$type": "number",
+        "$value": 30,
+        "$description": "Dialog layer."
+      }
+    }
+  },
+  "sem": {
+    "color": {
+      "ground": {
+        "$type": "color",
+        "$value": "{ref.color.paper.100}",
+        "$description": "The page: one sheet of paper. --color-ground.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "The background of every page and section root, with the grain.",
+            "doNotUse": "As a lighter card on a darker ground: structure is rules, not surfaces.",
+            "modes": {
+              "light": "{ref.color.paper.100}",
+              "dark": "{ref.color.night.ground}"
+            }
+          }
+        }
+      },
+      "card": {
+        "$type": "color",
+        "$value": "{ref.color.paper.100}",
+        "$description": "A box's fill: the same paper as the ground. --color-card.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A Pane, a Surface, a Dialog, a pill's fill. Set apart by its ink rule, not its fill.",
+            "modes": {
+              "light": "{ref.color.paper.100}",
+              "dark": "{ref.color.night.ground}"
+            }
+          }
+        }
+      },
+      "solid": {
+        "$type": "color",
+        "$value": "{ref.color.paper.100}",
+        "$description": "The opaque fallback for glass. --color-solid.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "What glass goes to for a reader who asks for less transparency.",
+            "modes": {
+              "light": "{ref.color.paper.100}",
+              "dark": "{ref.color.night.ground}"
+            }
+          }
+        }
+      },
+      "sunken": {
+        "$type": "color",
+        "$value": "{ref.color.paper.200}",
+        "$description": "The paper's second sheet. --color-sunken.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A well, a placeholder, a tinted row, the selected hour, a quiet control under the pointer.",
+            "modes": {
+              "light": "{ref.color.paper.200}",
+              "dark": "{ref.color.night.sheet}"
+            }
+          }
+        }
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "{ref.color.paper.glass}",
+        "$description": "Paper over a photograph. --color-glass.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A badge over a photograph (Chip tone glass), and nothing else.",
+            "doNotUse": "Over the map: paper over the map is opaque.",
+            "modes": {
+              "light": "{ref.color.paper.glass}",
+              "dark": "{ref.color.night.glass}"
+            }
+          }
+        }
+      },
+      "inverse": {
+        "$type": "color",
+        "$value": "{ref.color.ink.900}",
+        "$description": "The inverse fill: ink. --color-inverse.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A pressed toggle, the on segment, the hour flag, a strong count.",
+            "modes": {
+              "light": "{ref.color.ink.900}",
+              "dark": "{ref.color.night.ink}"
+            }
+          }
+        }
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "{ref.color.ink.a18}",
+        "$description": "Behind a dialog. --color-scrim.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "The modal backdrop only.",
+            "modes": {
+              "light": "{ref.color.ink.a18}",
+              "dark": "{ref.color.night.scrim}"
+            }
+          }
+        }
+      },
+      "sea": {
+        "$type": "color",
+        "$value": "{ref.color.sea.ground}",
+        "$description": "The sea. --color-sea.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "The ground the map floats on; the fill under a tide curve.",
+            "modes": {
+              "light": "{ref.color.sea.ground}",
+              "dark": "{ref.color.night.sea}"
+            }
+          }
+        }
+      },
+      "sea-1": {
+        "$type": "color",
+        "$value": "{ref.color.sea.1}",
+        "$description": "Depth tint, under a metre. --color-sea-1.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Bathymetry: drying and under a metre.",
+            "modes": {
+              "light": "{ref.color.sea.1}",
+              "dark": "{ref.color.night.sea-1}"
+            }
+          }
+        }
+      },
+      "sea-2": {
+        "$type": "color",
+        "$value": "{ref.color.sea.2}",
+        "$description": "Depth tint, about three metres. --color-sea-2.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Bathymetry.",
+            "modes": {
+              "light": "{ref.color.sea.2}",
+              "dark": "{ref.color.night.sea-2}"
+            }
+          }
+        }
+      },
+      "sea-3": {
+        "$type": "color",
+        "$value": "{ref.color.sea.3}",
+        "$description": "Depth tint, about ten metres. --color-sea-3.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Bathymetry.",
+            "modes": {
+              "light": "{ref.color.sea.3}",
+              "dark": "{ref.color.night.sea-3}"
+            }
+          }
+        }
+      },
+      "sea-4": {
+        "$type": "color",
+        "$value": "{ref.color.sea.4}",
+        "$description": "Depth tint, thirty metres and beyond. --color-sea-4.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Bathymetry.",
+            "modes": {
+              "light": "{ref.color.sea.4}",
+              "dark": "{ref.color.night.sea-4}"
+            }
+          }
+        }
+      },
+      "depth": {
+        "$type": "color",
+        "$value": "{ref.color.sea.depth}",
+        "$description": "Contour and sounding ink. --color-depth.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Contours, soundings, the tide curve's line, the beach on the shore compass.",
+            "doNotUse": "As body text.",
+            "modes": {
+              "light": "{ref.color.sea.depth}",
+              "dark": "{ref.color.night.depth}"
+            }
+          }
+        }
+      },
+      "land": {
+        "$type": "color",
+        "$value": "{ref.color.land.buff}",
+        "$description": "Land buff. --color-land.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Land on the chart; the puffin's rock.",
+            "modes": {
+              "light": "{ref.color.land.buff}",
+              "dark": "{ref.color.night.land}"
+            }
+          }
+        }
+      },
+      "relief": {
+        "$type": "color",
+        "$value": "{ref.color.land.relief}",
+        "$description": "Relief lines. --color-relief.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Relief drawn on the land.",
+            "modes": {
+              "light": "{ref.color.land.relief}",
+              "dark": "{ref.color.night.relief}"
+            }
+          }
+        }
+      },
+      "basemap-water": {
+        "$type": "color",
+        "$value": "{ref.color.sea.basemap}",
+        "$description": "Deep water on the basemap. --color-basemap-water.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Painted over the third-party style by WindMap.",
+            "modes": {
+              "light": "{ref.color.sea.basemap}",
+              "dark": "{ref.color.night.basemap-water}"
+            }
+          }
+        }
+      },
+      "basemap-land": {
+        "$type": "color",
+        "$value": "{ref.color.land.buff}",
+        "$description": "Land on the basemap. --color-basemap-land.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "Painted over the third-party style by WindMap.",
+            "modes": {
+              "light": "{ref.color.land.buff}",
+              "dark": "{ref.color.night.land}"
+            }
+          }
+        }
+      },
+      "wash": {
+        "$type": "color",
+        "$value": "{ref.color.magenta.600}",
+        "$description": "A quantity's bar, drawn at 22% (sem.opacity.wash). --color-wash.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The bar a forecast cell paints behind its number; the rides-chance bar.",
+            "doNotUse": "At full strength as a fill: it is a quantity, drawn faint.",
+            "modes": {
+              "light": "{ref.color.magenta.600}",
+              "dark": "{ref.color.night.magenta}"
+            }
+          }
+        }
+      },
+      "line": {
+        "$type": "color",
+        "$value": "{ref.color.ink.a20}",
+        "$description": "The hairline between rows. --color-line.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "Division inside a box, between rows, a chip's ring.",
+            "doNotUse": "To frame a box: a frame is drawn in ink.",
+            "modes": {
+              "light": "{ref.color.ink.a20}",
+              "dark": "{ref.color.night.line}"
+            }
+          }
+        }
+      },
+      "line-strong": {
+        "$type": "color",
+        "$value": "{ref.color.ink.500}",
+        "$description": "A field's box at a stroke's 3:1. --color-line-strong.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "A field's border, a link's underline at rest.",
+            "doNotUse": "For text.",
+            "modes": {
+              "light": "{ref.color.ink.500}",
+              "dark": "{ref.color.night.stroke}"
+            }
+          }
+        }
+      },
+      "hatch": {
+        "$type": "color",
+        "$value": "{ref.color.ink.a09}",
+        "$description": "The dark-hours hatch: ink at 9%, the theme's `hatch` utility.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "chart",
+            "use": "The fine diagonal hatch over a dark hour, a night strip, the dark band of a tide curve.",
+            "modes": {
+              "light": "{ref.color.ink.a09}",
+              "dark": "{ref.color.night.hatch}"
+            }
+          }
+        }
+      },
+      "ink": {
+        "$type": "color",
+        "$value": "{ref.color.ink.900}",
+        "$description": "Text and rules. --color-ink.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "text",
+            "use": "Words, figures, the rule that frames a box or heads a section.",
+            "modes": {
+              "light": "{ref.color.ink.900}",
+              "dark": "{ref.color.night.ink}"
+            }
+          }
+        }
+      },
+      "ink-2": {
+        "$type": "color",
+        "$value": "{ref.color.ink.700}",
+        "$description": "Secondary text. --color-ink-2.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "text",
+            "use": "A dialog's body, a chip's words, a notice's words.",
+            "modes": {
+              "light": "{ref.color.ink.700}",
+              "dark": "{ref.color.night.ink-2}"
+            }
+          }
+        }
+      },
+      "ink-muted": {
+        "$type": "color",
+        "$value": "{ref.color.ink.600}",
+        "$description": "The floor for words. --color-ink-muted.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "text",
+            "use": "Mono labels, small print, units, placeholders.",
+            "modes": {
+              "light": "{ref.color.ink.600}",
+              "dark": "{ref.color.night.muted}"
+            }
+          }
+        }
+      },
+      "ink-disabled": {
+        "$type": "color",
+        "$value": "{ref.color.ink.500}",
+        "$description": "Disabled, at a stroke's 3:1. --color-ink-disabled.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "text",
+            "use": "A disabled control's words and icon.",
+            "doNotUse": "For text that is merely low priority: disabled means unavailable.",
+            "modes": {
+              "light": "{ref.color.ink.500}",
+              "dark": "{ref.color.night.stroke}"
+            }
+          }
+        }
+      },
+      "ink-inverse": {
+        "$type": "color",
+        "$value": "{ref.color.paper.100}",
+        "$description": "Paper-coloured words on an ink fill. --color-ink-inverse.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "text",
+            "use": "Words on inverse: a pressed toggle, the on segment, the hour flag.",
+            "modes": {
+              "light": "{ref.color.paper.100}",
+              "dark": "{ref.color.night.ground}"
+            }
+          }
+        }
+      },
+      "accent": {
+        "primary": {
+          "$type": "color",
+          "$value": "{ref.color.ink.900}",
+          "$description": "The filled action: the ink pill. --color-accent.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "action",
+              "use": "The one filled action on a view (Button primary), and the active filter's second line.",
+              "doNotUse": "A second filled action on the same view.",
+              "modes": {
+                "light": "{ref.color.ink.900}",
+                "dark": "{ref.color.night.ink}"
+              }
+            }
+          }
+        },
+        "hover": {
+          "$type": "color",
+          "$value": "{ref.color.magenta.600}",
+          "$description": "The filled action under the pointer: magenta. --color-accent-hover.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "action",
+              "use": "Button primary's hover fill and border.",
+              "modes": {
+                "light": "{ref.color.magenta.600}",
+                "dark": "{ref.color.night.magenta}"
+              }
+            }
+          }
+        },
+        "ink": {
+          "$type": "color",
+          "$value": "{ref.color.paper.100}",
+          "$description": "Words on the filled action. --color-accent-ink.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "action",
+              "use": "Button primary's label.",
+              "modes": {
+                "light": "{ref.color.paper.100}",
+                "dark": "{ref.color.night.ground}"
+              }
+            }
+          }
+        }
+      },
+      "quiet": {
+        "$type": "color",
+        "$value": "{ref.color.ink.900}",
+        "$description": "A quiet control's words. --color-quiet.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "action",
+            "use": "Quiet buttons and links at rest.",
+            "modes": {
+              "light": "{ref.color.ink.900}",
+              "dark": "{ref.color.night.ink}"
+            }
+          }
+        }
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{ref.color.magenta.600}",
+        "$description": "The one focus ring. --color-focus.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "action",
+            "use": "The 2px ring, 2px clear, on every control.",
+            "doNotUse": "Restyled per control.",
+            "modes": {
+              "light": "{ref.color.magenta.600}",
+              "dark": "{ref.color.night.magenta}"
+            }
+          }
+        }
+      },
+      "chart-magenta": {
+        "$type": "color",
+        "$value": "{ref.color.magenta.600}",
+        "$description": "The chart's magenta. --color-chart-magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "The best of something (a five-star light, the selected spot), a link under the pointer, `.ie`.",
+            "doNotUse": "Twice for 'best' on one view; or as body text.",
+            "modes": {
+              "light": "{ref.color.magenta.600}",
+              "dark": "{ref.color.night.magenta}"
+            }
+          }
+        }
+      },
+      "pen": {
+        "$type": "color",
+        "$value": "{ref.color.pen.500}",
+        "$description": "The red pen's strokes. --color-pen.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "A loop round the one thing that matters, an underline, a strike through what is off.",
+            "doNotUse": "As a fill, a control, a status, or for emphasis.",
+            "modes": {
+              "light": "{ref.color.pen.500}",
+              "dark": "{ref.color.night.pen}"
+            }
+          }
+        }
+      },
+      "pen-ink": {
+        "$type": "color",
+        "$value": "{ref.color.pen.600}",
+        "$description": "The red pen's handwriting. --color-pen-ink.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "The pen's note; a gust well over the mean; the label of the one thing that matters.",
+            "modes": {
+              "light": "{ref.color.pen.600}",
+              "dark": "{ref.color.night.pen-ink}"
+            }
+          }
+        }
+      },
+      "buoy": {
+        "$type": "color",
+        "$value": "{ref.color.buoy.500}",
+        "$description": "A buoy's yellow. --color-buoy.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "The puffin's beak and feet.",
+            "doNotUse": "As text."
+          }
+        }
+      },
+      "ok": {
+        "$type": "color",
+        "$value": "{ref.color.green.700}",
+        "$description": "Live. --color-ok.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "One liveness mark.",
+            "modes": {
+              "light": "{ref.color.green.700}",
+              "dark": "{ref.color.night.ok}"
+            }
+          }
+        }
+      },
+      "warn": {
+        "$type": "color",
+        "$value": "{ref.color.warm.700}",
+        "$description": "Degraded. --color-warn.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "An error, a stale snapshot, a destructive answer, an invalid field.",
+            "doNotUse": "To make something stand out.",
+            "modes": {
+              "light": "{ref.color.warm.700}",
+              "dark": "{ref.color.night.warn}"
+            }
+          }
+        }
+      },
+      "warn-ground": {
+        "$type": "color",
+        "$value": "{ref.color.warm.100}",
+        "$description": "The warm ground. --color-warn-ground.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "Under a warning notice, an invalid field, a warn chip.",
+            "modes": {
+              "light": "{ref.color.warm.100}",
+              "dark": "{ref.color.night.warn-ground}"
+            }
+          }
+        }
+      },
+      "now": {
+        "$type": "color",
+        "$value": "{ref.color.warm.700}",
+        "$description": "This instant. --color-now.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "status",
+            "use": "The present instant in words.",
+            "modes": {
+              "light": "{ref.color.warm.700}",
+              "dark": "{ref.color.night.warn}"
+            }
+          }
+        }
+      },
+      "now-marker": {
+        "$type": "color",
+        "$value": "{ref.color.mark.now}",
+        "$description": "The present-hour line. --color-now-marker. Not re-themed.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dashed line at the present hour on the map and the dock."
+          }
+        }
+      },
+      "gust": {
+        "$type": "color",
+        "$value": "{ref.color.mark.gust}",
+        "$description": "The gust cap. --color-gust. Not re-themed.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The cap on a candle (D12)."
+          }
+        }
+      },
+      "wind": {
+        "k00": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k00}",
+          "$description": "Wind at 0 kn. --color-wind-k00. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k05": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k05}",
+          "$description": "Wind at 5 kn. --color-wind-k05. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k09": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k09}",
+          "$description": "Wind at 9 kn. --color-wind-k09. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k10": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k10}",
+          "$description": "Wind at 10 kn. --color-wind-k10. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k15": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k15}",
+          "$description": "Wind at 15 kn. --color-wind-k15. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k20": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k20}",
+          "$description": "Wind at 20 kn. --color-wind-k20. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k25": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k25}",
+          "$description": "Wind at 25 kn. --color-wind-k25. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k30": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k30}",
+          "$description": "Wind at 30 kn. --color-wind-k30. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k35": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k35}",
+          "$description": "Wind at 35 kn. --color-wind-k35. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k40": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k40}",
+          "$description": "Wind at 40 kn. --color-wind-k40. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k45": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k45}",
+          "$description": "Wind at 45 kn. --color-wind-k45. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k50": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k50}",
+          "$description": "Wind at 50 kn. --color-wind-k50. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k60": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k60}",
+          "$description": "Wind at 60 kn. --color-wind-k60. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        },
+        "k65": {
+          "$type": "color",
+          "$value": "{ref.color.wind.k65}",
+          "$description": "Wind at 65 kn. --color-wind-k65. Does not re-theme.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "data",
+              "use": "Wind speed, and nothing else.",
+              "doNotUse": "For a category, a state, a rating or decoration."
+            }
+          }
+        }
+      },
+      "bg": {
+        "app": {
+          "$type": "color",
+          "$value": "{ref.color.paper.100}",
+          "$description": "The catalog chrome's name for the page: the same value as sem.color.ground.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: use sem.color.ground.",
+              "modes": {
+                "light": "{ref.color.paper.100}",
+                "dark": "{ref.color.night.ground}"
+              }
+            }
+          }
+        }
+      },
+      "text": {
+        "primary": {
+          "$type": "color",
+          "$value": "{ref.color.ink.900}",
+          "$description": "The catalog chrome's name for text: the same value as sem.color.ink.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: use sem.color.ink.",
+              "modes": {
+                "light": "{ref.color.ink.900}",
+                "dark": "{ref.color.night.ink}"
+              }
+            }
+          }
+        },
+        "muted": {
+          "$type": "color",
+          "$value": "{ref.color.ink.600}",
+          "$description": "The catalog chrome's name for muted text: the same value as sem.color.ink-muted.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: use sem.color.ink-muted.",
+              "modes": {
+                "light": "{ref.color.ink.600}",
+                "dark": "{ref.color.night.muted}"
+              }
+            }
+          }
+        }
+      },
+      "border": {
+        "default": {
+          "$type": "color",
+          "$value": "{ref.color.ink.a20}",
+          "$description": "The catalog chrome's name for a hairline: the same value as sem.color.line.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: use sem.color.line or sem.color.ink.",
+              "modes": {
+                "light": "{ref.color.ink.a20}",
+                "dark": "{ref.color.night.line}"
+              }
+            }
+          }
+        }
+      },
+      "status": {
+        "danger": {
+          "$type": "color",
+          "$value": "{ref.color.warm.700}",
+          "$description": "The catalog chrome's name for danger: the same value as sem.color.warn.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: use sem.color.warn.",
+              "modes": {
+                "light": "{ref.color.warm.700}",
+                "dark": "{ref.color.night.warn}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "font": {
+      "family": {
+        "display": {
+          "$type": "fontFamily",
+          "$value": "{ref.font.family.display}",
+          "$description": "Fraunces. --font-display.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Names, headings, the wordmark, a headline; its italic for a spot's name in a list."
+            }
+          }
+        },
+        "body": {
+          "$type": "fontFamily",
+          "$value": "{ref.font.family.body}",
+          "$description": "Newsreader. --font-body.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The few sentences; a field's text; italic for placeholders and hints."
+            }
+          }
+        },
+        "mono": {
+          "$type": "fontFamily",
+          "$value": "{ref.font.family.mono}",
+          "$description": "IBM Plex Mono. --font-mono.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Every figure (tabular), and every label in tracked capitals."
+            }
+          }
+        },
+        "hand": {
+          "$type": "fontFamily",
+          "$value": "{ref.font.family.hand}",
+          "$description": "Kalam. --font-hand.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The pen's notes. Nothing else."
+            }
+          }
+        },
+        "ui": {
+          "$type": "fontFamily",
+          "$value": "{ref.font.family.body}",
+          "$description": "The page's default face (Newsreader), under the name the Studio door reads.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog and door.",
+              "doNotUse": "In components: name the face's job (display, body, mono, hand)."
+            }
+          }
+        }
+      },
+      "weight": {
+        "normal": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.400}",
+          "$description": "--font-weight-normal.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Body text."
+            }
+          }
+        },
+        "medium": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.500}",
+          "$description": "--font-weight-medium.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The mono label; a raised figure."
+            }
+          }
+        },
+        "semibold": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.600}",
+          "$description": "--font-weight-semibold.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A spot's name, a pressed control, a figure."
+            }
+          }
+        },
+        "bold": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.700}",
+          "$description": "--font-weight-bold.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A title, a headline."
+            }
+          }
+        },
+        "extrabold": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.800}",
+          "$description": "--font-weight-extrabold.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The wordmark alone.",
+              "doNotUse": "Anywhere but the wordmark."
+            }
+          }
+        },
+        "eyebrow": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.500}",
+          "$description": "The eyebrow step's weight. --text-eyebrow--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.eyebrow."
+            }
+          }
+        },
+        "label": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.500}",
+          "$description": "The label step's weight. --text-label--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.label."
+            }
+          }
+        },
+        "lead": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.600}",
+          "$description": "The lead step's weight. --text-lead--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.lead."
+            }
+          }
+        },
+        "figure": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.600}",
+          "$description": "The figure step's weight. --text-figure--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.figure."
+            }
+          }
+        },
+        "title": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.700}",
+          "$description": "The title step's weight. --text-title--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.title."
+            }
+          }
+        },
+        "headline": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.700}",
+          "$description": "The headline step's weight. --text-headline--font-weight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.headline."
+            }
+          }
+        },
+        "emphasis": {
+          "$type": "fontWeight",
+          "$value": "{ref.font.weight.600}",
+          "$description": "Semibold, under the name the Studio catalog reads.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "interop",
+              "use": "Read by the Studio catalog.",
+              "doNotUse": "In components: use sem.font.weight.semibold."
+            }
+          }
+        }
+      },
+      "size": {
+        "eyebrow": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.10}",
+          "$description": "--text-eyebrow: mono, tracked capitals.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A kicker, a column head, an axis tick, a field's label.",
+              "doNotUse": "For a sentence."
+            }
+          }
+        },
+        "caption": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.11}",
+          "$description": "--text-caption.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Small figures; the small print; a chip."
+            }
+          }
+        },
+        "label": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.11}",
+          "$description": "--text-label: a control's words.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Every Button and Segmented item, in mono capitals."
+            }
+          }
+        },
+        "body": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.13}",
+          "$description": "--text-body.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Secondary sentences, a hint, a field's error."
+            }
+          }
+        },
+        "prose": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.15}",
+          "$description": "--text-prose.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Sentences; a field's text on a fine pointer."
+            }
+          }
+        },
+        "input": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.16}",
+          "$description": "--text-input.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A field on a coarse pointer, so a phone does not zoom."
+            }
+          }
+        },
+        "lead": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.19}",
+          "$description": "--text-lead.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A section's heading, a card's name, a dialog's title, the pen's note at md."
+            }
+          }
+        },
+        "figure": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.19}",
+          "$description": "--text-figure.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The number a row is about, in mono."
+            }
+          }
+        },
+        "title": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.30}",
+          "$description": "--text-title.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A page's head where there is no headline. One per surface."
+            }
+          }
+        },
+        "headline": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.44}",
+          "$description": "--text-headline.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "One a page, on a page that is read. Steps to title under 720px."
+            }
+          }
+        },
+        "reading": {
+          "$type": "dimension",
+          "$value": "{ref.font.size.48}",
+          "$description": "--text-reading.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The wind reading, one a view."
+            }
+          }
+        }
+      },
+      "line": {
+        "eyebrow": {
+          "$type": "number",
+          "$value": "{ref.font.line.130}",
+          "$description": "--text-eyebrow--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.eyebrow."
+            }
+          }
+        },
+        "caption": {
+          "$type": "number",
+          "$value": "{ref.font.line.140}",
+          "$description": "--text-caption--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.caption."
+            }
+          }
+        },
+        "label": {
+          "$type": "number",
+          "$value": "{ref.font.line.120}",
+          "$description": "--text-label--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.label."
+            }
+          }
+        },
+        "body": {
+          "$type": "number",
+          "$value": "{ref.font.line.140}",
+          "$description": "--text-body--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.body."
+            }
+          }
+        },
+        "prose": {
+          "$type": "number",
+          "$value": "{ref.font.line.145}",
+          "$description": "--text-prose--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.prose."
+            }
+          }
+        },
+        "input": {
+          "$type": "number",
+          "$value": "{ref.font.line.130}",
+          "$description": "--text-input--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.input."
+            }
+          }
+        },
+        "lead": {
+          "$type": "number",
+          "$value": "{ref.font.line.120}",
+          "$description": "--text-lead--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.lead."
+            }
+          }
+        },
+        "figure": {
+          "$type": "number",
+          "$value": "{ref.font.line.100}",
+          "$description": "--text-figure--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.figure."
+            }
+          }
+        },
+        "title": {
+          "$type": "number",
+          "$value": "{ref.font.line.105}",
+          "$description": "--text-title--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.title."
+            }
+          }
+        },
+        "headline": {
+          "$type": "number",
+          "$value": "{ref.font.line.100}",
+          "$description": "--text-headline--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.headline."
+            }
+          }
+        },
+        "reading": {
+          "$type": "number",
+          "$value": "{ref.font.line.100}",
+          "$description": "--text-reading--line-height.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "With sem.font.size.reading."
+            }
+          }
+        },
+        "tight": {
+          "$type": "number",
+          "$value": "{ref.font.line.120}",
+          "$description": "--leading-tight.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A card's title at the prose size; a field's label; the pen's note."
+            }
+          }
+        },
+        "normal": {
+          "$type": "number",
+          "$value": "{ref.font.line.145}",
+          "$description": "--leading-normal.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A text area's lines."
+            }
+          }
+        },
+        "loose": {
+          "$type": "number",
+          "$value": "{ref.font.line.175}",
+          "$description": "--leading-loose.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "Rarely: a list that wants air."
+            }
+          }
+        }
+      },
+      "tracking": {
+        "eyebrow": {
+          "$type": "dimension",
+          "$value": "{ref.font.tracking.pos-014}",
+          "$description": "--text-eyebrow--letter-spacing.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "The mono label's tracking."
+            }
+          }
+        },
+        "label": {
+          "$type": "dimension",
+          "$value": "{ref.font.tracking.pos-009}",
+          "$description": "--text-label--letter-spacing.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A control's tracking."
+            }
+          }
+        },
+        "figure": {
+          "$type": "dimension",
+          "$value": "{ref.font.tracking.neg-020}",
+          "$description": "--text-figure--letter-spacing.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A figure, set close."
+            }
+          }
+        },
+        "title": {
+          "$type": "dimension",
+          "$value": "{ref.font.tracking.neg-020}",
+          "$description": "--text-title--letter-spacing.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A title, set close."
+            }
+          }
+        },
+        "headline": {
+          "$type": "dimension",
+          "$value": "{ref.font.tracking.neg-035}",
+          "$description": "--text-headline--letter-spacing.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "type",
+              "use": "A headline, set tight; also the wordmark."
+            }
+          }
+        }
+      }
+    },
+    "space": {
+      "step": {
+        "$type": "dimension",
+        "$value": "{ref.space.unit}",
+        "$description": "One step of the spacing scale. --spacing. `p-4` is four of these.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "The unit every sem.space.* step is a multiple of."
+          }
+        }
+      },
+      "x0-5": {
+        "$type": "dimension",
+        "$value": "2px",
+        "$description": "0.5 steps (2px): Tailwind's `*-0.5`, calc(var(--spacing) * 0.5).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 2px."
+          }
+        }
+      },
+      "x1": {
+        "$type": "dimension",
+        "$value": "4px",
+        "$description": "1 step (4px): Tailwind's `*-1`, calc(var(--spacing) * 1).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 4px."
+          }
+        }
+      },
+      "x1-5": {
+        "$type": "dimension",
+        "$value": "6px",
+        "$description": "1.5 steps (6px): Tailwind's `*-1.5`, calc(var(--spacing) * 1.5).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 6px."
+          }
+        }
+      },
+      "x2": {
+        "$type": "dimension",
+        "$value": "8px",
+        "$description": "2 steps (8px): Tailwind's `*-2`, calc(var(--spacing) * 2).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 8px."
+          }
+        }
+      },
+      "x2-5": {
+        "$type": "dimension",
+        "$value": "10px",
+        "$description": "2.5 steps (10px): Tailwind's `*-2.5`, calc(var(--spacing) * 2.5).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 10px."
+          }
+        }
+      },
+      "x3": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "3 steps (12px): Tailwind's `*-3`, calc(var(--spacing) * 3).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 12px."
+          }
+        }
+      },
+      "x4": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "4 steps (16px): Tailwind's `*-4`, calc(var(--spacing) * 4).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 16px."
+          }
+        }
+      },
+      "x5": {
+        "$type": "dimension",
+        "$value": "20px",
+        "$description": "5 steps (20px): Tailwind's `*-5`, calc(var(--spacing) * 5).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 20px."
+          }
+        }
+      },
+      "x6": {
+        "$type": "dimension",
+        "$value": "24px",
+        "$description": "6 steps (24px): Tailwind's `*-6`, calc(var(--spacing) * 6).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 24px."
+          }
+        }
+      },
+      "x7": {
+        "$type": "dimension",
+        "$value": "28px",
+        "$description": "7 steps (28px): Tailwind's `*-7`, calc(var(--spacing) * 7).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 28px."
+          }
+        }
+      },
+      "x8": {
+        "$type": "dimension",
+        "$value": "32px",
+        "$description": "8 steps (32px): Tailwind's `*-8`, calc(var(--spacing) * 8).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 32px."
+          }
+        }
+      },
+      "x10": {
+        "$type": "dimension",
+        "$value": "40px",
+        "$description": "10 steps (40px): Tailwind's `*-10`, calc(var(--spacing) * 10).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 40px."
+          }
+        }
+      },
+      "x14": {
+        "$type": "dimension",
+        "$value": "56px",
+        "$description": "14 steps (56px): Tailwind's `*-14`, calc(var(--spacing) * 14).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "space",
+            "use": "Gaps and insets of 56px."
+          }
+        }
+      }
+    },
+    "size": {
+      "control": {
+        "sm": {
+          "$type": "dimension",
+          "$value": "{ref.size.30}",
+          "$description": "--spacing-control-sm.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "size",
+              "use": "A small control: Segmented, the dock's buttons, a small Avatar."
+            }
+          }
+        },
+        "md": {
+          "$type": "dimension",
+          "$value": "{ref.size.40}",
+          "$description": "--spacing-control-md.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "size",
+              "use": "A medium control, the default Button."
+            }
+          }
+        },
+        "lg": {
+          "$type": "dimension",
+          "$value": "{ref.size.46}",
+          "$description": "--spacing-control-lg.",
+          "$extensions": {
+            "com.sprintengine": {
+              "role": "size",
+              "use": "A large control."
+            }
+          }
+        }
+      },
+      "touch": {
+        "$type": "dimension",
+        "$value": "{ref.size.44}",
+        "$description": "--spacing-touch: the tap-target floor.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "size",
+            "use": "The minimum height of anything pressed on a coarse pointer.",
+            "doNotUse": "Lowered: a smaller control grows its hit area instead."
+          }
+        }
+      }
+    },
+    "radius": {
+      "control": {
+        "$type": "dimension",
+        "$value": "{ref.radius.2}",
+        "$description": "--radius-control.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "A field: a whisper of a corner, so it reads as a box to write in."
+          }
+        }
+      },
+      "surface": {
+        "$type": "dimension",
+        "$value": "{ref.radius.0}",
+        "$description": "--radius-surface.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "A box: square."
+          }
+        }
+      },
+      "pill": {
+        "$type": "dimension",
+        "$value": "{ref.radius.round}",
+        "$description": "--radius-pill.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "A quiet control's capsule."
+          }
+        }
+      },
+      "dialog": {
+        "$type": "dimension",
+        "$value": "{ref.radius.0}",
+        "$description": "--radius-dialog.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "A dialog: square."
+          }
+        }
+      },
+      "full": {
+        "$type": "dimension",
+        "$value": "{ref.radius.round}",
+        "$description": "--radius-full.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "shape",
+            "use": "Anything pressed; a count, an avatar."
+          }
+        }
+      },
+      "overlay": {
+        "$type": "dimension",
+        "$value": "{ref.radius.0}",
+        "$description": "A dialog's corner, under the name the Studio catalog reads.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "interop",
+            "use": "Read by the Studio catalog.",
+            "doNotUse": "In components: use sem.radius.dialog or sem.radius.surface."
+          }
+        }
+      }
+    },
+    "rule": {
+      "hairline": {
+        "$type": "dimension",
+        "$value": "{ref.rule.1}",
+        "$description": "One ink rule (`border`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "A box's frame, a row's hairline, a field's box."
+          }
+        }
+      },
+      "heavy": {
+        "$type": "dimension",
+        "$value": "{ref.rule.2}",
+        "$description": "The heavy rule (`border-t-2`, `border-b-2`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "Over a broadsheet section; under a section heading."
+          }
+        }
+      },
+      "double": {
+        "$type": "dimension",
+        "$value": "{ref.rule.3}",
+        "$description": "The double rule along an edge (`border-b-3 border-double`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "The masthead's foot, the dock's top, a page's foot."
+          }
+        }
+      },
+      "edge": {
+        "$type": "dimension",
+        "$value": "{ref.rule.3}",
+        "$description": "A notice's edge (`border-l-3`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "The heavy rule down a Notice's left side."
+          }
+        }
+      }
+    },
+    "ring": {
+      "width": {
+        "$type": "dimension",
+        "$value": "{ref.rule.2}",
+        "$description": "The focus ring's width (`outline-2`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "focus",
+            "use": "Every control's ring."
+          }
+        }
+      },
+      "offset": {
+        "$type": "dimension",
+        "$value": "{ref.rule.2}",
+        "$description": "The focus ring's clearance (`outline-offset-2`).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "focus",
+            "use": "Every control's ring."
+          }
+        }
+      }
+    },
+    "shadow": {
+      "control": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.control}",
+        "$description": "--shadow-control.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "A pressed toggle's lip."
+          }
+        }
+      },
+      "marker": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.marker}",
+        "$description": "--shadow-marker.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "A marker on the chart; the danger button under the pointer."
+          }
+        }
+      },
+      "surface": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.surface}",
+        "$description": "--shadow-surface.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "A Surface, a Dialog, a standing Pane."
+          }
+        }
+      },
+      "dock": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.dock}",
+        "$description": "--shadow-dock.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "elevation",
+            "use": "The dock, cast upward."
+          }
+        }
+      },
+      "frame": {
+        "$type": "shadow",
+        "$value": "{ref.shadow.frame}",
+        "$description": "--inset-shadow-frame: the double rule's inner line.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "structure",
+            "use": "With a 1px ink border, round a box that matters: a Surface, a Dialog, a double Pane.",
+            "modes": {
+              "light": "{ref.shadow.frame}",
+              "dark": "{ref.shadow.frame-night}"
+            }
+          }
+        }
+      }
+    },
+    "blur": {
+      "glass": {
+        "$type": "dimension",
+        "$value": "{ref.blur.12}",
+        "$description": "--blur-glass.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "Behind a glass badge over a photograph."
+          }
+        }
+      },
+      "scrim": {
+        "$type": "dimension",
+        "$value": "{ref.blur.2}",
+        "$description": "--blur-scrim.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "Behind a dialog's scrim."
+          }
+        }
+      }
+    },
+    "container": {
+      "dialog": {
+        "$type": "dimension",
+        "$value": "420px",
+        "$description": "--container-dialog.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "A dialog's width."
+          }
+        }
+      },
+      "dialog-wide": {
+        "$type": "dimension",
+        "$value": "640px",
+        "$description": "--container-dialog-wide.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "A wide dialog's width."
+          }
+        }
+      },
+      "reading": {
+        "$type": "dimension",
+        "$value": "44ch",
+        "$description": "--container-reading.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "A line of reading; an empty state's words."
+          }
+        }
+      },
+      "measure": {
+        "$type": "dimension",
+        "$value": "68ch",
+        "$description": "--container-measure.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "A line of conversation."
+          }
+        }
+      },
+      "page": {
+        "$type": "dimension",
+        "$value": "1200px",
+        "$description": "--container-page.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "The page measure every content section shares."
+          }
+        }
+      },
+      "form": {
+        "$type": "dimension",
+        "$value": "760px",
+        "$description": "--container-form.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "measure",
+            "use": "A column of fields."
+          }
+        }
+      }
+    },
+    "grid": {
+      "shell": {
+        "$type": "string",
+        "$value": "236px minmax(0, 1fr)",
+        "$description": "--grid-template-columns-shell.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A section's rail, then its page."
+          }
+        }
+      },
+      "cards": {
+        "$type": "string",
+        "$value": "repeat(auto-fill, minmax(240px, 1fr))",
+        "$description": "--grid-template-columns-cards.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A grid of cards: as many 240px columns as fit."
+          }
+        }
+      },
+      "detail": {
+        "$type": "string",
+        "$value": "minmax(0, 3fr) minmax(320px, 2fr)",
+        "$description": "--grid-template-columns-detail.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "What is read, and the panel beside it."
+          }
+        }
+      },
+      "specs": {
+        "$type": "string",
+        "$value": "repeat(auto-fill, minmax(150px, 1fr))",
+        "$description": "--grid-template-columns-specs.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "Label-and-value pairs."
+          }
+        }
+      },
+      "meter": {
+        "$type": "string",
+        "$value": "auto minmax(0, 1fr) auto",
+        "$description": "--grid-template-columns-meter.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A labelled bar: label, bar, number."
+          }
+        }
+      },
+      "profile": {
+        "$type": "string",
+        "$value": "minmax(0, 3fr) minmax(260px, 2fr)",
+        "$description": "--grid-template-columns-profile.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A profile's head."
+          }
+        }
+      },
+      "fields": {
+        "$type": "string",
+        "$value": "repeat(auto-fit, minmax(180px, 1fr))",
+        "$description": "--grid-template-columns-fields.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A row of form fields."
+          }
+        }
+      },
+      "tiles": {
+        "$type": "string",
+        "$value": "repeat(auto-fill, minmax(132px, 1fr))",
+        "$description": "--grid-template-columns-tiles.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "A grid of thumbnails."
+          }
+        }
+      }
+    },
+    "breakpoint": {
+      "rail": {
+        "$type": "dimension",
+        "$value": "56.25rem",
+        "$description": "--breakpoint-rail: 900px, where a section's two columns fit.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "`rail:`; in a media query, which reads the browser's 16px."
+          }
+        }
+      },
+      "wide": {
+        "$type": "dimension",
+        "$value": "45rem",
+        "$description": "--breakpoint-wide: 720px, where a row has room for words beside its controls.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layout",
+            "use": "`wide:`; where the headline steps up from title."
+          }
+        }
+      }
+    },
+    "duration": {
+      "fast": {
+        "$type": "duration",
+        "$value": "{ref.duration.150}",
+        "$description": "--transition-duration-fast.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "Colour changes on hover and press."
+          }
+        }
+      },
+      "base": {
+        "$type": "duration",
+        "$value": "{ref.duration.250}",
+        "$description": "--transition-duration-base.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "A panel moving."
+          }
+        }
+      }
+    },
+    "animate": {
+      "pulse": {
+        "$type": "string",
+        "$value": "pulse 1s ease-in-out infinite alternate",
+        "$description": "--animate-pulse.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "A skeleton breathing while its content loads. Off under reduced motion."
+          }
+        }
+      },
+      "dialog-in": {
+        "$type": "string",
+        "$value": "dialog-in 150ms ease both",
+        "$description": "--animate-dialog-in.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "A dialog arriving."
+          }
+        }
+      },
+      "menu-in": {
+        "$type": "string",
+        "$value": "menu-in 150ms ease both",
+        "$description": "--animate-menu-in.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "A panel dropping from its trigger."
+          }
+        }
+      },
+      "ink": {
+        "$type": "string",
+        "$value": "ink 750ms cubic-bezier(0.5, 0.1, 0.3, 1) both",
+        "$description": "--animate-ink: the pen drawing its stroke in, once.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "On a path with pathLength 1 and stroke-dasharray 1. Off under reduced motion."
+          }
+        }
+      },
+      "bob": {
+        "$type": "string",
+        "$value": "bob 6s ease-in-out infinite",
+        "$description": "--animate-bob: the puffin shifting his weight.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "motion",
+            "use": "The puffin, now and then. Off under reduced motion."
+          }
+        }
+      }
+    },
+    "z-index": {
+      "popover": {
+        "$type": "number",
+        "$value": "{ref.z.6}",
+        "$description": "--z-index-popover.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layer",
+            "use": "A popover, a menu."
+          }
+        }
+      },
+      "panel": {
+        "$type": "number",
+        "$value": "{ref.z.15}",
+        "$description": "--z-index-panel.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layer",
+            "use": "A panel over the map."
+          }
+        }
+      },
+      "header": {
+        "$type": "number",
+        "$value": "{ref.z.20}",
+        "$description": "--z-index-header.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layer",
+            "use": "The sticky masthead."
+          }
+        }
+      },
+      "dialog": {
+        "$type": "number",
+        "$value": "{ref.z.30}",
+        "$description": "--z-index-dialog.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "layer",
+            "use": "A dialog."
+          }
+        }
+      }
+    },
+    "opacity": {
+      "wash": {
+        "$type": "number",
+        "$value": 0.22,
+        "$description": "A quantity's bar (`bg-wash` at 22%).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The bar behind a forecast number; the rides-chance bar."
+          }
+        }
+      },
+      "faded": {
+        "$type": "number",
+        "$value": 0.5,
+        "$description": "A faded star: what the wind alone would give (StarGlyphs).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The outline stars after the solid ones."
+          }
+        }
+      },
+      "dot": {
+        "$type": "number",
+        "$value": 0.25,
+        "$description": "An unreached star's dot (StarGlyphs).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dots to five."
+          }
+        }
+      },
+      "past": {
+        "$type": "number",
+        "$value": 0.42,
+        "$description": "An hour that has gone (the mockup's dock).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "A past hour's cell, a past hour's row."
+          }
+        }
+      },
+      "pen": {
+        "$type": "number",
+        "$value": 0.9,
+        "$description": "The pen's stroke, a little thin, as ink is (Pen.tsx).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "mark",
+            "use": "Every pen stroke."
+          }
+        }
+      },
+      "strip-1": {
+        "$type": "number",
+        "$value": 0.16,
+        "$description": "The week strip: a one-star hour's magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dock's week strip, by stars."
+          }
+        }
+      },
+      "strip-2": {
+        "$type": "number",
+        "$value": 0.3,
+        "$description": "The week strip: a two-star hour's magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dock's week strip, by stars."
+          }
+        }
+      },
+      "strip-3": {
+        "$type": "number",
+        "$value": 0.5,
+        "$description": "The week strip: a three-star hour's magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dock's week strip, by stars."
+          }
+        }
+      },
+      "strip-4": {
+        "$type": "number",
+        "$value": 0.72,
+        "$description": "The week strip: a four-star hour's magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dock's week strip, by stars."
+          }
+        }
+      },
+      "strip-5": {
+        "$type": "number",
+        "$value": 0.95,
+        "$description": "The week strip: a five-star hour's magenta.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "The dock's week strip, by stars."
+          }
+        }
+      }
+    },
+    "texture": {
+      "grain": {
+        "$type": "string",
+        "$value": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        "$description": "The paper's grain: one 220px tile of faint fractal noise (the theme's `paper-grain` utility).",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "surface",
+            "use": "A background-image beside the paper fill: a section root, the masthead, a card Pane, a Surface, a Dialog.",
+            "doNotUse": "Over the moving map: the map is not paper."
+          }
+        }
+      }
+    }
+  }
+}
