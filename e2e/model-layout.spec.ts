@@ -1,16 +1,17 @@
 import { expect, test } from "./fixtures";
-import { sampleColumn, sampleColumns } from "./columns";
 
 for (const width of [320, 390, 820, 1440]) {
-  test(`all models keep the same dock geometry at ${width}px`, async ({
+  test(`every model keeps the same dock geometry at ${width}px`, async ({
     page,
   }) => {
     await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
-    await expect(page.locator('[data-model="harmonie"]')).toBeEnabled({
+    await expect(page.locator(".sc-day").first()).toBeVisible({
       timeout: 30000,
     });
+    if (width <= 720) await page.locator(".dock-grab").click();
+    await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const geometry = () =>
       page.evaluate(() => {
@@ -22,55 +23,31 @@ for (const width of [320, 390, 820, 1440]) {
         };
         return {
           dock: rect(".map-footer"),
-          picker: rect(".map-model-picker"),
-          play: rect(".play-button"),
-          info: rect(".model-info"),
+          head: rect(".map-head"),
+          controls: rect(".zbox"),
+          print: rect(".map-print .info-i"),
           columnWidth: document
-            .querySelector('[data-forecast-index="0"]')!
-            .closest("th")!
+            .querySelector(".dock tr.tt-hour td[data-i]")!
             .getBoundingClientRect().width,
         };
       });
     const baseline = await geometry();
     for (const model of ["icon-eu", "ecmwf", "harmonie"]) {
-      await page.getByLabel("Choose forecast model", { exact: true }).click();
+      const layers = page.getByRole("button", { name: "Layers", exact: true });
+      await layers.click();
       await page.locator(`[data-model="${model}"]`).click();
       await expect(page.locator(`[data-model="${model}"]`)).toHaveAttribute(
         "aria-pressed",
         "true",
       );
+      await layers.click();
       await expect.poll(geometry).toEqual(baseline);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBe(width);
-      if (width === 390)
-        await page
-          .locator(".map-footer")
-          .screenshot({ path: `test-results/layout-${model}-mobile.png` });
     }
-    await page.getByLabel("Choose forecast model", { exact: true }).click();
-    await page.locator('[data-model="ecmwf"]').click();
-    await expect(page.locator('[data-model="ecmwf"]')).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    const last = sampleColumns.length - 1;
-    await page
-      .getByRole("slider", { name: "Forecast time" })
-      .fill(String(last));
-    await expect(
-      page.locator(`[data-forecast-index="${last}"]`),
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".site-footer")).toContainText(
-      "long-range outlook",
-    );
+    // To the strip's end, where the hours are coarser: the same column width.
+    await page.getByRole("slider", { name: "Forecast time" }).press("End");
     await expect.poll(geometry).toEqual(baseline);
-    // Past day six the axis is six-hourly and those columns keep twice the room.
-    const lateWidth = await page
-      .locator(
-        `[data-forecast-index="${sampleColumn("2026-09-19T06:00:00Z")}"]`,
-      )
-      .evaluate((el) => el.closest("th")!.getBoundingClientRect().width);
-    expect(lateWidth).toBeCloseTo(baseline.columnWidth * 2, 0);
   });
 }

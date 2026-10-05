@@ -1,4 +1,5 @@
 import { readSample } from "./sample";
+import { stripColumns } from "../src/strip";
 
 interface Bundle {
   runTime: string;
@@ -77,3 +78,19 @@ export const sampleColumn = (validTime: string, columns = sampleColumns) => {
     0,
   );
 };
+
+/**
+ * The dock's strip at `SAMPLE_CLOCK`: the columns above, the next seven Irish
+ * days of them, 07:00 to 20:00 (src/strip.ts). The slider indexes these.
+ */
+export const stripAt = (now: number, columns = sampleColumns) =>
+  stripColumns(
+    columns.map((validTime) => ({
+      validTime,
+      model: harmonie.frames.some((f) => f.validTime === validTime)
+        ? "harmonie"
+        : "ecmwf",
+    })),
+    now,
+  );
+export const sampleStrip = stripAt(SAMPLE_CLOCK.getTime());

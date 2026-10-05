@@ -215,10 +215,20 @@
   left: auto;
   right: 4px;
 }
+/* Over the chart, just above the dock: a chip that comes and goes as the
+   reader crosses the map model's reach must not move the dock under the map. */
 .map-reach {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
-  margin-top: 4px;
+  pointer-events: none;
+}
+.map-reach-chip {
+  pointer-events: auto;
+  box-shadow: var(--shadow-surface);
 }
 .map-reach-chip {
   display: inline-flex;
@@ -571,5 +581,10 @@ table.tt {
   }
   .dk-stars-q {
     left: 34px;
+  }
+}
+@media (max-width: 720px) {
+  .map-reach {
+    bottom: calc(100% + 66px);
   }
 }

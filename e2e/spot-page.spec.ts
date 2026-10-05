@@ -221,18 +221,17 @@ test("the map's spot popup and dock both open the spot page", async ({
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
-  // The dock opens on Brandon Bay, and links to its page beside the name.
-  await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay");
+  // The dock opens on Brandon Bay, and links to its page.
+  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
   await expect(
-    page.locator(".dock-place [data-spot-page-link]"),
+    page.locator(".dock [data-spot-page-link]"),
   ).toHaveAttribute("href", "/spot/brandon");
 
-  await page.getByLabel("Open spot search").click();
-  await page.getByRole("searchbox").fill("Brandon");
+  await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
   await page.locator(".spot-row").first().click();
-  const popup = page.getByRole("dialog", { name: /Brandon Bay information/ });
+  const popup = page.getByRole("dialog", { name: /Brandon Bay at a glance/ });
   await expect(popup).toBeVisible();
-  const link = popup.getByRole("link", { name: "Open spot page" });
+  const link = popup.getByRole("link", { name: "Spot page →" });
   await expect(link).toHaveAttribute("href", "/spot/brandon");
   await link.click();
   await expect(page).toHaveURL(/\/spot\/brandon$/);
@@ -242,7 +241,7 @@ test("the map's spot popup and dock both open the spot page", async ({
   // And back to the map, on the same place.
   await page.locator("[data-back-to-map]").click();
   await expect(page).toHaveURL(/\/\?spot=brandon$/);
-  await expect(page.locator(".dock-place strong")).toHaveText("Brandon Bay", {
+  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
     timeout: 30000,
   });
 });

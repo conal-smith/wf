@@ -163,7 +163,7 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
     /active/,
     { timeout: 30000 },
   );
-  await expect(page.getByRole("table", { name: /Dollymount/ })).toBeVisible();
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
 });
 
 test("a thread without a spot shows no card, and neither does a spot the map does not list", async ({

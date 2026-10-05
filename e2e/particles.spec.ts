@@ -6,6 +6,7 @@ declare global {
   }
 }
 
+/** Counts the particle canvas's strokes and clears, and its field rebuilds. */
 async function instrument(page: Page) {
   await page.addInitScript(() => {
     window.particleWork = { strokes: 0, clears: 0, fields: 0 };
@@ -22,7 +23,7 @@ async function instrument(page: Page) {
         window.particleWork.clears++;
       return clear.apply(this, args);
     };
-    // Identify screen-space vector-grid allocations by their exact dimensions.
+    // The screen-space field: three numbers per 10 px cell.
     window.Float32Array = new Proxy(Float32Array, {
       construct(target, args) {
         const canvas =
@@ -30,9 +31,9 @@ async function instrument(page: Page) {
         if (
           canvas &&
           args[0] ===
-            (Math.ceil(canvas.clientWidth / 9) + 1) *
-              (Math.ceil(canvas.clientHeight / 9) + 1) *
-              2
+            (Math.ceil(canvas.clientWidth / 10) + 1) *
+              (Math.ceil(canvas.clientHeight / 10) + 1) *
+              3
         )
           window.particleWork.fields++;
         return Reflect.construct(target, args);
@@ -59,21 +60,26 @@ async function expectResumed(page: Page) {
     .toBeGreaterThan(before + 2);
 }
 
-test("particle work stops when disabled, hidden or reduced-motion, and resumes", async ({
+/** Pixels the particle canvas has ink on. */
+const inked = (page: Page) =>
+  page.locator(".particle-canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const data = canvas
+      .getContext("2d")!
+      .getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) count++;
+    return count;
+  });
+
+test("particle work stops when hidden or for reduced motion, and resumes", async ({
   page,
 }) => {
   await instrument(page);
-  await page.getByLabel("Layers", { exact: true }).click();
-  await page.getByLabel("Moving particles", { exact: true }).uncheck();
-  await expectIdle(page);
-  await page.getByLabel("Moving particles", { exact: true }).check();
-  await expectResumed(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expectIdle(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await expectResumed(page);
-  // Deterministically exercise the visibility lifecycle without relying on
-  // headless Chromium's tab-occlusion policy.
+  // The visibility lifecycle, without relying on headless tab occlusion.
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", {
       configurable: true,
@@ -89,9 +95,7 @@ test("particle work stops when disabled, hidden or reduced-motion, and resumes",
   await expectResumed(page);
 });
 
-test("dragging defers vector-grid rebuilds until movement ends", async ({
-  page,
-}) => {
+test("dragging defers field rebuilds until the map stops", async ({ page }) => {
   await instrument(page);
   await page.mouse.move(700, 260);
   await page.mouse.down();
@@ -112,4 +116,41 @@ test("dragging defers vector-grid rebuilds until movement ends", async ({
   await expectResumed(page);
   await page.getByRole("slider", { name: "Forecast time" }).fill("4");
   await expectResumed(page);
+});
+
+test("every wind style keeps the arrows drawing, in any order, and is remembered", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+    timeout: 30000,
+  });
+  const canvas = page.locator(".particle-canvas");
+  await expect(canvas).toHaveAttribute("data-wind-style", "ink");
+  await expect.poll(() => inked(page)).toBeGreaterThan(100);
+  const layers = page.getByRole("button", { name: "Layers", exact: true });
+  await layers.click();
+  const panel = page.getByRole("group", { name: "Layers" });
+  for (const [name, style] of [
+    ["Faint wash", "wash"],
+    ["Coloured arrows", "arrows"],
+    ["Ink", "ink"],
+    ["Coloured arrows", "arrows"],
+    ["Faint wash", "wash"],
+    ["Ink", "ink"],
+  ]) {
+    await panel.getByRole("radio", { name }).check();
+    await expect(canvas).toHaveAttribute("data-wind-style", style);
+    // Fresh arrows in the new style, not what was left of the last one.
+    await page.waitForTimeout(150);
+    await expect.poll(() => inked(page), { message: name }).toBeGreaterThan(100);
+  }
+  await panel.getByRole("radio", { name: "Faint wash" }).check();
+  await page.reload();
+  await expect(page.locator(".particle-canvas")).toHaveAttribute(
+    "data-wind-style",
+    "wash",
+    { timeout: 30000 },
+  );
+  await expect.poll(() => inked(page)).toBeGreaterThan(100);
 });

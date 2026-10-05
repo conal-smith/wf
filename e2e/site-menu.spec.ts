@@ -23,10 +23,12 @@ const SECTIONS = ["Wind map", "Marketplace", "Community", "Use with AI"];
 test("on the map the menu opens by keyboard and Escape closes only the menu", async ({
   page,
 }) => {
-  await page.goto("/");
-  // The forecast sheet is open by default, and the map's own global Escape
-  // handler closes it. That is the thing the menu must not let through.
-  await expect(page.locator(".app-shell.sheet-open")).toHaveCount(1);
+  // A linked spot opens focused, and the map's own global Escape handler
+  // clears the focus. That is the thing the menu must not let through.
+  await page.goto("/?spot=keel");
+  await expect(page.locator(".app-shell.is-focus")).toHaveCount(1, {
+    timeout: 30000,
+  });
 
   await trigger(page).focus();
   await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
@@ -56,11 +58,11 @@ test("on the map the menu opens by keyboard and Escape closes only the menu", as
   await page.keyboard.press("Escape");
   await expect(panel(page)).toHaveCount(0);
   await expect(trigger(page)).toBeFocused();
-  await expect(page.locator(".app-shell.sheet-open")).toHaveCount(1);
+  await expect(page.locator(".app-shell.is-focus")).toHaveCount(1);
 
   // A second Escape, with the menu closed, reaches the map as it always did.
   await page.keyboard.press("Escape");
-  await expect(page.locator(".app-shell.sheet-open")).toHaveCount(0);
+  await expect(page.locator(".app-shell.is-focus")).toHaveCount(0);
 });
 
 test("on the map the menu opens by click and closes on a click outside", async ({
@@ -134,7 +136,7 @@ test("the menu carries the reader between the map and the marketplace", async ({
 
   await row(page, "Wind map").click();
   await page.waitForURL((url) => url.pathname === "/");
-  await expect(page.locator(".site-header")).toBeVisible();
+  await expect(page.locator(".map-head")).toBeVisible();
   await expect(trigger(page)).toBeVisible();
 });
 
@@ -176,7 +178,7 @@ test("the menu carries the reader into the community and back out of it", async 
 
   await row(page, "Wind map").click();
   await page.waitForURL((url) => url.pathname === "/");
-  await expect(page.locator(".site-header")).toBeVisible();
+  await expect(page.locator(".map-head")).toBeVisible();
 });
 
 test("a direct load of a community URL renders the community and its menu", async ({
@@ -203,16 +205,18 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
         document.documentElement.clientWidth,
     );
 
+  // The chart's head: the menu, the name and "Find a spot…" on one row, clear
+  // of the controls on the right.
   const menu = (await trigger(page).boundingBox())!;
+  const brand = (await page.locator(".map-brand").boundingBox())!;
   const search = (await page
-    .getByRole("button", { name: "Open spot search" })
+    .getByRole("combobox", { name: "Find a spot" })
     .boundingBox())!;
-  const topbar = (await page.locator(".map-topbar").boundingBox())!;
-  // One row, in order, clear of the top-right chrome.
-  expect(Math.abs(menu.y - search.y)).toBeLessThan(1);
-  expect(menu.x + menu.width).toBeLessThanOrEqual(search.x);
-  expect(search.x + search.width).toBeLessThanOrEqual(topbar.x);
-  expect(menu.height).toBeGreaterThanOrEqual(40);
+  const controls = (await page.locator(".map-ctrl").boundingBox())!;
+  expect(Math.abs(menu.y + menu.height / 2 - (brand.y + brand.height / 2))).toBeLessThan(4);
+  expect(menu.x + menu.width).toBeLessThanOrEqual(brand.x);
+  expect(brand.x + brand.width).toBeLessThanOrEqual(search.x);
+  expect(search.x + search.width).toBeLessThanOrEqual(controls.x);
   expect(await overflow()).toBeLessThanOrEqual(0);
 
   await trigger(page).click();
@@ -221,15 +225,6 @@ test("at 390px the menu shares the header row without wrapping or scrolling", as
   expect(open.x + open.width).toBeLessThanOrEqual(390);
   expect(open.y).toBeGreaterThanOrEqual(menu.y + menu.height);
   expect(await overflow()).toBeLessThanOrEqual(0);
-
-  // With the search open the whole row stands down, so the panel keeps the
-  // header's width and its usual place.
-  await page.keyboard.press("Escape");
-  await expect(panel(page)).toHaveCount(0);
-  await page.getByRole("button", { name: "Open spot search" }).click();
-  await expect(trigger(page)).toBeHidden();
-  const box = (await page.locator(".search-box").boundingBox())!;
-  expect(box.y).toBeLessThanOrEqual(menu.y + 1);
 });
 
 test("at 390px the marketplace header takes the menu without squeezing a label", async ({
@@ -313,7 +308,7 @@ test.describe("on a coarse pointer", () => {
       [x, y],
     );
 
-  test("the map's trigger does not reach over the search button", async ({
+  test("the map's trigger does not reach over the name beside it", async ({
     page,
   }) => {
     await page.goto("/");
@@ -321,9 +316,9 @@ test.describe("on a coarse pointer", () => {
       await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches),
     ).toBe(true);
 
-    const search = page.getByRole("button", { name: "Open spot search" });
+    const search = page.locator(".map-brand");
     const box = (await search.boundingBox())!;
-    // One pixel inside the search trigger's leading edge, at its middle.
+    // One pixel inside the name's leading edge, at its middle.
     const owner = await ownerAt(page, box.x + 1, box.y + box.height / 2);
     expect(owner.onTrigger).toBe(false);
 
