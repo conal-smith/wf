@@ -39,7 +39,9 @@ function main() {
   for (const entry of readdirSync(join(ROOT, "public"), {
     withFileTypes: true,
   })) {
-    if (entry.isDirectory() && GENERATED.has(entry.name)) continue;
+    // By name, not by kind: in a worktree these are often symlinks to the main
+    // checkout's ingest output, which `isDirectory()` does not see as one.
+    if (GENERATED.has(entry.name)) continue;
     cpSync(join(ROOT, "public", entry.name), join(E2E_PUBLIC, entry.name), {
       recursive: true,
     });
