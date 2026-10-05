@@ -12,7 +12,20 @@
  * median, the range and an agreement label on the same 4 kn / 8 kn thresholds
  * the dock's blend uses (force5/src/blend.ts). It is not bias-corrected and not
  * weighted by any model's past accuracy.
+ *
+ * Beside it, where an ensemble reaches the spot, the chance it rides: the share
+ * of the ensembles' members (ECMWF ENS and GEFS, each member its own run) whose
+ * rideable wind reaches the rider's floor, rated the way the stars rate an hour
+ * (force5/src/stars.ts). It is the members' own spread, not the models'.
  */
+import {
+  DEFAULT_RIDER,
+  rideableWind,
+  riderWeight,
+  windBand,
+  type Rider,
+  type Skill,
+} from "../../force5/src/stars.js";
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
 import type { ForecastSource } from "./httpSource.js";
@@ -231,6 +244,10 @@ interface WindPoint {
 interface WindManifest {
   spotForecasts: Record<string, unknown>;
   gustAvailable?: boolean;
+  /** Ensembles only: how many members each frame of `spotMembers` holds. */
+  ensemble?: { members?: number };
+  /** Ensembles only: every member's own series, one frame per step. */
+  spotMembers?: Record<string, unknown>;
 }
 interface VariableStep {
   time: number;
@@ -558,6 +575,148 @@ export function hourWind(
   return hour;
 }
 
+// ---- the ensembles' members -------------------------------------------------------
+
+export interface MemberLines {
+  run: ModelRun;
+  /** One series per member, each sorted by time. */
+  members: WindPoint[][];
+  gap: number;
+}
+
+/** Every member's own series for a spot, or null where the model has none. */
+function memberPoints(
+  manifest: WindManifest,
+  spotId: string,
+): WindPoint[][] | null {
+  const series = manifest.spotMembers?.[spotId];
+  const count = manifest.ensemble?.members;
+  if (!Array.isArray(series) || !finite(count) || count < 1) return null;
+  const members: WindPoint[][] = Array.from({ length: count }, () => []);
+  for (const row of series) {
+    if (!isObject(row) || !Array.isArray(row.u) || !Array.isArray(row.v))
+      continue;
+    const time = Date.parse(row.validTime as string);
+    if (!Number.isFinite(time)) continue;
+    const gusts = Array.isArray(row.gust) ? row.gust : [];
+    for (let m = 0; m < count; m++) {
+      const u = row.u[m];
+      const v = row.v[m];
+      if (!finite(u) || !finite(v)) continue;
+      const gust = gusts[m];
+      members[m].push({
+        time,
+        u,
+        v,
+        gust: manifest.gustAvailable !== false && finite(gust) ? gust : null,
+      });
+    }
+  }
+  const live = members.filter((points) => points.length);
+  return live.length
+    ? live.map((points) => points.sort((a, b) => a.time - b.time))
+    : null;
+}
+
+/** The ensembles that publish their members for this spot. */
+export function spotMemberLines(
+  wind: Loaded<WindManifest>[],
+  spotId: string,
+): MemberLines[] {
+  return wind.flatMap(({ run, manifest }) => {
+    const members = memberPoints(manifest, spotId);
+    return members ? [{ run, members, gap: maxGap(members[0]) }] : [];
+  });
+}
+
+/** One member's wind at an hour, in knots: [mean, gust or null]. */
+export type MemberSample = [number, number | null];
+
+/** Every member that reaches `time`, from every ensemble, and whose they are. */
+export function memberSamples(
+  lines: readonly MemberLines[],
+  time: number,
+): { samples: MemberSample[]; models: string[] } {
+  const samples: MemberSample[] = [];
+  const models: string[] = [];
+  for (const { run, members, gap } of lines) {
+    let any = false;
+    for (const points of members) {
+      const at = windAt(points, time, gap);
+      if (!at) continue;
+      any = true;
+      samples.push([
+        round(Math.hypot(at.u, at.v) * KNOTS),
+        at.gust === null ? null : round(at.gust * KNOTS),
+      ]);
+    }
+    if (any) models.push(run.name);
+  }
+  return { samples, models };
+}
+
+/**
+ * The chance it rides, in whole per cent: the share of members whose rideable
+ * wind (the mean lifted toward that member's own gust, as the stars read it)
+ * reaches the rider's floor. Null with no members.
+ */
+export function rideChance(
+  samples: readonly MemberSample[],
+  rider: Rider,
+): number | null {
+  if (!samples.length) return null;
+  const floor = windBand(rider).min;
+  const riding = samples.filter(
+    ([wind, gust]) => rideableWind(wind, gust, rider) >= floor,
+  ).length;
+  return Math.round((100 * riding) / samples.length);
+}
+
+/** A sorted list's value at a fraction of the way along, interpolated. */
+function quantile(sorted: readonly number[], q: number): number {
+  const at = (sorted.length - 1) * q;
+  const low = Math.floor(at);
+  const high = Math.ceil(at);
+  return sorted[low] + (sorted[high] - sorted[low]) * (at - low);
+}
+
+export interface HourEnsemble {
+  /** Members that reach this hour, across every ensemble that does. */
+  members: number;
+  /** The ensembles behind them. */
+  models: string[];
+  /** The members' mean wind at the 10th, 50th and 90th percentile, knots. */
+  p10_kn: number;
+  p50_kn: number;
+  p90_kn: number;
+  /** Per cent of members whose rideable wind reaches the rider's floor. */
+  chance_pct: number;
+  /** Each member's [wind, gust] in knots, when asked for (`members`). */
+  samples?: MemberSample[];
+}
+
+export function hourEnsemble(
+  lines: readonly MemberLines[],
+  time: number,
+  rider: Rider,
+  keepSamples = false,
+): HourEnsemble | null {
+  const { samples, models } = memberSamples(lines, time);
+  const chance = rideChance(samples, rider);
+  if (chance === null) return null;
+  const speeds = samples.map(([wind]) => wind).sort((a, b) => a - b);
+  const hour: HourEnsemble = {
+    members: samples.length,
+    models,
+    p10_kn: round(quantile(speeds, 0.1)),
+    p50_kn: round(quantile(speeds, 0.5)),
+    p90_kn: round(quantile(speeds, 0.9)),
+    chance_pct: chance,
+  };
+  if (keepSamples) hour.samples = samples;
+  return hour;
+}
+
 // ---- marine ----------------------------------------------------------------------
 
 interface SpotVariables {
@@ -750,6 +909,17 @@ export interface ForecastHour {
   wind: HourWind | null;
   waves?: HourWaves | null;
   weather?: HourWeather | null;
+  /** Where an ensemble reaches the spot: its members, and the chance it rides. */
+  ensemble?: HourEnsemble | null;
+}
+
+/** Who the chance it rides was worked out for, and the floor that asked of them. */
+export interface RideChanceBasis {
+  skill: Skill;
+  weight_kg: number;
+  /** The rideable wind a member must reach to count, in knots. */
+  floor_kn: number;
+  ensembles: string[];
 }
 
 export interface SpotForecast {
@@ -760,6 +930,8 @@ export interface SpotForecast {
   sun: { date: string; sunrise: string | null; sunset: string | null }[];
   tides: SpotTides | { note: string } | null;
   sea_temperature: SpotSea | null;
+  /** Null where no ensemble publishes its members for this spot. */
+  ride_chance: RideChanceBasis | null;
   sources: {
     wind: ModelRun[];
     wind_outside_domain: string[];
@@ -776,7 +948,10 @@ export const METHOD =
   "models, a vector-mean direction, and agreement: high when the models sit " +
   `within ${AGREEMENT_HIGH_KN} kn of each other, moderate within ` +
   `${AGREEMENT_MODERATE_KN} kn, otherwise low. Not bias-corrected against ` +
-  "observations. Waves come from the finest wave model that covers the spot. " +
+  "observations. The chance it rides is the share of ensemble members " +
+  "(ECMWF ENS and GEFS, every member counted) whose wind, lifted part of the " +
+  "way to its gusts as a foil rides it, reaches the rider's floor. " +
+  "Waves come from the finest wave model that covers the spot. " +
   "Model forecasts only: never a statement that conditions are safe.";
 
 export const UNITS = {
@@ -785,6 +960,7 @@ export const UNITS = {
   waves: "metres (significant height), seconds (peak period)",
   temperature: "°C",
   rain: "mm in the forecast step",
+  chance: "per cent of ensemble members",
   time: "UTC ISO time, with `local` in Europe/Dublin",
 };
 
@@ -792,7 +968,14 @@ export async function spotForecast(
   source: ForecastSource,
   spot: RidingSpot,
   window: Window,
-  options: { perModel?: boolean; now: number },
+  options: {
+    perModel?: boolean;
+    now: number;
+    /** Who the chance it rides is for; the 80 kg intermediate by default. */
+    rider?: Rider;
+    /** Keep every member's wind and gust per hour, to re-rate for another rider. */
+    members?: boolean;
+  },
 ): Promise<SpotForecast> {
   const [wind, waves, weather, tides, sea] = await Promise.all([
     loadWind(source, options.now),
@@ -802,6 +985,8 @@ export async function spotForecast(
     spotSea(source, spot.id),
   ]);
   const { lines, outside } = spotWindLines(wind.loaded, spot.id);
+  const memberLines = spotMemberLines(wind.loaded, spot.id);
+  const rider = options.rider ?? DEFAULT_RIDER;
   const waveSource = preferredSource(waves.loaded, spot.id, ["swh"]);
   const weatherSource = preferredSource(weather.loaded, spot.id, ["t2m"]);
   const hours = axis(window).map((time): ForecastHour => {
@@ -813,6 +998,13 @@ export async function spotForecast(
     };
     if (waveSource) hour.waves = hourWaves(waveSource, time);
     if (weatherSource) hour.weather = hourWeather(weatherSource, time);
+    if (memberLines.length)
+      hour.ensemble = hourEnsemble(
+        memberLines,
+        time,
+        rider,
+        options.members ?? false,
+      );
     return hour;
   });
   const days = new Set(hours.map((h) => h.time.slice(0, 10)));
@@ -836,6 +1028,14 @@ export async function spotForecast(
     sun,
     tides,
     sea_temperature: sea,
+    ride_chance: memberLines.length
+      ? {
+          skill: rider.skill,
+          weight_kg: riderWeight(rider),
+          floor_kn: round(windBand(rider).min),
+          ensembles: memberLines.map((l) => l.run.name),
+        }
+      : null,
     sources: {
       wind: lines.map((l) => l.run),
       wind_outside_domain: outside,
