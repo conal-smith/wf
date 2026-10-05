@@ -66,6 +66,7 @@ const COLOURS: Record<string, string> = {
   sunken: "#e1e8f3",
   inverse: "#0b2545",
   scrim: "#0a1f3c73",
+  film: "#000",
   // The basemap's two fills, and the bar a forecast cell draws behind its
   // number. The wash is `sea`'s value under a name of its own: it is a
   // quantity, not water.

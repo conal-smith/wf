@@ -302,3 +302,19 @@ describe("ui/theme.css: blur, measures and animation", () => {
     );
   });
 });
+
+// The opening film (intro/web) needed values the site had not used: a title
+// larger than any reading, a fade slower than any control's, and a layer above
+// the dialogs. Its black is pinned with the other colours, in
+// tests/ui-theme.test.ts.
+describe("ui/theme.css: the opening film", () => {
+  it.each([
+    ["text-display", "--text-display", "76px"],
+    ["duration-slow", "--transition-duration-slow", "900ms"],
+    ["z-intro", "--z-index-intro", "40"],
+  ])("%s reads %s, which is %s", (name, variable, value) => {
+    const css = build([name]);
+    expect(css).toContain(selector(name));
+    expect(css).toContain(`${variable}: ${value};`);
+  });
+});

@@ -7,6 +7,7 @@ import "./dock.css";
 import "../ui/theme.css";
 import App from "./App";
 import { isAiPath, isCommunityPath, isMarketPath } from "../force5/src/siteNav";
+import { IntroGate } from "../intro/web/IntroGate";
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
@@ -55,7 +56,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <AiApp />
       </Suspense>
     ) : (
-      <App />
+      // A first visit to the map opens with a short film (intro/web/decide.ts).
+      <IntroGate>
+        <App />
+      </IntroGate>
     )}
   </React.StrictMode>,
 );
