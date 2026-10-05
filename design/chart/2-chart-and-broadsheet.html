@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart &amp; Broadsheet · The Wingfoil Almanac</title>
+<meta name="description" content="Ireland's wing foil forecast as a chart with a newspaper down the side: each day's story moves the chart and a red pen marks it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600&family=Kalam:wght@300;400;700&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.7.0/dist/maplibre-gl.js"></script>
+<script src="../directions/data.js"></script>
+<script src="data/tides.js"></script>
+<script src="data/wind.js"></script>
+<script src="data/bathy-ireland.js"></script>
+<script src="data/bathy-bays.js"></script>
+<script src="data/soundings.js"></script>
+<script src="data/bathy-grids.js"></script>
+<script src="chart-kit.js"></script>
+<style>
+:root{
+  --paper:#F3EEE3; --paper2:#EDE6D6; --ink:#1A1D21; --sea:#D5E6EA; --depth:#5F8C9C; --depth2:#7FA6B3;
+  --mag:#B0186A; --buoy:#E9B200; --red:#D43A2C; --land:#EDE3C8;
+  --muted:rgba(26,29,33,.62); --faint:rgba(26,29,33,.38); --hair:rgba(26,29,33,.2);
+  --f-disp:'Fraunces',Georgia,serif; --f-body:'Newsreader',Georgia,serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,monospace; --f-hand:'Kalam',cursive;
+  --col:408px;
+}
+*{box-sizing:border-box}
+html{background:var(--paper);-webkit-text-size-adjust:100%}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;font-optical-sizing:auto;-webkit-font-smoothing:antialiased;overflow:hidden}
+body.on-spot{overflow:auto}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.5;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .06 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:89;background:radial-gradient(120% 90% at 50% 40%,transparent 60%,rgba(120,95,50,.10) 100%)}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--mag);outline-offset:3px;border-radius:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--f-mono);font-feature-settings:"tnum" 1}
+svg.stars{display:inline-block;vertical-align:middle;overflow:visible}
+
+/* ================= THE PAGE: paper column + chart ================= */
+#app{display:grid;grid-template-columns:var(--col) minmax(0,1fr);height:100vh;height:100dvh}
+body.on-spot #app{display:none}
+#paper{overflow-y:auto;overflow-x:hidden;border-right:1px solid var(--ink);position:relative;padding:0 24px 0 34px;scrollbar-width:thin;scrollbar-color:rgba(26,29,33,.25) transparent;background:var(--paper)}
+#paper::after{content:"";position:sticky;display:block;bottom:0;height:40px;margin:0 -24px 0 -34px;background:linear-gradient(transparent,var(--paper));pointer-events:none}
+
+/* masthead */
+.mast{padding-bottom:4px}
+.mrule{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 0 6px;border-bottom:1px solid var(--ink)}
+.np-row{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:8px;padding:10px 0 4px}
+.np-row svg{width:62px;height:68px;overflow:visible}
+.np{margin:0;font-family:var(--f-disp);font-variation-settings:"opsz" 144;font-weight:800;line-height:.88;letter-spacing:-.035em;font-size:37px}
+.np a{text-decoration:none}
+.np .the{font-weight:400;font-style:italic;font-size:.62em;letter-spacing:-.01em;margin-right:.08em}
+.np em{display:block;font-size:1.55em;font-style:italic;font-weight:400;color:var(--mag);letter-spacing:-.03em;margin-top:2px}
+.np-sub{margin:4px 0 10px;font-size:13.5px;line-height:1.3;color:var(--muted);font-style:italic}
+.dateline{display:flex;justify-content:space-between;gap:10px;border-top:3px double var(--ink);border-bottom:1px solid var(--ink);padding:5px 0 4px;font-family:var(--f-disp);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.dateline b{font-weight:600}
+.syn{font-size:15px;line-height:1.42;margin:12px 0 12px}
+.syn b{font-family:var(--f-disp);font-weight:700;font-variant-caps:all-small-caps;letter-spacing:.05em;font-size:15.5px}
+.index{border:1px solid var(--ink);padding:9px 12px 6px;position:relative;margin:4px 0 6px}
+.index::before{content:"";position:absolute;inset:3px;border:1px solid var(--hair);pointer-events:none}
+.index h3{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 4px;font-weight:500;color:var(--muted)}
+.index ol{list-style:none;margin:0;padding:0}
+.index li{border-top:1px solid var(--hair)}
+.index li:first-child{border-top:0}
+.index button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:baseline;width:100%;padding:5px 0;cursor:pointer;font-size:14px;line-height:1.25}
+.index button:hover .ih{color:var(--mag)}
+.index button:focus-visible{outline:2px solid var(--mag);outline-offset:2px}
+.index .id{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.index .ih{font-family:var(--f-disp);font-weight:600;font-size:14px}
+.index .is{font-family:var(--f-mono);font-size:11px;color:var(--mag);white-space:nowrap}
+
+/* stories */
+.story{padding:20px 0 18px;border-top:1px solid var(--ink);position:relative}
+.story + .story{border-top:3px double var(--ink)}
+.kick{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.kick b{color:var(--ink);font-weight:500}
+.story h2{font-family:var(--f-disp);font-weight:650;font-variation-settings:"opsz" 72;font-size:29px;line-height:1.02;letter-spacing:-.022em;margin:0 0 8px;text-wrap:balance;cursor:pointer}
+.story h2:hover{color:#000}
+.strap{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-family:var(--f-mono);font-size:11.5px;color:var(--ink);margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid var(--hair)}
+.strap .sess{font-family:var(--f-disp);font-style:italic;font-size:14px}
+.beat{position:relative;margin:0 0 11px;font-size:16px;line-height:1.48;transition:color .4s}
+.beat p{margin:0}
+.lead-beat p{font-size:16.5px}
+.lead-beat p::first-letter{font-family:var(--f-disp);font-weight:700;font-size:2.7em;float:left;line-height:.82;margin:.08em .07em 0 0;color:var(--ink)}
+.beat .lbl{font-family:var(--f-disp);font-weight:700;font-variant-caps:all-small-caps;letter-spacing:.05em;font-size:1.02em;color:var(--mag)}
+.m{white-space:nowrap;position:relative;cursor:pointer;font-weight:600;text-decoration:underline;text-decoration-color:rgba(26,29,33,.28);text-decoration-thickness:1px;text-underline-offset:3px}
+.m:hover{color:var(--mag)}
+.m.inked{text-decoration-color:transparent}
+.x{position:relative;white-space:nowrap}
+.ins{position:absolute;left:50%;bottom:78%;font-family:var(--f-hand);font-weight:400;color:var(--red);font-size:1.02em;line-height:1;white-space:nowrap;clip-path:inset(-40% 100% -40% -10%);transition:clip-path .5s linear;transform:translateX(-30%) rotate(-4deg);text-shadow:0 0 2px var(--paper),0 0 4px var(--paper),0 0 6px var(--paper);pointer-events:none;z-index:1}
+.ins.on{clip-path:inset(-40% -10% -40% -10%)}
+svg.ink{position:absolute;pointer-events:none;overflow:visible}
+svg.ink path{fill:none;stroke:var(--red);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.side{left:-22px;top:2px}
+.beat:not(.on) .side{opacity:0;transition:opacity .6s}
+.more{display:inline-block;margin-top:2px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-bottom:1px solid var(--ink);padding-bottom:1px}
+.more:hover{color:var(--mag);border-color:var(--mag)}
+.adhoc{font-family:var(--f-hand);color:var(--red);font-size:17px;line-height:1.3;margin:6px 0 10px;transform:rotate(-1deg)}
+.adhoc .m{font-weight:700;color:var(--red);text-decoration-color:rgba(212,58,44,.35)}
+.endmark{font-family:var(--f-disp);text-align:center;color:var(--muted);letter-spacing:.6em;margin:22px 0 4px}
+
+.small{border-top:3px double var(--ink);margin-top:20px;padding:12px 0 70px;font-size:12.5px;color:var(--muted);line-height:1.42}
+.small h3{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;color:var(--ink);margin:0 0 8px}
+.small p{margin:0 0 7px}
+.key{display:grid;grid-template-columns:40px 1fr;gap:6px 10px;margin:0 0 16px;align-items:center;color:var(--ink);font-size:13px;line-height:1.25}
+.key dt{display:flex;justify-content:center}
+.key dd{margin:0}
+.sig{display:flex;align-items:center;gap:10px;margin-top:14px;font-family:var(--f-hand);font-size:18px;color:var(--red)}
+.sig svg{width:44px;height:48px}
+
+/* chart pane */
+#chartpane{position:relative;min-width:0;min-height:0;background:var(--paper2)}
+.sheet{position:absolute;inset:12px 14px 12px 14px;background:var(--paper);border:1.5px solid var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.5),0 10px 30px -22px rgba(60,40,10,.6)}
+.sheet::before{content:"";position:absolute;inset:3px;border:1px solid var(--hair);pointer-events:none}
+#map{position:absolute;top:26px;left:26px;right:26px;bottom:88px;background:#F3F1EA}
+#grad{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.maplibregl-ctrl-attrib{font-family:var(--f-mono);font-size:9px}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib.maplibregl-compact{background:rgba(243,238,227,.85)}
+.cart{position:absolute;top:12px;left:12px;z-index:3;background:rgba(243,238,227,.93);border:1px solid var(--ink);padding:8px 12px 7px;text-align:center;pointer-events:none;max-width:250px}
+.cart::before{content:"";position:absolute;inset:2px;border:1px solid var(--hair)}
+.cart b{display:block;font-family:var(--f-disp);font-weight:700;font-size:17px;letter-spacing:.32em;margin-right:-.32em;line-height:1.1}
+.cart i{display:block;font-family:var(--f-disp);font-size:12px;margin:1px 0 5px}
+.cart .ct-w{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;border-top:1px solid var(--hair);padding-top:4px}
+.cart .ct-w span{font-weight:600}
+.cart small{display:block;font-size:10.5px;font-style:italic;color:var(--muted);margin-top:2px;line-height:1.2}
+.zoomctl{position:absolute;top:12px;right:12px;z-index:3;display:flex;flex-direction:column;border:1px solid var(--ink);background:var(--paper)}
+.zoomctl button{all:unset;cursor:pointer;width:30px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:16px;border-top:1px solid var(--hair)}
+.zoomctl button:first-child{border-top:0}
+.zoomctl button:hover{background:var(--ink);color:var(--paper)}
+.zoomctl button:focus-visible{outline:2px solid var(--mag);outline-offset:-2px}
+.zoomctl .ire{font-size:9px;letter-spacing:.06em;height:24px}
+
+/* spot markers */
+.spt{width:14px;height:14px;cursor:pointer}
+.spt i{position:absolute;left:3px;top:3px;width:8px;height:8px;border-radius:50%;border:1.2px solid var(--ink);background:var(--paper);transition:transform .25s}
+.spt.s1 i,.spt.s2 i{background:var(--depth2)}
+.spt.s3 i,.spt.s4 i,.spt.s5 i{background:var(--ink)}
+.spt.feat::after{content:"";position:absolute;left:-1px;top:-1px;width:16px;height:16px;border-radius:50%;border:.8px solid var(--ink)}
+.spt .fl{position:absolute;left:-1px;top:-14px;width:16px;height:22px;overflow:visible;display:none;pointer-events:none}
+.spt.s4 .fl,.spt.s5 .fl{display:block}
+.spt b{position:absolute;left:15px;top:-3px;font-family:var(--f-disp);font-style:italic;font-weight:600;font-size:12px;line-height:1;white-space:nowrap;color:var(--ink);text-shadow:0 0 2px #F3F1EA,0 0 3px #F3F1EA,0 0 5px #F3F1EA;display:none;pointer-events:none}
+.spt.feat b,.spt.act b,.z-hi .spt b{display:block}
+.z-lo .spt:not(.feat):not(.act) i{transform:scale(.8)}
+.spt.act i{transform:scale(1.35)}
+.spt.act b{font-size:13.5px}
+.spt:hover i,.spt:focus-visible i,.spt.hov i{transform:scale(1.6);box-shadow:0 0 0 3px rgba(176,24,106,.25)}
+.spt:focus-visible{outline:none}
+.spt.dim{opacity:.55}
+
+/* the hand: Kalam notes on the chart */
+.hand{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.hn{position:absolute;left:0;top:0;font-family:var(--f-hand);color:var(--red);font-size:18px;line-height:1;white-space:nowrap;text-shadow:0 0 2px #F3F1EA,0 0 4px #F3F1EA,0 0 7px #F3F1EA;transform-origin:0 50%;will-change:transform}
+.hn .w{position:relative;display:inline-block;clip-path:inset(-40% 100% -40% -8%)}
+.hn.on .w{clip-path:inset(-40% -8% -40% -8%)}
+.hn .w + .w{margin-left:.3em}
+.hn svg{position:absolute;left:0;top:0;overflow:visible}
+.hn svg path{fill:none;stroke:var(--red);stroke-width:2;stroke-linecap:round}
+.hn.ink{color:var(--ink)}
+.shoal{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+/* margin: the time ruler under the chart */
+#ruler{position:absolute;left:26px;right:26px;bottom:10px;height:64px}
+#ruler svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;cursor:ew-resize;touch-action:none}
+#ruler .rhand{position:absolute;inset:0;pointer-events:none}
+#ruler .rn{position:absolute;top:44px;font-family:var(--f-hand);color:var(--red);font-size:17px;white-space:nowrap;line-height:1;transform:translateX(-50%) rotate(-1.5deg);clip-path:inset(-40% 100% -40% -8%)}
+#ruler .rn.on{clip-path:inset(-40% -8% -40% -8%)}
+.rtip{font-family:var(--f-mono);font-size:9px;fill:rgba(26,29,33,.6);letter-spacing:.06em}
+.rday{font-family:var(--f-mono);font-size:9.5px;font-weight:600;fill:var(--ink);letter-spacing:.1em}
+.rmk{cursor:pointer}
+.rmk circle{fill:var(--paper);stroke:var(--ink);stroke-width:1.1}
+.rmk text{font-family:var(--f-mono);font-size:8.5px;font-weight:600;fill:var(--ink)}
+.rmk.on circle{fill:var(--ink)}
+.rmk.on text{fill:var(--paper)}
+.rmk:hover circle{stroke:var(--mag);stroke-width:2}
+
+/* hover card */
+.card{position:absolute;z-index:6;width:230px;pointer-events:none;background:rgba(243,238,227,.96);padding:8px 11px 9px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);box-shadow:0 6px 20px -14px rgba(40,30,10,.6);opacity:0;transform:translateY(4px);transition:opacity .18s,transform .2s}
+.card.on{opacity:1;transform:none}
+.card .c-co{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card .c-nm{font-family:var(--f-disp);font-weight:650;font-size:17px;line-height:1.1;margin:1px 0 4px}
+.card .c-l{font-size:13.5px;line-height:1.3}
+.card .c-l .mono{font-size:11.5px}
+.card .c-go{font-family:var(--f-hand);color:var(--red);font-size:15px;margin-top:4px}
+
+/* ================= SPOT FRONT PAGE ================= */
+#spotview{display:none;padding:0 28px 80px}
+body.on-spot #spotview{display:block;animation:pageIn .6s cubic-bezier(.2,.7,.2,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sp-mast{max-width:1300px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding:10px 0 8px;border-bottom:3px double var(--ink)}
+.sp-mast .np-s{font-family:var(--f-disp);font-weight:800;font-size:30px;letter-spacing:-.03em;text-decoration:none;line-height:1}
+.sp-mast .np-s em{font-weight:400;color:var(--mag)}
+.sp-mast span{justify-self:end;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.back{justify-self:start;text-decoration:none;color:var(--ink);border-bottom:1px solid var(--ink);padding-bottom:1px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.back:hover{color:var(--mag);border-color:var(--mag)}
+.sp{max-width:1300px;margin:0 auto}
+.kick-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 0 8px;border-bottom:1px solid var(--hair)}
+.headline{font-family:var(--f-disp);font-variation-settings:"opsz" 144,"SOFT" 0;font-weight:700;font-size:clamp(38px,5.4vw,80px);line-height:.96;letter-spacing:-.035em;margin:18px 0 16px;max-width:1150px;text-wrap:balance}
+.headline em{font-weight:400;font-style:italic;letter-spacing:-.02em}
+.headline .colon{color:var(--mag)}
+.sp-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:0 30px;align-items:start}
+.inset{margin:0}
+.inset .isheet{position:relative;height:540px;border:1.5px solid var(--ink);background:var(--paper)}
+.inset .isheet::before{content:"";position:absolute;inset:3px;border:1px solid var(--hair);pointer-events:none;z-index:1}
+#imap{position:absolute;inset:22px}
+#igrad{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2}
+.inset figcaption{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-style:italic;margin:7px 0 0;line-height:1.3}
+.inset figcaption i{font-style:normal}
+.hatch{display:inline-block;width:22px;height:11px;vertical-align:-1px;margin-right:4px;border:1px solid rgba(212,58,44,.6);background:repeating-linear-gradient(135deg,rgba(212,58,44,.7) 0 1.4px,transparent 1.4px 5px)}
+.deck{font-family:var(--f-body);font-style:italic;font-size:19px;line-height:1.36;margin:0 0 12px;font-variation-settings:"opsz" 36;text-wrap:pretty}
+.byline{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--ink);border-bottom:1px solid var(--hair);padding:6px 0;margin-bottom:14px}
+.byline b{font-family:var(--f-disp);font-weight:600;color:var(--ink);font-style:italic}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:4px;margin:0 0 6px;flex-wrap:wrap}
+.sec-h h2{font-family:var(--f-disp);font-weight:600;font-size:22px;margin:0;letter-spacing:-.01em}
+.sec-h h2 em{font-weight:400}
+.sec-h .aside{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);letter-spacing:.04em}
+.wk{width:100%;border-collapse:collapse;margin:0 0 16px}
+.wk td{padding:0;border-bottom:1px solid var(--hair)}
+.wk button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:60px 86px 1fr;gap:4px 10px;align-items:center;width:100%;padding:7px 8px;cursor:pointer;position:relative}
+.wk button:hover{background:rgba(26,29,33,.04)}
+.wk button.on{background:rgba(213,230,234,.6)}
+.wk button.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ink)}
+.wk button:focus-visible{outline:2px solid var(--mag);outline-offset:-2px}
+.wk .dn{font-family:var(--f-disp);font-weight:650;font-size:16px;line-height:1}
+.wk .dn small{display:block;font-family:var(--f-mono);font-weight:400;font-size:9.5px;color:var(--muted);letter-spacing:.06em;margin-top:2px}
+.wk .dl{font-size:13px;line-height:1.25;color:var(--muted)}
+.wk .dl b{font-family:var(--f-mono);font-weight:500;font-size:11.5px;color:var(--ink)}
+.wk .dl i{font-family:var(--f-disp);color:var(--ink)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13.5px;margin:0}
+.facts dt{font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding-top:3px}
+.facts dd{margin:0}
+.facts .cap{font-style:italic;color:var(--muted);font-size:12.5px}
+.box{border-top:3px double var(--ink);padding:8px 0 14px}
+.box h3{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;margin:0 0 6px;color:var(--muted)}
+.hsec{margin-top:30px}
+.tscroll{overflow-x:auto;position:relative;scrollbar-width:thin;padding:14px 14px 10px;margin:-14px -14px 0}
+.tinner{position:relative;min-width:860px}
+table.hourly{width:100%;border-collapse:collapse;font-size:14px}
+.hourly thead th{font-family:var(--f-mono);font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 8px 6px;border-bottom:1px solid var(--ink);white-space:nowrap}
+.hourly td{padding:0 7px;height:34px;border-bottom:1px solid var(--hair);white-space:nowrap;vertical-align:middle}
+.hourly td.t{font-family:var(--f-mono);font-size:13px;font-weight:500}
+.hourly tr.night td{color:var(--faint);background-image:repeating-linear-gradient(135deg,rgba(26,29,33,.05) 0 1px,transparent 1px 5px)}
+.hourly tr.past td{opacity:.5}
+.hourly .kn{font-family:var(--f-mono);font-size:15px;font-weight:600}
+.hourly .g{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.hourly .sess{font-family:var(--f-disp);font-style:italic;font-size:14.5px}
+.hourly .shore{font-style:italic}
+.hourly .shore.bad{color:var(--red)}
+.hourly .wing{font-family:var(--f-mono);font-weight:600;font-size:14px}
+.hourly .wing small{font-weight:400;color:var(--muted)}
+.hourly .sm{font-family:var(--f-mono);font-size:12px}
+.hourly .dir{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:12px}
+.hourly sup{font-family:var(--f-mono);font-size:10px;color:var(--red);font-weight:600;margin-left:2px}
+.hourly tr.best td{background:rgba(233,178,0,.09)}
+.tpen{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:3}
+.tpen path{fill:none;stroke:var(--red);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+.pen-note{position:absolute;z-index:4;padding:1px 8px 2px;background:rgba(243,238,227,.92);border-radius:3px;font-family:var(--f-hand);color:var(--red);font-size:18px;line-height:1.12;transform:rotate(-2.5deg);pointer-events:none;white-space:nowrap;text-shadow:0 0 3px var(--paper),0 0 6px var(--paper)}
+ol.fn{list-style:none;padding:0;margin:10px 0 0;font-size:13.5px;color:var(--muted);columns:2;column-gap:28px}
+ol.fn li{break-inside:avoid;margin:0 0 4px;padding-left:20px;text-indent:-20px}
+ol.fn li b{font-family:var(--f-mono);color:var(--red);font-weight:600;font-size:11px;display:inline-block;width:20px;text-indent:0}
+.strip-scroll{overflow-x:auto;scrollbar-width:thin}
+.strip{display:block;width:100%;min-width:860px;height:auto}
+.strip .dsel{cursor:pointer}
+.tcap{font-size:13px;color:var(--muted);font-style:italic;margin:6px 0 0;display:flex;gap:6px 18px;flex-wrap:wrap}
+.colophon{margin-top:30px;border-top:3px double var(--ink);padding-top:10px;font-size:12.5px;color:var(--muted);columns:2;column-gap:34px}
+.colophon p{margin:0 0 6px}
+
+@media (max-width:1180px){
+  :root{--col:360px}
+  .story h2{font-size:26px}
+  .sp-grid{grid-template-columns:1fr}
+  .inset .isheet{height:460px}
+}
+
+/* ================= PHONE: the column is the page, the chart a band ================= */
+@media (max-width:760px){
+  body{overflow:auto}
+  #app{display:flex;flex-direction:column;height:auto}
+  #paper{display:contents}
+  #paper::after{display:none}
+  .mast{order:1;padding:0 16px 4px}
+  #chartpane{order:2;position:sticky;top:0;z-index:20;height:46vh;height:46svh;min-height:300px;flex:none;border-bottom:1.5px solid var(--ink);box-shadow:0 8px 18px -14px rgba(40,30,10,.6)}
+  #stories{order:3;padding:0 16px 0 28px}
+  .small{order:4;margin:0 16px}
+  .sheet{inset:0;border:0;box-shadow:none}
+  .sheet::before{display:none}
+  #map{top:0;left:0;right:0;bottom:44px}
+  #grad{display:none}
+  #ruler{left:10px;right:10px;bottom:3px;height:40px}
+  #ruler .rn{top:25px;font-size:13px}
+  .cart{top:8px;left:8px;padding:5px 8px 4px;max-width:170px}
+  .cart b{display:none}
+  .cart i,.cart small{display:none}
+  .cart .ct-w{border:0;padding:0;font-size:9.5px}
+  .cart .ct-w span{display:block}
+  .zoomctl{top:8px;right:8px}
+  .zoomctl button{width:28px;height:26px}
+  .np-row{grid-template-columns:52px 1fr}
+  .np-row svg{width:52px;height:58px}
+  .np{font-size:34px}
+  .story h2{font-size:26px}
+  .beat{font-size:16.5px}
+  .side{left:-18px}
+  .hn{font-size:15px}
+  .card{display:none}
+  .maplibregl-ctrl-bottom-left{display:none}
+  #spotview{padding:0 14px 60px}
+  .sp-mast{grid-template-columns:auto 1fr;gap:8px}
+  .sp-mast span{display:none}
+  .sp-mast .np-s{font-size:22px;justify-self:end}
+  .kick-row span:last-child{display:none}
+  .headline{font-size:38px}
+  .deck{font-size:17.5px}
+  .inset .isheet{height:360px}
+  #imap{inset:0}
+  #igrad{display:none}
+  ol.fn,.colophon{columns:1}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0ms!important}
+}
+</style>
+</head>
+<body>
+<a class="sr" href="#stories">Skip to the stories</a>
+
+<div id="app">
+  <div id="paper" aria-label="The Wingfoil Almanac, today's edition">
+    <header class="mast" id="mast">
+      <div class="mrule"><span>Vol. I · No. 278</span><span>wingfoil.ie</span><span>Free</span></div>
+      <div class="np-row">
+        <svg viewBox="0 0 120 130" aria-hidden="true"><use href="#puffin-art"/></svg>
+        <h1 class="np"><a href="#map"><span class="the">The</span>Wingfoil <em>Almanac</em></a></h1>
+      </div>
+      <p class="np-sub">The week's wind on the Irish coast, read off the chart. Notes in red pen by the Almanac, a puffin.</p>
+      <div class="dateline"><b id="dl-date">Monday 5 October 2026</b><span>13:00 edition</span></div>
+      <p class="syn" id="syn"></p>
+      <nav class="index" aria-label="In this edition"><h3>In this edition</h3><ol id="index"></ol></nav>
+    </header>
+    <main id="stories"></main>
+    <footer class="small" id="small"></footer>
+  </div>
+
+  <div id="chartpane" aria-label="Chart of Ireland">
+    <div class="sheet" id="sheet">
+      <div id="map" role="region" aria-label="Zoomable chart of the Irish coast with depths and wind"></div>
+      <svg id="grad" aria-hidden="true"></svg>
+      <div id="ruler" aria-label="Forecast time: drag to move the wind"><svg id="rsvg"></svg><div class="rhand" id="rhand"></div></div>
+      <div class="card" id="card" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+
+<div id="spotview" aria-label="Spot front page">
+  <header class="sp-mast"><a class="back" href="#map">← The chart</a><a class="np-s" href="#map">The Wingfoil <em>Almanac</em></a><span id="sp-date">Monday 5 October 2026</span></header>
+  <article class="sp" id="sp"></article>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="ph" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)"><line x1="0" y1="0" x2="0" y2="2.4" stroke="#F3EEE3" stroke-width=".55"/></pattern>
+    <g id="puffin-art">
+      <path d="M8 121 C20 112 36 113 48 115 C62 111 84 112 98 116 C106 118 112 120 114 124 L8 124Z" fill="#E7DCC0" stroke="#1A1D21" stroke-width="1.3" stroke-linejoin="round"/>
+      <path d="M20 118 l6 -2 M34 117 l9 -1 M70 116 l10 0 M88 118 l8 2 M58 120 l9 0" stroke="#1A1D21" stroke-width=".8" stroke-linecap="round"/>
+      <path d="M46 111 L38 116 L52 116 Z M64 110 L60 116 L74 116 Z" fill="#D43A2C" stroke="#1A1D21" stroke-width=".9" stroke-linejoin="round"/>
+      <path d="M78 96 L92 106 L80 104 Z" fill="#1A1D21"/>
+      <path d="M46 44 C34 56 32 88 42 104 C50 114 70 114 78 102 C86 88 84 60 74 46 C66 37 52 38 46 44Z" fill="#1A1D21"/>
+      <path d="M45 54 C38 68 38 92 47 106 C53 110 60 108 60 98 C60 82 56 64 45 54Z" fill="#F3EEE3" stroke="#1A1D21" stroke-width=".9"/>
+      <path d="M48 64 q3 2 4 6 M47 74 q3 2 5 7 M48 86 q3 2 5 6 M51 97 q2 2 3 5" fill="none" stroke="#1A1D21" stroke-width=".6" stroke-linecap="round" opacity=".55"/>
+      <path d="M62 54 C76 60 82 80 76 100 C70 92 64 76 62 54Z" fill="url(#ph)" stroke="#F3EEE3" stroke-width=".6"/>
+      <circle cx="56" cy="33" r="16.5" fill="#1A1D21"/>
+      <path d="M41 31 C42 21 52 18 59 24 C62 33 58 44 48 45 C43 43 40 37 41 31Z" fill="#F3EEE3" stroke="#1A1D21" stroke-width=".9"/>
+      <path d="M44 38 q4 3 9 2" fill="none" stroke="#1A1D21" stroke-width=".55" opacity=".5"/>
+      <path d="M46.5 26.5 L49 24 L51.5 26.5" fill="none" stroke="#1A1D21" stroke-width=".8" stroke-linecap="round"/>
+      <circle cx="49" cy="29" r="2" fill="#1A1D21"/><circle cx="49.6" cy="28.4" r=".55" fill="#F3EEE3"/>
+      <path d="M51 30.5 L55 32" stroke="#1A1D21" stroke-width=".7" stroke-linecap="round"/>
+      <path d="M42.5 27 C34 25 26 29 20 37 C27 42 36 42 43.5 38 C44.5 34 44 30 42.5 27Z" fill="#D43A2C" stroke="#1A1D21" stroke-width="1.1" stroke-linejoin="round"/>
+      <path d="M42.5 27 C40 30 40 35 43.5 38 C45 35 45 30 42.5 27Z" fill="#E9B200" stroke="#1A1D21" stroke-width=".8"/>
+      <path d="M35 28.4 C33 31.5 33 36 35 39.8 M29 31 C27.6 33.5 27.6 36.5 29 39.2" fill="none" stroke="#F3EEE3" stroke-width=".9" stroke-linecap="round"/>
+      <path d="M21 37 C28 37.5 36 37 43 34.5" fill="none" stroke="#1A1D21" stroke-width=".7"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+(() => {
+'use strict';
+const W = window.WF, K = window.WFChart;
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PHONE = () => matchMedia('(max-width: 760px)').matches;
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const svgEl = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rn = Math.round;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const num = n => n <= 12 ? WORDS[n] : String(n);
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const C16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const c2d = c => C16.indexOf(c) * 22.5;
+const DIRWORD = ['northerly','north-easterly','easterly','south-easterly','southerly','south-westerly','westerly','north-westerly'];
+const dirWord = d => DIRWORD[Math.round(((d % 360) + 360) % 360 / 45) % 8];
+const FACEWORD = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round(((d % 360) + 360) % 360 / 45) % 8];
+const DOW_L = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DOW_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/* ---------- time ---------- */
+const DAYS = W.spots[0].days.map(d => d.date);
+const DOMS = DAYS.map(d => +d.slice(8, 10));
+const dd = i => new Date(DAYS[i] + 'T12:00:00Z');
+const dayL = i => DOW_L[dd(i).getUTCDay()];
+const dayS = i => DOW_S[dd(i).getUTCDay()];
+const NOW = Date.parse(W.now);
+const NOW_D = DAYS.indexOf(W.now.slice(0, 10));
+const NOW_H = new Date(NOW).getUTCHours() + 1; // Irish Standard Time in October
+const hh = h => String(h).padStart(2, '0') + ':00';
+const part = h => h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+const CLOCK = h => { h = ((h % 24) + 24) % 24; return h === 12 ? 'noon' : h === 0 ? 'midnight' : WORDS[h % 12 || 12]; };
+const msOf = (d, h) => Date.parse(DAYS[d] + 'T00:00:00Z') + (h - 1) * 3600e3;
+const isPast = (d, h) => d < NOW_D || (d === NOW_D && h < NOW_H);
+const fmtT = ms => { const t = new Date(ms + 3600e3); return `${DOW_S[t.getUTCDay()]} ${t.getUTCDate()} Oct, ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };
+const parseLocal = s => { const m = s.match(/(\d+) \w+, (\d+):(\d+)/); return { dom: +m[1], h: +m[2] }; };
+$('#dl-date').textContent = `${dayL(NOW_D)} ${DOMS[NOW_D]} ${MON[dd(NOW_D).getUTCMonth()]} 2026`;
+
+/* ---------- spots ---------- */
+const F = {};
+for (const id in W.featured) {
+  const f = W.featured[id];
+  const byDay = DAYS.map(() => Array(24).fill(null));
+  f.hours.forEach(x => { const p = parseLocal(x.local); const di = DOMS.indexOf(p.dom); if (di >= 0) byDay[di][p.h] = x; });
+  F[id] = Object.assign({}, f, { byDay });
+}
+const FEAT = new Set(Object.keys(F));
+const BYID = Object.fromEntries(W.spots.map(s => [s.id, s]));
+const short = s => s.name.split(' — ')[0];
+const casual = s => short(s).replace(/ (Bay|Beach|Strand|Harbour)$/, '');
+const LL = s => [s.lon, s.lat];
+const sunOf = (f, d) => { const s = f.sun[d]; return s ? { rise: s.sunrise.slice(-5), set: s.sunset.slice(-5) } : null; };
+const mins = t => +t.slice(0, 2) * 60 + +t.slice(3);
+const kmPerPx = m => 40075.016 * Math.cos(m.getCenter().lat * Math.PI / 180) / (512 * 2 ** m.getZoom());
+const kmBetween = (a, b) => Math.hypot((a.lon - b.lon) * 111 * Math.cos(a.lat * Math.PI / 180), (a.lat - b.lat) * 111);
+const coastOf = s => s.lat > 54.6 ? 'north' : s.lon > -7 ? (s.lat < 52.6 ? 'south-east' : 'east') : s.lat < 51.95 ? 'south' : 'west';
+
+/* ---------- reading the forecast ---------- */
+/** The best run of hours at a surveyed spot on day d, from now on: most stars, then the longest run. */
+function winOf(id, d, future = true) {
+  const row = F[id].byDay[d]; let m = -1;
+  for (let h = 0; h < 24; h++) { const x = row[h]; if (x && x.rating && !(future && isPast(d, h))) m = Math.max(m, x.rating.stars); }
+  if (m < 0) return null;
+  let best = null, cur = null;
+  const close = () => { if (cur && (!best || cur.h1 - cur.h0 > best.h1 - best.h0)) best = cur; cur = null; };
+  for (let h = 0; h < 24; h++) {
+    const x = row[h];
+    if (x && x.rating && !(future && isPast(d, h)) && x.rating.stars === m) { if (cur) cur.h1 = h; else cur = { h0: h, h1: h }; } else close();
+  }
+  close();
+  const hrs = []; for (let h = best.h0; h <= best.h1; h++) hrs.push(row[h]);
+  return { id, d, h0: best.h0, h1: best.h1, stars: m, x: row[best.h0], last: row[best.h1], hrs, pot: Math.max(...hrs.map(x => x.rating.potential)) };
+}
+function bestWin(id) {
+  let b = null;
+  for (let d = NOW_D; d < DAYS.length; d++) { const w = winOf(id, d); if (w && (!b || w.stars > b.stars || (w.stars === b.stars && w.h1 - w.h0 > b.h1 - b.h0))) b = w; }
+  return b;
+}
+const wingTxt = w => { const a = w.x.rating.wing, b = w.last.rating.wing; return a === b ? `${a} m` : `${a}→${b} m`; };
+const wingWords = w => { const a = w.x.rating.wing, b = w.last.rating.wing; return a === b ? `a ${a} m` : `a ${a} m, ${b < a ? `down to ${b} m as it builds` : `up to ${b} m as it eases`}`; };
+function untilOf(w) {
+  const s = sunOf(F[w.id], w.d), end = w.h1 + 1;
+  return s && end * 60 >= mins(s.set) ? { txt: `till dark (${s.set})`, short: s.set } : { txt: `till ${hh(end)}`, short: hh(end) };
+}
+const SHORE = { onshore: 'straight onshore', 'cross-on': 'cross-onshore', cross: 'cross-shore', 'cross-off': 'cross-offshore', offshore: 'offshore' };
+function why(r) { // the rating's own reason, turned into the end of a sentence
+  return r.replace(/^Offshore wind: /, "it's offshore: ").replace(/^Cross-offshore: /, "it's cross-offshore: ").replace(/^Onshore: /, "it's onshore: ")
+    .replace(/^The models disagree, so this hour is a guess\./, 'the models disagree, so the hour is a guess.').replace(/^Gusty: /, "it's gusty: ");
+}
+/** Every spot's day: surveyed spots from their hours, the rest from the day's best hour (and, today, the 13:00 reading). */
+function dayList(d) {
+  return W.spots.map(s => {
+    const b = s.days[d].best;
+    let o = { s, stars: b.stars, kn: b.wind, g: b.gust, compass: b.dir, h: +b.at.slice(0, 2) };
+    if (d === NOW_D && (o.h < NOW_H || s.now.stars >= o.stars)) o = { s, stars: s.now.stars, kn: s.now.wind, g: s.now.gust, compass: s.now.compass, h: NOW_H };
+    return o;
+  }).sort((a, b) => b.stars - a.stars || b.kn - a.kn);
+}
+function where(list) {
+  const c = {}; list.forEach(o => c[o.s.county] = (c[o.s.county] || 0) + 1);
+  const k = Object.entries(c).sort((a, b) => b[1] - a[1]);
+  if (k.length === 1) return list.length === 1 ? `in ${k[0][0]}` : `all of them in ${k[0][0]}`;
+  if (k[0][1] + k[1][1] >= list.length * 0.6) return `most of them in ${k[0][0]} and ${k[1][0]}`;
+  return `spread round the coast, ${k[0][0]} with the most`;
+}
+const mention = (id, text) => `<span class="m" data-spot="${id}" tabindex="0">${esc(text || short(BYID[id]))}</span>`;
+
+/* ---------- the stories, one a day, written from the numbers ---------- */
+const STORIES = [];
+const used = new Set();
+function headlineOf(w) {
+  const nm = casual(BYID[w.id]), n = WORDS[w.stars], Day = dayL(w.d), dur = w.h1 - w.h0 + 1;
+  if (w.d === NOW_D && w.h0 <= NOW_H) return `${nm} keeps ${n} stars until ${CLOCK(w.h1 + 1)}`;
+  if (dur >= 7) return `${nm} rides ${n} stars from ${CLOCK(w.h0)} till ${/dark/.test(untilOf(w).txt) ? 'dark' : CLOCK(w.h1 + 1)} on ${Day}`;
+  if (w.h0 <= 9 && dur >= 3) return `${nm} goes ${n} stars from breakfast on ${Day}`;
+  const p = part(w.h0);
+  const opts = [['goes', `${nm} goes ${n} stars on ${Day} ${p}`], ['saves', `${nm} saves its ${n} stars for ${Day} ${p}`], ['at', `${cap(n)} stars at ${nm} on ${Day} ${p}`]];
+  const o = opts.find(o => !used.has(o[0])) || opts[0]; used.add(o[0]);
+  return o[1];
+}
+function leadCopy(w) {
+  const s = BYID[w.id], x = w.x, r = x.rating, u = untilOf(w);
+  let t = `${cap(dirWord(x.wind.dir))} ${rn(x.wind.kn)} knots, gusting ${rn(x.wind.gust)}, ${r.shore ? `${SHORE[r.shore]} at ` : 'at '}${mention(w.id)} from ${hh(w.h0)} ${u.txt}.`;
+  t += ` It rides like ${rn(r.rideKn)} knots with the gusts: ${r.session.toLowerCase()} on ${wingWords(w)}.`;
+  const reasons = [...new Set(w.hrs.flatMap(h => h.rating.reasons))];
+  if (w.pot > w.stars && reasons.length) t += ` On the wind alone it is worth ${WORDS[w.pot]}; ${w.pot - w.stars === 1 ? 'one comes' : `${WORDS[w.pot - w.stars]} come`} off because ${why(reasons[0])}`;
+  else if (reasons.length) t += ` One caution: ${why(reasons[0])}`;
+  if (reasons.some(r => /disagree/.test(r))) t = t.replace(/\.$/, '') + ` (anywhere from ${rn(x.wind.min)} to ${rn(x.wind.max)} knots).`;
+  if (s.facing == null) t += ` We have not surveyed which way the beach faces yet, so nothing comes off for direction.`;
+  if (x.waves) t += ` Waves ${x.waves.height_m.toFixed(1)} m at ${x.waves.period_s} seconds.`;
+  const td = F[w.id].tides;
+  if (td && td.events && td.events.length) { const m0 = msOf(w.d, w.h0) + 1800e3, v = K.tideAt(w.id, m0); t += ` The tide at ${esc(td.station)} is ${v.toFixed(1)} m and ${K.tideAt(w.id, m0 + 1800e3) > v ? 'rising' : 'falling'} as it starts.`; }
+  return t;
+}
+function buildStories() {
+  for (let d = NOW_D; d < DAYS.length; d++) {
+    const list = dayList(d);
+    const near = w => list.filter(o => o.stars >= 4 && kmBetween(o.s, BYID[w.id]) < 60).length;
+    const wins = [...FEAT].map(id => winOf(id, d)).filter(Boolean)
+      .sort((a, b) => b.stars - a.stars || (b.h1 - b.h0) - (a.h1 - a.h0) || near(b) - near(a));
+    const lead = wins[0];
+    if (!lead) continue;
+    const s = BYID[lead.id];
+    const st = { n: STORIES.length + 1, d, lead, beats: [] };
+    st.head = headlineOf(lead);
+    const u = untilOf(lead);
+    st.strap = `${wingTxt(lead)} wing · ${hh(lead.h0)}–${u.short} · ${lead.x.wind.compass} ${rn(lead.x.wind.kn)} gusting ${rn(lead.x.wind.gust)}`;
+    st.beats.push({ kind: 'lead', d, focus: [lead.id], time: msOf(d, lead.h0), win: lead, html: leadCopy(lead) });
+
+    /* round the coast */
+    const others = list.filter(o => o.s.id !== lead.id);
+    const five = list.filter(o => o.stars === 5), four = list.filter(o => o.stars >= 4);
+    const when = d === NOW_D ? `at ${hh(NOW_H)}` : `on ${dayL(d)}`;
+    let t = '<span class="lbl">Round the coast.</span> ';
+    const lead12 = n => n > 12 ? `In all, ${n}` : cap(num(n));
+    if (five.length >= 10) t += `${lead12(five.length)} spots show five stars ${when}, ${where(five)}.`;
+    else if (four.length) t += `${four.length <= 8 ? `Only ${num(four.length)}` : lead12(four.length)} spot${four.length === 1 ? '' : 's'} in the country reach${four.length === 1 ? 'es' : ''} four stars or better ${when}, ${where(four)}.`;
+    else t += `Nowhere else gets past ${WORDS[others[0].stars]} stars ${when}.`;
+    const marks = [];
+    const top = others.filter(o => !FEAT.has(o.s.id)).slice(0, 2);
+    if (top.length) {
+      const [a, b] = top;
+      if (a.stars > lead.stars) t += ` ${mention(a.s.id)} does better than ${casual(s)}: ${WORDS[a.stars]} stars at ${hh(a.h)}, ${a.compass} ${rn(a.kn)} gusting ${rn(a.g)}.`;
+      else t += ` The windiest of them: ${mention(a.s.id)}, ${a.compass} ${rn(a.kn)} gusting ${rn(a.g)} at ${hh(a.h)}.`;
+      if (b) t += ` ${mention(b.s.id)} has ${WORDS[b.stars]} at ${hh(b.h)}.`;
+      top.forEach(o => marks.push({ id: o.s.id, label: `${o.stars}★ ${hh(o.h)}` }));
+    }
+    const goneToday = d === NOW_D ? new Set([...FEAT].filter(id => { const w = winOf(id, d, false); return w && w.stars >= 4 && isPast(d, w.h1); })) : new Set();
+    const more = wins.slice(1).filter(w => w.stars >= 4 && !goneToday.has(w.id)).slice(0, 2);
+    const byCoast = {};
+    more.forEach(w => (byCoast[coastOf(BYID[w.id])] = byCoast[coastOf(BYID[w.id])] || []).push(w));
+    Object.entries(byCoast).forEach(([c, ws]) => {
+      t += ` On the ${c} coast, ` + ws.map(w => `${mention(w.id)} holds ${WORDS[w.stars]} stars from ${hh(w.h0)} ${untilOf(w).txt} on ${wingWords(w)}`).join('; ') + '.';
+    });
+    more.forEach(w => marks.push({ id: w.id, label: `${w.stars}★ ${hh(w.h0)}–${untilOf(w).short}, ${wingTxt(w)}` }));
+    const tm = top[0] ? msOf(d, top[0].h) : msOf(d, lead.h0);
+    st.beats.push({ kind: 'round', d, focus: [lead.id, ...marks.map(m => m.id)], time: tm, marks, html: t });
+
+    /* the pen's corrections */
+    if (d === NOW_D) {
+      const gone = [...FEAT].map(id => winOf(id, d, false)).filter(w => w && w.stars >= 4 && isPast(d, w.h1) && w.id !== lead.id);
+      if (gone.length) {
+        const morning = W.spots.filter(sp => sp.days[d].best.stars === 5 && +sp.days[d].best.at.slice(0, 2) < NOW_H);
+        let g = `<span class="lbl">Too late.</span> `;
+        g += gone.map((w, i) => { const now = winOf(w.id, d); return `${mention(w.id)} had <span class="x">${i ? WORDS[w.stars] : `${WORDS[w.stars]} stars`} at ${CLOCK(w.h0)}<span class="ins">gone</span></span>${now && now.stars ? ` and holds ${WORDS[now.stars]} ${untilOf(now).txt}` : ''}`; }).join('; ') + '.';
+        if (morning.length) g += ` ${morning.length > 12 ? `In all, ${morning.length}` : cap(num(morning.length))} spots made five stars before this edition went to press, ${where(morning.map(sp => ({ s: sp })))}; the morning's best is over.`;
+        st.beats.push({ kind: 'cross', d, focus: gone.map(w => w.id), time: msOf(d, gone[0].h0), items: gone.map(w => ({ id: w.id, from: `${WORDS[w.stars]} stars at ${hh(w.h0)}`, to: 'gone' })), html: g });
+      }
+    } else {
+      let c = null;
+      for (const id of FEAT) {
+        if (id === lead.id) continue;
+        F[id].byDay[d].forEach((x, h) => {
+          if (!x || !x.rating || isPast(d, h)) return;
+          const r = x.rating, gap = r.potential - r.stars;
+          if (r.potential >= 4 && gap >= 2 && r.reasons.length && (!c || gap > c.gap || (gap === c.gap && r.potential > c.r.potential))) c = { id, h, x, r, gap };
+        });
+      }
+      if (c) {
+        const g = `<span class="lbl">Don't be fooled.</span> ${mention(c.id)} at ${hh(c.h)}, on the wind: <span class="x">${WORDS[c.r.potential]} stars<span class="ins">${WORDS[c.r.stars]}</span></span>. ${c.x.wind.compass} ${rn(c.x.wind.kn)} gusting ${rn(c.x.wind.gust)} is plenty, but ${why(c.r.reasons[0])}`;
+        st.beats.push({ kind: 'cross', d, focus: [c.id], time: msOf(d, c.h), items: [{ id: c.id, from: `${WORDS[c.r.potential]} stars`, to: `${WORDS[c.r.stars]}${c.r.shore && /off/.test(c.r.shore) ? `, ${c.r.shore}` : ''}` }], html: g });
+      }
+    }
+    STORIES.push(st);
+  }
+}
+buildStories();
+
+/* ---------- stars ---------- */
+const STAR = 'M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z';
+function starsSVG(stars, potential, size = 13, gap = 2.5, color = '#1A1D21') {
+  const w = 5 * size + 4 * gap;
+  if (stars == null) return `<svg class="stars" width="${w}" height="${size}" aria-label="unrated (dark)"></svg>`;
+  const pot = Math.max(potential ?? stars, stars);
+  let g = '';
+  for (let i = 0; i < 5; i++) {
+    const x = i * (size + gap) + size / 2, y = size / 2, k = size / 10.4;
+    if (i < stars) g += `<path d="${STAR}" transform="translate(${x} ${y + .4}) scale(${k})" fill="${color}"/>`;
+    else if (i < pot) g += `<path d="${STAR}" transform="translate(${x} ${y + .4}) scale(${k})" fill="none" stroke="${color}" stroke-width="${0.9 / k}" opacity=".5"/>`;
+    else g += `<circle cx="${x}" cy="${y}" r="${size * .07}" fill="${color}" opacity=".22"/>`;
+  }
+  const lab = `${stars} of 5 stars` + (pot > stars ? `, ${pot} on the wind alone` : '');
+  return `<svg class="stars" role="img" aria-label="${lab}" width="${w}" height="${size}" viewBox="0 0 ${w} ${size}">${g}</svg>`;
+}
+const FLARE = 'M0 -1 C3.4 -6 6 -13 0 -20 C-6 -13 -3.4 -6 0 -1Z';
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: (() => { let css = ''; for (let n = 1; n <= 5; n++) { const T = n + 4; let k = `@keyframes fl${n}{0%{opacity:.35}`; for (let i = 0; i < n; i++) { const a = i / T * 100, b = (i + .32) / T * 100, c = (i + .62) / T * 100; k += `${(a + .01).toFixed(2)}%{opacity:.35}${(a + 2).toFixed(2)}%{opacity:1}${b.toFixed(2)}%{opacity:1}${c.toFixed(2)}%{opacity:.35}`; } css += k + `100%{opacity:.35}}.spt.s${n} .fl path{animation:fl${n} ${T}s infinite both}`; } return css; })() }));
+
+/* =====================================================================
+   THE PAPER
+   ===================================================================== */
+const paper = $('#paper');
+const BEATS = [];
+function renderPaper() {
+  const now4 = W.spots.filter(s => s.now.stars >= 4).length;
+  const counts = DAYS.map((_, d) => { const l = dayList(d); return { d, five: l.filter(o => o.stars === 5).length, four: l.filter(o => o.stars >= 4) }; }).filter(c => c.d >= NOW_D);
+  const pick = counts.slice().sort((a, b) => b.five - a.five)[0], quiet = counts.slice().sort((a, b) => a.four.length - b.four.length)[0];
+  $('#syn').innerHTML = `<b>General synopsis</b> at ${hh(NOW_H)}: ${now4} of ${W.spots.length} spots show four stars or better. The pick of the week is ${dayL(pick.d)}, with ${pick.five} spots at five stars. The quiet day is ${dayL(quiet.d)}, when ${quiet.four.length <= 12 ? 'only ' : ''}${num(quiet.four.length)} reach four, ${where(quiet.four)}.`;
+  $('#index').innerHTML = STORIES.map((st, i) => `<li><button data-story="${i}"><span class="id">${dayS(st.d)}</span><span class="ih">${esc(st.head)}</span><span class="is">${'★'.repeat(st.lead.stars)}</span></button></li>`).join('');
+  $('#index').onclick = e => { const b = e.target.closest('[data-story]'); if (b) scrollToBeat(STORIES[+b.dataset.story].beats[0]); };
+
+  const box = $('#stories');
+  box.innerHTML = STORIES.map((st, i) => {
+    const s = BYID[st.lead.id];
+    return `<article class="story" id="story-${st.n}" data-story="${i}">
+      ${st.beats.map((b, j) => b.kind === 'lead' ? `<div class="beat lead-beat" data-b="${j}">
+        <div class="kick"><span><b>${dayL(st.d)} ${DOMS[st.d]} October</b></span><span>${esc(s.county)} · No. ${st.n}</span></div>
+        <h2 tabindex="0">${esc(st.head)}</h2>
+        <div class="strap">${starsSVG(st.lead.stars, st.lead.pot, 12, 2)}<span>${esc(st.strap)}</span><span class="sess">${esc(st.lead.x.rating.session)}</span></div>
+        <p>${b.html}</p></div>` : `<div class="beat" data-b="${j}"><p>${b.html}</p></div>`).join('')}
+      ${FEAT.has(s.id) ? `<a class="more" href="#spot/${s.id}">${esc(short(s))}'s front page →</a>` : ''}
+    </article>`;
+  }).join('') + '<div class="endmark">❧</div>';
+  // the masthead is the overview beat
+  BEATS.push({ kind: 'overview', el: $('#mast'), story: null, focus: STORIES.map(st => st.lead.id), time: NOW, d: NOW_D });
+  STORIES.forEach((st, i) => {
+    const art = box.children[i];
+    st.el = art;
+    st.beats.forEach((b, j) => { b.el = art.querySelector(`[data-b="${j}"]`); b.story = st; BEATS.push(b); });
+  });
+
+  // small print and the key
+  $('#small').innerHTML = `
+    <h3>Key to the chart</h3>
+    <dl class="key">
+      <dt><svg width="34" height="16" viewBox="0 0 34 16"><rect x="0" y="2" width="11" height="12" fill="#A9CBD8"/><rect x="11" y="2" width="11" height="12" fill="#CDE0E6"/><rect x="22" y="2" width="12" height="12" fill="#ECF0EA"/></svg></dt><dd>Depth tints, darkest where shallowest. Soundings in metres below lowest tide, decimetres small: 4<sub>7</sub> is 4.7 m.</dd>
+      <dt><svg width="34" height="16" viewBox="0 0 34 16"><path d="M2 12 C 8 4, 14 4, 20 8 S 30 12, 33 5" fill="none" stroke="#1A1D21" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg></dt><dd>Wind lines: the forecast wind itself, moving. Bolder lines, a breeze over 7 m/s (14 knots).</dd>
+      <dt><svg width="30" height="26" viewBox="-15 -21 30 26"><path d="${FLARE}" fill="#B0186A" transform="rotate(30)"/><circle r="4" fill="#1A1D21"/></svg></dt><dd>A light: four stars or better on the story's day, flashing once per star.</dd>
+      <dt><svg width="34" height="14" viewBox="-17 -7 34 14"><circle cx="-11" r="3.6" fill="#1A1D21"/><circle cx="0" r="3.6" fill="#7FA6B3" stroke="#1A1D21"/><circle cx="11" r="3.6" fill="#F3EEE3" stroke="#1A1D21"/></svg></dt><dd>Three stars and up · one or two · nothing doing. Ringed: a surveyed beach with its own front page.</dd>
+      <dt><span class="hatch"></span></dt><dd>Hatched, in the five surveyed bays: less than 1.2 m of water at the story's hour, charted depth plus the predicted tide. A 75–95 cm mast touches down there.</dd>
+      <dt><svg width="34" height="20" viewBox="0 0 34 20"><path d="${K.loopPath(17, 10, 13, 7.5, 3)}" fill="none" stroke="#D43A2C" stroke-width="1.6"/></svg></dt><dd>The red pen: the Almanac's notes, made as you read.</dd>
+    </dl>
+    <h3>Small print</h3>
+    <p>Wind: ${esc(W.generated)} The moving lines are HARMONIE (Met Éireann, 2.5 km) where its run reaches, ECMWF after, every three hours.</p>
+    <p>Depths: EMODnet Bathymetry, finer 115 m survey in the five surveyed bays. Coast: OpenStreetMap via OpenFreeMap. Not for navigation.</p>
+    <p>Wing sizes, sessions and the reasons stars come off are rated hour by hour on the five surveyed beaches only. Elsewhere we hold each day's best hour and its wind, so the stories give the wind, not a wing.</p>
+    <p>The red crossings-out are the Almanac correcting the printed line: what the wind alone would give against what the beach allows, or hours already gone by press time. We don't yet keep earlier runs of the forecast, so we can't show a forecast changing its mind.</p>
+    <p>Tides: Marine Institute predictions for the week at Fenit, Howth, Galway, Achill Island and Wexford (for the Burrow, 5.8 km away). The hatched shallows add the predicted tide at the hour shown to the charted depth, so banks flood and dry as the stories move through the week; drag the margin's time ruler to watch them. Tidal flats count only inside OpenStreetMap's sea, so low fields and lakes are never hatched. Between turns the tide is drawn on a cosine, which is close but not exact.</p>
+    <div class="sig"><svg viewBox="0 0 120 130" aria-hidden="true"><use href="#puffin-art"/></svg>— the Almanac</div>`;
+}
+renderPaper();
+
+/* ---------- ink on the paper ---------- */
+function drawIn(p, dur, delay) {
+  if (RM) return;
+  const L = p.getTotalLength();
+  p.style.strokeDasharray = L; p.style.strokeDashoffset = L;
+  p.getBoundingClientRect();
+  p.style.transition = `stroke-dashoffset ${dur}ms cubic-bezier(.45,.1,.35,1) ${delay}ms`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { p.style.strokeDashoffset = 0; }));
+}
+let inkSeed = 3;
+const jit = (a) => (Math.sin(inkSeed++ * 12.9898) * 43758.5453 % 1) * a;
+function inkUnder(span, delay = 0) {
+  if (span.querySelector(':scope > svg.ink')) return;
+  const w = span.offsetWidth, h = span.offsetHeight;
+  const sv = svgEl('svg', { class: 'ink', width: w + 6, height: 10, style: `left:-3px;top:${h - 3 - (span.closest('.adhoc') ? 8 : 0)}px` }, span);
+  const p = svgEl('path', { d: `M1 ${5 + jit(1.5)} C ${w * .3} ${3 + jit(2)} ${w * .65} ${7 + jit(1.5)} ${w + 5} ${4 + jit(2)}` }, sv);
+  span.classList.add('inked');
+  drawIn(p, 260 + w * 2.2, delay);
+}
+function inkStrike(span, delay = 0) {
+  if (span.querySelector(':scope > svg.ink')) return 0;
+  const w = span.offsetWidth, h = span.offsetHeight;
+  const sv = svgEl('svg', { class: 'ink', width: w + 8, height: h, style: `left:-4px;top:0` }, span);
+  const y = h * .56;
+  const p = svgEl('path', { d: `M1 ${y + 1} C ${w * .3} ${y - 2} ${w * .7} ${y + 2} ${w + 7} ${y - 1.5} M ${w + 5} ${y + 3} C ${w * .6} ${y + 1} ${w * .3} ${y + 5} 3 ${y + 3.5}` }, sv);
+  drawIn(p, 520, delay);
+  return 560;
+}
+function inkSide(beat) {
+  let sv = beat.el.querySelector(':scope > svg.side');
+  if (sv) sv.remove();
+  const h = beat.el.offsetHeight;
+  sv = svgEl('svg', { class: 'ink side', width: 10, height: h }, beat.el);
+  sv.style.position = 'absolute';
+  const p = svgEl('path', { d: `M5 2 C ${3 + jit(3)} ${h * .3} ${7 - jit(3)} ${h * .6} ${4 + jit(2)} ${h - 4}` }, sv);
+  drawIn(p, 600, 0);
+}
+function inkLoop(span, delay = 0) {
+  $$(':scope > svg.loop', span).forEach(n => n.remove());
+  const w = span.offsetWidth, h = span.offsetHeight;
+  const sv = svgEl('svg', { class: 'ink loop', width: w + 20, height: h + 14, style: 'left:-10px;top:-7px' }, span);
+  const p = svgEl('path', { d: K.loopPath((w + 20) / 2, (h + 14) / 2, w / 2 + 7, h / 2 + 4, inkSeed++) }, sv);
+  drawIn(p, 700, delay);
+}
+function paperMarks(b) {
+  let t = 0;
+  $$('.m', b.el).forEach(m => { inkUnder(m, t); t += 320; });
+  $$('.x', b.el).forEach(x => {
+    const d = t + 200;
+    setTimeout(() => { inkStrike(x, 0); }, d);
+    const ins = x.querySelector('.ins');
+    if (ins) setTimeout(() => ins.classList.add('on'), d + 600);
+    t += 900;
+  });
+  if (b.kind !== 'overview') inkSide(b);
+}
+
+/* =====================================================================
+   THE CHART
+   ===================================================================== */
+const IRL = [[-10.75, 51.35], [-5.35, 55.45]];
+const map = K.createMap($('#map'), { bounds: IRL, fitBoundsOptions: { padding: 20 }, dragRotate: false, pitchWithRotate: false, touchPitch: false, maxZoom: 14 });
+map.touchZoomRotate.disableRotation();
+map.keyboard.disableRotation();
+map.on('error', e => console.error('MAPERR', e.error && e.error.message));
+const wind = K.wind(map, { time: NOW, alpha: .5, density: .42 });
+
+/** Shallows under a foil's mast, hatched in red, in the surveyed bays. */
+/**
+ * Shallows under a foil's mast, hatched in red, in the surveyed bays: where the
+ * charted depth plus the predicted tide at time() leaves less than maxDepth of
+ * water. Cells above chart datum count only inside OpenStreetMap's sea, so tidal
+ * flats flood and dry with the tide but low fields and lakes never do.
+ */
+function shoals(m, time, maxDepth = 1.2, minZoom = 9.4) {
+  const cv = document.createElement('canvas'); cv.className = 'shoal';
+  const holder = m.getCanvasContainer(); holder.parentNode.insertBefore(cv, holder.nextSibling);
+  const ctx = cv.getContext('2d');
+  // every cell that could be shallow at some tide: from 6 m above datum to maxDepth below
+  const cells = Object.keys(window.WFGRIDS || {}).map(id => {
+    const g = K.grid(id); const list = [];
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const v = g.dm[y * g.w + x]; if (v !== -32768 && v > -60 && v < maxDepth * 10) list.push(x, y, v / 10); }
+    return { id, g, list };
+  });
+  const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+  const pat = (() => { const c = document.createElement('canvas'); c.width = c.height = 6; const x = c.getContext('2d'); x.strokeStyle = 'rgba(212,58,44,.75)'; x.lineWidth = 1.3; x.beginPath(); x.moveTo(-1, 7); x.lineTo(7, -1); x.moveTo(5, 7); x.lineTo(7, 5); x.moveTo(-1, 1); x.lineTo(1, -1); x.stroke(); return c; })();
+  let raf = 0, sea = [], seaPath = null, shallowPath = null;
+  const refreshSea = () => {
+    try { sea = m.querySourceFeatures('omt', { sourceLayer: 'water', filter: ['==', ['get', 'class'], 'ocean'] }); } catch (e) { sea = []; }
+    req();
+  };
+  const tideOf = id => { const t = time(); const h = t != null && window.WF.featured[id] && window.WF.featured[id].tides ? K.tideAt(id, t) : 0; return h ?? 0; };
+  const draw = () => {
+    raf = 0;
+    const r = m.getContainer().getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+    if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, r.width, r.height);
+    seaPath = shallowPath = null;
+    if (m.getZoom() < minZoom) return;
+    const sp = new Path2D(); let any = false;
+    for (const { id, g, list } of cells) {
+      const south = g.north - g.h * g.res, east = g.west + g.w * g.res;
+      const a = m.project([g.west, g.north]), b = m.project([east, south]);
+      if (b.x < 0 || a.x > r.width || b.y < 0 || a.y > r.height) continue;
+      const tide = tideOf(id);
+      const kx = (b.x - a.x) / (east - g.west), mn = merc(g.north), ky = (b.y - a.y) / (merc(south) - mn);
+      const rowY = y => a.y + (merc(g.north - y * g.res) - mn) * ky;
+      const cw = g.res * kx + .6;
+      for (let i = 0; i < list.length; i += 3) {
+        const water = list[i + 2] + tide; if (water <= 0 || water >= maxDepth) continue;
+        const x = a.x + list[i] * g.res * kx; if (x < -cw || x > r.width) continue;
+        const y0 = rowY(list[i + 1]), y1 = rowY(list[i + 1] + 1); if (y1 < 0 || y0 > r.height) continue;
+        sp.rect(x, y0, cw, y1 - y0 + .6); any = true;
+      }
+    }
+    if (!any) return;
+    // the sea, from the chart's own coast
+    const wp = new Path2D();
+    for (const f of sea) {
+      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+      for (const poly of polys) for (const ring of poly) ring.forEach((c, i) => { const p = m.project(c); i ? wp.lineTo(p.x, p.y) : wp.moveTo(p.x, p.y); });
+    }
+    seaPath = wp; shallowPath = sp;
+    ctx.save(); ctx.clip(wp, 'nonzero'); ctx.clip(sp);
+    ctx.fillStyle = 'rgba(212,58,44,.07)'; ctx.fillRect(0, 0, r.width, r.height);
+    ctx.fillStyle = ctx.createPattern(pat, 'repeat'); ctx.fillRect(0, 0, r.width, r.height);
+    ctx.restore();
+  };
+  const req = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  m.on('move', req); m.on('resize', req); m.on('idle', refreshSea); m.on('load', refreshSea); req();
+  return {
+    redraw: req,
+    /** The nearest shallow, hatched cell to lon/lat as drawn now, between minKm and maxKm. */
+    nearest(lon, lat, maxKm = 3, minKm = .25, ok = () => true) {
+      if (raf) { cancelAnimationFrame(raf); draw(); }
+      if (!seaPath || !shallowPath) return null;
+      let best = null;
+      for (const { id, g, list } of cells) {
+        const tide = tideOf(id);
+        for (let i = 0; i < list.length; i += 3) {
+          const water = list[i + 2] + tide; if (water <= 0 || water >= maxDepth) continue;
+          const lo = g.west + (list[i] + .5) * g.res, la = g.north - (list[i + 1] + .5) * g.res;
+          const k = kmBetween({ lon, lat }, { lon: lo, lat: la });
+          if (!(k > minKm && k < maxKm && (!best || k < best.k) && ok(lo, la))) continue;
+          const p = m.project([lo, la]);
+          if (ctx.isPointInPath(seaPath, p.x, p.y)) best = { k, ll: [lo, la], water };
+        }
+      }
+      return best;
+    },
+  };
+}
+
+/** Handwriting at map coordinates, written in left to right; strike: true crosses a word out. */
+function Hand(m) {
+  const layer = document.createElement('div'); layer.className = 'hand';
+  m.getContainer().appendChild(layer);
+  const notes = [], blocks = [], fixed = [];
+  const place = () => notes.forEach(n => n.place());
+  m.on('move', place); m.on('resize', place);
+  const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const screen = k => { if (!k.ll) return k; const p = m.project(k.ll); return { x: p.x + k.dx, y: p.y + k.dy, w: k.w, h: k.h }; };
+  return {
+    /** Keep the pen off a patch of chart: at lngLat (offset dx, dy, size w×h px), or fixed on screen. */
+    reserve(ll, dx, dy, w, h) { blocks.push({ ll, dx, dy, w, h }); },
+    reserveScreen(r) { fixed.push(r); },
+    /** Write segs at ll. o.cands: [[dx, dy, anchor], …] tried in order; the first clear of other marks wins. */
+    write(ll, segs, o = {}) {
+      const n = document.createElement('div'); n.className = 'hn' + (o.cls ? ' ' + o.cls : '');
+      if (o.size) n.style.fontSize = o.size + 'px';
+      const rot = o.rot ?? (-5 + Math.random() * 3.5);
+      let t = 0; const speed = o.speed || 48;
+      const parts = segs.map(sg => typeof sg === 'string' ? { t: sg } : sg);
+      const spans = parts.map(sg => { const sp = document.createElement('span'); sp.className = 'w'; sp.textContent = sg.t; n.appendChild(sp); return sp; });
+      layer.appendChild(n);
+      const W0 = n.offsetWidth, H0 = n.offsetHeight, c = m.getContainer(), cw = c.clientWidth, ch = c.clientHeight, p = m.project(ll);
+      const cands = o.cands || [[...(o.offset || [0, 0]), o.anchor || 'start']];
+      const boxOf = ([dx, dy, an]) => ({ x: p.x + dx - (an === 'end' ? W0 : an === 'middle' ? W0 / 2 : 0), y: p.y + dy - H0 / 2, w: W0, h: H0 });
+      const others = blocks.map(screen).concat(fixed);
+      let chosen = cands[0], best = Infinity;
+      for (const cd of cands) {
+        const bx = boxOf(cd);
+        const out = Math.max(0, 6 - bx.x) + Math.max(0, bx.x + bx.w - cw + 6) + Math.max(0, 6 - bx.y) + Math.max(0, bx.y + bx.h - ch + 6);
+        const score = others.filter(k => hit(bx, k)).length * 1000 + (out > 0 ? 4000 + out : 0);
+        if (score < best) { best = score; chosen = cd; }
+        if (!score) break;
+      }
+      const [dx, dy, an] = chosen;
+      const bx = boxOf(chosen);
+      blocks.push({ ll, dx: bx.x - p.x, dy: bx.y - p.y, w: W0, h: H0 });
+      const ax = an === 'end' ? '-100%' : an === 'middle' ? '-50%' : '0%';
+      const mark = { node: n, place() { const q = m.project(ll); n.style.transform = `translate(${(q.x + dx).toFixed(1)}px,${(q.y + dy).toFixed(1)}px) translate(${ax},-50%) rotate(${rot}deg)`; } };
+      mark.place();
+      parts.forEach((sg, i) => {
+        const sp = spans[i], dur = RM ? 0 : Math.max(200, sg.t.length * speed);
+        sp.style.transition = `clip-path ${dur}ms linear ${t}ms`;
+        t += dur + 90;
+        if (sg.strike) {
+          const w = sp.offsetWidth, h = sp.offsetHeight, y = h * .55;
+          const sv = svgEl('svg', { width: w + 8, height: h, style: 'left:-4px' }, sp);
+          const pp = svgEl('path', { d: `M1 ${y + 1} C ${w * .35} ${y - 2} ${w * .7} ${y + 2} ${w + 7} ${y - 2} M ${w + 4} ${y + 3} C ${w * .6} ${y + 1} ${w * .3} ${y + 5} 2 ${y + 3}` }, sv);
+          drawIn(pp, 480, t + 120);
+          t += 700;
+        }
+      });
+      requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('on')));
+      notes.push(mark);
+      return { t, dx, dy, anchor: an, w: W0 };
+    },
+    clear() { notes.splice(0).forEach(n => n.node.remove()); blocks.length = 0; },
+  };
+}
+/** Candidate spots for a note round a point at radius r: preferred side first. */
+const around = (r, prefer = 'left') => {
+  const L = [[-r - 6, r * .8, 'end'], [-r - 6, -r * .8, 'end'], [-r - 6, 0, 'end']], Rr = [[r + 6, r * .8, 'start'], [r + 6, -r * .8, 'start'], [r + 6, 0, 'start']];
+  return (prefer === 'left' ? L.concat(Rr) : Rr.concat(L)).concat([[0, r + 14, 'middle'], [0, -r - 14, 'middle']]);
+};
+
+/**
+ * The pen's account of one window at one spot: circle it, arrow the wind in,
+ * write the wind at the arrow's tail and the window by the circle, and point
+ * out the nearest water too shallow for the mast.
+ */
+function penWindow(m, P, H, SH, s, w, o) {
+  const ll = LL(s), x = w.x, R = o.R, HS = o.size;
+  let t = 0;
+  const step = (gap, fn) => { t += RM ? 0 : gap; setTimeout(() => { if (o.alive()) fn(); }, t); };
+  const p0 = m.project(ll), a = x.wind.dir * Math.PI / 180, ux = Math.sin(a), uy = -Math.cos(a);
+  const far = o.far, tailLL = m.unproject([p0.x + ux * far, p0.y + uy * far]).toArray();
+  H.reserve(ll, -R - 4, -R - 4, 2 * R + 8, 2 * R + 8);
+  // the arrow's line, as a few boxes along it
+  for (let k = .45; k <= 1; k += .18) H.reserve(ll, ux * far * k - 12, uy * far * k - 12, 24, 24);
+  if (o.label) { const lab = o.label.offsetWidth; if (lab) H.reserve(ll, 12, -9, lab + 4, 20); }
+  const windSide = ux >= 0 ? 'right' : 'left';
+  step(0, () => P.circle(ll, R, { duration: 820 }));
+  if (o.label) step(700, () => { const lab = o.label.offsetWidth; if (lab) P.underline(ll, lab + 4, { offset: [13, 12], duration: 380 }); });
+  step(o.label ? 400 : 760, () => P.arrow(tailLL, m.unproject([p0.x + ux * (R + 6), p0.y + uy * (R + 6)]).toArray(), { duration: 620 }));
+  step(560, () => H.write(tailLL, [`${x.wind.compass} ${rn(x.wind.kn)} ${o.long ? 'gusting ' : 'g'}${rn(x.wind.gust)}`], { size: HS,
+    cands: ux >= 0 ? [[8, uy < 0 ? -10 : 12, 'start'], [8, uy < 0 ? 12 : -10, 'start'], [-8, -12, 'end'], [0, -16, 'middle']] : [[-8, uy < 0 ? -10 : 12, 'end'], [-8, uy < 0 ? 12 : -10, 'end'], [8, -12, 'start'], [0, -16, 'middle']] }));
+  step(650, () => {
+    const lines = o.windowLines;
+    const first = H.write(ll, [lines[0]], { size: HS, cands: around(R, windSide === 'left' ? 'right' : 'left').map(c => [c[0], c[1] - (lines[1] ? HS * .55 : 0), c[2]]) });
+    const y2 = first.dy + HS * 1.25, x2 = first.dx + (first.anchor === 'end' ? -4 : 6);
+    if (lines[1]) setTimeout(() => o.alive() && H.write(ll, [lines[1]], { size: HS, cands: [[x2, y2, first.anchor], [first.anchor === 'end' ? first.dx : first.dx + first.w, y2, first.anchor === 'end' ? 'start' : 'end'], [x2, first.dy - HS * 1.25, first.anchor]] }), first.t + 80);
+  });
+  if (o.after) step(o.lineGap || 900, o.after);
+  if (SH && FEAT.has(s.id)) step(900, () => {
+    // the nearest shallows on the downwind side, away from the wind's arrow
+    const cosl = Math.cos(s.lat * Math.PI / 180), ue = Math.sin(a), un = Math.cos(a);
+    const downwind = (lo, la) => { const e = (lo - s.lon) * cosl, n = la - s.lat; return (e * ue + n * un) / Math.hypot(e, n) < .2; };
+    const kp = kmPerPx(m), nb = SH.nearest(s.lon, s.lat, kp * o.shoalMax, kp * (R + 34), downwind) || SH.nearest(s.lon, s.lat, kp * o.shoalMax, kp * (R + 34)); if (!nb) return;
+    const q = m.project(nb.ll), pS = m.project(ll);
+    const dx = q.x >= pS.x ? 1 : -1, dy = q.y >= pS.y ? 1 : -1;
+    const at = hh(new Date(o.time + 3600e3).getUTCHours());
+    const txt = o.long ? `${nb.water.toFixed(1)} m of water at ${at}: the mast touches` : `${nb.water.toFixed(1)} m at ${at}: mast touches`;
+    const r = H.write(nb.ll, [txt], { size: o.small, cands: [[60, 40], [60, -40], [-60, 40], [-60, -40], [110, 75], [110, -75], [-110, 75], [-110, -75], [80, 0], [-80, 0]].map(([a, b]) => [a * dx, b * dy, a * dx > 0 ? 'start' : 'end']) });
+    setTimeout(() => o.alive() && P.arrow(m.unproject([q.x + r.dx * .92, q.y + r.dy * .92]).toArray(), m.unproject([q.x + r.dx * .1, q.y + r.dy * .1]).toArray(), { duration: 460 }), r.t * .6);
+  });
+}
+
+let pen, hand, shoal;
+const closeAttrib = m => { const a = m.getContainer().querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); };
+const MK = {};
+let DAY = null; // day the lights show; null: now
+
+/* ---------- spot markers ---------- */
+function buildMarkers() {
+  W.spots.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'spt' + (FEAT.has(s.id) ? ' feat' : '');
+    el.innerHTML = `<svg class="fl" viewBox="-8 -21 16 22" aria-hidden="true"><path d="${FLARE}" fill="#B0186A" transform="rotate(${s.facing ?? 30})"/></svg><i></i><b>${esc(short(s).replace(' — Rosslare', ''))}</b>`;
+    el.tabIndex = 0; el.setAttribute('role', 'button');
+    el.addEventListener('mouseenter', () => showCard(s));
+    el.addEventListener('mouseleave', hideCard);
+    el.addEventListener('focus', () => showCard(s));
+    el.addEventListener('blur', hideCard);
+    el.addEventListener('click', e => { e.stopPropagation(); hideCard(); spotStory(s.id); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); spotStory(s.id); } });
+    const fl = el.querySelector('.fl path'); fl.style.animationDelay = `-${(s.lat * 97 % 6).toFixed(2)}s`;
+    const mk = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(LL(s)).addTo(map);
+    MK[s.id] = { el, mk };
+  });
+  // surveyed beaches on top of the pile
+  FEAT.forEach(id => { const e = MK[id].el; e.parentNode.appendChild(e); });
+  setDay(null);
+}
+const starsOn = (s, d) => d == null ? s.now.stars : s.days[d].best.stars;
+function setDay(d) {
+  DAY = d;
+  W.spots.forEach(s => {
+    const st = starsOn(s, d), el = MK[s.id].el;
+    el.classList.remove('s0', 's1', 's2', 's3', 's4', 's5'); el.classList.add('s' + st);
+    el.setAttribute('aria-label', `${s.name}, ${s.county}: ${st} stars ${d == null ? 'now' : `at best on ${dayL(d)}`}. Opens its story.`);
+  });
+}
+function setAct(ids) { Object.values(MK).forEach(m => m.el.classList.remove('act')); ids.forEach(id => MK[id] && MK[id].el.classList.add('act')); }
+const zoomClass = () => { const z = map.getZoom(), c = map.getContainer(); c.classList.toggle('z-lo', z < 7.6); c.classList.toggle('z-hi', z >= 10.6); };
+map.on('zoom', zoomClass);
+
+/* hover card */
+const cardEl = $('#card');
+function showCard(s) {
+  const d = DAY, b = d == null ? null : s.days[d].best;
+  const st = starsOn(s, d);
+  const line = d == null ? `Now, ${hh(NOW_H)}: ${s.now.compass} ${rn(s.now.wind)} gusting ${rn(s.now.gust)}` : `${dayL(d)}'s best: ${b.at}, ${b.dir} ${rn(b.wind)} gusting ${rn(b.gust)}`;
+  cardEl.innerHTML = `<div class="c-co">${esc(s.county)}${FEAT.has(s.id) ? ' · surveyed beach' : ''}</div><div class="c-nm">${esc(s.name)}</div>
+    <div class="c-l">${starsSVG(st, d == null ? s.now.potential : st, 12, 2)} <span class="mono">${esc(line)}</span></div>
+    <div class="c-go">click: its story${FEAT.has(s.id) ? ', and its own front page' : ''}</div>`;
+  const p = map.project(LL(s)), mp = $('#map'), sh = $('#sheet').getBoundingClientRect(), mr = mp.getBoundingClientRect();
+  let x = mr.left - sh.left + p.x + 16, y = mr.top - sh.top + p.y + 14;
+  if (x + 240 > sh.width) x -= 262;
+  if (y + 110 > sh.height) y -= 130;
+  cardEl.style.left = x + 'px'; cardEl.style.top = y + 'px';
+  cardEl.classList.add('on');
+}
+function hideCard() { cardEl.classList.remove('on'); }
+
+/* ---------- the frame: graduated neatline and the cartouche ---------- */
+const cart = document.createElement('div'); cart.className = 'cart';
+cart.innerHTML = `<b>IRELAND</b><i>The Almanac's chart of the coast</i><div class="ct-w">Wind lines for <span id="ct-time"></span></div><small>Depths in metres below lowest astronomical tide</small>`;
+$('#map').appendChild(cart);
+const zc = document.createElement('div'); zc.className = 'zoomctl';
+zc.innerHTML = `<button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button><button class="ire" aria-label="Show all of Ireland">IRL</button>`;
+$('#map').appendChild(zc);
+zc.children[0].onclick = () => map.zoomIn(); zc.children[1].onclick = () => map.zoomOut();
+zc.children[2].onclick = () => map.fitBounds(IRL, { padding: pad(), duration: RM ? 0 : 1200 });
+
+function graduate(m, svg, mapEl) {
+  const LAB = [[1 / 60, 5], [2 / 60, 4], [5 / 60, 5], [10 / 60, 5], [15 / 60, 3], [30 / 60, 6], [1, 6], [2, 4]];
+  const fmt = (v, h) => { const a = Math.abs(v) + 1e-9, d = Math.floor(a), mm = Math.round((a - d) * 60); return `${d}°${mm ? String(mm).padStart(2, '0') + '′' : ''}${h}`; };
+  let raf = 0;
+  const draw = () => {
+    raf = 0;
+    if (!svg.isConnected || getComputedStyle(svg).display === 'none') return;
+    const L = mapEl.offsetLeft, T = mapEl.offsetTop, Wm = mapEl.offsetWidth, Hm = mapEl.offsetHeight;
+    if (!Wm) return;
+    const c = m.getCenter();
+    const pxDeg = m.project([c.lng + 1, c.lat]).x - m.project([c.lng, c.lat]).x;
+    const [lab, sub] = LAB.find(([s]) => s * pxDeg >= 95) || LAB[LAB.length - 1];
+    const minor = lab / sub, band = 5;
+    let g = `<rect x="${L - band}" y="${T - band}" width="${Wm + band * 2}" height="${Hm + band * 2}" fill="none" stroke="#1A1D21" stroke-width="1"/><rect x="${L}" y="${T}" width="${Wm}" height="${Hm}" fill="none" stroke="#1A1D21" stroke-width=".8"/>`;
+    const b = m.getBounds();
+    // longitude along top and bottom
+    for (let v = Math.floor(b.getWest() / minor) * minor, i = Math.floor(b.getWest() / minor); v < b.getEast() + minor; v += minor, i++) {
+      const x0 = clamp(m.project([v, c.lat]).x, 0, Wm), x1 = clamp(m.project([v + minor, c.lat]).x, 0, Wm);
+      if (x1 - x0 < .5) continue;
+      if (i % 2 === 0) g += `<rect x="${L + x0}" y="${T - band}" width="${x1 - x0}" height="${band}" fill="#1A1D21"/><rect x="${L + x0}" y="${T + Hm}" width="${x1 - x0}" height="${band}" fill="#1A1D21"/>`;
+      const isLab = Math.abs(v / lab - Math.round(v / lab)) < 1e-6;
+      if (isLab && x0 > 30 && x0 < Wm - 30) g += `<text x="${L + x0}" y="${T - band - 4}" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:rgba(26,29,33,.75)">${fmt(v, v < 0 ? 'W' : 'E')}</text>`;
+    }
+    for (let v = Math.floor(b.getSouth() / minor) * minor, i = Math.floor(b.getSouth() / minor); v < b.getNorth() + minor; v += minor, i++) {
+      const y0 = clamp(m.project([c.lng, v + minor]).y, 0, Hm), y1 = clamp(m.project([c.lng, v]).y, 0, Hm);
+      if (y1 - y0 < .5) continue;
+      if (i % 2 === 0) g += `<rect x="${L - band}" y="${T + y0}" width="${band}" height="${y1 - y0}" fill="#1A1D21"/><rect x="${L + Wm}" y="${T + y0}" width="${band}" height="${y1 - y0}" fill="#1A1D21"/>`;
+      const isLab = Math.abs(v / lab - Math.round(v / lab)) < 1e-6, y = m.project([c.lng, v]).y;
+      if (isLab && y > 30 && y < Hm - 30) {
+        g += `<text transform="translate(${L - band - 5} ${T + y}) rotate(-90)" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:rgba(26,29,33,.75)">${fmt(v, 'N')}</text>`;
+        g += `<text transform="translate(${L + Wm + band + 11} ${T + y}) rotate(-90)" text-anchor="middle" style="font:500 9px 'IBM Plex Mono';fill:rgba(26,29,33,.75)">${fmt(v, 'N')}</text>`;
+      }
+    }
+    svg.innerHTML = g;
+  };
+  const req = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  m.on('move', req); m.on('resize', req); m.on('load', req); addEventListener('resize', req);
+  return req;
+}
+
+/* ---------- the margin: a time ruler, where the pen writes the window ---------- */
+const T0 = K.times[0], T1 = K.times[K.times.length - 1];
+const ruler = (() => {
+  const box = $('#ruler'), svg = $('#rsvg'), rh = $('#rhand');
+  let curT = NOW, penMark = null;
+  const geom = () => { const w = box.clientWidth, ph = PHONE(); return { w, ph, ly: ph ? 8 : 10, by: ph ? 12 : 16, bh: ph ? 9 : 14 }; };
+  const X = (t, w) => (t - T0) / (T1 - T0) * w;
+  const T = (x, w) => clamp(T0 + x / w * (T1 - T0), T0, T1);
+  function draw() {
+    const { w, ph, ly, by, bh } = geom(); if (!w) return;
+    const sunF = F.rusheen;
+    let g = '';
+    for (let d = 0; d < DAYS.length; d++) {
+      const s = sunOf(sunF, d), base = Date.parse(DAYS[d] + 'T00:00:00Z') - 3600e3;
+      const rise = base + mins(s.rise) * 60e3, set = base + mins(s.set) * 60e3;
+      const xa = X(base, w), xb = X(base + 864e5, w);
+      g += `<rect x="${Math.max(0, xa)}" y="${by}" width="${clamp(X(rise, w), 0, w) - Math.max(0, xa)}" height="${bh}" fill="#1A1D21" opacity=".82"/>`;
+      g += `<rect x="${clamp(X(set, w), 0, w)}" y="${by}" width="${clamp(xb, 0, w) - clamp(X(set, w), 0, w)}" height="${bh}" fill="#1A1D21" opacity=".82"/>`;
+      if (xa > 0) g += `<line x1="${xa}" x2="${xa}" y1="${ly - 8}" y2="${by + bh + 4}" stroke="#1A1D21" stroke-width="1"/>`;
+      g += `<text class="rday" x="${Math.max(0, xa) + 5}" y="${ly}">${dayS(d).toUpperCase()} ${DOMS[d]}</text>`;
+      if (!ph) for (const h of [9, 12, 15, 18]) { const x = X(base + h * 3600e3, w); if (x > 0 && x < w) g += `<line x1="${x}" x2="${x}" y1="${by + bh}" y2="${by + bh + 3}" stroke="#1A1D21" stroke-width=".7"/>${h === 12 ? '' : ''}`; }
+    }
+    g += `<rect x="0" y="${by}" width="${w}" height="${bh}" fill="none" stroke="#1A1D21" stroke-width="1"/>`;
+    // now
+    const xn = X(NOW, w);
+    g += `<line x1="${xn}" x2="${xn}" y1="${by - 2}" y2="${by + bh + 2}" stroke="#D43A2C" stroke-width="2" stroke-linecap="round"/>`;
+    if (!ph) g += `<text x="${xn + 9}" y="${by - 3}" style="font:13px Kalam;fill:#D43A2C">now</text>`;
+    // story marks
+    STORIES.forEach((st, i) => {
+      const x = X(msOf(st.d, st.lead.h0), w), r = ph ? 5 : 6.5;
+      g += `<g class="rmk${ACTIVE && ACTIVE.story === st ? ' on' : ''}" data-story="${i}" transform="translate(${x} ${by + bh / 2})" role="button" aria-label="Story ${st.n}: ${esc(st.head)}"><circle r="${r}"/><text y="${ph ? 2.6 : 3}" text-anchor="middle">${st.n}</text></g>`;
+    });
+    // the wind's moment
+    const xc = X(curT, w);
+    g += `<g id="rcur" transform="translate(${xc} 0)"><path d="M-4.5 ${by - 8} L4.5 ${by - 8} L0 ${by - 1.5}Z" fill="#1A1D21"/></g>`;
+    g += `<g id="rpen"></g>`;
+    svg.innerHTML = g;
+    if (penMark) drawPen(penMark, false);
+  }
+  function cursor(t) { curT = t; const { w } = geom(); const c = $('#rcur'); if (c) c.setAttribute('transform', `translate(${X(t, w)} 0)`); $('#ct-time').textContent = fmtT(t); }
+  function drawPen(pm, animate = true) {
+    const { w, ph, by, bh } = geom(); const g = $('#rpen'); if (!g) return;
+    g.innerHTML = ''; rh.innerHTML = '';
+    const x0 = X(pm.t0, w), x1 = Math.max(X(pm.t1, w), x0 + 8), y = by + bh + (ph ? 3 : 5);
+    const p = svgEl('path', { d: `M${x0} ${y - 4} C ${x0} ${y + 1} ${x0 + 1} ${y + 2} ${x0 + 5} ${y + 2} L ${x1 - 5} ${y + 1.5} C ${x1 - 1} ${y + 1.5} ${x1} ${y + 1} ${x1} ${y - 4}`, fill: 'none', stroke: '#D43A2C', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, g);
+    if (animate) drawIn(p, 520, 0);
+    const n = document.createElement('div'); n.className = 'rn'; n.textContent = pm.text;
+    rh.appendChild(n);
+    const nw = n.offsetWidth;
+    n.style.left = clamp((x0 + x1) / 2, nw / 2 + 2, w - nw / 2 - 2) + 'px';
+    n.style.transition = animate && !RM ? `clip-path ${Math.max(300, pm.text.length * 45)}ms linear 450ms` : 'none';
+    requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('on')));
+  }
+  // drag to move the wind; click a numbered mark to read its story
+  let drag = false, last = 0;
+  const at = e => { const r = svg.getBoundingClientRect(); return T(e.clientX - r.left, r.width); };
+  svg.addEventListener('pointerdown', e => {
+    const mk = e.target.closest('.rmk');
+    if (mk) { scrollToBeat(STORIES[+mk.dataset.story].beats[0]); return; }
+    drag = true; svg.setPointerCapture(e.pointerId); const t = at(e); cursor(t); wind.setTime(t); shoal && shoal.redraw();
+  });
+  svg.addEventListener('pointermove', e => { if (!drag) return; const t = at(e); cursor(t); if (performance.now() - last > 90) { last = performance.now(); wind.setTime(t); shoal && shoal.redraw(); } });
+  svg.addEventListener('pointerup', e => { if (!drag) return; drag = false; const t = at(e); cursor(t); wind.setTime(t); shoal && shoal.redraw(); });
+  addEventListener('resize', draw);
+  return { draw, cursor, pen(pm) { penMark = pm; drawPen(pm, true); }, clear() { penMark = null; const g = $('#rpen'); if (g) g.innerHTML = ''; rh.innerHTML = ''; } };
+})();
+
+/* =====================================================================
+   PAPER AND CHART AS ONE: the beat engine
+   ===================================================================== */
+let ACTIVE = null, CUR_STORY = undefined, TOK = 0;
+const PENNED = new Set();
+const pad = () => PHONE() ? { top: 50, bottom: 34, left: 40, right: 70 } : { top: 150, bottom: 120, left: 120, right: 230 };
+const flyDur = () => RM ? 0 : PHONE() ? 1300 : 1700;
+
+function camera(b) {
+  const P = pad();
+  if (b.kind === 'overview') return () => map.fitBounds(IRL, { padding: PHONE() ? { top: 30, bottom: 10, left: 10, right: 30 } : { top: 40, bottom: 20, left: 150, right: 60 }, duration: flyDur() });
+  const pts = b.focus.map(id => BYID[id]);
+  if (b.kind === 'lead' || pts.length === 1) {
+    const s = pts[0];
+    const z = b.kind === 'lead' ? (FEAT.has(s.id) ? (PHONE() ? 10.1 : 10.6) : 9.6) : (PHONE() ? 9.2 : 9.7);
+    return () => map.flyTo({ center: LL(s), zoom: z, duration: flyDur(), curve: 1.5, essential: true, padding: PHONE() ? { top: 20, bottom: 0, left: 0, right: 0 } : { top: 40, bottom: 0, left: 0, right: 60 } });
+  }
+  const bb = new maplibregl.LngLatBounds(); pts.forEach(s => bb.extend(LL(s)));
+  return () => map.fitBounds(bb, { padding: P, maxZoom: PHONE() ? 9 : 9.6, duration: flyDur() });
+}
+function go(b) {
+  if (!b || !started) return; // the chart and its markers are built on the map's load
+  const tok = ++TOK;
+  ACTIVE = b;
+  $$('.beat.on, #mast.on').forEach(e => e.classList.remove('on'));
+  b.el.classList.add('on');
+  if (b.story !== CUR_STORY) { pen && pen.clear(); hand && hand.clear(); ruler.clear(); PENNED.clear(); CUR_STORY = b.story; }
+  wind.setTime(b.time); ruler.cursor(b.time); ruler.draw(); shoal && shoal.redraw();
+  setDay(b.kind === 'overview' ? null : b.d);
+  setAct(b.kind === 'overview' ? [] : b.focus);
+  paperMarks(b);
+  if (!location.hash.startsWith('#spot/')) history.replaceState(null, '', b.story ? `#story/${b.story.n}` : '#map');
+  let done = false;
+  const after = () => {
+    if (done || tok !== TOK) return; done = true;
+    const lead = b.story && b.story.beats[0];
+    if (lead && lead !== b && !PENNED.has(lead)) { PENNED.add(lead); penBeat(lead, tok, true); }
+    if (!PENNED.has(b)) { PENNED.add(b); penBeat(b, tok); }
+  };
+  camera(b)();
+  map.once('moveend', after);
+  setTimeout(after, flyDur() + 500);
+}
+
+/** The pen's script for a beat: one mark after another, like a hand. */
+function penBeat(b, tok, quick) {
+  let t = 0;
+  const step = (gap, fn) => { t += RM ? 0 : gap; setTimeout(() => { if (tok === TOK) fn(); }, t); };
+  const ph = PHONE(), HS = ph ? 15 : 18;
+  if (b.kind === 'overview') {
+    const groups = {};
+    STORIES.forEach(st => (groups[st.lead.id] = groups[st.lead.id] || []).push(st));
+    Object.entries(groups).forEach(([id, sts]) => {
+      const s = BYID[id];
+      const r = ph ? 11 : 15, lab = MK[id].el.querySelector('b');
+      hand.reserve(LL(s), -r - 2, -r - 2, 2 * r + 4, 2 * r + 4);
+      if (lab && lab.offsetWidth) hand.reserve(LL(s), 12, -9, lab.offsetWidth + 4, 20);
+      step(380, () => pen.circle(LL(s), r, { duration: 600 }));
+      step(420, () => hand.write(LL(s), [sts.map(st => `${st.n}`).join(' & ') + ' ' + sts.map(st => dayS(st.d)).join(', ')], { size: HS, cands: [[-r - 4, -r - 2, 'end'], [-r - 4, r + 4, 'end'], [r + 2, -r - 6, 'start'], [r + 2, r + 10, 'start']] }));
+    });
+    return;
+  }
+  if (b.kind === 'lead') {
+    const w = b.win, s = BYID[w.id], ll = LL(s), R = ph ? 22 : 30;
+    const ruled = () => ruler.pen({ t0: msOf(w.d, w.h0), t1: msOf(w.d, w.h1 + 1), text: `${dayS(w.d)} ${hh(w.h0)}–${untilOf(w).short} · ${wingTxt(w)} · ${'★'.repeat(w.stars)}` });
+    if (quick) { step(0, () => pen.circle(ll, ph ? 13 : 17, { duration: 500 })); step(300, ruled); return; }
+    penWindow(map, pen, hand, shoal, s, w, { R, time: msOf(w.d, w.h0), far: ph ? 80 : 120, size: HS, small: ph ? 13 : 15, shoalMax: ph ? 200 : 260, long: !ph,
+      label: MK[s.id].el.querySelector('b'), windowLines: [`${wingTxt(w)}, ${WORDS[w.stars]} stars`], after: ruled, lineGap: 800, alive: () => tok === TOK });
+    return;
+  }
+  if (b.kind === 'round') {
+    b.marks.forEach((mk, i) => {
+      const s = BYID[mk.id], ll = LL(s);
+      const r = ph ? 11 : 15, lab = MK[mk.id].el.querySelector('b');
+      step(i ? 380 : 120, () => { hand.reserve(ll, -r - 2, -r - 2, 2 * r + 4, 2 * r + 4); if (lab && lab.offsetWidth) hand.reserve(ll, 12, -9, lab.offsetWidth + 4, 20); pen.circle(ll, r, { duration: 520 }); });
+      step(420, () => hand.write(ll, [mk.label], { size: ph ? 13.5 : 16, cands: [[r + 3, r + 6, 'start'], [-r - 3, r + 6, 'end'], [-r - 3, -r - 4, 'end'], [r + 3, -r - 8, 'start'], [0, r + 18, 'middle']] }));
+    });
+    return;
+  }
+  if (b.kind === 'cross') {
+    b.items.forEach((it, i) => {
+      const s = BYID[it.id], ll = LL(s);
+      const r = ph ? 11 : 15, lab = MK[it.id].el.querySelector('b');
+      step(i ? 900 : 100, () => { hand.reserve(ll, -r - 2, -r - 2, 2 * r + 4, 2 * r + 4); if (lab && lab.offsetWidth) hand.reserve(ll, 12, -9, lab.offsetWidth + 4, 20); pen.circle(ll, r, { duration: 520 }); });
+      step(420, () => hand.write(ll, [{ t: it.from, strike: true }, it.to], { size: HS, cands: [[r + 3, -r - 8, 'start'], [-r - 3, -r - 6, 'end'], [r + 3, r + 8, 'start'], [-r - 3, r + 8, 'end']] }));
+    });
+    return;
+  }
+  if (b.kind === 'adhoc') {
+    const s = BYID[b.focus[0]], ll = LL(s);
+    step(0, () => pen.circle(ll, ph ? 14 : 20, { duration: 650 }));
+    step(700, () => hand.write(ll, [b.label], { size: HS, cands: around(ph ? 14 : 20, 'right') }));
+  }
+}
+
+/* ---------- reading drives the chart ---------- */
+let LOCK = false, pickT = 0;
+function readingLine() {
+  if (PHONE()) { const bh = $('#chartpane').offsetHeight; return bh + (innerHeight - bh) * .3; }
+  const r = paper.getBoundingClientRect(); return r.top + r.height * .36;
+}
+function sortBeats() { BEATS.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1); }
+function pick() {
+  const y = readingLine(); let cur = BEATS[0];
+  for (const b of BEATS) if (b.el.getBoundingClientRect().top <= y) cur = b;
+  const sc = PHONE() ? document.scrollingElement : paper;
+  if (sc.scrollTop > 40 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 6) {
+    // at the very end, the last beat that has scrolled into view
+    const vis = BEATS.filter(b => b.el.getBoundingClientRect().top < innerHeight - 60); cur = vis[vis.length - 1] || cur;
+  }
+  return cur;
+}
+let lastScroll = 0, hoverT = 0;
+function onScroll() {
+  lastScroll = performance.now();
+  if (!started || LOCK || document.body.classList.contains('on-spot')) return;
+  clearTimeout(pickT);
+  pickT = setTimeout(() => { const c = pick(); if (c !== ACTIVE) go(c); }, 240);
+}
+paper.addEventListener('scroll', onScroll, { passive: true });
+addEventListener('scroll', onScroll, { passive: true });
+function scrollToBeat(b, extra) {
+  const sc = PHONE() ? document.scrollingElement : paper;
+  const line = readingLine();
+  const top = sc.scrollTop + b.el.getBoundingClientRect().top - (PHONE() ? line - 40 : line - 70);
+  LOCK = true; clearTimeout(pickT);
+  sc.scrollTo({ top: Math.max(0, top), behavior: RM ? 'auto' : 'smooth' });
+  const unlock = () => { LOCK = false; };
+  setTimeout(unlock, RM ? 50 : 900);
+  go(b);
+  if (extra) extra();
+}
+
+/* the paper's own interactions */
+$('#stories').addEventListener('click', e => {
+  const m = e.target.closest('.m');
+  const beatEl = e.target.closest('.beat');
+  if (!beatEl) return;
+  const b = BEATS.find(x => x.el === beatEl);
+  if (m) { if (b !== ACTIVE) go(b); flash(m.dataset.spot); inkLoop(m); return; }
+  if (e.target.closest('h2') && b !== ACTIVE) scrollToBeat(b);
+});
+$('#stories').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && (e.target.matches('.m') || e.target.matches('h2'))) { e.preventDefault(); e.target.click(); } });
+$('#stories').addEventListener('mouseover', e => {
+  const m = e.target.closest('.m'); if (m && MK[m.dataset.spot]) MK[m.dataset.spot].el.classList.add('hov');
+  // resting on a paragraph reads it: the chart follows after a moment, unless the page is scrolling
+  const el = e.target.closest('.beat'); clearTimeout(hoverT);
+  if (!el || PHONE()) return;
+  hoverT = setTimeout(() => { if (performance.now() - lastScroll < 900 || LOCK) return; const b = BEATS.find(x => x.el === el); if (b && b !== ACTIVE && el.matches(':hover')) go(b); }, 750);
+});
+$('#stories').addEventListener('mouseleave', () => clearTimeout(hoverT));
+$('#stories').addEventListener('mouseout', e => { const m = e.target.closest('.m'); if (m && MK[m.dataset.spot]) MK[m.dataset.spot].el.classList.remove('hov'); });
+function flash(id) {
+  const s = BYID[id]; if (!s) return;
+  const b = map.getBounds();
+  if (!b.contains(LL(s))) map.easeTo({ center: LL(s), duration: flyDur() * .6 });
+  MK[id].el.classList.add('hov'); setTimeout(() => MK[id].el.classList.remove('hov'), 1600);
+}
+
+/** A spot clicked on the chart: find its story, or write it into the right day's story in pen. */
+function spotStory(id) {
+  const s = BYID[id];
+  const hit = BEATS.find(b => b.kind === 'lead' && b.focus[0] === id) || BEATS.find(b => (b.kind === 'round' || b.kind === 'cross') && b.focus.includes(id) && b.focus[0] !== id) || BEATS.find(b => b.kind === 'adhoc' && b.focus[0] === id);
+  if (hit) { scrollToBeat(hit, () => { const m = hit.el.querySelector(`.m[data-spot="${id}"]`); if (m) setTimeout(() => inkLoop(m), 500); }); return; }
+  // its best day from now on
+  let d = NOW_D, bs = -1;
+  for (let i = NOW_D; i < DAYS.length; i++) { const st = i === NOW_D ? Math.max(s.now.stars, +s.days[i].best.at.slice(0, 2) >= NOW_H ? s.days[i].best.stars : 0) : s.days[i].best.stars; if (st > bs) { bs = st; d = i; } }
+  const st = STORIES.find(x => x.d === d) || STORIES[0];
+  const o = dayList(d).find(o => o.s.id === id);
+  const label = `${short(s)}: ${o.stars}★ ${hh(o.h)}, ${o.compass} ${rn(o.kn)}`;
+  const el = document.createElement('div'); el.className = 'beat adhoc';
+  el.innerHTML = `+ ${mention(id)} ${o.stars ? `makes ${WORDS[o.stars]} star${o.stars === 1 ? '' : 's'}` : 'gets no stars'} ${d === NOW_D ? `at ${hh(o.h)} today` : `on ${dayL(d)}, best at ${hh(o.h)}`}: ${o.compass} ${rn(o.kn)} gusting ${rn(o.g)}.${FEAT.has(id) ? ` <a href="#spot/${id}">Its front page.</a>` : ''}`;
+  const more = st.el.querySelector('.more');
+  st.el.insertBefore(el, more || null);
+  const b = { kind: 'adhoc', el, story: st, d, focus: [id], time: msOf(d, o.h), label: `${o.stars}★ ${hh(o.h)}` };
+  BEATS.push(b); sortBeats();
+  el.style.opacity = 0; requestAnimationFrame(() => { el.style.transition = 'opacity .5s'; el.style.opacity = 1; });
+  scrollToBeat(b);
+}
+
+/* =====================================================================
+   THE SPOT'S FRONT PAGE
+   ===================================================================== */
+let SP = { id: null, d: 0 }, imap = null, iwind = null, ipen = null, ihand = null, ishoal = null;
+function arrowSVG(deg, size = 16, color = '#1A1D21') {
+  return `<svg width="${size}" height="${size}" viewBox="-8 -8 16 16" aria-hidden="true"><g transform="rotate(${(deg + 180) % 360})"><path d="M0 -6.5 L3.6 1.6 L0 -.4 L-3.6 1.6Z M0 -.4 V6.5" fill="${color}" stroke="${color}" stroke-width="1.1" stroke-linejoin="round"/></g></svg>`;
+}
+function oktaSVG(pct) {
+  const o = Math.round(pct / 12.5), a = o / 8 * Math.PI * 2;
+  const fill = o >= 8 ? '<circle r="5.2" fill="#1A1D21"/>' : o > 0 ? `<path d="M0 0 L0 -5.2 A5.2 5.2 0 ${a > Math.PI ? 1 : 0} 1 ${(Math.sin(a) * 5.2).toFixed(2)} ${(-Math.cos(a) * 5.2).toFixed(2)}Z" fill="#1A1D21"/>` : '';
+  return `<svg width="14" height="14" viewBox="-7 -7 14 14" role="img" aria-label="cloud ${o} oktas"><circle r="5.2" fill="#F3EEE3" stroke="#1A1D21" stroke-width="1"/>${fill}</svg>`;
+}
+function spotHeadline(s, w) {
+  const nm = esc(short(s));
+  if (!w || !w.stars) return `${nm}<span class="colon">:</span> <em>a week to leave the wing in the bag</em>`;
+  const dur = w.h1 - w.h0 + 1;
+  const when = w.d === NOW_D ? `this ${part(w.h0)}` : dur >= 7 ? `${dayL(w.d)}, ${CLOCK(w.h0)} till ${/dark/.test(untilOf(w).txt) ? 'dark' : CLOCK(w.h1 + 1)},` : `${dayL(w.d)} ${part(w.h0)}`;
+  return `${nm}<span class="colon">:</span> a ${WORDS[w.stars]}-star ${when} <em>on a ${w.x.rating.wing}&#8239;m</em>`;
+}
+function renderSpot(id) {
+  const s = BYID[id], f = F[id];
+  const w = bestWin(id);
+  SP = { id, d: w ? w.d : NOW_D };
+  const later = [];
+  for (let d = NOW_D; d < DAYS.length; d++) { if (w && d === w.d) continue; const x = winOf(id, d); if (x && x.stars >= Math.max(3, (w ? w.stars : 0) - 1)) later.push(x); }
+  later.sort((a, b) => b.stars - a.stars || a.d - b.d);
+  const deck = w ? leadCopy(w).replace(/<[^>]+>/g, '') + (later[0] ? ` ${dayL(later[0].d)} looks ${WORDS[later[0].stars]}-star too, from ${hh(later[0].h0)} on a ${later[0].x.rating.wing} m.` : '') : 'Nothing rides here this week.';
+  const sea = f.sea_temperature, tides = f.tides && f.tides.events ? f.tides : null;
+  const sun = sunOf(f, NOW_D);
+  const todayTides = tides ? tides.events.filter(e => e.local.includes(` ${DOMS[NOW_D]} `)) : [];
+  const st = STORIES.find(x => x.lead.id === id);
+  $('#sp').innerHTML = `
+    <div class="kick-row"><span>${esc(s.county)} edition · front page</span><span>${s.facing != null ? `Beach faces ${FACEWORD(s.facing)} · ${s.facing}°` : 'Beach angle not yet surveyed'}</span></div>
+    <h1 class="headline">${spotHeadline(s, w)}</h1>
+    <div class="sp-grid">
+      <figure class="inset">
+        <div class="isheet"><div id="imap" role="region" aria-label="Chart of ${esc(s.name)} with depths and wind"></div><svg id="igrad" aria-hidden="true"></svg></div>
+        <figcaption><span><span class="hatch"></span>less than 1.2 m of water at the hour circled (charted depth + tide): a 75–95 cm mast touches down</span><span>soundings in metres below LAT · <i>EMODnet, 115 m survey</i></span><span>wind lines at the hour circled</span></figcaption>
+      </figure>
+      <div class="side-col">
+        <p class="deck">${esc(deck)}</p>
+        <div class="byline"><span>By <b>the Almanac</b></span><span>Eight-model blend</span><span>Rated for an 80&nbsp;kg intermediate</span>${st ? `<span><a href="#story/${st.n}">In today's paper: “${esc(st.head)}”</a></span>` : ''}</div>
+        <div class="sec-h"><h2>The week <em>at a glance</em></h2><span class="aside">solid ★ rated · outline ☆ the wind alone</span></div>
+        <table class="wk" id="wk"><tbody></tbody></table>
+        <div class="box"><h3>Today, ${dayS(NOW_D)} ${DOMS[NOW_D]}</h3><dl class="facts">
+          ${sun ? `<dt>Light</dt><dd class="mono">${sun.rise} – ${sun.set}</dd>` : ''}
+          ${todayTides.map(e => `<dt>${e.tide === 'high' ? 'High' : 'Low'}</dt><dd class="mono">${e.local.slice(-5)} · ${e.height_m.toFixed(2)} m <span class="cap">${esc(tides.station)}</span></dd>`).join('')}
+          ${sea ? `<dt>Sea</dt><dd>${sea.celsius} °C <span class="cap">at ${esc(sea.station)}, ${sea.distance_km} km away, last read ${esc(sea.measured)}</span></dd>` : `<dt>Sea</dt><dd class="cap">no sea temperature within reach</dd>`}
+        </dl></div>
+      </div>
+    </div>
+    <section class="hsec">
+      <div class="sec-h" id="hourly-h"></div>
+      <div class="tscroll"><div class="tinner" id="tinner"><table class="hourly" id="hourly"></table><svg class="tpen" id="tpen" aria-hidden="true"></svg></div></div>
+      <ol class="fn" id="fn"></ol>
+    </section>
+    <section class="hsec">
+      <div class="sec-h"><h2>Tide <em>and</em> daylight</h2><span class="aside">${tides ? `${esc(tides.station)} · heights above ${tides.datum} · IST` : 'daylight and stars · IST'}</span></div>
+      <div class="strip-scroll"><svg class="strip" id="strip" viewBox="0 0 1200 216" role="img" aria-label="Daylight, hourly stars and tide over five days"></svg></div>
+      <p class="tcap" id="tcap"></p>
+    </section>
+    <footer class="colophon"><p>Wind: ${esc(W.generated)}</p><p>${tides && tides.attribution ? `${esc(tides.attribution)}: ${esc(tides.station)}, ${tides.distance_km} km from the beach.` : ''} ${sea ? esc(sea.attribution) + '.' : ''}</p><p>Depths: EMODnet Bathymetry, ~115 m grid including INFOMAR surveys, below lowest astronomical tide. Not for navigation. The hatching adds the predicted tide at the hour circled to the sounding; pick another day to see the banks at that day's window.</p><p>Stars are per hour for an 80 kg intermediate on a mid-size foil. Night hours are blank: not zero, just unrated.</p></footer>`;
+  document.title = `${short(s)} · The Wingfoil Almanac`;
+  $('.sp-mast .back').setAttribute('href', ACTIVE && ACTIVE.story ? `#story/${ACTIVE.story.n}` : '#map');
+  renderWeek(); renderHourly(); renderStrip();
+  buildInset(s);
+}
+function renderWeek() {
+  const f = F[SP.id];
+  $('#wk tbody').innerHTML = DAYS.map((_, d) => {
+    const rated = f.byDay[d].filter(x => x && x.rating);
+    const m = rated.length ? Math.max(...rated.map(x => x.rating.stars)) : 0, p = rated.length ? Math.max(...rated.map(x => x.rating.potential)) : 0;
+    const w = winOf(SP.id, d), wa = winOf(SP.id, d, false);
+    const gone = d === NOW_D && wa && w && wa.stars > w.stars;
+    return `<tr><td><button class="${d === SP.d ? 'on' : ''}" data-d="${d}" aria-pressed="${d === SP.d}">
+      <span class="dn">${dayS(d)}<small>${DOMS[d]} OCT${d === NOW_D ? ' · TODAY' : ''}</small></span>
+      <span>${w ? starsSVG(w.stars, w.pot, 13, 2.5) : starsSVG(m, p, 13, 2.5)}</span>
+      <span class="dl">${w && w.stars ? `<b>${hh(w.h0)}–${untilOf(w).short}</b> <i>${esc(w.x.rating.session.toLowerCase())}</i> on <b>${wingTxt(w)}</b>${gone ? ` · <span style="font-family:var(--f-hand);color:var(--red)">${wa.stars}★ at ${hh(wa.h0)} gone</span>` : ''}` : 'nothing rideable'}</span>
+    </button></td></tr>`;
+  }).join('');
+  $('#wk').onclick = e => { const b = e.target.closest('button[data-d]'); if (!b) return; SP.d = +b.dataset.d; renderWeek(); renderHourly(); renderStrip(); penInset(); };
+}
+const shoreOf = (facing, dir) => { if (facing == null) return null; const d = Math.abs((((dir - facing) % 360) + 540) % 360 - 180); return d <= 30 ? 'onshore' : d <= 67.5 ? 'cross-on' : d <= 112.5 ? 'cross' : d <= 150 ? 'cross-off' : 'offshore'; };
+function renderHourly() {
+  const f = F[SP.id], d = SP.d, row = f.byDay[d], sun = sunOf(f, d), s = BYID[SP.id];
+  $('#hourly-h').innerHTML = `<h2>${dayL(d)} <em>hour by hour</em></h2><span class="aside">${sun ? `sunrise ${sun.rise} · sunset ${sun.set} · ` : ''}times IST</span>`;
+  const reasons = [], rIdx = r => { let i = reasons.indexOf(r); if (i < 0) { reasons.push(r); i = reasons.length - 1; } return i + 1; };
+  const w = winOf(SP.id, d);
+  let html = `<thead><tr><th>Time</th><th>Rating</th><th>Session</th><th>Wind kn · gust</th><th>From</th><th>Shore</th><th>Wing</th><th>Rides like</th><th>Waves</th><th>Air · sky</th></tr></thead><tbody>`;
+  for (let h = 7; h <= 20; h++) {
+    const x = row[h]; if (!x) continue;
+    const r = x.rating, inWin = w && w.stars > 0 && h >= w.h0 && h <= w.h1;
+    const fns = r ? r.reasons.map(rIdx) : [];
+    const sh = r ? r.shore : shoreOf(s.facing, x.wind.dir);
+    html += `<tr data-h="${h}" class="${r ? '' : 'night'}${isPast(d, h) ? ' past' : ''}${inWin ? ' best' : ''}">
+      <td class="t">${hh(h)}</td>
+      <td>${starsSVG(r ? r.stars : null, r ? r.potential : null, 13, 2.5)}${fns.length ? `<sup>${fns.join(',')}</sup>` : ''}</td>
+      <td class="sess">${r ? r.session : 'dark, unrated'}</td>
+      <td><span class="kn">${rn(x.wind.kn)}</span> <span class="g">g${rn(x.wind.gust)}</span></td>
+      <td><span class="dir">${arrowSVG(x.wind.dir)}${x.wind.compass} <span style="color:var(--muted)">${x.wind.dir}°</span></span></td>
+      <td class="shore${sh && /off/.test(sh) ? ' bad' : ''}">${sh || '<span style="color:var(--muted)">not surveyed</span>'}</td>
+      <td class="wing">${r ? `${r.wing}<small> m</small>` : ''}</td>
+      <td class="sm">${r ? `${rn(r.rideKn)} kn` : ''}</td>
+      <td class="sm">${x.waves ? `<span class="dir">${arrowSVG(x.waves.direction_deg, 13, '#5F8C9C')}${x.waves.height_m.toFixed(1)} m · ${x.waves.period_s} s</span>` : '—'}</td>
+      <td class="sm"><span class="dir">${x.weather ? `${x.weather.air_c}° ${oktaSVG(x.weather.cloud_pct)}${x.weather.rain_mm > 0 ? ` ${x.weather.rain_mm} mm` : ''}` : ''}</span></td></tr>`;
+  }
+  $('#hourly').innerHTML = html + '</tbody>';
+  $('#fn').innerHTML = reasons.map((r, i) => `<li><b>${i + 1}</b>${esc(r)}</li>`).join('') || '<li><b>—</b>No stars taken off: what the wind gives, you get.</li>';
+  requestAnimationFrame(() => penTable(w));
+}
+function penTable(w) {
+  const svg = $('#tpen'); if (!svg) return;
+  svg.innerHTML = ''; $$('.pen-note', $('#tinner')).forEach(n => n.remove());
+  if (!w || !w.stars) return;
+  const base = $('#tinner').getBoundingClientRect();
+  const a = $(`#hourly tr[data-h="${w.h0}"]`), b = $(`#hourly tr[data-h="${w.h1}"]`), wc = $(`#hourly tr[data-h="${w.h0}"] td.wing`);
+  if (!a || !b) return;
+  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+  const x0 = 2, x1 = wc ? wc.getBoundingClientRect().right - base.left : 600, y0 = ra.top - base.top, y1 = rb.bottom - base.top;
+  const p = svgEl('path', { d: K.loopPath((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + 6, (y1 - y0) / 2 + 8, SP.d + 2) }, svg);
+  drawIn(p, 1100, 200);
+  const n = document.createElement('div'); n.className = 'pen-note';
+  n.textContent = w.h1 > w.h0 ? `the window: ${hh(w.h0)}–${untilOf(w).short}, ${wingTxt(w)}, ${WORDS[w.stars]} stars` : `the one hour worth it: ${hh(w.h0)} on a ${w.x.rating.wing} m`;
+  const below = !!$(`#hourly tr[data-h="${w.h1 + 1}"]`);
+  n.style.left = (x1 * .5) + 'px'; n.style.top = (below ? y1 + 8 : y0 - 32) + 'px';
+  n.style.opacity = 0; n.style.transition = 'opacity .6s ease 1.1s';
+  $('#tinner').appendChild(n); requestAnimationFrame(() => requestAnimationFrame(() => n.style.opacity = 1));
+}
+function renderStrip() {
+  const f = F[SP.id], id = SP.id, svg = $('#strip');
+  const top = 30, bot = 186, x0 = 40, x1 = 1192, hmax = 4.4;
+  const start = Date.parse(DAYS[0] + 'T00:00:00Z') - 3600e3, end = start + DAYS.length * 864e5;
+  const X = t => x0 + (t - start) / (end - start) * (x1 - x0), Y = h => bot - h / hmax * (bot - top - 56);
+  let g = '', nights = '';
+  for (let d = 0; d < DAYS.length; d++) {
+    const s = sunOf(f, d), ds = start + d * 864e5, rise = ds + mins(s.rise) * 60e3, set = ds + mins(s.set) * 60e3;
+    nights += `<rect x="${X(ds).toFixed(1)}" y="${top}" width="${(X(rise) - X(ds)).toFixed(1)}" height="${bot - top}"/><rect x="${X(set).toFixed(1)}" y="${top}" width="${(X(ds + 864e5) - X(set)).toFixed(1)}" height="${bot - top}"/>`;
+    g += `<g class="dsel" data-d="${d}"><rect x="${X(ds)}" y="0" width="${X(ds + 864e5) - X(ds)}" height="${bot + 24}" fill="${d === SP.d ? 'rgba(213,230,234,.55)' : 'transparent'}"/><text x="${X(ds + 432e5)}" y="16" text-anchor="middle" style="font:600 13px Fraunces;fill:#1A1D21">${dayL(d)} <tspan style="font:400 10px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${DOMS[d]} OCT</tspan></text></g>`;
+    if (d) g += `<line x1="${X(ds)}" x2="${X(ds)}" y1="0" y2="${bot + 20}" stroke="#1A1D21" stroke-width=".8"/>`;
+    g += `<text x="${X(rise) + 4}" y="${bot - 6}" style="font:500 8.5px 'IBM Plex Mono';fill:rgba(26,29,33,.7)">☼ ${s.rise}</text><text x="${X(set) - 4}" y="${bot - 6}" text-anchor="end" style="font:500 8.5px 'IBM Plex Mono';fill:rgba(26,29,33,.7)">${s.set} ☾</text>`;
+  }
+  g = `<defs><pattern id="nhatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#1A1D21" stroke-width=".7" opacity=".35"/></pattern></defs><g fill="#1A1D21" opacity=".1">${nights}</g><g fill="url(#nhatch)">${nights}</g>` + g;
+  for (let d = 0; d < DAYS.length; d++) for (let h = 0; h < 24; h++) {
+    const x = f.byDay[d][h]; if (!x || !x.rating) continue;
+    const t = start + d * 864e5 + h * 3600e3 + 1800e3, s = x.rating.stars, p = x.rating.potential, bw = X(t + 1800e3) - X(t - 1800e3) - 1.4;
+    const U = 8;
+    if (p > s) g += `<rect x="${(X(t) - bw / 2).toFixed(1)}" y="${top + 3 + (5 - p) * U}" width="${bw.toFixed(1)}" height="${((p - s) * U).toFixed(1)}" fill="none" stroke="#1A1D21" stroke-width=".7" stroke-dasharray="2 1.5" opacity=".55"/>`;
+    g += `<rect x="${(X(t) - bw / 2).toFixed(1)}" y="${(top + 3 + (5 - s) * U).toFixed(1)}" width="${bw.toFixed(1)}" height="${(s * U + .6).toFixed(1)}" fill="${s >= 4 ? '#B0186A' : '#1A1D21'}" opacity="${s ? .45 + s * .1 : .15}"><title>${dayS(d)} ${hh(h)}: ${s} stars${p > s ? `, ${p} on the wind alone` : ''}</title></rect>`;
+  }
+  const ev = f.tides && f.tides.events;
+  if (ev && ev.length) {
+    [0, 1, 2, 3, 4].forEach(m => { g += `<line x1="${x0}" x2="${x1}" y1="${Y(m)}" y2="${Y(m)}" stroke="#5F8C9C" stroke-width=".5" stroke-dasharray="${m ? '2 3' : ''}"/><text x="${x0 - 6}" y="${Y(m) + 3}" text-anchor="end" style="font:500 8.5px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${m}${m === 4 ? ' m' : ''}</text>`; });
+    const a = Math.max(Date.parse(ev[0].time), start), b = Math.min(Date.parse(ev[ev.length - 1].time), end);
+    let line = '', area = `M${X(a).toFixed(1)} ${bot}`;
+    for (let t = a; t <= b; t += 600e3) { const v = K.tideAt(id, t), pt = `${X(t).toFixed(1)} ${Y(v).toFixed(1)}`; line += (line ? 'L' : 'M') + pt; area += 'L' + pt; }
+    area += `L${X(b).toFixed(1)} ${bot}Z`;
+    g += `<path d="${area}" fill="#D5E6EA" opacity=".6"/><path d="${line}" fill="none" stroke="#1A1D21" stroke-width="2"/>`;
+    ev.filter(e => { const t = Date.parse(e.time); return t >= start && t <= end; }).forEach(e => { const x = X(Date.parse(e.time)), y = Y(e.height_m), hw = e.tide === 'high'; g += `<circle cx="${x}" cy="${y}" r="2.6" fill="#1A1D21"/><text x="${x}" y="${hw ? y - 7 : y + 13}" text-anchor="middle" style="font:600 8.5px 'IBM Plex Mono';fill:#1A1D21;paint-order:stroke;stroke:#F3EEE3;stroke-width:3px">${e.local.slice(-5)}</text>`; });
+    // the window's tide, in pen
+    const w = winOf(id, SP.d);
+    if (w && w.stars) { const t = msOf(w.d, w.h0) + 1800e3, v = K.tideAt(id, t), rising = K.tideAt(id, t + 1800e3) > v; g += `<circle cx="${X(t)}" cy="${Y(v)}" r="7" fill="none" stroke="#D43A2C" stroke-width="1.8"/><text x="${X(t) + 10}" y="${Y(v) + (rising ? 16 : -10)}" style="font:15px Kalam;fill:#D43A2C">${v.toFixed(1)} m, ${rising ? 'rising' : 'falling'}</text>`; }
+  }
+  for (let d = 0; d < DAYS.length; d++) for (const h of [6, 12, 18]) { const t = start + d * 864e5 + h * 3600e3; g += `<text x="${X(t)}" y="${bot + 14}" text-anchor="middle" style="font:500 8.5px 'IBM Plex Mono';fill:rgba(26,29,33,.6)">${String(h).padStart(2, '0')}</text>`; }
+  g += `<line x1="${X(NOW)}" x2="${X(NOW)}" y1="${top - 6}" y2="${bot}" stroke="#D43A2C" stroke-width="1.4"/><text x="${X(NOW) + 4}" y="${bot - 18}" style="font:15px Kalam;fill:#D43A2C">now</text>`;
+  g += `<line x1="${x0}" x2="${x1}" y1="${bot}" y2="${bot}" stroke="#1A1D21"/>`;
+  svg.innerHTML = g;
+  svg.onclick = e => { const t = e.target.closest('.dsel'); if (!t) return; SP.d = +t.dataset.d; renderWeek(); renderHourly(); renderStrip(); penInset(); };
+  $('#tcap').innerHTML = `<span>bars: hourly stars, magenta at four and five; outlines, what the wind alone would give</span><span>dark: night</span>${ev && ev.length ? `<span>line: tide at ${esc(f.tides.station)}, Marine Institute predictions; times are high and low water</span><span>red ring: the tide at the chosen day's window</span>` : ''}`;
+}
+function buildInset(s) {
+  if (imap) { imap.remove(); imap = null; }
+  imap = K.createMap($('#imap'), { center: LL(s), zoom: PHONE() ? 10.8 : 11.2, minZoom: 8, dragRotate: false, pitchWithRotate: false, touchPitch: false, cooperativeGestures: PHONE() });
+  imap.touchZoomRotate.disableRotation();
+  imap.on('error', e => console.error('MAPERR', e.error && e.error.message));
+  iwind = K.wind(imap, { time: NOW, alpha: .5, density: .5 });
+  ipen = K.pen(imap); ihand = Hand(imap); ishoal = shoals(imap, () => iwind && iwind.time);
+  graduate(imap, $('#igrad'), $('#imap'));
+  imap.on('load', () => { closeAttrib(imap); imap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right'); penInset(); });
+}
+function penInset() {
+  if (!imap || !imap.loaded()) return;
+  ipen.clear(); ihand.clear();
+  const s = BYID[SP.id], ll = LL(s), w = winOf(SP.id, SP.d), ph = PHONE();
+  if (!w || !w.stars) { iwind.setTime(msOf(SP.d, 13)); ishoal.redraw(); ihand.write(ll, [`${dayS(SP.d)}: nothing rideable`], { offset: [24, -24], size: 18 }); return; }
+  iwind.setTime(msOf(w.d, w.h0)); ishoal.redraw();
+  const tok = SP.id + ':' + SP.d;
+  penWindow(imap, ipen, ihand, ishoal, s, w, { R: ph ? 24 : 34, time: msOf(w.d, w.h0), far: ph ? 90 : 130, size: ph ? 15 : 20, small: ph ? 13 : 17, shoalMax: 300, long: false,
+    windowLines: [`${dayS(w.d)} ${hh(w.h0)}–${untilOf(w).short}`, `${wingTxt(w)} · ${WORDS[w.stars]} stars`], alive: () => imap && SP.id + ':' + SP.d === tok });
+}
+
+/* =====================================================================
+   ROUTES: #map · #story/<n> · #spot/<id>
+   ===================================================================== */
+let started = false;
+function showMap() {
+  const wasSpot = document.body.classList.contains('on-spot');
+  document.body.classList.remove('on-spot');
+  document.title = 'Chart & Broadsheet · The Wingfoil Almanac';
+  if (imap) { imap.remove(); imap = null; }
+  if (wasSpot) { map.resize(); }
+}
+function route() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('spot/')) {
+    const id = h.slice(5);
+    if (F[id]) { document.body.classList.add('on-spot'); scrollTo(0, 0); renderSpot(id); return; }
+    showMap(); history.replaceState(null, '', '#map'); if (BYID[id]) setTimeout(() => spotStory(id), 60); return;
+  }
+  showMap();
+  if (h.startsWith('story/')) { const st = STORIES[+h.slice(6) - 1]; if (st) { if (ACTIVE && ACTIVE.story === st) { map.resize(); const b = ACTIVE; return setTimeout(() => scrollToBeat(b), 60); } return setTimeout(() => scrollToBeat(st.beats[0]), 60); } }
+  if (!ACTIVE || h === 'map') { if (ACTIVE && ACTIVE.kind === 'overview') return; go(BEATS[0]); (PHONE() ? document.scrollingElement : paper).scrollTo({ top: 0 }); }
+}
+map.on('load', () => {
+  pen = K.pen(map); hand = Hand(map); shoal = shoals(map, () => wind.time);
+  const fixObstacles = () => { const mr = $('#map').getBoundingClientRect(); [cart, zc].forEach(e => { const r = e.getBoundingClientRect(); hand.reserveScreen({ x: r.left - mr.left - 6, y: r.top - mr.top - 6, w: r.width + 12, h: r.height + 12 }); }); };
+  fixObstacles();
+  buildMarkers(); zoomClass(); closeAttrib(map);
+  graduate(map, $('#grad'), $('#map'));
+  ruler.draw(); ruler.cursor(NOW);
+  started = true;
+  route();
+  if (!ACTIVE) onScroll(); // read wherever the reader had scrolled to before the chart was ready
+  window.ready = true;
+});
+addEventListener('hashchange', () => { if (started) route(); });
+window.__wf = { STORIES, BEATS, go, scrollToBeat, spotStory, map };
+})();
+</script>
+</body>
+</html>
