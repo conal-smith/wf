@@ -1,7 +1,7 @@
 import { expect, steadyFrames, test } from "./fixtures";
 
 for (const width of [390, 1440]) {
-  test(`spot popout opens, follows selection, and closes independently at ${width}px`, async ({
+  test(`the popup opens on a light, fits between the boxes, and closes on its own at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -9,23 +9,28 @@ for (const width of [390, 1440]) {
     await expect(page.locator(".spot-marker")).toHaveCount(146, {
       timeout: 30000,
     });
-    await expect(page.locator(".spot-popout-card")).toHaveCount(0);
-    await page.getByLabel("Open spot search").click();
-    await page.getByRole("searchbox").fill("Blast");
+    await expect(page.locator(".spot-card")).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Find a spot" }).fill("Blast");
     await page.locator(".spot-row").click();
-    const popup = page.getByRole("dialog", { name: /Kilcrea.*information/ });
+    const popup = page.getByRole("dialog", { name: /Kilcrea.*at a glance/ });
     await expect(popup).toBeVisible();
-    await expect(popup).toContainText("Spot · Dublin");
-    await expect(popup).toContainText("Kilcrea Road");
-    await expect(popup).toContainText("53.46908, -6.17555");
-    await expect(popup.getByRole("link", { name: "Website" })).toHaveCount(0);
-    await expect(popup.getByRole("link", { name: "Source" })).toHaveAttribute(
-      "href",
-      /10816824305/,
+    // A few figures and glyphs: the hour, its stars, the wind and the wing.
+    await expect(popup).toContainText("Dublin");
+    await expect(popup.locator(".sc-when .when")).toHaveText(
+      /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d$/,
     );
-    await expect(page.locator(".sheet-loading")).toHaveCount(0, {
-      timeout: 30000,
-    });
+    await expect(popup.getByRole("link", { name: "How the stars work" })).toHaveAttribute(
+      "href",
+      "/stars",
+    );
+    await expect(popup.getByRole("link", { name: "Spot page →" })).toHaveAttribute(
+      "href",
+      "/spot/kilcrea",
+    );
+    await expect(
+      popup.getByRole("button", { name: "Star Kilcrea — Malahide Estuary" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    // Between the head and the dock, once the flight there has landed.
     await expect
       .poll(async () => {
         const card = (await popup.boundingBox())!;
@@ -38,10 +43,8 @@ for (const width of [390, 1440]) {
         );
       })
       .toBe(true);
-    // The reader can pan away from the spot: the popout is fitted once, when
-    // the camera that opened it lands, and never re-clamped afterwards.
+    // The reader can pan away: the card is fitted once, then goes with the map.
     const pin = page.locator('[data-spot-id="kilcrea"]');
-    /** Where the marker comes to rest: two readings a quarter-second apart. */
     const restingX = async () => {
       let last = Number.NaN;
       await expect
@@ -57,50 +60,35 @@ for (const width of [390, 1440]) {
         .toBe(true);
       return last;
     };
-    // Wait for the camera that opened the popout to land first: the fit happens
-    // when it does, and a pan begun before that would be undone by it — which
-    // would make this test pass for the wrong reason, or fail for one.
     await steadyFrames(page);
-    const pinBefore = await restingX();
-    // The keyboard pan is a reader's gesture like any other, and it lands
-    // wherever the markers happen to be.
+    const before = await restingX();
     await page.locator(".maplibregl-canvas").focus();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
-    // The map really moved — and stays moved. Nothing pans it back to put the
-    // card where it was, which is what a refit after every move used to do.
     await expect
-      .poll(async () => Math.abs((await pin.boundingBox())!.x - pinBefore))
+      .poll(async () => Math.abs((await pin.boundingBox())!.x - before))
       .toBeGreaterThan(80);
-    const resting = await restingX();
-    expect(Math.abs(resting - pinBefore)).toBeGreaterThan(80);
+    expect(Math.abs((await restingX()) - before)).toBeGreaterThan(80);
     await expect(popup).toBeVisible();
+    // The hour moves; the card stays and reads the new hour.
+    const was = await popup.locator(".sc-when .when").textContent();
     await page.getByRole("slider", { name: "Forecast time" }).fill("10");
     await expect(popup).toBeVisible();
-    await page.screenshot({ path: `test-results/spot-popup-${width}.png` });
+    await expect(popup.locator(".sc-when .when")).not.toHaveText(was!);
     await page.keyboard.press("Escape");
     await expect(popup).toHaveCount(0);
-    await expect(page.locator(".forecast-sheet")).toBeVisible();
-    const marker = page.locator('[data-spot-id="kilcrea"]');
-    await expect(marker).toBeFocused();
-    await marker.press("Enter");
+    // A light opens it again, by key as by tap.
+    await pin.focus();
+    await pin.press("Enter");
     await expect(popup).toBeVisible();
-    await page.getByLabel("Close spot information").click();
+    await popup.getByRole("button", { name: "Close spot information" }).click();
     await expect(popup).toHaveCount(0);
-    await marker.click();
-    await expect(popup).toBeVisible();
-    await page.getByLabel("Open spot search").click();
-    await page.getByRole("searchbox").fill("Dollymount");
+    // Another spot takes its place.
+    await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
     await page.locator(".spot-row").click();
-    await expect(page.locator(".spot-popout-card")).toHaveCount(1);
+    await expect(page.locator(".spot-card")).toHaveCount(1);
     await expect(
-      page.getByRole("dialog", { name: "Dollymount information" }),
-    ).toContainText("Dublin Bay");
-    await expect(popup).toHaveCount(0);
-    await page.getByLabel("Layers", { exact: true }).click();
-    await page.getByLabel("Wind-sport locations", { exact: true }).uncheck();
-    await expect(page.locator(".spot-popout-card")).toHaveCount(0);
-    await page.getByLabel("Wind-sport locations", { exact: true }).check();
-    await expect(page.locator(".spot-popout-card")).toHaveCount(0);
+      page.getByRole("dialog", { name: "Dollymount at a glance" }),
+    ).toBeVisible();
   });
 }
