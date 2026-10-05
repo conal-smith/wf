@@ -140,19 +140,19 @@ describe("S8: Tailwind and ui/ only", () => {
 
 describe("S4: the shell's measures", () => {
   it("is the 1200 page measure and two columns from the rail breakpoint up", () => {
-    const styles = shellStyles({ railIsPage: true });
+    const styles = shellStyles();
     expect(styles.page()).toContain("max-w-page");
     expect(styles.shell()).toContain("rail:grid-cols-shell");
     expect(styles.shell()).toContain("grid-cols-1");
   });
 
-  it("below it the channels are the page at /community, and hidden elsewhere", () => {
-    expect(shellStyles({ railIsPage: true }).rail() ?? "").toBe("");
-    expect(shellStyles({ railIsPage: false }).rail()).toContain(
+  it("below it the page comes first, and the channels unfold under a control", () => {
+    expect(shellStyles().rail()).toContain("max-rail:hidden");
+    expect(shellStyles({ channelsOpen: true }).rail() ?? "").not.toContain(
       "max-rail:hidden",
     );
-    // The way back to them is only drawn where they are not beside the page.
-    expect(shellStyles().back()).toContain("rail:hidden");
+    // The control is only drawn where they are not beside the page.
+    expect(shellStyles().channels()).toContain("rail:hidden");
   });
 });
 
@@ -427,21 +427,23 @@ describe("S3 and S4: the shell around a route", () => {
     expect(out.match(/<nav [^>]*aria-label="Channels"/g)).toHaveLength(1);
     expect(out.match(/<main id="community-main"/g)).toHaveLength(1);
     expect(out).toContain("Sign in");
-    // At /community the channels are the page on a phone: nothing hides them,
-    // and there is nowhere to go back to.
-    expect(out).not.toMatch(
-      /<nav class="[^"]*max-rail:hidden[^"]*" aria-label="Channels"/,
+    // At /community a phone opens on the latest threads: the channels are
+    // folded away under the control that unfolds them.
+    expect(out).toMatch(
+      /<nav id="community-channels" class="[^"]*max-rail:hidden[^"]*" aria-label="Channels"/,
     );
-    expect(out).not.toContain(">Channels</span>");
+    expect(out).toMatch(
+      /<button type="button" aria-expanded="false" aria-controls="community-channels" class="[^"]*rail:hidden[^"]*">.*?<span>Channels<\/span>/,
+    );
   });
 
   it("signed in, on a channel: the rail stands down on a phone and New thread lands in the channel", async () => {
     const out = await shellAs("aoife", "/community/c/wings");
     expect(out).toMatch(
-      /<nav class="[^"]*max-rail:hidden[^"]*" aria-label="Channels"/,
+      /<nav id="community-channels" class="[^"]*max-rail:hidden[^"]*" aria-label="Channels"/,
     );
     expect(out).toMatch(
-      /<a href="\/community"[^>]*class="[^"]*rail:hidden[^"]*"[^>]*>.*?<span>Channels<\/span>/,
+      /aria-controls="community-channels"[^>]*>.*?<span>Channels<\/span>/,
     );
     expect(out).toContain('href="/community/c/wings?new=1"');
   });
