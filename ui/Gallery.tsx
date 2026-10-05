@@ -6,7 +6,17 @@
  * Loaded by path from src/main.tsx in development mode only, and exported
  * from nowhere, so it is not part of any build.
  */
-import { Bell, Heart, MessageSquare, Plus, Trash2, Wind } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  Heart,
+  Layers,
+  Menu,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Wind,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import {
   Avatar,
@@ -18,18 +28,36 @@ import {
   Dialog,
   Empty,
   Field,
+  Figure,
+  Headline,
+  headlineStyles,
+  Kicker,
   Link,
+  Masthead,
+  MastheadMark,
+  mastheadStyles,
   Notice,
   Pager,
   Pane,
+  PenLoop,
+  PenNote,
+  PenStrike,
+  PenUnderline,
+  Puffin,
   SearchField,
+  SectionHeading,
   Segmented,
   Select,
   Skeleton,
+  StarGlyphs,
   Surface,
   TextArea,
   TextInput,
+  Wordmark,
 } from "./index";
+// The site menu is the chrome's, not the kit's; it is drawn in the masthead
+// here as every section draws it.
+import { SiteMenu } from "../force5/src/SiteMenu";
 // Gust, the companion, is not part of the kit; he is drawn here so his moods
 // can be looked at side by side.
 import { Gust } from "../companion/web/Gust";
@@ -46,29 +74,69 @@ const VARIANTS = [
 ] as const;
 const SIZES = ["sm", "md", "lg"] as const;
 
+/** A section of the sheet: a heading on the broadsheet's rule, no box. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Pane className="grid gap-4" data-section={title}>
-      <h2 className="m-0 text-lead text-ink">{title}</h2>
+    <section className="grid content-start gap-4" data-section={title}>
+      <SectionHeading>{title}</SectionHeading>
       {children}
-    </Pane>
+    </section>
   );
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-2">
-      <p className="m-0 text-eyebrow text-ink-muted uppercase">{label}</p>
+      <Kicker>{label}</Kicker>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   );
 }
+
+/** A swatch: the colour, its name, and nothing else. */
+function Swatch({ name, fill }: { name: string; fill: string }) {
+  return (
+    <figure className="m-0 grid w-24 gap-1">
+      <span className={`block h-12 border border-line ${fill}`} />
+      <figcaption className="font-mono text-caption text-ink-muted">
+        {name}
+      </figcaption>
+    </figure>
+  );
+}
+
+// Written out whole, so the theme's scan finds every class.
+const SWATCHES: [string, string][] = [
+  ["ground", "bg-ground"],
+  ["sunken", "bg-sunken"],
+  ["ink", "bg-ink"],
+  ["ink-2", "bg-ink-2"],
+  ["ink-muted", "bg-ink-muted"],
+  ["line-strong", "bg-line-strong"],
+  ["line", "bg-line"],
+  ["chart-magenta", "bg-chart-magenta"],
+  ["pen", "bg-pen"],
+  ["pen-ink", "bg-pen-ink"],
+  ["buoy", "bg-buoy"],
+  ["land", "bg-land"],
+  ["relief", "bg-relief"],
+  ["sea", "bg-sea"],
+  ["sea-1", "bg-sea-1"],
+  ["sea-2", "bg-sea-2"],
+  ["sea-3", "bg-sea-3"],
+  ["sea-4", "bg-sea-4"],
+  ["depth", "bg-depth"],
+  ["ok", "bg-ok"],
+  ["warn", "bg-warn"],
+  ["warn-ground", "bg-warn-ground"],
+];
 
 export default function Gallery() {
   const [saved, setSaved] = useState(true);
   const [whatsapp, setWhatsapp] = useState(true);
   const [notify, setNotify] = useState<"all" | "mentions" | "none">("mentions");
   const [sort, setSort] = useState<"latest" | "unread">("latest");
+  const [view, setView] = useState<"table" | "ribbon">("table");
   const [page, setPage] = useState(2);
   const [dialog, setDialog] = useState<"plain" | "wide" | "confirm" | null>(
     null,
@@ -76,13 +144,157 @@ export default function Gallery() {
   const [busy, setBusy] = useState(false);
 
   return (
-    <main className="grid min-h-dvh content-start gap-6 bg-ground p-6 font-sans text-prose text-ink">
-      <header className="grid gap-1">
-        <h1 className="m-0 text-title text-ink">Kit</h1>
-        <p className="m-0 max-w-reading text-ink-muted">
-          Every component in ui/, in every variant and state. Development only.
-        </p>
-      </header>
+    <main className="grid min-h-dvh content-start gap-10 bg-ground paper-grain px-safe-6 pb-16 font-body text-prose text-ink max-wide:gap-8 max-wide:px-safe-3">
+      <Masthead>
+        <SiteMenu current="map" size="sm" ground="content" />
+        <a href="/ui" className={mastheadStyles().brand()}>
+          <MastheadMark section="Kit" />
+        </a>
+        <span className={mastheadStyles().actions()}>
+          <Kicker>Development only</Kicker>
+        </span>
+      </Masthead>
+
+      <Section title="Paper and ink">
+        <div className="flex flex-wrap gap-3">
+          {SWATCHES.map(([name, fill]) => (
+            <Swatch key={name} name={name} fill={fill} />
+          ))}
+        </div>
+        <Row label="the double rule, the hairline, the hatch of the dark">
+          <span className="block h-16 w-32 border border-ink bg-card inset-shadow-frame" />
+          <span className="block h-16 w-32 border-0 border-t-3 border-double border-ink" />
+          <span className="block h-16 w-32 border-b border-line" />
+          <span className="block h-16 w-32 border border-line hatch" />
+        </Row>
+      </Section>
+
+      <Section title="Type">
+        <div className="grid gap-3">
+          <p className="m-0 font-display text-headline optical-display">
+            Fraunces, the headline
+          </p>
+          <p className="m-0 font-display text-title">Fraunces, a title</p>
+          <p className="m-0 font-display text-lead">
+            Fraunces, a lead <em className="font-normal">and its italic</em>
+          </p>
+          <p className="m-0 max-w-measure text-prose">
+            Newsreader, the body: the few sentences there are, read at length
+            only away from the map.{" "}
+            <em>Its italic is a placeholder, a hint, an aside.</em>
+          </p>
+          <p className="m-0 text-body text-ink-muted">
+            Newsreader at the body step, muted: the small print.
+          </p>
+          <p className="m-0 font-mono text-figure">14 g22 · 6.5 m · 13:00</p>
+          <p className="m-0 font-mono text-caption text-ink-muted">
+            Plex Mono at the caption step: WSW 14g22 · 9x
+          </p>
+          <Kicker>Plex Mono, the label: stars · wind kn · from</Kicker>
+          <PenNote>Kalam, the pen: Go 13:00–16:00.</PenNote>
+        </div>
+      </Section>
+
+      <Section title="Wordmark and masthead">
+        <Row label="sizes">
+          <Wordmark size="sm" />
+          <Wordmark />
+          <Wordmark size="lg" />
+        </Row>
+        <Row label="the masthead, as each section draws it">
+          <div className="w-full">
+            <Masthead className="static">
+              <Button variant="raised" size="sm" icon aria-label="Menu">
+                <Menu size={15} aria-hidden="true" />
+              </Button>
+              <a href="#masthead" className={mastheadStyles().brand()}>
+                <MastheadMark section="Market" />
+              </a>
+              <nav className={mastheadStyles().actions()} aria-label="Example">
+                <Button variant="primary" size="sm">
+                  <Plus size={15} aria-hidden="true" /> Sell
+                </Button>
+                <Button variant="pill" size="sm">
+                  Sign in
+                </Button>
+              </nav>
+            </Masthead>
+          </div>
+        </Row>
+      </Section>
+
+      <Section title="Headings">
+        <Headline>
+          Donabate<span className={headlineStyles().mark()}>:</span> a
+          three-star Friday morning{" "}
+          <em className={headlineStyles().soft()}>on a 5.5 m</em>
+        </Headline>
+        <SectionHeading
+          aside={
+            <>
+              <StarGlyphs stars={4} potential={4} /> 18–19
+            </>
+          }
+        >
+          Tuesday 6
+        </SectionHeading>
+        <SectionHeading size="title" rule="double">
+          Second-hand gear
+        </SectionHeading>
+        <SectionHeading as="h3" size="kicker" rule="thin" aside="Best Mon">
+          Starred
+        </SectionHeading>
+      </Section>
+
+      <Section title="Figures and stars">
+        <Row label="figure: sm, md, lg; a gust over the mean; an alarm">
+          <Figure size="sm" value={12} unit="kn" />
+          <Figure value={14} sup={22} unit="kn" />
+          <Figure size="lg" value={18} unit="kn" />
+          <Figure value={13} sup={26} alarm />
+          <Figure value="€450" />
+        </Row>
+        <Row label="stars: 0 to 5, faded for the wind alone, and the dark">
+          <StarGlyphs stars={0} />
+          <StarGlyphs stars={1} potential={3} />
+          <StarGlyphs stars={3} potential={4} />
+          <StarGlyphs stars={4} />
+          <StarGlyphs stars={5} tone="magenta" size={14} />
+          <StarGlyphs stars={null} />
+          <span className="inline-flex bg-inverse px-2 py-1">
+            <StarGlyphs stars={3} potential={5} tone="inverse" />
+          </span>
+          <StarGlyphs stars={2} potential={3} slots="potential" size={10} />
+        </Row>
+      </Section>
+
+      <Section title="The pen and the Almanac">
+        <Row label="a loop, an underline, a strike: one mark a view">
+          <span className="font-mono text-figure">
+            <PenLoop>13 g22</PenLoop>
+          </span>
+          <span className="font-display text-lead">
+            <PenUnderline>Four stars</PenUnderline>
+          </span>
+          <span className="font-display text-lead italic">
+            <PenStrike>Brandon Bay</PenStrike>
+          </span>
+        </Row>
+        <div className="flex max-w-dialog items-end gap-4 border-l border-line pl-4">
+          <div className="grid flex-1 gap-1">
+            <PenNote>
+              Go 13:00–16:00. <PenUnderline>Four stars</PenUnderline> on a 6 m.
+            </PenNote>
+            <PenNote size="sm">WSW 14 g22 · cross-shore · HW 13:25</PenNote>
+          </div>
+          <Puffin bob title="The Almanac" />
+        </div>
+        <Row label="the puffin, at three sizes">
+          <Puffin size={32} />
+          <Puffin />
+          <Puffin size={96} />
+        </Row>
+      </Section>
 
       <Section title="Button">
         {VARIANTS.map((variant) => (
@@ -120,6 +332,19 @@ export default function Gallery() {
           </Button>
           <Button variant="pill" icon disabled aria-label="Delete">
             <Trash2 size={18} aria-hidden="true" />
+          </Button>
+        </Row>
+        <Row label="the chart's instruments, over the map">
+          <span className="inline-flex flex-col">
+            <Button variant="raised" icon aria-label="Zoom in">
+              <Plus size={16} aria-hidden="true" />
+            </Button>
+            <Button variant="raised" icon aria-label="Layers">
+              <Layers size={16} aria-hidden="true" />
+            </Button>
+          </span>
+          <Button variant="link" href="#button">
+            <ArrowLeft size={13} aria-hidden="true" /> Chart
           </Button>
         </Row>
         <Row label="pressed">
@@ -223,17 +448,27 @@ export default function Gallery() {
       <Section title="Pane and Surface">
         <div className="flex flex-wrap gap-4">
           <Pane className="min-w-72 flex-1">
-            <p className="m-0">Pane, card</p>
+            <p className="m-0">Pane, card: one ink rule</p>
+          </Pane>
+          <Pane double className="min-w-72 flex-1">
+            <p className="m-0">Pane, double: the chart's box</p>
           </Pane>
           <Pane kind="sunken" className="min-w-72 flex-1">
             <p className="m-0">Pane, sunken</p>
           </Pane>
-          <Pane standing className="min-w-72 flex-1">
+          <Pane standing double className="min-w-72 flex-1">
             <p className="m-0">Pane, standing</p>
           </Pane>
-          <div className="min-w-72 flex-1 rounded-surface bg-sea p-5">
+          <Pane kind="ruled" className="min-w-72 flex-1">
+            <p className="m-0">Pane, ruled: the broadsheet's section</p>
+          </Pane>
+          <div className="min-w-72 flex-1 bg-sea-3 p-5">
             <Surface>
-              <p className="m-0">Surface: glass, over the map</p>
+              <Kicker>Your spots</Kicker>
+              <p className="m-0 font-display text-lead italic">Dollymount</p>
+              <p className="m-0 font-mono text-caption text-ink-muted">
+                13–14 · WSW 11g20
+              </p>
             </Surface>
           </div>
         </div>
@@ -359,6 +594,17 @@ export default function Gallery() {
       </Section>
 
       <Section title="Segmented">
+        <Row label="the dock's switch">
+          <Segmented
+            aria-label="Show the hours as"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "table", label: "Table" },
+              { value: "ribbon", label: "Ribbon" },
+            ]}
+          />
+        </Row>
         <Row label="row">
           <Segmented
             aria-label="Sort threads"

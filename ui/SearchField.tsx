@@ -4,9 +4,11 @@ import { NO_RING, RING_WITHIN, tv, type VariantProps } from "./tv";
 
 export const searchFieldStyles = tv({
   slots: {
+    // A rule to write on, as the chart's "Find a spot...": no box, an ink
+    // line under the words, and the words in the body face's italic.
     base: [
-      "flex min-w-0 items-center gap-2 rounded-full border border-line bg-card px-3 shadow-control",
-      "font-sans text-ink-muted transition-colors duration-fast hover:border-line-strong",
+      "flex min-w-0 items-center gap-2 border-0 border-b border-ink bg-transparent px-0.5",
+      "font-body text-ink-muted transition-colors duration-fast hover:border-chart-magenta",
       "aria-busy:cursor-progress",
       // A tap target is never shorter than touch, whatever size was asked for.
       "pointer-coarse:min-h-touch",
@@ -14,9 +16,9 @@ export const searchFieldStyles = tv({
     ],
     input: [
       "w-full min-w-0 flex-1 self-stretch appearance-none border-0 bg-transparent p-0",
-      "font-sans text-prose font-normal text-ink",
-      "placeholder:text-ink-muted placeholder:opacity-100",
-      "pointer-coarse:text-lead",
+      "font-body text-prose font-normal text-ink",
+      "placeholder:text-ink-muted placeholder:italic placeholder:opacity-100",
+      "pointer-coarse:text-input",
       NO_RING,
     ],
   },
@@ -25,9 +27,11 @@ export const searchFieldStyles = tv({
       md: { base: "h-control-md" },
       lg: { base: "h-control-lg" },
       // The search a page is built around rather than a control in a bar:
-      // taller than any other control, lifted off the ground, and open enough
-      // at the leading edge for the icon to stand clear of the words.
-      hero: { base: "h-13.5 gap-3 pr-2 pl-5 shadow-marker" },
+      // taller than any other control, on a heavier rule, in the lead size.
+      hero: {
+        base: "h-13.5 gap-3 border-b-2 pr-1",
+        input: "text-lead font-normal pointer-coarse:text-lead",
+      },
     },
   },
   defaultVariants: { size: "lg" },

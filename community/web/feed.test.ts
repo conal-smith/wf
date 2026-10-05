@@ -332,7 +332,7 @@ describe("S2: a channel", () => {
     const on = pills.filter((p) => p.attributes.includes("aria-current"));
     expect(on.map((p) => p.label)).toEqual([picked.label]);
     expect(on[0].attributes).toContain("bg-inverse");
-    expect(on[0].attributes).toContain("font-bold");
+    expect(on[0].attributes).toContain("font-semibold");
   });
 
   it("draws no filter for a channel with no tags, and reads a stray tag as All", () => {

@@ -3,7 +3,9 @@ import { tv, type VariantProps } from "./tv";
 
 export const avatarStyles = tv({
   slots: {
-    base: "inline-grid shrink-0 place-items-center overflow-hidden rounded-full bg-inverse font-sans leading-none font-semibold text-ink-inverse",
+    // A monogram in a ring: the display face's italic, on the paper's second
+    // sheet, ruled in ink as everything that stands on the page is.
+    base: "inline-grid shrink-0 place-items-center overflow-hidden rounded-full border border-ink bg-sunken font-display leading-none font-semibold text-ink italic",
     image: "size-full object-cover",
   },
   variants: {

@@ -12,17 +12,27 @@ import { countStyles } from "./Count";
 import { backdropPress, dialogStyles, onBackdrop, syncModal } from "./Dialog";
 import { emptyStyles } from "./Empty";
 import { fieldStyles } from "./Field";
+import { figureStyles } from "./Figure";
+import { headlineStyles } from "./Headline";
 import * as kit from "./index";
+import { kickerStyles } from "./Kicker";
 import { linkStyles } from "./Link";
+import { mastheadStyles } from "./Masthead";
 import { noticeStyles } from "./Notice";
 import { pagerStyles } from "./Pager";
 import { paneStyles } from "./Pane";
+import { penNoteStyles, penStyles } from "./Pen";
+import { loopPath, strikePath, underlinePath } from "./penPaths";
+import { puffinStyles } from "./Puffin";
 import { searchFieldStyles } from "./SearchField";
+import { sectionHeadingStyles } from "./SectionHeading";
 import { segmentedStyles } from "./Segmented";
 import { skeletonStyles } from "./Skeleton";
+import { starGlyphsStyles } from "./StarGlyphs";
 import { surfaceStyles } from "./Surface";
 import { UI, compileTheme, holds, selector } from "./theme.testkit";
-import { RING, RING_WITHIN } from "./tv";
+import { MONO_LABEL, RING, RING_WITHIN } from "./tv";
+import { wordmarkStyles } from "./Wordmark";
 
 const {
   Avatar,
@@ -34,17 +44,28 @@ const {
   Dialog,
   Empty,
   Field,
+  Figure,
+  Headline,
+  Kicker,
   Link,
+  Masthead,
+  MastheadMark,
   Notice,
   Pager,
   Pane,
+  PenLoop,
+  PenNote,
+  Puffin,
   SearchField,
+  SectionHeading,
   Segmented,
   Select,
   Skeleton,
+  StarGlyphs,
   Surface,
   TextArea,
   TextInput,
+  Wordmark,
   initials,
 } = kit;
 
@@ -58,14 +79,24 @@ const RECIPES = {
   dialogStyles,
   emptyStyles,
   fieldStyles,
+  figureStyles,
+  headlineStyles,
+  kickerStyles,
   linkStyles,
+  mastheadStyles,
   noticeStyles,
   pagerStyles,
   paneStyles,
+  penNoteStyles,
+  penStyles,
+  puffinStyles,
   searchFieldStyles,
+  sectionHeadingStyles,
   segmentedStyles,
   skeletonStyles,
+  starGlyphsStyles,
   surfaceStyles,
+  wordmarkStyles,
 };
 
 type Classes = string | readonly Classes[] | { [key: string]: Classes } | null;
@@ -151,7 +182,7 @@ describe("the kit is styled only from the theme", () => {
 });
 
 describe("S2: what ui/ exports", () => {
-  it("is the twenty components, by name", () => {
+  it("is the thirty-three components, by name", () => {
     const components = Object.keys(kit).filter((name) => /^[A-Z]/.test(name));
     expect(components.sort()).toEqual(
       [
@@ -164,17 +195,30 @@ describe("S2: what ui/ exports", () => {
         "Dialog",
         "Empty",
         "Field",
+        "Figure",
+        "Headline",
+        "Kicker",
         "Link",
+        "Masthead",
+        "MastheadMark",
         "Notice",
         "Pager",
         "Pane",
+        "PenLoop",
+        "PenNote",
+        "PenStrike",
+        "PenUnderline",
+        "Puffin",
         "SearchField",
+        "SectionHeading",
         "Segmented",
         "Select",
         "Skeleton",
+        "StarGlyphs",
         "Surface",
         "TextArea",
         "TextInput",
+        "Wordmark",
       ].sort(),
     );
   });
@@ -191,8 +235,14 @@ describe("S2: what ui/ exports", () => {
     ["Button", buttonStyles, "pressed", ["true", "worded"]],
     ["Chip", chipStyles, "tone", ["neutral", "warn", "glass"]],
     ["Chip", chipStyles, "eyebrow", ["true"]],
-    ["Pane", paneStyles, "kind", ["card", "sunken"]],
+    ["Pane", paneStyles, "kind", ["card", "sunken", "ruled"]],
+    ["Pane", paneStyles, "double", ["true"]],
     ["Pane", paneStyles, "standing", ["true"]],
+    ["Surface", surfaceStyles, "rule", ["double", "single"]],
+    ["Wordmark", wordmarkStyles, "size", ["sm", "md", "lg"]],
+    ["SectionHeading", sectionHeadingStyles, "size", ["lead", "title", "kicker"]],
+    ["SectionHeading", sectionHeadingStyles, "rule", ["thin", "thick", "double"]],
+    ["StarGlyphs", starGlyphsStyles, "tone", ["ink", "inverse", "magenta"]],
     ["Avatar", avatarStyles, "size", ["sm", "md", "lg"]],
   ] as const)("%s has %s: %j", (_, recipe, variant, values) => {
     const variants = (recipe as unknown as { variants: Record<string, object> })
@@ -201,47 +251,111 @@ describe("S2: what ui/ exports", () => {
   });
 });
 
-describe("S3: the content ground is the default", () => {
-  it("a pill is the card fill, the ink hairline and a capsule", () => {
+describe("S3: the chart's shapes", () => {
+  it("speaks in the mono label: every button, in tracked capitals", () => {
+    for (const variant of ["quiet", "primary", "pill", "raised", "danger"] as const) {
+      const classes = buttonStyles({ variant }).split(" ");
+      for (const name of ["font-mono", "text-label", "uppercase"])
+        expect(classes, `${variant} ${name}`).toContain(name);
+    }
+  });
+
+  it("a pill is paper in an ink rule, and turns to ink under the pointer", () => {
     const pill = buttonStyles({ variant: "pill" }).split(" ");
     for (const name of [
       "bg-card",
       "border",
-      "border-line",
-      "shadow-control",
+      "border-ink",
       "rounded-full",
+      "not-disabled:hover:bg-inverse",
+      "not-disabled:hover:text-ink-inverse",
     ])
       expect(pill).toContain(name);
   });
 
-  it("the filled action is a capsule, and lg takes the prose step", () => {
+  it("the filled action is an ink capsule that turns magenta, and lg is heavier", () => {
     const primary = buttonStyles({ variant: "primary", size: "lg" }).split(" ");
-    expect(primary).toContain("rounded-full");
-    expect(primary).toContain("text-prose");
-    expect(primary).not.toContain("text-label");
+    for (const name of [
+      "rounded-full",
+      "bg-accent",
+      "text-accent-ink",
+      "not-disabled:hover:bg-accent-hover",
+      "font-semibold",
+    ])
+      expect(primary).toContain(name);
   });
 
-  it("a chip is sunken with second ink, not glass", () => {
+  it("the instrument over the map is a square ink box, icon or not", () => {
+    for (const icon of [false, true]) {
+      const raised = buttonStyles({ variant: "raised", icon }).split(" ");
+      expect(raised, String(icon)).toContain("rounded-none");
+      expect(raised, String(icon)).not.toContain("rounded-full");
+      expect(raised, String(icon)).toContain("border-ink");
+    }
+  });
+
+  it("a chip is a mono tag on the paper's second sheet, ruled with a hairline", () => {
     const chip = chipStyles().split(" ");
-    expect(chip).toContain("bg-sunken");
-    expect(chip).toContain("text-ink-2");
+    for (const name of ["font-mono", "bg-sunken", "border-line", "text-ink-2"])
+      expect(chip).toContain(name);
     expect(chipStyles({ tone: "warn" })).toContain("bg-warn-ground text-warn");
   });
 
-  // Glass is for what is laid over something else that is worth seeing: the
-  // moving map, or a photograph. A Surface is the first; a Chip's `glass` tone
-  // is the second, and a badge on a listing's cover is the only thing that
-  // asks for it. Nothing else in the kit may reach for it, and a chip's own
-  // default stays sunken (above).
-  it("only Surface and a glass Chip are glass", () => {
+  // Glass is a badge over a photograph now, and nothing else: over the map
+  // the chart draws its boxes in solid paper.
+  it("only a glass Chip is glass", () => {
     for (const [name, recipe] of Object.entries(RECIPES)) {
       const glass = classesOf(recipe as Recipe).some((c) => /glass/.test(c));
-      expect(glass, name).toBe(
-        name === "surfaceStyles" || name === "chipStyles",
-      );
+      expect(glass, name).toBe(name === "chipStyles");
     }
     expect(chipStyles({ tone: "glass" })).toContain("bg-glass");
     expect(chipStyles()).not.toContain("glass");
+  });
+
+  it("a surface is the chart's box: paper with grain in a double rule", () => {
+    const surface = surfaceStyles().split(" ");
+    for (const name of [
+      "bg-card",
+      "paper-grain",
+      "border-ink",
+      "inset-shadow-frame",
+      "rounded-surface",
+    ])
+      expect(surface).toContain(name);
+    expect(surfaceStyles({ rule: "single" })).not.toContain(
+      "inset-shadow-frame",
+    );
+  });
+
+  it("a pane is ruled in ink, and the broadsheet's section is a rule above", () => {
+    expect(paneStyles().split(" ")).toContain("border-ink");
+    expect(paneStyles().split(" ")).toContain("paper-grain");
+    const ruled = paneStyles({ kind: "ruled" }).split(" ");
+    for (const name of ["border-t-2", "border-ink", "px-0"])
+      expect(ruled).toContain(name);
+    expect(ruled).not.toContain("border");
+    expect(paneStyles({ double: true })).toContain("inset-shadow-frame");
+  });
+
+  it("the dialog is the chart's box too, with its title in the display face", () => {
+    const dialog = dialogStyles();
+    for (const name of ["paper-grain", "border-ink", "inset-shadow-frame"])
+      expect(dialog.base().split(" ")).toContain(name);
+    expect(dialog.title().split(" ")).toContain("font-display");
+  });
+
+  it("a field is named in the mono label, and its words are the body face", () => {
+    expect(fieldStyles().label()).toContain(MONO_LABEL.split(" ")[0]);
+    expect(fieldStyles().label().split(" ")).toContain("uppercase");
+    expect(controlStyles().input().split(" ")).toContain("font-body");
+    expect(controlStyles().input().split(" ")).toContain("placeholder:italic");
+  });
+
+  it("a search is a rule to write on, not a box", () => {
+    const base = searchFieldStyles().base().split(" ");
+    for (const name of ["border-0", "border-b", "border-ink", "bg-transparent"])
+      expect(base).toContain(name);
+    expect(base).not.toContain("rounded-full");
   });
 });
 
@@ -282,18 +396,22 @@ describe("S4: states", () => {
           ).toBe(true);
   });
 
-  it("pressed is raised, filled and heavier, not only recoloured", () => {
+  it("pressed is filled in ink and heavier, not only recoloured", () => {
     const pressed = buttonStyles({ variant: "pill", pressed: true }).split(" ");
     for (const name of [
       "bg-inverse",
       "text-ink-inverse",
       "shadow-control",
-      "font-bold",
+      "font-semibold",
     ])
       expect(pressed).toContain(name);
     expect(pressed).not.toContain("bg-card");
     const item = segmentedStyles().item();
-    for (const name of ["aria-pressed:bg-card", "aria-pressed:shadow-control"])
+    for (const name of [
+      "aria-pressed:bg-inverse",
+      "aria-pressed:text-ink-inverse",
+      "aria-pressed:font-semibold",
+    ])
       expect(item).toContain(name);
   });
 
@@ -306,8 +424,8 @@ describe("S4: states", () => {
   it("a worded toggle keeps its quiet box, and still says pressed", () => {
     const worded = buttonStyles({ variant: "pill", pressed: "worded" });
     expect(worded).toBe(buttonStyles({ variant: "pill" }));
-    for (const name of ["bg-inverse", "font-bold", "text-ink-inverse"])
-      expect(worded).not.toContain(name);
+    for (const name of ["bg-inverse", "font-semibold", "text-ink-inverse"])
+      expect(worded.split(" ")).not.toContain(name);
     expect(html(<Button pressed="worded">Saved</Button>)).toContain(
       'aria-pressed="true"',
     );
@@ -316,11 +434,11 @@ describe("S4: states", () => {
   // A pane that is the page's own box rather than one of a column of them.
   it("a standing pane lifts off the ground and takes the wider inset", () => {
     const standing = paneStyles({ standing: true }).split(" ");
-    for (const name of ["p-6", "shadow-control", "max-wide:p-5"])
+    for (const name of ["p-6", "shadow-surface", "max-wide:p-5"])
       expect(standing).toContain(name);
     expect(standing).not.toContain("p-5");
     expect(paneStyles().split(" ")).toContain("p-5");
-    expect(paneStyles()).not.toContain("shadow-control");
+    expect(paneStyles()).not.toContain("shadow-surface");
   });
 
   it("hover and disabled are written for every button", () => {
@@ -350,8 +468,8 @@ describe("S4: states", () => {
   it.each([
     ["quiet", "not-disabled:hover:bg-sunken"],
     ["primary", "not-disabled:hover:bg-accent-hover"],
-    ["pill", "not-disabled:hover:bg-sunken"],
-    ["raised", "not-disabled:hover:bg-card/55"],
+    ["pill", "not-disabled:hover:bg-inverse"],
+    ["raised", "not-disabled:hover:bg-inverse"],
     ["link", "not-disabled:hover:bg-transparent"],
     ["danger", "not-disabled:hover:bg-warn"],
   ] as const)("%s names the background its hover has", (variant, name) => {
@@ -437,22 +555,21 @@ describe("S5: one filled control", () => {
 });
 
 describe("S6: fields on a touch device", () => {
-  it("take the lead step, 17px, under pointer: coarse", () => {
+  it("take the input step, 16px, under pointer: coarse", () => {
     for (const input of [
       controlStyles().input(),
       searchFieldStyles().input(),
     ]) {
       expect(input).toContain("text-prose");
-      expect(input).toContain("pointer-coarse:text-lead");
-      // The lead step brings its weight with it; a field stays regular.
+      expect(input).toContain("pointer-coarse:text-input");
       expect(input).toContain("font-normal");
     }
-    const css = build(["pointer-coarse:text-lead"]);
-    const at = css.indexOf(`${selector("pointer-coarse:text-lead")} {`);
+    const css = build(["pointer-coarse:text-input"]);
+    const at = css.indexOf(`${selector("pointer-coarse:text-input")} {`);
     const rule = css.slice(css.lastIndexOf("@media", at), css.indexOf("}", at));
     expect(rule).toMatch(/^@media \(pointer: coarse\) \{/);
-    expect(rule).toContain("font-size: var(--text-lead);");
-    expect(css).toMatch(/--text-lead: 17px;/);
+    expect(rule).toContain("font-size: var(--text-input);");
+    expect(css).toMatch(/--text-input: 16px;/);
   });
 });
 
@@ -465,7 +582,9 @@ describe("S7: Dialog", () => {
     );
     expect(markup).toMatch(/^<dialog /);
     const [, id] = markup.match(/aria-labelledby="([^"]+)"/)!;
-    expect(markup).toContain(`<h2 class="m-0 text-lead text-ink" id="${id}">`);
+    expect(markup).toContain(
+      `<h2 class="m-0 font-display text-lead text-ink" id="${id}">`,
+    );
     expect(markup).toContain('aria-label="Close"');
   });
 
@@ -476,7 +595,7 @@ describe("S7: Dialog", () => {
       expect(base).not.toContain(name);
   });
 
-  it("has the scrim and a 5px blur for a backdrop", () => {
+  it("has the scrim and a 2px blur for a backdrop", () => {
     const base = dialogStyles().base();
     expect(base).toContain("backdrop:bg-scrim");
     expect(base).toContain("backdrop:backdrop-blur-scrim");
@@ -485,7 +604,7 @@ describe("S7: Dialog", () => {
       "::backdrop {\n  background-color: var(--color-scrim);",
     );
     expect(css).toContain("--tw-backdrop-blur: blur(var(--blur-scrim));");
-    expect(css).toMatch(/--blur-scrim: 5px;/);
+    expect(css).toMatch(/--blur-scrim: 2px;/);
   });
 
   const host = (open = false) => ({
@@ -714,15 +833,13 @@ describe("the components, rendered", () => {
     expect(html(<Chip eyebrow>New</Chip>)).toContain("uppercase");
     expect(html(<Pane kind="sunken" id="p" />)).toMatch(/id="p"/);
     expect(html(<Pane kind="sunken" />)).not.toContain("border-line");
-    expect(html(<Surface role="region" />)).toContain("backdrop-blur-glass");
+    expect(html(<Surface role="region" />)).toMatch(/^<div role="region"/);
   });
 
-  // Glass over the map is one glass: the Surface saturates what is behind it
-  // by exactly what the map's own chrome does, so a panel beside it matches.
-  it("Surface saturates the map behind it as the map's glass does", () => {
-    const map = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
-    expect(map).toMatch(/backdrop-filter: blur\(28px\) saturate\(1\.45\);/);
-    expect(surfaceStyles().split(" ")).toContain("backdrop-saturate-145");
+  // Over a moving map a translucent panel is a second, blurred map: the
+  // Surface is solid paper, and costs the phone no backdrop filter.
+  it("Surface blurs nothing behind it", () => {
+    expect(surfaceStyles()).not.toMatch(/backdrop/);
   });
 
   it("Avatar draws initials, or the photo with no second telling", () => {
@@ -890,5 +1007,125 @@ describe("the components, rendered", () => {
     expect(html(<Skeleton />)).toContain("motion-reduce:animate-none");
     expect(html(<Link href="/market">Gear</Link>)).toContain("underline");
     expect(html(<Link href="/market" plain />)).toContain("no-underline");
+  });
+});
+
+describe("the chart's own primitives", () => {
+  it("Wordmark is the name in words, with .ie in magenta italic", () => {
+    const markup = html(<Wordmark />);
+    expect(markup).toMatch(/>wingfoil<span class="[^"]*text-chart-magenta[^"]*">\.ie<\/span><\/span>$/);
+    const base = wordmarkStyles().base().split(" ");
+    for (const name of ["font-display", "font-extrabold", "optical-display"])
+      expect(base).toContain(name);
+    expect(wordmarkStyles().domain().split(" ")).toContain("italic");
+  });
+
+  it("Kicker is the mono label, and a heading where it is asked to be one", () => {
+    expect(kickerStyles().split(" ")).toEqual(
+      expect.arrayContaining(MONO_LABEL.split(" ")),
+    );
+    expect(html(<Kicker as="h3">Best Mon</Kicker>)).toMatch(/^<h3 class="/);
+    expect(kickerStyles({ tone: "pen" })).toContain("text-pen-ink");
+  });
+
+  it("SectionHeading is a heading on a rule, with its figures set right", () => {
+    const markup = html(
+      <SectionHeading as="h3" aside="12–16">
+        Monday 5
+      </SectionHeading>,
+    );
+    expect(markup).toMatch(/<h3 class="[^"]*font-display[^"]*">Monday 5<\/h3>/);
+    expect(markup).toContain("12–16");
+    expect(sectionHeadingStyles().base()).toContain("border-b-2");
+    expect(sectionHeadingStyles({ rule: "double" }).base()).toContain(
+      "border-double",
+    );
+  });
+
+  it("Headline is one heading, at the headline step on the display cut", () => {
+    const markup = html(<Headline>Donabate</Headline>);
+    expect(markup).toMatch(/^<h1 class="/);
+    for (const name of ["text-headline", "optical-display", "max-wide:text-title"])
+      expect(headlineStyles().base().split(" ")).toContain(name);
+  });
+
+  it("Figure puts the number first, the gust raised and the unit small", () => {
+    const markup = html(<Figure value={14} sup={22} unit="kn" />);
+    expect(markup.indexOf(">14<")).toBeLessThan(markup.indexOf(">22<"));
+    expect(markup.indexOf(">22<")).toBeLessThan(markup.indexOf(">kn<"));
+    expect(figureStyles().base().split(" ")).toContain("tabular-nums");
+    expect(figureStyles({ alarm: true }).sup()).toContain("text-pen-ink");
+    expect(html(<Figure value={14} label="14 knots" />)).toContain(
+      'role="img" aria-label="14 knots"',
+    );
+  });
+
+  it("StarGlyphs draws five places: solid, faded, then dots", () => {
+    const markup = html(<StarGlyphs stars={3} potential={4} />);
+    expect(markup).toContain('aria-label="3 of 5 stars, 4 on the wind alone"');
+    expect(markup.match(/<path/g)).toHaveLength(4);
+    expect(markup.match(/<circle/g)).toHaveLength(1);
+    const narrow = html(<StarGlyphs stars={2} potential={2} slots="potential" />);
+    expect(narrow.match(/<path/g)).toHaveLength(2);
+    expect(narrow).not.toContain("<circle");
+  });
+
+  it("StarGlyphs leaves the dark unrated, at the width of a rated hour", () => {
+    const dark = html(<StarGlyphs stars={null} />);
+    const lit = html(<StarGlyphs stars={0} />);
+    expect(dark).toContain('aria-label="Dark: not rated"');
+    expect(dark).not.toMatch(/<path|<circle/);
+    expect(dark.match(/width="(\d+)"/)?.[1]).toBe(
+      lit.match(/width="(\d+)"/)?.[1],
+    );
+  });
+
+  it("the pen draws a loop that overshoots its start, the same each time", () => {
+    const d = loopPath(50, 30, 40, 20, 3);
+    expect(d).toBe(loopPath(50, 30, 40, 20, 3));
+    expect(d).not.toBe(loopPath(50, 30, 40, 20, 4));
+    expect(d.startsWith("M")).toBe(true);
+    expect(d.split(" L")).toHaveLength(49);
+    expect(underlinePath(0, 3, 100)).toBe("M0.0 3.0 q50.0 -4 100.0 1");
+    expect(strikePath(100, 10)).toMatch(/^M4\.0 7\.2 L96\.0 3\.0$/);
+  });
+
+  it("the pen's marks are decoration, drawn in once and held for less motion", () => {
+    const stroke = penStyles().stroke().split(" ");
+    for (const name of ["stroke-pen", "animate-ink", "motion-reduce:animate-none"])
+      expect(stroke).toContain(name);
+    // Not laid out on the server: the loop is drawn round a measured box.
+    expect(html(<PenLoop>13:00</PenLoop>)).toBe(
+      '<span class="relative inline-block">13:00</span>',
+    );
+  });
+
+  it("the pen's note is the hand, in the pen's ink that reads", () => {
+    const markup = html(<PenNote>Go 13:00–16:00.</PenNote>);
+    expect(markup).toMatch(/^<p class="[^"]*font-hand[^"]*text-pen-ink/);
+  });
+
+  it("the puffin is decoration unless he is named", () => {
+    expect(html(<Puffin />)).toContain('aria-hidden="true"');
+    const named = html(<Puffin title="The Almanac" />);
+    expect(named).toContain('role="img" aria-label="The Almanac"');
+    expect(named).not.toContain("aria-hidden");
+    // His wing's hatching names a pattern by an id a url() can hold.
+    expect(named).toMatch(/fill="url\(#puffin-\S+?\)"/);
+  });
+
+  it("the masthead is a banner on the double rule, with the name and section", () => {
+    const markup = html(
+      <Masthead>
+        <a href="/market">
+          <MastheadMark section="Market" />
+        </a>
+      </Masthead>,
+    );
+    expect(markup).toMatch(/^<header class="/);
+    expect(markup).toContain("wingfoil");
+    expect(markup).toContain(">Market</span>");
+    for (const name of ["border-b-3", "border-double", "border-ink"])
+      expect(mastheadStyles().bar().split(" ")).toContain(name);
   });
 });

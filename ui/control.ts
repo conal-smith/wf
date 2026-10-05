@@ -7,9 +7,10 @@ import { NO_RING, RING_WITHIN, tv } from "./tv";
  */
 export const controlStyles = tv({
   slots: {
+    // A box to write in, ruled at the stroke's 3:1 and inked under the pointer.
     box: [
       "flex min-h-touch min-w-0 items-center gap-2 rounded-control border border-line-strong bg-card px-3",
-      "font-sans text-ink transition-colors duration-fast hover:border-ink-muted",
+      "font-body text-ink transition-colors duration-fast hover:border-ink",
       RING_WITHIN,
       // Wrong is said by the Field's message as well as by the warm ground.
       "group-data-invalid/field:border-warn group-data-invalid/field:bg-warn-ground group-data-invalid/field:hover:border-warn",
@@ -18,14 +19,15 @@ export const controlStyles = tv({
     ],
     input: [
       "w-full min-w-0 flex-1 self-stretch border-0 bg-transparent p-0",
-      "font-sans text-prose font-normal text-inherit",
-      "placeholder:text-ink-muted placeholder:opacity-100 disabled:cursor-default",
-      // A focused field under 16px makes a phone zoom the page. The scale has
-      // no 16, so on a touch device a field takes the next step up.
-      "pointer-coarse:text-lead",
+      "font-body text-prose font-normal text-inherit",
+      "placeholder:text-ink-muted placeholder:italic placeholder:opacity-100 disabled:cursor-default",
+      // A focused field under 16px makes a phone zoom the page, so on a touch
+      // device a field takes the input step, which is 16.
+      "pointer-coarse:text-input",
       NO_RING,
     ],
-    adornment: "shrink-0 font-semibold text-ink-muted",
+    // A unit or a currency sign: a figure's companion, so the figures' face.
+    adornment: "shrink-0 font-mono text-caption text-ink-muted",
   },
   variants: {
     // A filter that is narrowing the results, as opposed to sitting at "any":
