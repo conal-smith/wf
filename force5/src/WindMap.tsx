@@ -188,6 +188,9 @@ export default function WindMap(props: Props) {
         // The page renders the credits behind its "i".
         attributionControl: false,
         canvasContextAttributes: { antialias: true },
+        // A phone's third device pixel costs more than twice the fill of its
+        // second and is not seen on a chart of fine lines: two is enough.
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       });
     } catch {
       setError(
@@ -480,7 +483,10 @@ export default function WindMap(props: Props) {
       raf = 0;
       if (neat.current)
         drawNeatline(neat.current, map, {
-          bottom: map.getContainer().clientHeight - bottomInset,
+          // The frame runs down to the dock: on a phone the strip of the
+          // rider's spots sits inside it, as the mockup draws it.
+          bottom:
+            map.getContainer().clientHeight - bottomInset + (phone ? 54 : 0),
           phone,
         });
       if (spot && path) {
