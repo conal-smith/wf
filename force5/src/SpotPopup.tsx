@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Popup, type Map } from "maplibre-gl";
 import { ArrowUpRight, X } from "lucide-react";
 import type { Point } from "./weather";
+import { spotHref } from "./siteNav";
 
 const safeLink = (value?: string) => {
   if (!value) return undefined;
@@ -135,8 +136,21 @@ export default function SpotPopup({
         <X size={16} />
       </button>
       <div className="spot-popout-type">
-        {kind}
-        {point.county ? ` · ${point.county}` : ""}
+        <span>
+          {kind}
+          {point.county ? ` · ${point.county}` : ""}
+        </span>
+        {/* On the eyebrow's own line: the card is fitted between the header
+            and the dock on a phone, and has no height to spare for a row. */}
+        {point.id && (
+          <a
+            className="spot-popout-page"
+            href={spotHref(point.id)}
+            data-spot-page-link
+          >
+            Open spot page <ArrowUpRight size={12} aria-hidden="true" />
+          </a>
+        )}
       </div>
       <h3>{point.name}</h3>
       {point.note && <p>{point.note}</p>}

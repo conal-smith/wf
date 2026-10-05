@@ -27,7 +27,7 @@ Features:
 
 - Pan/zoom Ireland and the surrounding Atlantic.
 - Stronger Force5 wind colours: cool blues below 10 knots, green through yellow-green from 10–30, then yellow, orange, red and purple. The map, hourly cells and scrubber share the scale; colours indicate speed, not safety or rider suitability.
-- Downwind particles and 146 selectable riding-place references. Clicking a spot opens a compact glass popout with coordinates, access caveats and source links.
+- Downwind particles and 146 selectable riding-place references. Clicking a spot opens a compact glass popout with coordinates, access caveats, source links and a link to the place's [spot page](#spot-pages).
 - **Star ratings.** At a riding place the dock rates every daylight hour out of five for the rider in Display options (weight, level and the wings they own; 80 kg until they say), with the wing size it assumes and the best window still ahead. Solid stars are what the hour is worth at that spot; faded stars are what the wind alone would give. See [the rating notes](docs/STAR_RATINGS.md).
 - Click anywhere inside the forecast domain for its modelled wind and gust.
 - HARMONIE is the default; the initial view zooms inside its served Ireland coverage so the rectangular data perimeter is off-screen. This crops some of Ireland rather than stretching the weather field. You can still pan/zoom out to see the model's real limits. Use the separate model buttons in the bottom dock to switch between HARMONIE (2 km, 60 hours) and ICON-EU (6.5 km, 72 hours), both at three-hour steps in the bundled snapshots.
@@ -47,6 +47,33 @@ Features:
 - Responsive glass surfaces, keyboard controls and Escape dismissal; reduced-motion and reduced-transparency support with an opaque fallback.
 
 The [location research](data/locations/README.md) retains 46 sourced records alongside the eight original spots (two duplicates merged), plus 121 places read from four public spot guides on 30 September 2026. The public map and search show 146 riding-place references, excluding business listings and broad area pins. Kilcrea and Newtownards use place names with their original coordinate provenance and access caveats. New locations sample the forecast grids on demand. These are source-listed references, not verified launches. Paid business listings are a future product feature, not implemented here.
+
+## Spot pages
+
+`/spot/<id>` (for example [`/spot/brandon`](http://127.0.0.1:5173/spot/brandon))
+is a riding place's own page, in the spirit of a surf report: the week as one
+card per day (best stars, wind range, prevailing direction, best window and its
+wing), then every daylight hour of each day — stars, wind and gust on the wind
+ramp, direction with its angle to the shore, what the gusts make it ride like,
+wing, session, waves, sky, rain and how far the models agree — with the dark
+hours folded away and never rated, and each row opening to say why it got its
+stars. Below that, **Tide and daylight**: a 24-hour tide curve (cosine
+interpolation between the published high and low waters) over night and civil
+twilight, with the turns and first light / sunrise / sunset / last light as
+tables. A **Rate for** switch (Learning / Riding / Advanced, weight, wings)
+re-rates every hour live and is the same rider as the dock's Display options
+(`force5.prefs.v1`); on a phone it folds into one line under the name
+("Rated for Riding · ~80 kg · Change") so the week is on the first screen. The header draws the shore as a compass with the winds it
+likes (cross and cross-on, from the computed facing) and the best window still
+ahead. `/spot` lists every place.
+
+Open it from the map: **Open spot page** in a spot's popout, or **Spot page**
+beside the name in the dock. It is its own lazy bundle (`spot/web/`, never the
+map or MapLibre) and reads the published bundles through the MCP server's own
+reduction (`mcp/api/forecast.ts` with the browser-safe `mcp/api/httpSource.ts`),
+so the page and an assistant see the same consensus. With `npm run dev` it
+needs a forecast in `public/weather` like the map does; tides need
+`npm run tides:refresh`.
 
 ## Marketplace
 

@@ -19,6 +19,8 @@ import {
   speed,
   type Manifest,
 } from "../../../force5/src/weather";
+import { mapSpotHref } from "../../../force5/src/siteNav";
+import { windStop } from "../../../shared/web/windStops";
 import { RING, tv, type VariantProps } from "../../../ui/tv";
 import { spotLabel, type Spot } from "./NewThreadDialog";
 
@@ -67,37 +69,14 @@ export const spotCardStyles = tv({
 
 export type WindStop = NonNullable<VariantProps<typeof spotCardStyles>["wind"]>;
 
-/** Where each stop starts, in knots: the map's ramp, stop for stop. */
-export const WIND_STOPS: readonly (readonly [number, WindStop])[] = [
-  [0, "k00"],
-  [5, "k05"],
-  [9, "k09"],
-  [10, "k10"],
-  [15, "k15"],
-  [20, "k20"],
-  [25, "k25"],
-  [30, "k30"],
-  [35, "k35"],
-  [40, "k40"],
-  [45, "k45"],
-  [50, "k50"],
-  [60, "k60"],
-  [65, "k65"],
-];
-
-/** The stop a speed has reached: 19 kn is drawn at 15, and 20 kn at 20. */
-export function windStop(knots: number): WindStop {
-  let stop = WIND_STOPS[0][1];
-  for (const [from, name] of WIND_STOPS) if (knots >= from) stop = name;
-  return stop;
-}
+// The stops are shared with the spot page, which paints its wind with them too.
+export { WIND_STOPS, windStop } from "../../../shared/web/windStops";
 
 /**
  * The map, opened on a spot. An absolute path, as the site menu's are: crossing
  * sections swaps the bundle, which is a page load and not a push.
  */
-export const mapSpotHref = (spotId: string) =>
-  `/?spot=${encodeURIComponent(spotId)}`;
+export { mapSpotHref } from "../../../force5/src/siteNav";
 
 export interface SpotReading {
   /** Rounded, as shown: the swatch is chosen from the same number. */

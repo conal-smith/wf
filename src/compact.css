@@ -101,7 +101,11 @@
   color: var(--color-ink);
 }
 .spot-popout-type {
-  padding-right: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 30px;
   color: var(--color-ink-muted);
   font-size: 10px;
 }
@@ -119,6 +123,24 @@
 .spot-popout-coordinates {
   font-size: 10px;
   color: var(--color-ink-muted);
+}
+/* The riding place's own page, at the end of the eyebrow line: the card has
+   no height to spare on a phone, and this is the way to the week's forecast. */
+.spot-popout-page {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+.spot-popout-page:hover {
+  text-decoration-color: currentColor;
 }
 .spot-popout-links {
   display: flex;

@@ -43,6 +43,29 @@
   gap: 1px;
   line-height: 1.25;
 }
+.dock-place-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+/* The way to the riding place's own page: a quiet link beside its name, in the
+   accent's darker step (the popup's links take the same, for 4.5:1 at 11px). */
+.dock-spot-page {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.dock-spot-page:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .dock-place strong {
   font-size: 14px;
   font-weight: 600;
@@ -947,6 +970,13 @@
 }
 
 @media (max-width: 760px) {
+  /* The name needs the room: the link keeps its arrow and its label. */
+  .dock-spot-page-text {
+    display: none;
+  }
+  .dock-spot-page {
+    padding: 4px;
+  }
   .best-window span {
     display: none;
   }

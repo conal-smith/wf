@@ -6,7 +6,12 @@ import "./compact.css";
 import "./dock.css";
 import "../ui/theme.css";
 import App from "./App";
-import { isAiPath, isCommunityPath, isMarketPath } from "../force5/src/siteNav";
+import {
+  isAiPath,
+  isCommunityPath,
+  isMarketPath,
+  isSpotPath,
+} from "../force5/src/siteNav";
 
 // The marketplace is its own bundle; the map never loads it and it never
 // loads the map. Everything under /market goes there — which is also what the
@@ -23,6 +28,11 @@ const isCommunity = isCommunityPath(window.location.pathname);
 // split off the same way.
 const AiApp = React.lazy(() => import("../ai/web/AiApp"));
 const isAi = isAiPath(window.location.pathname);
+
+// A riding place's own page, at /spot/<id>: a fifth bundle, split off the same
+// way. It reads the forecast's pure modules and never the map.
+const SpotApp = React.lazy(() => import("../spot/web/SpotApp"));
+const isSpot = isSpotPath(window.location.pathname);
 
 // The kit gallery, at /ui, under the dev server only. The mode is a constant in
 // a build, and `vite build` is "production" whatever the shell says, so the
@@ -53,6 +63,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     ) : isAi ? (
       <Suspense fallback={null}>
         <AiApp />
+      </Suspense>
+    ) : isSpot ? (
+      <Suspense fallback={null}>
+        <SpotApp />
       </Suspense>
     ) : (
       <App />
