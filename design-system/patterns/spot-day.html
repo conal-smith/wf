@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spot day — wingfoil-chart pattern</title>
+    <link rel="stylesheet" href="../foundations/tokens.css" />
+    <link rel="stylesheet" href="../components/button/component.css" />
+    <link rel="stylesheet" href="../components/section-heading/component.css" />
+    <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <link rel="stylesheet" href="../components/shore-compass/component.css" />
+    <link rel="stylesheet" href="../components/wind-figure/component.css" />
+    <link rel="stylesheet" href="../components/figure/component.css" />
+    <link rel="stylesheet" href="../components/tide-label/component.css" />
+    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/pen-loop/component.css" />
+    <link rel="stylesheet" href="../components/pen-note/component.css" />
+    <style>
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      /* A sea-tinted stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* The favourite: the glyph in the pen, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-pen);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-pen);
+      }
+
+      /* ---- the day: a section under a heavy rule, no box ---- */
+      .sd {
+        padding: 0 var(--sem-space-x4) var(--sem-space-x8);
+      }
+      .sd__head {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        padding-top: var(--sem-space-x2);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+      }
+      .sd__h1 {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2-5);
+      }
+      .sd__best {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sem-space-x1-5);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-weight: var(--sem-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+      }
+      .sd__wk {
+        display: inline-block;
+        transform: rotate(-2deg);
+      }
+      /* On a phone the note takes its own line under the head. */
+      .sd__pn {
+        flex-basis: 100%;
+      }
+
+      /* ---- the hours: one row each, ruled in hairlines ---- */
+      .sd__wrap {
+        position: relative;
+      }
+      .sd__rows {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-body);
+        font-variant-numeric: tabular-nums;
+      }
+      .sd__rows th {
+        padding: var(--sem-space-x1) var(--sem-space-x0-5);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+        vertical-align: bottom;
+      }
+      /* The ? in a column head: the quiet icon button, drawn small in the head's line. */
+      .sd__rows th .wf-button--icon {
+        width: var(--sem-space-x5);
+        height: var(--sem-space-x5);
+        margin: calc(var(--sem-space-x1) * -1) 0;
+        vertical-align: middle;
+      }
+      .sd__g {
+        text-transform: none;
+      }
+      .sd__c-t { width: calc(var(--sem-space-step) * 7.5); }
+      .sd__c-st { width: calc(var(--sem-space-step) * 16.5); }
+      .sd__c-w { width: calc(var(--sem-space-step) * 17); }
+      .sd__c-sh { width: var(--sem-space-x10); }
+      .sd__c-wg { width: calc(var(--sem-space-step) * 13); }
+      .sd__c-wx { width: calc(var(--sem-space-step) * 14.5); }
+      .sd__c-ch { width: calc(var(--sem-space-step) * 12); text-align: right; }
+      .sd__rows td {
+        height: calc(var(--sem-space-step) * 9.5);
+        padding: 0 var(--sem-space-x0-5);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+      .sd__row {
+        cursor: pointer;
+      }
+      .sd__row:hover td {
+        background-color: var(--sem-color-sunken);
+      }
+      .sd__row:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: calc(var(--sem-ring-offset) * -1);
+      }
+      /* The hour on the chart: the second sheet, an edge of ink at its head. */
+      .sd__row--sel td {
+        background-color: var(--sem-color-sunken);
+      }
+      .sd__row--sel .sd__t {
+        box-shadow: inset var(--sem-rule-edge) 0 0 var(--sem-color-ink);
+      }
+      .sd__row--past td {
+        opacity: var(--sem-opacity-past);
+      }
+      .sd__t {
+        position: relative;
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .sd__row--sel .sd__t {
+        padding-left: var(--sem-space-x1-5);
+      }
+      .sd__from {
+        align-items: center;
+      }
+      .sd__waves,
+      .sd__u {
+        color: var(--sem-color-ink-muted);
+      }
+      .sd__waves {
+        color: var(--sem-color-ink);
+      }
+      .sd__sky {
+        width: calc(var(--sem-space-step) * 4.5);
+        height: calc(var(--sem-space-step) * 4.5);
+        vertical-align: middle;
+      }
+      .sd__sky-cloud,
+      .sd__sky-sun {
+        fill: var(--sem-color-card);
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.1;
+        stroke-linejoin: round;
+      }
+      .sd__sky-ray {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1.1;
+        stroke-linecap: round;
+      }
+      .sd__air {
+        margin-left: var(--sem-space-x1);
+        font-weight: var(--sem-font-weight-medium);
+        vertical-align: middle;
+      }
+      .sd__ch {
+        text-align: right;
+      }
+      /* The chance it rides: a bar of the wash under the figure, as long as the chance. */
+      .sd__chance {
+        position: relative;
+        display: inline-block;
+        min-width: var(--sem-space-x10);
+        padding: var(--sem-space-x0-5) var(--sem-space-x1);
+        border: var(--sem-rule-hairline) solid var(--sem-color-line);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-weight: var(--sem-font-weight-semibold);
+        text-align: center;
+      }
+      .sd__chance-bar {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: var(--c);
+        background: var(--sem-color-wash);
+        opacity: var(--sem-opacity-wash);
+      }
+      .sd__chance-n {
+        position: relative;
+      }
+      .sd__wide {
+        display: none;
+      }
+      .sd__loop {
+        position: absolute;
+        top: calc(var(--sem-space-x2) * -1);
+        left: calc(var(--sem-space-x3) * -1);
+        z-index: 2;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .sd__loop--wide {
+        display: none;
+      }
+
+      /* ---- the tide over the day: night hatched, the turns marked, the hour shown in magenta ---- */
+      .sd__tide {
+        margin-top: var(--sem-space-x4);
+      }
+      .sd__plot {
+        position: relative;
+        height: calc(var(--sem-space-step) * 16);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line-strong);
+      }
+      .sd__curve {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .sd__night {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background-image: repeating-linear-gradient(135deg, var(--sem-color-line) 0 1px, transparent 1px 4px);
+      }
+      .sd__night--twilight {
+        opacity: var(--sem-opacity-faded);
+      }
+      .sd__now {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-chart-magenta);
+      }
+      .sd__turn {
+        position: absolute;
+        transform: translate(calc(var(--sem-space-x1-5) / -2), -50%);
+      }
+      .sd__axis {
+        position: relative;
+        height: var(--sem-space-x5);
+      }
+      .sd__tick {
+        position: absolute;
+        top: var(--sem-space-x1);
+        transform: translateX(-50%);
+      }
+      .sd__tick::before {
+        content: "";
+        position: absolute;
+        top: calc(var(--sem-space-x1) * -1);
+        left: 50%;
+        height: calc(var(--sem-space-step) * 0.75);
+        border-left: var(--sem-rule-hairline) solid var(--sem-color-line-strong);
+      }
+      .sd__tick:first-child {
+        transform: none;
+      }
+      .sd__tick:first-child::before {
+        left: 0;
+      }
+      .sd__tick:last-child {
+        transform: translateX(-100%);
+      }
+      .sd__tick:last-child::before {
+        left: auto;
+        right: 0;
+      }
+
+      /* ---- the turns and the light: two small tables on the second sheet ---- */
+      .sd__tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--sem-space-x4);
+        max-width: calc(var(--sem-space-step) * 140);
+      }
+      .sd__mini {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-body);
+      }
+      .sd__mini td {
+        padding: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        background-color: var(--sem-color-sunken);
+      }
+      .sd__n {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-body);
+        font-weight: var(--sem-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .sd__sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      /* ---- from sem.breakpoint.wide (45rem): the shore, wing and waves come in ---- */
+      @media (min-width: 720px) {
+        /* Every column keeps its width; the waves take what is left over. */
+        .sd {
+          max-width: var(--sem-container-form);
+          padding: 0 var(--sem-space-x8) var(--sem-space-x10);
+        }
+        .sd__pn {
+          flex-basis: auto;
+        }
+        .sd__wide {
+          display: table-cell;
+        }
+        .sd__c-dr {
+          width: calc(var(--sem-space-step) * 20);
+        }
+        .sd__rows td {
+          height: calc(var(--sem-space-step) * 8.5);
+        }
+        .sd__loop--phone {
+          display: none;
+        }
+        .sd__loop--wide {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p class="pt__label">The spot page · one day · Brandon Bay</p>
+    <section class="sd" aria-labelledby="sd-day-6">
+      <div class="wf-section-heading sd__head">
+        <div class="sd__h1">
+          <h2 class="wf-section-heading__title" id="sd-day-6">Tuesday 6</h2>
+          <span class="sd__best"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg> 18–19</span>
+          <span class="wf-pen-note wf-pen-note--sm sd__wk">best of the week</span>
+        </div>
+        <p class="wf-pen-note wf-pen-note--sm sd__pn">Go 18:00 till dark. Four stars on a 6.5 m.</p>
+      </div>
+      <div class="sd__wrap">
+        <table class="sd__rows">
+          <thead>
+            <tr>
+              <th class="sd__c-t" scope="col">IST</th>
+              <th class="sd__c-st" scope="col">Stars <a class="wf-button wf-button--icon wf-button--sm" href="#stars" aria-label="How the stars work"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></a></th>
+              <th class="sd__c-w" scope="col">Wind <span class="sd__g">gust</span></th>
+              <th class="sd__c-dr" scope="col">From</th>
+              <th class="sd__c-sh sd__wide" scope="col">Shore</th>
+              <th class="sd__c-wg sd__wide" scope="col">Wing</th>
+              <th class="sd__c-wv sd__wide" scope="col">Waves</th>
+              <th class="sd__c-wx" scope="col">Sky</th>
+              <th class="sd__c-ch" scope="col" title="Chance it rides: 10 kn or more for you">Rides</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="sd__row sd__row--past" tabindex="0">
+              <td class="sd__t">10</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="10 knots gusting 16"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__sup">16</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 22deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">NNE</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 22deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.4<span class="sd__u">m</span> 4<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">12°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 58%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">58%</span></span></td>
+            </tr>
+            <tr class="sd__row sd__row--past" tabindex="0">
+              <td class="sd__t">11</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="10 knots gusting 15"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__sup">15</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 22deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">NNE</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 22deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.4<span class="sd__u">m</span> 4<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">12°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 60%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">60%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">12</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="10 knots gusting 16"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__sup">16</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 22deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">NNE</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 22deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.4<span class="sd__u">m</span> 4<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 62%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">62%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">13</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="10 knots gusting 16"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__sup">16</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 22deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">NNE</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 22deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.4<span class="sd__u">m</span> 4<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 64%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">64%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">14</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="10 knots gusting 15"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__sup">15</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 22deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">NNE</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 22deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.4<span class="sd__u">m</span> 4<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 73%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">73%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">15</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="11 knots gusting 16"><span class="wf-wind-figure__value">11</span><span class="wf-wind-figure__sup">16</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 0deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">7</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.5<span class="sd__u">m</span> 5<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 79%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">79%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">16</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="12 knots gusting 17"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__sup">17</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 0deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">6.5</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.5<span class="sd__u">m</span> 5<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 82%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">82%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">17</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.04" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure wf-wind-figure--alarm" role="img" aria-label="12 knots gusting 19"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__sup">19</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 0deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">6.5</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.5<span class="sd__u">m</span> 5<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="cloud"><path class="sd__sky-cloud" transform="translate(0 0) scale(1)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 86%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">86%</span></span></td>
+            </tr>
+            <tr class="sd__row sd__row--sel" tabindex="0" aria-current="time">
+              <td class="sd__t">18<svg class="sd__loop sd__loop--phone" width="114" height="92" viewBox="0 0 114 92" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M17.5 19.3 L22.5 14.2 L28.7 10.3 L35.2 6.7 L41.9 2.7 L49.5 -1.0 L57.9 -2.8 L66.5 -1.6 L74.1 1.9 L80.7 6.1 L87.1 10.0 L93.3 14.0 L98.5 18.9 L101.8 24.9 L103.7 31.2 L105.8 37.2 L108.9 43.4 L111.7 50.4 L112.1 57.7 L109.1 64.6 L103.9 70.4 L98.0 75.5 L92.1 80.5 L85.4 84.7 L77.5 87.2 L69.0 87.4 L61.0 86.4 L53.4 85.8 L45.6 86.2 L37.1 86.3 L28.8 84.5 L21.6 80.6 L15.6 75.4 L9.9 69.9 L4.3 64.0 L0.2 57.2 L-0.8 49.6 L1.5 42.1 L5.2 35.3 L8.4 29.1 L10.8 22.6 L13.7 16.0 L18.6 10.3 L25.0 5.8 L31.9 2.0 L39.0 -2.2 L46.8 -6.4 L55.6 -9.0 L64.9 -8.5" pathLength="1" stroke-dasharray="1" /></svg><svg class="sd__loop sd__loop--wide" width="114" height="84" viewBox="0 0 114 84" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M17.5 17.8 L22.5 13.1 L28.7 9.5 L35.2 6.3 L41.9 2.6 L49.5 -0.8 L57.9 -2.4 L66.5 -1.3 L74.1 1.9 L80.7 5.7 L87.1 9.3 L93.3 12.9 L98.5 17.4 L101.8 22.8 L103.7 28.5 L105.8 34.0 L108.9 39.7 L111.7 46.0 L112.1 52.7 L109.1 58.9 L103.9 64.2 L98.0 68.9 L92.1 73.3 L85.4 77.2 L77.5 79.5 L69.0 79.6 L61.0 78.7 L53.4 78.2 L45.6 78.5 L37.1 78.6 L28.8 77.0 L21.6 73.4 L15.6 68.7 L9.9 63.7 L4.3 58.4 L0.2 52.2 L-0.8 45.3 L1.5 38.5 L5.2 32.3 L8.4 26.6 L10.8 20.7 L13.7 14.8 L18.6 9.5 L25.0 5.5 L31.9 2.0 L39.0 -1.8 L46.8 -5.6 L55.6 -8.0 L64.9 -7.6" pathLength="1" stroke-dasharray="1" /></svg></td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="13 knots gusting 19"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__sup">19</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 0deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">6.5</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.6<span class="sd__u">m</span> 5<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="sun and cloud"><g transform="translate(-2.4 -2.2) scale(.8)"><circle class="sd__sky-sun" r="3.4" /><path class="sd__sky-ray" d="M0 -6.2V-5M0 5V6.2M-6.2 0H-5M5 0H6.2M-4.4 -4.4L-3.6 -3.6M3.6 3.6L4.4 4.4M-4.4 4.4L-3.6 3.6M3.6 -3.6L4.4 -4.4" /></g><path class="sd__sky-cloud" transform="translate(2 2.4) scale(0.85)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 88%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">88%</span></span></td>
+            </tr>
+            <tr class="sd__row" tabindex="0">
+              <td class="sd__t">19</td>
+              <td><svg class="wf-star-glyphs wf-star-glyphs--ink" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-star-glyphs__dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td><span class="wf-wind-figure" role="img" aria-label="12 knots gusting 18"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__sup">18</span></span></td>
+              <td><span class="wf-wind-figure sd__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span></span></td>
+              <td class="sd__wide"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 290deg; --from: 0deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></td>
+              <td class="sd__wide"><span class="wf-figure wf-figure--sm"><span class="wf-figure__value">6.5</span><span class="wf-figure__unit">m</span></span></td>
+              <td class="sd__wide sd__waves">0.6<span class="sd__u">m</span> 5<span class="sd__u">s</span></td>
+              <td><svg class="sd__sky" viewBox="-9 -9 18 18" role="img" aria-label="sun and cloud"><g transform="translate(-2.4 -2.2) scale(.8)"><circle class="sd__sky-sun" r="3.4" /><path class="sd__sky-ray" d="M0 -6.2V-5M0 5V6.2M-6.2 0H-5M5 0H6.2M-4.4 -4.4L-3.6 -3.6M3.6 3.6L4.4 4.4M-4.4 4.4L-3.6 3.6M3.6 -3.6L4.4 -4.4" /></g><path class="sd__sky-cloud" transform="translate(2 2.4) scale(0.85)" d="M-6 3 H5.5 A3 3 0 0 0 5 -2.8 A4.2 4.2 0 0 0 -3 -3.2 A3.2 3.2 0 0 0 -6 3Z" /></svg><span class="sd__air">13°</span></td>
+              <td class="sd__ch"><span class="sd__chance" style="--c: 89%" title="Chance it rides: 10 kn or more for you"><span class="sd__chance-bar" aria-hidden="true"></span><span class="sd__chance-n">89%</span></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sd__tide" role="img" aria-label="Tuesday's tide and light: high 02:15 3.8 m, low 08:20 1.8 m, high 14:35 4.1 m, low 20:55 1.2 m; dark before 06:58 and after 19:26">
+        <div class="sd__plot">
+          <svg class="sd__curve" viewBox="0 0 24 64" preserveAspectRatio="none" aria-hidden="true"><path class="wf-tide-label__sea" d="M0.000 31.31L0.167 30.07L0.333 28.87L0.500 27.72L0.667 26.64L0.833 25.63L1.000 24.70L1.167 23.87L1.333 23.15L1.500 22.53L1.667 22.03L1.833 21.65L2.000 21.39L2.167 21.27L2.333 21.26L2.500 21.34L2.667 21.51L2.833 21.76L3.000 22.08L3.167 22.49L3.333 22.97L3.500 23.51L3.667 24.13L3.833 24.81L4.000 25.54L4.167 26.33L4.333 27.16L4.500 28.03L4.667 28.93L4.833 29.86L5.000 30.81L5.167 31.78L5.333 32.74L5.500 33.71L5.667 34.67L5.833 35.61L6.000 36.53L6.167 37.41L6.333 38.27L6.500 39.07L6.667 39.83L6.833 40.54L7.000 41.19L7.167 41.77L7.333 42.28L7.500 42.72L7.667 43.09L7.833 43.38L8.000 43.58L8.167 43.71L8.333 43.75L8.500 43.70L8.667 43.57L8.833 43.34L9.000 43.03L9.167 42.63L9.333 42.15L9.500 41.59L9.667 40.95L9.833 40.24L10.000 39.47L10.167 38.63L10.333 37.74L10.500 36.80L10.667 35.82L10.833 34.81L11.000 33.76L11.167 32.70L11.333 31.62L11.500 30.54L11.667 29.46L11.833 28.39L12.000 27.33L12.167 26.30L12.333 25.30L12.500 24.34L12.667 23.43L12.833 22.56L13.000 21.76L13.167 21.02L13.333 20.34L13.500 19.75L13.667 19.22L13.833 18.78L14.000 18.43L14.167 18.16L14.333 17.98L14.500 17.89L14.667 17.89L14.833 18.00L15.000 18.22L15.167 18.55L15.333 18.99L15.500 19.53L15.667 20.18L15.833 20.91L16.000 21.74L16.167 22.65L16.333 23.65L16.500 24.71L16.667 25.84L16.833 27.02L17.000 28.26L17.167 29.53L17.333 30.84L17.500 32.17L17.667 33.51L17.833 34.86L18.000 36.21L18.167 37.53L18.333 38.84L18.500 40.12L18.667 41.35L18.833 42.54L19.000 43.67L19.167 44.73L19.333 45.72L19.500 46.63L19.667 47.46L19.833 48.20L20.000 48.84L20.167 49.38L20.333 49.82L20.500 50.15L20.667 50.37L20.833 50.49L21.000 50.49L21.167 50.38L21.333 50.16L21.500 49.84L21.667 49.41L21.833 48.88L22.000 48.26L22.167 47.54L22.333 46.73L22.500 45.85L22.667 44.88L22.833 43.85L23.000 42.76L23.167 41.61L23.333 40.42L23.500 39.19L23.667 37.94L23.833 36.66L24.000 35.38L24 64L0 64Z" /><path class="wf-tide-label__level" d="M0.000 31.31L0.167 30.07L0.333 28.87L0.500 27.72L0.667 26.64L0.833 25.63L1.000 24.70L1.167 23.87L1.333 23.15L1.500 22.53L1.667 22.03L1.833 21.65L2.000 21.39L2.167 21.27L2.333 21.26L2.500 21.34L2.667 21.51L2.833 21.76L3.000 22.08L3.167 22.49L3.333 22.97L3.500 23.51L3.667 24.13L3.833 24.81L4.000 25.54L4.167 26.33L4.333 27.16L4.500 28.03L4.667 28.93L4.833 29.86L5.000 30.81L5.167 31.78L5.333 32.74L5.500 33.71L5.667 34.67L5.833 35.61L6.000 36.53L6.167 37.41L6.333 38.27L6.500 39.07L6.667 39.83L6.833 40.54L7.000 41.19L7.167 41.77L7.333 42.28L7.500 42.72L7.667 43.09L7.833 43.38L8.000 43.58L8.167 43.71L8.333 43.75L8.500 43.70L8.667 43.57L8.833 43.34L9.000 43.03L9.167 42.63L9.333 42.15L9.500 41.59L9.667 40.95L9.833 40.24L10.000 39.47L10.167 38.63L10.333 37.74L10.500 36.80L10.667 35.82L10.833 34.81L11.000 33.76L11.167 32.70L11.333 31.62L11.500 30.54L11.667 29.46L11.833 28.39L12.000 27.33L12.167 26.30L12.333 25.30L12.500 24.34L12.667 23.43L12.833 22.56L13.000 21.76L13.167 21.02L13.333 20.34L13.500 19.75L13.667 19.22L13.833 18.78L14.000 18.43L14.167 18.16L14.333 17.98L14.500 17.89L14.667 17.89L14.833 18.00L15.000 18.22L15.167 18.55L15.333 18.99L15.500 19.53L15.667 20.18L15.833 20.91L16.000 21.74L16.167 22.65L16.333 23.65L16.500 24.71L16.667 25.84L16.833 27.02L17.000 28.26L17.167 29.53L17.333 30.84L17.500 32.17L17.667 33.51L17.833 34.86L18.000 36.21L18.167 37.53L18.333 38.84L18.500 40.12L18.667 41.35L18.833 42.54L19.000 43.67L19.167 44.73L19.333 45.72L19.500 46.63L19.667 47.46L19.833 48.20L20.000 48.84L20.167 49.38L20.333 49.82L20.500 50.15L20.667 50.37L20.833 50.49L21.000 50.49L21.167 50.38L21.333 50.16L21.500 49.84L21.667 49.41L21.833 48.88L22.000 48.26L22.167 47.54L22.333 46.73L22.500 45.85L22.667 44.88L22.833 43.85L23.000 42.76L23.167 41.61L23.333 40.42L23.500 39.19L23.667 37.94L23.833 36.66L24.000 35.38" vector-effect="non-scaling-stroke" /></svg>
+          <span class="sd__night" style="left: 0.00%; width: 29.03%"></span><span class="sd__night sd__night--twilight" style="left: 29.03%; width: 2.43%"></span><span class="sd__night sd__night--twilight" style="left: 78.61%; width: 2.36%"></span><span class="sd__night" style="left: 80.97%; width: 19.03%"></span>
+          <span class="sd__now" style="left: 75.00%"></span>
+          <span class="wf-tide-label wf-tide-label--high sd__turn" style="left: 9.38%; top: 21.3px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>02:15</span><span class="wf-tide-label wf-tide-label--low sd__turn" style="left: 34.72%; top: 43.8px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>08:20</span><span class="wf-tide-label wf-tide-label--high sd__turn" style="left: 60.76%; top: 17.9px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>14:35</span><span class="wf-tide-label wf-tide-label--low sd__turn" style="left: 87.15%; top: 50.5px"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>20:55</span>
+        </div>
+        <div class="sd__axis" aria-hidden="true"><span class="wf-kicker sd__tick" style="left: 0%">00</span><span class="wf-kicker sd__tick" style="left: 12.5%">03</span><span class="wf-kicker sd__tick" style="left: 25%">06</span><span class="wf-kicker sd__tick" style="left: 37.5%">09</span><span class="wf-kicker sd__tick" style="left: 50%">12</span><span class="wf-kicker sd__tick" style="left: 62.5%">15</span><span class="wf-kicker sd__tick" style="left: 75%">18</span><span class="wf-kicker sd__tick" style="left: 87.5%">21</span><span class="wf-kicker sd__tick" style="left: 100%">00</span></div>
+      </div>
+      <div class="sd__tabs">
+        <table class="sd__mini">
+          <caption class="sd__sr">Tide turns</caption>
+          <tbody>
+            <tr><td>High</td><td class="sd__n">02:15</td><td class="sd__n">3.8 m</td></tr>
+            <tr><td>Low</td><td class="sd__n">08:20</td><td class="sd__n">1.8 m</td></tr>
+            <tr><td>High</td><td class="sd__n">14:35</td><td class="sd__n">4.1 m</td></tr>
+            <tr><td>Low</td><td class="sd__n">20:55</td><td class="sd__n">1.2 m</td></tr>
+          </tbody>
+        </table>
+        <table class="sd__mini">
+          <caption class="sd__sr">Light</caption>
+          <tbody>
+            <tr><td>First light</td><td class="sd__n">06:58</td></tr>
+            <tr><td>Sunrise</td><td class="sd__n">07:33</td></tr>
+            <tr><td>Sunset</td><td class="sd__n">18:52</td></tr>
+            <tr><td>Last light</td><td class="sd__n">19:26</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>

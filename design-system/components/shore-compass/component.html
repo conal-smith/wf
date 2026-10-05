@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shore compass — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: a glyph over its words, and a line of mono figures. */
+      .demo__tile {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        margin: 0;
+        min-width: calc(var(--sem-space-step) * 15);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__line {
+        gap: var(--sem-space-x2);
+        margin-bottom: var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__line b {
+        color: var(--sem-color-ink);
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .demo__kicker {
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Shore compass</h2>
+
+      <p class="demo__label">Which way the beach faces · sm 16, md 18, lg 20</p>
+      <div class="demo__row">
+        <svg class="wf-shore-compass wf-shore-compass--sm" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <svg class="wf-shore-compass" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+      </div>
+
+      <p class="demo__label">Facing</p>
+      <div class="demo__row">
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces N, 0°" style="--facing: 0deg"><title>Beach faces N · 0°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>N 0°</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ENE, 67°" style="--facing: 67deg"><title>Beach faces ENE · 67°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>ENE 67°</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ESE, 123°" style="--facing: 123deg"><title>Beach faces ESE · 123°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>SE 123°</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces S, 180°" style="--facing: 180deg"><title>Beach faces S · 180°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>S 180°</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>WSW 247°</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces NW, 315°" style="--facing: 315deg"><title>Beach faces NW · 315°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><figcaption>NW 315°</figcaption></figure>
+      </div>
+
+      <p class="demo__label">The wind against a beach facing WSW · five relations</p>
+      <div class="demo__row">
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><figcaption>onshore</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-on wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-onshore" style="--facing: 247deg; --from: 292deg"><title>cross-onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><figcaption>cross-onshore</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 247deg; --from: 337deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><figcaption>cross-shore</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 22deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><figcaption>cross-offshore</figcaption></figure>
+          <figure class="demo__tile"><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--offshore wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="offshore" style="--facing: 247deg; --from: 67deg"><title>offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><figcaption>offshore</figcaption></figure>
+      </div>
+
+      <p class="demo__label">Shore wind · sm 14 (dock), md 16 (popup), lg 18 (spot page)</p>
+      <div class="demo__row">
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 22deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 22deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 22deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+      </div>
+
+      <p class="demo__label">In place · the popup's head, the spot page's line</p>
+      <div class="demo__row demo__line">
+        <svg class="wf-shore-compass wf-shore-compass--sm" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ESE, 123°" style="--facing: 123deg"><title>Beach faces ESE · 123°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><span class="demo__kicker">Dublin</span>
+      </div>
+      <div class="demo__row demo__line">
+        <svg class="wf-shore-compass" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ESE, 123°" style="--facing: 123deg"><title>Beach faces ESE · 123°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg><b>SE 123°</b><span>Dublin</span><span>WSW 15 g26</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 123deg; --from: 247deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg><span>cross-offshore</span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Shore compass · night chart (proposed)</h2>
+      <div class="demo__row">
+        <svg class="wf-shore-compass wf-shore-compass--sm" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <svg class="wf-shore-compass" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces WSW, 247°" style="--facing: 247deg"><title>Beach faces WSW · 247°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--lg" viewBox="-10 -10 20 20" role="img" aria-label="Beach faces ESE, 123°" style="--facing: 123deg"><title>Beach faces ESE · 123°</title><circle class="wf-shore-compass__disc" r="8.8" /><path class="wf-shore-compass__north" d="M0 -8.8V-6.4" /><g class="wf-shore-compass__face"><path class="wf-shore-compass__sea" d="M0 -7.6L3.1 .2H-3.1Z" /><path class="wf-shore-compass__beach" d="M-5.2 3H5.2" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-on wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-onshore" style="--facing: 247deg; --from: 292deg"><title>cross-onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-shore" style="--facing: 247deg; --from: 337deg"><title>cross-shore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 22deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+        <svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--offshore wf-shore-compass--lg" viewBox="-9 -9 18 18" role="img" aria-label="offshore" style="--facing: 247deg; --from: 67deg"><title>offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tide label — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: the dock's 40px tide row, ruled above. */
+      .demo__tide {
+        padding-top: var(--sem-space-x1);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Tide label</h2>
+
+      <p class="demo__label">The turn, beside its mark</p>
+      <div class="demo__row">
+        <span class="wf-tide-label wf-tide-label--low"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>Low tide 13:25 · 1.7 m</span>
+        <span class="wf-tide-label wf-tide-label--high"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>High tide 13:25 · 4.2 m</span>
+      </div>
+
+      <p class="demo__label">On the dock's tide row · 07:00 to 20:00, now 11:00 · scrolls</p>
+      <div class="demo__tide">
+        <svg class="wf-tide-label__curve" width="728" height="40" viewBox="0 0 728 40" role="img" aria-label="Tide: low 07:05 2.2 m, high 13:25 4.2 m, low 20:10 1.7 m; now 3.6 m"><path class="wf-tide-label__sea" d="M0.0 20.9L8.7 21.0L17.3 21.1L26.0 21.2L34.7 21.2L43.3 21.1L52.0 21.0L60.7 20.9L69.3 20.8L78.0 20.6L86.7 20.3L95.3 20.1L104.0 19.8L112.7 19.5L121.3 19.1L130.0 18.7L138.7 18.3L147.3 17.9L156.0 17.5L164.7 17.0L173.3 16.5L182.0 16.1L190.7 15.6L199.3 15.1L208.0 14.6L216.7 14.1L225.3 13.7L234.0 13.2L242.7 12.8L251.3 12.4L260.0 11.9L268.7 11.6L277.3 11.2L286.0 10.9L294.7 10.6L303.3 10.3L312.0 10.1L320.7 9.9L329.3 9.7L338.0 9.6L346.7 9.5L355.3 9.5L364.0 9.5L372.7 9.5L381.3 9.6L390.0 9.8L398.7 9.9L407.3 10.1L416.0 10.4L424.7 10.7L433.3 11.0L442.0 11.4L450.7 11.8L459.3 12.2L468.0 12.7L476.7 13.1L485.3 13.6L494.0 14.2L502.7 14.7L511.3 15.2L520.0 15.8L528.7 16.4L537.3 16.9L546.0 17.5L554.7 18.0L563.3 18.6L572.0 19.1L580.7 19.7L589.3 20.2L598.0 20.7L606.7 21.1L615.3 21.6L624.0 22.0L632.7 22.4L641.3 22.7L650.0 23.0L658.7 23.3L667.3 23.5L676.0 23.7L684.7 23.9L693.3 24.0L702.0 24.1L710.7 24.1L719.3 24.1L728.0 24.0L728 40L0 40Z" /><path class="wf-tide-label__level" d="M0.0 20.9L8.7 21.0L17.3 21.1L26.0 21.2L34.7 21.2L43.3 21.1L52.0 21.0L60.7 20.9L69.3 20.8L78.0 20.6L86.7 20.3L95.3 20.1L104.0 19.8L112.7 19.5L121.3 19.1L130.0 18.7L138.7 18.3L147.3 17.9L156.0 17.5L164.7 17.0L173.3 16.5L182.0 16.1L190.7 15.6L199.3 15.1L208.0 14.6L216.7 14.1L225.3 13.7L234.0 13.2L242.7 12.8L251.3 12.4L260.0 11.9L268.7 11.6L277.3 11.2L286.0 10.9L294.7 10.6L303.3 10.3L312.0 10.1L320.7 9.9L329.3 9.7L338.0 9.6L346.7 9.5L355.3 9.5L364.0 9.5L372.7 9.5L381.3 9.6L390.0 9.8L398.7 9.9L407.3 10.1L416.0 10.4L424.7 10.7L433.3 11.0L442.0 11.4L450.7 11.8L459.3 12.2L468.0 12.7L476.7 13.1L485.3 13.6L494.0 14.2L502.7 14.7L511.3 15.2L520.0 15.8L528.7 16.4L537.3 16.9L546.0 17.5L554.7 18.0L563.3 18.6L572.0 19.1L580.7 19.7L589.3 20.2L598.0 20.7L606.7 21.1L615.3 21.6L624.0 22.0L632.7 22.4L641.3 22.7L650.0 23.0L658.7 23.3L667.3 23.5L676.0 23.7L684.7 23.9L693.3 24.0L702.0 24.1L710.7 24.1L719.3 24.1L728.0 24.0" /><circle class="wf-tide-label__dot" cx="30.2" cy="21.2" r="2.6" /><text class="wf-tide-label__text" x="36.2" y="16.2" text-anchor="start">Low tide 07:05 · 2.2 m</text><circle class="wf-tide-label__dot wf-tide-label__dot--high" cx="359.8" cy="9.5" r="2.6" /><text class="wf-tide-label__text" x="365.8" y="22.5" text-anchor="start">High tide 13:25 · 4.2 m</text><circle class="wf-tide-label__dot" cx="710.8" cy="24.1" r="2.6" /><text class="wf-tide-label__text" x="704.8" y="19.1" text-anchor="end">Low tide 20:10 · 1.7 m</text><circle class="wf-tide-label__now" cx="234.0" cy="13.2" r="3.4" /></svg>
+      </div>
+
+      <p class="demo__label">The popup's line</p>
+      <div class="demo__row">
+        <span class="wf-tide-label wf-tide-label--line" role="img" aria-label="Tide 4.1 m"><svg class="wf-tide-label__wave" viewBox="0 0 14 8" aria-hidden="true"><path class="wf-tide-label__wave-path" d="M0 5 Q3.5 0 7 4 T14 3" /></svg>4.1 m</span>
+        <span class="wf-tide-label wf-tide-label--line" role="img" aria-label="Tide 2.5 m"><svg class="wf-tide-label__wave" viewBox="0 0 14 8" aria-hidden="true"><path class="wf-tide-label__wave-path" d="M0 5 Q3.5 0 7 4 T14 3" /></svg>2.5 m</span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Tide label · night chart (proposed)</h2>
+      <div class="demo__row">
+        <span class="wf-tide-label wf-tide-label--low"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>Low tide 13:25 · 1.7 m</span>
+        <span class="wf-tide-label wf-tide-label--high"><svg class="wf-tide-label__mark" viewBox="-3 -3 6 6" aria-hidden="true"><circle class="wf-tide-label__dot" r="2.6" /></svg>High tide 13:25 · 4.2 m</span>
+        <span class="wf-tide-label wf-tide-label--line" role="img" aria-label="Tide 4.1 m"><svg class="wf-tide-label__wave" viewBox="0 0 14 8" aria-hidden="true"><path class="wf-tide-label__wave-path" d="M0 5 Q3.5 0 7 4 T14 3" /></svg>4.1 m</span>
+      </div>
+      <div class="demo__tide">
+        <svg class="wf-tide-label__curve" width="728" height="40" viewBox="0 0 728 40" role="img" aria-label="Tide: low 07:05 2.2 m, high 13:25 4.2 m, low 20:10 1.7 m; now 3.6 m"><path class="wf-tide-label__sea" d="M0.0 20.9L8.7 21.0L17.3 21.1L26.0 21.2L34.7 21.2L43.3 21.1L52.0 21.0L60.7 20.9L69.3 20.8L78.0 20.6L86.7 20.3L95.3 20.1L104.0 19.8L112.7 19.5L121.3 19.1L130.0 18.7L138.7 18.3L147.3 17.9L156.0 17.5L164.7 17.0L173.3 16.5L182.0 16.1L190.7 15.6L199.3 15.1L208.0 14.6L216.7 14.1L225.3 13.7L234.0 13.2L242.7 12.8L251.3 12.4L260.0 11.9L268.7 11.6L277.3 11.2L286.0 10.9L294.7 10.6L303.3 10.3L312.0 10.1L320.7 9.9L329.3 9.7L338.0 9.6L346.7 9.5L355.3 9.5L364.0 9.5L372.7 9.5L381.3 9.6L390.0 9.8L398.7 9.9L407.3 10.1L416.0 10.4L424.7 10.7L433.3 11.0L442.0 11.4L450.7 11.8L459.3 12.2L468.0 12.7L476.7 13.1L485.3 13.6L494.0 14.2L502.7 14.7L511.3 15.2L520.0 15.8L528.7 16.4L537.3 16.9L546.0 17.5L554.7 18.0L563.3 18.6L572.0 19.1L580.7 19.7L589.3 20.2L598.0 20.7L606.7 21.1L615.3 21.6L624.0 22.0L632.7 22.4L641.3 22.7L650.0 23.0L658.7 23.3L667.3 23.5L676.0 23.7L684.7 23.9L693.3 24.0L702.0 24.1L710.7 24.1L719.3 24.1L728.0 24.0L728 40L0 40Z" /><path class="wf-tide-label__level" d="M0.0 20.9L8.7 21.0L17.3 21.1L26.0 21.2L34.7 21.2L43.3 21.1L52.0 21.0L60.7 20.9L69.3 20.8L78.0 20.6L86.7 20.3L95.3 20.1L104.0 19.8L112.7 19.5L121.3 19.1L130.0 18.7L138.7 18.3L147.3 17.9L156.0 17.5L164.7 17.0L173.3 16.5L182.0 16.1L190.7 15.6L199.3 15.1L208.0 14.6L216.7 14.1L225.3 13.7L234.0 13.2L242.7 12.8L251.3 12.4L260.0 11.9L268.7 11.6L277.3 11.2L286.0 10.9L294.7 10.6L303.3 10.3L312.0 10.1L320.7 9.9L329.3 9.7L338.0 9.6L346.7 9.5L355.3 9.5L364.0 9.5L372.7 9.5L381.3 9.6L390.0 9.8L398.7 9.9L407.3 10.1L416.0 10.4L424.7 10.7L433.3 11.0L442.0 11.4L450.7 11.8L459.3 12.2L468.0 12.7L476.7 13.1L485.3 13.6L494.0 14.2L502.7 14.7L511.3 15.2L520.0 15.8L528.7 16.4L537.3 16.9L546.0 17.5L554.7 18.0L563.3 18.6L572.0 19.1L580.7 19.7L589.3 20.2L598.0 20.7L606.7 21.1L615.3 21.6L624.0 22.0L632.7 22.4L641.3 22.7L650.0 23.0L658.7 23.3L667.3 23.5L676.0 23.7L684.7 23.9L693.3 24.0L702.0 24.1L710.7 24.1L719.3 24.1L728.0 24.0" /><circle class="wf-tide-label__dot" cx="30.2" cy="21.2" r="2.6" /><text class="wf-tide-label__text" x="36.2" y="16.2" text-anchor="start">Low tide 07:05 · 2.2 m</text><circle class="wf-tide-label__dot wf-tide-label__dot--high" cx="359.8" cy="9.5" r="2.6" /><text class="wf-tide-label__text" x="365.8" y="22.5" text-anchor="start">High tide 13:25 · 4.2 m</text><circle class="wf-tide-label__dot" cx="710.8" cy="24.1" r="2.6" /><text class="wf-tide-label__text" x="704.8" y="19.1" text-anchor="end">Low tide 20:10 · 1.7 m</text><circle class="wf-tide-label__now" cx="234.0" cy="13.2" r="3.4" /></svg>
+      </div>
+    </section>
+  </body>
+</html>

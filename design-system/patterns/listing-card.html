@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Listing card — wingfoil-chart pattern</title>
+    <link rel="stylesheet" href="../foundations/tokens.css" />
+    <link rel="stylesheet" href="../components/pane/component.css" />
+    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/chip/component.css" />
+    <link rel="stylesheet" href="../components/figure/component.css" />
+    <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <link rel="stylesheet" href="../components/pen-loop/component.css" />
+    <link rel="stylesheet" href="../components/pen-note/component.css" />
+    <link rel="stylesheet" href="../components/pen-strike/component.css" />
+    <style>
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      /* A sea-tinted stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* The favourite: the glyph in the pen, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-pen);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-pen);
+      }
+
+      /* ---- the classifieds: two columns on a phone, as many 240px ones as fit wider ---- */
+      .lc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--sem-space-x6) var(--sem-space-x3);
+        padding: 0 var(--sem-space-x3) var(--sem-space-x8);
+      }
+
+      /* ---- a card: a ruled pane, a heavy rule over the ad and no box round it ---- */
+      .lc {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: var(--sem-space-x2);
+        min-width: 0;
+        color: var(--sem-color-ink);
+        text-decoration: none;
+      }
+      .lc:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .lc__kicker {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+        min-width: 0;
+      }
+      .lc__where {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      /* The photograph on the second sheet, in a hairline frame. */
+      .lc__media {
+        position: relative;
+        display: grid;
+        place-items: center;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        border: var(--sem-rule-hairline) solid var(--sem-color-line);
+        background-color: var(--sem-color-sunken);
+        color: var(--sem-color-ink-muted);
+      }
+      /* No photograph ships with the bundle: a stand-in of shore and sea in the chart's tints. */
+      .lc__photo {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(175deg, var(--sem-color-land) 0%, var(--sem-color-sea-2) 45%, var(--sem-color-depth) 100%);
+        transition: transform var(--sem-duration-base);
+      }
+      .lc__photo--2 {
+        background-image: linear-gradient(175deg, var(--sem-color-sea-3) 0%, var(--sem-color-depth) 100%);
+      }
+      .lc__photo--3 {
+        background-image: linear-gradient(175deg, var(--sem-color-sea-1) 0%, var(--sem-color-depth) 100%);
+      }
+      .lc__photo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(-35deg, var(--sem-color-ground) 0 1px, transparent 1px var(--sem-space-x5));
+        opacity: var(--sem-opacity-dot);
+      }
+      /* Sold is said by the badge as well as by the colour draining out of it. */
+      .lc--sold .lc__photo {
+        filter: grayscale(1);
+      }
+      .lc__nophoto {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        min-width: 0;
+      }
+      .lc__icon {
+        width: var(--sem-space-x6);
+        height: var(--sem-space-x6);
+      }
+      .lc__badge {
+        position: absolute;
+        top: var(--sem-space-x2);
+        left: var(--sem-space-x2);
+      }
+      .lc__count {
+        position: absolute;
+        right: var(--sem-space-x2);
+        bottom: var(--sem-space-x2);
+      }
+
+      .lc__body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--sem-space-x1);
+      }
+      /* The price, and the pen's "new" a loop's reach off it. */
+      .lc__head {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x5);
+        min-height: var(--sem-space-x7);
+      }
+      .lc__fresh {
+        display: inline-block;
+      }
+      .lc__title {
+        display: -webkit-box;
+        margin: 0;
+        overflow: hidden;
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-tight);
+        font-weight: var(--sem-font-weight-semibold);
+        text-wrap: balance;
+        text-decoration-thickness: var(--sem-rule-hairline);
+        /* underline-offset-3 is Tailwind's 3px; no token holds it (Link records the gap). */
+        text-underline-offset: 3px;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      .lc__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+        min-width: 0;
+        margin-top: auto;
+        padding-top: var(--sem-space-x1);
+      }
+      .lc__condition {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .lc__sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      /* Under the pointer the name underlines and the photograph leans in; nothing lifts. */
+      .lc:hover .lc__title,
+      .lc.is-hover .lc__title {
+        text-decoration-line: underline;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .lc:hover .lc__photo,
+        .lc.is-hover .lc__photo {
+          transform: scale(1.04);
+        }
+      }
+
+      /* ---- from sem.breakpoint.wide (45rem) ---- */
+      @media (min-width: 720px) {
+        .lc-grid {
+          grid-template-columns: var(--sem-grid-cards);
+          gap: var(--sem-space-x8) var(--sem-space-x6);
+          padding: 0 var(--sem-space-x6) var(--sem-space-x10);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p class="pt__label">Classifieds · two columns on a phone</p>
+    <div class="lc-grid">
+      <a class="wf-pane wf-pane--ruled lc" href="#listing/maharees">
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Kinsale, Cork</span><span>3d</span></span>
+        <span class="lc__media"><span class="lc__photo lc__photo--1" role="presentation"></span><span class="wf-chip wf-chip--glass wf-chip--eyebrow lc__badge"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg> Saved</span><span class="wf-chip wf-chip--glass lc__count"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg><span class="lc__sr">Photos:</span> 3</span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="550 euro"><span class="wf-figure__value">€550</span></span></span>
+          <span class="lc__title" role="heading" aria-level="3">Maharees 5m wing, 2024</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Like new</span><span title="Seller rated 5.0"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="5.0 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
+        </span>
+      </a>
+      <a class="wf-pane wf-pane--ruled lc" href="#listing/vest">
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Lahinch, Clare</span><span>1d</span></span>
+        <span class="lc__media"><span class="lc__photo lc__photo--2" role="presentation"></span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="140 euro"><span class="wf-figure__value">€140</span></span><span class="wf-pen-loop lc__fresh"><span class="wf-pen-note wf-pen-note--sm">new</span><svg class="wf-pen-loop__mark" viewBox="0 0 50 34" aria-hidden="true" focusable="false"><path class="wf-pen-loop__stroke" d="M7.0 11.6 L8.0 9.5 L9.7 7.7 L11.7 6.1 L13.7 4.4 L15.9 2.6 L18.5 1.2 L21.7 0.5 L24.9 0.8 L27.9 1.7 L30.7 2.6 L33.4 3.4 L36.0 4.3 L38.3 5.7 L40.0 7.4 L41.4 9.3 L42.9 11.1 L44.8 12.9 L46.5 15.0 L47.2 17.4 L46.6 19.8 L45.2 22.0 L43.5 24.0 L41.9 26.0 L39.9 27.8 L37.3 29.1 L34.3 29.8 L31.3 30.0 L28.5 30.4 L25.7 31.0 L22.7 31.7 L19.4 31.9 L16.3 31.2 L13.5 30.0 L10.9 28.5 L8.3 27.0 L5.9 25.2 L4.4 23.0 L4.1 20.4 L4.6 17.9 L5.2 15.7 L5.4 13.4 L5.6 11.1 L6.3 8.8 L7.8 6.8 L9.8 5.0 L12.0 3.2 L14.2 1.4 L16.8 -0.4" pathLength="1" stroke-dasharray="1" /></svg></span></span>
+          <span class="lc__title" role="heading" aria-level="3">Impact vest and quick-release harness</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Like new</span><span title="Seller rated 4.8"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.8 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
+        </span>
+      </a>
+      <a class="wf-pane wf-pane--ruled lc lc--sold" href="#listing/wetsuit" data-sold>
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Malahide, Dublin</span><span>5d</span></span>
+        <span class="lc__media"><span class="lc__photo lc__photo--3" role="presentation"></span><span class="wf-chip wf-chip--glass wf-chip--eyebrow lc__badge">Sold</span><span class="wf-chip wf-chip--glass lc__count"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg><span class="lc__sr">Photos:</span> 2</span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-pen-strike"><span class="wf-figure" role="img" aria-label="120 euro, sold"><span class="wf-figure__value">€120</span></span><svg class="wf-pen-strike__mark" viewBox="0 0 46 19" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="wf-pen-strike__stroke" d="M1.8 13.7 L44.2 5.7" pathLength="1" stroke-dasharray="1" /></svg></span></span>
+          <span class="lc__title" role="heading" aria-level="3">5/4 winter wetsuit, large</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Good</span><span title="Seller rated 4.4"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.4 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.0978" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
+        </span>
+      </a>
+      <a class="wf-pane wf-pane--ruled lc" href="#listing/pump">
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Inch, Kerry</span><span>2d</span></span>
+        <span class="lc__media"><span class="lc__nophoto"><svg class="lc__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg><span class="wf-kicker">No photo</span></span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="80 euro"><span class="wf-figure__value">€80</span></span></span>
+          <span class="lc__title" role="heading" aria-level="3">Electric pump, two seasons on it</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Fair</span><span title="Seller rated 4.0"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.0 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><circle class="wf-star-glyphs__dot" cx="44.5" cy="4.5" r="0.63" /></svg></span></span>
+        </span>
+      </a>
+      <a class="wf-pane wf-pane--ruled lc is-hover" href="#listing/foil">
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Barna, Galway</span><span>3d</span></span>
+        <span class="lc__media"><span class="lc__photo lc__photo--2" role="presentation"></span><span class="wf-chip wf-chip--glass lc__count"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg><span class="lc__sr">Photos:</span> 2</span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="650 euro"><span class="wf-figure__value">€650</span></span></span>
+          <span class="lc__title" role="heading" aria-level="3">Complete foil, 85cm mast</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Fair</span><span title="Seller rated 4.9"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.9 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
+        </span>
+      </a>
+      <a class="wf-pane wf-pane--ruled lc" href="#listing/board">
+        <span class="wf-kicker lc__kicker"><span class="lc__where"><span class="lc__sr">In </span>Keel, Mayo</span><span>6d</span></span>
+        <span class="lc__media"><span class="lc__photo lc__photo--3" role="presentation"></span><span class="wf-chip wf-chip--glass lc__count"><svg class="wf-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg><span class="lc__sr">Photos:</span> 2</span></span>
+        <span class="lc__body">
+          <span class="lc__head"><span class="wf-figure" role="img" aria-label="900 euro"><span class="wf-figure__value">€900</span></span></span>
+          <span class="lc__title" role="heading" aria-level="3">Achill 95L wing board</span>
+          <span class="lc__meta"><span class="wf-kicker lc__condition">Good</span><span title="Seller rated 4.6"><svg class="wf-star-glyphs wf-star-glyphs--ink" width="49" height="9" viewBox="0 0 49 9" role="img" aria-label="4.6 out of 5"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(14.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(24.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(34.5 4.9) scale(0.8654)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="1.0978" transform="translate(44.5 4.9) scale(0.8654)" /></svg></span></span>
+        </span>
+      </a>
+    </div>
+  </body>
+</html>

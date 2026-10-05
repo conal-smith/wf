@@ -1,0 +1,23 @@
+/* Pager — ui/Pager.tsx (pagerStyles), rendered in CSS. Consumes --sem-* only.
+ * Its buttons are the Button component's classes (components/button/
+ * component.css): small ruled pills, disabled at either end.
+ *
+ * Previous and next, and the page in view between them as a figure. Nothing at
+ * all is drawn when everything fits on one page. */
+
+.wf-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sem-space-x3);
+  padding-top: var(--sem-space-x2);
+}
+
+/* "Page 2 of 7": a figure, so the figures' face, small and muted. */
+.wf-pager__status {
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--sem-color-ink-muted);
+}

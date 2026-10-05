@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spot light — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: the chart's sea stand-in, a light in each slot, and a coast. */
+      .demo__lights {
+        gap: var(--sem-space-x5);
+        padding: var(--sem-space-x6) var(--sem-space-x5);
+      }
+      .demo__dot {
+        display: inline-flex;
+      }
+      .demo__states {
+        display: grid;
+        gap: var(--sem-space-x3);
+        padding: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x6);
+      }
+      .demo__slot {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x5);
+        height: var(--sem-space-x8);
+      }
+      .demo__key {
+        width: calc(var(--sem-space-step) * 7);
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+      }
+      .demo__chart {
+        position: relative;
+        height: calc(var(--sem-space-step) * 55);
+        overflow: hidden;
+        background: var(--sem-color-sea-3);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+      }
+      .demo__coast {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .demo__coast path {
+        fill: var(--sem-color-land);
+        stroke: var(--sem-color-ink);
+        stroke-width: 1;
+      }
+      .demo__chart .wf-spot-light {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Spot light</h2>
+
+      <p class="demo__label">Stars 0 to 5, dark, offshore, cross-off</p>
+      <div class="demo__row demo__map demo__lights">
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s0" type="button" aria-label="Donabate: 0 stars, SE 7 knots" style="--from: 135deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">0</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">0★ SE 7</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s1" type="button" aria-label="Inch Beach: 1 star, WSW 9 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">1</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Inch Beach</span><span class="wf-spot-light__line">1★ WSW 9</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s2" type="button" aria-label="Donabate: 2 stars, WSW 11 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">2★ WSW 11</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s3" type="button" aria-label="Dollymount: 3 stars, W 13 knots" style="--from: 270deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s4" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s5" type="button" aria-label="The Burrow: 5 stars, SW 15 knots" style="--from: 225deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">The Burrow</span><span class="wf-spot-light__line">5★ SW 15</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--off" type="button" aria-label="Brandon Bay: 2 stars, ENE 12 knots, offshore" style="--from: 67deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Brandon Bay</span><span class="wf-spot-light__line">2★ ENE 12 · offshore</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--dark" type="button" aria-label="Keel Beach: dark, WSW 13 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle"></text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">WSW 13</span></span>
+        </button></div>
+        <div class="demo__dot"><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--xoff" type="button" aria-label="Dollymount: 2 stars, WSW 11 knots, cross-offshore" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">2★ WSW 11 · cross-off</span></span>
+        </button></div>
+      </div>
+
+      <p class="demo__label">Named · every state, with its chart line</p>
+      <div class="demo__map demo__states">
+        <div class="demo__slot"><span class="demo__key">s0</span><button class="wf-spot-light wf-spot-light--s0 wf-spot-light--named" type="button" aria-label="Donabate: 0 stars, SE 7 knots" style="--from: 135deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">0</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">0★ SE 7</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s1</span><button class="wf-spot-light wf-spot-light--s1 wf-spot-light--named" type="button" aria-label="Inch Beach: 1 star, WSW 9 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">1</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Inch Beach</span><span class="wf-spot-light__line">1★ WSW 9</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s2</span><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--named" type="button" aria-label="Donabate: 2 stars, WSW 11 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">2★ WSW 11</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s3</span><button class="wf-spot-light wf-spot-light--s3 wf-spot-light--named" type="button" aria-label="Dollymount: 3 stars, W 13 knots" style="--from: 270deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">3★ W 13</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s4</span><button class="wf-spot-light wf-spot-light--s4 wf-spot-light--named" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s5</span><button class="wf-spot-light wf-spot-light--s5 wf-spot-light--named" type="button" aria-label="The Burrow: 5 stars, SW 15 knots" style="--from: 225deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">The Burrow</span><span class="wf-spot-light__line">5★ SW 15</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">off</span><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--off wf-spot-light--named" type="button" aria-label="Brandon Bay: 2 stars, ENE 12 knots, offshore" style="--from: 67deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Brandon Bay</span><span class="wf-spot-light__line">2★ ENE 12 · offshore</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">dark</span><button class="wf-spot-light wf-spot-light--dark wf-spot-light--named" type="button" aria-label="Keel Beach: dark, WSW 13 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle"></text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">WSW 13</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">xoff</span><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--xoff wf-spot-light--named" type="button" aria-label="Dollymount: 2 stars, WSW 11 knots, cross-offshore" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Dollymount</span><span class="wf-spot-light__line">2★ WSW 11 · cross-off</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">sel</span><button class="wf-spot-light wf-spot-light--s4 wf-spot-light--sel" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" aria-pressed="true" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">hover</span><button class="wf-spot-light wf-spot-light--s3 is-hover" type="button" aria-label="Keel Beach: 3 stars, WSW 13 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">3★ WSW 13</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">focus</span><button class="wf-spot-light wf-spot-light--s5 is-focus" type="button" aria-label="The Burrow: 5 stars, SW 15 knots" style="--from: 225deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">The Burrow</span><span class="wf-spot-light__line">5★ SW 15</span></span>
+        </button></div>
+      </div>
+
+      <p class="demo__label">A cluster, as on the map</p>
+      <div class="demo__chart">
+        <svg class="demo__coast" viewBox="0 0 350 220" preserveAspectRatio="none" aria-hidden="true"><path d="M210 0H350V220H232C226 200 214 186 196 178C180 172 168 160 172 146C176 134 196 132 206 120C214 110 206 100 190 98C176 96 168 88 176 76C186 62 206 66 214 52C222 38 206 24 212 0Z" /><path d="M0 0H70C74 12 60 20 50 22C36 26 30 40 22 54C16 64 8 66 0 70Z" /></svg>
+        <button class="wf-spot-light wf-spot-light--s4 wf-spot-light--named" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" style="--from: 247deg; --x: 150px; --y: 96px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s5" type="button" aria-label="Silver Strand: 5 stars, WSW 15 knots" style="--from: 247deg; --x: 120px; --y: 112px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Silver Strand</span><span class="wf-spot-light__line">5★ WSW 15</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s5" type="button" aria-label="Ballyloughane: 5 stars, WSW 16 knots" style="--from: 240deg; --x: 206px; --y: 44px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Ballyloughane</span><span class="wf-spot-light__line">5★ WSW 16</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s3" type="button" aria-label="Spiddal: 3 stars, WSW 12 knots" style="--from: 247deg; --x: 64px; --y: 102px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Spiddal</span><span class="wf-spot-light__line">3★ WSW 12</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s2 wf-spot-light--xoff" type="button" aria-label="Traught: 2 stars, WSW 10 knots, cross-offshore" style="--from: 247deg; --x: 178px; --y: 152px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Traught</span><span class="wf-spot-light__line">2★ WSW 10 · cross-off</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s0" type="button" aria-label="Fanore: 0 stars, WSW 7 knots" style="--from: 247deg; --x: 120px; --y: 182px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">0</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Fanore</span><span class="wf-spot-light__line">0★ WSW 7</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s4 wf-spot-light--named" type="button" aria-label="Keel Beach: 4 stars, WSW 13 knots" style="--from: 247deg; --x: 38px; --y: 34px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">4★ WSW 13</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s1 wf-spot-light--off" type="button" aria-label="Lettermullen: 1 star, ENE 9 knots, offshore" style="--from: 67deg; --x: 20px; --y: 132px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">1</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Lettermullen</span><span class="wf-spot-light__line">1★ ENE 9 · offshore</span></span>
+        </button>
+      </div>
+
+      <p class="demo__label">The same, in focus: Rusheen Bay selected, the rest dimmed</p>
+      <div class="demo__chart wf-spot-light-field--focus">
+        <svg class="demo__coast" viewBox="0 0 350 220" preserveAspectRatio="none" aria-hidden="true"><path d="M210 0H350V220H232C226 200 214 186 196 178C180 172 168 160 172 146C176 134 196 132 206 120C214 110 206 100 190 98C176 96 168 88 176 76C186 62 206 66 214 52C222 38 206 24 212 0Z" /><path d="M0 0H70C74 12 60 20 50 22C36 26 30 40 22 54C16 64 8 66 0 70Z" /></svg>
+        <button class="wf-spot-light wf-spot-light--s4 wf-spot-light--sel" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" aria-pressed="true" style="--from: 247deg; --x: 150px; --y: 96px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s5" type="button" aria-label="Silver Strand: 5 stars, WSW 15 knots" style="--from: 247deg; --x: 120px; --y: 112px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Silver Strand</span><span class="wf-spot-light__line">5★ WSW 15</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s5" type="button" aria-label="Ballyloughane: 5 stars, WSW 16 knots" style="--from: 240deg; --x: 206px; --y: 44px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Ballyloughane</span><span class="wf-spot-light__line">5★ WSW 16</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s3" type="button" aria-label="Spiddal: 3 stars, WSW 12 knots" style="--from: 247deg; --x: 64px; --y: 102px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">3</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Spiddal</span><span class="wf-spot-light__line">3★ WSW 12</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s2 wf-spot-light--xoff" type="button" aria-label="Traught: 2 stars, WSW 10 knots, cross-offshore" style="--from: 247deg; --x: 178px; --y: 152px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Traught</span><span class="wf-spot-light__line">2★ WSW 10 · cross-off</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s0" type="button" aria-label="Fanore: 0 stars, WSW 7 knots" style="--from: 247deg; --x: 120px; --y: 182px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">0</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Fanore</span><span class="wf-spot-light__line">0★ WSW 7</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s4 wf-spot-light--named" type="button" aria-label="Keel Beach: 4 stars, WSW 13 knots" style="--from: 247deg; --x: 38px; --y: 34px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">4★ WSW 13</span></span>
+        </button>
+        <button class="wf-spot-light wf-spot-light--s1 wf-spot-light--off" type="button" aria-label="Lettermullen: 1 star, ENE 9 knots, offshore" style="--from: 67deg; --x: 20px; --y: 132px">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">1</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Lettermullen</span><span class="wf-spot-light__line">1★ ENE 9 · offshore</span></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Spot light · night chart (proposed)</h2>
+      <div class="demo__map demo__states">
+        <div class="demo__slot"><span class="demo__key">s0</span><button class="wf-spot-light wf-spot-light--s0 wf-spot-light--named" type="button" aria-label="Donabate: 0 stars, SE 7 knots" style="--from: 135deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">0</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">0★ SE 7</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s2</span><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--named" type="button" aria-label="Donabate: 2 stars, WSW 11 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Donabate</span><span class="wf-spot-light__line">2★ WSW 11</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s4</span><button class="wf-spot-light wf-spot-light--s4 wf-spot-light--named" type="button" aria-label="Rusheen Bay: 4 stars, WSW 14 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">4</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Rusheen Bay</span><span class="wf-spot-light__line">4★ WSW 14</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">s5</span><button class="wf-spot-light wf-spot-light--s5 wf-spot-light--named" type="button" aria-label="The Burrow: 5 stars, SW 15 knots" style="--from: 225deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">5</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">The Burrow</span><span class="wf-spot-light__line">5★ SW 15</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">off</span><button class="wf-spot-light wf-spot-light--s2 wf-spot-light--off wf-spot-light--named" type="button" aria-label="Brandon Bay: 2 stars, ENE 12 knots, offshore" style="--from: 67deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle">2</text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Brandon Bay</span><span class="wf-spot-light__line">2★ ENE 12 · offshore</span></span>
+        </button></div>
+        <div class="demo__slot"><span class="demo__key">dark</span><button class="wf-spot-light wf-spot-light--dark wf-spot-light--named" type="button" aria-label="Keel Beach: dark, WSW 13 knots" style="--from: 247deg">
+          <svg class="wf-spot-light__glyph" viewBox="-30 -30 60 60" aria-hidden="true"><g class="wf-spot-light__wind"><path class="wf-spot-light__arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6" /></g><circle class="wf-spot-light__ring" r="7.6" /><line class="wf-spot-light__strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6" /><text class="wf-spot-light__n" y="3.4" text-anchor="middle"></text></svg>
+          <span class="wf-spot-light__label" aria-hidden="true"><span class="wf-spot-light__name">Keel Beach</span><span class="wf-spot-light__line">WSW 13</span></span>
+        </button></div>
+      </div>
+    </section>
+  </body>
+</html>

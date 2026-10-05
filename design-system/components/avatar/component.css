@@ -1,0 +1,50 @@
+/* Avatar — ui/Avatar.tsx (avatarStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * A face for a name: the member's photo, or a monogram of up to two letters in
+ * the display face's italic, on the paper's second sheet, in an ink ring as
+ * everything that stands on the page is. Decoration: the name is always
+ * written beside it. */
+
+/* size="md" (the default). */
+.wf-avatar {
+  box-sizing: border-box;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  overflow: hidden;
+  width: var(--sem-size-control-md);
+  height: var(--sem-size-control-md);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-full);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-body);
+  line-height: 1;
+  font-weight: var(--sem-font-weight-semibold);
+  font-style: italic;
+}
+
+/* size="sm": a row in a list, a notification. */
+.wf-avatar--sm {
+  width: var(--sem-size-control-sm);
+  height: var(--sem-size-control-sm);
+  font-size: var(--sem-font-size-caption);
+}
+
+/* size="lg": a profile's head (72px). The title step brings its tracking; the
+ * weight stays semibold. */
+.wf-avatar--lg {
+  width: calc(var(--sem-space-step) * 18);
+  height: calc(var(--sem-space-step) * 18);
+  font-size: var(--sem-font-size-title);
+  letter-spacing: var(--sem-font-tracking-title);
+}
+
+/* The photo fills the ring, cropped to it. */
+.wf-avatar__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

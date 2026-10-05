@@ -1,0 +1,25 @@
+/* PenNote — ui/Pen.tsx (penNoteStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * The pen's handwriting in the margin: the verdict in a few words, in Kalam,
+ * a degree off the level, in the pen's darker ink so it reads as words (4.9:1)
+ * where the pen's strokes need only be seen. Never a paragraph. */
+
+.wf-pen-note {
+  margin: 0;
+  transform: rotate(-1deg);
+  transform-origin: top left;
+  font-family: var(--sem-font-family-hand);
+  /* md (lead) is the default size; the hand keeps its own weight and leading. */
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-tight);
+  font-weight: var(--sem-font-weight-normal);
+  color: var(--sem-color-pen-ink);
+}
+
+/* ---- sizes ---- */
+.wf-pen-note--sm {
+  font-size: var(--sem-font-size-prose);
+}
+.wf-pen-note--md {
+  font-size: var(--sem-font-size-lead);
+}

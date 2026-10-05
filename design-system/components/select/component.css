@@ -1,0 +1,32 @@
+/* Select — ui/Select.tsx, controlStyles({ kind: "select" }), rendered in CSS.
+ * Consumes --sem-* only.
+ *
+ * A native <select>: the platform's own picker, in the kit's box. The box,
+ * the element and every state (hover, ring, active, invalid, disabled, the
+ * coarse pointer's 16) are the shared `.wf-control` classes in
+ * ../text-input/component.css, which the page links first. This file adds
+ * only what the select kind adds: the platform's arrow taken off, room for
+ * the kit's chevron, and the chevron laid over the right of the box. */
+
+.wf-control--select {
+  position: relative;
+}
+
+.wf-control--select .wf-control__input {
+  appearance: none;
+  padding-right: var(--sem-space-x6);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.wf-control--select .wf-control__input:disabled {
+  cursor: default;
+}
+
+/* The chevron (lucide ChevronDown, 16) in currentColor: the adornment's
+ * ink-muted. The pointer passes through it to the select. */
+.wf-control--select .wf-control__adornment {
+  position: absolute;
+  right: var(--sem-space-x3);
+  font-weight: var(--sem-font-weight-normal);
+  pointer-events: none;
+}

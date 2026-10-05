@@ -1,0 +1,125 @@
+/* Text input — ui/TextInput.tsx over ui/control.ts (controlStyles), rendered in
+ * CSS. Consumes --sem-* only.
+ *
+ * This file owns the box every field control shares: `.wf-control` (the box,
+ * controlStyles' `box` slot), `.wf-control__input` (the bare element inside)
+ * and `.wf-control__adornment` (a currency sign, a unit, a chevron), with the
+ * `--active` filter state. Text area (`--area`) and select (`--select`) link
+ * this file and add only what their kind adds.
+ *
+ * The box is what is drawn: it takes the border, the hover and the ring, so a
+ * prefix or a chevron sits inside the same outline as the text.
+ *
+ * `.is-hover` and `.is-focus` hold a state still for the catalog; the product
+ * reaches the same rules through :hover and :focus-within. */
+
+/* ---- the box: a box to write in, ruled at the stroke's 3:1 ---- */
+.wf-control {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--sem-size-touch);
+  align-items: center;
+  gap: var(--sem-space-x2);
+  padding: 0 var(--sem-space-x3);
+  border: var(--sem-rule-hairline) solid var(--sem-color-line-strong);
+  border-radius: var(--sem-radius-control);
+  background: var(--sem-color-card);
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  transition-property: color, background-color, border-color, outline-color;
+  transition-duration: var(--sem-duration-fast);
+}
+
+/* Inked under the pointer. */
+.wf-control:hover,
+.wf-control.is-hover {
+  border-color: var(--sem-color-ink);
+}
+
+/* The one ring, on the box whose field holds the focus (RING_WITHIN). */
+.wf-control:focus-within,
+.wf-control.is-focus {
+  outline: var(--sem-ring-width) solid var(--sem-color-focus);
+  outline-offset: var(--sem-ring-offset);
+}
+
+/* ---- active: a filter that is narrowing the results, not sitting at "any".
+ * A second line inside the border (inset-ring), so not colour alone. ---- */
+.wf-control--active,
+.wf-control--active:hover,
+.wf-control--active.is-hover {
+  border-color: var(--sem-color-accent-primary);
+}
+.wf-control--active {
+  box-shadow: inset 0 0 0 var(--sem-rule-hairline) var(--sem-color-accent-primary);
+}
+
+/* ---- invalid: the warm ground. Wrong is also said by the Field's message.
+ * Reached from a Field with data-invalid (group-data-invalid/field) or from
+ * aria-invalid on the element itself (has-aria-invalid). ---- */
+.wf-field[data-invalid] .wf-control,
+.wf-field[data-invalid] .wf-control:hover,
+.wf-control:has([aria-invalid="true"]),
+.wf-control:has([aria-invalid="true"]):hover {
+  border-color: var(--sem-color-warn);
+  background: var(--sem-color-warn-ground);
+}
+
+/* ---- disabled: the second sheet, the line, and the disabled ink ---- */
+.wf-control:has(:disabled),
+.wf-control:has(:disabled):hover {
+  border-color: var(--sem-color-line);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink-disabled);
+}
+
+/* ---- the element inside: bare, it takes the box's ink ---- */
+.wf-control__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0%;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-prose);
+  font-weight: var(--sem-font-weight-normal);
+}
+.wf-control__input::placeholder {
+  color: var(--sem-color-ink-muted);
+  font-style: italic;
+  opacity: 1;
+}
+.wf-control__input:disabled {
+  cursor: default;
+}
+/* The box draws the ring; the element draws none (NO_RING). */
+.wf-control__input:focus-visible {
+  outline: none;
+}
+
+/* A focused field under 16px makes a phone zoom the page, so on a touch
+ * device a field takes the input step, which is 16. */
+@media (pointer: coarse) {
+  .wf-control__input {
+    font-size: var(--sem-font-size-input);
+    line-height: var(--sem-font-line-input);
+  }
+}
+
+/* ---- adornment: a unit or a currency sign, a figure's companion, so the
+ * figures' face ---- */
+.wf-control__adornment {
+  flex-shrink: 0;
+  color: var(--sem-color-ink-muted);
+  font-family: var(--sem-font-family-mono);
+  font-size: var(--sem-font-size-caption);
+  line-height: var(--sem-font-line-caption);
+}

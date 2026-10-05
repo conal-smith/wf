@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Button — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Button</h2>
+
+      <p class="demo__label">Variants · md</p>
+      <div class="demo__row">
+        <button class="wf-button" type="button">Quiet</button>
+        <button class="wf-button wf-button--primary" type="button">Spot page →</button>
+        <button class="wf-button wf-button--pill" type="button">Sign in</button>
+        <button class="wf-button wf-button--raised" type="button">IRL</button>
+        <button class="wf-button wf-button--link" type="button">← Chart</button>
+        <button class="wf-button wf-button--danger" type="button">Delete listing</button>
+      </div>
+
+      <p class="demo__label">Hover (held)</p>
+      <div class="demo__row">
+        <button class="wf-button is-hover" type="button">Quiet</button>
+        <button class="wf-button wf-button--primary is-hover" type="button">Spot page →</button>
+        <button class="wf-button wf-button--pill is-hover" type="button">Sign in</button>
+        <button class="wf-button wf-button--raised is-hover" type="button">IRL</button>
+        <button class="wf-button wf-button--link is-hover" type="button">← Chart</button>
+        <button class="wf-button wf-button--danger is-hover" type="button">Delete listing</button>
+      </div>
+
+      <p class="demo__label">Focus-visible (held): one ring, 2px of magenta, 2px clear</p>
+      <div class="demo__row">
+        <button class="wf-button is-focus" type="button">Quiet</button>
+        <button class="wf-button wf-button--primary is-focus" type="button">Spot page →</button>
+        <button class="wf-button wf-button--pill is-focus" type="button">Sign in</button>
+        <button class="wf-button wf-button--link is-focus" type="button">← Chart</button>
+      </div>
+
+      <p class="demo__label">Disabled</p>
+      <div class="demo__row">
+        <button class="wf-button" type="button" disabled>Quiet</button>
+        <button class="wf-button wf-button--primary" type="button" disabled>Spot page →</button>
+        <button class="wf-button wf-button--pill" type="button" disabled>Sign in</button>
+        <button class="wf-button wf-button--raised" type="button" disabled>IRL</button>
+        <button class="wf-button wf-button--danger" type="button" disabled>Delete listing</button>
+      </div>
+
+      <p class="demo__label">Sizes · sm, md, lg</p>
+      <div class="demo__row">
+        <button class="wf-button wf-button--pill wf-button--sm" type="button">Sign in</button>
+        <button class="wf-button wf-button--pill" type="button">Sign in</button>
+        <button class="wf-button wf-button--primary wf-button--lg" type="button">Sell</button>
+      </div>
+
+      <p class="demo__label">Pressed · a toggle that is on, and one that says so in words</p>
+      <div class="demo__row">
+        <button class="wf-button wf-button--pill wf-button--sm" type="button" aria-pressed="true">Table</button>
+        <button class="wf-button wf-button--pill wf-button--sm" type="button" aria-pressed="false">Ribbon</button>
+        <button class="wf-button wf-button--worded" type="button" aria-pressed="true">
+          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+          Saved
+        </button>
+      </div>
+
+      <p class="demo__label">Icon · needs an aria-label · the instrument over the map stays square</p>
+      <div class="demo__row demo__map">
+        <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close">
+          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+        <button class="wf-button wf-button--icon wf-button--raised" type="button" aria-label="Menu">
+          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <button class="wf-button wf-button--icon wf-button--raised is-hover" type="button" aria-label="Layers">
+          <svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Button · night chart (proposed)</h2>
+      <div class="demo__row">
+        <button class="wf-button" type="button">Quiet</button>
+        <button class="wf-button wf-button--primary" type="button">Spot page →</button>
+        <button class="wf-button wf-button--primary is-hover" type="button">Hovered</button>
+        <button class="wf-button wf-button--pill" type="button">Sign in</button>
+        <button class="wf-button wf-button--pill wf-button--sm" type="button" aria-pressed="true">Table</button>
+        <button class="wf-button wf-button--link" type="button">← Chart</button>
+        <button class="wf-button wf-button--pill is-focus" type="button">Focus</button>
+        <button class="wf-button wf-button--primary" type="button" disabled>Disabled</button>
+      </div>
+    </section>
+  </body>
+</html>

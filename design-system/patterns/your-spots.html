@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your spots — wingfoil-chart pattern</title>
+    <link rel="stylesheet" href="../foundations/tokens.css" />
+    <link rel="stylesheet" href="../components/button/component.css" />
+    <link rel="stylesheet" href="../components/surface/component.css" />
+    <link rel="stylesheet" href="../components/kicker/component.css" />
+    <link rel="stylesheet" href="../components/link/component.css" />
+    <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <style>
+      /* The page: one sheet of paper with its grain; a mono label names each instance. */
+      body {
+        margin: 0;
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .pt__label {
+        margin: var(--sem-space-x5) var(--sem-space-x3) var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      /* A sea-tinted stand-in for the chart under what is laid over it. */
+      .pt__map {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* The favourite: the glyph in the pen, filled when it is starred. */
+      .fav {
+        display: block;
+        width: calc(var(--sem-space-step) * 4.25);
+        height: calc(var(--sem-space-step) * 4.25);
+      }
+      .fav__path {
+        fill: none;
+        stroke: var(--sem-color-pen);
+        stroke-width: 1.3;
+        stroke-linejoin: round;
+      }
+      [aria-pressed="true"] > .fav .fav__path {
+        fill: var(--sem-color-pen);
+      }
+
+      /* ---- the panel: the chart's box, a column of figures ---- */
+      .ys {
+        width: calc(var(--sem-space-step) * 73);
+        max-width: 100%;
+        padding: var(--sem-space-x1-5) var(--sem-space-x4) var(--sem-space-x3);
+      }
+      /* The tabs: the chosen one italic, heavier and underlined in ink, never colour alone. */
+      .ys__tabs {
+        display: flex;
+        gap: var(--sem-space-x4);
+        margin: 0 0 var(--sem-space-x1);
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+      }
+      .ys__tab {
+        margin: 0 0 calc(var(--sem-rule-hairline) * -1);
+        padding: var(--sem-space-x1-5) 0 var(--sem-space-x1);
+        border: 0;
+        border-bottom: var(--sem-rule-heavy) solid transparent;
+        background: none;
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-tight);
+        font-weight: var(--sem-font-weight-medium);
+        cursor: pointer;
+      }
+      .ys__tab[aria-selected="true"] {
+        border-bottom-color: var(--sem-color-ink);
+        color: var(--sem-color-ink);
+        font-style: italic;
+        font-weight: var(--sem-font-weight-semibold);
+      }
+      .ys__tab:focus-visible {
+        outline: var(--sem-ring-width) solid var(--sem-color-focus);
+        outline-offset: var(--sem-ring-offset);
+      }
+      .ys__when {
+        align-self: center;
+        margin-left: auto;
+      }
+      .ys__h {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: calc(var(--sem-space-step) * 6.5);
+        margin-top: var(--sem-space-x1-5);
+      }
+      .ys__h > .wf-button {
+        margin-right: calc(var(--sem-space-x1-5) * -1);
+      }
+      .ys__list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .ys__row {
+        display: grid;
+        grid-template-columns: var(--sem-size-control-sm) minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0 var(--sem-space-x1);
+        padding: var(--sem-space-x1) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .ys__row > .wf-button {
+        margin-left: calc(var(--sem-space-x1-5) * -1);
+      }
+      .ys__go {
+        display: block;
+        min-width: 0;
+      }
+      .ys__name {
+        display: block;
+        overflow: hidden;
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-tight);
+        font-style: italic;
+        font-weight: var(--sem-font-weight-semibold);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .ys__line {
+        display: block;
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .ys__none {
+        margin: 0;
+        padding: var(--sem-space-x1-5) 0;
+        border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        color: var(--sem-color-ink-muted);
+        font-size: var(--sem-font-size-body);
+        line-height: var(--sem-font-line-body);
+        font-style: italic;
+      }
+      .ys__sign {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x2-5);
+        color: var(--sem-color-ink-muted);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+      }
+      .ys__sign > .wf-button:last-child {
+        margin-right: calc(var(--sem-space-x1-5) * -1);
+      }
+
+      /* ---- the phone's strip: the starred spots side by side, a label on its side ---- */
+      .ys-strip {
+        display: flex;
+        gap: var(--sem-space-x1);
+        padding: var(--sem-space-x1-5) var(--sem-space-x2);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .ys-strip__best {
+        flex: none;
+        align-self: center;
+        padding: 0 var(--sem-space-x0-5);
+        transform: rotate(180deg);
+        writing-mode: vertical-rl;
+      }
+      .ys-strip__list {
+        display: flex;
+        flex: none;
+        gap: var(--sem-space-x1);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .ys-strip__item {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        padding: var(--sem-space-x0-5) var(--sem-space-x2) var(--sem-space-x0-5) 0;
+        border-right: var(--sem-rule-hairline) solid var(--sem-color-line);
+        white-space: nowrap;
+      }
+      .ys-strip__item:last-child {
+        border-right: 0;
+      }
+      .ys-strip__name {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-tight);
+        font-style: italic;
+        font-weight: var(--sem-font-weight-semibold);
+      }
+    </style>
+  </head>
+  <body>
+    <p class="pt__label">Your spots · over the map, top right</p>
+    <div class="pt__map">
+      <aside class="wf-surface ys" aria-label="Your spots and the key">
+          <div class="ys__tabs" role="tablist">
+            <button class="ys__tab" role="tab" type="button" aria-selected="true">Your spots</button>
+            <button class="ys__tab" role="tab" type="button" aria-selected="false">Key</button>
+            <span class="wf-kicker ys__when">Mon 5</span>
+          </div>
+        <div role="tabpanel">
+          <div class="ys__h"><span class="wf-kicker">Starred · best Mon</span><a class="wf-button wf-button--icon wf-button--sm" href="#stars" aria-label="How the stars work"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></a></div>
+          <ul class="ys__list">
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="true" aria-label="Unstar Dollymount"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/dollymount"><span class="ys__name">Dollymount</span><span class="ys__line">13–14 · WSW 11g20</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(27 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg>
+            </li>
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="true" aria-label="Unstar Brandon Bay"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/brandon-bay"><span class="ys__name">Brandon Bay</span><span class="ys__line">no stars · SW 10g15</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="0 of 5 stars, 2 on the wind alone"><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(16 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="27" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg>
+            </li>
+          </ul>
+          <div class="ys__h"><span class="wf-kicker">You look at · best Mon</span></div>
+          <ul class="ys__list">
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="false" aria-label="Star Rusheen Bay"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/rusheen-bay"><span class="ys__name">Rusheen Bay</span><span class="ys__line">13–16 · WSW 14g22 · 9×</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="4 of 5 stars, 5 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(49 5.4) scale(0.9615)" /></svg>
+            </li>
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="false" aria-label="Star Keel Beach"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/keel-beach"><span class="ys__name">Keel Beach</span><span class="ys__line">13:00 · WSW 13g21 · 4×</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="4 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg>
+            </li>
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="false" aria-label="Star Inch Beach"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/inch-beach"><span class="ys__name">Inch Beach</span><span class="ys__line">13:00 · WSW 9g17 · 3×</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="1 of 5 stars, 2 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(16 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="27" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg>
+            </li>
+            <li class="ys__row">
+              <button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="false" aria-label="Star The Burrow"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button>
+              <a class="wf-link wf-link--plain ys__go" href="#map/the-burrow"><span class="ys__name">The Burrow</span><span class="ys__line">13–16 · SW 15g23 · 2×</span></a>
+              <svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="5 of 5 stars"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(27 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(38 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(49 5.4) scale(0.9615)" /></svg>
+            </li>
+          </ul>
+          <div class="ys__sign"><span>On this device</span><button class="wf-button wf-button--pill wf-button--sm" type="button">Sign in</button><button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="About your spots"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg></button></div>
+        </div>
+      </aside>
+    </div>
+
+    <p class="pt__label">Empty · a first visit</p>
+    <div class="pt__map">
+      <aside class="wf-surface ys" aria-label="Your spots and the key">
+          <div class="ys__tabs" role="tablist">
+            <button class="ys__tab" role="tab" type="button" aria-selected="true">Your spots</button>
+            <button class="ys__tab" role="tab" type="button" aria-selected="false">Key</button>
+            <span class="wf-kicker ys__when">Mon 5</span>
+          </div>
+        <div role="tabpanel">
+          <div class="ys__h"><span class="wf-kicker">Starred · best Mon</span><a class="wf-button wf-button--icon wf-button--sm" href="#stars" aria-label="How the stars work"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg></a></div>
+          <p class="ys__none">Tap the red star on a spot to keep it here.</p>
+          <div class="ys__h"><span class="wf-kicker">You look at · best Mon</span></div>
+          <p class="ys__none">Spots you open show up here.</p>
+          <div class="ys__sign"><span>On this device</span><button class="wf-button wf-button--pill wf-button--sm" type="button">Sign in</button><button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="About your spots"><svg class="wf-button__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg></button></div>
+        </div>
+      </aside>
+    </div>
+
+    <p class="pt__label">On a phone · a strip over the dock</p>
+    <div class="pt__map">
+      <aside class="wf-surface ys-strip" aria-label="Your starred spots, best Mon">
+        <span class="wf-kicker ys-strip__best" aria-hidden="true">Best Mon</span>
+        <ul class="ys-strip__list">
+          <li class="ys-strip__item"><button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="true" aria-label="Unstar Dollymount"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button><a class="wf-link wf-link--plain ys-strip__name" href="#map/dollymount">Dollymount</a><svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__solid" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(16 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(27 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg></li>
+          <li class="ys-strip__item"><button class="wf-button wf-button--icon wf-button--sm wf-button--worded" type="button" aria-pressed="true" aria-label="Unstar Brandon Bay"><svg class="fav" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="fav__path" d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z" /></svg></button><a class="wf-link wf-link--plain ys-strip__name" href="#map/brandon-bay">Brandon Bay</a><svg class="wf-star-glyphs wf-star-glyphs--ink" width="54" height="10" viewBox="0 0 54 10" role="img" aria-label="0 of 5 stars, 2 on the wind alone"><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(5 5.4) scale(0.9615)" /><path class="wf-star-glyphs__faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" stroke-width="0.988" transform="translate(16 5.4) scale(0.9615)" /><circle class="wf-star-glyphs__dot" cx="27" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="38" cy="5" r="0.7" /><circle class="wf-star-glyphs__dot" cx="49" cy="5" r="0.7" /></svg></li>
+        </ul>
+      </aside>
+    </div>
+  </body>
+</html>

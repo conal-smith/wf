@@ -1,0 +1,108 @@
+/* Dialog — ui/Dialog.tsx (dialogStyles) and ui/ConfirmDialog.tsx, rendered in
+ * CSS. Consumes --sem-* only. Its buttons are the Button component's classes
+ * (components/button/component.css); nothing here restyles them.
+ *
+ * The chart's box as a modal: paper with its grain in a double rule, the title
+ * in the display face over an ink rule, the body in sentences, and a row of
+ * answers with the one filled action last.
+ *
+ * The product draws a native <dialog>, which the browser hides with nothing
+ * stronger than `display` while it is closed, so the grid is only set on
+ * [open]. Any other element carrying the class (a static rendering, as in the
+ * demo) is drawn open. */
+
+.wf-dialog {
+  box-sizing: border-box;
+  margin: auto;
+  width: 91.6667%; /* w-11/12 of what holds it */
+  max-width: var(--sem-container-dialog);
+  gap: var(--sem-space-x5);
+  padding: var(--sem-space-x7);
+  border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+  border-radius: var(--sem-radius-dialog);
+  background-color: var(--sem-color-card);
+  background-image: var(--sem-texture-grain);
+  background-repeat: repeat;
+  color: var(--sem-color-ink);
+  font-family: var(--sem-font-family-body);
+  box-shadow: var(--sem-shadow-frame), var(--sem-shadow-surface);
+}
+
+.wf-dialog[open],
+.wf-dialog:not(dialog) {
+  display: grid;
+  animation: var(--sem-animate-dialog-in);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-dialog[open],
+  .wf-dialog:not(dialog) {
+    animation: none;
+  }
+}
+
+/* max-wide: under sem.breakpoint.wide (45rem) the inset narrows. */
+@media (max-width: 719.98px) {
+  .wf-dialog {
+    padding: var(--sem-space-x5);
+  }
+}
+
+/* The page behind barely softens: the scrim, and a blur of two. */
+.wf-dialog::backdrop {
+  background: var(--sem-color-scrim);
+  backdrop-filter: blur(var(--sem-blur-scrim));
+}
+
+/* size="wide" */
+.wf-dialog--wide {
+  max-width: var(--sem-container-dialog-wide);
+}
+
+/* ---- head: the title, and the close button, over an ink rule ---- */
+.wf-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sem-space-x3);
+  padding-bottom: var(--sem-space-x3);
+  border-bottom: var(--sem-rule-hairline) solid var(--sem-color-ink);
+}
+
+.wf-dialog__title {
+  margin: 0;
+  font-family: var(--sem-font-family-display);
+  font-size: var(--sem-font-size-lead);
+  line-height: var(--sem-font-line-lead);
+  font-weight: var(--sem-font-weight-lead);
+  color: var(--sem-color-ink);
+}
+
+/* ---- body: a sentence or two ---- */
+.wf-dialog__body {
+  display: grid;
+  gap: var(--sem-space-x3);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-prose);
+  color: var(--sem-color-ink-2);
+}
+/* The product's preflight zeroes a paragraph's margins; the gap spaces them. */
+.wf-dialog__body > * {
+  margin: 0;
+}
+
+/* ---- actions: the filled one, if any, last ---- */
+.wf-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sem-space-x2);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sem-space-x2));
+  }
+}

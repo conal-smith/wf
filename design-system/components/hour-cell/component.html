@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hour cell — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../wind-figure/component.css" />
+    <link rel="stylesheet" href="../shore-compass/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Hour cell</h2>
+
+      <p class="demo__label">Eight hours of the dock · past, now and selected, dark, a new day</p>
+      <div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
+        <table class="wf-hour-cell__table">
+          <colgroup><col class="wf-hour-cell__col-label" /><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
+          <tbody>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--day">
+              <td class="wf-hour-cell__label"></td>
+              <td class="wf-hour-cell" colspan="5"><span class="wf-hour-cell__day"><b>Mon</b>5</span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start" colspan="3"><span class="wf-hour-cell__day"><b>Tue</b>6</span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--hour">
+              <th class="wf-hour-cell__label" scope="row"></th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--past">16</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now" aria-current="time">17<span class="wf-hour-cell__flag" aria-hidden="true">Mon 17:00</span></th>
+              <th scope="col" class="wf-hour-cell">18</th>
+              <th scope="col" class="wf-hour-cell">19</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--night">20</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night">07</th>
+              <th scope="col" class="wf-hour-cell">08</th>
+              <th scope="col" class="wf-hour-cell">09</th>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--stars">
+              <th class="wf-hour-cell__label" scope="row">Stars</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell wf-hour-cell--night"></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="1 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="15.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="0 of 5 stars, 1 on the wind alone"><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="15.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wind">
+              <th class="wf-hour-cell__label" scope="row">Wind<span class="wf-hour-cell__unit">kn</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="13 knots gusting 21"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__gust">g21</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="12 knots gusting 20"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__gust">g20</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="11 knots gusting 18"><span class="wf-wind-figure__value">11</span><span class="wf-wind-figure__gust">g18</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="10 knots gusting 17"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__gust">g17</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--night"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 15"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g15</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 14"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g14</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 14"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g14</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="7 knots gusting 14"><span class="wf-wind-figure__value">7</span><span class="wf-wind-figure__gust">g14</span></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--from">
+              <th class="wf-hour-cell__label" scope="row">From</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--night"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wing">
+              <th class="wf-hour-cell__label" scope="row">Wing<span class="wf-hour-cell__unit">m²</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past">6</td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now">6.5</td>
+              <td class="wf-hour-cell">7</td>
+              <td class="wf-hour-cell">7.5</td>
+              <td class="wf-hour-cell wf-hour-cell--night"></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"></td>
+              <td class="wf-hour-cell">8</td>
+              <td class="wf-hour-cell">8</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Hour cell · night chart (proposed)</h2>
+      <div class="wf-hour-cell__dock" tabindex="0" role="region" aria-label="Rusheen Bay, hour by hour">
+        <table class="wf-hour-cell__table">
+          <colgroup><col class="wf-hour-cell__col-label" /><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
+          <tbody>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--day">
+              <td class="wf-hour-cell__label"></td>
+              <td class="wf-hour-cell" colspan="5"><span class="wf-hour-cell__day"><b>Mon</b>5</span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start" colspan="3"><span class="wf-hour-cell__day"><b>Tue</b>6</span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--hour">
+              <th class="wf-hour-cell__label" scope="row"></th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--past">16</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now" aria-current="time">17<span class="wf-hour-cell__flag" aria-hidden="true">Mon 17:00</span></th>
+              <th scope="col" class="wf-hour-cell">18</th>
+              <th scope="col" class="wf-hour-cell">19</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--night">20</th>
+              <th scope="col" class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night">07</th>
+              <th scope="col" class="wf-hour-cell">08</th>
+              <th scope="col" class="wf-hour-cell">09</th>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--stars">
+              <th class="wf-hour-cell__label" scope="row">Stars</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="4 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars, 4 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(36.25 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="3 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="2 of 5 stars, 3 on the wind alone"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(15.25 5.15) scale(0.9135)" /><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(25.75 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell wf-hour-cell--night"></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="1 of 5 stars"><path class="wf-hour-cell__star" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="15.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+              <td class="wf-hour-cell"><svg class="wf-hour-cell__stars" width="51.5" height="9.5" viewBox="0 0 51.5 9.5" role="img" aria-label="0 of 5 stars, 1 on the wind alone"><path class="wf-hour-cell__star wf-hour-cell__star--faded" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" transform="translate(4.75 5.15) scale(0.9135)" stroke-width="1.04" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="15.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="25.75" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="36.25" cy="4.75" r="0.665" /><circle class="wf-hour-cell__star wf-hour-cell__star--dot" cx="46.75" cy="4.75" r="0.665" /></svg></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wind">
+              <th class="wf-hour-cell__label" scope="row">Wind<span class="wf-hour-cell__unit">kn</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="13 knots gusting 21"><span class="wf-wind-figure__value">13</span><span class="wf-wind-figure__gust">g21</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="12 knots gusting 20"><span class="wf-wind-figure__value">12</span><span class="wf-wind-figure__gust">g20</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="11 knots gusting 18"><span class="wf-wind-figure__value">11</span><span class="wf-wind-figure__gust">g18</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="10 knots gusting 17"><span class="wf-wind-figure__value">10</span><span class="wf-wind-figure__gust">g17</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--night"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 15"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g15</span></span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 14"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g14</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="8 knots gusting 14"><span class="wf-wind-figure__value">8</span><span class="wf-wind-figure__gust">g14</span></span></td>
+              <td class="wf-hour-cell"><span class="wf-wind-figure wf-wind-figure--cell" role="img" aria-label="7 knots gusting 14"><span class="wf-wind-figure__value">7</span><span class="wf-wind-figure__gust">g14</span></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--from">
+              <th class="wf-hour-cell__label" scope="row">From</th>
+              <td class="wf-hour-cell wf-hour-cell--past"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--night"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 247deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">WSW</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--onshore wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="onshore" style="--facing: 247deg; --from: 247deg"><title>onshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+              <td class="wf-hour-cell"><span class="wf-hour-cell__from"><svg class="wf-wind-figure__arrow" viewBox="-7 -7 14 14" aria-hidden="true" style="--from: 0deg"><g class="wf-wind-figure__arrow-turn"><path class="wf-wind-figure__arrow-path" d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8" /></g></svg><span class="wf-wind-figure__point">N</span><svg class="wf-shore-compass wf-shore-compass--wind wf-shore-compass--cross-off wf-shore-compass--sm" viewBox="-9 -9 18 18" role="img" aria-label="cross-offshore" style="--facing: 247deg; --from: 0deg"><title>cross-offshore</title><rect class="wf-shore-compass__land" x="-9" y="4.2" width="18" height="4.8" /><path class="wf-shore-compass__hatch" d="M-6.5 4.2l-4.6 4.6M-4 4.2l-4.6 4.6M-1.5 4.2l-4.6 4.6M1 4.2l-4.6 4.6M3.5 4.2l-4.6 4.6M6 4.2l-4.6 4.6M8.5 4.2l-4.6 4.6M11 4.2l-4.6 4.6M13.5 4.2l-4.6 4.6" /><path class="wf-shore-compass__shore" d="M-9 4.2H9" /><g class="wf-shore-compass__wind"><path class="wf-shore-compass__arrow" d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3" /></g></svg></span></td>
+            </tr>
+            <tr class="wf-hour-cell__row wf-hour-cell__row--wing">
+              <th class="wf-hour-cell__label" scope="row">Wing<span class="wf-hour-cell__unit">m²</span></th>
+              <td class="wf-hour-cell wf-hour-cell--past">6</td>
+              <td class="wf-hour-cell wf-hour-cell--sel wf-hour-cell--now">6.5</td>
+              <td class="wf-hour-cell">7</td>
+              <td class="wf-hour-cell">7.5</td>
+              <td class="wf-hour-cell wf-hour-cell--night"></td>
+              <td class="wf-hour-cell wf-hour-cell--day-start wf-hour-cell--night"></td>
+              <td class="wf-hour-cell">8</td>
+              <td class="wf-hour-cell">8</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>

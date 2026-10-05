@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Avatar — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+      /* Demo only: a photograph stand-in drawn in token colours (the product
+         renders an <img class="wf-avatar__image">), and a name beside a face. */
+      .demo__sky {
+        fill: var(--sem-color-sea-4);
+      }
+      .demo__sea {
+        fill: var(--sem-color-sea-1);
+      }
+      .demo__land {
+        fill: var(--sem-color-land);
+      }
+      .demo__rider {
+        fill: var(--sem-color-ink-2);
+      }
+      .demo__wing {
+        fill: var(--sem-color-buoy);
+      }
+      .demo__who {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__name {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+        font-style: italic;
+      }
+      .demo__fig {
+        display: block;
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        font-variant-numeric: tabular-nums;
+        color: var(--sem-color-ink-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">Avatar</h2>
+
+      <p class="demo__label">Monogram · sm, md, lg</p>
+      <div class="demo__row">
+        <span class="wf-avatar wf-avatar--sm" aria-hidden="true">AN</span>
+        <span class="wf-avatar" aria-hidden="true">AN</span>
+        <span class="wf-avatar wf-avatar--lg" aria-hidden="true">AN</span>
+        <span class="wf-avatar" aria-hidden="true">C</span>
+        <span class="wf-avatar" aria-hidden="true">SÓ</span>
+      </div>
+
+      <p class="demo__label">Photo · sm, md, lg</p>
+      <div class="demo__row">
+        <span class="wf-avatar wf-avatar--sm" aria-hidden="true">
+          <svg class="wf-avatar__image" viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect class="demo__sky" width="40" height="40" /><rect class="demo__sea" y="22" width="40" height="18" /><path class="demo__land" d="M0 32 Q14 27 40 33 V40 H0Z" /><path class="demo__wing" d="M12 12 Q22 5 30 14 Q21 11 16 17Z" /><path class="demo__rider" d="M19 18 a2.2 2.2 0 1 1 0.01 0Z M17 21 h4 l1 7 h-6Z" /></svg>
+        </span>
+        <span class="wf-avatar" aria-hidden="true">
+          <svg class="wf-avatar__image" viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect class="demo__sky" width="40" height="40" /><rect class="demo__sea" y="22" width="40" height="18" /><path class="demo__land" d="M0 32 Q14 27 40 33 V40 H0Z" /><path class="demo__wing" d="M12 12 Q22 5 30 14 Q21 11 16 17Z" /><path class="demo__rider" d="M19 18 a2.2 2.2 0 1 1 0.01 0Z M17 21 h4 l1 7 h-6Z" /></svg>
+        </span>
+        <span class="wf-avatar wf-avatar--lg" aria-hidden="true">
+          <svg class="wf-avatar__image" viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect class="demo__sky" width="40" height="40" /><rect class="demo__sea" y="22" width="40" height="18" /><path class="demo__land" d="M0 32 Q14 27 40 33 V40 H0Z" /><path class="demo__wing" d="M12 12 Q22 5 30 14 Q21 11 16 17Z" /><path class="demo__rider" d="M19 18 a2.2 2.2 0 1 1 0.01 0Z M17 21 h4 l1 7 h-6Z" /></svg>
+        </span>
+      </div>
+
+      <p class="demo__label">Beside the name, always</p>
+      <div class="demo__who">
+        <span class="wf-avatar" aria-hidden="true">AN</span>
+        <span>
+          <span class="demo__name">Aoife Ní Bhriain</span>
+          <span class="demo__fig">Dollymount · 3 listings</span>
+        </span>
+      </div>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">Avatar · night chart (proposed)</h2>
+      <div class="demo__row">
+        <span class="wf-avatar wf-avatar--sm" aria-hidden="true">SÓ</span>
+        <span class="wf-avatar" aria-hidden="true">SÓ</span>
+        <span class="wf-avatar wf-avatar--lg" aria-hidden="true">SÓ</span>
+        <span class="wf-avatar" aria-hidden="true">
+          <svg class="wf-avatar__image" viewBox="0 0 40 40" preserveAspectRatio="xMidYMid slice"><rect class="demo__sky" width="40" height="40" /><rect class="demo__sea" y="22" width="40" height="18" /><path class="demo__land" d="M0 32 Q14 27 40 33 V40 H0Z" /><path class="demo__wing" d="M12 12 Q22 5 30 14 Q21 11 16 17Z" /><path class="demo__rider" d="M19 18 a2.2 2.2 0 1 1 0.01 0Z M17 21 h4 l1 7 h-6Z" /></svg>
+        </span>
+      </div>
+    </section>
+  </body>
+</html>

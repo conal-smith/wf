@@ -1,0 +1,44 @@
+/* Notice — ui/Notice.tsx (noticeStyles), rendered in CSS. Consumes --sem-* only.
+ *
+ * Something the reader should know, said in place, and set off as the
+ * broadsheet sets off a note: a heavy rule down its edge. A warning is told
+ * three ways: warm, an icon of its own, and an interrupting role. */
+
+/* kind="info" (the default): the second sheet, an ink rule. */
+.wf-notice {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sem-space-x3);
+  padding: var(--sem-space-x3) var(--sem-space-x4);
+  border: 0;
+  border-left: var(--sem-rule-edge) solid var(--sem-color-ink);
+  background: var(--sem-color-sunken);
+  color: var(--sem-color-ink-2);
+  font-family: var(--sem-font-family-body);
+  font-size: var(--sem-font-size-prose);
+  line-height: var(--sem-font-line-prose);
+}
+
+/* kind="warn": degraded, an error. Warm, and nothing else is. */
+.wf-notice--warn {
+  border-left-color: var(--sem-color-warn);
+  background: var(--sem-color-warn-ground);
+  color: var(--sem-color-warn);
+}
+
+/* A 16px lucide icon in currentColor, nudged down onto the first line. */
+.wf-notice__icon {
+  flex-shrink: 0;
+  width: var(--sem-space-x4);
+  height: var(--sem-space-x4);
+  margin-top: var(--sem-space-x0-5);
+}
+
+.wf-notice__body {
+  min-width: 0;
+}
+/* The product's preflight zeroes a paragraph's margins. */
+.wf-notice__body > * {
+  margin: 0;
+}

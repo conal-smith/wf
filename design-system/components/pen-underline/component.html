@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PenUnderline — wingfoil-chart</title>
+    <link rel="stylesheet" href="../../foundations/tokens.css" />
+    <link rel="stylesheet" href="../pen-note/component.css" />
+    <link rel="stylesheet" href="component.css" />
+    <style>
+      /* Demo scaffolding only: the paper, a mono label per row, and rows. */
+      body {
+        margin: 0;
+      }
+      .demo {
+        padding: var(--sem-space-x5);
+        background-color: var(--sem-color-ground);
+        background-image: var(--sem-texture-grain);
+        color: var(--sem-color-ink);
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-prose);
+        line-height: var(--sem-font-line-prose);
+      }
+      .demo + .demo {
+        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      }
+      .demo__head {
+        margin: 0 0 var(--sem-space-x3);
+        padding-bottom: var(--sem-space-x1);
+        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-lead);
+      }
+      .demo__label {
+        margin: var(--sem-space-x4) 0 var(--sem-space-x2);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        line-height: var(--sem-font-line-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .demo__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x3);
+      }
+      .demo__map {
+        padding: var(--sem-space-x3);
+        background: var(--sem-color-sea-3);
+      }
+    </style>
+    <style>
+      /* Demo only: the words the marks and labels sit in. */
+      /* A spot's name in a list: the display face's italic, as the chart sets it. */
+      .demo__name {
+        font-family: var(--sem-font-family-display);
+        font-size: var(--sem-font-size-lead);
+        line-height: var(--sem-font-line-lead);
+        font-weight: var(--sem-font-weight-semibold);
+        font-style: italic;
+      }
+      /* Room round the words for the marks, which stand clear of them. */
+      .demo__row--marked {
+        padding: var(--sem-space-x3) var(--sem-space-x3) var(--sem-space-x2);
+        gap: var(--sem-space-x8);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="demo" data-mode="light">
+      <h2 class="demo__head">PenUnderline</h2>
+
+      <p class="demo__label">Under the word that carries the note</p>
+      <p class="wf-pen-note">Go 13:00–16:00. <span class="wf-pen-underline">Four stars<svg class="wf-pen-underline__mark" viewBox="0 0 80 8" aria-hidden="true" focusable="false"><path class="wf-pen-underline__stroke" d="M0.0 3.0 q40.0 -4 80.0 1" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span> on a 6 m.</p>
+
+      <p class="demo__label">Under a name</p>
+      <div class="demo__row demo__row--marked">
+        <span class="demo__name"><span class="wf-pen-underline">Rusheen Bay<svg class="wf-pen-underline__mark" viewBox="0 0 113 8" aria-hidden="true" focusable="false"><path class="wf-pen-underline__stroke" d="M0.0 3.0 q56.5 -4 113.0 1" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span></span>
+      </div>
+
+      <p class="demo__label">In the small hand</p>
+      <p class="wf-pen-note wf-pen-note--sm">Worth it at 13:00. <span class="wf-pen-underline">Three stars<svg class="wf-pen-underline__mark" viewBox="0 0 71 8" aria-hidden="true" focusable="false"><path class="wf-pen-underline__stroke" d="M0.0 3.0 q35.5 -4 71.0 1" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span> on a 6.5 m.</p>
+    </section>
+
+    <section class="demo" data-mode="dark">
+      <h2 class="demo__head">PenUnderline · night chart (proposed)</h2>
+      <p class="wf-pen-note">Go 13:00–16:00. <span class="wf-pen-underline">Four stars<svg class="wf-pen-underline__mark" viewBox="0 0 80 8" aria-hidden="true" focusable="false"><path class="wf-pen-underline__stroke" d="M0.0 3.0 q40.0 -4 80.0 1" pathLength="1" stroke-dasharray="1" stroke-linecap="round" stroke-linejoin="round" /></svg></span> on a 6 m.</p>
+    </section>
+  </body>
+</html>
