@@ -189,9 +189,11 @@
   text-transform: uppercase;
   cursor: pointer;
 }
-.filter-close:hover {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+@media (hover: hover) and (pointer: fine) {
+  .filter-close:hover {
+    background: var(--color-ink);
+    color: var(--color-ink-inverse);
+  }
 }
 .filter-units {
   display: inline-flex;
