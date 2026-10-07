@@ -469,6 +469,13 @@
   font-variation-settings: "opsz" 144;
 }
 
+/* The headline is set tight (-0.035em) at the display cut, and tracking takes
+   the word space in with every letter: at 44px "heading to" closed up into
+   "headingto". The letters stay tight; the gaps between words are given back. */
+@utility word-gap-display {
+  word-spacing: 0.12em;
+}
+
 /* A row that scrolls sideways inside a page that does not: the cut-off item at
    its edge already says there is more, and a bar drawn over it would only eat
    into the row. Two spellings, because no browser reads both. */

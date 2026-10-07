@@ -165,7 +165,7 @@ export default function MePage({ tab }: { tab: string }) {
       )}
       {current === "saved" &&
         (data.saved.length ? (
-          <ListingGrid listings={data.saved} showStatus />
+          <ListingGrid listings={data.saved} showStatus hideSaved />
         ) : (
           <Empty
             title="Nothing saved yet"
@@ -290,8 +290,13 @@ function MyListings({
             <span className={styles.itemFigures()}>
               <Price listing={listing} size="sm" />
               <Kicker as="span">
+                {/* Sold is written where it is read: "7min" alone looked like
+                    the age of a live ad. (Not the pen's strike: the pen is
+                    not for status, docs/BRAND.md.) */}
                 {listing.status === "sold" && listing.soldAt ? (
-                  <Age iso={listing.soldAt} prefix="Sold" />
+                  <>
+                    Sold <Age iso={listing.soldAt} prefix="" />
+                  </>
                 ) : (
                   <Age iso={listing.createdAt} />
                 )}
