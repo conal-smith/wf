@@ -50,9 +50,13 @@ const styles = tv({
   slots: {
     main: "flex flex-col gap-4 pt-4 pb-12",
     deck: "m-0 font-body text-lead font-normal text-ink-2 italic",
+    // The key: the glyphs in a column of their own, the words beside them,
+    // so the three lines start together.
     glyphs:
-      "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-body text-body text-ink-2",
-    glyph: "inline-flex items-center gap-2",
+      "m-0 grid list-none grid-cols-meter items-center gap-x-3 gap-y-2 p-0 font-body text-body text-ink-2",
+    glyph: "col-span-3 grid grid-cols-subgrid items-center",
+    glyphMark: "flex",
+    dark: ["text-ink-muted", MONO_LABEL],
     section: "flex flex-col gap-2 pt-4",
     p: "m-0 font-body text-prose text-ink-2",
     examples: "m-0 list-none p-0 font-body text-prose text-ink-2",
@@ -65,7 +69,15 @@ const styles = tv({
     td: "border-0 border-b border-line px-1.5 py-1.5 align-top text-ink",
     num: "font-mono text-caption whitespace-nowrap tabular-nums",
     you: "bg-chart-magenta/7",
-    degrees: "ml-1 font-mono text-caption text-ink-muted",
+    // A sector's name and its degrees each hold together; on a phone the
+    // degrees go under the name rather than breaking as "0–" and "30°".
+    sector: "whitespace-nowrap",
+    degrees:
+      "ml-1 font-mono text-caption whitespace-nowrap text-ink-muted max-wide:ml-0 max-wide:block",
+    // On a phone the costs may wrap, between the words their non-breaking
+    // spaces leave free, so the first column keeps room for its words.
+    wraps: "max-wide:whitespace-normal",
+    when: "w-1/2",
     total: "border-t-2 border-ink font-semibold",
     right: "text-right",
     chart: "block select-none",
@@ -103,13 +115,33 @@ export default function StarsPage() {
         <RiderSwitch rider={rider} onChange={changeRider} />
         <ul className={s.glyphs()}>
           <li className={s.glyph()}>
-            <StarGlyphs stars={3} potential={5} size={14} /> Solid stars are the
-            rating. Outlined stars are what the wind speed alone would have
-            earned, before anything was taken off.
+            <span className={s.glyphMark()}>
+              <StarGlyphs stars={3} potential={5} size={14} />
+            </span>
+            <span className="col-span-2">
+              Solid stars are the rating. Outlined stars are what the wind speed
+              alone would have earned, before anything was taken off.
+            </span>
           </li>
           <li className={s.glyph()}>
-            <StarGlyphs stars={null} size={14} /> Hours in the dark are not
-            rated.
+            <span className={s.glyphMark()}>
+              <StarGlyphs stars={1} potential={2} size={14} />
+            </span>
+            <span className="col-span-2">
+              A dot is a star out of reach: not even the wind speed alone would
+              have earned it.
+            </span>
+          </li>
+          <li className={s.glyph()}>
+            {/* A dark hour draws no stars at all; what stands for it on the
+                spot page is its fold, so that is the mark here. */}
+            <span className={s.dark()} aria-hidden="true">
+              Dark
+            </span>
+            <span className="col-span-2">
+              Hours in the dark are not rated: from sunset to sunrise they are
+              folded away, and draw no stars.
+            </span>
           </li>
         </ul>
 
@@ -240,6 +272,9 @@ const chartStyles = tv({
   },
 });
 
+/** About how wide a character of the eyebrow mono is, its tracking included. */
+const EYEBROW_CHAR = 7.4;
+
 /** Stars on the wind alone, against the wind you can ride, for this rider. */
 function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const c = chartStyles();
@@ -254,6 +289,26 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   let path = "";
   for (let k = 0; k <= 40; k += 0.25)
     path += `${path ? "L" : "M"}${X(k).toFixed(1)} ${Y(windScore(k, band)).toFixed(1)}`;
+  // The floor, the sweet spot and the ceiling are named in one row over the
+  // plot, where the curve never reaches: beside their lines inside it,
+  // "minimum 10" sat on the curve's climb on a phone. The floor's name ends at
+  // its line and the ceiling's starts at its own, each kept inside the chart,
+  // and the sweet spot's sits between them, clear of both.
+  const narrow = W < 520;
+  const minText = `${narrow ? "min" : "minimum"} ${Math.round(band.min)}`;
+  const maxText = `${narrow ? "max" : "maximum"} ${Math.round(band.max)}`;
+  const textWidth = (text: string) => text.length * EYEBROW_CHAR;
+  const minEnd = Math.max(X(0) + textWidth(minText), X(band.min) - 4);
+  const maxStart = Math.min(W - 2 - textWidth(maxText), X(band.max) + 4);
+  const half = textWidth("sweet spot") / 2;
+  const names = {
+    min: minEnd,
+    max: maxStart,
+    sweet: Math.min(
+      Math.max((X(band.sweetLow) + X(band.sweetHigh)) / 2, minEnd + 8 + half),
+      maxStart - 8 - half,
+    ),
+  };
   const label = `Stars on the wind alone for ${riderWords(rider)}: none below ${Math.round(band.min - 2)} kn, five from ${Math.round(band.sweetLow + (band.sweetHigh - band.sweetLow) / 4)} to ${Math.round(band.sweetHigh - (band.sweetHigh - band.sweetLow) / 4)} kn, two at ${Math.round(band.max)} kn, none past ${Math.round(band.max + 6)}.`;
   return (
     <svg
@@ -298,33 +353,35 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
         ),
       )}
       <path className={c.line()} d={path} strokeWidth={1.8} />
-      {(
-        [
-          [band.min, "minimum"],
-          [band.max, "maximum"],
-        ] as const
-      ).map(([k, word]) => (
-        <g key={word}>
-          <line
-            className={c.mark()}
-            x1={X(k)}
-            x2={X(k)}
-            y1={Y(5)}
-            y2={Y(0)}
-            strokeDasharray="3 3"
-          />
-          <text className={c.markText()} x={X(k) + 4} y={Y(4.6)}>
-            {word} {Math.round(k)}
-          </text>
-        </g>
+      {[band.min, band.max].map((k) => (
+        <line
+          key={k}
+          className={c.mark()}
+          x1={X(k)}
+          x2={X(k)}
+          y1={Y(5)}
+          y2={Y(0)}
+          strokeDasharray="3 3"
+        />
       ))}
       <text
         className={c.markText()}
-        x={(X(band.sweetLow) + X(band.sweetHigh)) / 2}
+        x={names.min}
+        y={Y(5) - 5}
+        textAnchor="end"
+      >
+        {minText}
+      </text>
+      <text
+        className={c.markText()}
+        x={names.sweet}
         y={Y(5) - 5}
         textAnchor="middle"
       >
         sweet spot
+      </text>
+      <text className={c.markText()} x={names.max} y={Y(5) - 5}>
+        {maxText}
       </text>
       {hover !== null && (
         <g aria-hidden="true">
@@ -449,27 +506,31 @@ const SECTORS = [
   },
 ] as const;
 
-/** What each angle costs each level: a figure off, or a cap. */
+/**
+ * What each angle costs each level: a figure off, or a cap. A non-breaking
+ * space holds each figure to its word, so a phone's narrow column can wrap a
+ * cost but never ends a line on "−1".
+ */
 const SHORE_COST: Record<
   (typeof SECTORS)[number]["name"],
   Record<Skill, string>
 > = {
   onshore: {
-    beginner: "−1 star",
-    intermediate: "−1 star",
-    advanced: "−1 star",
+    beginner: "−1\u00a0star",
+    intermediate: "−1\u00a0star",
+    advanced: "−1\u00a0star",
   },
   "cross-on": { beginner: "none", intermediate: "none", advanced: "none" },
-  cross: { beginner: "−½ star", intermediate: "none", advanced: "none" },
+  cross: { beginner: "−½\u00a0star", intermediate: "none", advanced: "none" },
   "cross-off": {
-    beginner: "−3 stars",
-    intermediate: "−1½ stars",
-    advanced: "−1 star",
+    beginner: "−3\u00a0stars",
+    intermediate: "−1½\u00a0stars",
+    advanced: "−1\u00a0star",
   },
   offshore: {
-    beginner: "no stars",
-    intermediate: "1 star at most",
-    advanced: "1 star at most",
+    beginner: "no\u00a0stars",
+    intermediate: "1\u00a0star at\u00a0most",
+    advanced: "1\u00a0star at\u00a0most",
   },
 };
 
@@ -492,8 +553,13 @@ const sectorStyles = tv({
 function Sectors({ width }: { width: number }) {
   const c = sectorStyles();
   const R = 118;
+  // The sea and the land reach this far past the dial, room for its degrees
+  // and their names; the figure is drawn to hold all of that, so "SEA" and
+  // "0°" are not cut off at its top.
+  const PAD = 24;
   const cx = 160;
-  const cy = 132;
+  const cy = R + PAD;
+  const H = 2 * (R + PAD);
   const D = Math.PI / 180;
   const pt = (a: number, r: number) =>
     [cx + Math.sin(a * D) * r, cy - Math.cos(a * D) * r] as const;
@@ -505,10 +571,10 @@ function Sectors({ width }: { width: number }) {
   const size = Math.min(380, width);
   return (
     <svg
-      className={styles().chart()}
+      className={styles().chart({ className: "mx-auto" })}
       width={size}
-      height={(size * 276) / 320}
-      viewBox="0 0 320 276"
+      height={(size * H) / 320}
+      viewBox={`0 0 320 ${H}`}
       role="img"
       aria-label="The wind against the beach, measured from straight onshore: onshore within 30 degrees, cross-onshore 30 to 70, cross-shore 70 to 110, cross-offshore 110 to 150, offshore from 150 to 180, either side."
       data-sectors
@@ -516,16 +582,16 @@ function Sectors({ width }: { width: number }) {
       <rect
         className={c.sea()}
         x={cx - R - 30}
-        y={cy - R - 24}
+        y={cy - R - PAD}
         width={2 * R + 60}
-        height={R + 24}
+        height={R + PAD}
       />
       <rect
         className={c.land()}
         x={cx - R - 30}
         y={cy}
         width={2 * R + 60}
-        height={R + 24}
+        height={R + PAD}
       />
       {SECTORS.map((sector) =>
         [wedge(sector.from, sector.to), wedge(-sector.to, -sector.from)].map(
@@ -566,12 +632,15 @@ function Sectors({ width }: { width: number }) {
       )}
       {SECTORS.map((sector) => {
         const [x, y] = pt((sector.from + sector.to) / 2, R * 0.66);
+        // Cross-shore's middle is the beach line itself: its name sits just
+        // above it, on the sea, rather than on the line, struck through.
+        const below = sector.name === "cross" ? -5 : 4;
         return (
           <text
             key={sector.name}
             className={c.name()}
             x={x}
-            y={y + 4}
+            y={y + below}
             textAnchor="middle"
             paintOrder="stroke"
             strokeWidth={3}
@@ -617,7 +686,7 @@ function ShoreTable({ rider }: { rider: Rider }) {
         {SECTORS.map((sector) => (
           <tr key={sector.name}>
             <td className={s.td()}>
-              {sector.words}
+              <span className={s.sector()}>{sector.words}</span>
               <span className={s.degrees()}>
                 {sector.from}–{sector.to}°
               </span>
@@ -626,7 +695,11 @@ function ShoreTable({ rider }: { rider: Rider }) {
               <td
                 key={skill}
                 className={s.td({
-                  className: [s.num(), skill === rider.skill ? s.you() : ""],
+                  className: [
+                    s.num(),
+                    s.wraps(),
+                    skill === rider.skill ? s.you() : "",
+                  ],
                 })}
               >
                 {SHORE_COST[sector.name][skill]}
@@ -643,27 +716,31 @@ function OtherTable({ rider }: { rider: Rider }) {
   const s = styles();
   const learning = rider.skill === "beginner";
   const rows: [string, string, string][] = [
-    ["Gusts stronger than your maximum", "−1 star", "−1 star"],
+    ["Gusts stronger than your maximum", "−1\u00a0star", "−1\u00a0star"],
     [
       "Gusts 70% over the average, when you are already well powered",
-      "−½ star",
+      "−½\u00a0star",
       "none",
     ],
     [
       "Gusts 35%, 50% or 70% over the average, at any wind speed",
       "none",
-      "−¾, −1½ or −2¼ stars",
+      "−¾, −1½ or −2¼\u00a0stars",
     ],
-    ["The forecast models disagree", "−1 star", "−1 star"],
-    ["The models differ a little", "−¼ star", "−¼ star"],
-    ["None of your wings suits the wind", "−1 star", "−1 star"],
+    ["The forecast models disagree", "−1\u00a0star", "−1\u00a0star"],
+    ["The models differ a little", "−¼\u00a0star", "−¼\u00a0star"],
+    ["None of your wings suits the wind", "−1\u00a0star", "−1\u00a0star"],
   ];
   return (
     <table className={s.table()} data-other-table>
       <thead>
         <tr>
-          <th className={s.th()}>If</th>
-          <th className={s.th({ className: learning ? undefined : s.you() })}>
+          <th className={s.th({ className: s.when() })}>If</th>
+          <th
+            className={s.th({
+              className: [s.wraps(), learning ? "" : s.you()],
+            })}
+          >
             Riding or advanced
           </th>
           <th className={s.th({ className: learning ? s.you() : undefined })}>
@@ -677,14 +754,14 @@ function OtherTable({ rider }: { rider: Rider }) {
             <td className={s.td()}>{when}</td>
             <td
               className={s.td({
-                className: [s.num(), learning ? "" : s.you()],
+                className: [s.num(), s.wraps(), learning ? "" : s.you()],
               })}
             >
               {riding}
             </td>
             <td
               className={s.td({
-                className: [s.num(), learning ? s.you() : ""],
+                className: [s.num(), s.wraps(), learning ? s.you() : ""],
               })}
             >
               {learner}

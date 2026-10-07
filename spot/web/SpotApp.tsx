@@ -24,9 +24,13 @@ import {
 import type { Rider } from "../../force5/src/stars";
 import { unitLabel } from "../../force5/src/units";
 import {
+  WAVE_MODELS,
+  WEATHER_MODELS,
+  WIND_MODELS,
   localTime,
   type RidingSpot,
   type SpotForecast,
+  type Unavailable,
 } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
 import { usePageTitle } from "../../shared/web/usePageTitle";
@@ -46,6 +50,7 @@ import { FacingGlyph, KeepStar } from "./glyphs";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
 import {
   FORECAST_DAYS,
+  PEN_STARS,
   bandKnots,
   compass,
   dayWindow,
@@ -64,8 +69,10 @@ import { WeekStrip } from "./WeekStrip";
 const styles = tv({
   slots: {
     main: "flex flex-col gap-4 pt-4 pb-12 max-sm:pt-3",
+    // The facts are kept apart by points (Dot), so the gap between them is
+    // the point's own spacing either side.
     meta: [
-      "m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-muted",
+      "m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-ink-muted",
       MONO_LABEL,
     ],
     metaItem: "inline-flex items-center gap-1.5",
@@ -84,6 +91,7 @@ const styles = tv({
     muted: "text-ink-muted",
     safety: "m-0 font-body text-body font-semibold text-ink",
     link: "rounded-control text-ink underline underline-offset-4 hover:text-chart-magenta",
+    address: "font-mono text-body wrap-anywhere text-ink",
     index: "flex flex-col gap-6",
     places: "m-0 grid list-none grid-cols-cards gap-x-6 p-0",
     place: [
@@ -107,9 +115,11 @@ function SpotRoute({ id }: { id: string | null }) {
   const title =
     state.kind === "ready"
       ? `${state.spot.name} wing foil forecast`
-      : id === null
-        ? "Spot forecasts"
-        : "Spot forecast";
+      : state.kind === "unknown"
+        ? "Spot not found"
+        : id === null
+          ? "Spot forecasts"
+          : "Spot forecast";
   usePageTitle(title, "Wind map");
 
   return (
@@ -137,14 +147,20 @@ function SpotRoute({ id }: { id: string | null }) {
       )}
       {state.kind === "unknown" && (
         <main className={s.main()}>
+          {/* The address goes in the line under the title, not in it: an
+              address breaks at its hyphens, and a title that leaves "all”"
+              alone on its last line is worse than one that never names it. */}
           <Empty
-            title={`No riding place called “${state.id}”`}
+            title="No riding place at this address"
             icon={<MapPin size={24} strokeWidth={1.5} />}
+            className="text-balance"
           >
             <p className="m-0">
+              Nothing is called{" "}
+              <span className={s.address()}>“{state.id}”</span>.{" "}
               {state.candidates.length
                 ? "Did you mean one of these?"
-                : "It may have been renamed. Every place is on the map and listed here."}
+                : "It may have been renamed. Every place is on the map, and in the list of all places."}
             </p>
             {state.candidates.length > 0 && (
               <ul className={s.places()}>
@@ -309,13 +325,19 @@ function SpotPage({
       groupDays(rows)
         .filter((day) => day.hasWind)
         .slice(0, FORECAST_DAYS)
-        .map((day) => ({ day, window: dayWindow(day.rows) })),
-    [rows],
+        .map((day) => {
+          const sun = daySun(spot.lat, spot.lon, day.date);
+          return { day, sun, window: dayWindow(day.rows, sun) };
+        }),
+    [rows, spot.lat, spot.lon],
   );
-  const best = useMemo(
-    () => weekBest(days.map(({ day, window }) => ({ date: day.date, window }))),
-    [days],
-  );
+  // The pen's note, as its loop: only for a week whose best is worth riding.
+  const best = useMemo(() => {
+    const top = weekBest(
+      days.map(({ day, window }) => ({ date: day.date, window })),
+    );
+    return top && top.window.stars >= PEN_STARS ? top : null;
+  }, [days]);
   const band = useMemo(() => bandKnots(rider), [rider]);
   const turns = useMemo(() => tideTurns(forecast), [forecast]);
   const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
@@ -393,10 +415,22 @@ function SpotPage({
             Facing unknown: rated on the wind alone
           </span>
         )}
-        {spot.county && <span>{spot.county}</span>}
+        {spot.county && (
+          <span className={s.metaItem()}>
+            <Dot />
+            {spot.county}
+          </span>
+        )}
         {sea && (
-          <span data-sea-temperature title={`${sea.station}, ${sea.measured}`}>
-            Sea <b className={s.strong()}>{sea.celsius.toFixed(1)}°</b>
+          <span
+            className={s.metaItem()}
+            data-sea-temperature
+            title={`${sea.station}, ${sea.measured}`}
+          >
+            <Dot />
+            <span>
+              Sea <b className={s.strong()}>{sea.celsius.toFixed(1)}°</b>
+            </span>
           </span>
         )}
       </p>
@@ -413,7 +447,7 @@ function SpotPage({
         onSelect={showDay}
       />
       <div className={s.days()} ref={daysRef}>
-        {days.map(({ day, window }, index) => (
+        {days.map(({ day, sun, window }, index) => (
           <DaySection
             key={day.date}
             day={day}
@@ -426,7 +460,7 @@ function SpotPage({
             band={band}
             facing={facing}
             turns={turns}
-            sun={daySun(spot.lat, spot.lon, day.date)}
+            sun={sun}
             tideCeiling={ceiling}
             stationNote={stationNote}
             width={width}
@@ -438,6 +472,41 @@ function SpotPage({
       <SourcesFooter forecast={forecast} />
     </main>
   );
+}
+
+/** What each kind of model forecasts, for a reader who does not know them by name. */
+const MODEL_KIND = new Map<string, string>([
+  ...WIND_MODELS.map((model) => [model.id, "wind"] as const),
+  ...WAVE_MODELS.map((model) => [model.id, "wave"] as const),
+  ...WEATHER_MODELS.map((model) => [model.id, "weather"] as const),
+]);
+
+/** The server's reasons for leaving a model out, said shortly. */
+const MISSING_WHY: Record<string, string> = {
+  "Could not be read just now.": "could not be read just now",
+  "Not published.": "not published",
+  "The latest published run has already ended.": "its latest run has ended",
+};
+
+/**
+ * "the MI SWAN wave model (its latest run has ended)": a model the forecast
+ * went without, and why, rather than a bare name a rider cannot place.
+ */
+function missingWords(model: Unavailable): string {
+  const kind = MODEL_KIND.get(model.id);
+  const why = MISSING_WHY[model.reason];
+  // "ICON-EU weather" already says what it is.
+  const what =
+    kind && !model.name.toLowerCase().includes(kind) ? ` ${kind}` : "";
+  return `the ${model.name}${what} model${why ? ` (${why})` : ""}`;
+}
+
+/**
+ * The point between the header's facts, as the shore summary has inside its
+ * own: without it "best SE–SSW, N–ENE" and "Kerry" read as one list.
+ */
+function Dot() {
+  return <span aria-hidden="true">·</span>;
 }
 
 function SourcesFooter({ forecast }: { forecast: SpotForecast }) {
@@ -487,8 +556,8 @@ function SourcesFooter({ forecast }: { forecast: SpotForecast }) {
         )}
         {sources.unavailable.length > 0 && (
           <li className={s.muted()}>
-            Not available just now:{" "}
-            {sources.unavailable.map((model) => model.name).join(", ")}.
+            Left out of this forecast:{" "}
+            {sources.unavailable.map(missingWords).join("; ")}.
           </li>
         )}
       </ul>

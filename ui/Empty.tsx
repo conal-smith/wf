@@ -9,7 +9,7 @@ export const emptyStyles = tv({
     // A large control and a gap across, ruled in ink like a chart's light.
     icon: "grid size-14.5 place-items-center rounded-full border",
     // The display face's italic: a line, not a heading.
-    title: "m-0 font-display text-lead text-ink italic",
+    title: "m-0 font-display text-lead text-balance text-ink italic",
     body: "grid max-w-reading justify-items-center gap-3 text-pretty",
   },
   variants: {
