@@ -9,6 +9,7 @@ import {
 import {
   abortable,
   availableModels,
+  loadAnyManifest,
   waveModels,
   weatherModels,
   windModels,
@@ -70,6 +71,9 @@ const sameSweep = (
  * is scrubbing or playing; an unchanged sweep keeps the previous array, so the
  * blend is only recomputed when a model has actually published a new run.
  */
+/** The model the map opens on (src/App.tsx), which the dock reads first. */
+const MAP_MODEL = "harmonie";
+
 export function useModelAvailability(
   busy = false,
   /**
@@ -102,7 +106,20 @@ export function useModelAvailability(
         .catch(() => {
           if (!controller.signal.aborted) setResolved(true);
         });
-    void sweep();
+    // The map's own model first, alone. The dock and the map need it before
+    // anything else, and asked for at the same moment as the eight others,
+    // two and a half megabytes between them, it shared the line with all of
+    // them: on a phone the dock waited seconds for a file it could have had in
+    // half of one. The rest follow once it is in (or has failed); the sweep
+    // then finds it in the manifest cache.
+    const lead = entries.find((m) => m.id === MAP_MODEL);
+    void (
+      lead ? loadAnyManifest(lead.id, controller.signal) : Promise.resolve()
+    )
+      .catch(() => {})
+      .then(() => {
+        if (!controller.signal.aborted) void sweep();
+      });
     const tick = () => {
       if (
         !shouldRevalidate(

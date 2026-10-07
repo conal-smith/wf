@@ -90,34 +90,28 @@ test("the map asks for its model and its places once each, early", async ({
   page,
 }) => {
   const responses = record(page);
-  // When each was asked for, and when the map's chunk had arrived.
-  const started = new Map<string, number>();
-  const finished = new Map<string, number>();
+  // The map's chunk is held back: anything asked for while it is, the entry
+  // asked for (force5/src/boot.ts), not the map once it had run.
+  let held = true;
+  const whileHeld: string[] = [];
   page.on("request", (request) => {
-    const p = path(request.url());
-    if (!started.has(p)) started.set(p, Date.now());
+    if (held) whileHeld.push(path(request.url()));
   });
-  page.on("requestfinished", (request) => {
-    const p = path(request.url());
-    if (!finished.has(p)) finished.set(p, Date.now());
+  await page.route(/\/assets\/App-[^/]*\.js$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    held = false;
+    await route.continue();
   });
   await page.goto("/");
   await mapReady(page);
+  expect(whileHeld).toContain("/weather/harmonie.json");
+  expect(whileHeld).toContain("/spots.json");
+  // And once each: the page used to read the manifest twice, once itself
+  // and once through the model sweep.
   const count = (p: string) =>
     responses.filter((r) => path(r.url) === p).length;
-  // It used to be read twice: once by the page, once by the model sweep.
   expect(count("/weather/harmonie.json")).toBe(1);
   expect(count("/spots.json")).toBe(1);
-  // Started by the page's head (force5/src/boot.ts) beside the map's chunks,
-  // not by the map once its chunk had arrived and run.
-  const app = [...finished.keys()].find((p) =>
-    /\/assets\/App-[^/]*\.js$/.test(p),
-  );
-  expect(app).toBeDefined();
-  expect(started.get("/weather/harmonie.json")!).toBeLessThan(
-    finished.get(app!)!,
-  );
-  expect(started.get("/spots.json")!).toBeLessThan(finished.get(app!)!);
 });
 
 test("MapLibre and React are cached apart from the map's own code", async ({
