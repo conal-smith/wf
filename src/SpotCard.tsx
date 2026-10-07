@@ -101,7 +101,7 @@ export default function SpotCard({
             <>
               <span aria-hidden="true">·</span>
               <b>{r.wing.own ?? r.wing.recommended}</b>
-              <span>m</span>
+              <span>m² wing</span>
             </>
           ) : null}
         </p>
@@ -109,7 +109,8 @@ export default function SpotCard({
       {tide !== null && (
         <p className="sc-line">
           <TideWave />
-          <span>{tide.toFixed(1)} m</span>
+          {/* Named: a bare "1.4 m" under the wind reads as a wave height. */}
+          <span>Tide {tide.toFixed(1)} m</span>
         </p>
       )}
       <div className="sc-acts">

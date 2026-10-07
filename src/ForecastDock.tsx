@@ -3,6 +3,7 @@ import {
   memo,
   Suspense,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -25,7 +26,13 @@ import {
   StarsHelp,
   WindArrow,
 } from "./glyphs";
-import { candleGroups, modelSupport, niceMax } from "./chart";
+import {
+  axisTicks,
+  candleGroups,
+  modelSupport,
+  niceMax,
+  valueScale,
+} from "./chart";
 import type { PlaceHour } from "./ratings";
 import WeatherGlyph from "./WeatherGlyph";
 import {
@@ -36,7 +43,9 @@ import {
   dayShort,
   hourLabel,
   irishDate,
+  rainColumns,
   stripGeometry,
+  stripTrack,
   type DayBest,
   type StripColumn,
   type StripDay,
@@ -145,6 +154,18 @@ const starSize = (width: number, full: number) =>
 
 const STAR_TINT = [0.08, 0.16, 0.3, 0.5, 0.72, 0.95];
 
+/**
+ * The fewest stars the pen will loop. A day whose best is one star still has
+ * a best stretch, and it is usually the longest (a whole day of barely
+ * anything), so looping every day's best gave the weakest days the biggest
+ * rings. A loop says "go then"; a window that is not worth riding gets none.
+ * The spot page's pen keeps the same rule.
+ */
+const LOOP_MIN_STARS = 2;
+
+/** The mono face's advance at the tide labels' 9.5px, for laying them out. */
+const TIDE_CHAR = 5.75;
+
 const range = (cols: readonly StripColumn[], best: DayBest) =>
   best.from === best.to
     ? clock(cols[best.from].time)
@@ -190,7 +211,7 @@ function DockBest({
     <span className="dk-best">
       Best {when} {range(columns, best)} ·{" "}
       <StarGlyphs stars={best.stars} potential={r.potential} size={10} /> ·{" "}
-      {r.wing.own ?? r.wing.recommended} m
+      {r.wing.own ?? r.wing.recommended} m² wing
     </span>
   );
 }
@@ -205,8 +226,6 @@ const StripTable = memo(function StripTable({
   rider,
   tide,
   g,
-  spacer,
-  spacerEnd,
   now,
   blend,
   more,
@@ -223,8 +242,6 @@ const StripTable = memo(function StripTable({
   rider: Rider;
   tide: SpotTide | null;
   g: StripGeometry;
-  spacer: number;
-  spacerEnd: number;
   now: number;
   blend: React.ReactNode | null;
   more: boolean;
@@ -265,21 +282,17 @@ const StripTable = memo(function StripTable({
         </td>
       );
     });
-  const sp = <td className="sp" aria-hidden="true" />;
   const speed = (kn: number | null) =>
     kn === null ? "" : Math.round(convert(kn / 1.94384449, units));
   return (
-    <table className="tt" style={{ width: spacer + spacerEnd + g.total }}>
+    <table className="tt" style={{ width: g.total }}>
       <colgroup>
-        <col style={{ width: spacer }} />
         {columns.map((c, at) => (
           <col key={c.validTime} style={{ width: g.w[at] }} />
         ))}
-        <col style={{ width: spacerEnd }} />
       </colgroup>
       <tbody>
         <tr className="tt-day">
-          {sp}
           {days.map((day) => {
             const best = hours
               ? dayBest(
@@ -287,19 +300,47 @@ const StripTable = memo(function StripTable({
                   day,
                 )
               : null;
+            const end = day.start + day.count - 1;
+            const width = g.x[end] + g.w[end] - g.x[day.start];
+            // What the day's heading has room for, before it runs into the
+            // next day's: the name, its best stars, then when. A day of two or
+            // three coarse steps keeps its name and stars and drops the
+            // "best"; a single column keeps the weekday. The cell clips
+            // whatever is left, and its title still says it all.
+            const fit =
+              width >= 190
+                ? "all"
+                : width >= 120
+                  ? "stars"
+                  : width >= 66
+                    ? "name"
+                    : "day";
+            const starred = best && best.stars > 0;
             return (
-              <td key={day.date} colSpan={day.count} className="d0">
+              <td
+                key={day.date}
+                colSpan={day.count}
+                className={`d0 fit-${fit}`}
+                title={`${dayLong(day.noon)} ${Number(day.date.slice(8))}${
+                  starred
+                    ? ` · best ${range(columns, best)}, ${best.stars} of 5 stars`
+                    : ""
+                }`}
+              >
                 <span>
                   <b>
-                    {dayShort(day.noon)} {Number(day.date.slice(8))}
+                    {dayShort(day.noon)}
+                    <small> {Number(day.date.slice(8))}</small>
                   </b>
-                  {best && best.stars > 0 && (
+                  {starred && (
                     <>
-                      <StarGlyphs
-                        stars={best.stars}
-                        potential={hours![best.from]!.rating!.potential}
-                        size={8}
-                      />
+                      <em>
+                        <StarGlyphs
+                          stars={best.stars}
+                          potential={hours![best.from]!.rating!.potential}
+                          size={8}
+                        />
+                      </em>
                       <i>best {shortRange(columns, best)}</i>
                     </>
                   )}
@@ -307,26 +348,20 @@ const StripTable = memo(function StripTable({
               </td>
             );
           })}
-          {sp}
         </tr>
         <tr className="tt-hour">
-          {sp}
           {cells("h", (_, column) => hourLabel(column.time))}
-          {sp}
         </tr>
         {blend ? (
           <tr className="tt-blend">
-            {sp}
             <td colSpan={columns.length} className="d0 blend-cell">
               {blend}
             </td>
-            {sp}
           </tr>
         ) : (
           <>
             {!isPoint && (
               <tr className="tt-stars">
-                {sp}
                 {cells("s", (hour, column, at) =>
                   hour?.rating ? (
                     <HourStars
@@ -339,11 +374,9 @@ const StripTable = memo(function StripTable({
                     />
                   ) : null,
                 )}
-                {sp}
               </tr>
             )}
             <tr className="tt-wind">
-              {sp}
               {cells("w", (hour) =>
                 hour && hour.windKn !== null ? (
                   <>
@@ -356,10 +389,8 @@ const StripTable = memo(function StripTable({
                   "–"
                 ),
               )}
-              {sp}
             </tr>
             <tr className="tt-from">
-              {sp}
               {cells("f", (hour) =>
                 hour && hour.from !== null ? (
                   <span className="from-cell">
@@ -369,33 +400,28 @@ const StripTable = memo(function StripTable({
                   </span>
                 ) : null,
               )}
-              {sp}
             </tr>
             {!isPoint && (
               <tr className="tt-wing">
-                {sp}
                 {cells("g", (hour) =>
                   hour?.rating?.potential
                     ? (hour.rating.wing.own ?? hour.rating.wing.recommended)
                     : "",
                 )}
-                {sp}
               </tr>
             )}
           </>
         )}
         <tr className="tt-tide">
-          {sp}
           <td colSpan={columns.length} className="d0">
             <TideRow tide={tide} columns={columns} days={days} g={g} />
           </td>
-          {sp}
         </tr>
         {more && (
           <MoreRows
             columns={columns}
             cells={cells}
-            sp={sp}
+            g={g}
             waves={waves}
             weather={weather}
             sea={sea}
@@ -443,7 +469,7 @@ function xOf(
 function MoreRows({
   columns,
   cells,
-  sp,
+  g,
   waves,
   weather,
   sea,
@@ -458,7 +484,7 @@ function MoreRows({
       at: number,
     ) => React.ReactNode,
   ) => React.ReactNode;
-  sp: React.ReactNode;
+  g: StripGeometry;
   waves: SpotWaves;
   weather: SpotWeather;
   sea: SeaTemperatureState;
@@ -466,11 +492,9 @@ function MoreRows({
 }) {
   const span = (key: string, text: string) => (
     <tr className={`tt-more tt-${key}`} key={key}>
-      {sp}
       <td colSpan={columns.length} className="d0 more-note">
         {text}
       </td>
-      {sp}
     </tr>
   );
   if (isPoint)
@@ -479,9 +503,7 @@ function MoreRows({
         {span("waves", "Waves, weather and the sea: riding places only")}
         {MORE_ROWS.slice(1).map((key) => (
           <tr className={`tt-more tt-${key}`} key={key}>
-            {sp}
             <td colSpan={columns.length} className="d0" />
-            {sp}
           </tr>
         ))}
       </>
@@ -492,12 +514,18 @@ function MoreRows({
     variableValue(weather.columns[column], name);
   const row = (key: MoreRow, render: (column: number) => React.ReactNode) => (
     <tr className={`tt-more tt-${key}`} key={key}>
-      {sp}
       {cells(key, (_, __, column) => render(column))}
-      {sp}
     </tr>
   );
   const observed = sea.observed;
+  // The rain's intervals, against the columns: see `rainColumns`.
+  const series = weather.source?.series ?? [];
+  const rain = fields?.rain
+    ? rainColumns(
+        columns.map((c) => c.time),
+        series,
+      )
+    : [];
   return (
     <>
       {waves.source && set
@@ -507,6 +535,9 @@ function MoreRows({
             if (typeof height !== "number") return "–";
             const period = set.period ? step!.values[set.period] : null;
             const dir = set.direction ? step!.values[set.direction] : null;
+            // A coarse column holds the arrow and the height; the period
+            // stays in the title rather than running into the next cell.
+            const roomy = g.w[column] >= 58;
             return (
               <span
                 className="wave-cell"
@@ -521,7 +552,7 @@ function MoreRows({
                   />
                 )}
                 <b>{height.toFixed(1)}</b>
-                {typeof period === "number" && (
+                {roomy && typeof period === "number" && (
                   <small>{Math.round(period)}s</small>
                 )}
               </span>
@@ -558,27 +589,36 @@ function MoreRows({
         : span("air", "")}
       {fields
         ? row("rain", (column) => {
-            // A total belongs to the hour its interval ends, and to no other.
-            // Every other row may borrow the nearest step for a column between
-            // two, but a three-hour total read into each of three hourly
-            // columns says three times the rain, two of them after its
-            // interval has ended.
-            const step = weather.columns[column];
-            const time = Date.parse(columns[column]?.validTime ?? "");
-            if (step && Math.abs(Date.parse(step.validTime) - time) > 60000)
-              return "";
-            const value = at(column, fields.rain);
-            if (value === null) return "–";
+            // A total belongs to its interval, and to no other hour. Every
+            // other row may borrow the nearest step for a column between two,
+            // but a three-hour total read into each of three hourly columns
+            // says three times the rain. So the interval's last column prints
+            // it and the others in it carry its tint and a dot; the title
+            // says which interval either way, since the steps need not fall
+            // on the columns' hours.
+            const covered = rain[column];
+            const value = covered
+              ? variableValue(series[covered.step], fields.rain)
+              : null;
+            if (!covered || value === null) return "–";
+            const amount = value < 0.05 ? "0" : value.toFixed(1);
+            const own = covered.own;
+            const exact = Math.abs(covered.end - columns[column].time) <= 60000;
             return (
               <span
-                className="rain-cell"
+                className={`rain-cell${own ? "" : " is-part"}`}
                 style={
                   {
                     "--rain": Math.min(1, value / RAIN_FULL_MM).toFixed(2),
                   } as React.CSSProperties
                 }
+                title={
+                  own && exact
+                    ? `${amount} mm in the ${covered.hours} h to here`
+                    : `${amount} mm in the ${covered.hours} h to ${clock(covered.end)}${own ? "" : ", printed at the last column it covers"}`
+                }
               >
-                {value < 0.05 ? "0" : value.toFixed(1)}
+                {own ? amount : "·"}
               </span>
             );
           })
@@ -607,7 +647,16 @@ function MoreRows({
   );
 }
 
-/** The tide under the hours: a curve per day, its turns named, in metres. */
+/**
+ * The tide under the hours: a curve per day, its turns named. Each turn gets
+ * a dot on the curve and a short label, "High 17:35", in a band of its own:
+ * the highs along the top of the row and the lows along the foot, so the two
+ * never meet however close the curve brings them. The strip skips the night,
+ * so the evening's turn and the next morning's can stand a column apart; a
+ * label that would run into the one before it in its band tries the other
+ * side of its dot, and failing that is left out. The dot stays, and its title
+ * (and the row's) carries the time and the height in full.
+ */
 function TideRow({
   tide,
   columns,
@@ -634,7 +683,14 @@ function TideRow({
   const hi = Math.max(...curve.curve);
   const y = (h: number) => H - 6 - ((h - lo) / (hi - lo || 1)) * (H - 14);
   const paths: React.ReactNode[] = [];
-  const marks: React.ReactNode[] = [];
+  const turns: {
+    key: string;
+    X: number;
+    Y: number;
+    high: boolean;
+    text: string;
+    full: string;
+  }[] = [];
   days.forEach((day) => {
     const first = columns[day.start];
     const last = columns[day.start + day.count - 1];
@@ -664,35 +720,49 @@ function TideRow({
         <path className="tide-line" d={d} />
       </g>,
     );
-    const end = day.start + day.count - 1;
-    const dayEnd = g.x[end] + g.w[end];
     for (const event of eventsBetween(curve, a, b)) {
       const t = Date.parse(event.time);
-      const X = xOf(columns, day, g, t);
-      const Y = y(event.height);
       const high = event.kind === "high";
-      const right = X < dayEnd - 130;
-      marks.push(
-        <g key={event.time}>
-          <circle
-            className={high ? "tide-hw" : "tide-lw"}
-            cx={X.toFixed(1)}
-            cy={Y.toFixed(1)}
-            r="2.6"
-          />
-          <text
-            className="tide-label"
-            x={(X + (right ? 6 : -6)).toFixed(1)}
-            y={(high ? Y + 13 : Y - 5).toFixed(1)}
-            textAnchor={right ? "start" : "end"}
-          >
-            {high ? "High" : "Low"} tide {clock(t)} · {event.height.toFixed(1)}{" "}
-            m
-          </text>
-        </g>,
-      );
+      const word = high ? "High" : "Low";
+      turns.push({
+        key: event.time,
+        X: xOf(columns, day, g, t),
+        Y: y(event.height),
+        high,
+        text: `${word} ${clock(t)}`,
+        full: `${word} tide ${clock(t)} · ${event.height.toFixed(1)} m`,
+      });
     }
   });
+  // Lay each band's labels out left to right: beside the dot after it, else
+  // before it, else not at all.
+  const placed = new Map<string, { x: number; anchor: "start" | "end" }>();
+  for (const high of [true, false]) {
+    let edge = -Infinity;
+    for (const turn of turns
+      .filter((t) => t.high === high)
+      .sort((p, q) => p.X - q.X)) {
+      const w = turn.text.length * TIDE_CHAR;
+      const after = turn.X + 5;
+      const before = turn.X - 5 - w;
+      // Nor over another turn's dot where that dot reaches into the band.
+      const clear = (from: number) =>
+        !turns.some(
+          (o) =>
+            o !== turn &&
+            o.X > from - 4 &&
+            o.X < from + w + 4 &&
+            (high ? o.Y < 16 : o.Y > H - 14),
+        );
+      if (after >= edge + 8 && after + w <= width && clear(after)) {
+        placed.set(turn.key, { x: after, anchor: "start" });
+        edge = after + w;
+      } else if (before >= Math.max(0, edge + 8) && clear(before)) {
+        placed.set(turn.key, { x: turn.X - 5, anchor: "end" });
+        edge = turn.X - 5;
+      }
+    }
+  }
   return (
     <svg
       width={width}
@@ -702,7 +772,30 @@ function TideRow({
       aria-label={`Tide at ${tide.station.name}, metres above chart datum`}
     >
       {paths}
-      {marks}
+      {turns.map((turn) => {
+        const label = placed.get(turn.key);
+        return (
+          <g key={turn.key}>
+            <title>{turn.full}</title>
+            <circle
+              className={turn.high ? "tide-hw" : "tide-lw"}
+              cx={turn.X.toFixed(1)}
+              cy={turn.Y.toFixed(1)}
+              r="2.6"
+            />
+            {label && (
+              <text
+                className="tide-label"
+                x={label.x.toFixed(1)}
+                y={turn.high ? 10 : H - 2}
+                textAnchor={label.anchor}
+              >
+                {turn.text}
+              </text>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -738,6 +831,7 @@ export default function ForecastDock(props: Props) {
     marine,
   } = props;
   const cw = phone ? 52 : 62;
+  const label = phone ? 52 : 64;
   // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
   const g = useMemo(
     () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
@@ -749,8 +843,17 @@ export default function ForecastDock(props: Props) {
   const [wrapWidth, setWrapWidth] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterButton = useRef<HTMLButtonElement>(null);
-  const spacer = Math.max(0, wrapWidth / 2 - (g.w[0] ?? cw) / 2);
-  const spacerEnd = Math.max(0, wrapWidth / 2 - (g.w.at(-1) ?? cw) / 2);
+  const penClip = `pen-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  // The scroll that brings each hour under the cursor, and where the cursor
+  // stands at a scroll: still in the middle through the week, walking out to
+  // the ends so the first hour sits against the labels (see `stripTrack`).
+  const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
+  const cursor = useRef<HTMLDivElement>(null);
+  const placeCursor = () => {
+    const el = wrap.current;
+    if (el && cursor.current)
+      cursor.current.style.left = `${label + track.cursorAt(el.scrollLeft)}px`;
+  };
   const column = columns[selected];
   const selectedDay = days.find(
     (d) => selected >= d.start && selected < d.start + d.count,
@@ -769,14 +872,19 @@ export default function ForecastDock(props: Props) {
   const waves = useSpotWaves(more ? marine : [], named, axis);
   const weather = useSpotWeather(more ? marine : [], named, axis);
   const sea = useSpotSeaTemperature(more ? named : undefined);
-  const blendNode = useMemo(() => {
-    if (view !== "blend") return null;
-    if (!blend.lines.length)
-      return <p className="blend-empty">Reading the models…</p>;
+  // The top of the blend's scale, shared by the chart and its tick labels
+  // in the label column (which stay put while the hours scroll).
+  const blendMax = useMemo(() => {
     const peak = blend.stats.reduce(
       (top, hour) => Math.max(top, hour.max ?? 0, hour.gust.max ?? 0),
       0,
     );
+    return niceMax(convert(peak, prefs.units));
+  }, [blend.stats, prefs.units]);
+  const blendNode = useMemo(() => {
+    if (view !== "blend") return null;
+    if (!blend.lines.length)
+      return <p className="blend-empty">Reading the models…</p>;
     const nights = dayNights(
       spot.lat,
       spot.lon,
@@ -797,12 +905,22 @@ export default function ForecastDock(props: Props) {
           directions={blend.directions}
           nights={nights}
           units={prefs.units}
-          max={niceMax(convert(peak, prefs.units))}
+          max={blendMax}
           reducedMotion={reducedMotion}
         />
       </Suspense>
     );
-  }, [view, blend, columns, g, prefs.units, reducedMotion, spot.lat, spot.lon]);
+  }, [
+    view,
+    blend,
+    blendMax,
+    columns,
+    g,
+    prefs.units,
+    reducedMotion,
+    spot.lat,
+    spot.lon,
+  ]);
 
   useLayoutEffect(() => {
     const el = wrap.current;
@@ -828,9 +946,9 @@ export default function ForecastDock(props: Props) {
   const scrollTo = (index: number, smooth: boolean) => {
     const el = wrap.current;
     if (!el) return;
-    // The column's centre under the cursor in the middle of the strip.
-    const left = centre(index) - (g.w[0] ?? cw) / 2;
-    if (Math.abs(el.scrollLeft - left) < 1) return;
+    // The column's centre under the cursor.
+    const left = track.scrollFor(index);
+    if (Math.abs(el.scrollLeft - left) < 1) return placeCursor();
     const animate = smooth && !reducedMotion;
     clearTimeout(scrollEnd.current);
     // Where the browser will actually stop: the strip's own end, at most.
@@ -841,7 +959,7 @@ export default function ForecastDock(props: Props) {
   useLayoutEffect(() => {
     if (fromScroll.current === selected) return;
     scrollTo(selected, !dragging.current);
-  }, [selected, g, spacer, folded, view, more]);
+  }, [selected, track, folded, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
   const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
   useLayoutEffect(() => {
@@ -850,6 +968,7 @@ export default function ForecastDock(props: Props) {
   }, [placeKey]);
 
   const onScroll = () => {
+    placeCursor();
     const going = programmatic.current;
     if (going) {
       const el = wrap.current;
@@ -863,7 +982,7 @@ export default function ForecastDock(props: Props) {
       scrollFrame.current = 0;
       const el = wrap.current;
       if (!el) return;
-      const i = columnAtX(g, el.scrollLeft + (g.w[0] ?? cw) / 2);
+      const i = columnAtX(g, track.timeAt(el.scrollLeft));
       fromScroll.current = i;
       onSelect(i, false);
       clearTimeout(scrollEnd.current);
@@ -911,7 +1030,9 @@ export default function ForecastDock(props: Props) {
     };
   }, [folded]);
 
-  // The selected column, marked in place rather than by re-rendering the table.
+  // The cursor, where the scroll has put it; and the selected column, marked
+  // in place rather than by re-rendering the table.
+  useLayoutEffect(placeCursor);
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -959,10 +1080,15 @@ export default function ForecastDock(props: Props) {
   const flag = column ? `${dayShort(column.time)} ${clock(column.time)}` : "";
   const facing = spot.facing ?? null;
 
-  // The red pen: a loop round each day's best stretch, from the stars to the wind.
+  // The red pen: a loop round each day's best stretch worth riding, round the
+  // stars and the wind. It keeps below the hours' rule: the loop's own
+  // wobble and overshoot (ui/penPaths.ts) reach a sixth past its radii, so
+  // the radii are held inside the two rows and the sheet is clipped at the
+  // rule for the odd stroke that still reaches it.
+  const loopTop = ROWS.day + ROWS.hour;
   const loops = useMemo(() => {
     if (!ratings || view !== "table") return [];
-    const top = ROWS.day + ROWS.hour;
+    const top = loopTop;
     const bottom = top + ROWS.stars + ROWS.wind;
     return days.flatMap((day, d) => {
       const best = dayBest(
@@ -971,24 +1097,24 @@ export default function ForecastDock(props: Props) {
         now,
         columns.map((c) => c.time),
       );
-      if (!best || !best.stars) return [];
-      const x0 = spacer + g.x[best.from];
-      const x1 = spacer + g.x[best.to] + g.w[best.to];
+      if (!best || best.stars < LOOP_MIN_STARS) return [];
+      const x0 = g.x[best.from];
+      const x1 = g.x[best.to] + g.w[best.to];
       return [
         {
           key: `${day.date}-${best.from}`,
           d: loopPath(
             (x0 + x1) / 2,
-            (top + bottom) / 2,
-            (x1 - x0) / 2 + 6,
-            (bottom - top) / 2 + 6,
+            (top + bottom) / 2 + 1,
+            (x1 - x0) / 2 + 4,
+            (bottom - top) / 2 - 2,
             d * 13 + best.from,
           ),
           delay: d * 90,
         },
       ];
     });
-  }, [ratings, days, columns, spacer, g, now, view]);
+  }, [ratings, days, columns, g, now, view]);
 
   const tideDot = useMemo(() => {
     if (!tide || !column) return null;
@@ -1001,12 +1127,11 @@ export default function ForecastDock(props: Props) {
       ROWS.hour +
       (view === "blend" ? ROWS.blend : tableRows(isPoint));
     return {
-      x: spacer + centre(selected),
+      x: centre(selected),
       y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
     };
-  }, [tide, column, selected, spacer, g, view]);
+  }, [tide, column, selected, g, view]);
 
-  const label = phone ? 52 : 64;
   return (
     <section
       className={`dock${folded ? " is-folded" : ""}`}
@@ -1324,8 +1449,28 @@ export default function ForecastDock(props: Props) {
               <div aria-hidden="true" style={{ height: ROWS.day }} />
               <div aria-hidden="true" style={{ height: ROWS.hour }} />
               {view === "blend" ? (
-                <div aria-hidden="true" style={{ height: ROWS.blend }}>
+                <div
+                  aria-hidden="true"
+                  className="dk-lab-blend"
+                  style={{ height: ROWS.blend }}
+                >
                   Blend<small>{prefs.units}</small>
+                  {/* The chart's gridlines, numbered here where they stay
+                      put while the hours scroll, on the chart's own scale. */}
+                  {/* The top one would sit on the row's own name: left out. */}
+                  {blend.lines.length > 0 &&
+                    axisTicks(blendMax)
+                      .slice(1)
+                      .map((tick) => [
+                        tick,
+                        valueScale(blendMax, ROWS.blend)(tick),
+                      ])
+                      .filter(([, top]) => top > 18)
+                      .map(([tick, top]) => (
+                        <b key={tick} style={{ top }}>
+                          {tick}
+                        </b>
+                      ))}
                 </div>
               ) : (
                 <>
@@ -1423,8 +1568,6 @@ export default function ForecastDock(props: Props) {
                 rider={prefs.rider}
                 tide={tide}
                 g={g}
-                spacer={spacer}
-                spacerEnd={spacerEnd}
                 now={now}
                 blend={blendNode}
                 more={more}
@@ -1433,9 +1576,18 @@ export default function ForecastDock(props: Props) {
                 sea={sea}
                 isPoint={isPoint}
               />
+              {/* Where the scroll comes to rest: one mark per hour, at the
+                  scroll that puts it under the cursor. The hours' own cells
+                  cannot be the snap points, because at the ends of the strip
+                  the cursor is not in the middle (see stripTrack). */}
+              <div className="tt-snaps" aria-hidden="true">
+                {columns.map((c, i) => (
+                  <i key={c.validTime} style={{ left: track.scrollFor(i) }} />
+                ))}
+              </div>
               <svg
                 className="tt-pen"
-                width={spacer + spacerEnd + g.total}
+                width={g.total}
                 height={
                   ROWS.day +
                   ROWS.hour +
@@ -1445,15 +1597,20 @@ export default function ForecastDock(props: Props) {
                 }
                 aria-hidden="true"
               >
-                {loops.map((loop) => (
-                  <path
-                    key={`${spot.id}-${loop.key}`}
-                    className="pen-loop"
-                    d={loop.d}
-                    pathLength={1}
-                    style={{ animationDelay: `${loop.delay}ms` }}
-                  />
-                ))}
+                <clipPath id={penClip}>
+                  <rect x="0" y={loopTop + 1} width={g.total} height="400" />
+                </clipPath>
+                <g clipPath={`url(#${penClip})`}>
+                  {loops.map((loop) => (
+                    <path
+                      key={`${spot.id}-${loop.key}`}
+                      className="pen-loop"
+                      d={loop.d}
+                      pathLength={1}
+                      style={{ animationDelay: `${loop.delay}ms` }}
+                    />
+                  ))}
+                </g>
                 {tideDot && (
                   <circle
                     className="tide-dot"
@@ -1464,13 +1621,16 @@ export default function ForecastDock(props: Props) {
                 )}
               </svg>
             </div>
+            {/* The hour the map shows. It used to carry a red flag with the
+                day and time as well, which sat on the selected day's own
+                heading; the day slider's hand already says it, and the hour
+                cell under the line is inked. The line starts at the hours. */}
             <div
+              ref={cursor}
               className="dk-cur"
-              style={{ left: label + wrapWidth / 2 }}
+              style={{ top: ROWS.day }}
               aria-hidden="true"
-            >
-              <span>{flag}</span>
-            </div>
+            />
           </div>
         </div>
       )}

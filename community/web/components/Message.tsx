@@ -29,6 +29,7 @@ import {
   messageTime,
   type Viewer,
 } from "../thread";
+import { paths, routed } from "../router";
 import { Body } from "./Body";
 import { ReactionPicker, Reactions } from "./Reactions";
 
@@ -49,7 +50,13 @@ export const messageStyles = tv({
     replyToLine: "min-w-0 truncate italic",
     // The byline: the face, the name, and the time set right.
     head: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
-    name: "font-display text-prose font-semibold text-ink",
+    // The name is the way to the member's profile: a link in ink, said as one
+    // on hover and focus, as the chart's other names are.
+    name: [
+      "font-display text-prose font-semibold text-ink no-underline decoration-1 underline-offset-4",
+      "not-disabled:hover:text-chart-magenta not-disabled:hover:underline",
+      RING,
+    ],
     time: "font-mono text-caption whitespace-nowrap text-ink-muted tabular-nums",
     when: "ml-auto flex items-baseline gap-2",
     timeLong: "max-rail:hidden",
@@ -455,7 +462,12 @@ function Byline({
         src={message.author.avatarUrl}
         size={opening ? "md" : "sm"}
       />
-      <span className={styles.name()}>{message.author.displayName}</span>
+      <a
+        {...routed(paths.member(message.author.handle))}
+        className={styles.name()}
+      >
+        {message.author.displayName}
+      </a>
       {started && <Chip eyebrow>Started the thread</Chip>}
       <span className={styles.when()}>
         {message.editedAt && message.status === "visible" && (

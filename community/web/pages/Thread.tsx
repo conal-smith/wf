@@ -50,6 +50,7 @@ import { messageSeq, navigate, paths, routed, useLocation } from "../router";
 import {
   arrivedSince,
   headMeta,
+  keepRanges,
   newestSeq,
   owesRead,
   peopleOf,
@@ -218,13 +219,18 @@ function Conversation({
     [thread, stream, viewer.id],
   );
 
-  // S3. Coming in: to the line they had read to, or to where they stopped.
+  // S3. Coming in: to the line they had read to, set at the top of the
+  // screen under the masthead (the line's own scroll margin), so what is new
+  // reads down from there. With nothing new the page opens at its head, as
+  // any page does: centring the last message read would push the title up
+  // under the masthead and tell the reader nothing.
   useLayoutEffect(() => {
     if (entry.lastReadSeq === null || entry.lastReadSeq === 0) return;
+    if (entry.unread <= 0) return;
     const line =
       document.getElementById("new-since") ??
-      document.getElementById(`m-${entry.lastReadSeq}`);
-    line?.scrollIntoView({ block: "center" });
+      document.getElementById(`m-${entry.lastReadSeq + 1}`);
+    line?.scrollIntoView({ block: "start" });
     // Once, for the load this page was made for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -661,7 +667,7 @@ export function ThreadHead({
           )}
         </div>
       </div>
-      <Headline className={styles.title()}>{thread.title}</Headline>
+      <Headline className={styles.title()}>{keepRanges(thread.title)}</Headline>
       <p className={styles.metaRow()}>
         {parts.flatMap((part, i) =>
           i

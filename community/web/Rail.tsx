@@ -79,6 +79,12 @@ export function railCurrent(
 
 const channelKey = (slug: string) => `c:${slug}`;
 
+/**
+ * What the lock on a channel means. Only the start of a thread is the team's:
+ * anyone can reply in one, so "staff only" would say too much.
+ */
+export const TEAM_STARTS = "Only the team starts threads here";
+
 /** Past four a count is filled; up to four it is quiet. Both are a number. */
 const LOUD_FROM = 5;
 
@@ -106,10 +112,11 @@ function Row({
         aria-current={current ? "page" : undefined}
       >
         <span className={styles.name()}>{children}</span>
+        {/* Said to the eye on hover, and on the channel's own page in words. */}
         {locked && (
-          <span className={styles.lock()}>
+          <span className={styles.lock()} title={TEAM_STARTS}>
             <Lock size={12} strokeWidth={1.5} aria-hidden="true" />
-            <span className={styles.hidden()}>staff posts only</span>
+            <span className={styles.hidden()}>{TEAM_STARTS}</span>
           </span>
         )}
         <Count

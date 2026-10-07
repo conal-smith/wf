@@ -20,6 +20,9 @@ export const streamStyles = tv({
     ],
     // Filled as well as worded, as an unread count is everywhere else.
     fresh: "rounded-full bg-inverse px-2 py-0.5 font-semibold text-ink-inverse",
+    // Coming back to new replies scrolls this line to the top: it stops
+    // clear of the sticky masthead, as a message jumped to does.
+    since: "scroll-mt-24",
     more: "flex justify-center py-1",
     // Where a page is asked for, and where the newest message counts as seen.
     sentinel: "h-px",
@@ -107,7 +110,9 @@ export function MessageStream({
               <div
                 key={row.key}
                 id="new-since"
-                className={streamStyles({ strong: true }).divider()}
+                className={streamStyles({ strong: true }).divider({
+                  className: styles.since(),
+                })}
               >
                 <span className={styles.fresh()}>
                   {row.count} new since you were last here

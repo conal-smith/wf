@@ -66,8 +66,11 @@ export const shellStyles = tv({
       false: { rail: "max-rail:hidden" },
       true: { chevron: "rotate-180" },
     },
+    // A list a phone floats New thread over (NewThreadDialog's `fab`): its
+    // foot clears the button, so the last row can still be read and pressed.
+    floating: { true: { shell: "max-rail:pb-24" } },
   },
-  defaultVariants: { channelsOpen: false },
+  defaultVariants: { channelsOpen: false, floating: false },
 });
 
 /** The rail's id, for the Channels control that unfolds it on a phone. */
@@ -111,7 +114,10 @@ function Shell() {
   const role = useViewerRole(open?.postPolicy === "staff");
   // A thread's channel is known once its page has loaded, and told to the rail.
   const [threadChannel, setThreadChannel] = useState<string | null>(null);
-  const styles = shellStyles({ channelsOpen });
+  const styles = shellStyles({
+    channelsOpen,
+    floating: route.page === "home" || route.page === "channel",
+  });
 
   return (
     <div className={styles.root()}>

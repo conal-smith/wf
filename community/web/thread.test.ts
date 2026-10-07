@@ -21,6 +21,7 @@ import {
   headMeta,
   mentionMatches,
   mentionQuery,
+  keepRanges,
   messageTime,
   newestSeq,
   owesRead,
@@ -375,14 +376,32 @@ describe("S2, S3: rows", () => {
   });
 });
 
+describe("titles", () => {
+  it("holds a range of figures together, and leaves other dashes alone", () => {
+    const J = "\u2060";
+    expect(keepRanges("Which wing size for 15–20 knots at 70 kg?")).toBe(
+      `Which wing size for 15${J}–${J}20 knots at 70 kg?`,
+    );
+    expect(keepRanges("4.2-5 m")).toBe(`4.2${J}-${J}5 m`);
+    expect(keepRanges("12 – 18 kn")).toBe("12\u00a0–\u00a018 kn");
+    expect(keepRanges("One-wing quiver – any advice?")).toBe(
+      "One-wing quiver – any advice?",
+    );
+  });
+});
+
 describe("time", () => {
   it("a message's time, long and short", () => {
-    expect(messageTime(at(19, 9, 44), NOW).long).toBe("just now");
-    expect(messageTime(at(19, 9, 40), NOW)).toEqual({
-      long: "4 minutes ago",
-      short: "4 min",
+    // Within the hour, as the lists say it, at both widths.
+    expect(messageTime(at(19, 9, 44), NOW)).toEqual({
+      long: "just now",
+      short: "just now",
     });
-    expect(messageTime(at(19, 9, 43), NOW).long).toBe("1 minute ago");
+    expect(messageTime(at(19, 9, 40), NOW)).toEqual({
+      long: "4 min ago",
+      short: "4 min ago",
+    });
+    expect(messageTime(at(19, 9, 43), NOW).long).toBe("1 min ago");
     expect(messageTime(at(19, 7, 5), NOW)).toEqual({
       long: "07:05",
       short: "07:05",
@@ -413,7 +432,8 @@ describe("time", () => {
 
   it("how long ago, in the largest unit that fits", () => {
     expect(ago(at(19, 9, 44), NOW)).toBe("just now");
-    expect(ago(at(19, 8, 40), NOW)).toBe("1 hour ago");
+    expect(ago(at(19, 9, 40), NOW)).toBe("4 min ago");
+    expect(ago(at(19, 8, 40), NOW)).toBe("1 h ago");
     expect(ago(at(17, 9, 0), NOW)).toBe("2 days ago");
     expect(ago(at(1), NOW)).toBe("2 weeks ago");
     expect(ago(new Date(2026, 5, 1).toISOString(), NOW)).toBe("3 months ago");

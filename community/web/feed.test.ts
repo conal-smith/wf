@@ -26,6 +26,7 @@ import { currentTag, TagPills, tagPillsStyles } from "./components/TagPills";
 import { ThreadList, watchNear } from "./components/ThreadList";
 import {
   ago,
+  freshOf,
   newCount,
   previewLine,
   ThreadRow,
@@ -41,7 +42,7 @@ import {
   type FeedState,
 } from "./hooks";
 import { canStartThread, countsLine } from "./pages/Channel";
-import { MEMBERS_SHOWN_FROM, membersLine } from "./pages/Home";
+import { MEMBERS_SHOWN_FROM, membersLine, newOnPage } from "./pages/Home";
 import { matchRoute, paths, withoutNewThread } from "./router";
 
 /**
@@ -283,13 +284,16 @@ describe("S1: home", () => {
 describe("S2: a channel", () => {
   it("says its two counts", () => {
     expect(countsLine({ threadCount: 412, followerCount: 640 })).toBe(
-      "412 threads · 640 following",
+      "412 threads · 640 followers",
     );
     expect(countsLine({ threadCount: 1, followerCount: 0 })).toBe(
-      "1 thread · 0 following",
+      "1 thread · 0 followers",
+    );
+    expect(countsLine({ threadCount: 1, followerCount: 1 })).toBe(
+      "1 thread · 1 follower",
     );
     expect(countsLine({ threadCount: 1200, followerCount: 3400 })).toBe(
-      "1,200 threads · 3,400 following",
+      "1,200 threads · 3,400 followers",
     );
   });
 
@@ -409,6 +413,52 @@ describe("S3: a thread row", () => {
     // Signed out there is no unread to say.
     expect(row({ ...busy, unread: undefined })).not.toContain(" new<");
     expect(newCount(250)).toBe("99+ new");
+  });
+
+  it("counts what is new in the row's own units: a thread never opened is New", () => {
+    // Never opened: the API's unread takes in the opening post, so "1 reply"
+    // over "2 new" would say two things at once. It is a new thread.
+    const unopened = thread("u", {
+      replyCount: 1,
+      lastSeq: 1,
+      unread: 2,
+      lastReadSeq: null,
+    });
+    expect(freshOf(unopened)).toEqual({ kind: "thread" });
+    const out = row(unopened);
+    expect(out).not.toContain("2 new");
+    expect(out).toContain('New<span class="sr-only"> thread</span>');
+    // Opened before: so many new replies.
+    expect(freshOf({ unread: 2, lastReadSeq: 3 })).toEqual({
+      kind: "replies",
+      count: 2,
+    });
+    expect(freshOf({ unread: 0, lastReadSeq: 3 })).toBeNull();
+    expect(freshOf({ unread: undefined, lastReadSeq: undefined })).toBeNull();
+    // The page head sums the same two units, and nothing when nothing is new.
+    expect(
+      newOnPage(
+        ready([
+          unopened,
+          thread("w", { unread: 1, lastReadSeq: null }),
+          thread("r", { replyCount: 5, lastSeq: 5, unread: 3, lastReadSeq: 2 }),
+          thread("s", { unread: 0, lastReadSeq: 4 }),
+        ]),
+      ),
+    ).toBe("2 new threads · 3 new replies");
+    expect(
+      newOnPage(ready([thread("s", { unread: 0, lastReadSeq: 4 })])),
+    ).toBeNull();
+    expect(newOnPage({ status: "loading" })).toBeNull();
+  });
+
+  it("keeps the pill at one height in the column, replies or none", () => {
+    // No replies: a blank of the figure's height stands where it would be.
+    const quiet = row(thread("n", { unread: 1, lastReadSeq: null }));
+    expect(quiet).toMatch(/<span class="invisible[^"]*" aria-hidden="true">/);
+    expect(quiet).not.toMatch(/repl(y|ies)/);
+    // Nothing new and no replies: the column holds nothing at all.
+    expect(row(thread("a"))).not.toContain("invisible");
   });
 
   it("previews the last message on one line, led by who said it", () => {
@@ -916,9 +966,9 @@ describe("S8 and the pages", () => {
     expect(out).toMatch(/<h1[^>]*>Wings<\/h1>/);
     expect(out).toContain(">Gear</span>");
     expect(out).toContain(wings.description);
-    expect(out).toContain("0 threads · 0 following");
+    expect(out).toContain("0 threads · 0 followers");
     expect(out).toMatch(
-      /<button type="button"[^>]*aria-pressed="false"[^>]*>.*?Follow channel/,
+      /<button type="button"[^>]*aria-pressed="false"[^>]*>.*?Follow<span class="max-rail:sr-only"> channel/,
     );
     expect(out).toContain('aria-label="Filter by tag"');
     // The one order needs no saying: the newest activity is at the top.
@@ -944,7 +994,7 @@ describe("S8 and the pages", () => {
       search: new URLSearchParams(),
     });
     expect(out).toMatch(
-      /<button type="button"[^>]*aria-pressed="true"[^>]*>.*?Follow channel/,
+      /<button type="button"[^>]*aria-pressed="true"[^>]*>.*?Follow<span class="max-rail:sr-only"> channel/,
     );
   });
 

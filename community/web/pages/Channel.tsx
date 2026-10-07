@@ -3,7 +3,7 @@
  * threads in the one order there is: pinned first, then most recent activity,
  * so a reply bumps a thread.
  */
-import { Bell, BellRing, Compass, Tag } from "lucide-react";
+import { BellPlus, BellRing, Compass, Lock, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
@@ -22,13 +22,20 @@ import {
   type ChannelsState,
   type FeedSource,
 } from "../hooks";
+import { TEAM_STARTS } from "../Rail";
 import { NEW_THREAD, TAG, paths, routed } from "../router";
 
 export const channelStyles = tv({
   slots: {
-    // On a phone the head is the name and the bell: mockup 6b.
+    // On a phone the head is the name and the follow: mockup 6b.
     aside: "max-rail:hidden",
-    followLabel: "max-rail:sr-only",
+    lede: "grid gap-1",
+    // Who starts threads here, where it is only the team: at every width,
+    // since the rail's lock is all a phone would otherwise have to go on.
+    policy: "inline-flex items-center gap-1.5 not-italic text-ink-muted",
+    // "Follow" is said at every width, so it never reads as the header's
+    // bell beside it; "channel" is the word a phone can do without.
+    followWhat: "max-rail:sr-only",
     loading: "grid gap-3",
     short: "w-1/3",
     hidden: "sr-only",
@@ -37,12 +44,17 @@ export const channelStyles = tv({
 
 const grouped = new Intl.NumberFormat("en-IE");
 
-/** "412 threads · 640 following": the two counters a channel keeps anyway. */
+/**
+ * "412 threads · 640 followers": the two counters a channel keeps anyway.
+ * Followers, not "following": beside a Follow button that reads as how many
+ * the reader follows.
+ */
 export function countsLine(
   channel: Pick<ChannelData, "threadCount" | "followerCount">,
 ): string {
   const threads = channel.threadCount === 1 ? "thread" : "threads";
-  return `${grouped.format(channel.threadCount)} ${threads} · ${grouped.format(channel.followerCount)} following`;
+  const followers = channel.followerCount === 1 ? "follower" : "followers";
+  return `${grouped.format(channel.threadCount)} ${threads} · ${grouped.format(channel.followerCount)} ${followers}`;
 }
 
 /**
@@ -180,8 +192,18 @@ function Listed({
         figures={countsLine(channel)}
         title={channel.name}
         lede={
-          channel.description && (
-            <span className={styles.aside()}>{channel.description}</span>
+          (channel.description || channel.postPolicy === "staff") && (
+            <span className={styles.lede()}>
+              {channel.description && (
+                <span className={styles.aside()}>{channel.description}</span>
+              )}
+              {channel.postPolicy === "staff" && (
+                <span className={styles.policy()}>
+                  <Lock size={12} strokeWidth={1.5} aria-hidden="true" />
+                  {TEAM_STARTS}; anyone can reply.
+                </span>
+              )}
+            </span>
           )
         }
         actions={
@@ -196,10 +218,12 @@ function Listed({
               {channel.following ? (
                 <BellRing size={15} strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <Bell size={15} strokeWidth={1.5} aria-hidden="true" />
+                <BellPlus size={15} strokeWidth={1.5} aria-hidden="true" />
               )}
               {/* Pressed says which; the words stay the same, as a toggle's do. */}
-              <span className={styles.followLabel()}>Follow channel</span>
+              <span>
+                Follow<span className={styles.followWhat()}> channel</span>
+              </span>
             </Button>
           )
         }

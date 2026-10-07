@@ -14,7 +14,7 @@ import { tv } from "./tv";
  */
 export const headlineStyles = tv({
   slots: {
-    base: "m-0 font-display text-headline text-balance text-ink optical-display max-wide:text-title",
+    base: "m-0 font-display text-headline text-balance text-ink optical-display word-gap-display max-wide:text-title",
     soft: "font-normal tracking-tight italic",
     mark: "text-chart-magenta",
   },

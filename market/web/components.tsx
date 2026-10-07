@@ -25,6 +25,7 @@ import {
   PenLoop,
   PenNote,
   PenStrike,
+  Puffin,
   Skeleton,
   StarGlyphs,
 } from "../../ui";
@@ -44,12 +45,18 @@ import {
   type SellerSummary,
 } from "../shared/types";
 import { formatPrice, relativeAge } from "../shared/validate";
+import { ApiRequestError } from "./api";
 
 // ---- data helper -----------------------------------------------------------
 
 export interface Async<T> {
   data: T | null;
   error: string | null;
+  /**
+   * The API said 404: the thing is not there, and asking again will not bring
+   * it back. A page shows its not-found for this, not an error with a retry.
+   */
+  notFound: boolean;
   loading: boolean;
   reload: () => void;
   setData: (update: T | ((current: T | null) => T | null)) => void;
@@ -63,22 +70,33 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
   const [state, setState] = useState<{
     data: T | null;
     error: string | null;
+    notFound: boolean;
     loading: boolean;
   }>({
     data: null,
     error: null,
+    notFound: false,
     loading: true,
   });
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let alive = true;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState((s) => ({ ...s, loading: true, error: null, notFound: false }));
     fn()
-      .then((data) => alive && setState({ data, error: null, loading: false }))
+      .then(
+        (data) =>
+          alive &&
+          setState({ data, error: null, notFound: false, loading: false }),
+      )
       .catch(
         (e) =>
           alive &&
-          setState({ data: null, error: errorMessage(e), loading: false }),
+          setState({
+            data: null,
+            error: errorMessage(e),
+            notFound: e instanceof ApiRequestError && e.status === 404,
+            loading: false,
+          }),
       );
     return () => {
       alive = false;
@@ -162,7 +180,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
                 to={paths.me()}
               >
                 <UserRound size={15} strokeWidth={1.5} aria-hidden="true" />
-                <span className={styles.label()}>My listings</span>
+                <span className={styles.label()}>Account</span>
               </Link>
               {auth.provider === "clerk" ? (
                 <span className={styles.user()}>
@@ -180,7 +198,7 @@ export function MarketHeader({ accentSell = false }: { accentSell?: boolean }) {
               disabled={auth.provider === "none" || !auth.loaded}
               title={
                 auth.provider === "none"
-                  ? "Sign-in is not configured on this build"
+                  ? "Sign-in is not available on this version of the site"
                   : undefined
               }
             >
@@ -321,11 +339,9 @@ export function SellerRating({
         {seller.ratingAvg?.toFixed(1)}
         <span aria-hidden="true"> · </span>
         <span className={sr()}> from </span>
-        {seller.ratingCount}
-        <span className={sr()}>
-          {" "}
-          review{seller.ratingCount === 1 ? "" : "s"}
-        </span>
+        {/* The count says what it counts: a bare "· 1" beside the stars read as
+            a second score. */}
+        {seller.ratingCount} review{seller.ratingCount === 1 ? "" : "s"}
       </span>
     </span>
   );
@@ -468,7 +484,11 @@ export const listingCardStyles = tv({
     // Where it is and how long it has been up, in the mono label, over the
     // photograph the way a classified's section line heads it.
     kicker: "flex min-w-0 items-baseline justify-between gap-2 text-ink-muted",
-    where: "truncate",
+    // On a phone the line runs out: the town gives way, the county stays,
+    // because the county is what a buyer filters on.
+    where: "flex min-w-0",
+    town: "truncate",
+    county: "shrink-0",
     // The photograph on paper, in a hairline frame.
     media:
       "relative grid aspect-4/3 place-items-center overflow-hidden border border-line bg-sunken text-ink-muted",
@@ -488,6 +508,7 @@ export const listingCardStyles = tv({
       "m-0 line-clamp-2 font-display text-prose leading-tight font-semibold text-balance",
     meta: "mt-auto flex min-w-0 items-center justify-between gap-2 pt-1 text-ink-muted",
     condition: "truncate",
+    seller: "flex shrink-0 items-center gap-1",
     quiet: "m-0",
     hidden: "sr-only",
     // The three lines of a placeholder, as long as what they stand for.
@@ -523,11 +544,17 @@ export function ListingCard({
   listing,
   showStatus = false,
   fresh = false,
+  hideSaved = false,
+  hideSeller = false,
 }: {
   listing: Listing;
   showStatus?: boolean;
   /** The pen loops "new" beside the price: one card on a view, at most. */
   fresh?: boolean;
+  /** On the Saved tab every card is saved, and a badge saying so says nothing. */
+  hideSaved?: boolean;
+  /** On the seller's own page every card is theirs: their rating is in the head. */
+  hideSeller?: boolean;
 }) {
   const cover = listing.photos[0];
   const styles = listingCardStyles();
@@ -541,8 +568,16 @@ export function ListingCard({
       <span className={label({ className: styles.kicker() })}>
         <span className={styles.where()}>
           <span className={styles.hidden()}>In </span>
-          {listing.town ? `${listing.town}, ` : ""}
-          {listing.county}
+          {listing.town && (
+            <span className={styles.town()}>{listing.town}</span>
+          )}
+          {/* The comma travels with the county, so a cut town still reads
+              "Castlegregor…, Kerry". A plain space would be trimmed at the
+              start of a flex item; this one is not. */}
+          <span className={styles.county()}>
+            {listing.town ? ",\u00a0" : ""}
+            {listing.county}
+          </span>
         </span>
         <Age iso={listing.createdAt} />
       </span>
@@ -567,7 +602,7 @@ export function ListingCard({
           <Chip tone="glass" eyebrow className={styles.badge()}>
             {listing.status === "sold" ? "Sold" : "Removed"}
           </Chip>
-        ) : listing.saved ? (
+        ) : listing.saved && !hideSaved ? (
           <Chip tone="glass" eyebrow className={styles.badge()}>
             <Heart size={10} fill="currentColor" aria-hidden="true" /> Saved
           </Chip>
@@ -596,10 +631,14 @@ export function ListingCard({
           <span className={label({ className: styles.condition() })}>
             {conditionLabel(listing.condition)}
           </span>
-          {listing.seller.ratingCount > 0 && (
+          {listing.seller.ratingCount > 0 && !hideSeller && (
+            // Whose stars they are is written, not left to a hover a phone
+            // never has: five stars beside "Fair" read as the item's own.
             <span
+              className={styles.seller()}
               title={`Seller rated ${listing.seller.ratingAvg?.toFixed(1)} from ${listing.seller.ratingCount} review${listing.seller.ratingCount === 1 ? "" : "s"}`}
             >
+              <span className={label()}>Seller</span>
               <Stars value={listing.seller.ratingAvg} size={9} />
             </span>
           )}
@@ -614,9 +653,13 @@ export function ListingGrid({
   showStatus,
   markNew = false,
   busy = false,
+  hideSaved,
+  hideSeller,
 }: {
   listings: Listing[];
   showStatus?: boolean;
+  hideSaved?: boolean;
+  hideSeller?: boolean;
   /** Let the pen loop "new" round the newest, if it is from this week. */
   markNew?: boolean;
   /** A newer result is on its way; what is shown is about to be replaced. */
@@ -631,6 +674,8 @@ export function ListingGrid({
           listing={l}
           showStatus={showStatus}
           fresh={l.id === fresh}
+          hideSaved={hideSaved}
+          hideSeller={hideSeller}
         />
       ))}
     </div>
@@ -783,6 +828,42 @@ export function PageSkeleton() {
   );
 }
 
+export const notFoundStyles = tv({
+  slots: {
+    // A URL that is not a page: the puffin on his rock, and the pen's word.
+    lost: "grid justify-items-center gap-4 py-14 text-center",
+    lostTitle: "m-0 -rotate-1",
+    lostText: "m-0 max-w-reading font-body text-prose text-ink-muted",
+  },
+});
+
+/**
+ * What a link to nothing finds: a path that is no page, or a listing or seller
+ * the API says is not there (gone, sold and removed, or never was). There is
+ * nothing to retry, so the way on is back to the listings.
+ */
+export function NotFound({
+  title = "That page does not exist",
+  text = "The link may be old, or the listing may have been taken down.",
+}: {
+  title?: string;
+  text?: string;
+}) {
+  const styles = notFoundStyles();
+  return (
+    <section className={styles.lost()} aria-labelledby="not-found-title">
+      <Puffin size={88} bob />
+      <h1 className={styles.lostTitle()} id="not-found-title">
+        <PenNote as="span">{title}</PenNote>
+      </h1>
+      <p className={styles.lostText()}>{text}</p>
+      <Link to={paths.browse()} className={buttonStyles({ variant: "primary" })}>
+        Browse listings
+      </Link>
+    </section>
+  );
+}
+
 /** A page or a list that could not be fetched: say so plainly and offer the retry. */
 export function LoadError({
   title = "This could not be loaded",
@@ -881,10 +962,13 @@ export function BackLink({
 export function SaveButton({
   saved,
   busy,
+  disabled = false,
   onToggle,
 }: {
   saved: boolean;
   busy: boolean;
+  /** No way to sign in on this build: a Save that does nothing is not offered. */
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -894,7 +978,7 @@ export function SaveButton({
       // Saved says so in the word and in the filled heart beside it, so the
       // box stays quiet and never rivals the view's one filled action.
       pressed={saved ? "worded" : false}
-      disabled={busy}
+      disabled={busy || disabled}
       onClick={onToggle}
     >
       <Heart

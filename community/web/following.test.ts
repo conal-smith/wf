@@ -335,7 +335,9 @@ describe("S1: Following", () => {
     expect(out).toContain(
       "Start a thread or reply to one, and it is kept here.",
     );
-    expect(out).toContain("None yet: Follow channel, on any channel.");
+    expect(out).toContain(
+      "You follow no channels yet. Press Follow at the top of any channel",
+    );
     expect(out).not.toContain(">Manage<");
     expect(filled(out)).toEqual([]);
   });
@@ -631,7 +633,9 @@ describe("S4: a row of the bell", () => {
     expect(kindLabel({ ...row, readAt: minutesAgo(1) })).toBe("4 replies");
     const out = drawn(row);
     expect(out).toMatch(/4 new replies · (<!-- -->)?<time [^>]*>12 min ago/);
-    expect(out.match(/ring-card/g)).toHaveLength(2);
+    // Each face is ringed in the paper it stands on: the unread row's tint.
+    expect(out.match(/ring-sunken/g)).toHaveLength(2);
+    expect(drawn({ ...row, readAt: minutesAgo(1) })).toContain("ring-ground");
   });
 
   it("a mention stands alone, with the line that names the reader", () => {

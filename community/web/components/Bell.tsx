@@ -23,7 +23,9 @@ export const bellStyles = tv({
   slots: {
     base: "relative",
     bell: "relative",
-    count: "absolute -top-1 -right-1",
+    // Hung off the pill's shoulder, clear of the glyph: a number laid over
+    // the bell hides the very thing it counts.
+    count: "absolute -top-2 -right-2.5",
     // Hung from the bell, and never drawn where the page stands in for it.
     panel: [
       "absolute top-full right-0 z-popover mt-3 grid w-100 gap-1 border border-ink bg-card paper-grain p-3 font-body text-ink shadow-surface inset-shadow-frame max-rail:hidden",
@@ -244,6 +246,7 @@ export function Bell({ unread, onUnread, pathname }: BellProps) {
           <NotificationRows
             state={rows.state}
             limit={POPOVER_ROWS}
+            paper="card"
             onOpen={rows.open}
             onRetry={rows.reload}
           />

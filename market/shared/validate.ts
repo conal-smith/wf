@@ -41,8 +41,14 @@ export const listingInputSchema = z.object({
     20,
     "Describe the item in at least 20 characters: age, use, damage, what is included",
   ),
-  category: z.enum(CATEGORY_IDS as [string, ...string[]]),
-  condition: z.enum(CONDITION_IDS as [string, ...string[]]),
+  // The form starts these three on "Choose…", so an empty one is the seller
+  // not having chosen yet: say that, not zod's list of every allowed id.
+  category: z.enum(CATEGORY_IDS as [string, ...string[]], {
+    error: "Choose what kind of gear this is",
+  }),
+  condition: z.enum(CONDITION_IDS as [string, ...string[]], {
+    error: "Choose the condition it is in",
+  }),
   brand: optionalText(LIMITS.brandMax),
   sizeLabel: optionalText(LIMITS.sizeMax),
   year: z
@@ -58,7 +64,9 @@ export const listingInputSchema = z.object({
     .min(0)
     .max(LIMITS.priceCentsMax, "That price is above the marketplace ceiling"),
   currency: z.enum(CURRENCIES),
-  county,
+  county: z.enum(county.options, {
+    error: "Choose the county the gear is in",
+  }),
   town: optionalText(LIMITS.townMax),
   photos: z.array(photoInputSchema).max(LIMITS.photosPerListing),
 });

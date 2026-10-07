@@ -38,10 +38,7 @@ import {
 export const newThreadStyles = tv({
   slots: {
     form: "grid gap-5",
-    where: [
-      "m-0 flex flex-wrap items-center gap-1 text-ink-muted",
-      MONO_LABEL,
-    ],
+    where: ["m-0 flex flex-wrap items-center gap-1 text-ink-muted", MONO_LABEL],
     channel: "inline-flex items-center gap-0.5 font-semibold text-ink",
     tags: "flex flex-wrap gap-1",
     tag: "",
@@ -562,7 +559,8 @@ function NewThreadDialog({
         {spots.length > 0 && (
           <Field
             label="Spot"
-            hint="Optional. Puts its wind and stars on your thread."
+            // Short enough to leave air beside SPOT on a phone's line.
+            hint="Optional. Shows its wind and stars."
             htmlFor={ids.spot}
             error={errors.spotId}
           >

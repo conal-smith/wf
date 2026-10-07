@@ -14,6 +14,7 @@ import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import type { Notification } from "../../shared/types";
 import type { PagedState } from "../hooks";
 import { paths, routed } from "../router";
+import { keepRanges } from "../thread";
 import { ago } from "./ThreadRow";
 
 export const notificationRowStyles = tv({
@@ -24,11 +25,15 @@ export const notificationRowStyles = tv({
       RING,
       "not-disabled:focus-visible:-outline-offset-2",
     ],
-    faces: "flex shrink-0 -space-x-2",
-    face: "ring-2 ring-card",
+    // Two faces, the first named on top: overlapped by a quarter at most, so
+    // the second's initials are still read, and each cut out of the other by a
+    // ring of whatever paper the row is on.
+    faces: "flex shrink-0 -space-x-1",
+    face: "relative ring-2 first:z-1",
     text: "grid min-w-0 flex-1 gap-1 font-body text-prose text-ink-2",
     line: "m-0",
-    strong: "font-display font-semibold text-ink group-hover:text-chart-magenta",
+    strong:
+      "font-display font-semibold text-ink group-hover:text-chart-magenta",
     quote: "m-0 truncate text-body text-ink-muted italic",
     meta: [
       "m-0 flex items-center gap-1 text-ink-muted tabular-nums",
@@ -46,8 +51,18 @@ export const notificationRowStyles = tv({
   variants: {
     // Unread is a dot, a tint and a word a screen reader hears: never colour alone.
     unread: { true: { row: "bg-sunken" } },
+    // The paper under the faces' rings: the row's tint when unread, otherwise
+    // the popover's card or the page's ground.
+    paper: {
+      card: { face: "ring-card" },
+      ground: { face: "ring-ground" },
+      sunken: { face: "ring-sunken" },
+    },
   },
 });
+
+/** What a list of rows is laid on: the bell's popover, or the page. */
+export type RowPaper = "card" | "ground";
 
 /** A piece of a row's sentence. The names and the title are the strong ones. */
 export interface LinePart {
@@ -92,7 +107,7 @@ export function lineParts(row: Notification): LinePart[] {
     ...whoParts(row),
     { text: ` ${DID[row.kind](row)} ` },
     row.thread
-      ? { text: row.thread.title, strong: true }
+      ? { text: keepRanges(row.thread.title), strong: true }
       : { text: "a thread that is gone" },
   ];
 }
@@ -139,12 +154,22 @@ export interface NotificationRowProps {
   row: Notification;
   /** Opening a row is what marks it read. */
   onOpen: (row: Notification) => void;
+  /** What the row is laid on, for the rings round its faces. */
+  paper?: RowPaper;
   now?: Date;
 }
 
-export function NotificationRow({ row, onOpen, now }: NotificationRowProps) {
+export function NotificationRow({
+  row,
+  onOpen,
+  paper = "ground",
+  now,
+}: NotificationRowProps) {
   const unread = isUnread(row);
-  const styles = notificationRowStyles({ unread });
+  const styles = notificationRowStyles({
+    unread,
+    paper: unread ? "sunken" : paper,
+  });
   const label = kindLabel(row);
   const Icon = KIND_ICON[row.kind];
   return (
@@ -197,6 +222,8 @@ export interface NotificationRowsProps {
   limit?: number;
   onOpen: (row: Notification) => void;
   onRetry: () => void;
+  /** The bell's popover is card; the page is ground. */
+  paper?: RowPaper;
   now?: Date;
 }
 
@@ -206,6 +233,7 @@ export function NotificationRows({
   limit,
   onOpen,
   onRetry,
+  paper,
   now,
 }: NotificationRowsProps) {
   const styles = notificationRowStyles();
@@ -244,7 +272,7 @@ export function NotificationRows({
     <ul className={styles.list()}>
       {state.items.slice(0, limit).map((row) => (
         <li key={row.id}>
-          <NotificationRow row={row} onOpen={onOpen} now={now} />
+          <NotificationRow row={row} onOpen={onOpen} paper={paper} now={now} />
         </li>
       ))}
     </ul>

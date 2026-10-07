@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { Button, Empty, Skeleton } from "../../../ui";
 import { tv } from "../../../ui/tv";
+import { paths, routed } from "../router";
 
 export const membersOnlyStyles = tv({
   slots: {
@@ -41,7 +42,17 @@ export function MembersOnly({ what, children }: MembersOnlyProps) {
       icon={<LogIn size={24} strokeWidth={1.5} aria-hidden="true" />}
     >
       {auth.provider === "none" ? (
-        <p>Sign-in is not configured on this build.</p>
+        // A build with no sign-in (a preview, a review): said as a reader
+        // would need it, with the way on to what they can still do.
+        <>
+          <p>
+            Signing in is not available on this version of the site. Reading the
+            community is open to everyone.
+          </p>
+          <Button {...routed(paths.home())} variant="pill">
+            Read the latest threads
+          </Button>
+        </>
       ) : (
         <>
           <p>Reading needs no account. This page is a member’s own.</p>

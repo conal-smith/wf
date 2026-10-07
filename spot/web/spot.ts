@@ -396,6 +396,8 @@ export function summariseDay(date: string, rows: SpotRow[]): SpotDay {
 /**
  * The night a day's table folds away: the dark rows before the first light
  * row and after the last, each run kept together so it can be shown in place.
+ * "Light" here is the forecast's own `daylight`, sunrise to sunset, which is
+ * what the stars are rated over.
  */
 export function darkRuns(rows: readonly SpotRow[]): {
   before: SpotRow[];
@@ -411,6 +413,34 @@ export function darkRuns(rows: readonly SpotRow[]): {
     light: rows.slice(first, last + 1),
     after: rows.slice(last + 1),
   };
+}
+
+/**
+ * What a folded run of night says, from the sun rather than from the rows.
+ * A row is rated when its hour starts between sunrise and sunset, so the fold
+ * names those: the light table under the day lists the same two times, and a
+ * three-hourly day no longer claims it is dark till 09:00 when the sun is up
+ * at 07:58. Late in today, when every row left is after sunset, it says so
+ * rather than "dark till midnight".
+ */
+export function foldText(
+  edge: "before" | "after",
+  run: readonly SpotRow[],
+  sun: DaySun,
+  hasLight: boolean,
+): string {
+  const { sunrise, sunset } = sun;
+  if (!hasLight && sunset !== null && run[0].time >= sunset)
+    return "Dark for the rest of the day";
+  if (edge === "before" && sunrise !== null && sunrise > run[0].time)
+    return `Before sunrise ${clock(sunrise)}`;
+  if (edge === "after" && sunset !== null && sunset <= run[0].time)
+    return `After sunset ${clock(sunset)}`;
+  // No sun to go by (or one the rows disagree with): the rows' own edges.
+  const last = run.at(-1)!;
+  return edge === "before"
+    ? `Dark till ${clock(last.time + last.step * HOUR)}`
+    : `Dark from ${clock(run[0].time)}`;
 }
 
 // ---- tide -------------------------------------------------------------------
@@ -540,7 +570,11 @@ export interface DayWindow {
   stars: number;
   potential: number;
   from: number;
-  /** The instant the window ends: the end of its last row. */
+  /**
+   * The instant the window ends: the end of its last row, or last light if
+   * that comes first. A three-hourly 18:00 row stands for 18–21, but nobody
+   * rides it after dusk, so the window is not sold as running to 21:00.
+   */
   to: number;
   /** The wing the first row of it asks for: the rider's own, or the pick. */
   wing: number;
@@ -551,9 +585,13 @@ export interface DayWindow {
 /**
  * The day's best window, as the chart loops it: the longest run of rows at the
  * day's highest solid stars, the earliest of equals. One row will do; null
- * when no row of the day earns a star.
+ * when no row of the day earns a star. With the day's sun, it ends at last
+ * light at the latest.
  */
-export function dayWindow(rows: readonly SpotRow[]): DayWindow | null {
+export function dayWindow(
+  rows: readonly SpotRow[],
+  sun?: Pick<DaySun, "lastLight">,
+): DayWindow | null {
   const top = Math.max(0, ...rows.map((row) => row.rating?.stars ?? 0));
   if (top === 0) return null;
   let best: [number, number] | null = null;
@@ -570,6 +608,9 @@ export function dayWindow(rows: readonly SpotRow[]): DayWindow | null {
   const rating = rows[first].rating!;
   let lastLight = rows.length - 1;
   while (lastLight > 0 && !rows[lastLight].rating) lastLight--;
+  const from = rows[first].time;
+  const end = rows[last].time + rows[last].step * HOUR;
+  const dusk = sun?.lastLight ?? null;
   return {
     first,
     last,
@@ -577,19 +618,32 @@ export function dayWindow(rows: readonly SpotRow[]): DayWindow | null {
     potential: Math.max(
       ...rows.slice(first, last + 1).map((row) => row.rating!.potential),
     ),
-    from: rows[first].time,
-    to: rows[last].time + rows[last].step * HOUR,
+    from,
+    to: dusk !== null && dusk > from && dusk < end ? dusk : end,
     wing: rating.wing.own ?? rating.wing.recommended,
     tillDark: last === lastLight && last > first,
   };
 }
 
-/** "18–19": the window's hours, as the day's header gives them. */
+/**
+ * "18–19": the window's hours, as the day's header gives them, first to last
+ * hour it is rideable in. A window of one hour is a time, "13:00": a bare
+ * "13" beside the stars reads as a wind speed.
+ */
 export function windowHours(window: DayWindow): string {
   const first = clock(window.from).slice(0, 2);
-  const lastRow = clock(window.to - HOUR).slice(0, 2);
-  return first === lastRow ? first : `${first}–${lastRow}`;
+  // The hour the window's last rideable minute falls in.
+  const last = clock(window.to - 60000).slice(0, 2);
+  return first === last ? `${first}:00` : `${first}–${last}`;
 }
+
+/**
+ * The fewest stars the pen will praise. Its loop and "best of the week" say
+ * "go here", and one star is what a rider gets from offshore wind at best
+ * (stars.ts caps it there) or from wind barely over their floor: the best of
+ * a poor day, still in the figures and the header, but not worth a ring.
+ */
+export const PEN_STARS = 2;
 
 export interface WeekBest {
   date: string;
