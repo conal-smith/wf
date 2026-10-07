@@ -95,6 +95,26 @@ describe("display preferences", () => {
     expect(storage.data.has(PREFS_KEY)).toBe(true);
     expect(loadPrefs(storage)).toEqual(prefs);
   });
+  it("adds a model published since the blend list was saved, and keeps the reader's choices", () => {
+    const live = windModels().map((model) => model.id);
+    const storage = fakeStorage({
+      [PREFS_KEY]: JSON.stringify({
+        blendModels: ["ecmwf", "gfs"],
+        // Saved when every live model but GEFS existed, so GEFS is new.
+        blendKnown: live.filter((id) => id !== "gefs"),
+      }),
+    });
+    const loaded = loadPrefs(storage).blendModels;
+    expect(loaded).toEqual(["ecmwf", "gfs", "gefs"]);
+    // Whatever else was there and left out stays out.
+    expect(loaded).not.toContain("harmonie");
+  });
+  it("takes a blend list saved before models were recorded as it stands", () => {
+    const storage = fakeStorage({
+      [PREFS_KEY]: JSON.stringify({ blendModels: ["ecmwf", "gfs"] }),
+    });
+    expect(loadPrefs(storage).blendModels).toEqual(["ecmwf", "gfs"]);
+  });
   it("merges partial and unknown stored values over the defaults", () => {
     const storage = fakeStorage({
       [PREFS_KEY]: JSON.stringify({

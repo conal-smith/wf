@@ -558,6 +558,15 @@ function MoreRows({
         : span("air", "")}
       {fields
         ? row("rain", (column) => {
+            // A total belongs to the hour its interval ends, and to no other.
+            // Every other row may borrow the nearest step for a column between
+            // two, but a three-hour total read into each of three hourly
+            // columns says three times the rain, two of them after its
+            // interval has ended.
+            const step = weather.columns[column];
+            const time = Date.parse(columns[column]?.validTime ?? "");
+            if (step && Math.abs(Date.parse(step.validTime) - time) > 60000)
+              return "";
             const value = at(column, fields.rain);
             if (value === null) return "–";
             return (

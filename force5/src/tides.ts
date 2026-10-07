@@ -141,7 +141,10 @@ async function loadJson(path: string, signal?: AbortSignal): Promise<unknown> {
       : AbortSignal.timeout(20000),
   });
   if (!response.ok)
-    throw new Error("Tide predictions are unavailable for this location.");
+    throw Object.assign(
+      new Error("Tide predictions are unavailable for this location."),
+      { status: response.status },
+    );
   return response.json();
 }
 
