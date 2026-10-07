@@ -15,6 +15,7 @@ import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import type { FollowReason, Member, Thread } from "../../shared/types";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { paths, routed } from "../router";
+import { keepRanges } from "../thread";
 
 export const threadRowStyles = tv({
   slots: {
@@ -53,6 +54,9 @@ export const threadRowStyles = tv({
     stats:
       "grid w-20 shrink-0 justify-items-end gap-1 pt-4 text-right max-rail:hidden",
     statsLabel: ["text-ink-muted", MONO_LABEL],
+    // Where a thread has no replies yet, a blank of the figure's height holds
+    // its place, so the pill under it stands at the same height on every row.
+    blank: "invisible grid justify-items-end gap-1",
     fresh: [
       "inline-flex h-5 items-center rounded-full bg-inverse px-2 leading-none whitespace-nowrap text-ink-inverse tabular-nums",
       MONO_LABEL,
@@ -112,6 +116,41 @@ export const newCount = (unread: number) =>
 export const replyWords = (count: number) =>
   count === 1 ? "1 reply" : `${count} replies`;
 
+/**
+ * What is new on a thread for this reader, in the units the row already
+ * counts in. The API's `unread` is every message past the last one read, and
+ * for a thread never opened that takes in the opening post: "1 reply" over
+ * "2 new" says two things at once. So a thread never opened is new as a
+ * whole, and an opened one has so many new replies. Null when nothing is.
+ */
+export type Fresh =
+  { kind: "thread" } | { kind: "replies"; count: number } | null;
+
+export function freshOf(thread: Pick<Thread, "unread" | "lastReadSeq">): Fresh {
+  const unread = thread.unread ?? 0;
+  if (unread <= 0) return null;
+  return thread.lastReadSeq === null
+    ? { kind: "thread" }
+    : { kind: "replies", count: unread };
+}
+
+/** The pill's words: "New" for a thread never opened, "2 new" replies. */
+function FreshWords({ fresh }: { fresh: NonNullable<Fresh> }) {
+  const styles = threadRowStyles();
+  return fresh.kind === "thread" ? (
+    <>
+      New<span className={styles.hidden()}> thread</span>
+    </>
+  ) : (
+    <>
+      {newCount(fresh.count)}
+      <span className={styles.hidden()}>
+        {fresh.count === 1 ? " reply" : " replies"}
+      </span>
+    </>
+  );
+}
+
 /** Why a thread is in the Following feed, as the row says it. */
 export const WHY: Record<FollowReason, string> = {
   started: "You started this",
@@ -170,9 +209,10 @@ export function ThreadRow({
   pinnedLine = false,
   now,
 }: ThreadRowProps) {
-  const unread = thread.unread ?? 0;
-  const styles = threadRowStyles({ unread: unread > 0 });
+  const fresh = freshOf(thread);
+  const styles = threadRowStyles({ unread: fresh !== null });
   const to = routed(paths.thread(thread.id, thread.slug));
+  const title = keepRanges(thread.title);
 
   if (pinnedLine && thread.pinned)
     return (
@@ -183,9 +223,11 @@ export function ThreadRow({
           strokeWidth={1.5}
           aria-hidden="true"
         />
-        <span className={styles.pinnedTitle()}>{thread.title}</span>
-        {unread > 0 && (
-          <span className={styles.fresh()}>{newCount(unread)}</span>
+        <span className={styles.pinnedTitle()}>{title}</span>
+        {fresh && (
+          <span className={styles.fresh()}>
+            <FreshWords fresh={fresh} />
+          </span>
         )}
         <span className={styles.pinnedLabel()}>Pinned</span>
       </a>
@@ -221,8 +263,8 @@ export function ThreadRow({
           </time>
         </p>
         <h2 className={styles.title()}>
-          {unread > 0 && <span className={styles.dot()} aria-hidden="true" />}
-          <span className={styles.titleText()}>{thread.title}</span>
+          {fresh && <span className={styles.dot()} aria-hidden="true" />}
+          <span className={styles.titleText()}>{title}</span>
         </h2>
         {preview && <p className={styles.preview()}>{preview}</p>}
         <p className={styles.byline()}>
@@ -230,9 +272,9 @@ export function ThreadRow({
           {replies > 0 && (
             <span className={styles.inline()}>· {replyWords(replies)}</span>
           )}
-          {unread > 0 && (
+          {fresh && (
             <span className={styles.fresh({ className: styles.inline() })}>
-              {newCount(unread)}
+              <FreshWords fresh={fresh} />
             </span>
           )}
         </p>
@@ -246,16 +288,25 @@ export function ThreadRow({
         />
       )}
       <div className={styles.stats()}>
-        {replies > 0 && (
+        {replies > 0 ? (
           <>
             <Figure value={replies} label={replyWords(replies)} />
             <span className={styles.statsLabel()} aria-hidden="true">
               {replies === 1 ? "reply" : "replies"}
             </span>
           </>
+        ) : (
+          fresh && (
+            <span className={styles.blank()} aria-hidden="true">
+              <Figure value="0" />
+              <span className={styles.statsLabel()}>{"\u00a0"}</span>
+            </span>
+          )
         )}
-        {unread > 0 && (
-          <span className={styles.fresh()}>{newCount(unread)}</span>
+        {fresh && (
+          <span className={styles.fresh()}>
+            <FreshWords fresh={fresh} />
+          </span>
         )}
       </div>
     </a>

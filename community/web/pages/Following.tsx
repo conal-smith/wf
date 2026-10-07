@@ -133,9 +133,11 @@ function Followed({ channels, onFollowed }: FollowingProps) {
                 {channel.name}
               </Button>
             ))}
+        {/* The Follow it names is on every channel's page, at every width. */}
         {!managed && !last.current.length && channels.status === "ready" && (
           <p className={styles.none()}>
-            None yet: Follow channel, on any channel.
+            You follow no channels yet. Press Follow at the top of any channel
+            to hear about its new threads.
           </p>
         )}
         {managed ? (

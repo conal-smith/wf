@@ -3,17 +3,20 @@
  * link to the message, inside its thread.
  */
 import { AtSign, CloudOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSiteAuth } from "../../../shared/web/auth";
 import { usePageTitle } from "../../../shared/web/usePageTitle";
 import { Avatar, Button, Empty, Notice, Skeleton } from "../../../ui";
 import { MONO_LABEL, RING, tv } from "../../../ui/tv";
 import type { MentionItem, Message } from "../../shared/types";
+import { useApi } from "../api";
 import { MENTION_PATTERN } from "../../shared/validate";
 import { MembersOnly } from "../components/MembersOnly";
 import { PageHead, dateline } from "../components/PageHead";
 import { ago } from "../components/ThreadRow";
 import { useMentions } from "../hooks";
 import { paths, routed } from "../router";
+import { keepRanges } from "../thread";
 
 export const mentionsStyles = tv({
   slots: {
@@ -88,7 +91,7 @@ export function MentionRow({ item, now }: { item: MentionItem; now?: Date }) {
         <span className={styles.line()}>
           <span className={styles.strong()}>{message.author.displayName}</span>
           {" mentioned you in "}
-          <span className={styles.title()}>{thread.title}</span>
+          <span className={styles.title()}>{keepRanges(thread.title)}</span>
         </span>
         <span className={styles.body()}>{mentionText(message)}</span>
         <span className={styles.meta()}>
@@ -100,6 +103,45 @@ export function MentionRow({ item, now }: { item: MentionItem; now?: Date }) {
         </span>
       </span>
     </a>
+  );
+}
+
+/**
+ * Nothing names them yet: say what would, in their own handle, which a new
+ * member may not know they have. Asked for only here, where it is the news.
+ */
+function NoMentions() {
+  const api = useApi();
+  const [handle, setHandle] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    // Not knowing it, the line says it in general terms instead.
+    api.me().then(
+      (me) => {
+        if (current) setHandle(me.handle);
+      },
+      () => {},
+    );
+    return () => {
+      current = false;
+    };
+  }, [api]);
+  return (
+    <Empty
+      title="No mentions yet"
+      icon={<AtSign size={24} strokeWidth={1.5} aria-hidden="true" />}
+    >
+      <p>
+        {handle ? (
+          <>
+            When someone writes <strong>@{handle}</strong> in a message, it is
+            listed here and the bell tells you.
+          </>
+        ) : (
+          "When someone writes @ and your handle in a message, it is listed here and the bell tells you."
+        )}
+      </p>
+    </Empty>
   );
 }
 
@@ -134,18 +176,7 @@ function Mentioned() {
         </Button>
       </Empty>
     );
-  if (!state.items.length)
-    return (
-      <Empty
-        title="No mentions yet"
-        icon={<AtSign size={24} strokeWidth={1.5} aria-hidden="true" />}
-      >
-        <p>
-          When someone writes @ and your handle in a message, it is listed here
-          and the bell tells you.
-        </p>
-      </Empty>
-    );
+  if (!state.items.length) return <NoMentions />;
   return (
     <div className={styles.base()}>
       <ul className={styles.list()}>
