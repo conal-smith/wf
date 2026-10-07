@@ -208,8 +208,20 @@ export function loadPrefs(
   }
   if (!raw) return defaults;
   try {
-    const stored = JSON.parse(raw) as Partial<Prefs>;
+    const stored = JSON.parse(raw) as Partial<Prefs> & {
+      blendKnown?: unknown;
+    };
     if (!stored || typeof stored !== "object") return defaults;
+    // The models there were to choose from when the list was saved. One that
+    // has been published since is not one the reader left out: it joins the
+    // blend as it would for anyone else. A list saved before this was recorded
+    // is taken as it stands.
+    const known = Array.isArray(stored.blendKnown)
+      ? new Set(stored.blendKnown.filter((id) => typeof id === "string"))
+      : null;
+    const added = known
+      ? defaults.blendModels.filter((id) => !known.has(id))
+      : [];
     return {
       rows: mergeRows(stored.rows, defaults.rows),
       touchedRows: Array.isArray(stored.touchedRows)
@@ -219,7 +231,7 @@ export function loadPrefs(
       blendModels:
         Array.isArray(stored.blendModels) &&
         stored.blendModels.every((id) => typeof id === "string")
-          ? [...new Set(stored.blendModels)]
+          ? [...new Set([...stored.blendModels, ...added])]
           : defaults.blendModels,
       view:
         stored.view && VIEWS.includes(stored.view)
@@ -238,7 +250,13 @@ export function savePrefs(
   storage: PrefsStorage | null = browserStorage(),
 ): boolean {
   try {
-    storage?.setItem(PREFS_KEY, JSON.stringify(prefs));
+    storage?.setItem(
+      PREFS_KEY,
+      JSON.stringify({
+        ...prefs,
+        blendKnown: windModels().map((model) => model.id),
+      }),
+    );
     return storage !== null;
   } catch {
     return false;

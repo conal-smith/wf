@@ -146,6 +146,10 @@ export function useMarineModels(enabled: boolean): ModelAvailability[] {
   return models;
 }
 
+/** A 404: the bundle has not been published, as against failing to arrive. */
+const notPublished = (error: unknown) =>
+  (error as { status?: number } | null)?.status === 404;
+
 export interface SeaTemperatureState {
   /** What the nearest reporting station measured, or null when none covers it. */
   observed: SpotSeaTemperature | null;
@@ -197,10 +201,11 @@ export function useSpotSeaTemperature(
         setState({
           observed: null,
           manifest: null,
-          note:
-            error instanceof Error
-              ? "Sea temperature observations are not published yet. Run npm run sea:refresh."
-              : "Sea temperature observations are unavailable.",
+          // Only a file that is not there is one nobody has published; a
+          // timeout or a dropped connection is not the reader's to fix with npm.
+          note: notPublished(error)
+            ? "Sea temperature observations are not published yet. Run npm run sea:refresh."
+            : "Sea temperature observations are unavailable.",
           loading: false,
         });
       });
@@ -251,10 +256,9 @@ export function useSpotTide(spotId: string | undefined): TideState {
         setState({
           tide: null,
           manifest: null,
-          error:
-            error instanceof Error
-              ? "Tide predictions are not published yet. Run npm run tides:refresh."
-              : "Tide predictions are unavailable.",
+          error: notPublished(error)
+            ? "Tide predictions are not published yet. Run npm run tides:refresh."
+            : "Tide predictions are unavailable.",
           loading: false,
         });
       });

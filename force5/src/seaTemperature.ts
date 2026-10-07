@@ -173,7 +173,10 @@ export async function loadSeaTemperature(
       : AbortSignal.timeout(20000),
   });
   if (!response.ok)
-    throw new Error("Sea temperature observations are unavailable.");
+    throw Object.assign(
+      new Error("Sea temperature observations are unavailable."),
+      { status: response.status },
+    );
   return validateSeaTemperatureManifest(
     (await response.json()) as SeaTemperatureManifest,
   );
