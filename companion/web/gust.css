@@ -366,8 +366,10 @@
 /* ---- where he floats ------------------------------------------------------
  * The host says how far up to stand, so that nothing of its own is covered:
  * --gust-launcher-bottom for the button, --gust-panel-bottom for the panel's
- * foot (the map passes its dock's height). On a phone the panel is a drawer
- * from the bottom edge instead.
+ * foot (the map passes its dock's height), and --gust-panel-top and
+ * --gust-sheet-height for where the panel's head and a phone's sheet stop
+ * (the map sets them in its stylesheet, to clear its own boxes). On a phone
+ * the panel is a drawer from the bottom edge instead.
  */
 .gust-launcher {
   position: fixed;
@@ -381,7 +383,7 @@
 
 .gust-panel {
   position: fixed;
-  top: calc(var(--spacing) * 16);
+  top: var(--gust-panel-top, calc(var(--spacing) * 16));
   right: calc(var(--spacing) * 20);
   bottom: var(--gust-panel-bottom, calc(var(--spacing) * 6));
   width: min(var(--container-dialog), calc(100vw - var(--spacing) * 24));
@@ -400,7 +402,7 @@
     right: 0;
     bottom: 0;
     width: auto;
-    height: min(86dvh, calc(var(--spacing) * 180));
+    height: var(--gust-sheet-height, min(86dvh, calc(var(--spacing) * 180)));
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }

@@ -75,7 +75,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
         baseline.featured.title,
       );
       await expect(
-        page.getByRole("button", { name: "Show contact details" }),
+        page.getByRole("button", { name: "Contact seller" }),
       ).toBeVisible();
     });
 
@@ -96,7 +96,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
     // nowhere else.
     await shoot("listing-contact", width, { as: BUYER }, async (page) => {
       await page.goto(`/market/listing/${baseline.reviewed.id}`);
-      await page.getByRole("button", { name: "Show contact details" }).click();
+      await page.getByRole("button", { name: "Contact seller" }).click();
       await expect(page.getByText("Contact Maeve Doyle")).toBeVisible();
       await expect(page.getByRole("link", { name: /WhatsApp/ })).toBeVisible();
     });
@@ -120,7 +120,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
         baseline.featured.title,
       );
       await expect(
-        page.getByRole("button", { name: "Sign in to contact seller" }),
+        page.getByRole("button", { name: "Sign in to contact" }),
       ).toBeVisible();
     });
   }
@@ -216,7 +216,7 @@ test("selling: the empty form, the form with errors, and the way in", async ({
   }
 });
 
-test("my account: every tab", async ({ shoot }) => {
+test("my account: every tab", async ({ shoot, baseline }) => {
   for (const width of WIDTHS) {
     // Two people, because a tab is only worth a baseline with something in it:
     // the seller has the listings and the profile, the buyer the rest.
@@ -232,7 +232,11 @@ test("my account: every tab", async ({ shoot }) => {
 
     await shoot("me-saved", width, { as: BUYER }, async (page) => {
       await page.goto("/market/me/saved");
-      await expect(page.getByRole("link", { name: /Saved/ })).toBeVisible();
+      // The card, by its title: the Saved tab draws no "Saved" badge, since
+      // everything on it is.
+      await expect(
+        page.getByRole("link", { name: baseline.featured.title }),
+      ).toBeVisible();
     });
 
     await shoot("me-reviews", width, { as: BUYER }, async (page) => {

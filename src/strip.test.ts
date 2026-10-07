@@ -7,6 +7,8 @@ import {
   openingColumn,
   stripColumns,
   stripDays,
+  stripTrack,
+  rainColumns,
 } from "./strip";
 
 const hours = (from: string, n: number, step = 1) =>
@@ -85,5 +87,84 @@ describe("stripGeometry", () => {
     expect(columnAtX(g, 0)).toBe(0);
     expect(columnAtX(g, 14 * 60 + 24)).toBe(14);
     expect(columnAtX(g, g.total)).toBe(strip.length - 1);
+  });
+});
+
+describe("stripTrack", () => {
+  const geometry = (n: number, cw = 60) => ({
+    x: Array.from({ length: n }, (_, i) => i * cw),
+    w: Array.from({ length: n }, () => cw),
+    total: n * cw,
+  });
+  it("starts the table against the labels and walks the cursor out to the middle", () => {
+    const g = geometry(100);
+    const track = stripTrack(g, 600);
+    // The first hour: no scroll, the cursor on its centre, not in the middle.
+    expect(track.scrollFor(0)).toBe(0);
+    expect(track.cursorAt(0)).toBe(30);
+    // The middle of the week: the cursor stands still in the middle.
+    const s = track.scrollFor(50);
+    expect(track.cursorAt(s)).toBe(300);
+    expect(track.timeAt(s)).toBe(50 * 60 + 30);
+    // The last hour: full scroll, the cursor on its centre at the right.
+    expect(track.scrollFor(99)).toBe(g.total - 600);
+    expect(track.cursorAt(g.total - 600)).toBe(600 - 30);
+  });
+  it("is its own inverse, and never jumps", () => {
+    const g = geometry(100);
+    const track = stripTrack(g, 600);
+    for (let i = 0; i < 100; i++)
+      expect(columnAtX(g, track.timeAt(track.scrollFor(i)))).toBe(i);
+    let last = track.timeAt(0);
+    for (let s = 7; s <= g.total - 600; s += 7) {
+      const t = track.timeAt(s);
+      expect(t).toBeGreaterThan(last);
+      expect(t - last).toBeLessThanOrEqual(14.01);
+      last = t;
+    }
+  });
+  it("walks the cursor the whole way on a strip too short for a still middle", () => {
+    const g = geometry(14);
+    const track = stripTrack(g, 600);
+    expect(track.cursorAt(0)).toBe(30);
+    expect(track.cursorAt(g.total - 600)).toBe(600 - 30);
+    for (let i = 0; i < 14; i++)
+      expect(columnAtX(g, track.timeAt(track.scrollFor(i)))).toBe(i);
+    // And one that fits does not scroll at all.
+    expect(stripTrack(geometry(5), 600).scrollFor(4)).toBe(0);
+  });
+});
+
+describe("rainColumns", () => {
+  const at = (iso: string) => Date.parse(iso);
+  const steps = ["09:00", "12:00", "15:00"].map((h) => ({
+    validTime: `2026-10-08T${h}:00Z`,
+  }));
+  it("prints a total once, at its interval's end, and marks the rest of it", () => {
+    const times = ["10:00", "11:00", "12:00", "13:00"].map((h) =>
+      at(`2026-10-08T${h}:00Z`),
+    );
+    const out = rainColumns(times, steps);
+    expect(out.map((c) => c && [c.step, c.own])).toEqual([
+      [1, false],
+      [1, false],
+      [1, true],
+      [2, true],
+    ]);
+    expect(out[0]!.hours).toBe(3);
+  });
+  it("gives a column between steps the interval it falls in", () => {
+    // Three-hourly columns an hour before the steps: each inside one interval.
+    const times = ["08:00", "11:00", "14:00"].map((h) =>
+      at(`2026-10-08T${h}:00Z`),
+    );
+    expect(rainColumns(times, steps).map((c) => c && [c.step, c.own])).toEqual([
+      [0, true],
+      [1, true],
+      [2, true],
+    ]);
+  });
+  it("leaves a column past the last step empty", () => {
+    expect(rainColumns([at("2026-10-08T18:00:00Z")], steps)).toEqual([null]);
   });
 });

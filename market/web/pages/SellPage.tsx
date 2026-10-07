@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Camera, X } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Button, Chip, Kicker, SectionHeading } from "../../../ui";
+import { buttonStyles } from "../../../ui/Button";
 import { RING_WITHIN, tv } from "../../../ui/tv";
 import { ApiRequestError, useApi } from "../api";
 import { useMarketAuth } from "../auth";
@@ -20,7 +21,7 @@ import {
   usePageTitle,
 } from "../components";
 import ProfileForm from "./ProfileForm";
-import { navigate, paths } from "../router";
+import { Link, navigate, paths } from "../router";
 import {
   CATEGORIES,
   CONDITIONS,
@@ -45,6 +46,9 @@ export const sellStyles = tv({
     page: "flex min-w-0 flex-col gap-8",
     /** What a box holds, when it is one thing after another. */
     stack: "flex min-w-0 flex-col gap-5",
+    // A box alone on the page, with no back link or dateline over it, stands
+    // off the masthead's rule rather than hanging from it.
+    gate: "mt-6 max-wide:mt-3",
     /** A section of the form: its heading on a rule, and its fields. */
     section: "flex min-w-0 flex-col gap-5",
     /** A heading and whatever explains it. */
@@ -116,8 +120,10 @@ interface FormState {
 
 const empty = (defaultCounty: string): FormState => ({
   title: "",
-  category: "wing",
-  condition: "good",
+  // Chosen by the seller, never by default: a wetsuit listed under "Wings"
+  // because nobody touched the menu is a listing buyers cannot find.
+  category: "",
+  condition: "",
   brand: "",
   sizeLabel: "",
   year: "",
@@ -163,6 +169,10 @@ export default function SellPage({ editId }: { editId?: string }) {
     [api, editId],
   );
 
+  // "Step 2 of 2" is only true for a seller who was just shown step 1: one
+  // whose contact details were already on file never saw a first step.
+  const [askedForContact, setAskedForContact] = useState(false);
+
   const styles = sellStyles();
   const shared = sharedStyles();
 
@@ -172,9 +182,9 @@ export default function SellPage({ editId }: { editId?: string }) {
 
   if (!auth.signedIn) {
     return (
-      <section className={pane(shared.pane(), styles.stack())}>
+      <section className={pane(shared.pane(), styles.stack(), styles.gate())}>
         <div className={styles.head()}>
-          <Kicker tone="ink">Classifieds</Kicker>
+          <Kicker tone="ink">Sell</Kicker>
           <h1 className={styles.title()}>Sell your gear</h1>
           <p className={styles.quiet()}>
             Sign in, so buyers can reach you and you can manage what you list.
@@ -182,8 +192,8 @@ export default function SellPage({ editId }: { editId?: string }) {
         </div>
         {auth.provider === "none" ? (
           <Notice kind="warn">
-            Sign-in is not configured on this build (VITE_CLERK_PUBLISHABLE_KEY
-            is unset), so listings cannot be created.
+            Sign-in is not available on this version of the site, so new
+            listings cannot be posted here.
           </Notice>
         ) : (
           <div className={shared.formActions()}>
@@ -228,9 +238,10 @@ export default function SellPage({ editId }: { editId?: string }) {
           profile={me.data.profile}
           requireContact
           submitLabel="Save and continue"
-          onSaved={(profile: Profile) =>
-            me.setData((d) => (d ? { ...d, profile } : d))
-          }
+          onSaved={(profile: Profile) => {
+            setAskedForContact(true);
+            me.setData((d) => (d ? { ...d, profile } : d));
+          }}
         />
       </section>
     );
@@ -240,6 +251,7 @@ export default function SellPage({ editId }: { editId?: string }) {
     <ListingForm
       profile={me.data.profile}
       existing={existing.data ?? undefined}
+      secondStep={askedForContact}
     />
   );
 }
@@ -247,9 +259,12 @@ export default function SellPage({ editId }: { editId?: string }) {
 function ListingForm({
   profile,
   existing,
+  secondStep = false,
 }: {
   profile: Profile;
   existing?: Listing;
+  /** Reached through the contact step, which made this one "Step 2 of 2". */
+  secondStep?: boolean;
 }) {
   const api = useApi();
   const [form, setForm] = useState<FormState>(() =>
@@ -330,9 +345,9 @@ function ListingForm({
       <div className={shared.head()}>
         <div className={shared.dateline()}>
           <Kicker as="span" tone="ink">
-            {existing ? "Classifieds" : "Sell"}
+            Sell
           </Kicker>
-          {!existing && <Kicker as="span">Step 2 of 2</Kicker>}
+          {!existing && secondStep && <Kicker as="span">Step 2 of 2</Kicker>}
         </div>
         <h1 className={styles.title()}>
           {existing ? "Edit listing" : "What are you selling?"}
@@ -386,6 +401,7 @@ function ListingForm({
               value={form.category}
               onChange={(e) => set({ category: e.target.value })}
             >
+              <option value="">Choose a category</option>
               {CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
@@ -403,6 +419,7 @@ function ListingForm({
               value={form.condition}
               onChange={(e) => set({ condition: e.target.value })}
             >
+              <option value="">Choose a condition</option>
               {CONDITIONS.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}: {c.hint}
@@ -552,6 +569,16 @@ function ListingForm({
           {busy ? "Saving…" : existing ? "Save changes" : "Publish listing"}
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </Button>
+        {/* An edit is left the way it was come into, beside the button that
+            would keep it: the back link at the top is a long scroll away. */}
+        {existing && (
+          <Link
+            to={paths.listing(existing.id)}
+            className={buttonStyles({ variant: "pill", size: "lg" })}
+          >
+            Cancel
+          </Link>
+        )}
         <span className={styles.signature()}>
           as {profile.displayName}
         </span>

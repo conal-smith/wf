@@ -83,7 +83,7 @@ async function openDock(page: Page, width = 1440, height = 900) {
 const slider = (page: Page) =>
   page.getByRole("slider", { name: "Forecast time" });
 
-/** Where the selected column sits against the fixed cursor, in pixels. */
+/** Where the selected column sits against the cursor, in pixels. */
 async function offCursor(page: Page) {
   return page.evaluate(() => {
     const cell = document.querySelector(".dock tr.tt-hour td.c-sel");
@@ -110,7 +110,8 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
   // Seven days, each a block of the slider and a heading on the strip.
   const days = new Set(sampleStrip.map((c) => c.date)).size;
   await expect(page.locator(".sc-day")).toHaveCount(days);
-  await expect(page.locator(".dock tr.tt-day td")).toHaveCount(days + 2);
+  // No spacer cells either side: the table starts against the labels.
+  await expect(page.locator(".dock tr.tt-day td")).toHaveCount(days);
   // The rows, by their labels.
   await expect(page.locator(".dk-labs")).toContainText("Stars");
   for (const row of ["Wind", "From", "Wing", "Tide"])
@@ -127,9 +128,13 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
   await expect(
     page.locator(".dock tr.tt-from td .g-shore").first(),
   ).toHaveAttribute("aria-label", /shore|offshore|onshore/);
-  // The tide's turns are named in words, never as HW and LW.
+  // The tide's turns are named in words, never as HW and LW: a short label
+  // on the row, the time and the height in full in the turn's title.
   const tide = page.locator(".dock .tide-row");
   await expect(tide.locator(".tide-label").first()).toHaveText(
+    /^(High|Low) \d\d:\d\d$/,
+  );
+  await expect(tide.locator("g > title").first()).toHaveText(
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
   );
   await expect(tide).not.toContainText(/\b(HW|LW)\b/);
@@ -149,24 +154,23 @@ test("the strip and the slider move together, by swipe, wheel, drag and key", as
 }) => {
   await openDock(page);
   const wrap = page.locator(".dock .tt-wrap");
-  // The time moving scrolls the strip: the hour sits under the fixed cursor.
+  // The time moving scrolls the strip: the hour sits under the cursor.
   await slider(page).fill("12");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
-  // The strip scrolling moves the time, and the slider with it.
+  // The strip scrolling moves the time, and the slider with it: whatever
+  // comes to rest under the cursor is the hour.
   const cw = await page
     .locator(".dock tr.tt-hour td[data-i]")
     .first()
     .evaluate((td) => td.getBoundingClientRect().width);
-  // Column 20 under the cursor: its offset from the first column's.
-  const to = await wrap.evaluate((el) => {
-    const at = (i: number) =>
-      (el.querySelector(`tr.tt-hour td[data-i="${i}"]`) as HTMLElement).offsetLeft;
-    return at(20) - at(0);
-  });
-  await wrap.evaluate((el, left) => el.scrollTo({ left }), to);
-  await expect(slider(page)).toHaveValue("20");
+  await wrap.evaluate((el) => el.scrollTo({ left: el.scrollWidth / 3 }));
+  await expect
+    .poll(async () => Number(await slider(page).inputValue()))
+    .toBeGreaterThan(12);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  const scrolled = Number(await slider(page).inputValue());
   await expect(
-    page.locator('.dock tr.tt-hour td[data-i="20"]'),
+    page.locator(`.dock tr.tt-hour td[data-i="${scrolled}"]`),
   ).toHaveClass(/c-sel/);
   // Shift and the wheel move the hours sideways.
   await wrap.hover();
@@ -177,7 +181,9 @@ test("the strip and the slider move together, by swipe, wheel, drag and key", as
   await expect
     .poll(() => wrap.evaluate((el) => el.scrollLeft))
     .toBeGreaterThan(before + cw);
-  await expect.poll(async () => Number(await slider(page).inputValue())).toBeGreaterThan(20);
+  await expect
+    .poll(async () => Number(await slider(page).inputValue()))
+    .toBeGreaterThan(scrolled);
   // A plain vertical wheel is never taken: the strip stays where it is and the
   // event goes on to the page.
   const held = await wrap.evaluate((el) => el.scrollLeft);
@@ -211,6 +217,10 @@ test("the strip and the slider move together, by swipe, wheel, drag and key", as
   await slider(page).focus();
   await slider(page).press("Home");
   await expect(slider(page)).toHaveValue("0");
+  // At the start the table sits against the labels, with no blank paper
+  // before it, and the cursor comes out to the first hour instead.
+  await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
   await slider(page).press("PageUp");
   const day = sampleStrip.findIndex((c) => c.date !== sampleStrip[0].date);
   await expect(slider(page)).toHaveValue(String(day));
@@ -249,15 +259,15 @@ test("the head says the day's best, and the pen loops each day's", async ({
 }) => {
   await openDock(page);
   await expect(page.locator(".dk-best")).toHaveText(
-    /^(Best (today|tomorrow|[A-Z][a-z]+day) \d\d:\d\d(–\d\d:\d\d)? · .*· [\d.]+ m|[A-Z][a-z]+: (no stars|done))$/,
+    /^(Best (today|tomorrow|[A-Z][a-z]+day) \d\d:\d\d(–\d\d:\d\d)? · .*· [\d.]+ m² wing|[A-Z][a-z]+: (no stars|done))$/,
   );
   await expect(page.locator(".dk-best")).not.toContainText(/\b(HW|LW)\b/);
   const best = await page
     .locator(".dock tr.tt-day td i")
     .allTextContents();
-  // A loop for each day with stars still ahead of it.
+  // A loop for each day whose best still ahead is worth riding: two stars or
+  // more. A one-star day keeps its "best" in the heading and gets no loop.
   const loops = await page.locator(".dock .tt-pen .pen-loop").count();
-  expect(loops).toBeGreaterThan(0);
   expect(loops).toBeLessThanOrEqual(best.length);
   await expect(
     page.getByRole("link", { name: "Spot page →" }).first(),
@@ -288,11 +298,16 @@ test("a starred spot is kept on this device: the dock, the popup and your spots 
   await expect(
     popup.getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
-  // Opening a spot counts it among the ones you look at.
+  // Opening a spot counts it among the often opened; the count is in the
+  // entry's title, not printed as a bare "1×".
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
   await page.locator(".spot-row").first().click();
+  await expect(panel).toContainText("Often opened");
   await expect(panel).toContainText("Dollymount");
-  await expect(panel).toContainText("1×");
+  await expect(panel).not.toContainText("1×");
+  await expect(
+    panel.locator(".fvl li", { hasText: "Dollymount" }).locator(".fv-go span"),
+  ).toHaveAttribute("title", /^Opened (once|\d+ times) on this device$/);
   await page.reload();
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay", {
     timeout: 30000,
@@ -670,8 +685,9 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
   await expect
     .poll(() => page.locator(".dock tr.tt-sky .weather-cell").count())
     .toBeGreaterThan(0);
+  // A total, a dash, or the dot of an hour inside a total printed further on.
   await expect(page.locator(".dock tr.tt-rain td[data-i]").first()).toHaveText(
-    /^(–|\d+(\.\d)?)$/,
+    /^(–|·|\d+(\.\d)?)$/,
   );
   await page.reload();
   await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1, {

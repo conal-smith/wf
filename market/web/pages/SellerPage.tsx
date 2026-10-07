@@ -10,6 +10,7 @@ import {
   Empty,
   ListingGrid,
   LoadError,
+  NotFound,
   PageSkeleton,
   Stars,
   sharedStyles,
@@ -73,6 +74,13 @@ export default function SellerPage({ id }: { id: string }) {
   const shared = sharedStyles();
   const tabs = tabStyles();
 
+  if (result.notFound)
+    return (
+      <NotFound
+        title="No seller here"
+        text="The link may be old, or the seller may have closed their account."
+      />
+    );
   if (result.error) {
     return (
       <>
@@ -130,7 +138,7 @@ export default function SellerPage({ id }: { id: string }) {
                 <Stars value={stats.ratingAvg} size={12} />
               </span>
             </Stat>
-            <Stat label="Reviews">
+            <Stat label={stats.ratingCount === 1 ? "Review" : "Reviews"}>
               <Figure value={stats.ratingCount} />
             </Stat>
             <Stat label="Sold">
@@ -205,7 +213,7 @@ export default function SellerPage({ id }: { id: string }) {
 
       {tab === "active" &&
         (page.active.length ? (
-          <ListingGrid listings={page.active} />
+          <ListingGrid listings={page.active} hideSeller />
         ) : (
           <Empty title="Nothing live right now">
             <p>When {seller.displayName} lists something, it will show here.</p>
@@ -213,7 +221,7 @@ export default function SellerPage({ id }: { id: string }) {
         ))}
       {tab === "sold" &&
         (page.sold.length ? (
-          <ListingGrid listings={page.sold} showStatus />
+          <ListingGrid listings={page.sold} showStatus hideSeller />
         ) : (
           <Empty title="No sales recorded yet" />
         ))}

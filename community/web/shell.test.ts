@@ -239,7 +239,8 @@ describe("S5: the header", () => {
     );
     // The number is for the eye; the label has already said it.
     expect(out).toMatch(/<span class="[^"]*" aria-hidden="true">4<\/span>/);
-    expect(out).toContain(">aoife</span>");
+    // Their name is the way to their own profile.
+    expect(out).toMatch(/<a href="\/community\/u\/me"[^>]*>aoife<\/a>/);
   });
 
   it("draws no badge, and says no number, when nothing is unread", async () => {
@@ -388,7 +389,10 @@ describe("S6: the rail", () => {
     expect(staffOnly.map((c) => c.slug)).toEqual(["announcements"]);
     for (const row of rows(out)) {
       const locked = row.href === "/community/c/announcements";
-      expect(row.inner.includes("staff posts only"), row.href).toBe(locked);
+      expect(
+        row.inner.includes("Only the team starts threads here"),
+        row.href,
+      ).toBe(locked);
       expect(row.inner.includes("lucide-lock"), row.href).toBe(locked);
     }
   });

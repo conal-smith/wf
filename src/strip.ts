@@ -236,3 +236,124 @@ export function columnAtX(g: StripGeometry, position: number): number {
   }
   return lo;
 }
+
+/**
+ * The strip's scroll against its cursor. Through the middle of the week the
+ * cursor stands still in the middle of the strip and the hours slide under
+ * it, as the mockup draws it. At either end it cannot: centring the first
+ * hour would leave half a strip of blank paper before it, which is what the
+ * dock used to do. So the table starts flush against the row labels, and
+ * over the first half-width of scroll the cursor walks from the first
+ * column's centre out to the middle (and back out to the last at the far
+ * end). The time still follows the scroll the whole way, one-to-one and
+ * without a jump: in those end zones a pixel of scroll moves the cursor a
+ * pixel as well as the table, so the time runs at twice the pace there.
+ *
+ * `scrollFor` and `timeAt` are each other's inverse, in strip pixels: the
+ * scroll that puts column `i` under the cursor, and the position along the
+ * strip under the cursor at a scroll. The cursor stands at `timeAt(s) - s`
+ * within the strip's window, `width` wide.
+ */
+export interface StripTrack {
+  scrollFor(column: number): number;
+  timeAt(scroll: number): number;
+  cursorAt(scroll: number): number;
+}
+
+export function stripTrack(g: StripGeometry, width: number): StripTrack {
+  const n = g.x.length;
+  const centre = (i: number) => g.x[i] + g.w[i] / 2;
+  const c0 = n ? centre(0) : 0;
+  const cN = n ? centre(n - 1) : 0;
+  const max = Math.max(0, g.total - width);
+  const mid = width / 2;
+  // How far the cursor walks at each end: from the first centre to the
+  // middle, and from the middle to the last centre at full scroll.
+  const head = Math.max(0, mid - c0);
+  const tail = Math.max(0, cN - max - mid);
+  let timeAt: (s: number) => number;
+  let scrollFor: (c: number) => number;
+  if (!n || max <= 0) {
+    // Everything fits: nothing scrolls, the cursor goes to the hour.
+    timeAt = () => c0;
+    scrollFor = () => 0;
+  } else if (head + tail > max) {
+    // Too short a strip for a still middle: the cursor walks the whole way.
+    timeAt = (s) => c0 + ((cN - c0) * s) / max;
+    scrollFor = (c) => ((c - c0) * max) / (cN - c0 || 1);
+  } else {
+    timeAt = (s) =>
+      s < head ? c0 + 2 * s : s > max - tail ? 2 * s + mid - max + tail : s + mid;
+    scrollFor = (c) =>
+      c < c0 + 2 * head
+        ? (c - c0) / 2
+        : c > cN - 2 * tail
+          ? (c - mid + max - tail) / 2
+          : c - mid;
+  }
+  const clamp = (s: number) => Math.max(0, Math.min(max, s));
+  return {
+    scrollFor: (column) =>
+      n ? clamp(scrollFor(centre(Math.max(0, Math.min(n - 1, column))))) : 0,
+    timeAt: (scroll) => timeAt(clamp(scroll)),
+    cursorAt: (scroll) => timeAt(clamp(scroll)) - clamp(scroll),
+  };
+}
+
+/**
+ * Which weather step's rain each column shows. A step's rain is the total
+ * over the interval that ends at it, so it belongs to that interval and to
+ * no other hour. The column at (or nearest before) each interval's end
+ * prints the total; the interval's other columns are marked as inside it
+ * rather than handed the figure again, since three hourly columns each
+ * reading a three-hour total would say three times the rain. A column no
+ * interval covers is left as having none to show. The weather's steps need
+ * not fall on the columns' hours: a run on the hour in UTC lands an hour off
+ * Irish summer time's three-hourly columns, and every column then sits
+ * inside a step's interval rather than on its end.
+ */
+export interface RainColumn {
+  /** The step whose interval the column falls in. */
+  step: number;
+  /** Whether this column prints the step's total. */
+  own: boolean;
+  /** The interval's end, and its length in hours. */
+  end: number;
+  hours: number;
+}
+
+export function rainColumns(
+  times: readonly number[],
+  steps: readonly {
+    validTime: string;
+    precipIntervalHours?: readonly [number, number] | null;
+  }[],
+): (RainColumn | null)[] {
+  const slack = 60000;
+  const ends = steps.map((s) => Date.parse(s.validTime));
+  const out: (RainColumn | null)[] = times.map((t) => {
+    const k = ends.findIndex((end) => end >= t - slack);
+    if (k < 0) return null;
+    const span = steps[k].precipIntervalHours;
+    const length =
+      span && span[1] > span[0]
+        ? (span[1] - span[0]) * 3600000
+        : k > 0
+          ? ends[k] - ends[k - 1]
+          : ends.length > 1
+            ? ends[1] - ends[0]
+            : 3600000;
+    if (Math.abs(t - ends[k]) > slack && t <= ends[k] - length + slack)
+      return null;
+    return { step: k, own: false, end: ends[k], hours: Math.round(length / 3600000) };
+  });
+  // The latest column inside each interval prints it.
+  const printed = new Set<number>();
+  for (let i = out.length - 1; i >= 0; i--) {
+    const c = out[i];
+    if (!c || printed.has(c.step)) continue;
+    c.own = true;
+    printed.add(c.step);
+  }
+  return out;
+}

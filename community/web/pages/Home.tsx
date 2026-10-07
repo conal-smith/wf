@@ -12,6 +12,7 @@ import { tv } from "../../../ui/tv";
 import { NewThread, NewThreadPill } from "../components/NewThreadDialog";
 import { PageHead, dateline } from "../components/PageHead";
 import { ThreadList } from "../components/ThreadList";
+import { freshOf } from "../components/ThreadRow";
 import {
   useThreadFeed,
   type ChannelsState,
@@ -33,10 +34,25 @@ export const MEMBERS_SHOWN_FROM = 50;
 
 const grouped = new Intl.NumberFormat("en-IE");
 
-/** How many messages on the threads in hand the reader has not read. */
-export function newOnPage(state: FeedState): number {
-  if (state.status !== "ready") return 0;
-  return state.items.reduce((sum, thread) => sum + (thread.unread ?? 0), 0);
+/**
+ * What is new on the threads in hand, in the rows' own units: threads never
+ * opened, and replies since the last read on the rest. "3 new" summed across
+ * both would count an opening post as a reply. Null when nothing is.
+ */
+export function newOnPage(state: FeedState): string | null {
+  if (state.status !== "ready") return null;
+  let threads = 0;
+  let replies = 0;
+  for (const thread of state.items) {
+    const fresh = freshOf(thread);
+    if (fresh?.kind === "thread") threads += 1;
+    else if (fresh) replies += fresh.count;
+  }
+  const said = [
+    threads && `${threads} new ${threads === 1 ? "thread" : "threads"}`,
+    replies && `${replies} new ${replies === 1 ? "reply" : "replies"}`,
+  ].filter(Boolean);
+  return said.length ? said.join(" · ") : null;
 }
 
 /** "1,284 members", or nothing while there are too few to say so. */
@@ -82,15 +98,22 @@ export function Home({ channels, onPosted, pathname, search }: HomeProps) {
         figures={
           <>
             {!q && members}
-            {!q && members && fresh > 0 && " · "}
-            {fresh > 0 && (
+            {!q && members && fresh && " · "}
+            {fresh && (
               <PenLoop seed={7}>
-                <span className={styles.fresh()}>{fresh} new</span>
+                <span className={styles.fresh()}>{fresh}</span>
               </PenLoop>
             )}
           </>
         }
         title={q ? <span className={styles.query()}>“{q}”</span> : "Latest"}
+        // Signed out: what joining is for, said once and quietly, under the rule.
+        lede={
+          !q &&
+          auth.loaded &&
+          !auth.signedIn &&
+          "Reading is open to everyone. Sign in to post, follow threads and hear when someone replies."
+        }
       />
       <ThreadList
         state={feed.state}

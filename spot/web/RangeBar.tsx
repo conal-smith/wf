@@ -5,8 +5,10 @@
  * consensus as a dot and its gust as a tick. One glance down a column says how
  * sure the hour is and where it sits for this rider.
  */
+import type { Units } from "../../force5/src/units";
 import type { HourEnsemble, HourWind } from "../../mcp/api/forecast";
 import { tv } from "../../ui/tv";
+import { windIn } from "./spot";
 
 const styles = tv({
   slots: {
@@ -18,7 +20,8 @@ const styles = tv({
     gust: "stroke-chart-magenta",
     mean: "fill-ink",
     tick: "stroke-ink/40",
-    label: "fill-ink-muted font-mono text-eyebrow",
+    // Figures, not a label: the column head's capitals are not for them.
+    label: "fill-ink-muted font-mono text-eyebrow normal-case",
   },
 });
 
@@ -118,10 +121,18 @@ export function RangeBar({
   );
 }
 
-/** The bar's scale, for its column's head: 0, the floor and the sweet spot. */
-export function RangeAxis({ band }: { band: Band }) {
+/**
+ * The bar's scale, for its column's head: 0, the floor and the sweet spot.
+ * The floor and the sweet spot's low end are often only four knots apart,
+ * a dozen pixels, so their figures are not centred on their ticks but set
+ * away from each other: the floor's ends at its tick, the sweet spot's
+ * "14–24" starts at its own. The figures are in the reader's units, as the
+ * Wind column beside it is, whose head names them; the bar itself is drawn in
+ * knots underneath, which the reader never sees.
+ */
+export function RangeAxis({ band, units }: { band: Band; units: Units }) {
   const s = styles();
-  const marks = [0, band.min, band.sweetLow, band.sweetHigh];
+  const say = (knots: number) => Math.round(windIn(knots, units));
   return (
     <svg className={s.svg()} width={RANGE_WIDTH} height={20} aria-hidden="true">
       <rect
@@ -131,19 +142,30 @@ export function RangeAxis({ band }: { band: Band }) {
         width={x(band.sweetHigh) - x(band.sweetLow)}
         height={6}
       />
-      {marks.map((k, i) => (
-        <g key={i}>
-          <line className={s.tick()} x1={x(k)} x2={x(k)} y1={12} y2={18} />
-          <text
-            className={s.label()}
-            x={x(k) + (i === 1 ? -3 : i === 2 ? 3 : 0)}
-            y={9}
-            textAnchor="middle"
-          >
-            {i === 3 ? `${k} kn` : k}
-          </text>
-        </g>
+      {[0, band.min, band.sweetLow, band.sweetHigh].map((k, i) => (
+        <line
+          key={i}
+          className={s.tick()}
+          x1={x(k)}
+          x2={x(k)}
+          y1={12}
+          y2={18}
+        />
       ))}
+      <text className={s.label()} x={x(0)} y={9} textAnchor="start">
+        0
+      </text>
+      <text className={s.label()} x={x(band.min) - 2} y={9} textAnchor="end">
+        {say(band.min)}
+      </text>
+      <text
+        className={s.label()}
+        x={x(band.sweetLow) + 1}
+        y={9}
+        textAnchor="start"
+      >
+        {say(band.sweetLow)}–{say(band.sweetHigh)}
+      </text>
     </svg>
   );
 }

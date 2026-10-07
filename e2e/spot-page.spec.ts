@@ -295,9 +295,10 @@ test("an unknown spot says so and offers what it may have meant", async ({
   page,
 }) => {
   await page.goto("/spot/brandon-bay");
-  await expect(
-    page.getByText("No riding place called “brandon-bay”"),
-  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("No riding place at this address")).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByText("“brandon-bay”")).toBeVisible();
   await expect(page.locator('a[href="/spot/brandon"]')).toBeVisible();
   await page.goto("/spot");
   await expect(

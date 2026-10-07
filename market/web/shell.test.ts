@@ -33,6 +33,7 @@ import {
   Stars,
   starsOf,
   newestFresh,
+  notFoundStyles,
   tabStyles,
 } from "./components";
 import { shellStyles } from "./MarketApp";
@@ -102,6 +103,7 @@ const RECIPES = {
   sellerStyles,
   sellStyles,
   sharedStyles,
+  notFoundStyles,
   shellStyles,
   tabStyles,
 };
@@ -395,10 +397,25 @@ describe("S5: what the card does, and what it does not", () => {
     expect(out).toMatch(/^<a href="\/market\/listing\/l1"/);
     expect(out).toMatch(/class="[^"]*font-mono[^"]*tabular-nums[^"]*">.*€380/);
     expect(out).toContain("<h3");
-    expect(out).toContain("Castlegregory, Kerry");
+    // The town and the county, each in a span of its own: on a phone the town
+    // gives way and the county, the one a buyer filters on, stays whole.
+    expect(out).toMatch(/<span class="truncate">Castlegregory<\/span><span class="shrink-0">,\u00a0Kerry<\/span>/);
+    // The stars beside the condition say whose they are.
+    expect(out).toMatch(/>Seller<\/span><svg[^>]*aria-label="4.5 out of 5"/);
     // Two photos, so the count badge, and the seller's stars, said in words.
     expect(out).toContain("Photos:");
     expect(out).toContain('aria-label="4.5 out of 5"');
+  });
+
+  it("leaves out what the page around it already says", () => {
+    const listing = listingOf("active", { saved: true });
+    // The Saved tab: every card on it is saved.
+    const onSaved = html(createElement(ListingCard, { listing, hideSaved: true }));
+    expect(onSaved).not.toContain("Saved");
+    // The seller's own page: every card is theirs, and their rating heads it.
+    const onSeller = html(createElement(ListingCard, { listing, hideSeller: true }));
+    expect(onSeller).not.toContain(">Seller<");
+    expect(onSeller).not.toContain('aria-label="4.5 out of 5"');
   });
 
   it("badges a saved listing on paper, at the corner of the photograph", () => {
@@ -685,9 +702,9 @@ describe("S4: the sign-in gate", () => {
   });
 
   it("offers the action either way, and says which one it is", async () => {
-    expect(await asideAs("fionn")).toContain("Show contact details");
+    expect(await asideAs("fionn")).toContain("Contact seller");
     const out = await asideAs(null);
-    expect(out).toContain("Sign in to contact seller");
+    expect(out).toContain("Sign in to contact");
     // Offered, not hidden behind a sign-in: the save is drawn beside it too.
     expect(out).toContain("Save");
     expect(out).toContain("Share this listing");

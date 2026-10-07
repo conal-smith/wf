@@ -132,7 +132,10 @@ describe("ui/tv.ts: the shared states", () => {
     expect(css.lastIndexOf(GATE, kit)).toBeGreaterThan(-1);
 
     const reset = readFileSync(resolve(UI, "../src/styles.css"), "utf8");
-    const washes = [...reset.matchAll(/^(\s*)button:enabled:hover \{/gm)];
+    // In :where(), so a class that paints a button keeps its own hover.
+    const washes = [
+      ...reset.matchAll(/^(\s*):where\(button:enabled\):hover \{/gm),
+    ];
     expect(washes).toHaveLength(1);
     const at = washes[0].index!;
     const guard = reset.lastIndexOf(`${GATE} {`, at);

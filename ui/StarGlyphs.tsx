@@ -52,7 +52,11 @@ export type StarGlyphsProps = VariantProps<typeof starGlyphsStyles> & {
    * for a cell too narrow to hold five.
    */
   slots?: "five" | "potential";
-  /** What a screen reader hears. `starsLabel` by default. */
+  /**
+   * What a screen reader hears. `starsLabel` by default. An empty string says
+   * the words are already beside it (a button that names the day's stars):
+   * the stars are then decoration, hidden, not an image with no name.
+   */
   label?: string;
   className?: string;
 };
@@ -81,8 +85,9 @@ export function StarGlyphs({
       width={width}
       height={size}
       viewBox={`0 0 ${width} ${size}`}
-      role="img"
-      aria-label={label ?? starsLabel(stars, potential)}
+      {...(label === ""
+        ? { "aria-hidden": true }
+        : { role: "img", "aria-label": label ?? starsLabel(stars, potential) })}
     >
       {stars != null &&
         Array.from({ length: count }, (_, i) => {

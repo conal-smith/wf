@@ -139,7 +139,7 @@ test("unread is weight and a count, and a staff-only channel is a lock with word
   expect(await weight(/Wings/)).toBeGreaterThan(await weight(/Foils/));
 
   await expect(row(page, /Announcements/)).toHaveAccessibleName(
-    "Announcements staff posts only",
+    "Announcements Only the team starts threads here",
   );
   await expect(row(page, /Foils/)).toHaveAccessibleName("Foils");
 });

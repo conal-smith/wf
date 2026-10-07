@@ -42,6 +42,7 @@ import {
 import {
   clock,
   dayBest,
+  dayShort,
   nearestColumn,
   openingColumn,
   stripColumns,
@@ -717,13 +718,16 @@ export default function App() {
       strip.map((c) => c.time),
     );
     if (!best) return "";
-    if (!best.stars) return "no stars";
+    // Which day: the note is the selected day's best, and the dock may be
+    // showing any day of the fortnight.
+    const day = dayShort(selectedDay.noon);
+    if (!best.stars) return `${day}: no stars`;
     const r = pointHours[best.from].rating!;
     const span =
       best.from === best.to
         ? clock(strip[best.from].time)
         : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`;
-    return `${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m`;
+    return `${day} ${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m²`;
   }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
 
   /* ---- playing through the hours ---- */
@@ -987,7 +991,7 @@ export default function App() {
               </div>
             )}
             <div className="map-print">
-              <InfoPop label="Sources and small print" wide>
+              <InfoPop label="Sources and small print" wide side="above">
                 {sources}
               </InfoPop>
               <span className="map-model" data-run-state={staleness}>

@@ -30,6 +30,7 @@ import {
   ConfirmDialog,
   Field,
   LoadError,
+  NotFound,
   Notice,
   PageSkeleton,
   Price,
@@ -177,6 +178,13 @@ export default function ListingPage({ id }: { id: string }) {
   usePageTitle(listing ? listing.title : "Listing");
   const styles = listingStyles();
 
+  if (result.notFound)
+    return (
+      <NotFound
+        title="This listing has gone"
+        text="It may have sold, or the seller took it down. There is more gear in the listings."
+      />
+    );
   if (result.error) {
     return (
       <>
@@ -586,15 +594,18 @@ export function Aside({
               disabled={contactBusy || auth.provider === "none"}
               onClick={reveal}
             >
+              {/* Short enough to stay on one line beside Save and Share on a
+                  phone: the view's one filled action, never in two halves. */}
               {contactBusy
-                ? "Fetching details…"
+                ? "Fetching…"
                 : auth.signedIn
-                  ? "Show contact details"
-                  : "Sign in to contact seller"}
+                  ? "Contact seller"
+                  : "Sign in to contact"}
             </Button>
             <SaveButton
               saved={Boolean(listing.saved)}
               busy={saveBusy}
+              disabled={auth.provider === "none"}
               onToggle={toggleSave}
             />
             {shareButton}
@@ -605,6 +616,7 @@ export function Aside({
             <SaveButton
               saved={Boolean(listing.saved)}
               busy={saveBusy}
+              disabled={auth.provider === "none"}
               onToggle={toggleSave}
             />
             {shareButton}
@@ -612,8 +624,8 @@ export function Aside({
         )}
         {auth.provider === "none" && !listing.isOwner && (
           <p className={styles.quiet()}>
-            Sign-in is not configured on this build, so contact details are
-            hidden.
+            Sign-in is not available on this version of the site, so contact
+            details are hidden.
           </p>
         )}
         {error && <Notice kind="warn">{error}</Notice>}
@@ -640,7 +652,11 @@ export function Aside({
         </Link>
         <Kicker>
           {listing.seller.soldCount} sold · Since{" "}
-          {new Date(listing.seller.memberSince).getFullYear()}
+          {/* The month as well as the year, as the seller's own page says it. */}
+          {new Date(listing.seller.memberSince).toLocaleDateString("en-IE", {
+            month: "short",
+            year: "numeric",
+          })}
           {listing.seller.county ? ` · Co. ${listing.seller.county}` : ""}
         </Kicker>
       </section>
@@ -722,7 +738,10 @@ function ReviewSection({
   };
 
   const e: ReviewEligibility | null = state.data;
-  if (!e) return null;
+  // Nothing to rate before there has been any contact: a heading over one
+  // grey line of "not yet" only padded the page. Showing the seller's details
+  // reloads this (contactShown), and the section arrives with the form.
+  if (!e || e.reason === "no-enquiry") return null;
 
   return (
     <section
@@ -737,12 +756,7 @@ function ReviewSection({
           ? "Your review of this seller"
           : `Rate ${listing.seller.displayName}`}
       </SectionHeading>
-      {e.reason === "no-enquiry" ? (
-        <p className={styles.muted()}>
-          Show the seller's contact details first; then you can rate how the
-          sale went.
-        </p>
-      ) : e.reason === "profile-required" ? (
+      {e.reason === "profile-required" ? (
         <p className={styles.muted()}>
           <Link to={paths.me("profile")} className={linkStyles()}>
             Set up your profile
