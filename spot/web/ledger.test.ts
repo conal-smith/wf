@@ -32,11 +32,17 @@ describe("the worked example's ledger", () => {
                       rider,
                     )!;
                     const worked = ledger(hour, facing, rider)!;
-                    expect(
-                      worked.stars,
-                      JSON.stringify({ rider, hour, facing }),
-                    ).toBe(rated.stars);
-                    expect(worked.potential).toBe(rated.potential);
+                    // Asserted only where they differ: a message built and
+                    // two expectations made on every one of these hundred
+                    // thousand cases took the test past its timeout.
+                    if (
+                      worked.stars !== rated.stars ||
+                      worked.potential !== rated.potential
+                    ) {
+                      const where = JSON.stringify({ rider, hour, facing });
+                      expect(worked.stars, where).toBe(rated.stars);
+                      expect(worked.potential, where).toBe(rated.potential);
+                    }
                     checked++;
                   }
         }
