@@ -1204,6 +1204,30 @@ npm run preview
 
 Serve `dist/` through any static web host after building. No secrets or account provisioning is needed. Use HTTPS, compression and proper JS MIME types. MapLibre v6's ES-module worker is bundled with Vite's `?worker&url` import; serving its worker asset is essential.
 
+## Performance
+
+Two tools time the site as a visitor meets it, rather than as the preview serves it:
+
+```sh
+npm run build
+npm run perf:serve -- --dir dist --port 4180   # serves dist/ the way deploy/local/Caddyfile does
+npm run perf:audit -- --base http://127.0.0.1:4180 --out .perf/audit.json --shots .perf --clock 2026-10-05T09:00:00Z
+```
+
+`scripts/perf-serve.mjs` follows the Caddyfile: compression, the `.br`/`.gz` sidecars beside frames, `immutable` hashed assets and content-addressed data, revalidated manifests, byte ranges (the bathymetry is a PMTiles archive read a tile at a time) and the SPA fallback; `--api <origin>` forwards `/api` for the marketplace and community. `vite preview` compresses nothing, caches nothing and answers no ranges, so a page timed against it is timed against a host nobody deploys to.
+
+`scripts/perf-audit.mjs` drives real Chrome headless with its GPU (the map is WebGL; software rendering would time the emulator) under Lighthouse's two profiles — a desktop on a 10 Mbit/s line, and a mid-range phone on 4G at 150 ms, 1.6 Mbit/s and a CPU slowed four times — and reports the median of `--runs` loads of the map, cold and warm, and of the marketplace, community, AI and stars pages: TTFB, FCP, LCP, CLS, total blocking time, the map ready (every riding place on it with its rating), the dock ready, and the bytes and requests by kind. It then times the interactions a rider makes — stepping the forecast, switching model, opening a riding place, switching the dock's view, panning — as wall time and as the worst Event Timing entry (the lab stand-in for INP). `--clock` starts the page's clock inside the ingested run without stopping its timers. On a busy machine, run two builds a run at a time, alternating, so background load falls on both alike.
+
+What keeps the map quick, and what holds it there (`e2e/perf.spec.ts`):
+
+- **Its first requests start with the page.** On a map URL the page's head preloads the map's chunks (`preloadTheMap` in vite.config.ts) and also starts the map model's manifest and the riding places (`force5/src/boot.ts`); the map takes those responses rather than asking again once its code has run. The manifest goes through the same cache the model sweep reads, so it is downloaded and parsed once, not twice.
+- **No parse for a manifest that has not changed.** Every five minutes the sweep revalidates every wind manifest. One whose ETag has not moved reuses the parsed copy instead of parsing and validating megabytes of JSON again on the main thread; the open-tab run refresh expires a manifest rather than dropping it, to the same end.
+- **MapLibre and React are chunks of their own**, whose names do not change when the site does, so a deploy re-sends the map's few hundred kilobytes rather than its 1.3 MB.
+- **Marine bundles are read once per five minutes**, not once per spot: the tide and sea-temperature files and the tide curves are kept, and a spot change shows nothing of the last spot's station while the new one loads.
+- **Cheaper renders.** Date and time formatters are built once rather than per cell, the blend chart's ninety-odd model lines are not rebuilt on every mouse move, and a bare point's series reads the run's frames without pushing the map's own frames out of the cache.
+
+The manifests remain the heaviest thing a first visit downloads: about 2.5 MB compressed for the nine wind models, nearly all of it per-spot series for 146 places of which the reader looks at one. Splitting those series out of the manifests at ingest (a file per spot, or per region) is the change that would take most off a phone's first load.
+
 ## Files and data contract
 
 ```text
