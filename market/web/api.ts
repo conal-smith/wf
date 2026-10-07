@@ -92,7 +92,7 @@ export class MarketApi {
   async uploadPhoto(
     file: File,
     onProgress?: (fraction: number) => void,
-  ): Promise<PhotoInput & { previewUrl: string }> {
+  ): Promise<PhotoInput> {
     const image = await resizeImage(file);
     onProgress?.(0.2);
     const slot = await this.request<PresignResponse>("POST", "/uploads", {
@@ -106,7 +106,6 @@ export class MarketApi {
       key: slot.key,
       width: image.width,
       height: image.height,
-      previewUrl: URL.createObjectURL(image.blob),
     };
   }
 }

@@ -261,10 +261,13 @@ function MyListings({
   const active = data.listings.filter((l) => l.status === "active");
   const sold = data.listings.filter((l) => l.status === "sold");
 
-  const Row = ({ listing }: { listing: Listing }) => {
+  // A plain function, not a component declared in here: a component type
+  // made afresh each render remounts every row, which drops keyboard focus
+  // from "Mark as sold" the moment it is pressed.
+  const row = (listing: Listing) => {
     const enquiries = data.enquiries[listing.id] ?? 0;
     return (
-      <li className={styles.item()}>
+      <li key={listing.id} className={styles.item()}>
         <Link
           to={paths.listing(listing.id)}
           className={styles.itemMain()}
@@ -367,9 +370,7 @@ function MyListings({
         </SectionHeading>
         {active.length ? (
           <ul className={styles.list()}>
-            {active.map((l) => (
-              <Row key={l.id} listing={l} />
-            ))}
+            {active.map((l) => row(l))}
           </ul>
         ) : (
           <p className={styles.about()}>Nothing live right now.</p>
@@ -379,9 +380,7 @@ function MyListings({
         <section className={styles.group()} aria-labelledby="me-sold">
           <SectionHeading id="me-sold">Sold ({sold.length})</SectionHeading>
           <ul className={styles.list()}>
-            {sold.map((l) => (
-              <Row key={l.id} listing={l} />
-            ))}
+            {sold.map((l) => row(l))}
           </ul>
         </section>
       )}

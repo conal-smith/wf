@@ -1,5 +1,5 @@
 import { SearchX, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Figure,
@@ -119,10 +119,13 @@ export default function BrowsePage() {
   // The search box is typed into freely and only applied on submit or a pause.
   const [text, setText] = useState(query.q ?? "");
   useEffect(() => setText(query.q ?? ""), [query.q]);
+  // The pause applies the search through the newest `update`, which holds the
+  // newest query: a chip or county picked while typing must survive it.
+  const latestUpdate = useRef<(patch: Partial<ListingQuery>) => void>(() => {});
   useEffect(() => {
     if (text === (query.q ?? "")) return;
     const timer = window.setTimeout(
-      () => update({ q: text || undefined, page: 1 }),
+      () => latestUpdate.current({ q: text || undefined, page: 1 }),
       400,
     );
     return () => clearTimeout(timer);
@@ -134,6 +137,7 @@ export default function BrowsePage() {
     if (!("page" in patch)) next.page = 1;
     navigate(paths.browse(listingQueryToParams(next)), { replace: true });
   };
+  latestUpdate.current = update;
 
   const [minText, setMinText] = useState(
     query.minPriceCents != null ? String(query.minPriceCents / 100) : "",

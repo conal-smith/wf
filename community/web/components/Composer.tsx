@@ -153,13 +153,17 @@ export function Composer({
   // The previews are this page's to let go of.
   const held = useRef<Attached[]>([]);
   held.current = photos;
-  useEffect(
-    () => () => {
+  // An upload can land after the box has gone, when no state update will run
+  // to take its preview; it lets go of it itself.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       for (const photo of held.current)
         if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
-    },
-    [],
-  );
+    };
+  }, []);
 
   const uploading = photos.some((photo) => !photo.key);
   const ready = text.trim().length > 0 && !uploading && !busy;
@@ -238,12 +242,14 @@ export function Composer({
       setPhotos((now) => [...now, { id, previewUrl: null, key: null }]);
       upload(file).then(
         (done) =>
-          setPhotos((now) =>
-            now.some((p) => p.id === id)
-              ? now.map((p) => (p.id === id ? { ...p, ...done } : p))
-              : // Taken off while it was on its way up.
-                (URL.revokeObjectURL(done.previewUrl), now),
-          ),
+          !mounted.current
+            ? URL.revokeObjectURL(done.previewUrl)
+            : setPhotos((now) =>
+                now.some((p) => p.id === id)
+                  ? now.map((p) => (p.id === id ? { ...p, ...done } : p))
+                  : // Taken off while it was on its way up.
+                    (URL.revokeObjectURL(done.previewUrl), now),
+              ),
         (reason: unknown) => {
           setPhotos((now) => now.filter((p) => p.id !== id));
           setError(
