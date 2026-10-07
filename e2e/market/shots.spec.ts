@@ -75,7 +75,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
         baseline.featured.title,
       );
       await expect(
-        page.getByRole("button", { name: "Show contact details" }),
+        page.getByRole("button", { name: "Contact seller" }),
       ).toBeVisible();
     });
 
@@ -96,7 +96,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
     // nowhere else.
     await shoot("listing-contact", width, { as: BUYER }, async (page) => {
       await page.goto(`/market/listing/${baseline.reviewed.id}`);
-      await page.getByRole("button", { name: "Show contact details" }).click();
+      await page.getByRole("button", { name: "Contact seller" }).click();
       await expect(page.getByText("Contact Maeve Doyle")).toBeVisible();
       await expect(page.getByRole("link", { name: /WhatsApp/ })).toBeVisible();
     });
@@ -120,7 +120,7 @@ test("a listing, as a buyer: with photos, reviewed, with no photo, and sold", as
         baseline.featured.title,
       );
       await expect(
-        page.getByRole("button", { name: "Sign in to contact seller" }),
+        page.getByRole("button", { name: "Sign in to contact" }),
       ).toBeVisible();
     });
   }
