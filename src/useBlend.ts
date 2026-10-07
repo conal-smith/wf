@@ -7,6 +7,7 @@ import {
   type HourStats,
 } from "../force5/src/blend";
 import {
+  abortable,
   availableModels,
   waveModels,
   weatherModels,
@@ -87,13 +88,15 @@ export function useModelAvailability(
   busyNow.current = busy;
   useEffect(() => {
     const controller = new AbortController();
+    const commit = (result: ModelAvailability[]) =>
+      setModels((previous) =>
+        sameSweep(previous, result) ? previous : result,
+      );
     const sweep = () =>
       availableModels(controller.signal, entries)
         .then((result) => {
           if (controller.signal.aborted) return;
-          setModels((previous) =>
-            sameSweep(previous, result) ? previous : result,
-          );
+          commit(result);
           setResolved(true);
         })
         .catch(() => {
@@ -150,6 +153,50 @@ export function useMarineModels(enabled: boolean): ModelAvailability[] {
 const notPublished = (error: unknown) =>
   (error as { status?: number } | null)?.status === 404;
 
+/**
+ * The tide and sea-temperature bundles are one file each for the whole coast,
+ * so a spot change has no reason to download them again: they are kept for the
+ * same five minutes the forecast manifests are. A request is shared and made
+ * without the caller's signal, so a spot clicked past mid-request aborts only
+ * its own wait; a failure is not kept.
+ */
+const MARINE_TTL_MS = 5 * 60 * 1000;
+function kept<T>(load: () => Promise<T>) {
+  let hit: { at: number; value: Promise<T> } | null = null;
+  return (signal?: AbortSignal): Promise<T> => {
+    if (!hit || Date.now() - hit.at > MARINE_TTL_MS) {
+      const value = load();
+      hit = { at: Date.now(), value };
+      value.catch(() => {
+        if (hit?.value === value) hit = null;
+      });
+    }
+    return abortable(hit.value, signal);
+  };
+}
+const tideManifest = kept(() => loadTides());
+const seaManifest = kept(() => loadSeaTemperature());
+/** A station's curve, per manifest: the files are named by content. */
+const tideCurves = new WeakMap<
+  TideManifest,
+  Map<string, Promise<SpotTide | null>>
+>();
+function spotTide(
+  manifest: TideManifest,
+  spotId: string,
+  signal: AbortSignal,
+): Promise<SpotTide | null> {
+  let curves = tideCurves.get(manifest);
+  if (!curves) tideCurves.set(manifest, (curves = new Map()));
+  let curve = curves.get(spotId);
+  if (!curve) {
+    const loading = tideForSpot(manifest, spotId);
+    curves.set(spotId, (curve = loading));
+    loading.catch(() => curves!.delete(spotId));
+  }
+  return abortable(curve, signal);
+}
+
 export interface SeaTemperatureState {
   /** What the nearest reporting station measured, or null when none covers it. */
   observed: SpotSeaTemperature | null;
@@ -184,8 +231,9 @@ export function useSpotSeaTemperature(
       return;
     }
     const controller = new AbortController();
-    setState((previous) => ({ ...previous, loading: true }));
-    loadSeaTemperature(controller.signal)
+    // Another spot's station must not be shown under this one while it loads.
+    setState({ ...NO_SEA_TEMPERATURE, loading: true });
+    seaManifest(controller.signal)
       .then((manifest) => {
         if (controller.signal.aborted) return;
         const observed = seaTemperatureForSpot(manifest, spotId);
@@ -236,10 +284,11 @@ export function useSpotTide(spotId: string | undefined): TideState {
       return;
     }
     const controller = new AbortController();
-    setState((previous) => ({ ...previous, loading: true }));
+    // Nor another spot's tide curve, station or credit.
+    setState({ tide: null, manifest: null, error: null, loading: true });
     (async () => {
-      const manifest = await loadTides(controller.signal);
-      const tide = await tideForSpot(manifest, spotId, controller.signal);
+      const manifest = await tideManifest(controller.signal);
+      const tide = await spotTide(manifest, spotId, controller.signal);
       return { manifest, tide };
     })()
       .then(({ manifest, tide }) => {

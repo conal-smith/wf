@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { clearManifestCache, loadManifest } from "../force5/src/manifests";
+import { expireManifest, loadManifest } from "../force5/src/manifests";
 import { MAP_MODEL_IDS, loadModel, type ModelId } from "../force5/src/models";
 import {
   REVALIDATE_RETRY_MS,
@@ -44,7 +44,7 @@ export async function loadNewerRun(
   const id = current.model;
   // Only a model the map can reopen; anything else has no frames to swap.
   if (!isMapModel(id)) return null;
-  clearManifestCache(id);
+  expireManifest(id);
   const fresh = await loadManifest(id, signal);
   if (signal.aborted || fresh.runTime === current.runTime) return null;
   return loadModel(id, time, signal);
@@ -108,8 +108,14 @@ export default function useRunRefresh({
         const swap = await loadNewerRun(current, time, signal);
         if (!swap || signal.aborted) return;
         // The model may have been switched by hand while this was in flight; the
-        // run we loaded is then not the run on screen, so it is dropped.
-        if (latest.current.manifest?.model !== current.model) return;
+        // run we loaded is then not the run on screen, so it is dropped. So it
+        // is while a switch is still on its way: two transactions never overlap,
+        // and an "Updated to the … run" notice must not land over another model.
+        if (
+          latest.current.manifest?.model !== current.model ||
+          latest.current.switching
+        )
+          return;
         latest.current.onRun(swap);
       } catch (error) {
         // A background refresh is never the reader's problem: the forecast they

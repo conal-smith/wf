@@ -180,6 +180,54 @@ describe("manifest cache", () => {
     await expect(pending).rejects.toThrow();
     expect((await loadManifest("gfs")).model).toBe("gfs");
   });
+  it("does not parse a revalidated manifest again when its ETag has not moved", async () => {
+    const tagged = (body: string, etag: string) =>
+      new Response(body, { status: 200, headers: { ETag: etag } });
+    const json = JSON.stringify(windManifest({ model: "gfs" }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(tagged(json, '"a"'))
+      // Unchanged: the same validator, and a body that would not even parse.
+      .mockResolvedValueOnce(tagged("not json", '"a"'))
+      // A new run: a new validator, and its body is read.
+      .mockResolvedValueOnce(
+        tagged(
+          JSON.stringify(
+            windManifest({ model: "gfs", runTime: "2026-09-14T06:00:00Z" }),
+          ),
+          '"b"',
+        ),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const stale = () => Date.now() + MANIFEST_REVALIDATE_MS + 1;
+    const first = await loadManifest("gfs");
+    expect(await loadManifest("gfs", undefined, stale())).toBe(first);
+    const next = await loadManifest("gfs", undefined, stale() * 2);
+    expect(next).not.toBe(first);
+    expect(next.runTime).toBe("2026-09-14T06:00:00Z");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+  it("revalidates rather than trusting a cached copy", async () => {
+    const fetcher = vi.fn(async (_url: string, _init: RequestInit) =>
+      ok(windManifest({ model: "gefs" })),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    await loadManifest("gefs");
+    expect(fetcher.mock.calls[0][1]).toMatchObject({ cache: "no-cache" });
+  });
+  it("takes the response the page's head already asked for, once", async () => {
+    const early = Promise.resolve(ok(windManifest({ model: "harmonie" })));
+    vi.stubGlobal("window", {
+      __f5early: { "/weather/harmonie.json": early },
+    });
+    const fetcher = vi.fn(async () => ok(windManifest({ model: "harmonie" })));
+    vi.stubGlobal("fetch", fetcher);
+    expect((await loadManifest("harmonie")).model).toBe("harmonie");
+    expect(fetcher).not.toHaveBeenCalled();
+    clearManifestCache();
+    await loadManifest("harmonie");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it("loads a planned model as soon as its adapter publishes one", async () => {
     vi.stubGlobal(
       "fetch",

@@ -456,7 +456,18 @@ export function validateFrame(
 
 const cache = new Map<string, Frame>();
 const pending = new Map<string, Promise<Frame>>();
-export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
+/**
+ * One map frame, from an eight-frame cache shared by everything that reads
+ * frames. `keep: false` reads through the cache without filling it: a bare
+ * point's series walks every hour of the run, and keeping each would push the
+ * frame the map is drawing, and the one prefetched after it, out of the cache
+ * by the time the reader steps back to them.
+ */
+export function loadFrame(
+  manifest: Manifest,
+  index: number,
+  { keep = true }: { keep?: boolean } = {},
+): Promise<Frame> {
   const info = manifest.frames[index],
     url = forecastUrl(info.url);
   const found = cache.get(url);
@@ -465,9 +476,17 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
     cache.set(url, found);
     return Promise.resolve(validateFrame(found, manifest, info));
   }
+  const remember = (frame: Frame) => {
+    cache.set(url, frame);
+    if (cache.size > 8) cache.delete(cache.keys().next().value!);
+  };
   const inflight = pending.get(url);
   if (inflight)
-    return inflight.then((frame) => validateFrame(frame, manifest, info));
+    return inflight.then((frame) => {
+      // Joined a read-through request: the map still wants this one kept.
+      if (keep && !cache.has(url)) remember(frame);
+      return validateFrame(frame, manifest, info);
+    });
   const request = fetch(url, { signal: AbortSignal.timeout(20000) })
     .then(async (r) => {
       if (!r.ok)
@@ -479,8 +498,7 @@ export function loadFrame(manifest: Manifest, index: number): Promise<Frame> {
           ? decodeFrame(await r.arrayBuffer(), manifest, info)
           : await r.json();
       const frame = validateFrame(body, manifest, info);
-      cache.set(url, frame);
-      if (cache.size > 8) cache.delete(cache.keys().next().value!);
+      if (keep) remember(frame);
       return frame;
     })
     .finally(() => pending.delete(url));
@@ -521,17 +539,19 @@ export function freshness(
   if (now - Date.parse(m.runTime) > 18 * 3600000) return "stale";
   return "fresh";
 }
-export const timeLabel = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-IE", {
-    timeZone: "Europe/Dublin",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-export const dayLabel = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IE", {
-    timeZone: "Europe/Dublin",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+// Built once: a formatter costs tens of microseconds to construct and well
+// under one to use, and the dock labels several hundred cells per render.
+const TIME_LABEL = new Intl.DateTimeFormat("en-IE", {
+  timeZone: "Europe/Dublin",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const DAY_LABEL = new Intl.DateTimeFormat("en-IE", {
+  timeZone: "Europe/Dublin",
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+export const timeLabel = (iso: string) => TIME_LABEL.format(new Date(iso));
+export const dayLabel = (iso: string) => DAY_LABEL.format(new Date(iso));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   loadFrame,
   sample,
@@ -49,17 +49,34 @@ export function usePointSeries(
       : "";
   const named =
     manifest && point?.id ? manifest.spotForecasts[point.id] : undefined;
+  /** The hours already read for a key, so a retry asks only for the rest. */
+  const read = useRef<{
+    key: string;
+    values: (Wind | null)[];
+    done: boolean[];
+  }>({ key: "", values: [], done: [] });
 
   useEffect(() => {
     if (named || !manifest || !point) return;
     let cancelled = false;
     let next = 0;
+    // A retry keeps what it has: the table stays filled in, and only the hours
+    // that failed are fetched again rather than the whole run.
+    const again = read.current.key === key;
+    const result: (Wind | null)[] = again
+      ? [...read.current.values]
+      : manifest.frames.map(() => null);
+    const done: boolean[] = again
+      ? [...read.current.done]
+      : manifest.frames.map(() => false);
+    read.current = { key, values: result, done };
     // Read once, when the point is chosen: a series that restarted every time
     // the clock ticked would never finish.
-    const order = loadOrder(manifest.frames, Date.now());
-    const result: (Wind | null)[] = manifest.frames.map(() => null);
+    const order = loadOrder(manifest.frames, Date.now()).filter(
+      (i) => !done[i],
+    );
     let failures = 0;
-    setSamples({ key, values: result, failures: 0, pending: true });
+    setSamples({ key, values: [...result], failures: 0, pending: true });
     // One repaint a frame, not one per file. Every sample used to publish a new
     // array, and the dock rebuilt a hundred and more columns eighty-five times
     // over for a single click; the reader cannot see eighty-five paints anyway.
@@ -77,10 +94,11 @@ export function usePointSeries(
         const i = order[next++];
         try {
           result[i] = sample(
-            await loadFrame(manifest, i),
+            await loadFrame(manifest, i, { keep: false }),
             point.lon,
             point.lat,
           );
+          done[i] = true;
         } catch {
           failures++;
         }

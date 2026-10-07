@@ -2,6 +2,7 @@ import { defineConfig, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { OWN_BUNDLE_PATHS } from "./force5/src/siteNav";
+import { earlyFetches } from "./force5/src/boot";
 
 /**
  * The e2e build is a site of its own, served from a scratch tree.
@@ -35,14 +36,21 @@ const marketApi = process.env.MARKET_API_PROXY ?? "http://127.0.0.1:8787";
  * preload the map's chunk, the chunks it imports and its stylesheet, beside
  * the entry. They are the same URLs, with the same `crossorigin`, that Vite's
  * own preload asks for when the import runs, so nothing is fetched twice.
+ *
+ * They also start the map's own first two requests, its model's manifest and
+ * the riding places, which were otherwise asked for only once the map's chunk
+ * had arrived and run (force5/src/boot.ts); the map takes those responses
+ * rather than asking again.
  */
 function preloadTheMap(): Plugin {
   let base = "/";
+  let forecastBase = "/";
   return {
     name: "wingfoil:preload-the-map",
     apply: "build",
     configResolved(config) {
       base = config.base;
+      forecastBase = config.env.VITE_FORECAST_BASE_URL || config.base;
     },
     transformIndexHtml: {
       order: "post",
@@ -80,17 +88,23 @@ function preloadTheMap(): Plugin {
         ]);
         const urls = [...files, ...css].map((name) => `${base}${name}`);
         const paths = OWN_BUNDLE_PATHS.map((p) => p.toString()).join(",");
+        // As src/App.tsx and force5/src/urls.ts name them.
+        const first = [
+          `${forecastBase.replace(/\/?$/, "/")}weather/harmonie.json`,
+          `${base}spots.json`,
+        ];
         return [
           {
             tag: "script",
             injectTo: "head",
             children:
-              `if(![${paths}].some(function(p){return p.test(location.pathname)}))` +
+              `if(![${paths}].some(function(p){return p.test(location.pathname)})){` +
               `${JSON.stringify(urls)}.forEach(function(u){` +
               `var l=document.createElement("link");` +
               `l.crossOrigin="";l.href=u;` +
               `if(/\\.css$/.test(u)){l.rel="preload";l.as="style"}else l.rel="modulepreload";` +
-              `document.head.appendChild(l)})`,
+              `document.head.appendChild(l)});` +
+              `${earlyFetches(first)}}`,
           },
         ];
       },
@@ -103,7 +117,23 @@ function preloadTheMap(): Plugin {
 export default defineConfig({
   plugins: [react(), tailwindcss(), preloadTheMap()],
   publicDir: e2e ? ".e2e/public" : "public",
-  build: { outDir: e2e ? ".e2e/dist" : "dist" },
+  build: {
+    outDir: e2e ? ".e2e/dist" : "dist",
+    rollupOptions: {
+      output: {
+        // MapLibre and React change far less often than the site: in chunks of
+        // their own they stay in the browser's cache across a deploy, instead
+        // of being downloaded again inside a map chunk whose hash moved.
+        manualChunks(id) {
+          // Code only: a stylesheet placed in a chunk is loaded with it.
+          if (id.endsWith(".css")) return;
+          if (id.includes("/node_modules/maplibre-gl/")) return "maplibre";
+          if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id))
+            return "react";
+        },
+      },
+    },
+  },
   server: { proxy: { "/api": { target: marketApi, changeOrigin: true } } },
   preview: { proxy: { "/api": { target: marketApi, changeOrigin: true } } },
 });
