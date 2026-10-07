@@ -10,6 +10,7 @@ import {
   dayNames,
   dayWindow,
   daySun,
+  foldText,
   dublinDate,
   dublinMidnight,
   goodWindArcs,
@@ -228,6 +229,32 @@ describe("days", () => {
     expect(after).toHaveLength(5);
     expect(darkRuns(rows.slice(0, 1)).light).toEqual([]);
   });
+
+  it("names the folds by the sun the stars are rated by, not by the rows", () => {
+    const rows = spotRows(friday, now, 270, rider);
+    const { before, after } = darkRuns(rows);
+    const sun = {
+      firstLight: Date.parse("2026-10-09T06:21:00Z"),
+      sunrise: Date.parse("2026-10-09T06:55:00Z"),
+      sunset: Date.parse("2026-10-09T17:59:00Z"),
+      lastLight: Date.parse("2026-10-09T18:33:00Z"),
+    };
+    expect(foldText("before", before, sun, true)).toBe("Before sunrise 07:55");
+    expect(foldText("after", after, sun, true)).toBe("After sunset 18:59");
+    // Late today, nothing but night left: not "dark till midnight".
+    expect(foldText("before", after, sun, false)).toBe(
+      "Dark for the rest of the day",
+    );
+    // With no sun to go by, the rows' own edges.
+    const none = {
+      firstLight: null,
+      sunrise: null,
+      sunset: null,
+      lastLight: null,
+    };
+    expect(foldText("before", before, none, true)).toBe("Dark till 08:00");
+    expect(foldText("after", after, none, true)).toBe("Dark from 20:00");
+  });
 });
 
 describe("tide", () => {
@@ -347,6 +374,27 @@ describe("the day's window and the pen's note", () => {
     expect(clock(window.to)).toBe("17:00");
     expect(windowHours(window)).toBe("13–16");
     expect(window.tillDark).toBe(false);
+  });
+
+  it("says a one-hour window as a time, not a bare figure", () => {
+    const window = { ...dayWindow(rowsFor(20))! };
+    window.to = window.from + HOUR;
+    expect(windowHours(window)).toBe("13:00");
+  });
+
+  it("ends a window at last light, not at the end of a three-hour row", () => {
+    const rows = spotRows(
+      [12, 15, 18].map((h) => hour(`2026-10-11T${h}:00:00Z`, 16, true, 225)),
+      Date.parse("2026-10-11T06:00:00Z"),
+      270,
+      rider,
+      // Made three-hourly by hand, as rows from 72 hours on are.
+    ).map((row) => ({ ...row, step: 3 }));
+    const lastLight = Date.parse("2026-10-11T18:29:00Z");
+    expect(clock(dayWindow(rows)!.to)).toBe("22:00");
+    const window = dayWindow(rows, { lastLight })!;
+    expect(window.to).toBe(lastLight);
+    expect(windowHours(window)).toBe("13–19");
   });
 
   it("picks the week's best by stars, then length", () => {

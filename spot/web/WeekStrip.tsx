@@ -67,12 +67,15 @@ export function WeekStrip({
                 {names.short}
                 <span className={s.date()}>{names.date.split(" ")[0]}</span>
               </span>
-              <StarGlyphs
-                stars={day.window ? day.window.stars : 0}
-                potential={day.window ? day.window.potential : day.potential}
-                size={8}
-                label=""
-              />
+              {/* The button's own label says the stars; the glyphs are for
+                  the eye only, not an image with no name. */}
+              <span className="flex" aria-hidden="true">
+                <StarGlyphs
+                  stars={day.window ? day.window.stars : 0}
+                  potential={day.window ? day.window.potential : day.potential}
+                  size={8}
+                />
+              </span>
               {day.window ? (
                 <span className={s.hours()}>{windowHours(day.window)}</span>
               ) : (

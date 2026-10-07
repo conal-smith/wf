@@ -10,7 +10,7 @@
  * clients as ruled boxes with one filled action between them, and the address
  * and the config in the mono face, as figures are.
  */
-import { Bot, Check, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Bot, Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { SiteMenu } from "../../force5/src/SiteMenu";
 import { API_ROOT } from "../../shared/web/http";
@@ -43,8 +43,13 @@ const styles = tv({
     page: "mx-auto flex w-full max-w-form flex-1 flex-col px-safe-6 max-wide:px-safe-3",
     main: "flex flex-col gap-8 pt-5 pb-12",
     intro: "flex flex-col gap-3",
-    lead: "m-0 font-body text-lead font-normal text-ink-2 italic",
-    facts: ["m-0 flex flex-wrap gap-x-4 gap-y-1 text-ink-muted", MONO_LABEL],
+    lead: "m-0 font-body text-lead font-normal text-pretty text-ink-2 italic",
+    // Each fact on its own line on a phone: wrapped side by side, "Every
+    // model" and "The chance it rides" read as one phrase.
+    facts: [
+      "m-0 flex flex-wrap gap-x-4 gap-y-1 text-ink-muted max-wide:flex-col",
+      MONO_LABEL,
+    ],
     section: "flex flex-col gap-3",
     clients: "grid grid-cols-2 gap-3 max-wide:grid-cols-1",
     client: "flex flex-col gap-2",
@@ -53,9 +58,17 @@ const styles = tv({
     where: "m-0 flex flex-wrap items-baseline gap-2",
     path: "font-mono text-caption text-ink-muted",
     actions: "mt-auto flex flex-wrap items-center gap-2 pt-1",
-    code: "m-0 overflow-x-auto border-0 border-l-3 border-ink bg-sunken px-3 py-2 font-mono text-caption whitespace-pre text-ink",
-    row: "flex items-center gap-2",
-    rowCode: "min-w-0 flex-1",
+    // On a phone a command is wider than the screen, and a box that scrolls
+    // sideways with no bar showing reads as a command cut off: there it wraps,
+    // keeping its indents, and breaks a long address where it must.
+    code: [
+      "m-0 overflow-x-auto border-0 border-l-3 border-ink bg-sunken px-3 py-2 font-mono text-caption whitespace-pre text-ink",
+      "max-wide:whitespace-pre-wrap max-wide:wrap-anywhere",
+    ],
+    // The copy button beside the line, or over it on a phone, where the
+    // line needs the whole width.
+    row: "flex items-center gap-2 max-wide:flex-col-reverse max-wide:items-end",
+    rowCode: "min-w-0 flex-1 max-wide:self-stretch",
     prompts: "m-0 flex list-none flex-col p-0",
     prompt:
       "border-0 border-b border-line py-2.5 font-body text-prose text-ink-2 italic",
@@ -114,6 +127,13 @@ export default function AiApp() {
           >
             <MastheadMark section="AI" />
           </a>
+          {/* The way back, as the spot pages give it. */}
+          <span className={mastheadStyles().actions()}>
+            <Button variant="link" size="sm" href="/" data-back-to-map>
+              <ArrowLeft size={13} strokeWidth={1.5} aria-hidden="true" />
+              <span>Chart</span>
+            </Button>
+          </span>
         </Masthead>
 
         <main className={s.main()}>
