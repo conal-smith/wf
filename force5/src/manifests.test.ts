@@ -110,12 +110,12 @@ describe("model registry", () => {
       [
         ["harmonie", "HARMONIE", "2 km"],
         ["icon-eu", "ICON-EU", "6.5 km"],
-        ["ecmwf", "ECMWF", "15 days"],
-        ["gfs", "GFS", "0.25° · 16 days"],
-        ["gefs", "GEFS", "31 members"],
-        ["arpege", "ARPEGE", "0.1°"],
+        ["ecmwf", "ECMWF", "25 km · 15 days"],
+        ["gfs", "GFS", "25 km · 16 days"],
+        ["gefs", "GEFS", "25 km · 31 members"],
+        ["arpege", "ARPEGE", "11 km"],
         ["arome", "AROME", "2.5 km"],
-        ["aifs", "AIFS", "0.25° · 15 days"],
+        ["aifs", "AIFS", "25 km · 15 days"],
       ],
     );
   });

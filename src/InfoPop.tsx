@@ -11,18 +11,23 @@ import { createPortal } from "react-dom";
 /**
  * The small print, behind an "i": sources, caveats and what a figure means,
  * in a box that opens under its button (or over it, where there is no room)
- * and closes on Escape or a tap anywhere else.
+ * and closes on Escape or a tap anywhere else. A button at the foot of the
+ * chart says `side="above"`: below it is the dock, which has room for the box
+ * only by covering the forecast the box is about.
  */
 export function InfoPop({
   label,
   children,
   className = "",
   wide = false,
+  side = "below",
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   wide?: boolean;
+  /** Where the box goes when it fits both ways. */
+  side?: "below" | "above";
 }) {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(
@@ -44,12 +49,13 @@ export function InfoPop({
       Math.max(8, r.left + r.width / 2 - w / 2),
       window.innerWidth - w - 8,
     );
-    const top =
-      r.bottom + h + 8 < window.innerHeight
-        ? r.bottom + 6
-        : Math.max(8, r.top - h - 6);
+    const fitsBelow = r.bottom + h + 8 < window.innerHeight;
+    const fitsAbove = r.top - h - 6 >= 8;
+    const top = (side === "above" ? !fitsAbove && fitsBelow : fitsBelow)
+      ? r.bottom + 6
+      : Math.max(8, r.top - h - 6);
     setPlace({ left, top });
-  }, [open]);
+  }, [open, side]);
 
   useEffect(() => {
     if (!open) return;

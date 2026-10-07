@@ -370,14 +370,22 @@ export default function BlendChart({
               ? null
               : arrow(angle, centres[index], y(median[index]!)),
           )}
+          {/* Now, in ink and named: the red line through the strip is the
+              hour the map shows, and two unlabelled red lines read as one
+              thing drawn twice. */}
           {nowX !== null && (
-            <line
-              className="chart-now"
-              x1={nowX}
-              x2={nowX}
-              y1="0"
-              y2={height}
-            />
+            <g className="chart-now-mark">
+              <line
+                className="chart-now"
+                x1={nowX}
+                x2={nowX}
+                y1="12"
+                y2={height}
+              />
+              <text className="chart-now-label" x={nowX} y="9">
+                now
+              </text>
+            </g>
           )}
           {hover !== null && hovered && hovered.n > 0 && (
             <line

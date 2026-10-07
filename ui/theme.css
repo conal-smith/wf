@@ -27,11 +27,11 @@
  * an element, as it does everywhere else in the site's CSS. Nothing that is
  * there today changes, because no element carries a utility class yet.
  *
- * One rule in that reset still outranks a plain variant:
- * `button:enabled:hover` sets a background, and an element and two
- * pseudo-classes beat a class and one. The kit writes a hover
- * `not-disabled:hover:…`, which outranks it in turn and reads the same on a
- * link, which is never disabled (ui/tv.ts). The reset's other two states,
+ * The reset's hover wash is `:where(button:enabled):hover`: a background at
+ * the weight of one pseudo-class, so any class that paints a button, and
+ * its own hover, outranks it (src/styles.css says why it was lowered). The
+ * kit writes a hover `not-disabled:hover:…`, which outranks it too and reads
+ * the same on a link, which is never disabled (ui/tv.ts). The reset's other two states,
  * `button:focus-visible` (and the same on a link and an input, the map's
  * ring) and `button:disabled` (a fade), are an element and one pseudo-class:
  * a plain `focus-visible:…` or `disabled:…` already beats them, and the kit

@@ -94,9 +94,17 @@ function Entry({
       />
       <button type="button" className="fv-go" onClick={() => onGo(spot)}>
         <b>{spot.name}</b>
-        <span>
+        {/* The day's best and its wind. It used to end in the visit count,
+            "· 1×", which read as nothing in particular; the count still
+            orders the list, and the title says it. */}
+        <span
+          title={
+            seen
+              ? `Opened ${seen.count === 1 ? "once" : `${seen.count} times`} on this device`
+              : undefined
+          }
+        >
           {[when, wind].filter(Boolean).join(" · ")}
-          {seen && <i> · {seen.count}×</i>}
         </span>
       </button>
       {best && ratings ? (
@@ -206,7 +214,7 @@ export default function SidePanel(props: Props) {
               <li className="none">Tap the red star on a spot to keep it here.</li>
             )}
           </ul>
-          <h4>You look at · best {dayName}</h4>
+          <h4>Often opened · best {dayName}</h4>
           <ul className="fvl">
             {looked.length ? (
               looked.map((v) => entry(v.id, v))
@@ -237,15 +245,15 @@ export default function SidePanel(props: Props) {
             <dt>
               <KeyLight stars={5} />
             </dt>
-            <dd>
-              <StarGlyphs stars={5} size={9} />
-            </dd>
+            <dd>Five stars, in magenta</dd>
             <dt>
               <KeyLight stars={2} />
             </dt>
-            <dd>
-              <StarGlyphs stars={2} size={9} /> or fewer · dashed: none
-            </dd>
+            <dd>One or two stars: a plain ring</dd>
+            <dt>
+              <KeyLight stars={0} />
+            </dt>
+            <dd>Dashed: no stars at this hour</dd>
             <dt>
               <KeyLight stars={1} struck />
             </dt>
@@ -266,7 +274,7 @@ export default function SidePanel(props: Props) {
                 <path d="M-14 4 C-10 -9 10 -10 13 3 C11 10 -10 11 -14 4Z" strokeWidth="1.6" />
               </svg>
             </dt>
-            <dd>Best window</dd>
+            <dd>Best window: two stars or more</dd>
           </dl>
           <h4>Wash and coloured arrows</h4>
           <KnotScale stops={rideStops} rider={rider} />

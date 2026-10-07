@@ -133,6 +133,9 @@
   min-width: 0;
   padding: 3px 8px 5px;
   border-left: 1px solid var(--color-line);
+  /* Each day's block says as much as its own width holds: see the
+     container rules at the end of the file. */
+  container-type: inline-size;
 }
 .sc-day:first-child {
   border-left: 0;
@@ -278,6 +281,20 @@
   white-space: nowrap;
   color: var(--color-ink-muted);
 }
+.dk-labs .dk-lab-blend {
+  position: relative;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+/* The blend's speeds, against its gridlines, at the label column's edge. */
+.dk-lab-blend b {
+  position: absolute;
+  right: 4px;
+  transform: translateY(-50%);
+  font: 500 8.5px var(--font-mono);
+  letter-spacing: 0;
+  color: var(--color-ink-muted);
+}
 .dk-labs small {
   font-size: 8px;
   letter-spacing: 0.04em;
@@ -330,12 +347,14 @@ table.tt {
 }
 .tt tr.tt-day td {
   height: 20px;
-  overflow: visible;
+  /* Clipped to its own day, never run into the next one's heading; clip and
+     not hidden, which would make the cell a scroller and unstick the name. */
+  overflow: clip;
   text-align: left;
   cursor: default;
   border-bottom: 1px solid var(--color-line);
 }
-.tt tr.tt-day td span {
+.tt tr.tt-day td > span {
   position: sticky;
   left: 6px;
   display: inline-flex;
@@ -349,14 +368,46 @@ table.tt {
   font: 650 13px var(--font-display);
   color: var(--color-ink);
 }
-.tt tr.tt-day td i {
+.tt tr.tt-day td i,
+.tt tr.tt-day td em {
   font-style: normal;
+}
+.tt tr.tt-day td em {
+  display: inline-flex;
+}
+.tt tr.tt-day td small {
+  font-size: inherit;
+}
+/* What a narrow day's heading leaves out (ForecastDock's `fit`). */
+.tt tr.tt-day td.fit-stars i,
+.tt tr.tt-day td.fit-name i,
+.tt tr.tt-day td.fit-name em,
+.tt tr.tt-day td.fit-day i,
+.tt tr.tt-day td.fit-day em,
+.tt tr.tt-day td.fit-day small {
+  display: none;
+}
+.tt tr.tt-day td.fit-day > span {
+  padding: 0 3px;
 }
 .tt tr.tt-hour td {
   height: 18px;
   font-weight: 600;
   border-bottom: 1px solid var(--color-ink);
-  scroll-snap-align: center;
+}
+/* The snap marks: zero-height, one per hour, where the scroll rests. */
+.tt-snaps {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0;
+}
+.tt-snaps i {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  scroll-snap-align: start;
 }
 .tt tr.tt-stars td,
 .tt tr.tt-wind td,
@@ -488,25 +539,15 @@ table.tt {
 .tide-dot {
   fill: var(--color-chart-magenta);
 }
-/* The cursor: the hour the map shows, fixed in the middle of the strip. */
+/* The cursor: the hour the map shows, in the middle of the strip through the
+   week and out at the ends (ForecastDock places it as the strip scrolls). */
 .dk-cur {
   position: absolute;
-  top: 0;
   bottom: 0;
   width: 0;
   border-left: 1.5px solid color-mix(in srgb, var(--color-pen) 85%, transparent);
   pointer-events: none;
   z-index: 3;
-}
-.dk-cur span {
-  position: absolute;
-  top: -1px;
-  left: 4px;
-  padding: 0 4px;
-  background: var(--color-pen);
-  color: var(--color-ink-inverse);
-  font: 600 9.5px var(--font-mono);
-  white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   .pen-loop {
@@ -646,6 +687,9 @@ table.tt {
 .scrub.many .sc-day {
   padding: 3px 5px 5px;
 }
+.scrub.many .sc-h {
+  gap: 4px;
+}
 
 /* ---------- the rows below the fold ---------- */
 .dk-more {
@@ -718,6 +762,10 @@ table.tt {
     transparent
   );
 }
+/* An hour inside an interval whose total another column prints. */
+.rain-cell.is-part {
+  color: var(--color-ink-muted);
+}
 .tt .proxy {
   color: var(--color-ink-muted);
 }
@@ -747,6 +795,33 @@ table.tt {
 @media (max-width: 720px) {
   /* The period is in the cell's title on a phone: the height and the arrow fit. */
   .wave-cell small {
+    display: none;
+  }
+}
+
+/* The day slider's blocks, fitted to their own width rather than the page's:
+   a fortnight at 1440px leaves each about eighty pixels, which held the name,
+   the date and five stars only by clipping the last of them. The date goes
+   first (the strip's headings and the hand carry it), then the weekday's
+   third letter, then the stars. */
+@container (max-width: 92px) {
+  .scrub.many .sc-h .dt {
+    display: none;
+  }
+}
+@container (max-width: 72px) {
+  .scrub.many .sc-h .d3 {
+    display: none;
+  }
+}
+@container (max-width: 60px) {
+  .scrub.many .sc-h .sn {
+    display: none;
+  }
+}
+/* A week: the "best …" goes before the stars do. */
+@container (max-width: 170px) {
+  .sc-h .bw {
     display: none;
   }
 }
