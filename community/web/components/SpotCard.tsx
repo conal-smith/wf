@@ -347,6 +347,29 @@ type SpotSeries = Manifest["spotForecasts"][string];
  * a page left open, and "now" on it has to move with the clock, or stand down
  * once the run has stopped covering it.
  */
+/**
+ * The model the map opens on, asked for as the map asks — revalidated, never a
+ * stale copy — but once per five minutes for the page rather than once per
+ * card: a thread list or a long thread can name the same spot many times.
+ */
+const MANIFEST_TTL_MS = 5 * 60 * 1000;
+let harmonie: { at: number; manifest: Promise<Manifest | null> } | null = null;
+function harmonieManifest(): Promise<Manifest | null> {
+  if (harmonie && Date.now() - harmonie.at < MANIFEST_TTL_MS)
+    return harmonie.manifest;
+  const manifest = fetch(forecastUrl("weather/harmonie.json"), {
+    cache: "no-cache",
+  })
+    .then((reply) => (reply.ok ? (reply.json() as Promise<Manifest>) : null))
+    .catch(() => null);
+  harmonie = { at: Date.now(), manifest };
+  // A failure is not kept: the next card asks again.
+  void manifest.then((m) => {
+    if (!m && harmonie?.manifest === manifest) harmonie = null;
+  });
+  return manifest;
+}
+
 export function useSpotCard(
   spotId: string | null,
   now: number,
@@ -376,21 +399,17 @@ export function useSpotCard(
     };
   }, [spotId]);
 
+  // Only for a spot the map lists: a thread naming a place the map does not
+  // know has no reading to show, and no reason to download the forecast.
   const knownId = spot?.id ?? null;
   useEffect(() => {
     setSeries(null);
     if (!knownId) return;
     let current = true;
-    // The model the map opens on, asked for as the map asks: never a stale copy.
-    fetch(forecastUrl("weather/harmonie.json"), { cache: "no-cache" })
-      .then((reply) => (reply.ok ? reply.json() : null))
-      .then(
-        (manifest: Manifest | null) => {
-          if (current && manifest)
-            setSeries(manifest.spotForecasts?.[knownId] ?? null);
-        },
-        () => {},
-      );
+    harmonieManifest().then((manifest) => {
+      if (current && manifest)
+        setSeries(manifest.spotForecasts?.[knownId] ?? null);
+    });
     return () => {
       current = false;
     };

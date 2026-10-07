@@ -344,13 +344,19 @@ export function useThread(id: string) {
 
   const reload = useCallback(() => setAsked((n) => n + 1), []);
 
-  /** Staff, in place. What changed is read again rather than guessed. */
+  /**
+   * Staff, in place. What changed is read again rather than guessed — but only
+   * the head, which is all a pin or a lock changes: reloading the whole thread
+   * would put it back to loading and unmount the reply being written.
+   */
   const moderate = useCallback(
     async (action: ThreadAction, reason?: string) => {
       await api.moderateThread(id, action, reason);
-      if (action !== "remove") reload();
+      if (action === "remove") return;
+      const view = await api.getThread(id);
+      change((ready) => ({ ...ready, thread: view.thread }));
     },
-    [api, id, reload],
+    [api, id, change],
   );
 
   return {

@@ -574,16 +574,22 @@ function PhotoUploader({
   latest.current = photos;
   const styles = sellStyles();
 
-  useEffect(
-    () => () =>
-      photos.forEach(
-        (p) => p.url.startsWith("blob:") && URL.revokeObjectURL(p.url),
-      ),
-    [],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+  const release = (p: PhotoItem) =>
+    p.url.startsWith("blob:") && URL.revokeObjectURL(p.url);
+  // The photos as they are on leaving, not as they were on arriving.
+  useEffect(() => () => latest.current.forEach(release), []);
 
+  /**
+   * Every change goes through here, which moves `latest` at once rather than
+   * on the next render: two uploads that finish before React re-renders must
+   * each patch the other's result, not the list from before either of them.
+   */
+  const commit = (next: PhotoItem[]) => {
+    latest.current = next;
+    onChange(next);
+  };
   const patch = (localId: string, update: Partial<PhotoItem>) =>
-    onChange(
+    commit(
       latest.current.map((p) =>
         p.localId === localId ? { ...p, ...update } : p,
       ),
@@ -597,7 +603,7 @@ function PhotoUploader({
       url: URL.createObjectURL(file),
       busy: true,
     }));
-    onChange([...latest.current, ...items]);
+    commit([...latest.current, ...items]);
     await Promise.all(
       items.map(async (item, i) => {
         try {
@@ -615,13 +621,15 @@ function PhotoUploader({
     );
   };
 
-  const remove = (localId: string) =>
-    onChange(latest.current.filter((p) => p.localId !== localId));
+  const remove = (localId: string) => {
+    latest.current.filter((p) => p.localId === localId).forEach(release);
+    commit(latest.current.filter((p) => p.localId !== localId));
+  };
   const move = (index: number, delta: number) => {
     const next = [...latest.current];
     const [item] = next.splice(index, 1);
     next.splice(index + delta, 0, item);
-    onChange(next);
+    commit(next);
   };
 
   const drop = (e: DragEvent) => {

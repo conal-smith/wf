@@ -171,6 +171,9 @@ export default function ListingPage({ id }: { id: string }) {
   const auth = useMarketAuth();
   const result = useAsync(() => api.getListing(id), [api, id, auth.userId]);
   const listing = result.data;
+  // Bumped when the buyer reveals the seller's contact details: that is what
+  // makes them eligible to review, so the review section asks again.
+  const [contactShown, setContactShown] = useState(0);
   usePageTitle(listing ? listing.title : "Listing");
   const styles = listingStyles();
 
@@ -213,7 +216,11 @@ export default function ListingPage({ id }: { id: string }) {
         <div className={styles.gallery()}>
           <Gallery listing={listing} />
         </div>
-        <Aside listing={listing} onChange={(l) => result.setData(l)} />
+        <Aside
+          listing={listing}
+          onChange={(l) => result.setData(l)}
+          onContactShown={() => setContactShown((n) => n + 1)}
+        />
         <div className={styles.body()}>
           <section
             className={styles.section()}
@@ -243,7 +250,7 @@ export default function ListingPage({ id }: { id: string }) {
             <p className={styles.prose()}>{listing.description}</p>
           </section>
           {auth.signedIn && !listing.isOwner && (
-            <ReviewSection listing={listing} />
+            <ReviewSection listing={listing} contactShown={contactShown} />
           )}
         </div>
       </article>
@@ -355,9 +362,11 @@ export function gated(
 export function Aside({
   listing,
   onChange,
+  onContactShown,
 }: {
   listing: Listing;
   onChange: (l: Listing) => void;
+  onContactShown?: () => void;
 }) {
   const api = useApi();
   const auth = useMarketAuth();
@@ -376,6 +385,7 @@ export function Aside({
       setError("");
       try {
         setContact(await api.getContact(listing.id));
+        onContactShown?.();
       } catch (e) {
         setError(errorMessage(e));
       } finally {
@@ -663,11 +673,17 @@ export function Aside({
   );
 }
 
-function ReviewSection({ listing }: { listing: Listing }) {
+function ReviewSection({
+  listing,
+  contactShown,
+}: {
+  listing: Listing;
+  contactShown: number;
+}) {
   const api = useApi();
   const state = useAsync(
     () => api.reviewEligibility(listing.id),
-    [api, listing.id],
+    [api, listing.id, contactShown],
   );
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");

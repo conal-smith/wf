@@ -76,10 +76,12 @@ function Page({ route }: { route: ReturnType<typeof matchRoute> }) {
       return <BrowsePage />;
     case "listing":
       return <ListingPage id={route.id} />;
+    // Keyed, so leaving one listing's edit form for a new listing (or another
+    // listing's) starts a fresh form rather than reusing the last one's fields.
     case "sell":
-      return <SellPage />;
+      return <SellPage key="new" />;
     case "edit":
-      return <SellPage editId={route.id} />;
+      return <SellPage key={`edit:${route.id}`} editId={route.id} />;
     case "me":
       return <MePage tab={route.tab} />;
     case "seller":

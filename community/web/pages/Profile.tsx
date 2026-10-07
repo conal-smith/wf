@@ -322,6 +322,10 @@ function Own({ onSaved }: { onSaved: () => void }) {
   const styles = profileStyles();
   const [user, setUser] = useState<User | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // A save that failed is said under the switch; it must not replace the
+  // section the way a settings load that failed does, or there is no switch
+  // left to try again with.
+  const [saveFailure, setSaveFailure] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -359,11 +363,11 @@ function Own({ onSaved }: { onSaved: () => void }) {
 
   const setAutoFollow = async (on: boolean) => {
     setSaving(true);
-    setFailure(null);
+    setSaveFailure(null);
     try {
       setUser(await api.updateMe(profileInput(user, { autoFollow: on })));
     } catch (e) {
-      setFailure(
+      setSaveFailure(
         e instanceof Error ? e.message : "That did not work. Try again.",
       );
     } finally {
@@ -405,6 +409,7 @@ function Own({ onSaved }: { onSaved: () => void }) {
           disabled={saving}
           onChange={setAutoFollow}
         />
+        {saveFailure && <Notice kind="warn">{saveFailure}</Notice>}
       </Pane>
     </>
   );
