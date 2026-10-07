@@ -43,9 +43,18 @@ button:disabled {
   cursor: default;
 }
 /* Every hover on the site is held to a mouse or a trackpad, as the kit's
-   `hover:` is (ui/theme.css): a finger's tap leaves one behind. */
+   `hover:` is (ui/theme.css): a finger's tap leaves one behind.
+   The wash is for a bare button. Written as `button:enabled:hover` it
+   weighed an element and two pseudo-classes, more than a class and an
+   element, so it beat every dark round button's own hover and fill
+   (`.map-print .info-i`, `.play:hover`, `.dk-settings:hover`): cream laid
+   under a cream glyph, and the button went blank under the pointer. In
+   :where() the element and :enabled weigh nothing, leaving one
+   pseudo-class: still over the bare `button { background: none }` above,
+   under any class that paints a button itself. The kit's
+   `not-disabled:hover:` outranks it as it did before. */
 @media (hover: hover) and (pointer: fine) {
-  button:enabled:hover {
+  :where(button:enabled):hover {
     background-color: color-mix(in srgb, var(--color-card) 25%, transparent);
   }
 }

@@ -29,6 +29,12 @@ export interface ModelEntry {
 }
 
 // Hues are provisional: a design ruling on model identity colours is pending.
+// `detail` is what the layers list and the display options print beside a
+// name, in one form: the grid in kilometres, then the reach or the members
+// where those set a model apart. A grid in degrees is given as the
+// kilometres it comes to over Ireland, as near as a reader needs (0.25° is
+// some 28 km north to south and 17 km across here; 25 km is the usual
+// shorthand), so ECMWF and HARMONIE compare at a glance.
 export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "harmonie",
@@ -51,7 +57,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "ecmwf",
     name: "ECMWF",
-    detail: "15 days",
+    detail: "25 km · 15 days",
     manifestUrl: "weather/ecmwf.json",
     kind: "wind",
     hue: { wind: "#8a4bc9", gust: "#d23a6a" },
@@ -60,7 +66,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "gfs",
     name: "GFS",
-    detail: "0.25° · 16 days",
+    detail: "25 km · 16 days",
     manifestUrl: "weather/gfs.json",
     kind: "wind",
     hue: { wind: "#2c8f6f", gust: "#d98a2b" },
@@ -69,7 +75,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "ecmwf-ens",
     name: "ECMWF ENS",
-    detail: "51 members",
+    detail: "25 km · 51 members",
     manifestUrl: "weather/ecmwf-ens.json",
     kind: "wind",
     ensemble: true,
@@ -79,7 +85,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "harmonie-eps",
     name: "HARMONIE EPS",
-    detail: "2 km members",
+    detail: "2 km · members",
     manifestUrl: "weather/harmonie-eps.json",
     kind: "wind",
     ensemble: true,
@@ -90,7 +96,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "gefs",
     name: "GEFS",
-    detail: "31 members",
+    detail: "25 km · 31 members",
     manifestUrl: "weather/gefs.json",
     kind: "wind",
     ensemble: true,
@@ -100,7 +106,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "arpege",
     name: "ARPEGE",
-    detail: "0.1°",
+    detail: "11 km",
     manifestUrl: "weather/arpege.json",
     kind: "wind",
     hue: { wind: "#2f7fb5", gust: "#e28a3d" },
@@ -138,7 +144,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "aifs",
     name: "AIFS",
-    detail: "0.25° · 15 days",
+    detail: "25 km · 15 days",
     manifestUrl: "weather/aifs.json",
     kind: "wind",
     hue: { wind: "#a05fd6", gust: "#d4653f" },
@@ -178,7 +184,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "ecmwf-wave",
     name: "ECMWF Wave",
-    detail: "0.25° · 15 days",
+    detail: "25 km · 15 days",
     manifestUrl: "weather/ecmwf-wave.json",
     kind: "wave",
     hue: { wind: "#4a5bc0", gust: "#c96f33" },

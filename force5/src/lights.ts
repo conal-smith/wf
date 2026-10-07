@@ -8,6 +8,9 @@
  *
  * One DOM marker per place, made once and written to in place: rebuilding a
  * hundred and more markers per hour scrubbed stalls the camera.
+ *
+ * The names beside the lights are laid out once the camera rests: see
+ * `placeLabels`.
  */
 import * as maplibregl from "maplibre-gl";
 import type { Spot } from "./weather";
@@ -51,6 +54,29 @@ const MANAGED = [
   "named",
 ];
 
+/** The base map's own names, which a light's name should not print over. */
+const PLACE_LAYERS = ["places", "places-near", "water-names"];
+
+/** Ranks a light's name for the label pass: the open spot, then the starred, then by stars. */
+function labelRank(el: HTMLElement): number {
+  if (el.classList.contains("sel")) return 100;
+  const named = el.classList.contains("named") ? 50 : 0;
+  for (let n = 5; n >= 0; n--) if (el.classList.contains(`s${n}`)) return named + n;
+  return named - 1;
+}
+
+interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+const overlaps = (a: Box, b: Box, pad = 1) =>
+  a.left < b.right + pad &&
+  b.left < a.right + pad &&
+  a.top < b.bottom + pad &&
+  b.top < a.bottom + pad;
+
 const LIGHT_SVG = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g class="lt-wind"><path class="lt-arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="lt-ring" r="7.6"/><line class="lt-strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6"/><text class="lt-n" y="3.4" text-anchor="middle"></text></svg>`;
 
 export interface Lights {
@@ -70,6 +96,103 @@ export function createLights(
   onSelect: (spot: Spot) => void,
 ): Lights {
   const entries = new Map<string, Entry>();
+  /**
+   * The names, laid out greedily: the open spot's first, then the starred
+   * ones', then the rest by their stars. Each takes its usual side of its
+   * light, or the other side, where neither another light's ring, a name
+   * already placed nor one of the base map's place names is in the way; a
+   * name with room on neither side is left off (its light still says its
+   * stars, and its title its name). The open spot's name always shows, on
+   * whichever side is clearer. Run when the camera comes to rest, and after
+   * the lights change, never per frame.
+   */
+  let laid = "";
+  let dirty = true;
+  const placeLabels = () => {
+    const camera = `${map.getZoom().toFixed(3)}|${map.getCenter().toArray().join(",")}`;
+    if (!dirty && camera === laid) return;
+    laid = camera;
+    dirty = false;
+    const frame = map.getContainer().getBoundingClientRect();
+    const layers = PLACE_LAYERS.filter((id) => map.getLayer(id));
+    const rings: { el: HTMLElement; box: Box }[] = [];
+    const shown: { el: HTMLElement; ring: Box; lab: Box; rank: number }[] = [];
+    for (const { el } of entries.values()) {
+      el.classList.remove("lab-hide", "lab-left");
+    }
+    for (const { el } of entries.values()) {
+      const r = el.getBoundingClientRect();
+      if (
+        r.right < frame.left ||
+        r.left > frame.right ||
+        r.bottom < frame.top ||
+        r.top > frame.bottom
+      )
+        continue;
+      // The ring, not the button's whole square.
+      const ring = {
+        left: r.left + 3,
+        top: r.top + 3,
+        right: r.right - 3,
+        bottom: r.bottom - 3,
+      };
+      rings.push({ el, box: ring });
+      const lab = el.querySelector<HTMLElement>(".lt-lab");
+      if (!lab || lab.offsetParent === null) continue;
+      const b = lab.getBoundingClientRect();
+      shown.push({
+        el,
+        ring,
+        lab: { left: b.left, top: b.top, right: b.right, bottom: b.bottom },
+        rank: labelRank(el),
+      });
+    }
+    shown.sort((a, b) => b.rank - a.rank);
+    const placed: Box[] = [];
+    const free = (el: HTMLElement, box: Box) =>
+      !placed.some((p) => overlaps(p, box)) &&
+      !rings.some((ring) => ring.el !== el && overlaps(ring.box, box)) &&
+      !(
+        layers.length &&
+        map.queryRenderedFeatures(
+          [
+            [box.left - frame.left, box.top - frame.top],
+            [box.right - frame.left, box.bottom - frame.top],
+          ],
+          { layers },
+        ).length
+      );
+    for (const { el, ring, lab, rank } of shown) {
+      // The same name on the light's other side: mirrored about its centre.
+      const cx = (ring.left + ring.right) / 2;
+      const left = { ...lab, left: 2 * cx - lab.right, right: 2 * cx - lab.left };
+      if (free(el, lab)) placed.push(lab);
+      else if (free(el, left)) {
+        el.classList.add("lab-left");
+        placed.push(left);
+      } else if (rank >= 100) placed.push(lab);
+      else el.classList.add("lab-hide");
+    }
+  };
+  let queued = 0;
+  const queue = () => {
+    if (!queued) queued = requestAnimationFrame(() => {
+      queued = 0;
+      placeLabels();
+    });
+  };
+  map.on("moveend", queue);
+  map.on("idle", queue);
+  // The chart's own classes decide which names show at all (zoom, focus,
+  // the names layer): a change there is a change of what to lay out.
+  const classes = new MutationObserver(() => {
+    dirty = true;
+    queue();
+  });
+  classes.observe(map.getContainer(), {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
   for (const spot of spots) {
     const el = document.createElement("button");
     el.type = "button";
@@ -128,13 +251,21 @@ export function createLights(
         } else entry.arrow.style.display = "none";
         entry.sub.textContent =
           s && !s.pending && s.compass !== null && s.windKn !== null
-            ? `${s.stars !== null && !s.dark ? `${s.stars}★ ` : ""}${s.compass} ${Math.round(s.windKn)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
+            ? // The wind and the shore, not the stars: the ring's figure
+              // says those, and "0★" under a dashed "0" read as a glitch.
+              `${s.compass} ${Math.round(s.windKn)}${s.mark ? ` · ${s.mark === "struck" ? "offshore" : "cross-off"}` : ""}`
             : "";
         el.setAttribute("aria-label", label(spot, s));
+        dirty = true;
       }
+      if (dirty) queue();
     },
     element: (id) => entries.get(id)?.el,
     destroy() {
+      cancelAnimationFrame(queued);
+      classes.disconnect();
+      map.off("moveend", queue);
+      map.off("idle", queue);
       for (const entry of entries.values()) entry.marker.remove();
       entries.clear();
     },

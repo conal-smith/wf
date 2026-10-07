@@ -525,6 +525,73 @@ export default function WindMap(props: Props) {
       }
     }
     let raf = 0;
+    /**
+     * Where the note stands from its light. Under the loop by default; but a
+     * town's name is often just there (Castlegregory, under Brandon Bay), and
+     * the pen wrote over it. Once the camera rests, the first of a few places
+     * round the loop where neither a base-map name nor another light is in
+     * the way; while it moves, the note keeps the place it has.
+     */
+    const SPOTS: { dx: number; dy: number; anchor: string }[] = [
+      { dx: 0, dy: 44, anchor: "middle" },
+      { dx: 30, dy: 40, anchor: "start" },
+      { dx: -30, dy: 40, anchor: "end" },
+      { dx: 32, dy: 6, anchor: "start" },
+      { dx: -32, dy: 6, anchor: "end" },
+      { dx: 0, dy: 64, anchor: "middle" },
+    ];
+    let at = SPOTS[0];
+    const write = (q: { x: number; y: number }, to: (typeof SPOTS)[number]) => {
+      if (!note) return;
+      const x = (q.x + to.dx).toFixed(1);
+      const y = (q.y + to.dy).toFixed(1);
+      note.setAttribute("x", x);
+      note.setAttribute("y", y);
+      note.setAttribute("text-anchor", to.anchor);
+      note.setAttribute("transform", `rotate(-2 ${x} ${y})`);
+    };
+    const settle = () => {
+      if (!spot || !note) return;
+      const q = map.project([spot.lon, spot.lat]);
+      const frame = map.getContainer().getBoundingClientRect();
+      const layers = ["places", "places-near", "water-names"].filter((id) =>
+        map.getLayer(id),
+      );
+      const lights = Array.from(
+        map.getContainer().querySelectorAll<HTMLElement>(".lt:not(.sel)"),
+      ).map((el) => el.getBoundingClientRect());
+      at =
+        SPOTS.find((to) => {
+          write(q, to);
+          const b = note!.getBBox();
+          const box = {
+            left: b.x - 2,
+            top: b.y - 2,
+            right: b.x + b.width + 2,
+            bottom: b.y + b.height + 2,
+          };
+          if (box.left < 0 || box.right > frame.width) return false;
+          if (
+            layers.length &&
+            map.queryRenderedFeatures(
+              [
+                [box.left, box.top],
+                [box.right, box.bottom],
+              ],
+              { layers },
+            ).length
+          )
+            return false;
+          return !lights.some(
+            (r) =>
+              r.right - frame.left > box.left &&
+              r.left - frame.left < box.right &&
+              r.bottom - frame.top > box.top &&
+              r.top - frame.top < box.bottom,
+          );
+        }) ?? SPOTS[0];
+      write(q, at);
+    };
     const place = () => {
       raf = 0;
       if (neat.current)
@@ -534,30 +601,30 @@ export default function WindMap(props: Props) {
           bottom:
             map.getContainer().clientHeight - bottomInset + (phone ? 54 : 0),
           phone,
+          // The small print's "i" sits in the frame's foot on the left, over
+          // the latitudes there (src/map.css .map-print): on a phone it
+          // stands above the strip of the rider's spots.
+          clearBottom: phone ? 84 : 36,
         });
       if (spot && path) {
         const q = map.project([spot.lon, spot.lat]);
         path.setAttribute("d", loopPath(q.x, q.y, 24, 18, 7));
-        if (note) {
-          note.setAttribute("x", q.x.toFixed(1));
-          note.setAttribute("y", (q.y + 44).toFixed(1));
-          note.setAttribute(
-            "transform",
-            `rotate(-2 ${q.x.toFixed(1)} ${(q.y + 44).toFixed(1)})`,
-          );
-        }
+        write(q, at);
       }
     };
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(place);
     };
     place();
+    settle();
     map.on("move", queue);
     map.on("resize", queue);
+    map.on("moveend", settle);
     return () => {
       cancelAnimationFrame(raf);
       map.off("move", queue);
       map.off("resize", queue);
+      map.off("moveend", settle);
     };
   }, [ready, mark?.lon, mark?.lat, penNote, bottomInset, phone]);
 

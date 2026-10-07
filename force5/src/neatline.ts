@@ -22,7 +22,12 @@ function degrees(value: number, hemisphere: string) {
 export function drawNeatline(
   svg: SVGSVGElement,
   map: MapLibreMap,
-  options: { bottom: number; phone: boolean },
+  options: {
+    bottom: number;
+    phone: boolean;
+    /** Pixels above the frame's foot to keep the left-hand latitudes out of. */
+    clearBottom?: number;
+  },
 ) {
   const box = map.getContainer().getBoundingClientRect();
   const w = box.width;
@@ -79,7 +84,12 @@ export function drawNeatline(
       `<rect class="${bar(i)}" x="${w - b}" y="${y2.toFixed(1)}" width="${b}" height="${(y1 - y2).toFixed(1)}"/>`,
     );
     const ly = map.project([tl.lng, v]).y;
-    if (ly > 90 && ly < bottom - 20 && (i % 2 === 0 || sLat * pxLat > 90))
+    // A label runs some 22px either side of its line.
+    if (
+      ly > 90 &&
+      ly < bottom - Math.max(20, (options.clearBottom ?? 0) + 22) &&
+      (i % 2 === 0 || sLat * pxLat > 90)
+    )
       parts.push(
         `<text class="nl-t" transform="translate(${b + 11} ${ly.toFixed(1)}) rotate(-90)" text-anchor="middle">${degrees(v, "N")}</text>`,
       );
