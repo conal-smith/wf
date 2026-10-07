@@ -48,7 +48,11 @@ import {
   stripDays,
 } from "./strip";
 import { ridingLocations, spotFromSearch } from "./locations";
-import { forecastUrl } from "../force5/src/urls";
+import { takeEarly } from "../force5/src/boot";
+import {
+  loadManifest,
+  ManifestUnavailableError,
+} from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 // Gust is a launcher in the corner until he is asked: his code comes once
@@ -75,7 +79,6 @@ import {
   nearestFrame,
   savePrefs,
   timeLabel,
-  validateManifest,
   type Frame,
   type Manifest,
   type Prefs,
@@ -254,25 +257,28 @@ export default function App() {
   /* ---- the first load: the map model's manifest and the places ---- */
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all(
-      ["weather/harmonie.json", "spots.json"].map((path) =>
-        fetch(
-          path.startsWith("weather/")
-            ? forecastUrl(path)
-            : `${import.meta.env.BASE_URL}${path}`,
-          { signal: controller.signal, cache: "no-cache" },
-        ).then(async (r) => {
-          if (!r.ok)
-            throw new Error(
+    const spotsUrl = `${import.meta.env.BASE_URL}spots.json`;
+    Promise.all([
+      // Through the manifest cache, which the availability sweep reads too: one
+      // download and one parse of the map's model, not one each.
+      loadManifest("harmonie", controller.signal).catch((e) => {
+        throw e instanceof ManifestUnavailableError
+          ? new Error(
               "The forecast snapshot is missing. Run npm run weather:refresh:harmonie, then reload.",
-            );
-          return r.json();
-        }),
-      ),
-    )
-      .then(([m, s]) => {
+            )
+          : e;
+      }),
+      // Started by the page's head on a map URL (force5/src/boot.ts).
+      (
+        takeEarly(spotsUrl) ??
+        fetch(spotsUrl, { signal: controller.signal, cache: "no-cache" })
+      ).then(async (r) => {
+        if (!r.ok) throw new Error("The riding places could not be loaded.");
+        return r.json();
+      }),
+    ])
+      .then(([validated, s]) => {
         if (controller.signal.aborted) return;
-        const validated = validateManifest(m);
         setManifest(validated);
         const places = ridingLocations(s) as Spot[];
         setSpots(places);

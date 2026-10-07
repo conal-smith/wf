@@ -160,16 +160,24 @@ export function dayNights(
   }, []);
 }
 
+/** One formatter per set of options, built on first use. */
+const localFormats = new Map<string, Intl.DateTimeFormat>();
 /** Irish local time for a UTC instant; the site never shows raw UTC clocks. */
 export function formatLocal(
   date: Date,
   options: Intl.DateTimeFormatOptions = {},
 ): string {
-  return new Intl.DateTimeFormat("en-IE", {
-    timeZone: "Europe/Dublin",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    ...options,
-  }).format(date);
+  const key = JSON.stringify(options);
+  let format = localFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-IE", {
+      timeZone: "Europe/Dublin",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      ...options,
+    });
+    localFormats.set(key, format);
+  }
+  return format.format(date);
 }

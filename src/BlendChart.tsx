@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { BlendInput, HourStats } from "../force5/src/blend";
 import { modelEntry, modelHue } from "../force5/src/manifests";
@@ -143,6 +143,41 @@ export default function BlendChart({
           height,
         )
       : null;
+
+  /**
+   * A line for every model and every ensemble member, ninety-odd curves with
+   * two ensembles in. They depend on nothing the pointer moves, so a hover —
+   * which re-renders on every mouse move to place its card — reuses them
+   * rather than recomputing every spline.
+   */
+  const modelLines = useMemo(
+    () =>
+      lines.map((line, index) => {
+        const hue = modelHue(line.model);
+        const member = line.memberIndex !== undefined;
+        return (
+          <g key={`${line.model}-${line.memberIndex ?? "mean"}-${index}`}>
+            <path
+              className="model-line"
+              d={linePath(centres, line.speed.map(show), y)}
+              stroke={hue.wind}
+              opacity={member ? 0.12 : 0.35}
+            />
+            {!member && (
+              <path
+                className="model-line model-gust-line"
+                d={linePath(centres, line.gust.map(show), y)}
+                stroke={hue.wind}
+                opacity="0.22"
+              />
+            )}
+          </g>
+        );
+      }),
+    // `show` and `y` are rebuilt each render from `units`, `max` and `height`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lines, centres, units, max, height],
+  );
 
   const nowX = timeToX(columns, Date.now(), centres);
   const hovered = hover === null ? null : stats[hover.index];
@@ -327,28 +362,7 @@ export default function BlendChart({
               opacity="0.16"
             />
           </g>
-          {lines.map((line, index) => {
-            const hue = modelHue(line.model);
-            const member = line.memberIndex !== undefined;
-            return (
-              <g key={`${line.model}-${line.memberIndex ?? "mean"}-${index}`}>
-                <path
-                  className="model-line"
-                  d={linePath(centres, line.speed.map(show), y)}
-                  stroke={hue.wind}
-                  opacity={member ? 0.12 : 0.35}
-                />
-                {!member && (
-                  <path
-                    className="model-line model-gust-line"
-                    d={linePath(centres, line.gust.map(show), y)}
-                    stroke={hue.wind}
-                    opacity="0.22"
-                  />
-                )}
-              </g>
-            );
-          })}
+          {modelLines}
           {sparseEdge && <path className="blend-sparse" d={sparseEdge} />}
           <path className="median-line" d={linePath(centres, median, y)} />
           {directions.map((angle, index) =>

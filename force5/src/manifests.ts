@@ -1,6 +1,7 @@
 // Model registry and manifest cache. The registry describes every model the
 // product knows about, including ones whose ingest adapter is still planned, so
 // the dock can list them greyed out instead of hiding future work.
+import { takeEarly } from "./boot";
 import { forecastUrl } from "./urls";
 import { validateWeatherManifest, type WeatherManifest } from "./surface";
 import { validateWaveManifest, type WaveManifest } from "./waves";
@@ -230,12 +231,21 @@ export const isWeatherManifest = (
 export const MANIFEST_REVALIDATE_MS = 5 * 60 * 1000;
 const cached = new Map<
   string,
-  { url: string; at: number; manifest: AnyManifest }
+  {
+    url: string;
+    at: number;
+    manifest: AnyManifest;
+    /** The validator the response came with: its ETag, or its Last-Modified. */
+    tag: string | null;
+  }
 >();
 const inflight = new Map<string, Promise<AnyManifest>>();
 
 /** Reject as soon as the caller aborts without cancelling a shared request. */
-function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+export function abortable<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
   if (!signal) return promise;
   signal.throwIfAborted();
   return new Promise<T>((resolve, reject) => {
@@ -251,16 +261,31 @@ async function fetchManifest(
   entry: ModelEntry,
   url: string,
 ): Promise<AnyManifest> {
-  const response = await fetch(url, {
-    cache: "no-cache",
-    signal: AbortSignal.timeout(20000),
-  });
+  // The map's own model may already be on its way, asked for by the boot
+  // script in index.html before this bundle had even loaded.
+  const response = await (takeEarly(url) ??
+    fetch(url, {
+      cache: "no-cache",
+      signal: AbortSignal.timeout(20000),
+    }));
   if (!response.ok)
     throw new ManifestUnavailableError(
       entry.id,
       response.status,
       `${entry.name} forecast is unavailable. Your previous model is still shown.`,
     );
+  // A revalidation that found nothing new. The body is the same bytes as last
+  // time, so they are neither read nor parsed nor validated again: for all
+  // thirteen manifests that is about 18 MB of JSON on the main thread every
+  // five minutes, for nothing.
+  const tag =
+    response.headers.get("etag") ?? response.headers.get("last-modified");
+  const known = cached.get(entry.id);
+  if (tag && known && known.url === url && known.tag === tag) {
+    void response.body?.cancel().catch(() => {});
+    known.at = Date.now();
+    return known.manifest;
+  }
   const body = await response.json();
   // The registry, not the file, decides which contract to hold it to: a wind
   // URL that suddenly answers with a wave bundle is a fault, not a conversion.
@@ -272,7 +297,7 @@ async function fetchManifest(
         : validateManifest(body);
   if (manifest.model !== entry.id)
     throw new Error("The forecast source does not match the requested model.");
-  cached.set(entry.id, { url, at: Date.now(), manifest });
+  cached.set(entry.id, { url, at: Date.now(), manifest, tag });
   return manifest;
 }
 
@@ -342,6 +367,16 @@ export async function loadWeatherManifest(
   const manifest = await loadAnyManifest(id, signal, now);
   if (!isWeatherManifest(manifest)) return wrongKind(id, "weather");
   return manifest;
+}
+
+/**
+ * Ask again next time, past the five minutes, but keep what was read: if the
+ * server says the file has not changed, the copy in hand is still the answer
+ * and nothing is parsed.
+ */
+export function expireManifest(id: string): void {
+  const hit = cached.get(id);
+  if (hit) hit.at = Number.NEGATIVE_INFINITY;
 }
 
 export function clearManifestCache(id?: string): void {

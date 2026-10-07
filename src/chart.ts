@@ -296,15 +296,15 @@ export function windGradientStops(
   }));
 }
 
+const DUBLIN_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Dublin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 /** Irish calendar date of an instant, as YYYY-MM-DD. */
 export function dublinDate(time: string | number | Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Dublin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(time));
-  return parts;
+  return DUBLIN_DATE.format(new Date(time));
 }
 
 /**
