@@ -241,6 +241,25 @@ export function streamRows(
   return rows;
 }
 
+// ---- titles -------------------------------------------------------------------
+
+/** U+2060, which joins the characters either side of it into one word. */
+const JOIN = "\u2060";
+
+/**
+ * A title with its number ranges held together: "15–20 knots" must not break
+ * after the dash, and a browser will break after any dash it is given. Each
+ * dash between two figures is joined to both, and a space beside it made one
+ * that does not break. What is shown, never what is stored or searched.
+ */
+export function keepRanges(title: string): string {
+  return title.replace(
+    /(\d)( ?)([–—-])( ?)(?=\d)/g,
+    (_, before: string, gap: string, dash: string, after: string) =>
+      `${before}${gap ? "\u00a0" : JOIN}${dash}${after ? "\u00a0" : JOIN}`,
+  );
+}
+
 // ---- time ---------------------------------------------------------------------
 
 const MINUTE = 60_000;
@@ -298,7 +317,7 @@ export function dayLabel(iso: string, now: Date): string {
 }
 
 /**
- * When a message was written, long and short: "4 minutes ago", "09:12",
+ * When a message was written, long and short: "4 min ago", "09:12",
  * "Thursday at 19:42" and "Thu 19:42", "12 September at 19:42".
  */
 export function messageTime(
@@ -307,13 +326,12 @@ export function messageTime(
 ): { long: string; short: string } {
   const then = new Date(iso);
   const ageMs = now.getTime() - then.getTime();
-  if (ageMs < MINUTE) return { long: "just now", short: "now" };
+  // Within the hour a message is dated as its row in the list was, at both
+  // widths: "4 min ago", never "4 minutes ago" here and "4 min" there.
+  if (ageMs < MINUTE) return { long: "just now", short: "just now" };
   if (ageMs < HOUR) {
-    const minutes = Math.floor(ageMs / MINUTE);
-    return {
-      long: `${plural(minutes, "minute")} ago`,
-      short: `${minutes} min`,
-    };
+    const minutes = `${Math.floor(ageMs / MINUTE)} min ago`;
+    return { long: minutes, short: minutes };
   }
   const days = daysBefore(then, now);
   const at = clock(then);
@@ -334,13 +352,15 @@ export function messageTime(
   };
 }
 
-/** How long ago, in the largest unit that fits: "2 days ago". */
+/**
+ * How long ago, in the largest unit that fits: "2 days ago". Minutes and hours
+ * are counted as the lists count them ("4 min ago", "3 h ago").
+ */
 export function ago(iso: string, now: Date): string {
   const ageMs = Math.max(0, now.getTime() - Date.parse(iso));
   if (ageMs < MINUTE) return "just now";
-  if (ageMs < HOUR)
-    return `${plural(Math.floor(ageMs / MINUTE), "minute")} ago`;
-  if (ageMs < DAY) return `${plural(Math.floor(ageMs / HOUR), "hour")} ago`;
+  if (ageMs < HOUR) return `${Math.floor(ageMs / MINUTE)} min ago`;
+  if (ageMs < DAY) return `${Math.floor(ageMs / HOUR)} h ago`;
   const days = Math.floor(ageMs / DAY);
   if (days < 7) return `${plural(days, "day")} ago`;
   if (days < 30) return `${plural(Math.floor(days / 7), "week")} ago`;
