@@ -6,6 +6,7 @@ import ReactDOM from "react-dom/client";
 import "./styles.css";
 import "../ui/fonts.css";
 import "../ui/theme.css";
+import { mapFirstRequests, startEarly } from "../force5/src/boot";
 import {
   isAiPath,
   isCommunityPath,
@@ -85,7 +86,10 @@ else if (isMarket || isCommunity || isAi || isSpot)
       </Suspense>
     </React.StrictMode>,
   );
-else
+else {
+  // The map's manifest and places, alongside its chunk rather than after it
+  // (force5/src/boot.ts).
+  startEarly(mapFirstRequests());
   void loadMap().then(({ default: App }) =>
     root.render(
       <React.StrictMode>
@@ -93,3 +97,4 @@ else
       </React.StrictMode>,
     ),
   );
+}

@@ -1,19 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { earlyFetches, takeEarly } from "./boot";
+import { mapFirstRequests, startEarly, takeEarly } from "./boot";
 
-describe("earlyFetches", () => {
-  it("starts each request revalidated, and keeps it for the page", () => {
-    const window: { __f5early?: Record<string, Promise<Response>> } = {};
+afterEach(() => vi.unstubAllGlobals());
+
+describe("startEarly", () => {
+  it("starts each request revalidated, and keeps it for the map", () => {
     const asked: [string, RequestInit][] = [];
-    const fetch = (url: string, init: RequestInit) => {
+    const window: { __f5early?: Record<string, Promise<Response>> } = {};
+    vi.stubGlobal("window", window);
+    vi.stubGlobal("fetch", (url: string, init: RequestInit) => {
       asked.push([url, init]);
       return Promise.resolve(new Response("{}"));
-    };
-    new Function(
-      "window",
-      "fetch",
-      earlyFetches(["/weather/harmonie.json", "/spots.json"]),
-    )(window, fetch);
+    });
+    startEarly(mapFirstRequests());
     expect(asked).toEqual([
       ["/weather/harmonie.json", { cache: "no-cache" }],
       ["/spots.json", { cache: "no-cache" }],
@@ -24,22 +23,13 @@ describe("earlyFetches", () => {
     ]);
   });
 
-  it("does nothing where there is no fetch", () => {
-    const window: { __f5early?: unknown } = {};
-    new Function("window", "fetch", earlyFetches(["/spots.json"]))(
-      window,
-      undefined,
-    );
-    expect(window.__f5early).toBeUndefined();
-  });
-
   it("does not report a request nobody came for as unhandled", async () => {
     const unhandled = vi.fn();
     process.on("unhandledRejection", unhandled);
     const window: { __f5early?: Record<string, Promise<Response>> } = {};
-    new Function("window", "fetch", earlyFetches(["/spots.json"]))(window, () =>
-      Promise.reject(new TypeError("offline")),
-    );
+    vi.stubGlobal("window", window);
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("offline")));
+    startEarly(["/spots.json"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
     process.off("unhandledRejection", unhandled);
     expect(unhandled).not.toHaveBeenCalled();
@@ -49,8 +39,6 @@ describe("earlyFetches", () => {
 });
 
 describe("takeEarly", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
   it("hands an early response over once, and only once", () => {
     const response = Promise.resolve(new Response("{}"));
     vi.stubGlobal("window", { __f5early: { "/spots.json": response } });

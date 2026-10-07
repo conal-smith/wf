@@ -1,28 +1,59 @@
 /**
- * The map's first two requests, made by the page before its code has loaded.
+ * The map's first two requests, made by the entry before the map's code has
+ * arrived.
  *
- * The built index.html already preloads the map's chunks on a map URL (the
+ * The built index.html preloads the map's chunks on a map URL (the
  * `preloadTheMap` plugin in vite.config.ts). Left at that, the map's forecast
- * would still wait for the entry to run, for the map's chunk to run, and only
- * then be asked for: the manifest and the riding places were the last thing on
- * the critical path to a drawn map, and the longest. So the same few lines of
- * the page start those two requests too, alongside the chunks, and keep the
- * responses here until the map takes them with `takeEarly` instead of asking
- * again.
+ * would still wait for the map's chunk — MapLibre and all, the largest file
+ * on the page — to arrive and run before it was asked for: the manifest and
+ * the riding places were the last thing on the critical path to a usable
+ * dock, and the longest. So `src/main.tsx` starts those two requests as soon
+ * as it runs on a map URL, and keeps the responses here until the map takes
+ * them with `takeEarly` instead of asking again.
  *
- * Deliberately free of React and of every app: the page and vite.config.ts
- * both read it.
+ * The trade, measured on a phone profile (1.6 Mbit/s, 150 ms): the dock is
+ * usable ~2.6 s sooner (5.9 s to 3.3 s), and the page's first paint, which
+ * waits for the map's chunk, comes ~0.45 s later, because the manifest's
+ * 90 kB now shares the line with that chunk. Started from the page's head
+ * instead the cost was the same; asked for by the map once its chunk has run,
+ * the dock gained only ~0.5 s. src/useBlend.ts then holds the other models
+ * back until this one is in, so it does not share the line with them either.
+ *
+ * Deliberately free of React and of every app: the entry imports it.
  */
+import { forecastUrl } from "./urls";
 
 declare global {
   interface Window {
-    /** Requests started by the page's head, by URL, until someone takes them. */
+    /** Requests started by the entry, by URL, until someone takes them. */
     __f5early?: Record<string, Promise<Response>>;
   }
 }
 
+/** What the map asks for first, as src/App.tsx names it. */
+export const mapFirstRequests = (): string[] => [
+  forecastUrl("weather/harmonie.json"),
+  `${import.meta.env.BASE_URL}spots.json`,
+];
+
 /**
- * The response the page already asked for, once: a second caller (a later
+ * Start `urls`, exactly as their callers ask for them — `no-cache`, so a
+ * revalidation and never a stale copy — because the caller uses this response
+ * in place of its own. A failure nobody comes for (a fast back button) is
+ * caught here so it is not reported as unhandled; the caller still sees it.
+ */
+export function startEarly(urls: readonly string[]): void {
+  if (typeof window === "undefined" || typeof fetch !== "function") return;
+  const early: Record<string, Promise<Response>> = {};
+  for (const url of urls) {
+    early[url] = fetch(url, { cache: "no-cache" });
+    early[url].catch(() => {});
+  }
+  window.__f5early = early;
+}
+
+/**
+ * The response the entry already asked for, once: a second caller (a later
  * revalidation, say) must make its own request rather than read a body that
  * has gone.
  */
@@ -32,19 +63,4 @@ export function takeEarly(url: string): Promise<Response> | undefined {
   const hit = early?.[url];
   if (hit) delete early![url];
   return hit;
-}
-
-/**
- * The statement the page's head runs for `urls`. They are asked for exactly as
- * their callers ask — `no-cache`, so a revalidation and never a stale copy —
- * because the caller uses this response in place of its own. A failure nobody
- * comes for (a fast back button) is caught here so it is not reported as
- * unhandled; the caller still sees it.
- */
-export function earlyFetches(urls: readonly string[]): string {
-  return (
-    `if(typeof fetch=="function"){var e=window.__f5early={};` +
-    `${JSON.stringify(urls)}.forEach(function(u){` +
-    `e[u]=fetch(u,{cache:"no-cache"});e[u].catch(function(){})})}`
-  );
 }
