@@ -38,6 +38,22 @@ export const SITE_SECTIONS: readonly SiteSection[] = [
   { id: "ai", href: "/ai", label: "Use with AI" },
 ];
 
+/**
+ * The menu's sections with the switched-off ones left out (the features are
+ * passed in, shared/web/features.ts, so this module stays free of the build's
+ * environment: vite.config.ts imports it).
+ */
+export function siteSections(features: {
+  market: boolean;
+  community: boolean;
+}): readonly SiteSection[] {
+  return SITE_SECTIONS.filter(
+    (section) =>
+      (section.id !== "market" || features.market) &&
+      (section.id !== "community" || features.community),
+  );
+}
+
 /** `/market` and everything under it — but not `/marketplace-of-ideas`. */
 const MARKET_PATH = /^\/market(\/|$)/;
 
@@ -84,6 +100,9 @@ export const OWN_BUNDLE_PATHS: readonly RegExp[] = [
   AI_PATH,
   SPOT_PATH,
 ];
+
+/** The page that adds the forecast to an AI assistant. */
+export const AI_HREF = "/ai";
 
 /** "How the stars work": the spot bundle's other page. */
 export const STARS_HREF = "/stars";

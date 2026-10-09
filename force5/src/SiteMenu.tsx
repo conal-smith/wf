@@ -21,7 +21,8 @@ import { Button } from "../../ui/Button";
 import { Puffin } from "../../ui/Puffin";
 import { surfaceStyles } from "../../ui/Surface";
 import { RING, tv } from "../../ui/tv";
-import { SITE_SECTIONS, type SiteSectionId } from "./siteNav";
+import { FEATURES } from "../../shared/web/features";
+import { siteSections, type SiteSectionId } from "./siteNav";
 
 /*
  * The one hook left on the menu, and it draws nothing: e2e/site-menu.spec.ts
@@ -194,7 +195,7 @@ export function SiteMenu({
           aria-label="Site"
         >
           <ul className={styles.list()}>
-            {SITE_SECTIONS.map((section, index) => {
+            {siteSections(FEATURES).map((section, index) => {
               const here = section.id === current;
               return (
                 <li key={section.id}>

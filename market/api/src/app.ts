@@ -6,7 +6,7 @@
  * the same routes work behind a same-origin proxy in development and on their
  * own Railway domain in production.
  */
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -18,6 +18,7 @@ import {
   type Verifier,
 } from "./auth.js";
 import { fail } from "./errors.js";
+import type { Features } from "./env.js";
 import { ID_PATTERN, newId } from "./ids.js";
 import type { PhotoRow, Repo } from "./repo.js";
 import { keyBelongsTo, type Storage } from "./storage.js";
@@ -84,7 +85,13 @@ export interface AppDeps {
    * Gust, the companion. Left out, /api/companion is still mounted and says
    * it is not configured, so the site can show Gust asleep rather than broken.
    */
-  companion?: Omit<CompanionDeps, "source">;
+  companion?: Omit<CompanionDeps, "source" | "enabled">;
+  /**
+   * The sections switched on (FEATURE_*, env.ts). Left out, everything is on,
+   * as the tests and the e2e API want. A section that is off answers 404 off
+   * for its routes; Gust says he is off from /api/companion/status.
+   */
+  features?: Partial<Features>;
 }
 
 type Env = { Variables: AuthVariables };
@@ -94,6 +101,30 @@ const JSON_LIMIT = 64 * 1024;
 export function createApp(deps: AppDeps) {
   const { repo, people, storage } = deps;
   const app = new Hono<Env>();
+  const features: Features = {
+    gust: true,
+    market: true,
+    community: true,
+    ...deps.features,
+  };
+
+  // A section that is switched off. The marketplace keeps its health check,
+  // which the container's HEALTHCHECK reads, and the photos it serves in
+  // local storage mode, which the community's messages use too.
+  const off =
+    (what: string, keep: RegExp | null) => async (c: Context, next: Next) => {
+      if (keep?.test(c.req.path)) return next();
+      return c.json(
+        { error: "off", message: `The ${what} is switched off on this site.` },
+        404,
+      );
+    };
+  if (!features.market)
+    app.use(
+      "/api/market/*",
+      off("marketplace", /^\/api\/market\/(health$|uploads\/)/),
+    );
+  if (!features.community) app.use("/api/community/*", off("community", null));
 
   for (const path of ["/api/market/*", "/api/community/*", "/api/me"]) {
     app.use(
@@ -552,6 +583,7 @@ export function createApp(deps: AppDeps) {
       client: null,
       ...deps.companion,
       source: deps.forecast ?? null,
+      enabled: features.gust,
     }),
   );
   app.route("/api", createSiteRouter(people));

@@ -72,9 +72,26 @@ profiles, contact reveal, star ratings and seller history) built as a separate
 package in [`market/`](market/README.md): a Hono API on Postgres with Clerk
 sign-in and S3-compatible photo storage, and React pages drawn in Tailwind from
 the shared kit in `ui/` and the theme in `ui/theme.css`. `src/main.tsx` lazy-loads it for `/market` URLs; the map bundle
-is otherwise untouched. Run it locally with `npm run market:api` and
-`VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
+is otherwise untouched. Run it locally with `FEATURE_MARKET=1 npm run market:api` and
+`VITE_FEATURE_MARKET=1 VITE_MARKET_DEV_USER=<name> npm run dev`; deploy the API on Railway from
 `market/Dockerfile`. See the package README for the full runbook.
+
+## Feature switches
+
+The marketplace, the community and Gust are each **off** unless switched on,
+twice: on the website at build time and on the API at boot. Off, a section
+leaves the site menu and its paths draw the map; its API routes answer 404
+`off` (the marketplace keeps `/api/market/health` for the container's health
+check), and Gust never appears. The map, spot pages and `/ai` are always on.
+
+| Section     | Website (build time)       | API (boot)            |
+| ----------- | -------------------------- | --------------------- |
+| Gust        | `VITE_FEATURE_GUST=1`      | `FEATURE_GUST=1`      |
+| Marketplace | `VITE_FEATURE_MARKET=1`    | `FEATURE_MARKET=1`    |
+| Community   | `VITE_FEATURE_COMMUNITY=1` | `FEATURE_COMMUNITY=1` |
+
+The e2e build and API switch all three on (`preview:e2e`, and `createApp`
+defaults every section on when not told otherwise).
 
 ## AI assistants (MCP)
 
@@ -107,34 +124,46 @@ with a badge.
 
 - `companion/api/`: the Hono routes at `/api/companion` (`/status`, `/nudge`,
   `/chat`), a manual streaming tool-use loop over the Claude API
-  (`@anthropic-ai/sdk`, `claude-opus-5-5`, at most 6 model calls a turn,
-  server-side refusal fallbacks, prompt caching on a frozen system prompt), and
+  (`@anthropic-ai/sdk`, `claude-haiku-5-5`, at most 6 model calls a turn,
+  prompt caching on a frozen system prompt; server-side refusal fallbacks on
+  the larger models, which Haiku does not have), and
   five tools: `find_sessions`, `get_spot_forecast`, `list_spots`, `show_on_map`
   and `propose_rider_profile`. The chat is stateless: the browser sends the
   last 20 messages and what it is looking at, and keeps the transcript in
   sessionStorage. Rate-limited per IP.
 - `companion/shared/protocol.ts`: the server-sent events both ends share:
   `text`, `tool`, `card`, `action`, `proposal`, `error`, `done`.
+- `companion/api/budget.ts`: the monthly allowance. Every model call's
+  `usage` is priced at list and added to a per-month (UTC) total in Postgres
+  (`companion_usage`). Once the month reaches `COMPANION_MONTHLY_BUDGET_USD`,
+  `/status` says `resting` and the site stops showing Gust until the 1st; a
+  chat that arrives anyway answers 503 `budget_exhausted`, and a rider who
+  was mid-conversation sees why, with a button to `/ai` to use their own
+  assistant. The estimate rounds every call up; turns already under way when
+  the money runs out finish, so it can overshoot by those few turns.
 - `companion/web/`: Gust himself, the launcher and the panel.
 
-| Variable            | Default           | What it does                                                                                             |
-| ------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | unset             | Wakes Gust. Unset, `/api/companion/chat` answers 503 `not_configured` and the panel says Gust is asleep. |
-| `COMPANION_MODEL`   | `claude-opus-5-5` | The model.                                                                                               |
-| `COMPANION_EFFORT`  | `low`             | `output_config.effort` per call: `low`, `medium`, `high`, `xhigh`, `max`. Low keeps chat quick.          |
-| `COMPANION_FAKE`    | unset             | `1` answers from a scripted fake model over the real tools (demos, e2e). Refused in production.          |
-| `FORECAST_BASE_URL` | `public/` in dev  | Where the forecast is read, as for the MCP server.                                                       |
+| Variable                       | Default            | What it does                                                                                             |
+| ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `FEATURE_GUST`                 | unset              | `1` switches Gust on (see [Feature switches](#feature-switches)). Off, he is hidden and makes no calls.  |
+| `ANTHROPIC_API_KEY`            | unset              | Wakes Gust. Unset, `/api/companion/chat` answers 503 `not_configured` and the panel says Gust is asleep. |
+| `COMPANION_MONTHLY_BUDGET_USD` | unset              | Required with a key: US dollars Gust may spend a calendar month (UTC) before he rests until the 1st.     |
+| `COMPANION_MODEL`              | `claude-haiku-5-5` | The model. It must have a price in `companion/api/budget.ts`, or the API will not start.                 |
+| `COMPANION_EFFORT`             | `low`              | `output_config.effort` per call: `low`, `medium`, `high`, `xhigh`, `max`. Low keeps chat quick.          |
+| `COMPANION_FAKE`               | unset              | `1` answers from a scripted fake model over the real tools (demos, e2e). Refused in production.          |
+| `FORECAST_BASE_URL`            | `public/` in dev   | Where the forecast is read, as for the MCP server.                                                       |
 
 Try it with a real key:
 
 ```bash
-MARKET_DB=memory MARKET_AUTH_MODE=dev MARKET_STORAGE=local \
-  ANTHROPIC_API_KEY=sk-ant-... npm run market:api   # API on :8787
-npm run dev                                         # map on :5173, /api proxied
+MARKET_DB=memory MARKET_AUTH_MODE=dev MARKET_STORAGE=local FEATURE_GUST=1 \
+  ANTHROPIC_API_KEY=sk-ant-... COMPANION_MONTHLY_BUDGET_USD=1 \
+  npm run market:api                                # API on :8787
+VITE_FEATURE_GUST=1 npm run dev                     # map on :5173, /api proxied
 ```
 
 Or without one, scripted: the same with `COMPANION_FAKE=1` in place of the
-key. The e2e suite runs it that way (`e2e/companion.spec.ts`), over the staged
+key and the budget. The e2e suite runs it that way (`e2e/companion.spec.ts`), over the staged
 sample forecast and on the browser's frozen clock.
 
 ## Run it yourself on one machine

@@ -7,6 +7,7 @@ import "./styles.css";
 import "../ui/fonts.css";
 import "../ui/theme.css";
 import { mapFirstRequests, startEarly } from "../force5/src/boot";
+import { FEATURES } from "../shared/web/features";
 import {
   isAiPath,
   isCommunityPath,
@@ -18,12 +19,14 @@ import {
 // loads the map. Everything under /market goes there — which is also what the
 // shared site menu links to, from the same one match.
 const MarketApp = React.lazy(() => import("../market/web/MarketApp"));
-const isMarket = isMarketPath(window.location.pathname);
+// Switched off (shared/web/features.ts), /market is the map's like any other path.
+const isMarket = FEATURES.market && isMarketPath(window.location.pathname);
 
 // The community is the third bundle, split off the same way: everything under
 // /community, and nothing of it in the map's chunk or the marketplace's.
 const CommunityApp = React.lazy(() => import("../community/web/CommunityApp"));
-const isCommunity = isCommunityPath(window.location.pathname);
+const isCommunity =
+  FEATURES.community && isCommunityPath(window.location.pathname);
 
 // The page that adds the forecast to an AI assistant, at /ai: a fourth bundle,
 // split off the same way.
