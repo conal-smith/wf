@@ -9,7 +9,12 @@
  * column falls between them is worked out once per model and reused for all
  * 146 places, rather than searched for with `Date.parse` in every series.
  */
-import { agreementFor, type Agreement } from "../force5/src/blend";
+import {
+  agreementFor,
+  blendWeight,
+  weightedMedian,
+  type Agreement,
+} from "../force5/src/blend";
 import { modelSeries, spotSeries } from "../force5/src/series";
 import { dayNights } from "../force5/src/sun";
 import { KNOTS } from "../force5/src/units";
@@ -111,6 +116,7 @@ function planFor(
 interface Line {
   model: string;
   member: boolean;
+  weight: number;
   speed: Float64Array;
   gust: Float64Array;
 }
@@ -145,18 +151,11 @@ function lineOn(
   return { speed, gust };
 }
 
-const median = (values: number[]) => {
-  values.sort((a, b) => a - b);
-  const position = (values.length - 1) * 0.5;
-  const low = Math.floor(position);
-  const high = Math.ceil(position);
-  return values[low] + (values[high] - values[low]) * (position - low);
-};
-
 /**
- * One place's consensus on the axis: each model counted once (an ensemble as
- * its member mean), its median wind and gust, how far the models agree, and
- * the mean bearing. Speeds come back in m/s, as the blend keeps them.
+ * One place's consensus on the axis: each model taken once (an ensemble as
+ * its member mean) at its grid's weight (`blendWeight`), the weighted median
+ * wind and gust, how far the models agree, and the weighted mean bearing.
+ * Speeds come back in m/s, as the blend keeps them.
  */
 export function placeConsensus(
   manifests: readonly Manifest[],
@@ -173,18 +172,20 @@ export function placeConsensus(
   const axisKey = `${axis[0]}|${axis[axis.length - 1]}|${axis.length}`;
   const n = axis.length;
   const lines: Line[] = [];
-  const vectors: { u: Float64Array; v: Float64Array }[] = [];
+  const vectors: { u: Float64Array; v: Float64Array; weight: number }[] = [];
   for (const blendId of blendIds) {
     const manifest = manifests.find((m) => m.model === blendId);
     if (!manifest) continue;
     const mean = spotSeries(manifest, id);
     // The blend only reads a model that publishes something for this place.
     if (!mean) continue;
+    const weight = blendWeight(manifest.resolutionKm);
     for (const line of modelSeries(manifest, id)) {
       const plan = planFor(parsed(line.points), axisTimes, axisKey);
       lines.push({
         model: manifest.model,
         member: line.memberIndex !== undefined,
+        weight,
         ...lineOn(line.points, plan),
       });
     }
@@ -206,10 +207,11 @@ export function placeConsensus(
         v[c] = a.v + (b.v - a.v) * f;
       }
     }
-    vectors.push({ u, v });
+    vectors.push({ u, v, weight });
   }
   // `perModelLines`: an ensemble's members collapse to their hourly mean.
-  const perModel: { speed: Float64Array; gust: Float64Array }[] = [];
+  const perModel: { weight: number; speed: Float64Array; gust: Float64Array }[] =
+    [];
   const groups = new Map<string, Line[]>();
   for (const line of lines) {
     if (!line.member) perModel.push(line);
@@ -240,7 +242,7 @@ export function placeConsensus(
       speed[c] = sn ? s / sn : NaN;
       gust[c] = gn ? g / gn : NaN;
     }
-    perModel.push({ speed, gust });
+    perModel.push({ weight: group[0].weight, speed, gust });
   }
   const out = {
     median: [] as (number | null)[],
@@ -250,16 +252,25 @@ export function placeConsensus(
   };
   for (let c = 0; c < n; c++) {
     const speeds: number[] = [];
+    const speedWeights: number[] = [];
     const gusts: number[] = [];
+    const gustWeights: number[] = [];
     for (const line of perModel) {
-      if (Number.isFinite(line.speed[c])) speeds.push(line.speed[c]);
-      if (Number.isFinite(line.gust[c])) gusts.push(line.gust[c]);
+      if (Number.isFinite(line.speed[c])) {
+        speeds.push(line.speed[c]);
+        speedWeights.push(line.weight);
+      }
+      if (Number.isFinite(line.gust[c])) {
+        gusts.push(line.gust[c]);
+        gustWeights.push(line.weight);
+      }
     }
-    out.gust.push(gusts.length ? median(gusts) : null);
+    out.gust.push(gusts.length ? weightedMedian(gusts, gustWeights) : null);
     if (speeds.length) {
-      const m = median(speeds);
-      out.median.push(m);
-      out.agreement.push(agreementFor(speeds[speeds.length - 1] - speeds[0]));
+      out.median.push(weightedMedian(speeds, speedWeights));
+      out.agreement.push(
+        agreementFor(Math.max(...speeds) - Math.min(...speeds)),
+      );
     } else {
       out.median.push(null);
       out.agreement.push(null);
@@ -269,9 +280,9 @@ export function placeConsensus(
       k = 0;
     for (const vector of vectors)
       if (Number.isFinite(vector.u[c]) && Number.isFinite(vector.v[c])) {
-        u += vector.u[c];
-        v += vector.v[c];
-        k++;
+        u += vector.u[c] * vector.weight;
+        v += vector.v[c] * vector.weight;
+        k += vector.weight;
       }
     out.from.push(
       k && Math.hypot(u / k, v / k) >= 0.1 ? direction(u / k, v / k) : null,

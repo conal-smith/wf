@@ -1,6 +1,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { blendInputs, blendStats, perModelLines } from "../force5/src/blend";
+import {
+  blendInputs,
+  blendStats,
+  blendWeight,
+  perModelLines,
+} from "../force5/src/blend";
 import { spotSeries } from "../force5/src/series";
 import { DEFAULT_RIDER, rateHour } from "../force5/src/stars";
 import { ensembleManifest, windManifest } from "../force5/src/testing";
@@ -25,10 +30,13 @@ function slow(manifests: Manifest[], ids: string[], id: string, axis: string[]) 
     usable.map((m) => m.model),
     axis,
   );
-  const consensus = blendStats(perModelLines(lines), axis);
+  const weightOf = (model: string) =>
+    blendWeight(usable.find((m) => m.model === model)?.resolutionKm);
+  const consensus = blendStats(perModelLines(lines), axis, weightOf);
   const from = meanDirections(
     usable.map((m) => axisVectors(spotSeries(m, id)!, axis)),
     axis.length,
+    usable.map((m) => blendWeight(m.resolutionKm)),
   );
   return { consensus, from };
 }
@@ -75,6 +83,60 @@ describe("placeConsensus", () => {
       member: (m, h) => ({ u: m - 2, v: h / 2 + m, gust: m === 3 ? null : h + 4 }),
     });
     same([det, ens], ["harmonie", "ecmwf-ens"], "brandon", hourly("2026-09-14T00:00:00Z", 8));
+  });
+
+  it("matches the blend when the models count for different weights", () => {
+    const fine = windManifest({
+      model: "harmonie",
+      hours: [0, 1, 2, 3, 4, 5, 6],
+      wind: (h) => ({ u: 6 + h, v: 1, gust: 10 + h }),
+      extra: { resolutionKm: 2 },
+    });
+    const regional = windManifest({
+      model: "icon-eu",
+      hours: [0, 3, 6],
+      wind: (h) => ({ u: 4, v: -2 + h, gust: 8 }),
+      extra: { resolutionKm: 6.5 },
+    });
+    const coarse = windManifest({
+      model: "ecmwf",
+      hours: [0, 3, 6],
+      wind: (h) => ({ u: -3, v: 2 - h, gust: null }),
+      extra: { resolutionKm: 25 },
+    });
+    same(
+      [fine, regional, coarse],
+      ["harmonie", "icon-eu", "ecmwf"],
+      "brandon",
+      hourly("2026-09-14T00:00:00Z", 7),
+    );
+  });
+
+  it("lets a fine grid outweigh two coarse ones", () => {
+    const calm = (model: string) =>
+      windManifest({
+        model,
+        hours: [0, 3],
+        wind: () => ({ u: 0, v: 3, gust: 5 }),
+        extra: { resolutionKm: 25 },
+      });
+    const fine = windManifest({
+      model: "harmonie",
+      hours: [0, 3],
+      wind: () => ({ u: 0, v: 9, gust: 13 }),
+      extra: { resolutionKm: 2 },
+    });
+    const axis = hourly("2026-09-14T00:00:00Z", 1);
+    const ids = ["harmonie", "ecmwf", "gfs"];
+    const c = placeConsensus([fine, calm("ecmwf"), calm("gfs")], ids, "brandon", axis);
+    // Weights 3 : 1 : 1, so the fine grid holds the middle on its own...
+    expect(c.median[0]).toBeCloseTo(9);
+    expect(c.gust[0]).toBeCloseTo(13);
+    // ...while the spread, and so the agreement, is still every model's.
+    expect(c.agreement[0]).toBe("low");
+    const even = { ...fine, resolutionKm: 25 };
+    const plain = placeConsensus([even, calm("ecmwf"), calm("gfs")], ids, "brandon", axis);
+    expect(plain.median[0]).toBeCloseTo(3);
   });
 
   it("leaves a model out where it publishes nothing for the place", () => {

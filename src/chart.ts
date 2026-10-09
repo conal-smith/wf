@@ -444,6 +444,21 @@ export function vectorMean(
   };
 }
 
+/** `vectorMean` with each vector counted by its weight. */
+function weightedVectorMean(
+  points: readonly { u: number; v: number; weight: number }[],
+): { u: number; v: number } | null {
+  const usable = points.filter(
+    (point) => Number.isFinite(point.u) && Number.isFinite(point.v),
+  );
+  const total = usable.reduce((sum, point) => sum + point.weight, 0);
+  if (!usable.length || !(total > 0)) return null;
+  return {
+    u: usable.reduce((sum, point) => sum + point.u * point.weight, 0) / total,
+    v: usable.reduce((sum, point) => sum + point.v * point.weight, 0) / total,
+  };
+}
+
 /**
  * Mean wind bearing per axis hour across every model that covers it, for the
  * arrows on the median. A single model's arrow on a multi-model chart would be
@@ -452,13 +467,17 @@ export function vectorMean(
 export function meanDirections(
   vectorsByModel: readonly ({ u: number; v: number } | null)[][],
   length: number,
+  /** Each model's `blendWeight`, in the same order; equal when left out. */
+  weights?: readonly number[],
 ): (number | null)[] {
   return Array.from({ length }, (_, index) => {
-    const mean = vectorMean(
-      vectorsByModel
-        .map((vectors) => vectors[index])
-        .filter((vector): vector is { u: number; v: number } => !!vector),
-    );
+    const at = vectorsByModel.flatMap((vectors, model) => {
+      const vector = vectors[index];
+      return vector ? [{ ...vector, weight: weights?.[model] ?? 1 }] : [];
+    });
+    const mean = weights
+      ? weightedVectorMean(at)
+      : vectorMean(at.map(({ u, v }) => ({ u, v })));
     return mean === null || Math.hypot(mean.u, mean.v) < 0.1
       ? null
       : direction(mean.u, mean.v);

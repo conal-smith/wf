@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
+  blendWeight,
   perModelLines,
   type BlendInput,
   type HourStats,
@@ -444,8 +445,9 @@ export interface Blend {
   lines: BlendInput[];
   stats: HourStats[];
   /**
-   * The same statistics with each ensemble counted once, as its member mean:
-   * the consensus the stars rate, and the one the forecast server reports.
+   * The same statistics with each ensemble counted once, as its member mean,
+   * and each model at its grid's weight: the consensus the stars rate, and the
+   * one the forecast server reports.
    */
   consensus: HourStats[];
   /** Mean bearing per axis hour across the contributing models. */
@@ -493,15 +495,18 @@ export function useBlend(
     const ids = usable.map((manifest) => manifest.model);
     const lines = blendInputs(usable, spotId, ids, axis);
     if (!lines.length) return EMPTY;
+    const weightOf = (model: string) =>
+      blendWeight(usable.find((m) => m.model === model)?.resolutionKm);
     return {
       lines,
       stats: blendStats(lines, axis),
-      consensus: blendStats(perModelLines(lines), axis),
+      consensus: blendStats(perModelLines(lines), axis, weightOf),
       directions: meanDirections(
         usable.map((manifest) =>
           axisVectors(spotSeries(manifest, spotId)!, axis),
         ),
         axis.length,
+        usable.map((manifest) => blendWeight(manifest.resolutionKm)),
       ),
       contributing: Array.from(new Set(lines.map((line) => line.model))),
       manifests: usable,
