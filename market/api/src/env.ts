@@ -2,6 +2,7 @@
  * Configuration, read once from the environment and validated up front so a
  * misconfigured service fails at boot rather than on the first request.
  */
+import { isPriced } from "../../../companion/api/budget.js";
 
 export type AuthMode = "clerk" | "dev";
 export type StorageMode = "s3" | "local";
@@ -15,6 +16,17 @@ const EFFORTS: readonly CompanionEffort[] = [
   "max",
 ];
 
+/**
+ * The parts of the site that are switched on. Each is off unless its variable
+ * is "1" (FEATURE_GUST, FEATURE_MARKET, FEATURE_COMMUNITY); the website has
+ * the same switches at build time (VITE_FEATURE_*, shared/web/features.ts).
+ */
+export interface Features {
+  gust: boolean;
+  market: boolean;
+  community: boolean;
+}
+
 export interface Config {
   port: number;
   production: boolean;
@@ -26,6 +38,7 @@ export interface Config {
    * `public/` in development and leaves /api/mcp off in production.
    */
   forecastBaseUrl: string | null;
+  features: Features;
   /**
    * Gust, the in-app companion (companion/api). With no API key and no fake it
    * is asleep: /api/companion/chat answers 503 not_configured.
@@ -37,6 +50,11 @@ export interface Config {
     effort: CompanionEffort;
     /** The scripted fake model (COMPANION_FAKE=1): development and e2e only. */
     fake: boolean;
+    /**
+     * US dollars Gust may spend a calendar month (COMPANION_MONTHLY_BUDGET_USD).
+     * Required with a real key; null only for the fake.
+     */
+    monthlyBudgetUsd: number | null;
   };
   db: { mode: DbMode; url: string | null };
   auth: {
@@ -135,17 +153,50 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(`COMPANION_EFFORT must be one of ${EFFORTS.join(", ")}`);
   }
 
+  const features: Features = {
+    gust: env.FEATURE_GUST === "1",
+    market: env.FEATURE_MARKET === "1",
+    community: env.FEATURE_COMMUNITY === "1",
+  };
+
+  const apiKey = env.ANTHROPIC_API_KEY?.trim() || null;
+  const model = env.COMPANION_MODEL?.trim() || "claude-haiku-5-5";
+  const budgetText = env.COMPANION_MONTHLY_BUDGET_USD?.trim();
+  const monthlyBudgetUsd = budgetText ? Number(budgetText) : null;
+  if (
+    monthlyBudgetUsd !== null &&
+    !(Number.isFinite(monthlyBudgetUsd) && monthlyBudgetUsd >= 0)
+  ) {
+    throw new Error(
+      "COMPANION_MONTHLY_BUDGET_USD must be a number of US dollars, e.g. 200",
+    );
+  }
+  // A real key spends real money: Gust does not wake on one without a cap he
+  // can keep to.
+  if (features.gust && apiKey && !companionFake) {
+    if (monthlyBudgetUsd === null)
+      throw new Error(
+        "COMPANION_MONTHLY_BUDGET_USD is required when FEATURE_GUST=1 with an ANTHROPIC_API_KEY",
+      );
+    if (!isPriced(model))
+      throw new Error(
+        `COMPANION_MODEL ${model} has no price in companion/api/budget.ts, so its spend cannot be capped`,
+      );
+  }
+
   return {
     port,
     production,
     publicUrl,
     corsOrigins,
     forecastBaseUrl,
+    features,
     companion: {
-      apiKey: env.ANTHROPIC_API_KEY?.trim() || null,
-      model: env.COMPANION_MODEL?.trim() || "claude-opus-5-5",
+      apiKey,
+      model,
       effort,
       fake: companionFake,
+      monthlyBudgetUsd,
     },
     db: { mode: dbMode, url: dbUrl },
     auth: {

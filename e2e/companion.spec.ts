@@ -143,7 +143,12 @@ test("the launcher covers none of the map's controls or the dock", async ({
 }) => {
   await openMap(page);
   const box = (await launcher(page).boundingBox())!;
-  for (const selector of [".map-ctrl", ".map-print", ".map-footer", ".map-head"]) {
+  for (const selector of [
+    ".map-ctrl",
+    ".map-print",
+    ".map-footer",
+    ".map-head",
+  ]) {
     const other = (await page.locator(selector).boundingBox())!;
     const overlaps =
       box.x < other.x + other.width &&
@@ -169,4 +174,57 @@ test("asleep when the server has no companion, and says so", async ({
   await expect(
     panel(page).getByRole("textbox", { name: "Message Gust" }),
   ).toBeDisabled();
+});
+
+test("gone from the map once the month's budget is spent", async ({ page }) => {
+  await page.route("**/api/companion/status", (route) =>
+    route.fulfill({
+      json: {
+        state: "resting",
+        configured: false,
+        fake: false,
+        resumes: "2026-10-01T00:00:00.000Z",
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+    timeout: 20000,
+  });
+  // He would have come by now: the chart is drawn and the page idle.
+  await page.waitForTimeout(3500);
+  await expect(launcher(page)).toHaveCount(0);
+  await page.keyboard.press("Control+j");
+  await expect(panel(page)).toHaveCount(0);
+});
+
+test("a rider mid-chat when the budget runs out is pointed at their own AI", async ({
+  page,
+}) => {
+  await openMap(page);
+  await page.route("**/api/companion/chat", (route) =>
+    route.fulfill({
+      status: 503,
+      json: {
+        code: "budget_exhausted",
+        message: "Gust has answered all he can this month.",
+        resumes: "2026-10-01T00:00:00.000Z",
+      },
+    }),
+  );
+  await launcher(page).click();
+  const box = panel(page).getByRole("textbox", { name: "Message Gust" });
+  await box.fill("Where's best tomorrow?");
+  await box.press("Enter");
+  await expect(
+    panel(page).getByText("Gust is resting", { exact: true }),
+  ).toBeVisible();
+  await expect(panel(page).getByText(/back on 1 October/)).toBeVisible();
+  await expect(
+    panel(page).getByRole("link", { name: "Use wingfoil.ie with your AI" }),
+  ).toHaveAttribute("href", "/ai");
+  await expect(box).toBeDisabled();
+  // Closed, he is gone until the 1st.
+  await panel(page).getByRole("button", { name: "Close Gust" }).click();
+  await expect(launcher(page)).toHaveCount(0);
 });

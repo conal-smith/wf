@@ -1,7 +1,8 @@
 /**
  * Gust over HTTP, mounted at /api/companion by createApp.
  *
- *   GET  /status  whether Gust is awake on this server
+ *   GET  /status  whether Gust can answer here: awake, asleep (no API key),
+ *                 resting (this month's budget is spent) or off (FEATURE_GUST)
  *   POST /nudge   a selected spot's best window in the next 48 h when it is
  *                 worth four stars or more: no model call, just the forecast
  *   POST /chat    one turn, answered as server-sent events (protocol.ts)
@@ -9,7 +10,8 @@
  * Stateless: the browser sends the conversation (bounded) and its context with
  * every turn and keeps the transcript itself. Without ANTHROPIC_API_KEY (and
  * without COMPANION_FAKE in development) chat answers 503 not_configured and
- * nothing pretends to be Gust.
+ * nothing pretends to be Gust. Once the month's budget is spent it answers 503
+ * budget_exhausted until the 1st, pointing the rider at their own assistant.
  */
 import { randomUUID } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
@@ -19,6 +21,7 @@ import { z } from "zod";
 import { createLimiter, type Limiter } from "../../community/api/limits.js";
 import type { ForecastSource } from "../../mcp/api/source.js";
 import {
+  type Availability,
   MAX_ECHO_CHARS,
   MAX_HISTORY,
   MAX_MESSAGE_CHARS,
@@ -27,6 +30,7 @@ import {
   type ServerEvent,
 } from "../shared/protocol.js";
 import { runTurn, type Effort, type ModelClient } from "./agent.js";
+import type { Budget } from "./budget.js";
 import { riderFrom, toolNamed, type ToolContext } from "./tools.js";
 
 const SECOND = 1000;
@@ -50,6 +54,10 @@ export interface CompanionDeps {
   now?: () => number;
   /** Per-IP rate limits. Left out, the defaults below. */
   limiter?: Limiter;
+  /** False switches Gust off (FEATURE_GUST): the site hides him. Left out, on. */
+  enabled?: boolean;
+  /** The monthly spend cap. Left out, no cap. */
+  budget?: Budget | null;
 }
 
 /** A chat turn is several model calls: a burst of a few, a steady trickle after. */
@@ -114,6 +122,25 @@ const notConfigured = {
   message: "Gust is asleep: the companion is not configured on this server.",
 };
 
+const switchedOff = {
+  code: "off",
+  message: "Gust is switched off on this site.",
+};
+
+/** "1 November", for the day the allowance comes back. */
+const dayOf = (iso: string) =>
+  new Intl.DateTimeFormat("en-IE", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(iso));
+
+const budgetSpent = (resumes: string) => ({
+  code: "budget_exhausted",
+  message: `Gust has answered all he can this month and is back on ${dayOf(resumes)}. Until then, ask your own AI assistant: wingfoil.ie works in Claude, ChatGPT and more.`,
+  resumes,
+});
+
 function clientIp(c: Context): string {
   const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
   if (forwarded) return forwarded;
@@ -130,18 +157,48 @@ export function createCompanionRouter(deps: CompanionDeps) {
     deps.limiter ?? createLimiter(() => new Date(), COMPANION_RATES);
   const serverNow = deps.now ?? Date.now;
   const awake = Boolean(deps.client && deps.source);
+  const enabled = deps.enabled ?? true;
+  /** Where Gust stands right now, and when a spent budget comes back. */
+  const availability = async (): Promise<{
+    state: Availability;
+    resumes: string | null;
+  }> => {
+    if (!enabled) return { state: "off", resumes: null };
+    if (!awake) return { state: "asleep", resumes: null };
+    if (!deps.budget) return { state: "awake", resumes: null };
+    const budget = await deps.budget.state();
+    return budget.spent
+      ? { state: "resting", resumes: budget.resumes }
+      : { state: "awake", resumes: null };
+  };
+  /** The refusal for a Gust who cannot answer, or null when he can. */
+  const unavailable = async (c: Context) => {
+    const { state, resumes } = await availability();
+    if (state === "off") return c.json(switchedOff, 503);
+    if (state === "asleep") return c.json(notConfigured, 503);
+    if (state === "resting") return c.json(budgetSpent(resumes!), 503);
+    return null;
+  };
   /** The clock a request is answered on (see trustClientClock). */
   const nowFor = (sent: string) => {
     const at = Date.parse(sent);
     return deps.trustClientClock && Number.isFinite(at) ? at : serverNow();
   };
 
-  r.get("/status", (c) =>
-    c.json({ configured: awake, fake: Boolean(deps.fake) }),
-  );
+  r.get("/status", async (c) => {
+    const { state, resumes } = await availability();
+    return c.json({
+      state,
+      // What a browser from before `state` reads.
+      configured: state === "awake",
+      fake: Boolean(deps.fake),
+      resumes,
+    });
+  });
 
   r.post("/nudge", bodyLimit({ maxSize: 4 * 1024 }), async (c) => {
-    if (!awake) return c.json(notConfigured, 503);
+    const refused = await unavailable(c);
+    if (refused) return refused;
     const parsed = nudgeSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success)
       return c.json(
@@ -181,7 +238,8 @@ export function createCompanionRouter(deps: CompanionDeps) {
         ),
     }),
     async (c) => {
-      if (!awake) return c.json(notConfigured, 503);
+      const refused = await unavailable(c);
+      if (refused) return refused;
       const parsed = chatRequestSchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -220,6 +278,9 @@ export function createCompanionRouter(deps: CompanionDeps) {
                 effort: deps.effort,
                 now: nowFor(request.context.now),
                 newId: randomUUID,
+                onUsage: deps.budget
+                  ? (model, usage) => deps.budget!.record(model, usage)
+                  : undefined,
               },
               send,
               signal,

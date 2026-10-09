@@ -7,6 +7,7 @@ import {
   type ChatRequest,
   type ServerEvent,
 } from "../shared/protocol";
+import { createBudget, memoryLedger } from "./budget";
 import { fakeClient } from "./fake";
 import {
   COMPANION_RATES,
@@ -60,16 +61,51 @@ async function events(response: Response): Promise<ServerEvent[]> {
 describe("GET /status", () => {
   it("says whether Gust is awake", async () => {
     expect(await (await router().request("/status")).json()).toEqual({
+      state: "awake",
       configured: true,
       fake: false,
+      resumes: null,
     });
     expect(
       await (await router({ client: null }).request("/status")).json(),
     ).toMatchObject({
+      state: "asleep",
       configured: false,
     });
   });
+
+  it("says he is off when switched off, whatever else is set", async () => {
+    expect(
+      await (await router({ enabled: false }).request("/status")).json(),
+    ).toMatchObject({ state: "off", configured: false });
+  });
+
+  it("says he is resting once the month's budget is spent, and until when", async () => {
+    const ledger = memoryLedger();
+    await ledger.add("2026-10", { ...spent, costMicros: 5_000_000 });
+    const budget = createBudget({
+      monthlyUsd: 5,
+      ledger,
+      model: "claude-haiku-5-5",
+      now: () => Date.parse("2026-10-09T12:00:00Z"),
+    });
+    expect(await (await router({ budget }).request("/status")).json()).toEqual({
+      state: "resting",
+      configured: false,
+      fake: false,
+      resumes: "2026-11-01T00:00:00.000Z",
+    });
+  });
 });
+
+const spent = {
+  calls: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  costMicros: 0,
+};
 
 describe("POST /chat", () => {
   it("answers 503 not_configured without a model, and never pretends", async () => {
@@ -78,6 +114,45 @@ describe("POST /chat", () => {
       expect(response.status).toBe(503);
       expect(await response.json()).toMatchObject({ code: "not_configured" });
     }
+  });
+
+  it("answers 503 off when switched off, before reading the message", async () => {
+    const response = await post(router({ enabled: false }), "/chat", "junk");
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "off" });
+  });
+
+  it("refuses with budget_exhausted once the month is spent, pointing elsewhere", async () => {
+    const ledger = memoryLedger();
+    await ledger.add("2026-10", { ...spent, costMicros: 1_000_000 });
+    const budget = createBudget({
+      monthlyUsd: 1,
+      ledger,
+      model: "claude-haiku-5-5",
+      now: () => Date.parse("2026-10-31T23:59:00Z"),
+    });
+    const response = await post(router({ budget }), "/chat", body());
+    expect(response.status).toBe(503);
+    const refusal = (await response.json()) as Record<string, string>;
+    expect(refusal).toMatchObject({
+      code: "budget_exhausted",
+      resumes: "2026-11-01T00:00:00.000Z",
+    });
+    expect(refusal.message).toMatch(/back on 1 November/);
+    expect(refusal.message).toMatch(/your own AI assistant/);
+  });
+
+  it("counts every model call of a turn against the budget", async () => {
+    const ledger = memoryLedger();
+    const budget = createBudget({
+      monthlyUsd: 1,
+      ledger,
+      model: "claude-haiku-5-5",
+      now: () => Date.parse("2026-10-09T12:00:00Z"),
+    });
+    const response = await post(router({ budget }), "/chat", body());
+    await response.text();
+    expect((await ledger.read("2026-10")).calls).toBeGreaterThan(0);
   });
 
   it("streams a turn as server-sent events, ending in done", async () => {
