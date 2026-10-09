@@ -3,6 +3,7 @@
 Wave, weather, ensemble and instantaneous-gust bundles are validated here, so an
 adapter that publishes one can rely on a settled contract.
 """
+import ast
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path, PurePosixPath
@@ -485,6 +486,56 @@ class ContractTests(unittest.TestCase):
         self.addCleanup(publish_s3.MODELS["fake-wave"].__setitem__, "kind", "wave")
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "fake-wave", now=NOW)
+
+
+class PublishedRunContractTests(unittest.TestCase):
+    """`readsPublishedRun` and the adapter's own code must say the same thing.
+
+    The worker reads exit 3 as "nothing new" only from an adapter the registry says
+    implements the contract. A flag without the code wastes a bucket read; code
+    without the flag is worse, because its "nothing new" becomes a failed job.
+    Each adapter's test module checks the behaviour; this checks the agreement,
+    from the source, so that a new adapter cannot forget either half.
+    """
+
+    HERE = Path(__file__).resolve().parent
+    CHECKS = {"published_in_bucket", "already_published"}
+
+    def local_imports(self, tree):
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module)
+        return {name for name in names if (self.HERE / f"{name}.py").exists()}
+
+    def implements(self, script):
+        """Whether the script, or a shared helper it runs, checks the published run.
+
+        Helpers that are not themselves registered scripts count (`meteofrance.py`
+        runs ARPEGE and AROME); another model's script does not, because importing
+        `fetch_gfs` for its decoder says nothing about this model's own exit.
+        """
+        scripts = {entry["script"] for entry in MODELS.values()}
+        tree = ast.parse((self.HERE / script).read_text())
+        sources = [tree] + [ast.parse((self.HERE / f"{name}.py").read_text())
+                            for name in self.local_imports(tree) if f"{name}.py" not in scripts]
+        calls = {node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
+                 for source in sources for node in ast.walk(source) if isinstance(node, ast.Call)}
+        names = {node.id for source in sources for node in ast.walk(source) if isinstance(node, ast.Name)}
+        return bool(calls & self.CHECKS) and "UNCHANGED_EXIT" in names
+
+    def test_the_registry_flag_and_the_adapter_agree(self):
+        for model, entry in MODELS.items():
+            with self.subTest(model=model):
+                self.assertEqual(bool(entry.get("readsPublishedRun")), self.implements(entry["script"]))
+
+    def test_every_forecast_skips_a_published_run(self):
+        # Tides and observations have no provider run to compare; see the registry.
+        self.assertEqual(sorted(model for model, entry in MODELS.items()
+                                if not entry.get("readsPublishedRun")),
+                         ["sea-temperature", "tides"])
 
 
 if __name__ == "__main__":

@@ -91,9 +91,10 @@ def published_run(s3, bucket, prefix, model):
     """The run the bucket serves for this model right now, or None.
 
     A one-shot container starts on an empty disk, so the bucket is the only record
-    of what has already been imported. Adapters that are scheduled more often than
-    their source publishes (ECMWF hourly against a twice-daily run, ENS twice per
-    run) read this and download nothing when it matches. Not knowing is never fatal:
+    of what has already been imported. Every forecast adapter is scheduled at least
+    sometimes before its source has a newer run (ECMWF hourly against a twice-daily
+    run, a fallback to the previous cycle that is still the published one), so they
+    read this and download nothing when it matches. Not knowing is never fatal:
     the adapter then does what it always did and simply fetches the run.
     """
     if not s3:

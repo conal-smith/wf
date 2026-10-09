@@ -17,6 +17,7 @@ from fetch_gefs import (average, decode_member, decode_step, discover, file_name
                         inventory, main, member_name, object_key, run_datetime)
 from fetch_gfs import index_ranges
 from publish_s3 import publish, validate_bundle
+from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
 
 NOW = datetime(2026, 9, 16, 23, 40, tzinfo=timezone.utc)
@@ -404,6 +405,34 @@ class GefsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 main()
             download.assert_not_called()
+
+    def run_against_the_bucket(self, published, *argv):
+        """main() on the newest cycle with the bucket serving `published`."""
+        with patch("sys.argv", ["fetch_gefs.py", "--members", "2", "--hours", "6",
+                                "--step", "6", *argv]), \
+             patch.object(gefs, "ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch.object(gefs, "discover", return_value=self.fresh_run()), \
+             patch.object(gefs, "download", side_effect=OSError("provider unavailable")) as download, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / "public/weather/gefs.json").exists())
+        return result, download
+
+    def test_the_cycle_the_bucket_serves_is_not_downloaded_again(self):
+        # The newest cycle is often still publishing at its slot, so discovery falls
+        # back to the previous one: usually the one already published.
+        result, download = self.run_against_the_bucket(self.fresh_run())
+        self.assertEqual(result, UNCHANGED_EXIT)
+        download.assert_not_called()
+
+    def test_a_newer_cycle_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_against_the_bucket("2020010100")[0], "downloaded")
+        run = self.fresh_run()
+        self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
     def test_unusable_arguments_are_refused_without_downloading(self):
         for arguments in [["--members", "1"], ["--members", "32"], ["--hours", "246"],

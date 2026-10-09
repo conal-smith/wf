@@ -5,19 +5,26 @@ the templates the real ARPEGE and AROME packages use, so a change in what the
 importer accepts fails here rather than on the next live run.
 """
 import atexit
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
+import io
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
 import numpy as np
 
+import fetch_arome
+import fetch_arpege
 import meteofrance
 from meteofrance import SPECS
 from publish_s3 import validate_bundle
+from registry import UNCHANGED_EXIT
 
 ARPEGE, AROME = SPECS["arpege"], SPECS["arome"]
 RUN = "2026091618"
@@ -511,6 +518,58 @@ class PublisherAcceptanceTest(unittest.TestCase):
             self.assertEqual(MODELS[model]["maxAgeHours"], meteofrance.MAX_AGE_HOURS)
             self.assertEqual(MODELS[model]["script"], f"fetch_{model}.py")
             self.assertEqual(spec["horizon"] % 3, 0)
+
+
+class PublishedRunTest(unittest.TestCase):
+    """Discovery falls back to the previous cycle while the newest is still
+    publishing, and that cycle is usually the one already published. The package
+    listing alone decides: no header is walked and no message is downloaded."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+
+    def newest(self, spec):
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        while now.hour not in spec["cycles"]:
+            now -= timedelta(hours=1)
+        return now.strftime("%Y%m%d%H")
+
+    def refresh(self, spec, published, run=None):
+        """refresh() resolving the newest cycle with the bucket serving `published`."""
+        args = SimpleNamespace(hours=3, step=3, run=run, source="s3", workers=1)
+        with mock.patch.object(meteofrance, "ROOT", self.root), \
+             mock.patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": published}), \
+             mock.patch.object(meteofrance, "discover", return_value=(self.newest(spec), [])), \
+             mock.patch.object(meteofrance, "index", side_effect=OSError("bucket")) as index, \
+             redirect_stdout(io.StringIO()):
+            try:
+                result = meteofrance.refresh(spec, args, {})
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / f"public/weather/{spec['model']}.json").exists())
+        return result, index
+
+    def test_the_cycle_the_bucket_serves_is_not_downloaded_again(self):
+        for spec in (ARPEGE, AROME):
+            with self.subTest(model=spec["model"]):
+                result, index = self.refresh(spec, self.newest(spec))
+                self.assertEqual(result, UNCHANGED_EXIT)
+                index.assert_not_called()
+
+    def test_a_newer_cycle_or_an_explicit_run_is_downloaded(self):
+        for spec in (ARPEGE, AROME):
+            with self.subTest(model=spec["model"]):
+                self.assertEqual(self.refresh(spec, "2020010100")[0], "downloaded")
+                run = self.newest(spec)
+                self.assertEqual(self.refresh(spec, run, run=run)[0], "downloaded")
+
+    def test_both_scripts_hand_the_answer_back_to_their_exit_status(self):
+        for module, name in ((fetch_arpege, "fetch_arpege.py"), (fetch_arome, "fetch_arome.py")):
+            with self.subTest(script=name), mock.patch("sys.argv", [name]), \
+                    mock.patch.object(meteofrance, "refresh", return_value=UNCHANGED_EXIT):
+                self.assertEqual(module.main(), UNCHANGED_EXIT)
 
 
 class BundledSnapshotTest(unittest.TestCase):

@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+import io
 import json
+import os
 import unittest
 import tempfile
 from pathlib import Path
@@ -12,6 +14,7 @@ import f5bin
 from fetch_harmonie import discover, earth_vectors, resample, messages, validate, GRID
 from fetch_harmonie import extract, has_gust, gust_window, main, GUST_FIELDS, PARAMETERS
 from fetch_forecast import write_json
+from registry import UNCHANGED_EXIT
 from publish_s3 import validate_bundle
 
 # Recorded from the live control run 2026091620 +3h, whose full-domain export
@@ -82,6 +85,35 @@ class HarmonieTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     main()
             self.assertEqual(target.read_bytes(), before)
+
+    def run_against_the_bucket(self, published, *argv):
+        """main() with the bucket serving `published`; downloads fail if attempted."""
+        with tempfile.TemporaryDirectory() as directory, \
+             patch("fetch_harmonie.ROOT", Path(directory)), \
+             patch("sys.argv", ["fetch_harmonie", "--hours", "3", *argv]), \
+             patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_harmonie.inventory", return_value=[]), \
+             patch("fetch_harmonie.discover", return_value=("2026091312", {0: "zero", 3: "three"})), \
+             patch("fetch_harmonie.download", side_effect=OSError("portal")) as download, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+            self.assertFalse((Path(directory) / "public/weather/harmonie.json").exists())
+        return result, download
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        # Hourly slots against an hourly cycle: the newest complete run in the
+        # portal's window is often the one the previous slot already published.
+        result, download = self.run_against_the_bucket("2026091312")
+        self.assertEqual(result, UNCHANGED_EXIT)
+        download.assert_not_called()
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_against_the_bucket("2026091311")[0], "downloaded")
+        self.assertEqual(self.run_against_the_bucket("2026091312", "--run", "2026091312")[0],
+                         "downloaded")
 
     def test_discovery_rejects_partial_and_ensemble_runs(self):
         items = [{"name": f"fc{run}+{hour:03d}CONTROL_grib2_ieIoI"}

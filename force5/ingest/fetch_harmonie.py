@@ -27,7 +27,8 @@ import numpy as np
 from pyproj import Proj
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, load_spots, messages, sample, write_json
+from fetch_forecast import ROOT, get, load_spots, messages, published_in_bucket, sample, write_json
+from registry import UNCHANGED_EXIT
 
 PORTAL = "https://opendata.met.ie"
 MODEL = "harmonie"
@@ -241,6 +242,11 @@ def main():
         parser.error("Use 3–60 hours, divisible by step")
     hours = list(range(0, args.hours+1, args.step))
     run, names = discover(inventory(), hours, args.run)
+    # Scheduled hourly against an hourly cycle, but the newest complete run in the
+    # portal's three-hour window is often the one the previous slot published.
+    if published_in_bucket(run, args.run):
+        print(f"HARMONIE-AROME control {run} is already published; nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"HARMONIE-AROME control {run}: downloading {len(hours)} Ireland subsets", flush=True)
     with ThreadPoolExecutor(max_workers=2) as pool:
         paths = dict(zip(hours, pool.map(download, [names[h] for h in hours])))
@@ -303,7 +309,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"HARMONIE refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

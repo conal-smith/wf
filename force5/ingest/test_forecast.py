@@ -1,3 +1,4 @@
+import io
 import json
 import os
 from pathlib import Path
@@ -5,8 +6,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import fetch_forecast
 from fetch_forecast import (PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published,
-                            discover, sample, validate_metadata, write_json)
+                            discover, published_in_bucket, sample, validate_metadata, write_json)
+from registry import UNCHANGED_EXIT
 
 
 class AlreadyPublishedTests(unittest.TestCase):
@@ -54,6 +57,59 @@ class AlreadyPublishedTests(unittest.TestCase):
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
         self.manifest.write_text("nope")
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
+
+
+class PublishedInBucketTests(unittest.TestCase):
+    """The bucket half alone, for adapters that cannot name their bundle before downloading."""
+
+    def test_only_the_run_the_worker_passed_matches(self):
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091712"}):
+            self.assertTrue(published_in_bucket("2026091712"))
+            self.assertFalse(published_in_bucket("2026091800"))
+            self.assertFalse(published_in_bucket(None))
+
+    def test_an_explicit_run_is_always_imported_again(self):
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091712"}):
+            self.assertFalse(published_in_bucket("2026091712", "2026091712"))
+
+    def test_without_the_worker_nothing_is_ever_published(self):
+        # A local run never sets it, and a run on disk is not the bucket's answer.
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(published_in_bucket("2026091712"))
+        with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": ""}):
+            self.assertFalse(published_in_bucket(""))
+
+
+class IconPublishedRunTests(unittest.TestCase):
+    """ICON-EU decides from its inventory listing, before a single GRIB is fetched."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+
+    def run_main(self, published, *argv):
+        urls = {(hour, field): f"url/{field}/{hour}" for hour in (0, 3) for field in ("u", "v", "gust")}
+        with patch("sys.argv", ["fetch_forecast.py", "--hours", "3", *argv]), \
+             patch.object(fetch_forecast, "ROOT", self.root), \
+             patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_forecast.discover", return_value=("2026091706", urls)), \
+             patch("fetch_forecast.get", side_effect=OSError("network")) as get, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                return fetch_forecast.main(), get
+            except OSError:
+                return "downloaded", get
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        result, get = self.run_main("2026091706")
+        self.assertEqual(result, UNCHANGED_EXIT)
+        get.assert_not_called()
+        self.assertFalse((self.root / "public/weather/latest.json").exists())
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_main("2026091700")[0], "downloaded")
+        self.assertEqual(self.run_main("2026091706", "--run", "2026091706")[0], "downloaded")
 
 
 class ForecastTests(unittest.TestCase):
