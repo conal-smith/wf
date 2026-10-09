@@ -519,7 +519,19 @@ export function nearestFrame(
   );
 }
 /** Last time the manifest covers, from map frames or from its spot series. */
-export function lastValidTime(m: Manifest): number | null {
+/**
+ * What a run's age and reach are read from: when it started and the times it
+ * publishes. A whole manifest is one; so is the blend's summary of a run
+ * (src/spotBlend.ts), which carries the times and nothing else.
+ */
+export interface RunTimes {
+  runTime: string;
+  frames: readonly Pick<FrameInfo, "validTime">[];
+  spotForecasts?: Readonly<Record<string, readonly { validTime: string }[]>>;
+  spotMembers?: Readonly<Record<string, readonly { validTime: string }[]>>;
+}
+
+export function lastValidTime(m: RunTimes): number | null {
   const times = m.frames.length
     ? [Date.parse(m.frames[m.frames.length - 1].validTime)]
     : [
@@ -531,7 +543,7 @@ export function lastValidTime(m: Manifest): number | null {
   return times.length ? Math.max(...times) : null;
 }
 export function freshness(
-  m: Manifest,
+  m: RunTimes,
   now = Date.now(),
 ): "expired" | "stale" | "fresh" {
   const last = lastValidTime(m);

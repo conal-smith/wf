@@ -53,6 +53,7 @@ DESCRIPTIONS = {
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
     "tides": "Tide predictions (Marine Institute)",
     "sea-temperature": "Sea temperature observations",
+    "blend": "Every spot's wind blend, for the map's stars",
 }
 
 # What a job may use. Bacalhau holds a container to its memory, so these are
@@ -64,7 +65,7 @@ ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 SMALL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}
 RESOURCES = {
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
-    "tides": SMALL, "sea-temperature": SMALL, "mi-swan": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
+    "tides": SMALL, "sea-temperature": SMALL, "blend": SMALL, "mi-swan": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
     "gfs-wave": {"cpu": "1", "memory": "2Gb", "disk": "6Gb"},
 }
 SWEEP = {"cpu": "0.5", "memory": "512Mb", "disk": "1Gb"}

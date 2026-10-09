@@ -121,6 +121,14 @@ def run_models(args, root, s3):
                     command += ["--step", str(args.step)]
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
+                # The blend reads what the bucket serves, so it is told where that is;
+                # the credentials stay in the environment it inherits.
+                if MODELS[model]["kind"] == "blend" and args.bucket:
+                    command += ["--bucket", args.bucket, "--prefix", args.prefix]
+                    if args.endpoint_url:
+                        command += ["--endpoint-url", args.endpoint_url]
+                    if args.region:
+                        command += ["--region", args.region]
                 environment = dict(os.environ)
                 environment.pop(PUBLISHED_RUN_ENV, None)  # Never inherited; we set it or nobody does.
                 current = (published_run(s3, args.bucket, args.prefix, model)

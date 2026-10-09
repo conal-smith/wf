@@ -92,6 +92,12 @@ MODELS = {
     # One SWAN run a day, published around 09 UTC and occasionally a day late.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
+    # Not a model: every riding place's consensus of the wind models above, worked
+    # out from what they have published (src/spotBlend.ts), so the map's stars need
+    # one small file instead of every manifest. `run` is the hour it was worked out,
+    # so an hourly job publishes a new one each hour and three missed hours is stale.
+    "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
+              "kind": "blend", "maxAgeHours": 3},
 }
 
 MANIFESTS = {model: entry["manifest"] for model, entry in MODELS.items()}

@@ -1,13 +1,15 @@
 # One allowlist for both images, so `docker compose build` works on a plain Docker
 # install with no buildx plugin (a per-Dockerfile ignore file needs BuildKit).
-# The worker image still copies only ingest code, the spot catalogues and the
-# schedule; the site image is the only one that reads the frontend sources.
+# The worker image copies only ingest code, the spot catalogues, the schedule and
+# the blend, bundled in a build stage from the frontend sources it shares.
 **
 !force5/
 !force5/Dockerfile
 !force5/ingest/
 !force5/ingest/*.py
 !force5/ingest/requirements*.txt
+!force5/blend/
+!force5/blend/*.ts
 !deploy/
 !deploy/local/
 !deploy/local/jobs.toml

@@ -7,7 +7,8 @@
  * write to it. So the suite gets a public directory of its own:
  *
  *   .e2e/public/            the committed files in public/, copied
- *   .e2e/public/weather/    synthetic sample bundles, generated fresh each run
+ *   .e2e/public/weather/    synthetic sample bundles, generated fresh each run,
+ *                           and the blend of them (force5/blend/build.ts)
  *   .e2e/dist/              the build vite preview then serves
  *
  * `vite.config.ts` points `publicDir` and `build.outDir` at those when E2E_SITE
@@ -58,6 +59,15 @@ function main() {
   );
   if (generated.status !== 0)
     throw new Error("Sample weather generation failed for the e2e site");
+  // The blend the map's lights are rated from, worked out from those samples
+  // as the `blend` job works it out from the published runs (src/spotBlend.ts).
+  const blended = spawnSync(
+    "npx",
+    ["--no-install", "tsx", join(ROOT, "force5", "blend", "build.ts"), "--root", E2E_PUBLIC],
+    { stdio: "inherit", cwd: ROOT },
+  );
+  if (blended.status !== 0)
+    throw new Error("The blend failed for the e2e site");
   console.log(`Staged the e2e site in ${E2E_ROOT}`);
 }
 

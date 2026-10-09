@@ -87,6 +87,11 @@ interface Props {
   prefs: Prefs;
   onPrefsChange: (prefs: Prefs) => void;
   models: readonly ModelAvailability[];
+  /**
+   * Ask for every wind model's manifest: the blend chart and the model list
+   * read them, and the map's stars, from the published blend, do not.
+   */
+  onWantModels?: () => void;
   starred: boolean;
   onToggleStar: () => void;
   tide: SpotTide | null;
@@ -812,6 +817,7 @@ export default function ForecastDock(props: Props) {
     prefs,
     onPrefsChange,
     models,
+    onWantModels,
     starred,
     onToggleStar,
     tide,
@@ -842,6 +848,9 @@ export default function ForecastDock(props: Props) {
   const scrub = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
+  useEffect(() => {
+    if (filterOpen || (view === "blend" && !isPoint)) onWantModels?.();
+  }, [filterOpen, view, isPoint]);
   const filterButton = useRef<HTMLButtonElement>(null);
   const penClip = `pen-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
   // The scroll that brings each hour under the cursor, and where the cursor

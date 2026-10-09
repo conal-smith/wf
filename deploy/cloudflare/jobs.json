@@ -321,6 +321,20 @@
       ]
     },
     {
+      "id": "blend",
+      "enabled": true,
+      "description": "Every spot's wind blend, for the map's stars",
+      "minutes": [
+        5
+      ],
+      "size": "small",
+      "timeoutSeconds": 600,
+      "args": [
+        "--models",
+        "blend"
+      ]
+    },
+    {
       "id": "prune",
       "enabled": true,
       "description": "Sweep the bucket for objects no manifest references",
