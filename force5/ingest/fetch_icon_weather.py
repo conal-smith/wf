@@ -26,8 +26,9 @@ import sys
 import eccodes as ec
 import numpy as np
 
-from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots, sample,
-                            spots_file, write_json)
+from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
+                            published_in_bucket, sample, spots_file, write_json)
+from registry import UNCHANGED_EXIT
 
 MODEL = "icon-eu-weather"
 CYCLES = ("00", "06", "12", "18")
@@ -311,6 +312,10 @@ def main(argv=None):
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= MAX_AGE_HOURS:
         raise ValueError(f"Refusing a stale/future ICON-EU run (maximum age {MAX_AGE_HOURS} hours)")
+    if published_in_bucket(run, args.run):
+        print(f"ICON-EU surface weather {run} is already published; nothing to download.",
+              flush=True)
+        return UNCHANGED_EXIT
     print(f"Fetching ICON-EU surface weather {run}: {len(hours)} frames, "
           f"{len(urls)} files, frame variables {', '.join(args.frame_variables)}", flush=True)
     # The same cache root as the wind importer; the parameter names never collide.
@@ -384,7 +389,9 @@ def main(argv=None):
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"ICON-EU weather refresh failed: {error}. Last published snapshot preserved.",
               file=sys.stderr)

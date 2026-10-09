@@ -27,17 +27,22 @@ UNCHANGED_EXIT = 3
 # re-downloading a twice-daily run.
 PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 
+# `readsPublishedRun` marks an adapter that implements the FORCE5_PUBLISHED_RUN
+# contract: it is what makes the worker send the bucket's run and what makes
+# UNCHANGED_EXIT mean something from the adapter's exit status. Every forecast does,
+# because every slot that fires before its source has a newer run (ECMWF hourly
+# against a twice-daily run, a fallback to the previous Météo-France or GEFS cycle,
+# SWAN's one run a day checked three times) would otherwise download, process and
+# re-upload a run the site already serves. Tides and sea temperature do not: see
+# their entries.
 MODELS = {
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
-                 "kind": "wind", "maxAgeHours": 12, "cache": "harmonie"},
+                 "kind": "wind", "maxAgeHours": 12, "cache": "harmonie", "readsPublishedRun": True},
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
-                "kind": "wind", "maxAgeHours": 12, "cache": "grib"},
+                "kind": "wind", "maxAgeHours": 12, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
-                        "kind": "weather", "maxAgeHours": 12, "cache": "grib"},
-    # These two are scheduled more often than their source publishes (hourly against a
-    # twice-daily run; twice per ENS run), and keep no downloads, so they implement the
-    # FORCE5_PUBLISHED_RUN contract: `readsPublishedRun` is what makes the worker send
-    # it and what makes UNCHANGED_EXIT mean something from their exit status.
+                        "kind": "weather", "maxAgeHours": 12, "cache": "grib",
+                        "readsPublishedRun": True},
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
               "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf", "readsPublishedRun": True},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
@@ -47,37 +52,46 @@ MODELS = {
     # is never more than twelve hours old when the next one is due. Its cadence is a
     # uniform six hours and never the worker's 1/3-hour step.
     "aifs": {"script": "fetch_aifs.py", "manifest": "weather/aifs.json",
-             "kind": "wind", "maxAgeHours": 12, "cache": "aifs", "workerStep": False},
+             "kind": "wind", "maxAgeHours": 12, "cache": "aifs", "workerStep": False,
+             "readsPublishedRun": True},
     # The wave stream is twice daily on the wind control's own ladder.
     "ecmwf-wave": {"script": "fetch_ecmwf_wave.py", "manifest": "weather/ecmwf-wave.json",
-                   "kind": "wave", "maxAgeHours": 24, "cache": "ecmwf-wave"},
+                   "kind": "wave", "maxAgeHours": 24, "cache": "ecmwf-wave",
+                   "readsPublishedRun": True},
     "gfs": {"script": "fetch_gfs.py", "manifest": "weather/gfs.json",
-            "kind": "wind", "maxAgeHours": 12, "cache": "gfs"},
+            "kind": "wind", "maxAgeHours": 12, "cache": "gfs", "readsPublishedRun": True},
     # GEFS is 3-hourly at best and defaults to 6-hourly; it has no hourly product.
     # The newest GEFS cycle is often still publishing at its slot; accept the previous one.
     "gefs": {"script": "fetch_gefs.py", "manifest": "weather/gefs.json",
-             "kind": "wind", "maxAgeHours": 18, "cache": "gefs", "workerStep": False},
+             "kind": "wind", "maxAgeHours": 18, "cache": "gefs", "workerStep": False,
+             "readsPublishedRun": True},
     # Météo-France publishes whole-domain packages with no subsetting; both adapters
     # read only the messages they publish, over byte ranges. ARPEGE runs four times a
     # day and AROME every three hours, both about 4.5 hours behind their cycle.
     "arpege": {"script": "fetch_arpege.py", "manifest": "weather/arpege.json",
-               "kind": "wind", "maxAgeHours": 12, "cache": "meteofrance/arpege"},
+               "kind": "wind", "maxAgeHours": 12, "cache": "meteofrance/arpege",
+               "readsPublishedRun": True},
     "arome": {"script": "fetch_arome.py", "manifest": "weather/arome.json",
-              "kind": "wind", "maxAgeHours": 12, "cache": "meteofrance/arome"},
+              "kind": "wind", "maxAgeHours": 12, "cache": "meteofrance/arome",
+              "readsPublishedRun": True},
     "harmonie-eps": {"script": "fetch_harmonie_eps.py", "manifest": "weather/harmonie-eps.json",
-                     "kind": "wind", "maxAgeHours": 12},
+                     "kind": "wind", "maxAgeHours": 12, "readsPublishedRun": True},
     "gfs-wave": {"script": "fetch_gfswave.py", "manifest": "weather/gfs-wave.json",
-                 "kind": "wave", "maxAgeHours": 12, "cache": "gfswave"},
+                 "kind": "wave", "maxAgeHours": 12, "cache": "gfswave", "readsPublishedRun": True},
+    # Predictions, not a run: `run` is the hour the job ran, so it never repeats from
+    # one daily slot to the next and there is no provider run to compare it with.
     "tides": {"script": "fetch_tides.py", "manifest": "marine/tides.json",
               "kind": "tide", "maxAgeHours": 30},
     # Observations, not a forecast: `run` is the newest observation hour, so this
-    # limit is how stale a reading the site will still show.
+    # limit is how stale a reading the site will still show. It is also why the run
+    # is not compared: it is known only once every reading has been fetched, and an
+    # unchanged newest hour still lets other stations catch up, which is new data.
     "sea-temperature": {"script": "fetch_sea_temperature.py",
                         "manifest": "marine/sea-temperature.json",
                         "kind": "observation", "maxAgeHours": 48},
     # One SWAN run a day, published around 09 UTC and occasionally a day late.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
-                "kind": "wave", "maxAgeHours": 36},
+                "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
 }
 
 MANIFESTS = {model: entry["manifest"] for model, entry in MODELS.items()}

@@ -13,6 +13,7 @@ from cadence import expected_hours
 import fetch_aifs
 from fetch_aifs import MODEL, STEP, decode_wind, main, parse_args, run_datetime
 from publish_s3 import publish, validate_bundle
+from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
 
 # The identity the live 0.25° AIFS product carries, read on 17 September 2026.
@@ -229,6 +230,35 @@ class AIFSFailureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 main(["--run", stale.strftime("%Y%m%d%H")])
             factory.return_value.retrieve.assert_not_called()
+
+    def run_against_the_bucket(self, published, *argv):
+        """main() on the newest cycle with the bucket serving `published`."""
+        now = datetime.now(timezone.utc)
+        latest = now.replace(minute=0, second=0, microsecond=0, hour=now.hour // 6 * 6)
+        with patch("fetch_aifs.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_aifs.client") as factory, redirect_stdout(io.StringIO()):
+            factory.return_value.latest.return_value = latest
+            factory.return_value.retrieve.side_effect = OSError("mirror unavailable")
+            try:
+                result = main(list(argv))
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / f"public/weather/{MODEL}.json").exists())
+        return result, factory.return_value.retrieve, latest.strftime("%Y%m%d%H")
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        now = datetime.now(timezone.utc)
+        run = now.replace(minute=0, second=0, microsecond=0,
+                          hour=now.hour // 6 * 6).strftime("%Y%m%d%H")
+        result, retrieve, _ = self.run_against_the_bucket(run)
+        self.assertEqual(result, UNCHANGED_EXIT)
+        retrieve.assert_not_called()
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_against_the_bucket("2026010100")[0], "downloaded")
+        run = self.run_against_the_bucket("2026010100")[2]
+        self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
     def test_the_client_asks_for_the_ai_model_on_the_chosen_mirror(self):
         with patch("fetch_ecmwf.Client") as constructor:

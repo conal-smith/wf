@@ -506,8 +506,12 @@ Cadence and publication lags are unchanged; see the per-model sections above and
 ### Nothing new costs nothing
 
 `ecmwf` is scheduled hourly against a twice-daily source (about 250 MB a run) and
-`ecmwf-ens` twice per run (about 2 GB). Raw downloads are not kept, so without a check
-each slot would re-download a run it has already published. On an empty disk there is
+`ecmwf-ens` twice per run (about 2 GB). The others meet the same run more than once in
+quieter ways: `harmonie` runs hourly and the newest complete cycle in the portal's
+window is often the one the last slot published, `gefs`, `arpege` and `arome` fall back
+to the previous cycle while the newest is still publishing, and `mi-swan` checks its one
+daily run three times. Raw downloads are not kept, so without a check each such slot
+would re-download a run it has already published. On an empty disk there is
 nothing local to check, so the **bucket is the truth**: when a bucket is configured the
 worker reads the model's current pointer manifest and passes its run to the adapter in
 `FORCE5_PUBLISHED_RUN`. An adapter that resolves that same run, and was not given an
@@ -538,14 +542,27 @@ declares `readsPublishedRun` in the registry and that it actually gave
 `FORCE5_PUBLISHED_RUN` to**. If the pointer could not be read, or the adapter is not
 part of the contract, exit 3 is an ordinary failure. The variable is also stripped from
 the inherited environment before each job, so a stray value cannot make a job claim
-success. `ecmwf` and `ecmwf-ens` are the only two adapters in the contract today,
-because they are the only two scheduled more often than their source publishes; the
-mechanism itself is generic and lives in `fetch_forecast.already_published`.
+success.
+
+Every forecast adapter is in the contract: `harmonie`, `icon-eu`, `icon-eu-weather`,
+`ecmwf`, `ecmwf-ens`, `aifs`, `ecmwf-wave`, `gfs`, `gefs`, `arpege`, `arome`,
+`harmonie-eps`, `gfs-wave` and `mi-swan`. Each decides from the discovery step it
+already makes (an inventory listing, a package listing, ECMWF's `latest()` probe,
+SWAN's info page and `time[last]`), after its freshness check, so a stale or
+incomplete source still fails rather than reading as "nothing new". `ecmwf` and
+`ecmwf-ens` use `fetch_forecast.already_published`, both halves; the rest use only its
+bucket half, `fetch_forecast.published_in_bucket`, because they cannot name their bundle
+before downloading, so a local run without `FORCE5_PUBLISHED_RUN` behaves exactly as it
+always did. Two models stay out, because their `run` is not a provider run: `tides`
+stamps the hour the job ran, so it never repeats, and `sea-temperature`'s newest
+observation hour is known only after every reading is fetched, and can stay the same
+while other stations catch up. `test_contract.py` fails if a registry flag and its
+adapter's code disagree.
 
 The bucket answer compares the **run id** only. So a change to an adapter's object
 prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an immediate
 re-import of the run already published: the new objects land with the source's next
-cycle, within 12 hours. Pass `--run YYYYMMDDHH` to re-import the current one at once —
+cycle (within 12 hours for ECMWF, a day for SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
 
 ### Deleting what is superseded

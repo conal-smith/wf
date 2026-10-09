@@ -34,7 +34,9 @@ import eccodes as ec
 import numpy as np
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, load_spots, messages, sample, spots_file, write_json
+from fetch_forecast import (ROOT, get, load_spots, messages, published_in_bucket, sample,
+                            spots_file, write_json)
+from registry import UNCHANGED_EXIT
 
 HOST = "meteofrance-pnt.s3.rbx.io.cloud.ovh.net"
 BUCKET = f"https://{HOST}"
@@ -603,7 +605,13 @@ def coverage(spots, grid, sample_values):
 
 
 def refresh(spec, args, prose):
-    """Fetch, validate, crop and atomically publish one run of one model."""
+    """Fetch, validate, crop and atomically publish one run of one model.
+
+    Returns UNCHANGED_EXIT, having read only the package listing, when the run it
+    resolves is the one the bucket already serves. Discovery deliberately falls
+    back to the previous cycle while the newest is still publishing, and that
+    cycle is usually the one the previous slot published.
+    """
     model = spec["model"]
     if not args.step <= args.hours <= spec["horizon"] or args.hours % args.step:
         raise ValueError(f"Use {args.step}–{spec['horizon']} hours divisible by the step")
@@ -616,6 +624,10 @@ def refresh(spec, args, prose):
         if not -1 <= age <= MAX_AGE_HOURS:
             raise ValueError(f"Refusing a stale/future {spec['modelName']} run "
                              f"(maximum age {MAX_AGE_HOURS} hours)")
+        if published_in_bucket(run, args.run):
+            print(f"{spec['modelName']} {run} is already published; nothing to download.",
+                  flush=True)
+            return UNCHANGED_EXIT
         print(f"Fetching {spec['modelName']} {spec['resolutionLabel']} {run} via {args.source}: "
               f"{len(hours)} frames through +{args.hours}h", flush=True)
         cache = ROOT / ".cache" / "meteofrance" / model / run

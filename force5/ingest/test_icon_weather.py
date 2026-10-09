@@ -22,6 +22,7 @@ import fetch_icon_weather
 from fetch_icon_weather import (DIRECTORIES, VARIABLES, convert, decode, derive_precip, discover,
                                main, parse_args, sample_variable, validate_metadata)
 from publish_s3 import validate_bundle
+from registry import UNCHANGED_EXIT
 
 RUN = "2026091618"
 HOUR = 3
@@ -407,12 +408,39 @@ class BundleTests(unittest.TestCase):
                 main()
         self.assertEqual(json.loads(output.read_text()), {"run": "last-good"})
 
+    def run_against_the_bucket(self, published, *argv):
+        """main() with the bucket serving `published`; downloads fail if attempted."""
+        with patch("sys.argv", ["fetch_icon_weather.py", "--hours", "6", *argv]), \
+             patch("fetch_icon_weather.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_icon_weather.discover",
+                   return_value=(self.run, {(0, "t2m"): "url"})), \
+             patch("fetch_icon_weather.get", side_effect=OSError("DWD")) as get, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / "public/weather/icon-eu-weather.json").exists())
+        return result, get
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        result, get = self.run_against_the_bucket(self.run)
+        self.assertEqual(result, UNCHANGED_EXIT)
+        get.assert_not_called()
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        older = (self.run_time - timedelta(hours=6)).strftime("%Y%m%d%H")
+        self.assertEqual(self.run_against_the_bucket(older)[0], "downloaded")
+        self.assertEqual(self.run_against_the_bucket(self.run, "--run", self.run)[0], "downloaded")
+
     def test_the_registry_entry_points_at_this_importer(self):
         from registry import MODELS
         self.assertEqual(MODELS["icon-eu-weather"],
                          {"script": "fetch_icon_weather.py",
                           "manifest": "weather/icon-eu-weather.json",
-                          "kind": "weather", "maxAgeHours": 12, "cache": "grib"})
+                          "kind": "weather", "maxAgeHours": 12, "cache": "grib",
+                          "readsPublishedRun": True})
         self.assertEqual(fetch_icon_weather.MODEL, "icon-eu-weather")
 
 

@@ -20,7 +20,7 @@ import eccodes as ec
 import numpy as np
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from registry import PUBLISHED_RUN_ENV
+from registry import PUBLISHED_RUN_ENV, UNCHANGED_EXIT
 
 # The two answers `already_published` can give, which mean different things: the
 # first ends the job, the second only skips the download. Both are truthy.
@@ -197,6 +197,19 @@ def sample(grid, values, lon, lat):
                  (values[i+grid["width"]] * (1-tx) + values[i+grid["width"]+1] * tx) * ty, 2)
 
 
+def published_in_bucket(run, requested_run=None):
+    """True when the worker says the bucket already serves `run`: nothing to fetch.
+
+    The bucket half of `already_published`, for an adapter that resolves its run
+    before downloading but cannot name its bundle until afterwards, or that has
+    never kept one on disk. Deliberately without the on-disk half, so that a local
+    run with no FORCE5_PUBLISHED_RUN behaves exactly as it always did. An explicit
+    `--run` is a request to import that run again, so it never matches; nor does
+    a run the worker did not pass, so a stray value cannot turn a failure into a skip.
+    """
+    return not requested_run and bool(run) and os.environ.get(PUBLISHED_RUN_ENV) == run
+
+
 def already_published(manifest, run, prefix):
     """Where this exact run bundle already exists: PUBLISHED_IN_BUCKET, ON_DISK or False.
 
@@ -219,7 +232,7 @@ def already_published(manifest, run, prefix):
     re-import: it lands with the source's next run, within one cycle. Pass `--run`
     to re-import the current one at once.
     """
-    if os.environ.get(PUBLISHED_RUN_ENV) == run:
+    if published_in_bucket(run):
         return PUBLISHED_IN_BUCKET
     try:
         value = json.loads(manifest.read_text())
@@ -248,6 +261,9 @@ def main():
         parser.error("Use 3–72 hours, step 1 or 3, with hours divisible by step")
     hours = list(range(0, args.hours + 1, args.step))
     run, urls = discover(hours, args.run)
+    if published_in_bucket(run, args.run):
+        print(f"ICON-EU {run} is already published; nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"Fetching ICON-EU {run}, {len(hours)} frames ({len(urls)} fields)", flush=True)
     cache = ROOT / ".cache" / "grib" / run
     cache.mkdir(parents=True, exist_ok=True)
@@ -309,7 +325,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"Forecast refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

@@ -28,7 +28,9 @@ import fetch_gfs
 from cadence import ladder_hours
 from fetch_gfs import FIELDS, index_ranges, validate_metadata
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import BBOX, ROOT, decode_handle, load_spots, sample, spots_file, write_json
+from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
+                            spots_file, write_json)
+from registry import UNCHANGED_EXIT
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
 BUCKET = "https://noaa-gefs-pds.s3.amazonaws.com"
@@ -264,6 +266,11 @@ def main():
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= MAX_AGE_HOURS:
         raise ValueError(f"Refusing a stale/future GEFS run (maximum age {MAX_AGE_HOURS} hours)")
+    # The newest cycle is often still publishing at its slot, so discovery falls back
+    # to the previous one, which is usually the one already published.
+    if published_in_bucket(run, args.run):
+        print(f"GEFS 0.25° {run} is already published; nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     requests = len(members) * len(hours)
     print(f"Fetching GEFS 0.25° {run} from {args.source}: {len(members)} members × "
           f"{len(hours)} steps to +{args.hours}h ({requests} member-steps, about "
@@ -375,7 +382,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"GEFS refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

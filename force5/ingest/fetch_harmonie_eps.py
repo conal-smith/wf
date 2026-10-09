@@ -35,10 +35,11 @@ import eccodes as ec
 import numpy as np
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, sample, write_json
+from fetch_forecast import ROOT, get, published_in_bucket, sample, write_json
 from fetch_forecast import load_spots, spots_file
 from fetch_harmonie import (GEOMETRY, GRID, PORTAL, earth_vectors, inventory,
                             make_layout, messages, resample)
+from registry import UNCHANGED_EXIT
 
 MODEL = "harmonie-eps"
 PRODUCT = "CONTROL_grib2_ieIoI"  # Ireland Lambert subset; one file per cycle and step.
@@ -234,6 +235,13 @@ def main():
     if len(members) < args.min_members:
         raise RuntimeError(f"Only {len(members)} HARMONIE ensemble members are retrievable; "
                            f"{args.min_members} required. Existing snapshots are unchanged.")
+    # Re-assembling an anchor that is already published can only find the same
+    # members or fewer, as older cycles leave the portal's window, and the
+    # publisher refuses to replace a larger ensemble with a smaller one anyway.
+    if published_in_bucket(run, args.run):
+        print(f"HARMONIE-AROME DINI EPS anchored on {run} is already published; "
+              "nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"HARMONIE-AROME DINI EPS anchored on {run}: {len(members)} members from cycles "
           f"{', '.join(member['run'] for member in members)} × {len(hours)} steps", flush=True)
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -313,7 +321,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"HARMONIE EPS refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
