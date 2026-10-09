@@ -187,6 +187,11 @@ count and forecast horizon, and exits nonzero when a model is missing, stale or
 expired. `npm run deploy:logs` follows the ingest and web logs; each job logs a JSON
 `forecast_complete` or `forecast_failed` event.
 
+The same timetable (`deploy/local/jobs.toml`) also drives two ways of publishing to
+the R2 bucket instead of a local volume: [Home Compute on a Mac mini](deploy/home-compute/README.md)
+(Bacalhau, launch agents, a menu bar app) and [Cloudflare Containers](deploy/cloudflare/README.md).
+`deploy/schedules.py` writes both from the TOML; rerun it after editing the timetable.
+
 ## Live forecast worker
 
 See the [live forecast pipeline runbook](docs/LIVE_FORECAST_PIPELINE.md) for the
