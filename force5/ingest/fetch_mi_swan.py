@@ -38,9 +38,10 @@ from urllib.parse import quote
 
 import requests
 
-from fetch_forecast import ROOT, load_spots, write_json
+from fetch_forecast import ROOT, load_spots, published_in_bucket, write_json
 # The tide adapter already reads this ERDDAP's CSV dialect; share its helpers.
 from fetch_tides import distance_km, moment, rows as erddap_rows, stamp
+from registry import UNCHANGED_EXIT
 
 ERDDAP = "https://erddap.marine.ie/erddap"
 SHELF = "IMI_IRISH_SHELF_SWAN_WAVE"
@@ -517,6 +518,12 @@ def main(argv=None):
     run = discover(infos[SHELF], last_time(SHELF, root / "info"))
     if NEST in infos and discover(infos[NEST], last_time(NEST, root / "info")) != run:
         raise ValueError("The Connemara nest is on a different model day than the shelf run")
+    # One run a day, checked three times: the run is known from two small ERDDAP
+    # requests, before any of the per-spot and frame subsets are asked for.
+    if published_in_bucket(run.strftime("%Y%m%d%H")):
+        print(f"Marine Institute SWAN run {stamp(run)} is already published; "
+              "nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"Marine Institute SWAN run {stamp(run)} (+0..{args.hours} h at {args.step} h steps)",
           flush=True)
     return build(args, infos, run, root / run.strftime("%Y%m%d%H"), now)
@@ -524,7 +531,10 @@ def main(argv=None):
 
 if __name__ == "__main__":
     try:
-        main()
+        # main() returns the manifest it wrote, or UNCHANGED_EXIT when the run is
+        # already published, which the worker reads as "nothing new", not as a
+        # failure and not as a bundle to validate.
+        sys.exit(UNCHANGED_EXIT if main() == UNCHANGED_EXIT else 0)
     except Exception as error:
         print(f"Marine Institute SWAN refresh failed: {error}. "
               "Last published wave forecast preserved.", file=sys.stderr)

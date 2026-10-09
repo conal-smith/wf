@@ -16,6 +16,7 @@ from fetch_ecmwf_wave import (ALL_VARIABLES, BANDS, DIRECTION, MODEL, NEAREST_LI
                               cadence_for, coverage_for, crop_values, decode, main,
                               manifest_for, parse_args, read_spot, run_datetime, spot_plans)
 from publish_s3 import publish, validate_bundle
+from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
 
 # The identity the live 0.25° wave stream carries, read on 17 September 2026.
@@ -377,6 +378,33 @@ class WaveFailureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 main(["--run", stale.strftime("%Y%m%d%H")])
             factory.return_value.retrieve.assert_not_called()
+
+    def run_against_the_bucket(self, published, *argv):
+        """main() on the newest 00/12 cycle with the bucket serving `published`."""
+        now = datetime.now(timezone.utc)
+        latest = now.replace(minute=0, second=0, microsecond=0, hour=now.hour // 12 * 12)
+        with patch("fetch_ecmwf_wave.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_ecmwf_wave.client") as factory, redirect_stdout(io.StringIO()):
+            factory.return_value.latest.return_value = latest
+            factory.return_value.retrieve.side_effect = OSError("mirror unavailable")
+            try:
+                result = main(["--hours", "3", *argv])
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / f"public/weather/{MODEL}.json").exists())
+        return result, factory.return_value.retrieve, latest.strftime("%Y%m%d%H")
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        run = self.run_against_the_bucket("2026010100")[2]
+        result, retrieve, _ = self.run_against_the_bucket(run)
+        self.assertEqual(result, UNCHANGED_EXIT)
+        retrieve.assert_not_called()
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_against_the_bucket("2026010100")[0], "downloaded")
+        run = self.run_against_the_bucket("2026010100")[2]
+        self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
     def test_the_client_asks_the_wave_stream_of_the_chosen_mirror(self):
         with patch("fetch_ecmwf.Client") as constructor:

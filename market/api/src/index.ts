@@ -4,6 +4,8 @@ import { clerkVerifier, devVerifier } from "./auth.js";
 import {
   COMMUNITY_LEDGER,
   COMMUNITY_MIGRATIONS_DIR,
+  COMPANION_LEDGER,
+  COMPANION_MIGRATIONS_DIR,
   connect,
   migrate,
 } from "./db.js";
@@ -14,6 +16,12 @@ import { localStorage, s3Storage } from "./storage.js";
 import { dirSource, httpSource } from "../../../mcp/api/source.js";
 import { anthropicClient } from "../../../companion/api/agent.js";
 import { fakeClient } from "../../../companion/api/fake.js";
+import {
+  createBudget,
+  memoryLedger,
+  type UsageLedger,
+} from "../../../companion/api/budget.js";
+import { pgLedger } from "../../../companion/api/budget-pg.js";
 import { memoryHub, pgHub } from "../../../community/api/hub.js";
 import { memoryRepo as memoryCommunityRepo } from "../../../community/api/repo-memory.js";
 import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
@@ -25,6 +33,7 @@ async function main() {
   const config = loadConfig();
 
   let repo, community, users, hub;
+  let ledger: UsageLedger;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
@@ -37,6 +46,14 @@ async function main() {
     );
     if (ranCommunity.length)
       console.log(`community: applied migrations ${ranCommunity.join(", ")}`);
+    const ranCompanion = await migrate(
+      sql,
+      COMPANION_MIGRATIONS_DIR,
+      COMPANION_LEDGER,
+    );
+    if (ranCompanion.length)
+      console.log(`companion: applied migrations ${ranCompanion.join(", ")}`);
+    ledger = pgLedger(sql);
     repo = pgRepo(sql);
     community = pgCommunityRepo(sql);
     users = pgUsersRepo(sql);
@@ -52,6 +69,7 @@ async function main() {
     community = memoryCommunityRepo(memoryUsers);
     users = memoryUsers;
     hub = memoryHub();
+    ledger = memoryLedger();
   }
 
   const verify =
@@ -81,16 +99,29 @@ async function main() {
 
   // Gust: the Claude API with a key, the scripted fake in development when
   // asked for, and otherwise asleep (503 not_configured, never a fake answer).
-  const { companion } = config;
-  const companionClient = companion.fake
-    ? fakeClient()
-    : companion.apiKey
-      ? anthropicClient(companion.apiKey)
-      : null;
-  if (companion.fake)
+  // Switched off (FEATURE_GUST unset) he makes no calls whatever is set.
+  const { companion, features } = config;
+  const companionClient = !features.gust
+    ? null
+    : companion.fake
+      ? fakeClient()
+      : companion.apiKey
+        ? anthropicClient(companion.apiKey)
+        : null;
+  if (!features.gust)
+    console.warn("market: FEATURE_GUST is not 1, Gust is off");
+  else if (companion.fake)
     console.warn("market: COMPANION_FAKE=1, Gust answers from a script");
   else if (!companionClient)
     console.warn("market: ANTHROPIC_API_KEY is not set, Gust is asleep");
+  else
+    console.log(
+      `market: Gust on ${companion.model}, $${companion.monthlyBudgetUsd} a month`,
+    );
+  if (!features.market)
+    console.warn("market: FEATURE_MARKET is not 1, /api/market is off");
+  if (!features.community)
+    console.warn("market: FEATURE_COMMUNITY is not 1, /api/community is off");
 
   const app = createApp({
     repo,
@@ -103,12 +134,18 @@ async function main() {
     authMode: config.auth.mode,
     hub,
     forecast,
+    features,
     companion: {
       client: companionClient,
       model: companion.model,
       effort: companion.effort,
       fake: companion.fake,
       trustClientClock: companion.fake,
+      budget: createBudget({
+        monthlyUsd: companion.monthlyBudgetUsd,
+        ledger,
+        model: companion.model,
+      }),
     },
   });
 

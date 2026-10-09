@@ -69,6 +69,7 @@ import {
   type ColumnModel,
 } from "../force5/src/timeline";
 import { tideAt } from "../force5/src/tides";
+import { FEATURES } from "../shared/web/features";
 import { favourites } from "../shared/web/favourites";
 import {
   compass,
@@ -1045,7 +1046,7 @@ export default function App() {
           </section>
         </main>
       )}
-      {!error && gustDue && (
+      {!error && gustDue && FEATURES.gust && (
         <Suspense fallback={null}>
           <Companion
             context={{

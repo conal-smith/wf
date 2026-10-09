@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { CircleAlert, SquarePen, X } from "lucide-react";
 import { Button, Kicker, StarGlyphs } from "../../ui";
+import { AI_HREF } from "../../force5/src/siteNav";
 import { MONO_LABEL, RING } from "../../ui/tv";
 import { loadPrefs, parseRider, savePrefs } from "../../force5/src/prefs";
 import {
@@ -75,6 +76,7 @@ export function Companion({
   const wasOpen = useRef(false);
 
   useEffect(() => {
+    if (gust.hidden) return;
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
         event.preventDefault();
@@ -83,7 +85,7 @@ export function Companion({
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [gust.toggle]);
+  }, [gust.toggle, gust.hidden]);
 
   useEffect(() => {
     // Straight to the box with a mouse; on a touch screen that would throw
@@ -117,6 +119,8 @@ export function Companion({
     : gust.open
       ? `Close ${COMPANION_NAME}`
       : `Open ${COMPANION_NAME}, your wing-foiling buddy`;
+
+  if (gust.hidden) return null;
 
   return (
     <div className="gust-root contents" style={style}>
@@ -179,6 +183,7 @@ function Panel({
   input: RefObject<HTMLTextAreaElement | null>;
   onShow: (actions: MapAction[]) => void;
 }) {
+  const resting = gust.availability === "resting";
   const asleep = gust.configured === false;
   const empty = gust.chat.messages.length === 0;
   return (
@@ -211,11 +216,13 @@ function Panel({
             className={["m-0 truncate text-ink-muted", MONO_LABEL].join(" ")}
             aria-live="polite"
           >
-            {asleep
-              ? "Asleep: not configured on this server"
-              : gust.busy
-                ? "Checking the forecast…"
-                : "Your wing-foiling buddy"}
+            {resting
+              ? "Resting until next month"
+              : asleep
+                ? "Asleep: not configured on this server"
+                : gust.busy
+                  ? "Checking the forecast…"
+                  : "Your wing-foiling buddy"}
           </p>
         </div>
         <Button
@@ -244,7 +251,9 @@ function Panel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-        {asleep ? (
+        {resting ? (
+          <Resting resumes={gust.resumes} />
+        ) : asleep ? (
           <Asleep />
         ) : empty ? (
           <Welcome
@@ -259,7 +268,7 @@ function Panel({
       </div>
 
       <footer className="flex flex-col gap-1 border-0 border-t border-ink px-3 pt-3 pb-safe-3">
-        {gust.chat.requestError && (
+        {gust.chat.requestError && !resting && (
           <p
             role="alert"
             className="m-0 flex items-start gap-1 px-1 font-body text-body text-warn"
@@ -279,13 +288,54 @@ function Panel({
           onSend={(text) => void gust.send(text)}
           disabled={asleep}
           busy={gust.busy}
-          placeholder={asleep ? `${COMPANION_NAME} is asleep` : undefined}
+          placeholder={
+            resting
+              ? `${COMPANION_NAME} is resting`
+              : asleep
+                ? `${COMPANION_NAME} is asleep`
+                : undefined
+          }
         />
         <p className="m-0 px-1 font-body text-caption text-ink-muted italic">
           Forecasts, not promises. Check the launch and conditions yourself.
         </p>
       </footer>
     </section>
+  );
+}
+
+/** "1 November", or null when the server did not say. */
+function dayOf(iso: string | null): string | null {
+  if (!iso || !Number.isFinite(Date.parse(iso))) return null;
+  return new Intl.DateTimeFormat("en-IE", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(iso));
+}
+
+/** This month's allowance is spent: where to ask instead. */
+function Resting({ resumes }: { resumes: string | null }) {
+  const back = dayOf(resumes);
+  return (
+    <div
+      className="flex flex-col items-center gap-3 py-8 text-center"
+      role="status"
+    >
+      <Character mood="asleep" size={96} />
+      <p className="m-0 font-display text-lead text-ink">
+        {COMPANION_NAME} is resting
+      </p>
+      <p className="m-0 max-w-reading font-body text-body text-ink-2">
+        He&rsquo;s answered all he can this month
+        {back ? <> and is back on {back}</> : null}. Until then, bring your own
+        AI: wingfoil.ie works in Claude, ChatGPT and more, with the same
+        forecast {COMPANION_NAME} reads.
+      </p>
+      <Button href={AI_HREF} variant="primary">
+        Use wingfoil.ie with your AI
+      </Button>
+    </div>
   );
 }
 

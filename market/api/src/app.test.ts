@@ -575,3 +575,50 @@ describe("site API: /api/me", () => {
     ).toBe("brian");
   });
 });
+
+describe("switched-off sections", () => {
+  function appWith(features: Parameters<typeof createApp>[0]["features"]) {
+    const users = memoryUsersRepo();
+    return createApp({
+      repo: memoryRepo(users),
+      community: memoryCommunityRepo(users),
+      people: { users, identity: devIdentity() },
+      storage: fakeStorage(),
+      verify: devVerifier(),
+      storagePrefix: "market",
+      corsOrigins: "*",
+      authMode: "dev",
+      features,
+    });
+  }
+
+  it("answers 404 off for the marketplace, but keeps its health check", async () => {
+    const app = appWith({ market: false });
+    const listings = await app.request("/api/market/listings");
+    expect(listings.status).toBe(404);
+    expect(await listings.json()).toMatchObject({ error: "off" });
+    expect((await app.request("/api/market/health")).status).toBe(200);
+    expect((await app.request("/api/community/meta")).status).toBe(200);
+  });
+
+  it("answers 404 off for the community", async () => {
+    const app = appWith({ community: false });
+    const meta = await app.request("/api/community/meta");
+    expect(meta.status).toBe(404);
+    expect(await meta.json()).toMatchObject({ error: "off" });
+    expect((await app.request("/api/market/listings")).status).toBe(200);
+  });
+
+  it("tells the site Gust is off", async () => {
+    const status = await appWith({ gust: false }).request(
+      "/api/companion/status",
+    );
+    expect(await status.json()).toMatchObject({ state: "off" });
+  });
+
+  it("has everything on when nothing is said", async () => {
+    const app = appWith(undefined);
+    expect((await app.request("/api/market/listings")).status).toBe(200);
+    expect((await app.request("/api/community/meta")).status).toBe(200);
+  });
+});

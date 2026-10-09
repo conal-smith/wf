@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +12,7 @@ from fetch_forecast import write_json
 from fetch_harmonie import GRID
 from fetch_harmonie_eps import assemble, cache_path, catalogue, main, source_name, validate
 from publish_s3 import validate_bundle
+from registry import UNCHANGED_EXIT
 
 SPOTS = [{"id": "brandon", "lat": 52.276, "lon": -10.024},
          {"id": "dollymount", "lat": 53.365, "lon": -6.135}]
@@ -168,6 +171,36 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_importer(ValueError("invalid source"))
         self.assertEqual(target.read_bytes(), before)
+
+    def run_against_the_bucket(self, published, *argv, members=MEMBERS):
+        """main() anchoring on 2026091619 with the bucket serving `published`."""
+        with patch("fetch_harmonie_eps.ROOT", self.root), \
+             patch("sys.argv", ["fetch_harmonie_eps", "--hours", "6", "--step", "3", *argv]), \
+             patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_harmonie_eps.inventory", return_value=[]), \
+             patch("fetch_harmonie_eps.assemble", return_value=("2026091619", members)), \
+             patch("fetch_harmonie_eps.download", side_effect=OSError("portal")) as download, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / "public/weather/harmonie-eps.json").exists())
+        return result, download
+
+    def test_the_anchor_the_bucket_serves_is_not_downloaded_again(self):
+        result, download = self.run_against_the_bucket("2026091619")
+        self.assertEqual(result, UNCHANGED_EXIT)
+        download.assert_not_called()
+
+    def test_a_newer_anchor_or_an_explicit_run_is_downloaded(self):
+        self.assertEqual(self.run_against_the_bucket("2026091618")[0], "downloaded")
+        self.assertEqual(self.run_against_the_bucket("2026091619", "--run", "2026091619")[0],
+                         "downloaded")
+
+    def test_too_few_members_is_still_a_failure_for_the_published_anchor(self):
+        with self.assertRaises(RuntimeError):
+            self.run_against_the_bucket("2026091619", members=self.MEMBERS[:1])
 
     def test_a_spot_outside_the_crop_fails_before_publication(self):
         target = self.root / "public/weather/harmonie-eps.json"

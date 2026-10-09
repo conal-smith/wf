@@ -28,7 +28,8 @@ from pyproj import CRS, Transformer
 
 import fetch_gfs
 from fetch_gfs import get, index_ranges, run_datetime
-from fetch_forecast import ROOT, load_spots, sample, spots_file, write_json
+from fetch_forecast import ROOT, load_spots, published_in_bucket, sample, spots_file, write_json
+from registry import UNCHANGED_EXIT
 
 MODEL = "gfs-wave"
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl"
@@ -460,6 +461,9 @@ def main(argv=None):
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= MAX_AGE_HOURS:
         raise ValueError(f"Refusing a stale/future GFS-Wave run (maximum age {MAX_AGE_HOURS} hours)")
+    if published_in_bucket(run, args.run):
+        print(f"GFS-Wave {SOURCE_GRID} {run} is already published; nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"Fetching GFS-Wave {SOURCE_GRID} {run} from {args.source}: "
           f"{len(hours)} frames through +{args.hours}h", flush=True)
     cache = ROOT / ".cache" / "gfswave" / run
@@ -532,7 +536,9 @@ def main(argv=None):
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"GFS-Wave refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

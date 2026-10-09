@@ -52,8 +52,27 @@ export const COMMUNITY_MIGRATIONS_DIR = firstExisting([
   ),
 ]);
 
+/** companion/api/migrations: Gust's monthly spend. */
+export const COMPANION_MIGRATIONS_DIR = firstExisting([
+  process.env.COMPANION_MIGRATIONS_DIR,
+  join(here, "..", "..", "..", "companion", "api", "migrations"),
+  join(
+    here,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "companion",
+    "api",
+    "migrations",
+  ),
+]);
+
 export const MARKET_LEDGER = "market_migrations";
 export const COMMUNITY_LEDGER = "community_migrations";
+export const COMPANION_LEDGER = "companion_migrations";
 
 /**
  * Apply every *.sql file in `dir` not yet recorded in the `ledger` table, in

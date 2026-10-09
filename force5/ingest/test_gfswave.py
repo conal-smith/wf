@@ -19,6 +19,7 @@ from fetch_gfswave import (GRID, VARIABLES, block_origin, decode, discover, filt
                            sample_wave, validate_metadata)
 from fetch_forecast import sample
 from publish_s3 import validate_bundle
+from registry import UNCHANGED_EXIT
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
 RUN = "2026091612"
@@ -414,6 +415,30 @@ class GfsWaveTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 main()
             download.assert_not_called()
+
+    def run_against_the_bucket(self, published, run, *argv):
+        """main() resolving `run` with the bucket serving `published`."""
+        with patch("sys.argv", ["fetch_gfswave.py", "--hours", "3", *argv]), \
+             patch("fetch_gfswave.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_gfswave.discover", return_value=run), \
+             patch("fetch_gfswave.download", side_effect=OSError("provider unavailable")) as download, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / "public/weather/gfs-wave.json").exists())
+        return result, download
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        now = datetime.now(timezone.utc)
+        run = now.replace(minute=0, second=0, microsecond=0, hour=now.hour // 6 * 6).strftime("%Y%m%d%H")
+        result, download = self.run_against_the_bucket(run, run)
+        self.assertEqual(result, UNCHANGED_EXIT)
+        download.assert_not_called()
+        self.assertEqual(self.run_against_the_bucket("2020010100", run)[0], "downloaded")
+        self.assertEqual(self.run_against_the_bucket(run, run, "--run", run)[0], "downloaded")
 
 
 if __name__ == "__main__":

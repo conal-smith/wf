@@ -37,7 +37,8 @@ import numpy as np
 
 from cadence import ECMWF_HOURS, ecmwf_ladder
 from fetch_ecmwf import SOURCE_URL, client
-from fetch_forecast import ROOT, decode_handle, load_spots, spots_file, write_json
+from fetch_forecast import ROOT, decode_handle, load_spots, published_in_bucket, spots_file, write_json
+from registry import UNCHANGED_EXIT
 
 MODEL = "ecmwf-wave"
 # Two cycles a day, published roughly eight hours after run time; a run is at most
@@ -376,6 +377,9 @@ def main(argv=None):
     if not -1 <= age <= MAX_AGE_HOURS:
         raise ValueError(f"Refusing a stale/future ECMWF wave run "
                          f"(maximum age {MAX_AGE_HOURS} hours)")
+    if published_in_bucket(run, args.run):
+        print(f"ECMWF IFS wave {run} is already published; nothing to download.", flush=True)
+        return UNCHANGED_EXIT
     print(f"Fetching ECMWF IFS wave {run} from {args.source}: {len(hours)} frames through "
           f"+{args.hours}h, {len(variables)} variables"
           f"{'' if args.bands else ' (no period bands)'}", flush=True)
@@ -442,7 +446,9 @@ def main(argv=None):
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"ECMWF wave refresh failed: {error}. Last published snapshot preserved.",
               file=sys.stderr)

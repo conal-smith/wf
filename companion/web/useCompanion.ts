@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
+  type Availability,
   type ChatContext,
   type MapAction,
   type RiderContext,
@@ -47,7 +48,11 @@ export function useCompanion(
     }),
   );
   const [open, setOpen] = useState(false);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  /** Null until the server has said. */
+  const [availability, setAvailability] = useState<Availability | null>(null);
+  /** ISO, when resting: when Gust is back. */
+  const [resumes, setResumes] = useState<string | null>(null);
+  const configured = availability === null ? null : availability === "awake";
   const [draft, setDraft] = useState("");
   const [nudge, setNudge] = useState<SpotCardData | null>(null);
   const [seenNudge, setSeenNudge] = useState<string | null>(null);
@@ -64,9 +69,12 @@ export function useCompanion(
   useEffect(() => {
     const controller = new AbortController();
     companionStatus(controller.signal)
-      .then(setConfigured)
+      .then((status) => {
+        setAvailability(status.state);
+        setResumes(status.resumes);
+      })
       .catch(() => {
-        if (!controller.signal.aborted) setConfigured(false);
+        if (!controller.signal.aborted) setAvailability("asleep");
       });
     return () => controller.abort();
   }, []);
@@ -163,7 +171,12 @@ export function useCompanion(
               "interrupted",
               "The answer was cut off. Try again.",
             );
-      if (failure.code === "not_configured") setConfigured(false);
+      if (failure.code === "not_configured") setAvailability("asleep");
+      if (failure.code === "off") setAvailability("off");
+      if (failure.code === "budget_exhausted") {
+        setAvailability("resting");
+        setResumes(failure.resumes);
+      }
       // Mid-stream, the reply keeps what came and says it stopped; refused
       // outright, the words go back into the box.
       if (latest.current.chat.status === "streaming")
@@ -213,6 +226,13 @@ export function useCompanion(
     open,
     toggle,
     configured,
+    availability,
+    resumes,
+    /**
+     * Not drawn at all: switched off, or resting with the panel shut. A
+     * rider who was mid-chat when the budget ran out sees why, once.
+     */
+    hidden: availability === "off" || (availability === "resting" && !open),
     draft,
     setDraft,
     send,

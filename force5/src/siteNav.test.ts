@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   APP_ROUTES,
   SITE_SECTIONS,
+  siteSections,
   isSpotPath,
   isStarsPath,
   mapSpotHref,
@@ -178,6 +179,17 @@ describe("mapSpotHref", () => {
   it("opens the map on a place", () => {
     expect(mapSpotHref("keel")).toBe("/?spot=keel");
     expect(mapSpotHref("a b")).toBe("/?spot=a%20b");
+  });
+});
+
+describe("siteSections", () => {
+  it("leaves out the sections that are switched off, and never the map or /ai", () => {
+    const ids = (market: boolean, community: boolean) =>
+      siteSections({ market, community }).map((s) => s.id);
+    expect(ids(true, true)).toEqual(["map", "market", "community", "ai"]);
+    expect(ids(false, false)).toEqual(["map", "ai"]);
+    expect(ids(true, false)).toEqual(["map", "market", "ai"]);
+    expect(ids(false, true)).toEqual(["map", "community", "ai"]);
   });
 });
 

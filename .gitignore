@@ -33,3 +33,6 @@ public/marine/
 
 # SprintEngine Studio workspace files (plugin.json, marketplace.json): app-owned, per machine.
 .sprintengine/
+
+# Home Compute on the Mac mini: controller state, written at runtime.
+deploy/home-compute/state/

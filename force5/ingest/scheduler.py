@@ -21,7 +21,9 @@ from registry import MODELS
 
 DEFAULT_JOBS_FILE = "/app/deploy/local/jobs.toml"
 KNOWN_COMMANDS = {"worker": "worker.py", "prune": "prune.py", "status": "status.py"}
-JOB_KEYS = {"id", "enabled", "command", "models", "args", "hours", "minutes", "timeout_seconds"}
+# `memory` is a container ceiling for Home Compute and Cloudflare (deploy/schedules.py);
+# this scheduler runs jobs in its own process and has no use for it.
+JOB_KEYS = {"id", "enabled", "command", "models", "args", "hours", "minutes", "timeout_seconds", "memory"}
 HORIZON_MINUTES = 8 * 24 * 60  # Furthest ahead a schedule search looks.
 
 
