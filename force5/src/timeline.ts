@@ -5,6 +5,7 @@ import {
   speed,
   windColor,
   type Manifest,
+  type RunTimes,
   type Wind,
   type FrameInfo,
 } from "./weather";
@@ -41,13 +42,14 @@ export interface DockColumn {
 /** A wind model offered to the column builder, with the run it has published. */
 export interface ColumnModel {
   id: string;
-  manifest: Manifest;
+  /** The run: a whole manifest, or the blend's summary of one. */
+  manifest: RunTimes & Pick<Manifest, "resolutionKm">;
   /** An ensemble mean is a summary of a spread, not a timeline of its own. */
   ensemble?: boolean;
 }
 
 /** The times a run publishes: its map frames, or its longest spot series. */
-function modelTimes(manifest: Manifest): string[] {
+export function modelTimes(manifest: RunTimes): string[] {
   if (manifest.frames?.length)
     return manifest.frames.map((frame) => frame.validTime);
   let longest: readonly { validTime: string }[] = [];

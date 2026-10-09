@@ -133,6 +133,12 @@ minutes = [15]              # plenty for hourly buoys. Shares :15 with mi-swan,
 timeout_seconds = 900       # which the one-job-at-a-time loop serialises.
 
 [[jobs]]
+id = "blend"
+models = ["blend"]
+minutes = [5]               # Hourly, from whatever the wind jobs have published by
+timeout_seconds = 600       # then: HARMONIE's :45 run is in 20 minutes later.
+
+[[jobs]]
 id = "prune"
 command = "prune"
 minutes = [10]              # Backstop only: the worker already deletes a superseded

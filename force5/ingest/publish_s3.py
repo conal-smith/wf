@@ -166,7 +166,7 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Only wind frames may declare a binary encoding")
     validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
                  "weather": validate_variables_bundle, "tide": validate_tide_bundle,
-                 "observation": validate_observation_bundle}[kind]
+                 "observation": validate_observation_bundle, "blend": validate_blend_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
@@ -504,6 +504,53 @@ def observation_value(value, label):
             and OBSERVATION_MIN_CELSIUS <= value <= OBSERVATION_MAX_CELSIUS):
         raise ValueError(f"{label} is not a plausible sea temperature")
     return value
+
+
+BLEND_AGREEMENT = set("hml-")
+BLEND_SERIES = {"wind": (0, 2000), "gust": (0, 2000), "from": (0, 360)}
+
+
+def validate_blend_bundle(public, model, manifest, run, now):
+    """Every riding place's wind consensus (src/spotBlend.ts): one self-contained file.
+
+    `run` is the hour it was worked out, not a provider's run, so the registry's
+    freshness limit means "how long since the blend was last worked out". Speeds
+    are tenths of a knot and bearings whole degrees, one value per time.
+    """
+    times, sources, spots = manifest.get("times"), manifest.get("sources"), manifest.get("spots")
+    if manifest.get("schemaVersion") != 1:
+        raise ValueError("Unknown blend schema")
+    if not isinstance(times, list) or not times or not all(isinstance(t, str) for t in times):
+        raise ValueError("A blend needs the times it covers")
+    moments = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times]
+    if any(b <= a for a, b in zip(moments, moments[1:])):
+        raise ValueError("A blend's times must be distinct and in order")
+    coverage = manifest.get("coverage")
+    if not isinstance(coverage, dict) or coverage.get("from") != times[0] or coverage.get("to") != times[-1]:
+        raise ValueError("A blend's coverage must be its first and last time")
+    if not isinstance(sources, list) or not sources:
+        raise ValueError("A blend must name the models it read")
+    for source in sources:
+        if not isinstance(source, dict) or not isinstance(source.get("id"), str) \
+                or not number(source.get("weight"), 100, 0) or not source["weight"] > 0 \
+                or not isinstance(source.get("columns"), list) \
+                or not all(whole(c) and 0 <= c < len(times) for c in source["columns"]):
+            raise ValueError("A blend source is malformed")
+    if not isinstance(spots, dict) or not spots:
+        raise ValueError("A blend needs the places it rates")
+    for spot, series in spots.items():
+        if not isinstance(series, dict):
+            raise ValueError(f"The blend for {spot} is malformed")
+        for key, (low, high) in BLEND_SERIES.items():
+            values = series.get(key)
+            if not isinstance(values, list) or len(values) != len(times) or not all(
+                    value is None or (number(value, high, low)) for value in values):
+                raise ValueError(f"The blend's {key} for {spot} is malformed")
+        agreement = series.get("agreement")
+        if not isinstance(agreement, str) or len(agreement) != len(times) \
+                or not set(agreement) <= BLEND_AGREEMENT:
+            raise ValueError(f"The blend's agreement for {spot} is malformed")
+    return []
 
 
 def validate_observation_bundle(public, model, manifest, run, now):

@@ -32,6 +32,8 @@ import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
+import { blendColumnModels, staleSpotBlend } from "./spotBlend";
+import { useSpotBlend } from "./useSpotBlend";
 import { usePointSeries } from "./usePointSeries";
 import {
   offshoreMark,
@@ -53,6 +55,7 @@ import { takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
   ManifestUnavailableError,
+  windModels,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
@@ -331,9 +334,28 @@ export default function App() {
     return () => observer.disconnect();
   }, [error, !!manifest]);
 
+  /* ---- the published blend, and the models only when they are wanted ---- */
+  const spotBlend = useSpotBlend(!!pendingModel);
+  // The blend is published for every wind model; a reader who has left some
+  // out gets theirs worked out here, from the manifests, as before.
+  const ownBlend = !windModels().every((model) =>
+    prefs.blendModels.includes(model.id),
+  );
+  const published =
+    ownBlend || !spotBlend.blend || staleSpotBlend(spotBlend.blend, clockNow)
+      ? null
+      : spotBlend.blend;
+  const [wantModels, setWantModels] = useState(false);
+  const { models } = useModelAvailability(
+    !!pendingModel,
+    undefined,
+    wantModels || ownBlend || (spotBlend.resolved && !published),
+  );
+
   /* ---- the week's columns, and the strip of them the dock shows ---- */
-  const { models } = useModelAvailability(!!pendingModel);
   const columnModels = useMemo<ColumnModel[]>(() => {
+    // The blend's own runs, so the columns are the times it has values for.
+    if (published) return blendColumnModels(published);
     const list = models
       .filter((model) => model.wind !== null)
       .map((model) => ({
@@ -346,7 +368,7 @@ export default function App() {
     const at = list.findIndex((model) => model.id === manifest.model);
     if (at === -1) return [...list, mine];
     return list.map((model, index) => (index === at ? mine : model));
-  }, [models, manifest]);
+  }, [models, manifest, published]);
   const columns = useMemo(() => {
     const built = dockColumns(columnModels, clockNow);
     return built.length
@@ -527,6 +549,7 @@ export default function App() {
     axis,
     rider,
     first,
+    published,
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
@@ -1024,6 +1047,7 @@ export default function App() {
                   prefs={prefs}
                   onPrefsChange={changePrefs}
                   models={models}
+                  onWantModels={() => setWantModels(true)}
                   starred={!picked && starred.includes(dockSpot.id)}
                   onToggleStar={() => fav.toggle(dockSpot.id)}
                   tide={picked ? null : tide.tide}

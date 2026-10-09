@@ -76,6 +76,11 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   page,
 }) => {
   let body: unknown = null;
+  // No published blend either: its columns would still carry ECMWF's run, and
+  // this is the dock building its own from the manifests it could read.
+  await page.route("**/weather/blend.json", (route) =>
+    route.fulfill({ status: 404, body: "Not found" }),
+  );
   await page.route("**/weather/ecmwf.json", (route) =>
     body
       ? route.fulfill({ json: body })

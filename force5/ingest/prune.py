@@ -51,8 +51,9 @@ LIST_PAGE = 1000
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 # An observation bundle is one small self-contained file: it carries its readings
 # inline and points at nothing, so having no object URLs is correct, not a fault.
-# Its manifest is protected from deletion by being a registered pointer path.
-SELF_CONTAINED_KINDS = {"observation"}
+# So is the blend, every riding place's wind consensus in one file. Each manifest
+# is protected from deletion by being a registered pointer path.
+SELF_CONTAINED_KINDS = {"observation", "blend"}
 
 
 def read_manifests(public):

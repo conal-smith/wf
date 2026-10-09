@@ -36,3 +36,6 @@ public/marine/
 
 # Home Compute on the Mac mini: controller state, written at runtime.
 deploy/home-compute/state/
+
+# The blend job's bundle, built inside the forecast image (force5/Dockerfile).
+force5/blend/dist/

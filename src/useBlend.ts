@@ -82,6 +82,13 @@ export function useModelAvailability(
    * the wave and weather manifests (megabytes of JSON) to the spot page.
    */
   entries = windModels(),
+  /**
+   * Whether to sweep at all. The map's stars come from the published blend
+   * (src/spotBlend.ts), so the manifests are only fetched once something needs
+   * them: the blend chart, the model list, a reader's own blend, or no blend
+   * published. Once on, it stays on.
+   */
+  enabled = true,
 ): {
   models: ModelAvailability[];
   resolved: boolean;
@@ -92,6 +99,7 @@ export function useModelAvailability(
   const busyNow = useRef(busy);
   busyNow.current = busy;
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const commit = (result: ModelAvailability[]) =>
       setModels((previous) =>
@@ -145,7 +153,7 @@ export function useModelAvailability(
       document.removeEventListener("visibilitychange", tick);
       window.removeEventListener("focus", tick);
     };
-  }, []);
+  }, [enabled]);
   return { models, resolved };
 }
 

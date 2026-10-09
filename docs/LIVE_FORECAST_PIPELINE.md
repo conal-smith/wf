@@ -494,6 +494,9 @@ docker run --rm --env-file r2.env force5-forecast:latest --models mi-swan $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models sea-temperature $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 
+# Hourly, after the wind jobs: every spot's blend, read from what the bucket serves
+docker run --rm --env-file r2.env force5-forecast:latest --models blend $R2
+
 # Retention: the bucket sweep, a few times a day, any machine. --dry-run first.
 docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
   /app/force5/ingest/prune.py --bucket wingfoil-forecast \
@@ -564,6 +567,37 @@ prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an
 re-import of the run already published: the new objects land with the source's next
 cycle (within 12 hours for ECMWF, a day for SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
+
+### The blend: every spot's stars in one file
+
+The map rates all 146 riding places at once, and before this it did so in the browser
+from every wind model's manifest: about 2.4 MB compressed, which on a slow phone kept
+the lights pending for some 20 seconds. The `blend` job works that consensus out once
+an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed):
+
+- **What it holds.** Each place's weighted median wind and gust (tenths of a knot),
+  mean bearing (whole degrees) and agreement letter, on every time a deterministic
+  model publishes, plus a summary of each model's run so the dock can build its
+  columns without the manifests. No stars: those depend on the reader's weight, level
+  and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).
+- **The weighting.** Each model counts by its grid (`force5/src/weights.ts`): 3 km or
+  finer three times (HARMONIE, AROME), up to 8 km twice (ICON-EU), coarser once. The
+  fine grids stop within about three days, so beyond them the global models count
+  equally. The agreement still reads the full spread of every model. The dock's blend
+  chart, Gust and the MCP server use the same weights.
+- **How it runs.** `force5/ingest/fetch_blend.py` reads every wind pointer the bucket
+  serves into a scratch directory (never over a persistent work directory's own) and
+  runs `force5/blend/build.ts`, the site's own TypeScript bundled into the image with
+  esbuild, so there is one implementation of the blend. Without a bucket it reads
+  `public/weather`; `npm run blend` does the same in a checkout. The worker then
+  validates (`validate_blend_bundle`) and publishes it as one self-contained file.
+- **Its run** is the hour it was worked out, so the hourly job (`:05`, after HARMONIE's
+  `:45` slot) publishes a new one each hour; `maxAgeHours` is 3.
+- **The browser** reads it when the map mounts and revalidates it every five minutes.
+  It falls back to the old path, every manifest and the blend worked out in the
+  browser, when the reader has picked their own models, when the file is missing or
+  malformed, or when it is more than six hours old. The blend chart and the model list
+  still fetch the manifests, but only once they are opened.
 
 ### Deleting what is superseded
 

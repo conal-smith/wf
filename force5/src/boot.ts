@@ -17,7 +17,9 @@
  * 90 kB now shares the line with that chunk. Started from the page's head
  * instead the cost was the same; asked for by the map once its chunk has run,
  * the dock gained only ~0.5 s. src/useBlend.ts then holds the other models
- * back until this one is in, so it does not share the line with them either.
+ * back until this one is in, so it does not share the line with them either;
+ * with a published blend they are not asked for at all until the reader needs
+ * them (src/App.tsx, `wantModels`).
  *
  * Deliberately free of React and of every app: the entry imports it.
  */
@@ -30,7 +32,12 @@ declare global {
   }
 }
 
-/** What the map asks for first, as src/App.tsx names it. */
+/**
+ * What the map asks for first, as src/App.tsx names it. Not the blend the
+ * lights are rated from (src/spotBlend.ts): the lights also wait for MapLibre,
+ * the largest file on the page, so asked for here it only shared the line with
+ * the dock's manifest and delayed the first paint, for stars no sooner.
+ */
 export const mapFirstRequests = (): string[] => [
   forecastUrl("weather/harmonie.json"),
   `${import.meta.env.BASE_URL}spots.json`,
