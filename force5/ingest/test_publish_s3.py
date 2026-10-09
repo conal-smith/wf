@@ -15,7 +15,7 @@ from unittest.mock import patch
 import f5bin
 import publish_s3
 from publish_s3 import publish, superseded_objects, validate_bundle, already_current
-from registry import UNCHANGED_EXIT
+from registry import MANIFESTS, MODELS, UNCHANGED_EXIT
 
 
 FIXTURE = object()  # "use the test's own fake bucket", which None cannot mean here.
@@ -444,6 +444,17 @@ class WorkerUnchangedRunTest(unittest.TestCase):
         self.assertEqual((event["event"], event["run"]), ("forecast_unchanged", "2026091300"))
         self.assertEqual(self.s3.writes, [])
 
+    def test_every_adapter_in_the_contract_is_told_its_own_models_run(self):
+        for model in [name for name, entry in MODELS.items() if entry.get("readsPublishedRun")]:
+            with self.subTest(model=model):
+                self.args.models = [model]
+                self.s3.seed(MANIFESTS[model], json.dumps(
+                    {"model": model, "run": "2026091312", "frames": []}).encode())
+                status, event = self.run_models(UNCHANGED_EXIT)
+                self.assertEqual(self.seen.get("FORCE5_PUBLISHED_RUN"), "2026091312")
+                self.assertEqual((status, event["event"], event["model"]),
+                                 (0, "forecast_unchanged", model))
+
     def test_a_real_failure_is_still_a_failure(self):
         status, event = self.run_models(1)
         self.assertEqual(status, 1)
@@ -464,15 +475,16 @@ class WorkerUnchangedRunTest(unittest.TestCase):
         self.assertEqual((status, event["event"]), (1, "forecast_failed"))
 
     def test_an_adapter_outside_the_contract_is_never_asked_and_never_skips(self):
-        self.args.models = ["harmonie"]
-        self.s3.seed("weather/harmonie.json", json.dumps(
-            {"model": "harmonie", "run": "2026091300", "frames": []}).encode())
+        # Tides keys its `run` by the hour the job ran, so it never declares the contract.
+        self.args.models = ["tides"]
+        self.s3.seed("marine/tides.json", json.dumps(
+            {"model": "tides", "run": "2026091300", "stations": {}}).encode())
         status, event = self.run_models(UNCHANGED_EXIT)
         self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)
         self.assertEqual((status, event["event"]), (1, "forecast_failed"))
 
     def test_a_stray_published_run_in_the_environment_is_not_inherited(self):
-        self.args.models = ["harmonie"]
+        self.args.models = ["tides"]
         with patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": "2026091300"}):
             status, event = self.run_models(UNCHANGED_EXIT)
         self.assertNotIn("FORCE5_PUBLISHED_RUN", self.seen)

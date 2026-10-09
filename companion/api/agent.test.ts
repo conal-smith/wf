@@ -74,15 +74,15 @@ const forecastCall: FakeBlock = {
 };
 
 describe("the request", () => {
-  it("is shaped for claude-opus-5-5: effort, fallbacks, caching, no thinking switch", () => {
+  it("is shaped for claude-haiku-5-5 by default: effort, caching, no fallbacks, no thinking switch", () => {
     const params = requestParams([{ role: "user", content: "hi" }], {
       effort: "medium",
     });
-    expect(params.model).toBe("claude-opus-5-5");
+    expect(params.model).toBe("claude-haiku-5-5");
     expect(params.output_config).toEqual({ effort: "medium" });
-    expect(params.betas).toEqual([FALLBACK_BETA]);
-    expect(FALLBACK_BETA).toBe("server-side-fallback-2026-07-01");
-    expect(params.fallbacks).toBe("default");
+    // Haiku has no server-side refusal fallback.
+    expect(params).not.toHaveProperty("betas");
+    expect(params).not.toHaveProperty("fallbacks");
     expect(params).not.toHaveProperty("thinking");
     expect(params).not.toHaveProperty("tool_choice");
     expect(params.cache_control).toEqual({ type: "ephemeral" });
@@ -90,6 +90,13 @@ describe("the request", () => {
       { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
     ]);
     expect(requestParams([], {}).output_config).toEqual({ effort: "low" });
+  });
+
+  it("asks a larger model for refusal fallbacks", () => {
+    const params = requestParams([], { model: "claude-opus-5-5" });
+    expect(params.betas).toEqual([FALLBACK_BETA]);
+    expect(FALLBACK_BETA).toBe("server-side-fallback-2026-07-01");
+    expect(params.fallbacks).toBe("default");
   });
 
   it("keeps the system prompt frozen: no dates or names in it", () => {

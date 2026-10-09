@@ -5,6 +5,8 @@
  */
 import { API_ROOT } from "../../shared/web/http";
 import {
+  type Availability,
+  type CompanionStatus,
   createSseParser,
   toServerEvent,
   type ChatRequest,
@@ -20,6 +22,8 @@ export class CompanionError extends Error {
   constructor(
     public code: string,
     message: string,
+    /** ISO, on budget_exhausted: when Gust is back. */
+    public resumes: string | null = null,
   ) {
     super(message);
   }
@@ -27,7 +31,12 @@ export class CompanionError extends Error {
 
 async function refusal(response: Response): Promise<CompanionError> {
   const body = (await response.json().catch(() => null)) as
-    (Partial<TurnError> & { error?: string; retryAfter?: number }) | null;
+    | (Partial<TurnError> & {
+        error?: string;
+        retryAfter?: number;
+        resumes?: string;
+      })
+    | null;
   if (response.status === 429)
     return new CompanionError(
       "rate_limited",
@@ -39,16 +48,28 @@ async function refusal(response: Response): Promise<CompanionError> {
       (response.status >= 500
         ? "Gust isn't answering right now. Try again in a moment."
         : "Gust couldn't read that. Try again."),
+    body?.resumes ?? null,
   );
 }
 
-export async function companionStatus(signal?: AbortSignal): Promise<boolean> {
+const STATES: readonly Availability[] = ["awake", "asleep", "resting", "off"];
+
+/** Where Gust stands on this site. A server that cannot say leaves him asleep. */
+export async function companionStatus(
+  signal?: AbortSignal,
+): Promise<Pick<CompanionStatus, "state" | "resumes">> {
   const response = await fetch(`${PREFIX}/status`, { signal });
-  if (!response.ok) return false;
-  const body = (await response.json().catch(() => null)) as {
-    configured?: boolean;
-  } | null;
-  return body?.configured === true;
+  if (!response.ok) return { state: "asleep", resumes: null };
+  const body = (await response
+    .json()
+    .catch(() => null)) as Partial<CompanionStatus> | null;
+  const state =
+    body?.state && STATES.includes(body.state)
+      ? body.state
+      : body?.configured === true
+        ? "awake"
+        : "asleep";
+  return { state, resumes: body?.resumes ?? null };
 }
 
 export async function companionNudge(

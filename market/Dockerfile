@@ -28,6 +28,7 @@ RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force \
 COPY --from=build /app/market/api/dist ./market/api/dist
 COPY market/api/migrations ./market/api/migrations
 COPY community/api/migrations ./community/api/migrations
+COPY companion/api/migrations ./companion/api/migrations
 USER 10001:10001
 EXPOSE 8787
 # Only used with MARKET_STORAGE=local; mount a volume here.

@@ -25,6 +25,25 @@ export const MAX_MESSAGE_CHARS = 2000;
 /** The longest assistant message the browser echoes back, cards' notes included. */
 export const MAX_ECHO_CHARS = 4000;
 
+/**
+ * Whether Gust can answer on this site, as GET /api/companion/status says:
+ *
+ *   awake    answering
+ *   asleep   no API key on this server: shown, and says so (development)
+ *   resting  this month's budget is spent: hidden until the 1st
+ *   off      switched off (FEATURE_GUST): hidden
+ */
+export type Availability = "awake" | "asleep" | "resting" | "off";
+
+export interface CompanionStatus {
+  state: Availability;
+  /** Kept for browsers from before `state`: true only when awake. */
+  configured: boolean;
+  fake: boolean;
+  /** ISO, when resting: the start of next month, when Gust is back. */
+  resumes: string | null;
+}
+
 export type Skill = "beginner" | "intermediate" | "advanced";
 
 /** The rider's own words for a level, as the dock's Display options write them. */

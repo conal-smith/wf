@@ -52,12 +52,14 @@ def main():
                              "data.gouv.fr resource catalogue. Both download from the bucket.")
     parser.add_argument("--workers", type=int, default=3, choices=[1, 2, 3, 4],
                         help="Package files walked and downloaded at once")
-    meteofrance.refresh(SPEC, parser.parse_args(), PROSE)
+    return meteofrance.refresh(SPEC, parser.parse_args(), PROSE)
 
 
 if __name__ == "__main__":
     try:
-        main()
+        # A run that is already published exits UNCHANGED_EXIT, which the worker
+        # reads as "nothing new", not as a failure and not as a bundle to validate.
+        sys.exit(main() or 0)
     except Exception as error:
         print(f"ARPEGE refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)

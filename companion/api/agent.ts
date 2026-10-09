@@ -8,16 +8,19 @@
  * actions and proposals go straight to the browser as their own events, so
  * the rider sees the forecast's numbers rather than Claude's retelling of them.
  *
- * Request shape, per the Claude API guidance for claude-opus-5-5:
- * - thinking is adaptive and always on for this model, so `thinking` is
- *   omitted; `output_config.effort` (COMPANION_EFFORT, default low) is the
- *   latency control, and max_tokens leaves room for the thinking;
- * - tool_choice stays auto (forced tool use is a 400 here); the tools are
- *   strict and stream their inputs eagerly, so every input is validated here
- *   before it runs (tools.ts);
- * - refusals are retried server-side on Anthropic's recommended fallback
- *   model (`fallbacks: "default"`, beta server-side-fallback-2026-07-01), and
- *   a refusal that still comes back ends the turn without its partial words;
+ * Request shape, per the Claude API guidance for claude-haiku-5-5 (the
+ * default: cheap enough to offer free under a monthly cap, budget.ts) and the
+ * larger models COMPANION_MODEL may name instead:
+ * - thinking is adaptive and on by default, so `thinking` is omitted;
+ *   `output_config.effort` (COMPANION_EFFORT, default low) is the latency
+ *   and cost control, and max_tokens leaves room for the thinking;
+ * - tool_choice stays auto (forced tool use is a 400 on the larger models);
+ *   the tools are strict and stream their inputs eagerly, so every input is
+ *   validated here before it runs (tools.ts);
+ * - on models that have one, refusals are retried server-side on Anthropic's
+ *   recommended fallback model (`fallbacks: "default"`, beta
+ *   server-side-fallback-2026-07-01); Haiku has none, and is sent neither. A
+ *   refusal that still comes back ends the turn without its partial words;
  * - caching: an explicit breakpoint on the frozen system prompt (which, after
  *   the sorted tools, is the shared prefix) plus top-level automatic caching
  *   for the conversation tail the loop grows;
@@ -51,10 +54,15 @@ import {
   type ToolOutcome,
 } from "./tools.js";
 
-export const COMPANION_MODEL = "claude-opus-5-5";
+export const COMPANION_MODEL = "claude-haiku-5-5";
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Effort = (typeof EFFORTS)[number];
 export const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+
+/** Haiku has no server-side refusal fallback: a list of models is a 400 there. */
+export function takesFallbacks(model: string): boolean {
+  return !model.startsWith("claude-haiku-");
+}
 
 /** A streamed model call: its raw events, then the whole message. */
 export interface ModelStream extends AsyncIterable<BetaRawMessageStreamEvent> {
@@ -86,6 +94,8 @@ export interface AgentOptions {
   maxTokens?: number;
   now: number;
   newId: () => string;
+  /** Told what each model call used, for the monthly budget. */
+  onUsage?: (model: string, usage: BetaMessage["usage"]) => Promise<void>;
 }
 
 type Emit = (event: ServerEvent) => void;
@@ -138,11 +148,13 @@ export function requestParams(
   messages: BetaMessageParam[],
   options: Pick<AgentOptions, "model" | "effort" | "maxTokens">,
 ): BetaMessageStreamParams {
+  const model = options.model ?? COMPANION_MODEL;
   return {
-    model: options.model ?? COMPANION_MODEL,
+    model,
     max_tokens: options.maxTokens ?? 8000,
-    betas: [FALLBACK_BETA],
-    fallbacks: "default",
+    ...(takesFallbacks(model)
+      ? { betas: [FALLBACK_BETA], fallbacks: "default" as const }
+      : {}),
     output_config: { effort: options.effort ?? "low" },
     cache_control: { type: "ephemeral" },
     system: [
@@ -301,6 +313,11 @@ export async function runTurn(
       }
       message = await stream.finalMessage();
       unparseable = 0;
+      await options
+        .onUsage?.(message.model, message.usage)
+        .catch((error) =>
+          console.error("companion: could not record usage", error),
+        );
     } catch (error) {
       if (signal?.aborted) return;
       // A model that does not take mid-conversation system messages answers

@@ -15,6 +15,7 @@ import fetch_gfs
 from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory,
                        main, object_key, run_datetime, validate_metadata)
 from publish_s3 import validate_bundle
+from registry import UNCHANGED_EXIT
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
 RUN = "2026091612"
@@ -257,6 +258,41 @@ class GfsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 main()
             download.assert_not_called()
+
+    def run_against_the_bucket(self, published, run, *argv):
+        """main() resolving `run` with the bucket serving `published`."""
+        with patch("sys.argv", ["fetch_gfs.py", "--hours", "3", *argv]), \
+             patch("fetch_gfs.ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_PUBLISHED_RUN": published}), \
+             patch("fetch_gfs.discover", return_value=run), \
+             patch("fetch_gfs.download", side_effect=OSError("provider unavailable")) as download, \
+             patch("sys.stdout", io.StringIO()):
+            try:
+                result = main()
+            except OSError:
+                result = "downloaded"
+        self.assertFalse((self.root / "public/weather/gfs.json").exists())
+        return result, download
+
+    def fresh_cycle(self):
+        now = datetime.now(timezone.utc)
+        return now.replace(minute=0, second=0, microsecond=0, hour=now.hour // 6 * 6).strftime("%Y%m%d%H")
+
+    def test_the_run_the_bucket_serves_is_not_downloaded_again(self):
+        run = self.fresh_cycle()
+        result, download = self.run_against_the_bucket(run, run)
+        self.assertEqual(result, UNCHANGED_EXIT)
+        download.assert_not_called()
+
+    def test_a_newer_run_or_an_explicit_run_is_downloaded(self):
+        run = self.fresh_cycle()
+        self.assertEqual(self.run_against_the_bucket("2020010100", run)[0], "downloaded")
+        self.assertEqual(self.run_against_the_bucket(run, run, "--run", run)[0], "downloaded")
+
+    def test_a_stale_run_fails_even_when_it_is_the_published_one(self):
+        # A provider that stopped publishing is a failure to report, not "nothing new".
+        with self.assertRaises(ValueError):
+            self.run_against_the_bucket("2020010100", "2020010100")
 
     def restamped(self, run):
         """Decode the sample GRIB re-stamped for each requested run and lead time."""

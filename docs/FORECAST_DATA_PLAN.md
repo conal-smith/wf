@@ -114,9 +114,11 @@ showing an error (`App.tsx`, `loadNewerRun`). One run per model is on disk:
 Raw downloads (the whole-domain source files, about 2 GB for one ECMWF-ENS
 run) are **not kept either**. The worker deletes a model's downloads as soon as
 its job ends (`drop_downloads`); a failed job downloads afresh. Because nothing
-is cached, the two importers that are scheduled more often than their source
-publishes (`ecmwf` hourly, `ecmwf-ens` twice per run) first ask whether the run
-is already published (`already_published`) and download nothing if it is.
+is cached, every forecast importer first asks whether the run it would import
+is already published (`readsPublishedRun` in `registry.py`) and downloads
+nothing if it is: a slot that fires before its source has a newer run costs a
+listing, not an import. Tides and sea temperature are the exceptions, because
+their run label cannot say whether anything is new.
 
 ## What we learned from Open-Meteo
 

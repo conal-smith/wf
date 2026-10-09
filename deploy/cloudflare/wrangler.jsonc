@@ -1,0 +1,35 @@
+// The forecast on Cloudflare Containers: the same worker image as the Mac mini
+// and the Compose stack, on the same timetable (jobs.json, generated from
+// deploy/local/jobs.toml by deploy/schedules.py). Nothing here is deployed by
+// the repo; see README.md in this folder for the steps and the secrets.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "wingfoil-forecast",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-08",
+  "observability": { "enabled": true },
+  // Every five minutes; the Worker runs the jobs whose UTC slot it is. All of
+  // jobs.toml's minutes sit on this tick, and deploy/schedules.py refuses any that do not.
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "containers": [
+    {
+      "class_name": "ForecastJob",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "worker": { "dockerfile": "../../force5/Dockerfile", "build_context": "../.." }
+      }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "FORECAST_JOB", "class_name": "ForecastJob" }]
+  },
+  "exports": {
+    "ForecastJob": { "type": "durable-object", "storage": "sqlite" }
+  },
+  // Not secret. The bucket name, endpoint and keys are secrets: `wrangler secret put`.
+  "vars": {
+    "AWS_REGION": "auto",
+    "FORCE5_SIDECARS": "0",
+    "ECMWF_SOURCE": "ecmwf"
+  }
+}

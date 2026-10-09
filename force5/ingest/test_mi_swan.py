@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import json
 import math
+import os
 from pathlib import Path
 import re
 import tempfile
@@ -11,6 +12,7 @@ from unittest.mock import patch
 import fetch_mi_swan
 from fetch_mi_swan import NEST, SHELF, discover, main, wind_sea
 from publish_s3 import publish, validate_bundle
+from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
 
 HINDCAST_HOURS = 192  # Eight days of hindcast precede the run hour in the aggregate.
@@ -371,6 +373,33 @@ class SwanTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_main("--hours", "3", erddap=FakeErddap(self.day, published=False))
         self.assertEqual(json.loads(published.read_text()), {"run": "last-good"})
+
+    def run_against_the_bucket(self, published, erddap=None):
+        """main() with the bucket serving `published`: the manifest, or the exit code."""
+        self.erddap = erddap or FakeErddap(self.day)
+        with patch("fetch_mi_swan.ROOT", self.root), \
+             patch("fetch_mi_swan.load_spots", return_value=SPOTS), \
+             patch.dict(os.environ, {"FORCE5_PUBLISHED_RUN": published}), \
+             patch.object(fetch_mi_swan.SESSION, "get", side_effect=self.erddap.get):
+            return main(["--hours", "3"])
+
+    def test_the_model_day_the_bucket_serves_is_not_downloaded_again(self):
+        # One run a day, checked three times: only the info pages and the two
+        # `time[last]` probes are read, never a per-spot or frame subset.
+        self.assertEqual(self.run_against_the_bucket(self.day.strftime("%Y%m%d%H")), UNCHANGED_EXIT)
+        self.assertEqual(len(self.erddap.requests), 4)
+        self.assertTrue(all("/info/" in url or "time[last]" in url
+                            for url in self.erddap.requests))
+        self.assertFalse((self.root / "public/weather/mi-swan.json").exists())
+
+    def test_a_new_model_day_is_downloaded(self):
+        yesterday = (self.day - timedelta(days=1)).strftime("%Y%m%d%H")
+        self.assertEqual(self.run_against_the_bucket(yesterday)["run"], self.day.strftime("%Y%m%d%H"))
+
+    def test_a_late_aggregate_is_still_a_failure_when_the_bucket_serves_its_day(self):
+        with self.assertRaises(ValueError):
+            self.run_against_the_bucket(self.day.strftime("%Y%m%d%H"),
+                                        FakeErddap(self.day, published=False))
 
     def test_impossible_horizons_are_refused(self):
         for argv in (["--hours", "0"], ["--hours", "168"], ["--hours", "7", "--step", "3"]):
