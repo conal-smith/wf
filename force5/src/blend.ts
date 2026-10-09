@@ -4,7 +4,15 @@
 import { framePosition } from "./timeline";
 import { KNOTS } from "./units";
 import { modelSeries, type SeriesPoint } from "./series";
+import { weightedMedian } from "./weights";
 import type { Manifest } from "./weather";
+
+export {
+  blendWeight,
+  FINE_GRID_KM,
+  REGIONAL_GRID_KM,
+  weightedMedian,
+} from "./weights";
 
 export type Agreement = "high" | "moderate" | "low";
 /** Spread thresholds in knots: how far apart the lines may sit and still agree. */
@@ -264,26 +272,41 @@ export interface HourStats {
 
 const EMPTY_GUST: GustStats = { n: 0, min: null, max: null, median: null };
 
-/** Per-hour distribution across every input line; hours with no data keep n 0. */
+/**
+ * Per-hour distribution across every input line; hours with no data keep n 0.
+ * With `weightOf`, the median and mean count each line by its model's weight
+ * (`blendWeight`), as the consensus does; the range, quartiles and agreement
+ * stay what the lines themselves span.
+ */
 export function blendStats(
   inputs: readonly BlendInput[],
   axis: readonly string[],
+  weightOf?: (model: string) => number,
 ): HourStats[] {
+  const finite = (v: number | null): v is number =>
+    typeof v === "number" && Number.isFinite(v);
   return axis.map((iso, i) => {
-    const speeds = inputs
-      .map((input) => input.speed[i])
-      .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
-      .sort((a, b) => a - b);
-    const gusts = inputs
-      .map((input) => input.gust[i])
-      .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
-      .sort((a, b) => a - b);
+    const speedLines = inputs.filter((input) => finite(input.speed[i]));
+    const gustLines = inputs.filter((input) => finite(input.gust[i]));
+    const speeds = speedLines.map((input) => input.speed[i]!).sort((a, b) => a - b);
+    const gusts = gustLines.map((input) => input.gust[i]!).sort((a, b) => a - b);
+    const middle = (
+      lines: readonly BlendInput[],
+      pick: (input: BlendInput) => number,
+      sorted: readonly number[],
+    ) =>
+      weightOf
+        ? weightedMedian(
+            lines.map(pick),
+            lines.map((input) => weightOf(input.model)),
+          )
+        : quantile(sorted, 0.5);
     const gust: GustStats = gusts.length
       ? {
           n: gusts.length,
           min: gusts[0],
           max: gusts[gusts.length - 1],
-          median: quantile(gusts, 0.5),
+          median: middle(gustLines, (input) => input.gust[i]!, gusts),
         }
       : EMPTY_GUST;
     if (!speeds.length)
@@ -303,15 +326,21 @@ export function blendStats(
     const min = speeds[0];
     const max = speeds[speeds.length - 1];
     const spread = max - min;
+    const mean = weightOf
+      ? speedLines.reduce(
+          (sum, input) => sum + input.speed[i]! * weightOf(input.model),
+          0,
+        ) / speedLines.reduce((sum, input) => sum + weightOf(input.model), 0)
+      : speeds.reduce((sum, v) => sum + v, 0) / speeds.length;
     return {
       time: iso,
       n: speeds.length,
       min,
       max,
       q25: quantile(speeds, 0.25),
-      median: quantile(speeds, 0.5),
+      median: middle(speedLines, (input) => input.speed[i]!, speeds),
       q75: quantile(speeds, 0.75),
-      mean: speeds.reduce((sum, v) => sum + v, 0) / speeds.length,
+      mean,
       spread,
       agreement: agreementFor(spread),
       gust,

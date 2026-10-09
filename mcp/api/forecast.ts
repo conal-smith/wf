@@ -10,8 +10,10 @@
  * The consensus is deliberately simple and says so: one line per model — an
  * ensemble's member mean counts once, like any other model — reduced to the
  * median, the range and an agreement label on the same 4 kn / 8 kn thresholds
- * the dock's blend uses (force5/src/blend.ts). It is not bias-corrected and not
- * weighted by any model's past accuracy.
+ * the dock's blend uses (force5/src/blend.ts). The median and the bearing count
+ * each model by its grid (force5/src/weights.ts): 3 km or finer three times, up
+ * to 8 km twice, coarser once. It is not bias-corrected and not weighted by any
+ * model's past accuracy.
  *
  * Beside it, where an ensemble reaches the spot, the chance it rides: the share
  * of the ensembles' members (ECMWF ENS and GEFS, each member its own run) whose
@@ -28,6 +30,7 @@ import {
 } from "../../force5/src/stars.js";
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
+import { blendWeight, weightedMedian } from "../../force5/src/weights.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
@@ -137,11 +140,6 @@ export const localTime = (millis: number) =>
   localFormat.format(new Date(millis));
 const iso = (millis: number) => new Date(millis).toISOString();
 
-function median(sorted: readonly number[]): number {
-  const mid = (sorted.length - 1) / 2;
-  return (sorted[Math.floor(mid)] + sorted[Math.ceil(mid)]) / 2;
-}
-
 export type Agreement = "high" | "moderate" | "low";
 export function agreementFor(spreadKnots: number): Agreement {
   if (spreadKnots < AGREEMENT_HIGH_KN) return "high";
@@ -243,6 +241,8 @@ interface WindPoint {
 }
 interface WindManifest {
   spotForecasts: Record<string, unknown>;
+  /** The grid's spacing, which sets the model's weight in the consensus. */
+  resolutionKm?: number | null;
   gustAvailable?: boolean;
   /** Ensembles only: how many members each frame of `spotMembers` holds. */
   ensemble?: { members?: number };
@@ -497,7 +497,7 @@ export interface ModelWind {
   direction_deg: number;
 }
 export interface HourWind {
-  /** The median of the models' speeds. */
+  /** The median of the models' speeds, each counted by its grid's weight. */
   wind_kn: number;
   min_kn: number;
   max_kn: number;
@@ -513,7 +513,7 @@ export interface HourWind {
 }
 
 export interface SpotWindLines {
-  lines: { run: ModelRun; points: WindPoint[]; gap: number }[];
+  lines: { run: ModelRun; points: WindPoint[]; gap: number; weight: number }[];
   /** Models that are live but do not reach this spot. */
   outside: string[];
 }
@@ -526,7 +526,13 @@ export function spotWindLines(
   const outside: string[] = [];
   for (const { run, manifest } of wind) {
     const points = windPoints(manifest, spotId);
-    if (points) lines.push({ run, points, gap: maxGap(points) });
+    if (points)
+      lines.push({
+        run,
+        points,
+        gap: maxGap(points),
+        weight: blendWeight(manifest.resolutionKm),
+      });
     else outside.push(run.name);
   }
   return { lines, outside };
@@ -537,24 +543,38 @@ export function hourWind(
   time: number,
   perModel: boolean,
 ): HourWind | null {
-  const samples = lines.flatMap(({ run, points, gap }) => {
+  const samples = lines.flatMap(({ run, points, gap, weight }) => {
     const at = windAt(points, time, gap);
-    return at ? [{ id: run.id, ...at, speed: Math.hypot(at.u, at.v) }] : [];
+    return at
+      ? [{ id: run.id, weight, ...at, speed: Math.hypot(at.u, at.v) }]
+      : [];
   });
   if (!samples.length) return null;
   const speeds = samples.map((s) => s.speed * KNOTS).sort((a, b) => a - b);
-  const gusts = samples
-    .flatMap((s) => (s.gust === null ? [] : [s.gust * KNOTS]))
-    .sort((a, b) => a - b);
-  const u = samples.reduce((sum, s) => sum + s.u, 0) / samples.length;
-  const v = samples.reduce((sum, s) => sum + s.v, 0) / samples.length;
+  const gusted = samples.filter((s) => s.gust !== null);
+  const gusts = gusted.map((s) => s.gust! * KNOTS).sort((a, b) => a - b);
+  const weight = samples.reduce((sum, s) => sum + s.weight, 0);
+  const u = samples.reduce((sum, s) => sum + s.u * s.weight, 0) / weight;
+  const v = samples.reduce((sum, s) => sum + s.v * s.weight, 0) / weight;
   const direction = bearing(u, v);
   const spread = speeds[speeds.length - 1] - speeds[0];
   const hour: HourWind = {
-    wind_kn: round(median(speeds)),
+    wind_kn: round(
+      weightedMedian(
+        samples.map((s) => s.speed * KNOTS),
+        samples.map((s) => s.weight),
+      ),
+    ),
     min_kn: round(speeds[0]),
     max_kn: round(speeds[speeds.length - 1]),
-    gust_kn: gusts.length ? round(median(gusts)) : null,
+    gust_kn: gusted.length
+      ? round(
+          weightedMedian(
+            gusted.map((s) => s.gust! * KNOTS),
+            gusted.map((s) => s.weight),
+          ),
+        )
+      : null,
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
     direction_deg: direction,
     direction: compass(direction),

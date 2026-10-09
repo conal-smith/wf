@@ -1197,7 +1197,7 @@ export default function ForecastDock(props: Props) {
               </p>
             ) : (
               <p className="ip-small">
-                Wind: the models&rsquo; middle, each counted once
+                Wind: the models&rsquo; middle, the finer grids counting more
                 {prefs.blendModels.length
                   ? ` (${prefs.blendModels.length} in the blend)`
                   : ""}
