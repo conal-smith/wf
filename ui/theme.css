@@ -550,15 +550,17 @@
   --map-tide: #3f6e7e;
   /* The paper a label is haloed in over the chart. */
   --map-halo: #f1efe6;
-  /* Foilable depth at the selected tide (force5/src/foilDepth.ts): blue only
-     where a mast has room, ochre where the water is too shallow for it, and
-     the grey-brown of a drying flat where there is none. Distinct from the
-     land's buff and the depth tints, and from each other in lightness too. */
+  /* Foilable depth at the selected tide (force5/src/foilDepth.ts): a deep
+     blue where a mast has room, a pale blue where there is water but not
+     quite enough (it is still water: ochre read as sand), and the grey-brown
+     of a drying flat where there is none. Apart from each other and from the
+     depth tints in lightness. */
   --map-foil-deep: #3b7ea1;
-  --map-foil-shallow: #e2a648;
+  --map-foil-shallow: #9ccbe0;
   --map-foil-dry: #9a8c70;
-  /* Wet at every tide but no survey says how deep: a plain grey, unclaimed. */
-  --map-foil-unsurveyed: #c5c8c3;
+  /* Wet at every tide but no survey says how deep: water's blue, a shade off
+     the deep one, so it reads as water without claiming the depth. */
+  --map-foil-unsurveyed: #6a9cb8;
 
   /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
      too light, greens deepen through the sweet spot, yellow is the top of it,
