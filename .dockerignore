@@ -27,6 +27,12 @@ market/api/dist
 !site/**
 # And runs the community's migrations at boot (community/api, community/shared).
 !community/**
+# The MCP server, Gust and the AI page, which the API serves and the site imports.
+!mcp/**
+!companion/**
+!ai/**
+# The spot pages, a lazy bundle of the site.
+!spot/**
 # The site image builds the browser code every section shares (shared/web).
 !shared/**
 # ...and the Tailwind theme src/main.tsx imports (ui/theme.css).

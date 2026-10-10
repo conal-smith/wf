@@ -5,25 +5,11 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY tsconfig.json vite.config.ts index.html ./
-COPY src ./src
-COPY data ./data
-COPY force5 ./force5
-# src/main.tsx lazy-loads the marketplace bundle; only its browser half is built here.
-COPY market/web ./market/web
-COPY market/shared ./market/shared
-# It also reads the site's user types, and the auth bridge and fetch core every section shares.
-COPY site/shared ./site/shared
-COPY shared ./shared
-# And the community bundle, which tsconfig.json type-checks and ui/theme.css scans.
-COPY community/web ./community/web
-COPY community/shared ./community/shared
-# tsc -b checks the tests under those directories too; two import across the tree.
-COPY community/api/seed.ts ./community/api/seed.ts
-COPY market/api/src/ids.ts ./market/api/src/ids.ts
-# src/main.tsx imports the Tailwind theme, which also names the directories scanned for classes.
-COPY ui ./ui
-COPY public ./public
+# Every source the site's own `npm run build` reads (tsc -b type-checks the tests
+# under each tsconfig.json entry too, and some import across the tree). The
+# .dockerignore allowlist decides what that is; CI builds this image on every
+# change, so a section the allowlist misses fails there rather than at release.
+COPY . .
 RUN npm run build
 
 FROM caddy:2-alpine

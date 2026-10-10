@@ -27,6 +27,7 @@
   ],
   "exclude": [
     "src/**/*.test.ts",
+    "../shared/**/*.test.ts",
     "../../site/**/*.test.ts",
     "../../community/**/*.test.ts",
     "../../mcp/**/*.test.ts",
