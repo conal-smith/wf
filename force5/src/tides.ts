@@ -14,6 +14,8 @@ export interface TideStation {
   lon: number;
   /** Vertical reference, e.g. "LAT" or "OD Malin"; never assume one. */
   datum?: string;
+  /** Height above LAT minus height above OD Malin, metres (fetch_tides.py). */
+  odMalinOffsetMetres?: number;
   url?: string;
   sourceUrl?: string;
 }
@@ -188,13 +190,27 @@ export async function tideForSpot(
   const station =
     link && link.station ? tideStation(manifest, link.station) : undefined;
   if (!link || !station) return null;
-  const curve = validateTideCurve(
+  const curve = await stationCurve(station, signal);
+  return { station, distanceKm: link.distanceKm, curve };
+}
+
+const stationCurve = async (station: TideStation, signal?: AbortSignal) =>
+  validateTideCurve(
     (await loadJson(
       station.url ?? stationPath(station.id),
       signal,
     )) as TideCurve,
   );
-  return { station, distanceKm: link.distanceKm, curve };
+
+/** A named station's curve, for a place that is not a spot; null if unknown. */
+export async function tideForStation(
+  manifest: TideManifest,
+  stationId: string,
+  signal?: AbortSignal,
+): Promise<{ station: TideStation; curve: TideCurve } | null> {
+  const station = tideStation(manifest, stationId);
+  if (!station) return null;
+  return { station, curve: await stationCurve(station, signal) };
 }
 
 const millis = (time: string | number | Date) =>

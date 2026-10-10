@@ -200,7 +200,8 @@ function kept<T>(load: () => Promise<T>) {
     return abortable(hit.value, signal);
   };
 }
-const tideManifest = kept(() => loadTides());
+/** The tide manifest, shared with the foilable-depth layer (src/useFoilDepth.ts). */
+export const tideManifest = kept(() => loadTides());
 const seaManifest = kept(() => loadSeaTemperature());
 /** A station's curve, per manifest: the files are named by content. */
 const tideCurves = new WeakMap<
