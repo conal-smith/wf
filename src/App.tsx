@@ -27,6 +27,7 @@ import {
   foilRamp,
   foilReadout,
   nearestArea,
+  type FoilArea,
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
 import FoilLegend from "./FoilLegend";
@@ -238,9 +239,11 @@ export default function App() {
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [scale, setScale] = useState("");
-  const [centre, setCentre] = useState<{ lon: number; lat: number } | null>(
-    null,
-  );
+  // The foilable-depth area nearest the map's centre, for the key's tide
+  // station. Kept as an id, so a pan that stays near one area renders nothing,
+  // and only looked up once the layer has loaded its areas.
+  const foilAreas = useRef<readonly FoilArea[] | null>(null);
+  const [foilNearId, setFoilNearId] = useState<string | null>(null);
   // Gust comes once the chart is drawn and the page has a moment to spare.
   const [gustDue, setGustDue] = useState(false);
   useEffect(() => {
@@ -614,10 +617,20 @@ export default function App() {
 
   /* ---- foilable depth at the selected tide ---- */
   const foilState = useFoilDepth(layers.foil);
+  // Read from the stylesheet only once the layer is wanted.
   const foilPalette = useMemo(
-    () => foilColours(getComputedStyle(document.documentElement)),
-    [],
+    () =>
+      layers.foil
+        ? foilColours(getComputedStyle(document.documentElement))
+        : null,
+    [layers.foil],
   );
+  useEffect(() => {
+    const areas = foilState.manifest?.areas ?? null;
+    foilAreas.current = areas;
+    const c = controls.current?.map?.getCenter();
+    if (areas && c) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
+  }, [foilState.manifest]);
   const foilTime = column?.time ?? null;
   const foilTides = useMemo(() => {
     const out: Record<string, number | null> = {};
@@ -630,7 +643,7 @@ export default function App() {
   }, [foilState, foilTime]);
   const foilViews = useMemo<FoilView[] | null>(() => {
     const m = foilState.manifest;
-    if (!layers.foil || !m) return null;
+    if (!layers.foil || !m || !foilPalette) return null;
     return m.areas.flatMap((area) => {
       const tide = foilTides[area.id];
       if (tide === null || tide === undefined) return [];
@@ -657,9 +670,8 @@ export default function App() {
   }, [layers.foil, foilState.manifest, foilTides, foilPalette]);
   const foilArea = foilState.manifest
     ? (picked && areaAt(foilState.manifest.areas, picked.lon, picked.lat)) ||
-      (centre
-        ? nearestArea(foilState.manifest.areas, centre.lon, centre.lat)
-        : foilState.manifest.areas[0])
+      foilState.manifest.areas.find((a) => a.id === foilNearId) ||
+      foilState.manifest.areas[0]
     : null;
   const foilStation = foilArea
     ? (foilState.tides[foilArea.station]?.station.name ?? foilArea.station)
@@ -756,7 +768,8 @@ export default function App() {
       const p = 10 ** (Math.floor(Math.log10(n)) - 1);
       n = Math.round(n / p) * p;
       setScale(`SCALE 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
-      setCentre({ lon: c.lng, lat: c.lat });
+      const areas = foilAreas.current;
+      if (areas) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
     };
     update();
     map.on("moveend", update);
