@@ -50,8 +50,8 @@ describe("buildSpotBlend", () => {
     const sources = Object.fromEntries(blend.sources.map((s) => [s.id, s]));
     expect(sources["ecmwf-ens"].columns).toEqual([]);
     expect(sources["ecmwf-ens"].ensemble).toBe(true);
-    expect(sources.harmonie.weight).toBe(3);
-    expect(sources.ecmwf.weight).toBe(1);
+    expect(sources.harmonie.weight).toBe(4);
+    expect(sources.ecmwf.weight).toBe(0.5);
   });
 });
 

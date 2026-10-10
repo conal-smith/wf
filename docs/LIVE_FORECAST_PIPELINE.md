@@ -586,11 +586,15 @@ an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed
   model publishes, plus a summary of each model's run so the dock can build its
   columns without the manifests. No stars: those depend on the reader's weight, level
   and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).
-- **The weighting.** Each model counts by its grid (`force5/src/weights.ts`): 3 km or
-  finer three times (HARMONIE, AROME), up to 8 km twice (ICON-EU), coarser once. The
-  fine grids stop within about three days, so beyond them the global models count
-  equally. The agreement still reads the full spread of every model. The dock's blend
-  chart, Gust and the MCP server use the same weights.
+- **The weighting.** Each model counts by how well it verified against Irish stations
+  that far into its run (`MODEL_WEIGHTS` in `force5/src/weights.ts`; the backtest is in
+  docs/VERIFICATION.md, "Blend weights"): HARMONIE 4 for as long as it runs, AROME and
+  ICON-EU 2 on day 0 and 1 after, GFS 2 for two days, the ensemble means and AIFS rising
+  to 1.5 from day 2, ECMWF IFS and ARPEGE 0.5 throughout. A model the backtest has not
+  judged counts by its grid (3 km or finer three times, up to 8 km twice, coarser once).
+  The agreement reads the standard deviation of every model's speed, more strictly the
+  further ahead the hour is. The dock's blend chart, Gust and the MCP server use the
+  same weights.
 - **How it runs.** `force5/ingest/fetch_blend.py` reads every wind pointer the bucket
   serves into a scratch directory (never over a persistent work directory's own) and
   runs `force5/blend/build.ts`, the site's own TypeScript bundled into the image with

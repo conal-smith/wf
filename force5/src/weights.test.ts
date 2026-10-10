@@ -1,6 +1,61 @@
 import { describe, expect, it } from "vitest";
 import { quantile } from "./blend";
-import { blendWeight, weightedMedian } from "./weights";
+import {
+  blendWeight,
+  leadDay,
+  leadHours,
+  MODEL_WEIGHTS,
+  modelWeight,
+  weightedMedian,
+} from "./weights";
+
+describe("modelWeight", () => {
+  it("reads the backtest's weight for the day of the run the hour falls on", () => {
+    expect(leadDay(0)).toBe(0);
+    expect(leadDay(23.9)).toBe(0);
+    expect(leadDay(24)).toBe(1);
+    expect(leadDay(48)).toBe(2);
+    expect(leadDay(72)).toBe(3);
+    expect(leadDay(300)).toBe(3);
+    expect(modelWeight("harmonie", 6)).toBe(4);
+    expect(modelWeight("arome", 6)).toBe(2);
+    expect(modelWeight("arome", 30)).toBe(1);
+    expect(modelWeight("aifs", 6)).toBe(0.5);
+    expect(modelWeight("aifs", 100)).toBe(1.5);
+    expect(modelWeight("ecmwf-ens", 60)).toBe(1.5);
+    expect(modelWeight("arpege", 6)).toBe(0.5);
+  });
+
+  it("counts an hour before its run, or with no run time, as day 0", () => {
+    expect(modelWeight("gfs", -1)).toBe(2);
+    expect(modelWeight("gfs", Number.NaN)).toBe(2);
+    expect(
+      leadHours("2026-10-07T12:00:00Z", Date.parse("2026-10-08T18:00:00Z")),
+    ).toBe(30);
+  });
+
+  it("falls back to the grid for a model the backtest has not judged", () => {
+    expect(MODEL_WEIGHTS.ukv).toBeUndefined();
+    expect(modelWeight("ukv", 6, 2)).toBe(3);
+    expect(modelWeight("harmonie-eps", 6, 2)).toBe(3);
+    expect(modelWeight("something-new", 6, null)).toBe(1);
+  });
+
+  it("judges every wind model the blend reads", () => {
+    for (const id of [
+      "harmonie",
+      "icon-eu",
+      "ecmwf",
+      "gfs",
+      "ecmwf-ens",
+      "gefs",
+      "arpege",
+      "arome",
+      "aifs",
+    ])
+      expect(MODEL_WEIGHTS[id]).toHaveLength(4);
+  });
+});
 
 describe("blendWeight", () => {
   it("counts a model by its grid: fine three times, regional twice, global once", () => {

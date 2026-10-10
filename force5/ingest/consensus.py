@@ -1,10 +1,11 @@
 """The site's wind blend, in Python, so the verification can score it.
 
-The blend riders see is worked out in TypeScript: `blendWeight` and
+The blend riders see is worked out in TypeScript: `modelWeight` and
 `weightedMedian` (force5/src/weights.ts) and `placeConsensus` (src/ratings.ts).
 Verifying "the blend" means verifying *that* arithmetic, so this is a line-by-line
-replica of it and nothing more: each model taken once at its grid's weight (3 for
-a grid of 3 km or finer, 2 up to 8 km, else 1), an ensemble's members collapsed
+replica of it and nothing more: each model taken once at its weight for how far
+into its run the hour is (`MODEL_WEIGHTS`, or by its grid for a model the backtest
+has not judged: 3 for 3 km or finer, 2 up to 8 km, else 1), an ensemble's members collapsed
 to their hourly mean speed, the weighted median of the speeds and of the gusts,
 and the weighted mean of the models' mean wind vectors for the bearing. Every
 model is put on the axis the TypeScript way too: linear in u and v between its
@@ -35,6 +36,18 @@ REGIONAL_GRID_KM = 8
 # catalogue order. The published blend reads every one the bucket serves.
 BLEND_MODELS = ("harmonie", "icon-eu", "ecmwf", "gfs", "ecmwf-ens", "gefs", "arpege",
                 "arome", "aifs")
+# weights.ts `MODEL_WEIGHTS`: each judged model's weight on day 0, 1, 2 and 3 on.
+MODEL_WEIGHTS = {
+    "harmonie": (4, 4, 4, 4),
+    "arome": (2, 1, 1, 1),
+    "icon-eu": (2, 1, 1, 1),
+    "gfs": (2, 2, 1, 1),
+    "gefs": (1, 1, 1, 1),
+    "ecmwf-ens": (1, 1, 1.5, 1.5),
+    "aifs": (0.5, 1, 1.5, 1.5),
+    "ecmwf": (0.5, 0.5, 0.5, 0.5),
+    "arpege": (0.5, 0.5, 0.5, 0.5),
+}
 HOUR_MS = 3_600_000
 NAN = float("nan")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -50,6 +63,23 @@ def blend_weight(resolution_km):
     if resolution_km <= REGIONAL_GRID_KM:
         return 2
     return 1
+
+
+def lead_day(lead_hours):
+    """weights.ts `leadDay`: 0 for the first 24 hours (and for an unknown lead), 3 from 72."""
+    if not lead_hours >= 24:
+        return 0
+    if lead_hours < 48:
+        return 1
+    if lead_hours < 72:
+        return 2
+    return 3
+
+
+def model_weight(model, lead_hours, resolution_km):
+    """weights.ts `modelWeight`: the judged model's weight that far in, else by grid."""
+    row = MODEL_WEIGHTS.get(model)
+    return row[lead_day(lead_hours)] if row else blend_weight(resolution_km)
 
 
 def weighted_median(values, weights):
@@ -202,7 +232,7 @@ def place_consensus(manifests, blend_ids, spot, axis):
     """ratings.ts `placeConsensus` without the agreement: median, gust and bearing.
 
     `manifests` are dicts shaped like the published wind manifests (only `model`,
-    `resolutionKm`, `spotForecasts`, and for an ensemble `ensemble`/`spotMembers`,
+    `runTime`, `resolutionKm`, `spotForecasts`, and for an ensemble `ensemble`/`spotMembers`,
     are read); `axis` is a list of ISO times. Speeds come back in m/s, and None
     where no model has a value.
     """
@@ -216,7 +246,9 @@ def place_consensus(manifests, blend_ids, spot, axis):
         mean = spot_series(manifest, spot)
         if mean is None:
             continue
-        weight = blend_weight(manifest.get("resolutionKm"))
+        run = parse_ms(manifest["runTime"]) if isinstance(manifest.get("runTime"), str) else NAN
+        weight = [model_weight(manifest["model"], (time - run) / HOUR_MS,
+                               manifest.get("resolutionKm")) for time in axis_times]
         members = member_lines(manifest, spot)
         for points in (members if members is not None else [mean]):
             plan = plan_for([parse_ms(point["validTime"]) for point in points], axis_times)
@@ -250,18 +282,18 @@ def place_consensus(manifests, blend_ids, spot, axis):
         for line in per_model:
             if math.isfinite(line["speed"][c]):
                 speeds.append(line["speed"][c])
-                speed_weights.append(line["weight"])
+                speed_weights.append(line["weight"][c])
             if math.isfinite(line["gust"][c]):
                 gusts.append(line["gust"][c])
-                gust_weights.append(line["weight"])
+                gust_weights.append(line["weight"][c])
         out["gust"].append(weighted_median(gusts, gust_weights) if gusts else None)
         out["median"].append(weighted_median(speeds, speed_weights) if speeds else None)
         u = v = k = 0
         for vector in vectors:
             if math.isfinite(vector["u"][c]) and math.isfinite(vector["v"][c]):
-                u += vector["u"][c] * vector["weight"]
-                v += vector["v"][c] * vector["weight"]
-                k += vector["weight"]
+                u += vector["u"][c] * vector["weight"][c]
+                v += vector["v"][c] * vector["weight"][c]
+                k += vector["weight"][c]
         out["from"].append(direction(u / k, v / k)
                            if k and math.hypot(u / k, v / k) >= 0.1 else None)
     return out

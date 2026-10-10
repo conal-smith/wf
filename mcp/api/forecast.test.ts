@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { MODEL_CATALOG } from "../../force5/src/manifests";
 import { KNOTS } from "../../force5/src/units";
 import {
+  agreementFrom,
+  leadHours,
+  modelWeight,
+  weightedMedian,
+} from "../../force5/src/weights";
+import {
   WAVE_MODELS,
   WEATHER_MODELS,
   WIND_MODELS,
@@ -146,36 +152,48 @@ describe("spotForecast", () => {
     );
   });
 
-  it("gives the median, range and agreement of the models in knots", async () => {
+  it("gives the weighted median, range and agreement of the models in knots", async () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
     expect(first.time).toBe("2026-09-16T18:00:00.000Z");
     expect(first.local).toBe("Wed, 16 Sept, 19:00");
 
     // The same hour straight from the fixture files, one model at a time.
-    const speeds = await Promise.all(
+    const valid = Date.parse("2026-09-16T18:00:00Z");
+    const rows = await Promise.all(
       ["ecmwf", "gfs", "arpege"].map(async (model) => {
         const m = (await source.json(`weather/${model}.json`)) as {
+          runTime: string;
           spotForecasts: Record<
             string,
             { validTime: string; u: number; v: number }[]
           >;
         };
         const row = m.spotForecasts.dollymount.find(
-          (r) => r.validTime === "2026-09-16T18:00:00Z",
+          (r) => Date.parse(r.validTime) === valid,
         )!;
-        return Math.hypot(row.u, row.v) * KNOTS;
+        const lead = leadHours(m.runTime, valid);
+        return {
+          speed: Math.hypot(row.u, row.v) * KNOTS,
+          weight: modelWeight(model, lead),
+          lead,
+        };
       }),
     );
-    speeds.sort((a, b) => a - b);
+    const speeds = rows.map((r) => r.speed).sort((a, b) => a - b);
     const wind = first.wind!;
     expect(wind.models).toBe(3);
-    expect(wind.wind_kn).toBeCloseTo(speeds[1], 1);
+    expect(wind.wind_kn).toBeCloseTo(
+      weightedMedian(
+        rows.map((r) => r.speed),
+        rows.map((r) => r.weight),
+      ),
+      1,
+    );
     expect(wind.min_kn).toBeCloseTo(speeds[0], 1);
     expect(wind.max_kn).toBeCloseTo(speeds[2], 1);
-    const spread = speeds[2] - speeds[0];
     expect(wind.agreement).toBe(
-      spread < 4 ? "high" : spread < 8 ? "moderate" : "low",
+      agreementFrom(speeds, Math.min(...rows.map((r) => r.lead))),
     );
     expect(Object.keys(wind.by_model!).sort()).toEqual([
       "arpege",

@@ -221,7 +221,8 @@ def station_manifest(record, station):
         {"validTime": stamp(record["runTime"] + timedelta(hours=hour)),
          "u": series["u"][i], "v": series["v"][i], "gust": series["gust"][i]}
         for i, hour in enumerate(record["hours"])]
-    return {"model": record["model"], "resolutionKm": record["resolutionKm"],
+    return {"model": record["model"], "runTime": stamp(record["runTime"]),
+            "resolutionKm": record["resolutionKm"],
             "spotForecasts": {station: points} if points else {}}
 
 
@@ -276,7 +277,8 @@ def day_sums(day, records, observed):
 
 def blend_signature():
     """Changes whenever the scoring or the replicated blend would score differently."""
-    probe = [consensus.blend_weight(km) for km in (1, 2.5, 3, 5, 8, 9, 25, None)]
+    probe = [[consensus.blend_weight(km) for km in (1, 2.5, 3, 5, 8, 9, 25, None)],
+             sorted((model, list(row)) for model, row in consensus.MODEL_WEIGHTS.items())]
     material = json.dumps([SUMS_VERSION, list(BLEND_MODELS), probe, list(BLEND_ISSUE_HOURS),
                            RIDEABLE_MPS, DIRECTION_MIN_MPS, [b[2] for b in LEAD_BUCKETS]])
     return hashlib.sha256(material.encode()).hexdigest()[:16]
@@ -417,7 +419,8 @@ def scores(results, now):
         "blend": {"models": list(BLEND_MODELS), "issueHours": list(BLEND_ISSUE_HOURS),
                   "signature": blend_signature(),
                   "method": "src/ratings.ts placeConsensus, replicated in force5/ingest/consensus.py: "
-                            "grid-size weights 3/2/1, weighted median speed and gust, weighted "
+                            "per-model weights by lead day (MODEL_WEIGHTS; grid-size 3/2/1 for a "
+                            "model it does not list), weighted median speed and gust, weighted "
                             "mean vector for the bearing. At a station an ensemble contributes "
                             "its mean wind, sampled from its mean frames."},
         "fields": list(SCORE_FIELDS),

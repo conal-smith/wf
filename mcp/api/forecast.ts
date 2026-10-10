@@ -30,15 +30,19 @@ import {
 } from "../../force5/src/stars.js";
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
-import { blendWeight, weightedMedian } from "../../force5/src/weights.js";
+import {
+  AGREEMENT_SPREAD_KN,
+  agreementFrom,
+  leadHours,
+  modelWeight,
+  weightedMedian,
+  type Agreement,
+} from "../../force5/src/weights.js";
 import type { ForecastSource } from "./httpSource.js";
 
 const HOUR = 3600000;
 /** A run older than this is flagged stale, as the map flags it. */
 const STALE_HOURS = 18;
-/** Same thresholds as the dock (AGREEMENT_HIGH_KN, AGREEMENT_MODERATE_KN). */
-const AGREEMENT_HIGH_KN = 4;
-const AGREEMENT_MODERATE_KN = 8;
 /** Waves and weather are nearest-step, never interpolated (VARIABLE_MATCH_HOURS). */
 const VARIABLE_MATCH_HOURS = 1.5;
 export const TIME_ZONE = "Europe/Dublin";
@@ -140,12 +144,7 @@ export const localTime = (millis: number) =>
   localFormat.format(new Date(millis));
 const iso = (millis: number) => new Date(millis).toISOString();
 
-export type Agreement = "high" | "moderate" | "low";
-export function agreementFor(spreadKnots: number): Agreement {
-  if (spreadKnots < AGREEMENT_HIGH_KN) return "high";
-  if (spreadKnots < AGREEMENT_MODERATE_KN) return "moderate";
-  return "low";
-}
+export type { Agreement };
 
 // ---- spots ------------------------------------------------------------------
 
@@ -513,7 +512,12 @@ export interface HourWind {
 }
 
 export interface SpotWindLines {
-  lines: { run: ModelRun; points: WindPoint[]; gap: number; weight: number }[];
+  lines: {
+    run: ModelRun;
+    points: WindPoint[];
+    gap: number;
+    resolutionKm: number | null;
+  }[];
   /** Models that are live but do not reach this spot. */
   outside: string[];
 }
@@ -531,7 +535,7 @@ export function spotWindLines(
         run,
         points,
         gap: maxGap(points),
-        weight: blendWeight(manifest.resolutionKm),
+        resolutionKm: manifest.resolutionKm ?? null,
       });
     else outside.push(run.name);
   }
@@ -543,10 +547,13 @@ export function hourWind(
   time: number,
   perModel: boolean,
 ): HourWind | null {
-  const samples = lines.flatMap(({ run, points, gap, weight }) => {
+  const samples = lines.flatMap(({ run, points, gap, resolutionKm }) => {
     const at = windAt(points, time, gap);
+    const runTime = Date.parse(run.run_time);
+    // The dock's weight for this model this far into its run (`modelWeight`).
+    const weight = modelWeight(run.id, leadHours(runTime, time), resolutionKm);
     return at
-      ? [{ id: run.id, weight, ...at, speed: Math.hypot(at.u, at.v) }]
+      ? [{ id: run.id, weight, runTime, ...at, speed: Math.hypot(at.u, at.v) }]
       : [];
   });
   if (!samples.length) return null;
@@ -557,7 +564,6 @@ export function hourWind(
   const u = samples.reduce((sum, s) => sum + s.u * s.weight, 0) / weight;
   const v = samples.reduce((sum, s) => sum + s.v * s.weight, 0) / weight;
   const direction = bearing(u, v);
-  const spread = speeds[speeds.length - 1] - speeds[0];
   const hour: HourWind = {
     wind_kn: round(
       weightedMedian(
@@ -578,7 +584,13 @@ export function hourWind(
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
     direction_deg: direction,
     direction: compass(direction),
-    agreement: samples.length > 1 ? agreementFor(spread) : null,
+    agreement:
+      samples.length > 1
+        ? agreementFrom(
+            speeds,
+            leadHours(Math.max(...samples.map((s) => s.runTime)), time),
+          )
+        : null,
     models: samples.length,
   };
   if (perModel)
@@ -963,12 +975,16 @@ export interface SpotForecast {
 }
 
 export const METHOD =
-  "Wind is the median of every live model's forecast for the spot at each hour " +
-  "(an ensemble's member mean counts as one model), with the range across " +
-  "models, a vector-mean direction, and agreement: high when the models sit " +
-  `within ${AGREEMENT_HIGH_KN} kn of each other, moderate within ` +
-  `${AGREEMENT_MODERATE_KN} kn, otherwise low. Not bias-corrected against ` +
-  "observations. The chance it rides is the share of ensemble members " +
+  "Wind is the weighted median of every live model's forecast for the spot at " +
+  "each hour (an ensemble's member mean counts as one model), each model " +
+  "weighted by how well it verified against Irish stations that far into its " +
+  "run, with the range across models, a vector-mean direction, and agreement " +
+  "from the standard deviation of the models' speeds, tighter the further " +
+  `ahead: high under ${AGREEMENT_SPREAD_KN[0][0]} kn today and under ` +
+  `${AGREEMENT_SPREAD_KN[3][0]} kn from day 3, low from ` +
+  `${AGREEMENT_SPREAD_KN[0][1]} kn today and ${AGREEMENT_SPREAD_KN[3][1]} kn ` +
+  "from day 3, and never high from fewer than three models. Not " +
+  "bias-corrected against observations. The chance it rides is the share of ensemble members " +
   "(ECMWF ENS and GEFS, every member counted) whose wind, lifted part of the " +
   "way to its gusts as a foil rides it, reaches the rider's floor. " +
   "Waves come from the finest wave model that covers the spot. " +

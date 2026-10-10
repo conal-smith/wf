@@ -127,7 +127,8 @@ describe("blending the three models", () => {
     expect(at("2026-09-13T06:00:00.000Z").n).toBe(2);
     expect(at("2026-09-25T00:00:00.000Z").n).toBe(1);
     expect(at("2026-09-25T00:00:00.000Z").spread).toBe(0);
-    expect(at("2026-09-25T00:00:00.000Z").agreement).toBe("high");
+    // One model left agrees with nobody: never "high".
+    expect(at("2026-09-25T00:00:00.000Z").agreement).toBe("moderate");
     // HARMONIE publishes no gusts, so only two models feed the gust row.
     expect(at("2026-09-14T00:00:00.000Z").gust.n).toBe(2);
     expect(at("2026-09-14T00:00:00.000Z").gust.max).toBeGreaterThanOrEqual(

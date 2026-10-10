@@ -66,13 +66,22 @@ Each deduction is a sentence in the cell's tooltip, so a rider can argue with it
 | Gusts above the rider's ceiling                                                 | −1                | −1                   |
 | Gust factor over 1.7 with the mean already in the sweet spot                    | −0.5              | —                    |
 | Gust factor over 1.35 / 1.5 / 1.7, at any speed                                 | —                 | −0.75 / −1.5 / −2.25 |
-| Models disagree (spread ≥ 8 kn) / some spread                                   | −1 / −0.25        | same                 |
+| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25        | same                 |
 | Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                | −1                   |
 
 Every deduction that costs a star is given as a reason. The quarter for some
 spread among the models is the one that usually costs nothing; when it does tip
 an hour under a whole star, the reason says so ("The models differ a little,
 enough to hold back a star").
+
+Agreement is the standard deviation of the models' speeds (each ensemble as its
+member mean), read more strictly the further ahead the hour is: "high" under
+1.7 kn today, 1.55 tomorrow, 1.2 on day 2 and 0.8 from day 3; "low" from 3.05,
+2.9, 2.55 and 2.15 kn. Fewer than three models are never "high". The lines are
+fitted so a "high" hour is about a 2 kn forecast whichever day it is on
+(`agreementFrom`, `force5/src/weights.ts`; docs/VERIFICATION.md, "Blend
+weights"). So a day-5 hour now loses a quarter or a star that it used to keep:
+the old range rule called far-off hours "high" more often than near ones.
 
 Dark hours are not rated: the cell stays empty rather than showing a zero.
 
@@ -161,8 +170,8 @@ given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 `/spot/<id>` (`spot/web/`) is the chart's broadsheet for one place, day by
 day. It rates the forecast server's consensus line rather than the dock's
 blend: the median wind and gust of every live model, each ensemble's mean
-once, their vector-mean direction and the same 4 kn / 8 kn agreement
-thresholds (`mcp/api/forecast.ts`), so the stars there are the stars an
+once, their vector-mean direction and the same agreement thresholds
+(`mcp/api/forecast.ts`), so the stars there are the stars an
 assistant would be given. They can differ from the dock's by a star where the
 dock's blend uses a different set of models (Display options) or columns.
 

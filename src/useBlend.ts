@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
-  blendWeight,
+  leadHours,
+  modelWeight,
   perModelLines,
   type BlendInput,
   type HourStats,
@@ -504,18 +505,39 @@ export function useBlend(
     const ids = usable.map((manifest) => manifest.model);
     const lines = blendInputs(usable, spotId, ids, axis);
     if (!lines.length) return EMPTY;
-    const weightOf = (model: string) =>
-      blendWeight(usable.find((m) => m.model === model)?.resolutionKm);
+    const times = axis.map((time) => Date.parse(time));
+    const weightAt = (manifest: (typeof usable)[number], at: number) =>
+      modelWeight(
+        manifest.model,
+        leadHours(manifest.runTime, times[at]),
+        manifest.resolutionKm,
+      );
+    const byId = new Map(usable.map((manifest) => [manifest.model, manifest]));
+    const weightOf = (model: string, at: number) =>
+      weightAt(byId.get(model)!, at);
+    // How far ahead each hour is: from the newest run that has it.
+    const runs = new Map(
+      usable.map((manifest) => [manifest.model, Date.parse(manifest.runTime)]),
+    );
+    const leadOf = (at: number) =>
+      leadHours(
+        Math.max(
+          ...lines
+            .filter((line) => line.speed[at] !== null)
+            .map((line) => runs.get(line.model)!),
+        ),
+        times[at],
+      );
     return {
       lines,
-      stats: blendStats(lines, axis),
-      consensus: blendStats(perModelLines(lines), axis, weightOf),
+      stats: blendStats(lines, axis, undefined, leadOf),
+      consensus: blendStats(perModelLines(lines), axis, weightOf, leadOf),
       directions: meanDirections(
         usable.map((manifest) =>
           axisVectors(spotSeries(manifest, spotId)!, axis),
         ),
         axis.length,
-        usable.map((manifest) => blendWeight(manifest.resolutionKm)),
+        (model, at) => weightAt(usable[model], at),
       ),
       contributing: Array.from(new Set(lines.map((line) => line.model))),
       manifests: usable,

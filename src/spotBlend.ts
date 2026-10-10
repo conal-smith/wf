@@ -20,7 +20,7 @@ import { rateHour, type Rider } from "../force5/src/stars";
 import { modelTimes, type ColumnModel } from "../force5/src/timeline";
 import { KNOTS } from "../force5/src/units";
 import type { Manifest } from "../force5/src/weather";
-import { blendWeight } from "../force5/src/weights";
+import { modelWeight } from "../force5/src/weights";
 import {
   daylightOn,
   placeConsensus,
@@ -50,7 +50,7 @@ export interface BlendSource {
   runTime: string;
   resolutionKm: number | null;
   ensemble: boolean;
-  /** What its line counted for in the consensus (`blendWeight`). */
+  /** What its line counts for on day 0 of its run (`modelWeight`); less or more later. */
   weight: number;
   /** The times it publishes, as indices into `times`. Empty for an ensemble. */
   columns: number[];
@@ -158,7 +158,7 @@ export function buildSpotBlend(
       runTime: manifest.runTime,
       resolutionKm: manifest.resolutionKm ?? null,
       ensemble: isEnsemble(manifest),
-      weight: blendWeight(manifest.resolutionKm),
+      weight: modelWeight(manifest.model, 0, manifest.resolutionKm),
       columns: runTimes.get(manifest.model)!.map((time) => index.get(time)!),
     })),
     spots,

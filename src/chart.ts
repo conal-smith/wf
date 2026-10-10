@@ -467,15 +467,17 @@ function weightedVectorMean(
 export function meanDirections(
   vectorsByModel: readonly ({ u: number; v: number } | null)[][],
   length: number,
-  /** Each model's `blendWeight`, in the same order; equal when left out. */
-  weights?: readonly number[],
+  /** Each model's weight at an axis index (`modelWeight`); equal when left out. */
+  weightAt?: (model: number, index: number) => number,
 ): (number | null)[] {
   return Array.from({ length }, (_, index) => {
     const at = vectorsByModel.flatMap((vectors, model) => {
       const vector = vectors[index];
-      return vector ? [{ ...vector, weight: weights?.[model] ?? 1 }] : [];
+      return vector
+        ? [{ ...vector, weight: weightAt ? weightAt(model, index) : 1 }]
+        : [];
     });
-    const mean = weights
+    const mean = weightAt
       ? weightedVectorMean(at)
       : vectorMean(at.map(({ u, v }) => ({ u, v })));
     return mean === null || Math.hypot(mean.u, mean.v) < 0.1

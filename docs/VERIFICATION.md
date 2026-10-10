@@ -119,9 +119,9 @@ after the run.
 
 **The blend** is scored as model `blend`. At 00, 06, 12 and 18 UTC each day it is rebuilt
 from the newest run of each blended model whose `generatedAt` was by then, exactly as the
-site works it out: `force5/ingest/consensus.py` replicates `blendWeight` and
-`weightedMedian` (`force5/src/weights.ts`) and `placeConsensus` (`src/ratings.ts`) — grid
-weights 3/2/1, ensembles collapsed to their member-mean speed, weighted median speed and
+site works it out: `force5/ingest/consensus.py` replicates `modelWeight` and
+`weightedMedian` (`force5/src/weights.ts`) and `placeConsensus` (`src/ratings.ts`) — each
+model at its weight for the day of its run the hour falls on, ensembles collapsed to their member-mean speed, weighted median speed and
 gust, weighted vector-mean bearing, linear in u/v between a model's steps but never
 across a gap wider than twice its step. The fixture `force5/ingest/fixtures/blend-consensus.json`
 holds the two together: `force5/src/consensusReplica.test.ts` checks that the TypeScript
@@ -150,6 +150,55 @@ Empty groups are `null`, never zero. The scoring functions are pure and tested i
 observation manifest no longer covers it and nothing can change it. Each run recomputes
 only the newer days. A stored day carries `sumsVersion` and the blend replica's
 `blendSignature`, and is recomputed when either has changed.
+
+## Blend weights
+
+The weights in `MODEL_WEIGHTS` and the agreement thresholds in `AGREEMENT_SPREAD_KN`
+(`force5/src/weights.ts`) come from a one-off backtest run before this record existed,
+on 10 July to 9 October 2026: every model against 31 stations (11 coastal, 8 airports,
+12 inland synoptic, from Ogimet SYNOP and airport METARs; the Marine Institute buoys were
+unreachable), with the forecasts taken from Open-Meteo's archive of past runs as a proxy
+for our own (DMI's DINI HARMONIE standing in for Met Éireann's, which is the same shared
+system). Fitted on the first 60 days, judged on the last 32.
+
+What it found, and what the weights do about it:
+
+| Speed MAE, kn  | day 0 | day 1 | day 2 | day 3–5 | Bias, day 1 |
+| -------------- | ----- | ----- | ----- | ------- | ----------- |
+| HARMONIE       | 2.13  | 2.26  | –     | –       | −0.0        |
+| AROME          | 2.29  | 2.56  | –     | –       | +1.5        |
+| GFS            | 2.34  | 2.43  | 2.57  | 3.02    | −0.1        |
+| ICON-EU        | 2.42  | 2.56  | 2.68  | –       | −0.3        |
+| GEFS mean      | 2.44  | 2.45  | 2.54  | 2.89    | +0.2        |
+| ECMWF ENS mean | 2.52  | 2.57  | 2.60  | 2.84    | +0.7        |
+| ECMWF IFS      | 2.54  | 2.60  | 2.65  | 3.07    | +0.7        |
+| ARPEGE         | 2.60  | 2.82  | 2.98  | 3.32    | +1.2        |
+| AIFS           | 2.68  | 2.50  | 2.54  | 2.80    | −0.2        |
+
+- The old grid-size weights were already close: the new ones take 0.06–0.08 kn off the
+  blend's day-0 and day-1 error (significant by a day-block bootstrap) and leave day 2 on
+  where they are. Fitting weights to each model's error alone did worse than either.
+- Dropping the ensemble means, halving them, or giving each family (ECMWF IFS, ENS, AIFS;
+  GFS, GEFS) one vote all made the blend worse from day 2, where the ensemble means are
+  the best guides. The deterministic IFS is the one that adds least, so it is the one cut.
+- The blended bearing (speed-weighted vector mean at these weights) beat every single
+  model and every other way of averaging tried.
+- The old agreement label (the models' full range under 4 kn high, under 8 kn moderate)
+  said "high" *more* often at day 3–5 than at day 0, because the range shrinks as the fine
+  grids stop, and a day-5 "high" hour was a worse forecast than a day-0 "moderate" one.
+  The error was fitted as 1.31 kn + 0.49 × the models' standard deviation + 0.08 / 0.25 /
+  0.44 kn on day 1 / 2 / 3 on; "high" is an expected error under 2.15 kn and "low" one of
+  2.81 kn or more. A "high" hour now has a typical error of about 2 kn on every day, and
+  the share of "high" hours falls from about 65% on day 0 to 10% from day 3. Fewer than
+  three models are never "high". Wind speed predicts error too, but is left out on purpose:
+  it would mark every strong day "low" for a miss that changes nothing a rider decides.
+- Correcting each station's own bias took a further 0.5 kn off, but only works with an
+  anemometer at the place; a correction borrowed from other coastal stations did not help,
+  because their biases differ in sign. So nothing is bias-corrected yet.
+
+Caveats: a proxy for our own runs, a short late-summer test window, no buoys, and gusts
+checked only at eight Northern Ireland stations. Refit from this job's own scores once
+it holds a season, winter included, and with the buoys.
 
 ## Licences and attribution
 

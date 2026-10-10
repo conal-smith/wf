@@ -2,9 +2,8 @@
 // snapshots are exercised in tests/blend.test.ts, which may read files.
 import { describe, expect, it } from "vitest";
 import {
-  AGREEMENT_HIGH_KN,
-  AGREEMENT_MODERATE_KN,
-  agreementFor,
+  AGREEMENT_SPREAD_KN,
+  agreementFrom,
   bandPath,
   blendInputs,
   blendStats,
@@ -252,25 +251,64 @@ describe("per-hour statistics", () => {
     expect(stats[0].gust.n).toBe(0);
     expect(blendStats([], axis)[0].n).toBe(0);
   });
-  it("labels agreement by spread in knots at the documented thresholds", () => {
-    expect(AGREEMENT_HIGH_KN).toBe(4);
-    expect(AGREEMENT_MODERATE_KN).toBe(8);
-    expect(agreementFor(0)).toBe("high");
-    expect(agreementFor((AGREEMENT_HIGH_KN - 0.01) / KNOTS)).toBe("high");
-    expect(agreementFor(AGREEMENT_HIGH_KN / KNOTS)).toBe("moderate");
-    expect(agreementFor((AGREEMENT_MODERATE_KN - 0.01) / KNOTS)).toBe(
-      "moderate",
-    );
-    expect(agreementFor(AGREEMENT_MODERATE_KN / KNOTS)).toBe("low");
+  it("labels agreement by the models' spread, tighter the further ahead", () => {
+    // Three models at 10 ± d kn have a standard deviation of d × √(2/3).
+    const at = (sd: number) => [
+      10 - sd / Math.sqrt(2 / 3),
+      10,
+      10 + sd / Math.sqrt(2 / 3),
+    ];
+    expect(AGREEMENT_SPREAD_KN).toHaveLength(4);
+    AGREEMENT_SPREAD_KN.forEach(([high, low], day) => {
+      const lead = day * 24 + 1;
+      expect(agreementFrom(at(0), lead)).toBe("high");
+      expect(agreementFrom(at(high - 0.01), lead)).toBe("high");
+      expect(agreementFrom(at(high + 0.01), lead)).toBe("moderate");
+      expect(agreementFrom(at(low - 0.01), lead)).toBe("moderate");
+      expect(agreementFrom(at(low + 0.01), lead)).toBe("low");
+    });
+    // A spread that is "high" today is only "moderate" from day 3.
+    expect(agreementFrom(at(1.5), 6)).toBe("high");
+    expect(agreementFrom(at(1.5), 80)).toBe("moderate");
+    // Each step tightens.
+    for (let day = 1; day < 4; day++) {
+      expect(AGREEMENT_SPREAD_KN[day][0]).toBeLessThan(
+        AGREEMENT_SPREAD_KN[day - 1][0],
+      );
+      expect(AGREEMENT_SPREAD_KN[day][1]).toBeLessThan(
+        AGREEMENT_SPREAD_KN[day - 1][1],
+      );
+    }
+  });
+  it("never calls two models or fewer high agreement, and none no agreement", () => {
+    expect(agreementFrom([], 0)).toBeNull();
+    expect(agreementFrom([12], 0)).toBe("moderate");
+    expect(agreementFrom([12, 12], 0)).toBe("moderate");
+    expect(agreementFrom([12, 12, 12], 0)).toBe("high");
+    expect(agreementFrom([4, 20], 0)).toBe("low");
     const stats = blendStats(
       [
         line("a", [5, 5], [null, null]),
         line("b", [5 + 10 / KNOTS, 5], [null, null]),
+        line("c", [5, 5], [null, null]),
       ],
       axis,
     );
     expect(stats[0].agreement).toBe("low");
     expect(stats[1].agreement).toBe("high");
+    // The same lines three days out: their spread is read more strictly.
+    const later = blendStats(
+      [
+        line("a", [5, 5 + 2 / KNOTS], [null, null]),
+        line("b", [5, 5 - 2 / KNOTS], [null, null]),
+        line("c", [5, 5], [null, null]),
+      ],
+      axis,
+      undefined,
+      () => 80,
+    );
+    expect(later[0].agreement).toBe("high");
+    expect(later[1].agreement).toBe("moderate");
   });
   it("interpolates quantiles between order statistics", () => {
     expect(quantile([1, 2, 3, 4], 0.25)).toBeCloseTo(1.75, 10);

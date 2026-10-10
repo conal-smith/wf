@@ -4,20 +4,20 @@
 import { framePosition } from "./timeline";
 import { KNOTS } from "./units";
 import { modelSeries, type SeriesPoint } from "./series";
-import { weightedMedian } from "./weights";
+import { agreementFrom, weightedMedian, type Agreement } from "./weights";
 import type { Manifest } from "./weather";
 
 export {
+  AGREEMENT_SPREAD_KN,
+  agreementFrom,
   blendWeight,
   FINE_GRID_KM,
+  leadHours,
+  modelWeight,
   REGIONAL_GRID_KM,
   weightedMedian,
 } from "./weights";
-
-export type Agreement = "high" | "moderate" | "low";
-/** Spread thresholds in knots: how far apart the lines may sit and still agree. */
-export const AGREEMENT_HIGH_KN = 4;
-export const AGREEMENT_MODERATE_KN = 8;
+export type { Agreement } from "./weights";
 /** Guard against an accidental multi-year axis. */
 export const MAX_AXIS_POINTS = 2000;
 
@@ -242,13 +242,6 @@ export function quantile(sorted: readonly number[], q: number): number {
   return sorted[low] + (sorted[high] - sorted[low]) * (position - low);
 }
 
-export function agreementFor(spreadMps: number): Agreement {
-  const knots = spreadMps * KNOTS;
-  if (knots < AGREEMENT_HIGH_KN) return "high";
-  if (knots < AGREEMENT_MODERATE_KN) return "moderate";
-  return "low";
-}
-
 export interface GustStats {
   n: number;
   min: number | null;
@@ -264,7 +257,7 @@ export interface HourStats {
   median: number | null;
   q75: number | null;
   mean: number | null;
-  /** Full range, max − min, in m/s; the agreement label reads it in knots. */
+  /** Full range, max − min, in m/s. */
   spread: number | null;
   agreement: Agreement | null;
   gust: GustStats;
@@ -275,13 +268,16 @@ const EMPTY_GUST: GustStats = { n: 0, min: null, max: null, median: null };
 /**
  * Per-hour distribution across every input line; hours with no data keep n 0.
  * With `weightOf`, the median and mean count each line by its model's weight
- * (`blendWeight`), as the consensus does; the range, quartiles and agreement
- * stay what the lines themselves span.
+ * at that hour (`modelWeight`), as the consensus does; the range, quartiles and
+ * agreement stay what the lines themselves span. Agreement reads the lines'
+ * spread against how far ahead the hour is (`agreementFrom`): `leadOf` gives
+ * that in hours for each axis index, and without it every hour counts as day 0.
  */
 export function blendStats(
   inputs: readonly BlendInput[],
   axis: readonly string[],
-  weightOf?: (model: string) => number,
+  weightOf?: (model: string, at: number) => number,
+  leadOf?: (at: number) => number,
 ): HourStats[] {
   const finite = (v: number | null): v is number =>
     typeof v === "number" && Number.isFinite(v);
@@ -298,7 +294,7 @@ export function blendStats(
       weightOf
         ? weightedMedian(
             lines.map(pick),
-            lines.map((input) => weightOf(input.model)),
+            lines.map((input) => weightOf(input.model, i)),
           )
         : quantile(sorted, 0.5);
     const gust: GustStats = gusts.length
@@ -328,9 +324,9 @@ export function blendStats(
     const spread = max - min;
     const mean = weightOf
       ? speedLines.reduce(
-          (sum, input) => sum + input.speed[i]! * weightOf(input.model),
+          (sum, input) => sum + input.speed[i]! * weightOf(input.model, i),
           0,
-        ) / speedLines.reduce((sum, input) => sum + weightOf(input.model), 0)
+        ) / speedLines.reduce((sum, input) => sum + weightOf(input.model, i), 0)
       : speeds.reduce((sum, v) => sum + v, 0) / speeds.length;
     return {
       time: iso,
@@ -342,7 +338,10 @@ export function blendStats(
       q75: quantile(speeds, 0.75),
       mean,
       spread,
-      agreement: agreementFor(spread),
+      agreement: agreementFrom(
+        speeds.map((speed) => speed * KNOTS),
+        leadOf?.(i) ?? 0,
+      ),
       gust,
     };
   });

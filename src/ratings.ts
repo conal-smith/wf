@@ -10,8 +10,9 @@
  * 146 places, rather than searched for with `Date.parse` in every series.
  */
 import {
-  agreementFor,
-  blendWeight,
+  agreementFrom,
+  leadHours,
+  modelWeight,
   weightedMedian,
   type Agreement,
 } from "../force5/src/blend";
@@ -67,6 +68,29 @@ function medianStep(at: readonly number[]): number {
   return steps[Math.floor((steps.length - 1) / 2)];
 }
 
+/** Each model's weight per axis column, worked out once per run and axis. */
+const weights = new Map<string, Float64Array>();
+function weightsFor(
+  manifest: Manifest,
+  run: number,
+  axis: readonly number[],
+  axisKey: string,
+) {
+  const key = `${manifest.model}|${run}|${axisKey}`;
+  const hit = weights.get(key);
+  if (hit) return hit;
+  const weight = new Float64Array(axis.length);
+  for (let c = 0; c < axis.length; c++)
+    weight[c] = modelWeight(
+      manifest.model,
+      leadHours(run, axis[c]),
+      manifest.resolutionKm,
+    );
+  if (weights.size > 64) weights.clear();
+  weights.set(key, weight);
+  return weight;
+}
+
 /**
  * `framePosition` and the gap rule of `interpolateSeries`, for a whole axis:
  * index −1 is a column outside the run or across a gap it cannot bridge.
@@ -116,7 +140,10 @@ function planFor(
 interface Line {
   model: string;
   member: boolean;
-  weight: number;
+  /** The model's weight at each axis column (`modelWeight`). */
+  weight: Float64Array;
+  /** When its run started, in ms: how far ahead each column is. */
+  run: number;
   speed: Float64Array;
   gust: Float64Array;
 }
@@ -153,8 +180,10 @@ function lineOn(
 
 /**
  * One place's consensus on the axis: each model taken once (an ensemble as
- * its member mean) at its grid's weight (`blendWeight`), the weighted median
- * wind and gust, how far the models agree, and the weighted mean bearing.
+ * its member mean) at its weight for how far into its run the hour is
+ * (`modelWeight`), the weighted median wind and gust, how far the models agree
+ * (`agreementFrom`, against the freshest run's lead), and the weighted mean
+ * bearing.
  * Speeds come back in m/s, as the blend keeps them.
  */
 export function placeConsensus(
@@ -172,20 +201,23 @@ export function placeConsensus(
   const axisKey = `${axis[0]}|${axis[axis.length - 1]}|${axis.length}`;
   const n = axis.length;
   const lines: Line[] = [];
-  const vectors: { u: Float64Array; v: Float64Array; weight: number }[] = [];
+  const vectors: { u: Float64Array; v: Float64Array; weight: Float64Array }[] =
+    [];
   for (const blendId of blendIds) {
     const manifest = manifests.find((m) => m.model === blendId);
     if (!manifest) continue;
     const mean = spotSeries(manifest, id);
     // The blend only reads a model that publishes something for this place.
     if (!mean) continue;
-    const weight = blendWeight(manifest.resolutionKm);
+    const run = Date.parse(manifest.runTime);
+    const weight = weightsFor(manifest, run, axisTimes, axisKey);
     for (const line of modelSeries(manifest, id)) {
       const plan = planFor(parsed(line.points), axisTimes, axisKey);
       lines.push({
         model: manifest.model,
         member: line.memberIndex !== undefined,
         weight,
+        run,
         ...lineOn(line.points, plan),
       });
     }
@@ -210,8 +242,12 @@ export function placeConsensus(
     vectors.push({ u, v, weight });
   }
   // `perModelLines`: an ensemble's members collapse to their hourly mean.
-  const perModel: { weight: number; speed: Float64Array; gust: Float64Array }[] =
-    [];
+  const perModel: {
+    weight: Float64Array;
+    run: number;
+    speed: Float64Array;
+    gust: Float64Array;
+  }[] = [];
   const groups = new Map<string, Line[]>();
   for (const line of lines) {
     if (!line.member) perModel.push(line);
@@ -242,7 +278,7 @@ export function placeConsensus(
       speed[c] = sn ? s / sn : NaN;
       gust[c] = gn ? g / gn : NaN;
     }
-    perModel.push({ weight: group[0].weight, speed, gust });
+    perModel.push({ weight: group[0].weight, run: group[0].run, speed, gust });
   }
   const out = {
     median: [] as (number | null)[],
@@ -255,21 +291,27 @@ export function placeConsensus(
     const speedWeights: number[] = [];
     const gusts: number[] = [];
     const gustWeights: number[] = [];
+    // How far ahead the hour is: from the newest run that has it.
+    let freshest = -Infinity;
     for (const line of perModel) {
       if (Number.isFinite(line.speed[c])) {
+        if (line.run > freshest) freshest = line.run;
         speeds.push(line.speed[c]);
-        speedWeights.push(line.weight);
+        speedWeights.push(line.weight[c]);
       }
       if (Number.isFinite(line.gust[c])) {
         gusts.push(line.gust[c]);
-        gustWeights.push(line.weight);
+        gustWeights.push(line.weight[c]);
       }
     }
     out.gust.push(gusts.length ? weightedMedian(gusts, gustWeights) : null);
     if (speeds.length) {
       out.median.push(weightedMedian(speeds, speedWeights));
       out.agreement.push(
-        agreementFor(Math.max(...speeds) - Math.min(...speeds)),
+        agreementFrom(
+          speeds.map((speed) => speed * KNOTS),
+          leadHours(freshest, axisTimes[c]),
+        ),
       );
     } else {
       out.median.push(null);
@@ -280,9 +322,9 @@ export function placeConsensus(
       k = 0;
     for (const vector of vectors)
       if (Number.isFinite(vector.u[c]) && Number.isFinite(vector.v[c])) {
-        u += vector.u[c] * vector.weight;
-        v += vector.v[c] * vector.weight;
-        k += vector.weight;
+        u += vector.u[c] * vector.weight[c];
+        v += vector.v[c] * vector.weight[c];
+        k += vector.weight[c];
       }
     out.from.push(
       k && Math.hypot(u / k, v / k) >= 0.1 ? direction(u / k, v / k) : null,
