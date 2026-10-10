@@ -3,6 +3,40 @@ import { createPortal } from "react-dom";
 import { Dialog } from "../ui/Dialog";
 
 /**
+ * The small round button an explanation is behind: an "i" for the small
+ * print, or the "?" by the stars (`className="help-q"`). Whatever it opens is
+ * a dialog, so it says so.
+ */
+export function InfoButton({
+  label,
+  onOpen,
+  open,
+  className = "info-i",
+  children = "i",
+}: {
+  label: string;
+  onOpen: () => void;
+  /** Whether its own dialog is open, where it has one of its own. */
+  open?: boolean;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={className}
+      aria-label={label}
+      title={label}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onClick={onOpen}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
  * The small print, behind an "i": sources, caveats and what a figure means,
  * in a dialog over the dimmed page, titled with the button's own name. It
  * used to open as a box beside the button, which landed on the chart or the
@@ -13,27 +47,16 @@ import { Dialog } from "../ui/Dialog";
 export function InfoPop({
   label,
   children,
-  className = "",
   wide = false,
 }: {
   label: string;
   children: ReactNode;
-  className?: string;
   wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className={`info-i ${className}`}
-        aria-label={label}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-      >
-        i
-      </button>
+      <InfoButton label={label} open={open} onOpen={() => setOpen(true)} />
       {open &&
         createPortal(
           <Dialog

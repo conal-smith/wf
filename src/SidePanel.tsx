@@ -23,8 +23,6 @@ interface Props {
   now: number;
   onGo: (spot: Spot) => void;
   onToggleStar: (id: string) => void;
-  /** On a phone the panel is a strip of starred spots. */
-  strip: boolean;
 }
 
 /** One of the rider's spots, with the selected day's best. */
@@ -108,6 +106,12 @@ function Entry({
   );
 }
 
+/**
+ * Your spots: the starred and the often opened, each with the selected day's
+ * best. Behind the star under Layers (src/MapControls.tsx), opening beside
+ * the controls as the layers do, on a phone as on a wide screen; it used to
+ * sit over the chart all the time, and on a phone as a strip over the dock.
+ */
 export default function SidePanel(props: Props) {
   const {
     spots,
@@ -119,7 +123,6 @@ export default function SidePanel(props: Props) {
     now,
     onGo,
     onToggleStar,
-    strip,
   } = props;
   const dayName = day ? dayShort(day.noon) : "";
   const entry = (id: string, seen?: SpotVisit) => {
@@ -142,23 +145,8 @@ export default function SidePanel(props: Props) {
   };
   const looked = frequent.filter((v) => spots.has(v.id)).slice(0, 4);
 
-  if (strip)
-    return (
-      <aside className="side side-strip chart-box" aria-label="Your spots">
-        <span className="sbest">best {dayName}</span>
-        <ul className="fvl">
-          {starred.length
-            ? starred.map((id) => entry(id))
-            : looked.map((v) => entry(v.id, v))}
-          {!starred.length && !looked.length && (
-            <li className="none">Star a spot to keep it here.</li>
-          )}
-        </ul>
-      </aside>
-    );
-
   return (
-    <aside className="side chart-box" aria-label="Your spots">
+    <aside id="map-spots" className="side chart-box" aria-label="Your spots">
       <div className="side-head">
         <h3>Your spots</h3>
         <span className="when">

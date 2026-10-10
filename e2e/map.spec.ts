@@ -90,8 +90,11 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   await expect(page.locator(".sc-day")).toHaveCount(
     new Set(sampleStrip.map((c) => c.date)).size,
   );
-  // The rider's spots ride above the dock as a strip.
-  await expect(page.locator(".side-strip")).toBeVisible();
+  // Nothing else is on the chart: the rider's spots are behind the star.
+  await expect(page.locator(".side")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Your spots", exact: true }),
+  ).toBeVisible();
   const slider = page.getByRole("slider", { name: "Forecast time" });
   await slider.focus();
   await slider.press("Home");

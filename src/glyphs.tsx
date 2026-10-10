@@ -7,6 +7,7 @@
 import { useContext, useId, type ReactNode } from "react";
 import { SHORE_LABEL, shoreAngle } from "../force5/src/stars";
 import { compass } from "../force5/src/weather";
+import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
 
 const FACE8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -183,16 +184,13 @@ export function StarsHelp() {
       </a>
     );
   return (
-    <button
-      type="button"
+    <InfoButton
       className="help-q"
-      aria-label="How the stars work"
-      aria-haspopup="dialog"
-      title="How the stars work"
-      onClick={() => openInfo("stars")}
+      label="How the stars work"
+      onOpen={() => openInfo("stars")}
     >
       ?
-    </button>
+    </InfoButton>
   );
 }
 

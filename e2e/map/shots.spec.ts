@@ -4,9 +4,9 @@ import { sampleStrip } from "../columns";
 /**
  * The map's visual baseline: one PNG per state per width, committed.
  *
- * The chart's boxes, lights, popup and dock, each state as a reader reaches
- * it — panel open, popup up, hours drawn — and each the same twice, so a
- * change to the map's CSS shows up as a picture of what it changed.
+ * The chart's boxes, lights, dialogs and dock, each state as a reader reaches
+ * it — a panel open, a spot chosen, hours drawn — and each the same twice, so
+ * a change to the map's CSS shows up as a picture of what it changed.
  *
  * What is held still, and how:
  *   the clock     pinned by e2e/fixtures.ts, over the fixed sample calendar
@@ -41,7 +41,7 @@ const shot = (state: string, width: number) =>
  * the network in every run, and a picture of their tiles is neither ours to
  * commit nor stable across a change of theirs. Hiding the canvas leaves
  * everything the map's own CSS draws: the paper beneath it, the neatline, the
- * lights, the popup, the panels and the dock. The map still loads.
+ * lights, the panels, the dialogs and the dock. The map still loads.
  */
 async function hideBasemap(page: Page) {
   await page.addInitScript(() => {
@@ -166,14 +166,12 @@ for (const { width, height } of [
       await shoot(page, "layers", width);
     });
 
-    test("spot focused, with its popup", async ({ page }) => {
+    test("spot focused, with no box over it", async ({ page }) => {
       await openMap(page);
       await pick(page, "Blast");
-      await expect(
-        page.getByRole("dialog", { name: /Kilcrea.*at a glance/ }),
-      ).toBeVisible();
       await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
-      await shoot(page, "popup", width);
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await shoot(page, "spot", width);
     });
 
     test("the dock's hours", async ({ page }) => {
@@ -252,15 +250,17 @@ for (const { width, height } of [
       await pick(page, "Dollymount");
       await page.keyboard.press("Escape");
       await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
+      await page.getByRole("button", { name: "Your spots", exact: true }).click();
+      await expect(
+        page.getByRole("complementary", { name: "Your spots" }),
+      ).toBeVisible();
       await shoot(page, "your-spots", width);
     });
 
     test("the key", async ({ page }) => {
       await openMap(page);
-      if (phone)
-        await page.getByRole("button", { name: "Your spots and the key" }).click();
-      else await page.getByRole("tab", { name: "Key" }).click();
-      await expect(page.locator(".key")).toBeVisible();
+      await page.getByRole("button", { name: "Map information" }).click();
+      await expect(page.locator(".map-info .key")).toBeVisible();
       await shoot(page, "key", width);
     });
 

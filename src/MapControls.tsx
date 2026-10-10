@@ -1,10 +1,11 @@
-import { Info } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Info, Star } from "lucide-react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { RideStop } from "../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../force5/src/models";
 import type { Rider } from "../force5/src/stars";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { WindStyle } from "../force5/src/windLayer";
+import { InfoButton } from "./InfoPop";
 import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
 
@@ -21,17 +22,23 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   foil: "Foilable depth at the tide (pilot)",
 };
 
+/** A panel that opens beside the controls: one at a time. */
+export type MapPanel = "layers" | "spots" | null;
+
 /**
  * Top right: zoom, all of Ireland, the layers (the wind's style, the chart's
- * parts, and which model the map draws), and under them the "i" that opens
- * the map's information: its key, the stars, the foil layer and the sources.
+ * parts, and which model the map draws), and under them your spots and the
+ * "i" that opens the map's information: its key, the stars, the foil layer
+ * and the sources. The layers and your spots open beside the controls, one
+ * at a time, and close on their button, on Escape or on a tap anywhere else.
  */
 export default function MapControls({
   onZoomIn,
   onZoomOut,
   onIreland,
-  layersOpen,
-  onLayers,
+  open,
+  onOpen,
+  spots,
   infoOpen,
   onInfo,
   windStyle,
@@ -47,8 +54,10 @@ export default function MapControls({
   onZoomIn: () => void;
   onZoomOut: () => void;
   onIreland: () => void;
-  layersOpen: boolean;
-  onLayers: (open: boolean) => void;
+  open: MapPanel;
+  onOpen: (panel: MapPanel) => void;
+  /** Your spots (src/SidePanel.tsx), drawn while their panel is open. */
+  spots: () => ReactNode;
   infoOpen: boolean;
   onInfo: (at: InfoSection) => void;
   windStyle: WindStyle;
@@ -62,17 +71,24 @@ export default function MapControls({
   onModel: (id: ModelId) => void;
 }) {
   const panel = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
+  const layersButton = useRef<HTMLButtonElement>(null);
+  const spotsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!layersOpen) return;
+    if (!open) return;
+    const button = open === "layers" ? layersButton : spotsButton;
     const down = (event: PointerEvent) => {
       const t = event.target as Node;
+      // A dialog opened from the panel (an "i", the stars' "?") is over the
+      // page, not away from the panel: a press in it leaves the panel be.
+      if (t instanceof Element && t.closest("dialog[open]")) return;
       if (!panel.current?.contains(t) && !button.current?.contains(t))
-        onLayers(false);
+        onOpen(null);
     };
     document.addEventListener("pointerdown", down);
     return () => document.removeEventListener("pointerdown", down);
-  }, [layersOpen]);
+  }, [open]);
+  const toggle = (which: Exclude<MapPanel, null>) =>
+    onOpen(open === which ? null : which);
   return (
     <div className="map-ctrl">
       <div className="zbox chart-box" role="group" aria-label="Map controls">
@@ -92,18 +108,29 @@ export default function MapControls({
           IRL
         </button>
         <button
-          ref={button}
+          ref={layersButton}
           type="button"
           aria-label="Layers"
           title="Layers"
-          aria-expanded={layersOpen}
+          aria-expanded={open === "layers"}
           aria-controls="map-layers"
-          onClick={() => onLayers(!layersOpen)}
+          onClick={() => toggle("layers")}
         >
           <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true">
             <path d="M8 1L15 4.5L8 8L1 4.5Z" fill="none" strokeWidth="1.2" strokeLinejoin="round" />
             <path d="M1 8L8 11.5L15 8" fill="none" strokeWidth="1.2" strokeLinejoin="round" />
           </svg>
+        </button>
+        <button
+          ref={spotsButton}
+          type="button"
+          aria-label="Your spots"
+          title="Your spots"
+          aria-expanded={open === "spots"}
+          aria-controls="map-spots"
+          onClick={() => toggle("spots")}
+        >
+          <Star size={16} strokeWidth={1.3} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -116,7 +143,8 @@ export default function MapControls({
           <Info size={16} strokeWidth={1.3} aria-hidden="true" />
         </button>
       </div>
-      {layersOpen && (
+      {open === "spots" && <div ref={panel}>{spots()}</div>}
+      {open === "layers" && (
         <div
           ref={panel}
           id="map-layers"
@@ -159,15 +187,10 @@ export default function MapControls({
             return key === "foil" ? (
               <div key={key} className="layer-info">
                 {box}
-                <button
-                  type="button"
-                  className="info-i"
-                  aria-label="About foilable depth"
-                  aria-haspopup="dialog"
-                  onClick={() => onInfo("foil")}
-                >
-                  i
-                </button>
+                <InfoButton
+                  label="About foilable depth"
+                  onOpen={() => onInfo("foil")}
+                />
               </div>
             ) : (
               box

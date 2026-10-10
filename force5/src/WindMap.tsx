@@ -80,9 +80,8 @@ type Props = {
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
   reducedMotion: boolean;
-  /** The dock's height, and on a wide screen the side panel's width. */
+  /** The dock's height: what a camera move keeps the spot above. */
   bottomInset: number;
-  rightInset: number;
   phone: boolean;
   /** The pen's verdict beside the selected light, or null for none. */
   penNote: string | null;
@@ -167,7 +166,6 @@ export default function WindMap(props: Props) {
     foil,
     reducedMotion,
     bottomInset,
-    rightInset,
     phone,
     penNote,
   } = props;
@@ -192,7 +190,7 @@ export default function WindMap(props: Props) {
           top: 84,
           bottom: p.bottomInset + 24,
           left: 40,
-          right: p.rightInset + 60,
+          right: 60,
         };
   };
 
@@ -496,10 +494,7 @@ export default function WindMap(props: Props) {
       if (!spot) return 0;
       const box = map.getContainer().getBoundingClientRect();
       const visible = box.height - bottomInset - 70;
-      const px = Math.max(
-        90,
-        0.3 * Math.min(box.width - (phone ? 0 : rightInset), visible),
-      );
+      const px = Math.max(90, 0.3 * Math.min(box.width, visible));
       return (
         (px * 40075016.686 * Math.cos((spot.lat * Math.PI) / 180)) /
         (512 * 2 ** map.getZoom())

@@ -560,7 +560,7 @@
   cursor: default;
 }
 
-/* ---------- top right: zoom, Ireland, layers ---------- */
+/* ---------- top right: zoom, Ireland, layers, your spots, the "i" ---------- */
 .map-ctrl {
   position: absolute;
   top: 18px;
@@ -608,9 +608,8 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
-/* The layers open over the side panel and as wide as it, so none of it peeks
-   out from under them; the panel is hidden while they are open in any case
-   (below). */
+/* The layers and your spots open beside the controls, the one width, one at
+   a time. */
 .layers {
   position: absolute;
   right: 48px;
@@ -758,27 +757,20 @@
   font: italic 10px var(--font-body);
 }
 
-/* ---------- the side panel: your spots | key ---------- */
-/* Under the layers and under Gust's panel, only half of it was covered: its
-   tabs and edge showed round them. Out of the way while either is open. */
-.map-panel:has(#map-layers) .side:not(.side-strip),
-.app-shell:has(.gust-panel) .side:not(.side-strip) {
-  visibility: hidden;
-}
+/* ---------- your spots, behind the star under Layers ---------- */
 /* Gust's panel lines up with the boxes along the top (companion/web/gust.css
    reads these), and on a phone its sheet stops under the zoom rail rather
    than cutting through it. */
 .app-shell {
   --gust-panel-top: 18px;
-  --gust-sheet-height: calc(100dvh - 176px);
+  --gust-sheet-height: calc(100dvh - 206px);
 }
 .side {
   position: absolute;
-  right: 66px;
-  top: 18px;
-  z-index: 19;
+  right: 48px;
+  top: 0;
   width: 292px;
-  max-height: calc(100vh - var(--dock-height) - 36px);
+  max-height: calc(100vh - var(--dock-height) - 40px);
   overflow: auto;
   scrollbar-width: none;
   padding: 6px 14px 12px;
@@ -877,9 +869,6 @@
   margin-top: 10px;
   font: 400 10.5px var(--font-mono);
   color: var(--color-ink-muted);
-}
-.sbest {
-  display: none;
 }
 /* The key, in the map's information (src/MapInfo.tsx) */
 .key .k-t1 {
@@ -1297,7 +1286,7 @@
   font: 600 22px var(--font-display);
 }
 
-/* ---------- a phone: the boxes close in, your spots become a strip ---------- */
+/* ---------- a phone: the boxes close in ---------- */
 @media (max-width: 720px) {
   .map-head {
     top: 10px;
@@ -1316,73 +1305,18 @@
     height: 28px;
   }
   /* Under the head, not over the name and the search. */
-  .layers {
+  .layers,
+  .side {
     top: 54px;
     right: 44px;
     width: min(250px, calc(100vw - 70px));
     max-height: calc(100vh - var(--dock-height) - 130px);
   }
   .side {
-    top: 62px;
-    right: 52px;
-    left: 10px;
-    width: auto;
-    max-height: calc(100vh - var(--dock-height) - 74px);
-  }
-  .side.side-strip {
-    top: auto;
-    left: 8px;
-    right: 8px;
-    bottom: calc(var(--dock-height) + 6px);
-    display: flex;
-    gap: 4px;
-    max-height: none;
-    padding: 3px 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    box-shadow:
-      inset 0 0 0 2px var(--color-ground),
-      inset 0 0 0 3px var(--color-ink);
-  }
-  .side-strip .sbest {
-    display: block;
-    align-self: center;
-    padding: 0 2px;
-    font: 500 9px var(--font-mono);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-  }
-  .side-strip .fvl {
-    display: flex;
-    gap: 4px;
-  }
-  .side-strip .fvl li {
-    display: flex;
-    flex: none;
-    gap: 4px;
-    align-items: center;
-    padding: 2px 8px 2px 0;
-    border: 0;
-    border-right: 1px solid var(--color-line);
-    white-space: nowrap;
-  }
-  .side-strip .fv-go b {
-    font-size: 14px;
-    overflow: visible;
-  }
-  .side-strip .fv-go span {
-    display: none;
-  }
-  .side-strip .fvl .none {
-    padding: 4px 6px;
-    border: 0;
+    width: min(292px, calc(100vw - 70px));
   }
   .map-print {
     left: 12px;
-    bottom: calc(var(--dock-height) + 60px);
   }
   .frame-status {
     top: 62px;

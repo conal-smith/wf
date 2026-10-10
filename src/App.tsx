@@ -39,7 +39,7 @@ import type { LightState } from "../force5/src/lights";
 import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import ForecastDock, { type DockView } from "./ForecastDock";
-import MapControls from "./MapControls";
+import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
@@ -121,8 +121,6 @@ interface Picked {
 const degrees = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "W" : "E"}`;
 const PHONE = "(max-width: 720px)";
-/** Width the side panel and its gap take from the map, on a wide screen. */
-const SIDE_INSET = 380;
 
 const store = {
   get(key: string): string | null {
@@ -210,7 +208,8 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  const [layersOpen, setLayersOpen] = useState(false);
+  /** The layers or your spots, open beside the map's controls. */
+  const [panel, setPanel] = useState<MapPanel>(null);
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
   const [folded, setFolded] = useState(() => window.matchMedia(PHONE).matches);
@@ -791,12 +790,12 @@ export default function App() {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || document.querySelector("dialog[open]"))
         return;
-      if (layersOpen) setLayersOpen(false);
+      if (panel) setPanel(null);
       else clearFocus();
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [layersOpen]);
+  }, [panel]);
 
   /* ---- Gust moving the map, at the rider's ask ---- */
   const highlightTimer = useRef<number | undefined>(undefined);
@@ -1025,8 +1024,26 @@ export default function App() {
               onZoomIn={() => controls.current?.zoomIn()}
               onZoomOut={() => controls.current?.zoomOut()}
               onIreland={toIreland}
-              layersOpen={layersOpen}
-              onLayers={setLayersOpen}
+              open={panel}
+              onOpen={setPanel}
+              spots={() => (
+                <SidePanel
+                  spots={spotById}
+                  starred={starred}
+                  frequent={frequent}
+                  hours={hours}
+                  columns={strip}
+                  day={selectedDay}
+                  now={clockNow}
+                  onGo={(spot) => {
+                    // Chosen: the panel's work is done, and the chart under
+                    // it is where the spot is about to be.
+                    setPanel(null);
+                    selectSpot(spot);
+                  }}
+                  onToggleStar={(id) => fav.toggle(id)}
+                />
+              )}
               infoOpen={!!info}
               onInfo={setInfo}
               windStyle={windStyle}
@@ -1039,20 +1056,6 @@ export default function App() {
               modelDisabled={!frame || !!pendingModel}
               onModel={(id) => void chooseModel(id)}
             />
-            {
-              <SidePanel
-                spots={spotById}
-                starred={starred}
-                frequent={frequent}
-                hours={hours}
-                columns={strip}
-                day={selectedDay}
-                now={clockNow}
-                onGo={(spot) => selectSpot(spot)}
-                onToggleStar={(id) => fav.toggle(id)}
-                strip={phone}
-              />
-            }
             {/* After the boxes: the keys reach the menu, the search and the
                 controls before the lights. */}
             <WindMap
@@ -1071,8 +1074,7 @@ export default function App() {
               layers={layers}
               foil={foilViews}
               reducedMotion={reducedMotion}
-              bottomInset={dockHeight + (phone ? 54 : 0)}
-              rightInset={phone ? 0 : SIDE_INSET}
+              bottomInset={dockHeight}
               phone={phone}
               penNote={focusAt ? penNote : null}
               onSelect={(spot) => selectSpot(spot)}
@@ -1185,7 +1187,7 @@ export default function App() {
             onRiderSaved={(r) =>
               changePrefs({ ...prefs, rider: parseRider(r) })
             }
-            launcherBottom={dockHeight + (phone ? 70 : 24)}
+            launcherBottom={dockHeight + 24}
             panelBottom={dockHeight + 12}
           />
         </Suspense>

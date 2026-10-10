@@ -286,11 +286,18 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
 }) => {
   await openDock(page);
   const panel = page.getByRole("complementary", { name: "Your spots" });
+  const yours = page.getByRole("button", { name: "Your spots", exact: true });
+  // Behind the star under Layers, not on the chart.
+  await expect(panel).toHaveCount(0);
+  await yours.click();
   await expect(panel).toContainText("Tap the red star");
   await page.locator(".dock").getByRole("button", { name: "Star Brandon Bay" }).click();
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
+  // A tap away, on the dock's star, closed it; the star opens it again.
+  await expect(panel).toHaveCount(0);
+  await yours.click();
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay");
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("wingfoil.spots.v1") ?? "{}"),
@@ -306,6 +313,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   // entry's title, not printed as a bare "1×".
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
   await page.locator(".spot-row").first().click();
+  await yours.click();
   await expect(panel).toContainText("Often opened");
   await expect(panel).toContainText("Dollymount");
   await expect(panel).not.toContainText("1×");
@@ -313,13 +321,19 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
     panel.locator(".fvl li", { hasText: "Dollymount" }).locator(".fv-go span"),
   ).toHaveAttribute("title", /^Opened (once|\d+ times) on this device$/);
   await page.reload();
+  await expect(panel).toHaveCount(0);
+  await yours.click({ timeout: 30000 });
   await expect(panel.locator(".fvl li").first()).toContainText("Brandon Bay", {
     timeout: 30000,
   });
   // And unstarring from the panel takes it off.
   await panel.getByRole("button", { name: "Unstar Brandon Bay" }).click();
   await expect(panel).toContainText("Tap the red star");
+  // A spot chosen from the panel is the dock's.
+  await panel.getByRole("button", { name: /^Dollymount/ }).click();
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   // The key is not in the panel: it is the map's information, a button away.
+  await yours.click();
   await expect(panel).not.toContainText("Depths in metres below chart datum");
   await page.getByRole("button", { name: "Map information" }).click();
   await expect(

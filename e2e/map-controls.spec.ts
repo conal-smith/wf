@@ -14,6 +14,7 @@ test("the chart's controls: zoom, all of Ireland, and the layers by keyboard, wi
     "Zoom out",
     "Show all of Ireland",
     "Layers",
+    "Your spots",
     "Map information",
   ])
     await expect(controls.getByRole("button", { name, exact: true })).toBeVisible();
@@ -124,3 +125,85 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
     info.getByRole("link", { name: "How the stars work, in full →" }),
   ).toHaveAttribute("href", "/stars?spot=brandon");
 });
+
+for (const width of [390, 1440]) {
+  test(`your spots are behind the star under Layers, and open as the layers do, at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        "wingfoil.spots.v1",
+        JSON.stringify({ starred: ["dollymount"] }),
+      ),
+    );
+    await page.goto("/");
+    await expect(page.locator(".spot-marker")).toHaveCount(146, {
+      timeout: 30000,
+    });
+    // Nothing of them on the chart until asked: no panel, no strip.
+    const panel = page.getByRole("complementary", { name: "Your spots" });
+    await expect(panel).toHaveCount(0);
+    await expect(page.locator(".side")).toHaveCount(0);
+    const controls = page.getByRole("group", { name: "Map controls" });
+    const star = controls.getByRole("button", { name: "Your spots", exact: true });
+    const layers = controls.getByRole("button", { name: "Layers", exact: true });
+    // The star is under Layers, the "i" under it, all one column.
+    const at = async (name: string) =>
+      (await controls.getByRole("button", { name, exact: true }).boundingBox())!;
+    const [l, s, i] = [
+      await at("Layers"),
+      await at("Your spots"),
+      await at("Map information"),
+    ];
+    expect(s.x).toBe(l.x);
+    expect(s.y).toBeGreaterThan(l.y);
+    expect(i.y).toBeGreaterThan(s.y);
+    await expect(star).toHaveAttribute("aria-expanded", "false");
+    await star.click();
+    await expect(panel).toBeVisible();
+    await expect(star).toHaveAttribute("aria-expanded", "true");
+    await expect(panel).toContainText("Dollymount");
+    await expect(panel).toContainText("Often opened");
+    // Beside the controls, clear of the head and the dock, and on the page.
+    const box = (await panel.boundingBox())!;
+    const rail = (await controls.boundingBox())!;
+    const dock = (await page.locator(".map-footer").boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(rail.x);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThan(dock.y);
+    // Its button closes it, as does Escape, as does a tap away.
+    await star.click();
+    await expect(panel).toHaveCount(0);
+    await star.click();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await star.click();
+    await page.locator(".dock .dk-name").click();
+    await expect(panel).toHaveCount(0);
+    // One at a time: the layers close your spots, and the other way round.
+    await star.click();
+    await layers.click();
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
+    await star.click();
+    await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
+    await expect(panel).toBeVisible();
+    // The small print's "i" in the panel opens a dialog, and a press in it
+    // leaves the panel open behind it.
+    await panel.getByRole("button", { name: "About your spots" }).click();
+    const about = page.getByRole("dialog", { name: "About your spots" });
+    await expect(about).toContainText("kept on this device");
+    await about.click();
+    await page.keyboard.press("Escape");
+    await expect(about).toHaveCount(0);
+    await expect(panel).toBeVisible();
+    // A spot chosen from it is the dock's, and the panel makes way.
+    await panel.getByRole("button", { name: /^Dollymount/ }).click();
+    await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+    await expect(panel).toHaveCount(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+  });
+}
