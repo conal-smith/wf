@@ -345,15 +345,6 @@ describe("ui/theme.css: the values", () => {
     );
   });
 
-  // A quantity's bar takes the wash, never a sea tint: the dock's day slider
-  // paints each hour's stars in it, and was once drawn with `--color-sea`
-  // while the two happened to be one value.
-  it("keeps the dock's star bars off the water", () => {
-    const dock = readFileSync(resolve(ROOT, "src/dock.css"), "utf8");
-    expect(dock).toMatch(/\.sc-strip i \{[^}]*var\(--color-wash\)/);
-    expect(dock).not.toMatch(/\.sc-strip i \{[^}]*var\(--color-sea\)/);
-  });
-
   // index.html cannot read a CSS variable, so the browser chrome's colour is
   // written out there. This is the only thing holding the copy to the original.
   it("is the colour index.html hands the browser chrome", () => {

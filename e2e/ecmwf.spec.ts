@@ -24,7 +24,6 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   );
   await layers.click();
   await expect(page.locator(".map-model")).toContainText("ECMWF");
-  await page.locator(".dock-grab").click();
   // Hourly where HARMONIE reaches, ECMWF's own three- and six-hourly steps after.
   const strip = stripAt(clock);
   const hours = page.locator(".dock tr.tt-hour td[data-i]");

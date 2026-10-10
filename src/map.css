@@ -1060,23 +1060,6 @@
 }
 
 /* ---------- the glyphs ---------- */
-.g-paper {
-  fill: var(--color-ground);
-}
-.g-stroke {
-  fill: none;
-  stroke: var(--color-ink);
-}
-.g-paper.g-stroke {
-  fill: var(--color-ground);
-}
-.g-sea {
-  fill: var(--color-depth);
-}
-.g-facing {
-  vertical-align: middle;
-  flex: none;
-}
 .g-arrow {
   vertical-align: -2px;
   flex: none;
@@ -1244,12 +1227,6 @@
   .frame-status {
     top: 62px;
   }
-}
-
-.ip-sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
 }
 
 /* A point tapped on the open map: a ring and a cross, in ink. */

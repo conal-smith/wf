@@ -86,12 +86,16 @@ test("a profile is only saved when the rider confirms it", async ({ page }) => {
     skill: "intermediate",
     wings: [4, 5, 6],
   });
-  // The dock re-rates for the new rider at once, and says who for.
+  // The display options hold the new rider at once.
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "About these figures" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "About these figures" }),
-  ).toContainText("85 kg intermediate");
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  await expect(page.locator('input[data-rider="weight"]')).toHaveValue("85");
+  await expect(page.locator('[data-skill="intermediate"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("the conversation survives a reload, and a new chat clears it", async ({

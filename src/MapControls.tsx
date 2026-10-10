@@ -1,4 +1,4 @@
-import { Info, Star } from "lucide-react";
+import { Info, SlidersHorizontal, Star } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import type { RideStop } from "../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../force5/src/models";
@@ -23,14 +23,16 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
 };
 
 /** A panel that opens beside the controls: one at a time. */
-export type MapPanel = "layers" | "spots" | null;
+export type MapPanel = "layers" | "spots" | "options" | null;
 
 /**
  * Top right: zoom, the layers (the wind's style, the chart's
- * parts, and which model the map draws), and under them your spots and the
- * "i" that opens the map's information: its key, the stars, the foil layer
- * and the sources. The layers and your spots open beside the controls, one
- * at a time, and close on their button, on Escape or on a tap anywhere else.
+ * parts, and which model the map draws), and under them your spots, the
+ * display options (units, the rider, the blend's models) and the "i" that
+ * opens the map's information: its key, the stars, the foil layer and the
+ * sources. The layers, your spots and the options open beside the controls,
+ * one at a time, and close on their button, on Escape or on a tap anywhere
+ * else; a keyboard is handed back to the button it opened from.
  */
 export default function MapControls({
   onZoomIn,
@@ -38,6 +40,7 @@ export default function MapControls({
   open,
   onOpen,
   spots,
+  options,
   infoOpen,
   onInfo,
   windStyle,
@@ -56,6 +59,8 @@ export default function MapControls({
   onOpen: (panel: MapPanel) => void;
   /** Your spots (src/SidePanel.tsx), drawn while their panel is open. */
   spots: () => ReactNode;
+  /** The display options (src/DisplayFilter.tsx), given a way to close. */
+  options: (close: () => void) => ReactNode;
   infoOpen: boolean;
   onInfo: (at: InfoSection) => void;
   windStyle: WindStyle;
@@ -71,9 +76,15 @@ export default function MapControls({
   const panel = useRef<HTMLDivElement>(null);
   const layersButton = useRef<HTMLButtonElement>(null);
   const spotsButton = useRef<HTMLButtonElement>(null);
+  const optionsButton = useRef<HTMLButtonElement>(null);
+  const buttons = {
+    layers: layersButton,
+    spots: spotsButton,
+    options: optionsButton,
+  };
   useEffect(() => {
     if (!open) return;
-    const button = open === "layers" ? layersButton : spotsButton;
+    const button = buttons[open];
     const down = (event: PointerEvent) => {
       const t = event.target as Node;
       // A dialog opened from the panel (an "i", the stars' "?") is over the
@@ -87,8 +98,24 @@ export default function MapControls({
   }, [open]);
   const toggle = (which: Exclude<MapPanel, null>) =>
     onOpen(open === which ? null : which);
+  /** Shut the panel, and put a keyboard back on the button that opened it. */
+  const close = () => {
+    if (open) buttons[open].current?.focus({ preventScroll: true });
+    onOpen(null);
+  };
   return (
-    <div className="map-ctrl">
+    <div
+      className="map-ctrl"
+      onKeyDown={(event) => {
+        // The page's own Escape shuts the panel; from inside it, focus would
+        // otherwise be left on nothing.
+        if (
+          event.key === "Escape" &&
+          panel.current?.contains(event.target as Node)
+        )
+          buttons[open!]?.current?.focus({ preventScroll: true });
+      }}
+    >
       <div className="zbox chart-box" role="group" aria-label="Map controls">
         <button type="button" aria-label="Zoom in" title="Zoom in" onClick={onZoomIn}>
           +
@@ -122,6 +149,17 @@ export default function MapControls({
           <Star size={16} strokeWidth={1.3} aria-hidden="true" />
         </button>
         <button
+          ref={optionsButton}
+          type="button"
+          aria-label="Display options"
+          title="Display options"
+          aria-expanded={open === "options"}
+          aria-controls="map-options"
+          onClick={() => toggle("options")}
+        >
+          <SlidersHorizontal size={16} strokeWidth={1.3} aria-hidden="true" />
+        </button>
+        <button
           type="button"
           aria-label="Map information"
           title="Map information"
@@ -133,6 +171,7 @@ export default function MapControls({
         </button>
       </div>
       {open === "spots" && <div ref={panel}>{spots()}</div>}
+      {open === "options" && <div ref={panel}>{options(close)}</div>}
       {open === "layers" && (
         <div
           ref={panel}

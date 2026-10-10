@@ -169,7 +169,7 @@ async function mapReady(page) {
 /** The dock is ready when its days and its stars row are on the page. */
 async function dockReady(page) {
   await page.waitForFunction(
-    () => !!document.querySelector(".dock tr.tt-stars, .dock .sc-day"),
+    () => !!document.querySelector(".dock tr.tt-stars"),
     null,
     { timeout: 90000, polling: 50 },
   );

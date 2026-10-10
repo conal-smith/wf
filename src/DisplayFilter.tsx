@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   MODEL_CATALOG,
   modelHue,
@@ -29,9 +29,9 @@ interface Props {
 }
 
 /**
- * The dock's display filter. A modal dialog rather than a second glass panel:
- * the design system forbids glass on glass, and a modal dialog already traps
- * focus and closes on Escape without a hand-written key handler.
+ * The display options: the units, the rider and the blend's models. A panel
+ * beside the map's controls, as the layers and your spots are, and shut the
+ * same ways (src/MapControls.tsx): its button, Escape, a tap away, or Done.
  */
 export default function DisplayFilter({
   prefs,
@@ -39,17 +39,6 @@ export default function DisplayFilter({
   onClose,
   models,
 }: Props) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  // Open on mount, close on unmount. The parent owns whether the popover
-  // exists, so dismissal is reported from `cancel` (Escape) and from the two
-  // explicit gestures - never from the `close` event, which also fires when
-  // React remounts the effect and would dismiss the popover as it opened.
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element?.open) element?.showModal();
-    return () => element?.close();
-  }, []);
-
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
     onChange({
@@ -72,17 +61,11 @@ export default function DisplayFilter({
   );
 
   return (
-    <dialog
-      ref={dialog}
-      className="display-filter"
+    <div
+      id="map-options"
+      className="display-filter chart-box"
+      role="group"
       aria-label="Forecast display options"
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onClick={(event) => {
-        if (event.target === dialog.current) onClose();
-      }}
     >
       <div className="filter-head">
         <h2>Units</h2>
@@ -206,6 +189,6 @@ export default function DisplayFilter({
           </label>
         ))}
       </div>
-    </dialog>
+    </div>
   );
 }

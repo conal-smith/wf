@@ -15,7 +15,7 @@ export async function openChart(page: Page, width = 1440, height = 900) {
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
-  await expect(page.locator(".dock .sc-day").first()).toBeVisible();
+  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible();
 }
 
 /** Find a spot by name and take the first result. */
@@ -84,10 +84,10 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   expect(dock.x).toBe(0);
   expect(dock.width).toBe(390);
   expect(dock.y + dock.height).toBe(844);
-  // A phone opens with the hours folded: the head and the week's days.
-  await expect(page.locator(".dock")).toHaveClass(/is-folded/);
-  expect(dock.height).toBeLessThan(260);
-  await expect(page.locator(".sc-day")).toHaveCount(
+  // A phone opens on the hours: the head, the week's days over the hours,
+  // and no row of day blocks or folded state between them.
+  expect(dock.height).toBeLessThan(844 / 3);
+  await expect(page.locator(".dock tr.tt-day td")).toHaveCount(
     new Set(sampleStrip.map((c) => c.date)).size,
   );
   // Nothing else is on the chart: the rider's spots are behind the star.
@@ -195,12 +195,8 @@ test("a tap on the open map reads that point's forecast into the dock, focused o
       timeout: 30000,
     })
     .toBeGreaterThan(5);
-  await page.getByRole("button", { name: "About these figures" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "About these figures" }),
-  ).toContainText("no beach to rate against and no stars");
   await expect(page.locator(".dock tr.tt-stars")).toHaveCount(0);
-  await page.keyboard.press("Escape");
+  await expect(page.locator(".dk-labs")).not.toContainText("Stars");
   // A double tap zooms and picks nothing.
   const before = await name.textContent();
   await page.locator(".maplibregl-canvas").dblclick({ position: { x: at.x + 40, y: at.y } });
@@ -272,7 +268,9 @@ test("only offshore is struck through; a learner's cross-offshore is too", async
     .locator(".spot-marker.xoff")
     .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.spotId));
   // The rider is learning: every cross-offshore hour is struck as well.
-  await page.locator(".dock-filter, .dk-settings").first().click();
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
   await page.locator('[data-skill="beginner"]').click();
   await page.getByLabel("Close display options").click();
   await expect(page.locator(".spot-marker.xoff")).toHaveCount(0);

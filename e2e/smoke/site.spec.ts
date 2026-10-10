@@ -57,7 +57,7 @@ test("the chart draws every riding place and reads this deployment's forecast", 
     expect(answer, url).toEqual({ status: 200, json: true });
   }
   if (manifests.length)
-    await expect(page.locator(".dock .sc-day").first()).toBeVisible({
+    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
       timeout: 30000,
     });
   expect(errors).toEqual([]);

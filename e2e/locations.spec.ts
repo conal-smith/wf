@@ -31,17 +31,10 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   await expect(page.locator(".dock .dk-name")).toHaveText(
     "Kilcrea — Malahide Estuary",
   );
-  await page.locator(".dock-grab").click();
   await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(
     /^\d+$/,
   );
-  // Its sources and its caveat are the dock's small print.
-  await page.getByRole("button", { name: "About these figures" }).click();
-  const print = page.getByRole("dialog", { name: "About these figures" });
-  await expect(print).toContainText("not a verified launch");
-  await expect(print.locator('a[href*="10816824305"]')).toBeVisible();
-  await page.keyboard.press("Escape");
-  // And the chart's own sources, the licences with them.
+  // The chart's own sources, the licences with them.
   await page.getByRole("button", { name: "Sources and small print" }).click();
   await expect(
     page.getByRole("dialog", { name: "Sources and small print" }),

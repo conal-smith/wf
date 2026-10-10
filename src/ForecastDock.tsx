@@ -9,17 +9,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowDown, Layers3, SlidersHorizontal } from "lucide-react";
+import { ArrowDown, Layers3 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { loopPath } from "../ui/penPaths";
-// Both only when asked for: the chart's Blend view and the display options.
+// Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
-const DisplayFilter = lazy(() => import("./DisplayFilter"));
-import { InfoPop } from "./InfoPop";
-import { riderLine } from "./riderLine";
-import { FacingCompass, StarToggle, StarsHelp, WindArrow } from "./glyphs";
+import { StarToggle, StarsHelp, WindArrow } from "./glyphs";
 import {
   axisTicks,
   candleGroups,
@@ -36,7 +33,6 @@ import {
   dayLong,
   dayShort,
   hourLabel,
-  irishDate,
   rainColumns,
   stripGeometry,
   stripTrack,
@@ -84,7 +80,6 @@ interface Props {
   onSelect: (column: number, final: boolean) => void;
   now: number;
   prefs: Prefs;
-  onPrefsChange: (prefs: Prefs) => void;
   models: readonly ModelAvailability[];
   /**
    * Ask for every wind model's manifest: the blend chart and the model list
@@ -94,8 +89,6 @@ interface Props {
   starred: boolean;
   onToggleStar: () => void;
   tide: SpotTide | null;
-  folded: boolean;
-  onFold: (folded: boolean) => void;
   phone: boolean;
   view: DockView;
   onView: (view: DockView) => void;
@@ -103,15 +96,13 @@ interface Props {
   /** The run that reaches the selected hour, when the map's run does not. */
   reachable: { id: string; name: string } | null;
   onShowOnMap: () => void;
-  /** What the map is drawing, for the small print. */
-  mapModel: string;
   /** A point tapped on the map rather than a riding place. */
   isPoint: boolean;
   /** Its forecast is still being read out of the map's frames. */
   pointPending?: boolean;
   playing: boolean;
   onTogglePlay: () => void;
-  /** The waves, weather and sea rows, below their own fold. */
+  /** The waves, weather and sea rows, opened by the head's chevron. */
   more: boolean;
   onMore: (more: boolean) => void;
   /** The wave and weather manifests, once the rows have been opened. */
@@ -127,7 +118,6 @@ const ROWS = {
   wing: 20,
   tide: 40,
   blend: 100,
-  more: 22,
   waves: 20,
   sky: 20,
   air: 20,
@@ -148,15 +138,12 @@ const MORE_LABEL: Record<MoreRow, [string, string]> = {
 };
 /** Rain, in millimetres over one step, that saturates a cell's tint. */
 const RAIN_FULL_MM = 4;
-/** Star cells' colours on the day slider: magenta by how many. */
 /**
  * Pixels per star for an hour's cell: the row's size where the column is wide
  * enough, else as large as five stars and their gaps fit with a little air.
  */
 const starSize = (width: number, full: number) =>
   Math.max(4, Math.min(full < 60 ? 8.6 : 9.5, (width - 6) / 5.4));
-
-const STAR_TINT = [0.08, 0.16, 0.3, 0.5, 0.72, 0.95];
 
 /**
  * The fewest stars the pen will loop. A day whose best is one star still has
@@ -174,47 +161,6 @@ const range = (cols: readonly StripColumn[], best: DayBest) =>
   best.from === best.to
     ? clock(cols[best.from].time)
     : `${clock(cols[best.from].time)}–${clock(cols[best.to].time)}`;
-
-/** "today", "tomorrow", or the day's name. */
-function relativeDay(day: StripDay, now: number) {
-  if (day.date === irishDate(now)) return "today";
-  if (day.date === irishDate(now + 86400000)) return "tomorrow";
-  return dayLong(day.noon);
-}
-
-/** "Best today 13:00–16:00 · ★★★★ · 6.5 m", or what there is instead. */
-function DockBest({
-  columns,
-  hours,
-  day,
-  now,
-}: {
-  columns: readonly StripColumn[];
-  hours: PlaceHour[] | undefined;
-  day: StripDay | undefined;
-  now: number;
-}) {
-  if (!day || !hours) return <span className="dk-best" />;
-  const when = relativeDay(day, now);
-  const ratings = hours.map((h) => h.rating);
-  const best = dayBest(
-    ratings,
-    day,
-    now,
-    columns.map((c) => c.time),
-  );
-  const Day = when[0].toUpperCase() + when.slice(1);
-  if (!best) return <span className="dk-best">{Day}: done</span>;
-  if (!best.stars) return <span className="dk-best">{Day}: no stars</span>;
-  const r = ratings[best.from]!;
-  return (
-    <span className="dk-best">
-      Best {when} {range(columns, best)} ·{" "}
-      <StarGlyphs stars={best.stars} potential={r.potential} size={10} /> ·{" "}
-      {r.wing.own ?? r.wing.recommended} m² wing
-    </span>
-  );
-}
 
 /**
  * Where the wind goes, as one arrow and no letters: red where it blows off
@@ -828,14 +774,11 @@ export default function ForecastDock(props: Props) {
     onSelect,
     now,
     prefs,
-    onPrefsChange,
     models,
     onWantModels,
     starred,
     onToggleStar,
     tide,
-    folded,
-    onFold,
     phone,
     view,
     onView,
@@ -858,13 +801,10 @@ export default function ForecastDock(props: Props) {
   );
   const centre = (i: number) => (g.x[i] ?? 0) + (g.w[i] ?? cw) / 2;
   const wrap = useRef<HTMLDivElement>(null);
-  const scrub = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
-  const [filterOpen, setFilterOpen] = useState(false);
   useEffect(() => {
-    if (filterOpen || (view === "blend" && !isPoint)) onWantModels?.();
-  }, [filterOpen, view, isPoint]);
-  const filterButton = useRef<HTMLButtonElement>(null);
+    if (view === "blend" && !isPoint) onWantModels?.();
+  }, [view, isPoint]);
   const penClip = `pen-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
   // The scroll that brings each hour under the cursor, and where the cursor
   // stands at a scroll: still in the middle through the week, walking out to
@@ -952,7 +892,7 @@ export default function ForecastDock(props: Props) {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [folded]);
+  }, []);
 
   /* ---- the strip scrolls the time, and the time scrolls the strip ---- */
   const fromScroll = useRef(-1);
@@ -962,7 +902,6 @@ export default function ForecastDock(props: Props) {
    * reader's own wheel, touch or key takes over at once.
    */
   const programmatic = useRef<{ left: number; until: number } | null>(null);
-  const dragging = useRef(false);
   const scrollFrame = useRef(0);
   const scrollEnd = useRef(0);
   const scrollTo = (index: number, smooth: boolean) => {
@@ -980,8 +919,8 @@ export default function ForecastDock(props: Props) {
   };
   useLayoutEffect(() => {
     if (fromScroll.current === selected) return;
-    scrollTo(selected, !dragging.current);
-  }, [selected, track, folded, view, more]);
+    scrollTo(selected, true);
+  }, [selected, track, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
   const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
   useLayoutEffect(() => {
@@ -1025,32 +964,15 @@ export default function ForecastDock(props: Props) {
   // turn it sideways; a plain vertical wheel is left to the page.
   useEffect(() => {
     const el = wrap.current;
-    const days = scrub.current;
-    if (!el || !days) return;
+    if (!el) return;
     const onWheel = (event: WheelEvent) => {
       if (!event.shiftKey || event.deltaX || !event.deltaY) return;
       event.preventDefault();
       el.scrollLeft += event.deltaY;
     };
-    // A sideways swipe over the day slider moves the strip as well.
-    const onDaysWheel = (event: WheelEvent) => {
-      const dx =
-        Math.abs(event.deltaX) > Math.abs(event.deltaY)
-          ? event.deltaX
-          : event.shiftKey
-            ? event.deltaY
-            : 0;
-      if (!dx) return;
-      event.preventDefault();
-      el.scrollLeft += dx;
-    };
     el.addEventListener("wheel", onWheel, { passive: false });
-    days.addEventListener("wheel", onDaysWheel, { passive: false });
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      days.removeEventListener("wheel", onDaysWheel);
-    };
-  }, [folded]);
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   // The cursor, where the scroll has put it; and the selected column, marked
   // in place rather than by re-rendering the table.
@@ -1066,41 +988,7 @@ export default function ForecastDock(props: Props) {
     );
   });
 
-  /* ---- the day slider: drag along it, or step with the keys ---- */
-  const pad = phone ? 4 : 8;
-  const columnAt = (clientX: number) => {
-    const blocks = scrub.current?.querySelectorAll<HTMLElement>(".sc-day");
-    if (!blocks?.length) return selected;
-    for (let d = 0; d < blocks.length; d++) {
-      const r = blocks[d].getBoundingClientRect();
-      if (clientX < r.right || d === blocks.length - 1) {
-        const day = days[d];
-        const f = (clientX - r.left - pad) / Math.max(1, r.width - 2 * pad);
-        return (
-          day.start +
-          Math.max(0, Math.min(day.count - 1, Math.floor(f * day.count)))
-        );
-      }
-    }
-    return selected;
-  };
-  const [handLeft, setHandLeft] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const blocks = scrub.current?.querySelectorAll<HTMLElement>(".sc-day");
-    const day = selectedDay;
-    if (!blocks?.length || !day) return setHandLeft(null);
-    const block = blocks[selectedDayIndex];
-    const at = selected - day.start;
-    setHandLeft(
-      block.offsetLeft +
-        pad +
-        (block.clientWidth - 2 * pad) * ((at + 0.5) / day.count),
-    );
-  });
-
   const ratings = hours?.map((h) => h.rating);
-  const flag = column ? `${dayShort(column.time)} ${clock(column.time)}` : "";
-  const facing = spot.facing ?? null;
 
   // The red pen: a loop round each day's best stretch worth riding, round the
   // stars and the wind. It keeps below the hours' rule: the loop's own
@@ -1155,19 +1043,7 @@ export default function ForecastDock(props: Props) {
   }, [tide, column, selected, g, view]);
 
   return (
-    <section
-      className={`dock${folded ? " is-folded" : ""}`}
-      aria-label={`Forecast for ${spot.name}`}
-    >
-      {phone && (
-        <button
-          type="button"
-          className="dock-grab"
-          aria-label={folded ? "Open the hours" : "Fold the hours"}
-          aria-expanded={!folded}
-          onClick={() => onFold(!folded)}
-        />
-      )}
+    <section className="dock" aria-label={`Forecast for ${spot.name}`}>
       <div className="dk-head">
         {!isPoint && (
           <StarToggle
@@ -1178,19 +1054,34 @@ export default function ForecastDock(props: Props) {
           />
         )}
         <h2 className="dk-name">{spot.name}</h2>
-        {!isPoint && <FacingCompass facing={facing} size={20} />}
-        {spot.county && (
-          <span className={`dk-county${isPoint ? " is-point" : ""}`}>
-            {spot.county}
-          </span>
+        {/* A point's place name is a guess at where it is, so its
+            coordinates stay; a riding place's name is enough on its own. */}
+        {isPoint && spot.county && (
+          <span className="dk-coords">{spot.county}</span>
         )}
-        <DockBest
-          columns={columns}
-          hours={isPoint ? undefined : hours}
-          day={days[selectedDayIndex]}
-          now={now}
-        />
         <div className="dk-acts">
+          {/* App.tsx stops playing at any touch but this one: by `.play`. */}
+          <Button
+            variant="pill"
+            size="sm"
+            icon
+            pressed={playing}
+            className="play"
+            aria-label={playing ? "Pause forecast" : "Play forecast"}
+            onClick={onTogglePlay}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              {playing ? (
+                <path
+                  d="M3 2v8M9 2v8"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <path d="M3.4 1.6L10.4 6L3.4 10.4Z" strokeLinejoin="round" />
+              )}
+            </svg>
+          </Button>
           <Segmented
             className="dk-view"
             aria-label="Show the hours as"
@@ -1201,66 +1092,6 @@ export default function ForecastDock(props: Props) {
             value={view}
             onChange={onView}
           />
-          <InfoPop label="About these figures">
-            {!isPoint && (
-              <>
-                <p>
-                  Solid stars: the hour as forecast for you. Outlined: what the
-                  wind alone would give. Dark hours aren&rsquo;t rated.
-                </p>
-                <p className="ip-fig">{riderLine(prefs.rider)}</p>
-              </>
-            )}
-            {isPoint ? (
-              <p className="ip-small">
-                A point on the map, not a riding place, so it has no beach to
-                rate against and no stars. Read from {props.mapModel} alone; the
-                hours it does not reach stay empty.
-              </p>
-            ) : (
-              <p className="ip-small">
-                Wind: the models&rsquo; middle, the finer grids counting more
-                {prefs.blendModels.length
-                  ? ` (${prefs.blendModels.length} in the blend)`
-                  : ""}
-                . The map draws {props.mapModel}.
-              </p>
-            )}
-            <p className="ip-small">
-              {tide
-                ? `Tide: Marine Institute, ${tide.station.name} (${tide.distanceKm.toFixed(1)} km), metres above ${tide.curve.datum}. Prediction only: no surge.`
-                : "No tide station near."}
-            </p>
-            {spot.note && <p className="ip-small">{spot.note}</p>}
-            {!!spot.locationSources?.length && (
-              <p className="ip-small ip-sources">
-                {spot.locationSources
-                  .filter((source) => /^https?:\/\//.test(source.url))
-                  .map((source, i) => (
-                    <a
-                      key={`${source.url}/${i}`}
-                      href={source.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={`${source.name} · ${source.licence}`}
-                    >
-                      Source
-                      {spot.locationSources!.length > 1 ? ` ${i + 1}` : ""}
-                    </a>
-                  ))}
-              </p>
-            )}
-          </InfoPop>
-          <button
-            ref={filterButton}
-            type="button"
-            className="dk-settings"
-            aria-label="Display options"
-            aria-expanded={filterOpen}
-            onClick={() => setFilterOpen((v) => !v)}
-          >
-            <SlidersHorizontal size={15} strokeWidth={1.5} aria-hidden="true" />
-          </button>
           {!isPoint && (
             <Button
               variant="primary"
@@ -1271,177 +1102,67 @@ export default function ForecastDock(props: Props) {
               Spot page →
             </Button>
           )}
-          {!phone && (
-            <button
-              type="button"
-              className="dk-chev"
-              aria-label={folded ? "Open the hours" : "Fold the hours"}
-              aria-expanded={!folded}
-              onClick={() => onFold(!folded)}
-            >
-              <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
-                <path
-                  d="M1 1.5L7 7.5L13 1.5"
-                  fill="none"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          )}
+          {/* The dock's one fold: the waves, the sky, the air, the rain and
+              the sea, under the rows that are always there. Up to open, as a
+              sheet along the foot of the screen grows upwards. */}
+          <Button
+            variant="pill"
+            size="sm"
+            icon
+            className="dk-chev"
+            aria-label={
+              more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
+            }
+            title={more ? "Fewer rows" : "More rows"}
+            aria-expanded={more}
+            onClick={() => onMore(!more)}
+          >
+            <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
+              <path
+                d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
+                fill="none"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
         </div>
       </div>
 
-      <div className="scrub-row">
-        <button
-          type="button"
-          className="play"
-          aria-label={playing ? "Pause forecast" : "Play forecast"}
-          aria-pressed={playing}
-          onClick={onTogglePlay}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-            {playing ? (
-              <path d="M3 2v8M9 2v8" strokeWidth="2.2" strokeLinecap="round" />
-            ) : (
-              <path d="M3 1.6L10.4 6L3 10.4Z" strokeLinejoin="round" />
-            )}
-          </svg>
-        </button>
-        <div className={`scrub${days.length > 8 ? " many" : ""}`} ref={scrub}>
-          <input
-            type="range"
-            className="scrub-input"
-            aria-label="Forecast time"
-            min={0}
-            max={Math.max(0, columns.length - 1)}
-            step={1}
-            value={selected}
-            aria-valuetext={
-              column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
-            }
-            onChange={(event) => onSelect(Number(event.target.value), true)}
-            onKeyDown={(event) => {
-              // A day at a time, as the mockup's slider steps.
-              if (event.key !== "PageUp" && event.key !== "PageDown") return;
-              event.preventDefault();
-              const to =
-                days[
-                  Math.max(
-                    0,
-                    Math.min(
-                      days.length - 1,
-                      selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
-                    ),
-                  )
-                ];
-              const offset = selected - (selectedDay?.start ?? 0);
-              onSelect(to.start + Math.min(offset, to.count - 1), true);
-            }}
-          />
-          <div
-            className="sc-days"
-            style={{
-              gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
-            }}
-            onPointerDown={(event) => {
-              dragging.current = true;
-              event.currentTarget.setPointerCapture(event.pointerId);
-              onSelect(columnAt(event.clientX), false);
-            }}
-            onPointerMove={(event) => {
-              if (dragging.current) onSelect(columnAt(event.clientX), false);
-            }}
-            onPointerUp={() => {
-              if (!dragging.current) return;
-              dragging.current = false;
-              onSelect(selected, true);
-            }}
-            onPointerCancel={() => {
-              dragging.current = false;
-            }}
-          >
-            {days.map((day, d) => {
-              const best = ratings ? dayBest(ratings, day) : null;
-              return (
-                <div
-                  key={day.date}
-                  className={`sc-day${d === selectedDayIndex ? " on" : ""}`}
-                >
-                  <div className="sc-h">
-                    <b>
-                      {dayShort(day.noon).slice(0, 2)}
-                      <span className="d3">{dayShort(day.noon).slice(2)}</span>
-                    </b>
-                    <span className="dt">{Number(day.date.slice(8))}</span>
-                    {best && (
-                      <>
-                        <span className="st">
-                          <StarGlyphs
-                            stars={best.stars}
-                            potential={ratings![best.from]!.potential}
-                            size={9}
-                          />
-                        </span>
-                        <span className="sn">
-                          <StarGlyphs
-                            stars={best.stars}
-                            potential={ratings![best.from]!.potential}
-                            size={7}
-                            slots="potential"
-                          />
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div
-                    className="sc-strip"
-                    style={{
-                      gridTemplateColumns: `repeat(${day.count}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {Array.from({ length: day.count }, (_, k) => {
-                      const at = day.start + k;
-                      const r = ratings?.[at];
-                      const h = hours?.[at];
-                      return (
-                        <i
-                          key={at}
-                          className={
-                            [
-                              !h || !h.daylight ? "night" : "",
-                              columns[at].time + 3600000 <= now ? "past" : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ") || undefined
-                          }
-                          style={
-                            r
-                              ? ({
-                                  "--tint": STAR_TINT[r.stars],
-                                } as React.CSSProperties)
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            {handLeft !== null && (
-              <div
-                className={`sc-hand${selectedDayIndex === days.length - 1 && column && column.hour > 15 ? " flip" : ""}`}
-                style={{ left: handLeft }}
-                aria-hidden="true"
-              >
-                <span className="sc-flag">{flag}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* The time, for a keyboard and a screen reader: the hours scrolling
+          under the cursor are the slider a finger and a mouse use, and this
+          steps them. Out of sight; its focus ring is drawn on the hours. */}
+      <input
+        type="range"
+        className="sr-only dk-time"
+        aria-label="Forecast time"
+        min={0}
+        max={Math.max(0, columns.length - 1)}
+        step={1}
+        value={selected}
+        aria-valuetext={
+          column ? `${dayLong(column.time)} ${clock(column.time)}` : ""
+        }
+        onChange={(event) => onSelect(Number(event.target.value), true)}
+        onKeyDown={(event) => {
+          // A day at a time with Page Up and Page Down.
+          if (event.key !== "PageUp" && event.key !== "PageDown") return;
+          event.preventDefault();
+          const to =
+            days[
+              Math.max(
+                0,
+                Math.min(
+                  days.length - 1,
+                  selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
+                ),
+              )
+            ];
+          const offset = selected - (selectedDay?.start ?? 0);
+          onSelect(to.start + Math.min(offset, to.count - 1), true);
+        }}
+      />
 
       {reachable && (
         <div className="map-reach" role="status">
@@ -1456,215 +1177,163 @@ export default function ForecastDock(props: Props) {
         </div>
       )}
 
-      {!folded && (
-        <div className="dk-body">
-          <div
-            className="dk-grid"
-            style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
-          >
-            <div className="dk-labs">
-              <div aria-hidden="true" style={{ height: ROWS.day }} />
-              <div aria-hidden="true" style={{ height: ROWS.hour }} />
-              {view === "blend" ? (
-                <div
-                  aria-hidden="true"
-                  className="dk-lab-blend"
-                  style={{ height: ROWS.blend }}
-                >
-                  Blend<small>{prefs.units}</small>
-                  {/* The chart's gridlines, numbered here where they stay
-                      put while the hours scroll, on the chart's own scale. */}
-                  {/* The top one would sit on the row's own name: left out. */}
-                  {blend.lines.length > 0 &&
-                    axisTicks(blendMax)
-                      .slice(1)
-                      .map((tick) => [
-                        tick,
-                        valueScale(blendMax, ROWS.blend)(tick),
-                      ])
-                      .filter(([, top]) => top > 18)
-                      .map(([tick, top]) => (
-                        <b key={tick} style={{ top }}>
-                          {tick}
-                        </b>
-                      ))}
-                </div>
-              ) : (
-                <>
-                  {!isPoint && (
-                    <div aria-hidden="true" style={{ height: ROWS.stars }}>
-                      Stars
-                    </div>
-                  )}
-                  <div aria-hidden="true" style={{ height: ROWS.wind }}>
-                    Wind<small>{prefs.units}</small>
-                  </div>
-                  <div aria-hidden="true" style={{ height: ROWS.from }}>
-                    From
-                  </div>
-                  {!isPoint && (
-                    <div aria-hidden="true" style={{ height: ROWS.wing }}>
-                      Wing<small>m²</small>
-                    </div>
-                  )}
-                </>
-              )}
-              <div aria-hidden="true" style={{ height: ROWS.tide }}>
-                Tide<small>m</small>
+      <div className="dk-body">
+        <div
+          className="dk-grid"
+          style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
+        >
+          <div className="dk-labs">
+            <div aria-hidden="true" style={{ height: ROWS.day }} />
+            <div aria-hidden="true" style={{ height: ROWS.hour }} />
+            {view === "blend" ? (
+              <div
+                aria-hidden="true"
+                className="dk-lab-blend"
+                style={{ height: ROWS.blend }}
+              >
+                {/* No name: the chart is plainly the wind. Its unit, and
+                      its gridlines numbered here where they stay put while
+                      the hours scroll, on the chart's own scale. */}
+                <small>{prefs.units}</small>
+                {blend.lines.length > 0 &&
+                  axisTicks(blendMax)
+                    .slice(1)
+                    .map((tick) => [
+                      tick,
+                      valueScale(blendMax, ROWS.blend)(tick),
+                    ])
+                    .map(([tick, top]) => (
+                      <b key={tick} style={{ top }}>
+                        {tick}
+                      </b>
+                    ))}
               </div>
-              {more &&
-                MORE_ROWS.map((key) => (
-                  <div
-                    key={key}
-                    aria-hidden="true"
-                    style={{ height: ROWS[key] }}
-                  >
-                    {MORE_LABEL[key][0]}
-                    <small>{MORE_LABEL[key][1]}</small>
+            ) : (
+              <>
+                {!isPoint && (
+                  <div aria-hidden="true" style={{ height: ROWS.stars }}>
+                    Stars
                   </div>
-                ))}
-              <button
-                type="button"
-                className="dk-more"
-                aria-expanded={more}
-                aria-label={
-                  more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
-                }
-                onClick={() => onMore(!more)}
-              >
-                {more ? "Less" : "More"}
-                <svg
-                  width="10"
-                  height="6"
-                  viewBox="0 0 14 9"
-                  aria-hidden="true"
-                >
-                  <path
-                    d={more ? "M1 7.5L7 1.5L13 7.5" : "M1 1.5L7 7.5L13 1.5"}
-                    fill="none"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {view === "table" && !isPoint && (
-              // The "?" sits on the Stars label, outside the hidden labels.
-              <span
-                className="dk-stars-q"
-                style={{ top: ROWS.day + ROWS.hour }}
-              >
-                <StarsHelp />
-              </span>
+                )}
+                <div aria-hidden="true" style={{ height: ROWS.wind }}>
+                  Wind<small>{prefs.units}</small>
+                </div>
+                <div aria-hidden="true" style={{ height: ROWS.from }}>
+                  From
+                </div>
+                {!isPoint && (
+                  <div aria-hidden="true" style={{ height: ROWS.wing }}>
+                    Wing<small>m²</small>
+                  </div>
+                )}
+              </>
             )}
-            <div
-              className="tt-wrap"
-              ref={wrap}
-              tabIndex={0}
-              onWheel={() => (programmatic.current = null)}
-              onPointerDown={() => (programmatic.current = null)}
-              onTouchStart={() => (programmatic.current = null)}
-              onKeyDown={() => (programmatic.current = null)}
-              aria-label="The week hour by hour: scroll sideways to move through time"
-              onScroll={onScroll}
-              onClick={(event) => {
-                const target = event.target as HTMLElement;
-                if (target.closest("button, a")) return;
-                const td = target.closest<HTMLElement>("td[data-i]");
-                if (td) onSelect(Number(td.dataset.i), true);
-              }}
-            >
-              <StripTable
-                spot={spot}
-                columns={columns}
-                days={days}
-                hours={hours}
-                units={prefs.units}
-                tide={tide}
-                g={g}
-                now={now}
-                blend={blendNode}
-                more={more}
-                waves={waves}
-                weather={weather}
-                sea={sea}
-                isPoint={isPoint}
-              />
-              {/* Where the scroll comes to rest: one mark per hour, at the
+            {/* The tide's curve needs no name, nor its times a unit. */}
+            <div aria-hidden="true" style={{ height: ROWS.tide }} />
+            {more &&
+              MORE_ROWS.map((key) => (
+                <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
+                  {MORE_LABEL[key][0]}
+                  <small>{MORE_LABEL[key][1]}</small>
+                </div>
+              ))}
+          </div>
+
+          {view === "table" && !isPoint && (
+            // The "?" sits on the Stars label, outside the hidden labels.
+            <span className="dk-stars-q" style={{ top: ROWS.day + ROWS.hour }}>
+              <StarsHelp />
+            </span>
+          )}
+          <div
+            className="tt-wrap"
+            ref={wrap}
+            tabIndex={0}
+            onWheel={() => (programmatic.current = null)}
+            onPointerDown={() => (programmatic.current = null)}
+            onTouchStart={() => (programmatic.current = null)}
+            onKeyDown={() => (programmatic.current = null)}
+            aria-label="The week hour by hour: scroll sideways to move through time"
+            onScroll={onScroll}
+            onClick={(event) => {
+              const target = event.target as HTMLElement;
+              if (target.closest("button, a")) return;
+              const td = target.closest<HTMLElement>("td[data-i]");
+              if (td) onSelect(Number(td.dataset.i), true);
+            }}
+          >
+            <StripTable
+              spot={spot}
+              columns={columns}
+              days={days}
+              hours={hours}
+              units={prefs.units}
+              tide={tide}
+              g={g}
+              now={now}
+              blend={blendNode}
+              more={more}
+              waves={waves}
+              weather={weather}
+              sea={sea}
+              isPoint={isPoint}
+            />
+            {/* Where the scroll comes to rest: one mark per hour, at the
                   scroll that puts it under the cursor. The hours' own cells
                   cannot be the snap points, because at the ends of the strip
                   the cursor is not in the middle (see stripTrack). */}
-              <div className="tt-snaps" aria-hidden="true">
-                {columns.map((c, i) => (
-                  <i key={c.validTime} style={{ left: track.scrollFor(i) }} />
-                ))}
-              </div>
-              <svg
-                className="tt-pen"
-                width={g.total}
-                height={
-                  ROWS.day +
-                  ROWS.hour +
-                  (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
-                  ROWS.tide +
-                  (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
-                }
-                aria-hidden="true"
-              >
-                <clipPath id={penClip}>
-                  <rect x="0" y={loopTop + 1} width={g.total} height="400" />
-                </clipPath>
-                <g clipPath={`url(#${penClip})`}>
-                  {loops.map((loop) => (
-                    <path
-                      key={`${spot.id}-${loop.key}`}
-                      className="pen-loop"
-                      d={loop.d}
-                      pathLength={1}
-                      style={{ animationDelay: `${loop.delay}ms` }}
-                    />
-                  ))}
-                </g>
-                {tideDot && (
-                  <circle
-                    className="tide-dot"
-                    cx={tideDot.x}
-                    cy={tideDot.y}
-                    r="3.4"
-                  />
-                )}
-              </svg>
+            <div className="tt-snaps" aria-hidden="true">
+              {columns.map((c, i) => (
+                <i key={c.validTime} style={{ left: track.scrollFor(i) }} />
+              ))}
             </div>
-            {/* The hour the map shows. It used to carry a red flag with the
-                day and time as well, which sat on the selected day's own
-                heading; the day slider's hand already says it, and the hour
-                cell under the line is inked. The line starts at the hours. */}
-            <div
-              ref={cursor}
-              className="dk-cur"
-              style={{ top: ROWS.day }}
+            <svg
+              className="tt-pen"
+              width={g.total}
+              height={
+                ROWS.day +
+                ROWS.hour +
+                (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
+                ROWS.tide +
+                (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
+              }
               aria-hidden="true"
-            />
+            >
+              <clipPath id={penClip}>
+                <rect x="0" y={loopTop + 1} width={g.total} height="400" />
+              </clipPath>
+              <g clipPath={`url(#${penClip})`}>
+                {loops.map((loop) => (
+                  <path
+                    key={`${spot.id}-${loop.key}`}
+                    className="pen-loop"
+                    d={loop.d}
+                    pathLength={1}
+                    style={{ animationDelay: `${loop.delay}ms` }}
+                  />
+                ))}
+              </g>
+              {tideDot && (
+                <circle
+                  className="tide-dot"
+                  cx={tideDot.x}
+                  cy={tideDot.y}
+                  r="3.4"
+                />
+              )}
+            </svg>
           </div>
-        </div>
-      )}
-      {filterOpen && (
-        <Suspense fallback={null}>
-          <DisplayFilter
-            prefs={prefs}
-            onChange={onPrefsChange}
-            models={models.filter((model) => model.entry.kind === "wind")}
-            onClose={() => {
-              setFilterOpen(false);
-              requestAnimationFrame(() =>
-                filterButton.current?.focus({ preventScroll: true }),
-              );
-            }}
+          {/* The hour the map shows. No flag with the day and time: the
+                day's heading stays in sight above it, and the hour cell under
+                the line is inked. The line starts at the hours. */}
+          <div
+            ref={cursor}
+            className="dk-cur"
+            style={{ top: ROWS.day }}
+            aria-hidden="true"
           />
-        </Suspense>
-      )}
+        </div>
+      </div>
     </section>
   );
 }

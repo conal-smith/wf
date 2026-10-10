@@ -7,11 +7,9 @@ for (const width of [320, 390, 820, 1440]) {
     await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
-    await expect(page.locator(".sc-day").first()).toBeVisible({
+    await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
       timeout: 30000,
     });
-    if (width <= 720) await page.locator(".dock-grab").click();
-    await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const geometry = () =>
       page.evaluate(() => {

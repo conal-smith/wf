@@ -1,7 +1,7 @@
 /*
  * The dock: the chosen spot's week as one strip of hours under a fixed
- * cursor, with the day slider above it, as the chart's mockup draws it.
- * Paper with a double rule along its top; figures in the mono face.
+ * cursor, scrolled by hand or stepped from the keys. Paper with a double rule
+ * along its top; figures in the mono face.
  */
 .dock {
   position: relative;
@@ -11,9 +11,6 @@
   border-top: 3px double var(--color-ink);
   box-shadow: var(--shadow-dock);
   color: var(--color-ink);
-}
-.dock-grab {
-  display: none;
 }
 
 /* ---------- the head ---------- */
@@ -31,25 +28,11 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.dk-county {
+.dk-coords {
   font: 500 10px var(--font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   color: var(--color-ink-muted);
-}
-.dk-best {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  margin-left: 10px;
-  padding-left: 12px;
-  border-left: 1px solid var(--color-line);
-  font: 500 11px var(--font-mono);
-  white-space: nowrap;
-}
-.dk-best:empty {
-  display: none;
 }
 .dk-acts {
   display: flex;
@@ -62,166 +45,29 @@
   height: 26px;
   padding: 0 10px;
 }
-.dk-settings,
-.dk-chev {
-  display: grid;
-  place-items: center;
+/* The head's round buttons, the kit's pills (ui/Button), at the size of the
+   switch beside them on a phone as well: a finger's 44px would make the
+   head, and so the whole dock, taller for the sake of two buttons. */
+.dk-acts .play,
+.dk-acts .dk-chev {
+  min-width: 30px;
+  min-height: 30px;
   width: 30px;
   height: 30px;
-  padding: 0;
-  border: 1px solid var(--color-ink);
-  border-radius: 50%;
-  background: var(--color-ground);
-  color: var(--color-ink);
-  cursor: pointer;
 }
-.dk-settings[aria-expanded="true"] {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
-}
-@media (hover: hover) and (pointer: fine) {
-  .dk-settings:hover,
-  .dk-chev:hover {
-    background: var(--color-ink);
-    color: var(--color-ink-inverse);
-  }
+.play svg path {
+  fill: currentColor;
+  stroke: currentColor;
 }
 .dk-chev svg {
   stroke: currentColor;
-  transition: transform 0.3s;
 }
-.dock.is-folded .dk-chev svg {
-  transform: rotate(180deg);
-}
-.dk-settings:focus-visible,
-.dk-chev:focus-visible,
-.tt-wrap:focus-visible {
+.tt-wrap:focus-visible,
+.dock:has(.dk-time:focus-visible) .tt-wrap {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
-/* ---------- the day slider ---------- */
-.scrub {
-  position: relative;
-  margin-top: 5px;
-  border-top: 1px solid var(--color-ink);
-  border-bottom: 1px solid var(--color-ink);
-  user-select: none;
-  -webkit-user-select: none;
-}
-.scrub:has(.scrub-input:focus-visible) {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
-}
-/* The slider a keyboard and a screen reader use; a finger drags the days. */
-.scrub-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.sc-days {
-  position: relative;
-  display: grid;
-  cursor: ew-resize;
-  touch-action: none;
-}
-.sc-day {
-  min-width: 0;
-  padding: 3px 8px 5px;
-  border-left: 1px solid var(--color-line);
-  /* Each day's block says as much as its own width holds: see the
-     container rules at the end of the file. */
-  container-type: inline-size;
-}
-.sc-day:first-child {
-  border-left: 0;
-}
-.sc-day.on {
-  background: color-mix(in srgb, var(--color-ink) 4.5%, transparent);
-}
-.sc-h {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 20px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.sc-h b {
-  font: 600 14px var(--font-display);
-}
-.sc-h .dt,
-.sc-h .bw {
-  font: 400 9.5px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.sc-h .st {
-  display: flex;
-  margin-left: auto;
-}
-.sc-h .sn {
-  display: none;
-  margin-left: auto;
-}
-.sc-strip {
-  display: grid;
-  gap: 1px;
-  height: 10px;
-  margin-top: 2px;
-}
-.sc-strip i {
-  display: block;
-  background: color-mix(
-    in srgb,
-    var(--color-wash) calc(var(--tint, 0) * 100%),
-    color-mix(in srgb, var(--color-ink) 6%, transparent)
-  );
-}
-.sc-strip i.night {
-  background: repeating-linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-ink) 18%, transparent) 0 1px,
-    transparent 1px 3px
-  );
-}
-.sc-strip i.past {
-  opacity: 0.35;
-}
-.sc-hand {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  border-left: 1.5px solid var(--color-ink);
-  pointer-events: none;
-  transition: left 0.12s;
-}
-.sc-hand::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -5.5px;
-  border: 5px solid transparent;
-  border-top-color: var(--color-ink);
-}
-.sc-flag {
-  position: absolute;
-  bottom: 1px;
-  left: 4px;
-  padding: 0 4px;
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
-  font: 600 10px var(--font-mono);
-  white-space: nowrap;
-}
-.sc-hand.flip .sc-flag {
-  left: auto;
-  right: 4px;
-}
 /* Over the chart, just above the dock: a chip that comes and goes as the
    reader crosses the map model's reach must not move the dock under the map. */
 .map-reach {
@@ -257,11 +103,6 @@
     color: var(--color-ink-inverse);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .sc-hand {
-    transition: none;
-  }
-}
 
 /* ---------- the strip of hours ---------- */
 .dk-body {
@@ -284,7 +125,7 @@
 .dk-labs .dk-lab-blend {
   position: relative;
   align-items: flex-start;
-  padding-top: 2px;
+  padding-top: 1px;
 }
 /* The blend's speeds, against its gridlines, at the label column's edge. */
 .dk-lab-blend b {
@@ -546,33 +387,12 @@ table.tt {
   }
 }
 
-/* ---------- a phone: a sheet with a handle, folded to its head ---------- */
+/* ---------- a phone: a sheet along the foot of the screen ---------- */
 @media (max-width: 720px) {
   .dock {
     max-height: 82vh;
     overflow: auto;
-    padding: 0 12px calc(8px + env(safe-area-inset-bottom));
-  }
-  .dock-grab {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: 22px;
-    padding: 0;
-    border: 0;
-    background: none;
-    cursor: pointer;
-  }
-  .dock-grab::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 8px;
-    width: 44px;
-    height: 4px;
-    margin-left: -22px;
-    border-radius: 2px;
-    background: color-mix(in srgb, var(--color-ink) 38%, transparent);
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
   }
   .dk-head {
     flex-wrap: wrap;
@@ -582,36 +402,9 @@ table.tt {
     max-width: 58vw;
     font-size: 20px;
   }
-  .dk-county {
-    display: none;
-  }
-  .dk-best {
-    order: 4;
-    flex-basis: 100%;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
   .dk-acts {
     width: 100%;
     justify-content: space-between;
-  }
-  .sc-day {
-    padding: 3px 4px;
-  }
-  .sc-h b {
-    font-size: 13px;
-  }
-  .sc-h .dt,
-  .sc-h .bw,
-  .sc-h .st {
-    display: none;
-  }
-  .sc-h .sn {
-    display: flex;
-  }
-  .sc-flag {
-    font-size: 9px;
   }
   .dk-labs div {
     font-size: 8.5px;
@@ -627,88 +420,7 @@ table.tt {
   }
 }
 
-/* ---------- play, by the day slider ---------- */
-.scrub-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  margin-top: 5px;
-}
-.scrub-row .scrub {
-  flex: 1;
-  min-width: 0;
-  margin-top: 0;
-}
-.play {
-  display: grid;
-  place-items: center;
-  flex: none;
-  align-self: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--color-ink);
-  border-radius: 50%;
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
-  cursor: pointer;
-}
-.play svg path {
-  fill: currentColor;
-  stroke: currentColor;
-}
-@media (hover: hover) and (pointer: fine) {
-  .play:hover {
-    background: var(--color-chart-magenta);
-    border-color: var(--color-chart-magenta);
-  }
-}
-.play:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-/* A fortnight of days: the name and the day's best figure, no glyphs. */
-.scrub.many .sc-h .st,
-.scrub.many .sc-h .bw {
-  display: none;
-}
-.scrub.many .sc-h .sn {
-  display: flex;
-}
-.scrub.many .sc-day {
-  padding: 3px 5px 5px;
-}
-.scrub.many .sc-h {
-  gap: 4px;
-}
-
 /* ---------- the rows below the fold ---------- */
-.dk-more {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: 500 9px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink);
-  cursor: pointer;
-}
-.dk-more svg {
-  stroke: currentColor;
-}
-@media (hover: hover) and (pointer: fine) {
-  .dk-more:hover {
-    color: var(--color-chart-magenta);
-  }
-}
-.dk-more:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
-}
 .tt tr.tt-more td {
   height: 20px;
   font-size: 11px;
@@ -760,59 +472,9 @@ table.tt {
 .tt .proxy {
   color: var(--color-ink-muted);
 }
-.dk-county.is-point {
-  text-transform: none;
-  letter-spacing: 0.04em;
-}
-@media (max-width: 720px) {
-  .scrub.many .sc-h {
-    justify-content: center;
-  }
-  .scrub.many .sc-h .d3,
-  .scrub.many .sc-h .sn {
-    display: none;
-  }
-  .scrub.many .sc-h b {
-    font-size: 12px;
-  }
-  .scrub.many .sc-day {
-    padding: 3px 1px 4px;
-  }
-  .play {
-    width: 30px;
-    height: 30px;
-  }
-}
 @media (max-width: 720px) {
   /* The period is in the cell's title on a phone: the height and the arrow fit. */
   .wave-cell small {
-    display: none;
-  }
-}
-
-/* The day slider's blocks, fitted to their own width rather than the page's:
-   a fortnight at 1440px leaves each about eighty pixels, which held the name,
-   the date and five stars only by clipping the last of them. The date goes
-   first (the strip's headings and the hand carry it), then the weekday's
-   third letter, then the stars. */
-@container (max-width: 92px) {
-  .scrub.many .sc-h .dt {
-    display: none;
-  }
-}
-@container (max-width: 72px) {
-  .scrub.many .sc-h .d3 {
-    display: none;
-  }
-}
-@container (max-width: 60px) {
-  .scrub.many .sc-h .sn {
-    display: none;
-  }
-}
-/* A week: the "best …" goes before the stars do. */
-@container (max-width: 170px) {
-  .sc-h .bw {
     display: none;
   }
 }

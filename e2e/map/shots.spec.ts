@@ -145,7 +145,6 @@ for (const { width, height } of [
 ]) {
   test.describe(`at ${width}px`, () => {
     test.use({ viewport: { width, height } });
-    const phone = width < 720;
 
     test("idle chart", async ({ page }) => {
       await openMap(page);
@@ -176,7 +175,6 @@ for (const { width, height } of [
 
     test("the dock's hours", async ({ page }) => {
       await openMap(page);
-      if (phone) await page.locator(".dock-grab").click();
       await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
       await page.getByRole("slider", { name: "Forecast time" }).fill("12");
       await shoot(page, "dock", width);
@@ -184,7 +182,6 @@ for (const { width, height } of [
 
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
-      if (phone) await page.locator(".dock-grab").click();
       await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
       await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
       // Inside the sample's weather run, which starts three days on.
@@ -217,7 +214,6 @@ for (const { width, height } of [
       await canvas.click({ position: at });
       await canvas.evaluate((el) => ((el as HTMLElement).style.visibility = ""));
       await expect(page.locator(".pick-mark")).toHaveCount(1);
-      if (phone) await page.locator(".dock-grab").click();
       await expect
         .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
           timeout: 30000,
@@ -228,7 +224,6 @@ for (const { width, height } of [
 
     test("the dock's blend", async ({ page }) => {
       await openMap(page);
-      if (phone) await page.locator(".dock-grab").click();
       await page.locator(".dk-view").getByRole("button", { name: "Blend" }).click();
       await expect(page.locator(".dock .blend-chart")).toBeVisible();
       await shoot(page, "dock-blend", width);
@@ -236,8 +231,10 @@ for (const { width, height } of [
 
     test("display options", async ({ page }) => {
       await openMap(page);
-      await page.getByLabel("Display options", { exact: true }).click();
-      await expect(page.locator("dialog.display-filter")).toBeVisible();
+      await page
+        .getByRole("button", { name: "Display options", exact: true })
+        .click();
+      await expect(page.locator("#map-options")).toBeVisible();
       await shoot(page, "display-filter", width);
     });
 

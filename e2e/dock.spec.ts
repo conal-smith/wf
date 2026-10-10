@@ -94,7 +94,7 @@ async function offCursor(page: Page) {
   });
 }
 
-test("the week is one strip of hours, 07:00 to 20:00, under the day slider", async ({
+test("the week is one strip of hours, 07:00 to 20:00, with no day slider over it", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -107,15 +107,15 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
       (h) => h >= 7 && h <= 20,
     ),
   ).toBe(true);
-  // Seven days, each a block of the slider and a heading on the strip.
+  // Each day once, as a heading on the strip: no row of day blocks above
+  // it, and no spacer cells either side, so the table starts at the labels.
   const days = new Set(sampleStrip.map((c) => c.date)).size;
-  await expect(page.locator(".sc-day")).toHaveCount(days);
-  // No spacer cells either side: the table starts against the labels.
   await expect(page.locator(".dock tr.tt-day td")).toHaveCount(days);
-  // The rows, by their labels.
-  await expect(page.locator(".dk-labs")).toContainText("Stars");
-  for (const row of ["Wind", "From", "Wing", "Tide"])
+  await expect(page.locator(".dock .sc-day, .dock .scrub")).toHaveCount(0);
+  // The rows, by their labels; the tide's curve and the fold need none.
+  for (const row of ["Stars", "Wind", "From", "Wing"])
     await expect(page.locator(".dk-labs")).toContainText(row);
+  await expect(page.locator(".dk-labs")).not.toContainText(/Tide|More|Less/);
   // Stars only where it is light; a dark hour is left empty, not rated zero.
   expect(
     await page.locator(".dock tr.tt-stars td[data-i] .hour-stars").count(),
@@ -140,9 +140,11 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
   );
   await expect(tide).not.toContainText(/\b(HW|LW)\b/);
-  // The day slider's blocks carry each day's best, and the hand its hour.
-  await expect(page.locator(".sc-hand .sc-flag")).toHaveText(
-    /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d$/,
+  // The time is a slider still, for the keys and a screen reader, named
+  // by its day and hour; on the screen it is the cursor over the hours.
+  await expect(slider(page)).toHaveAttribute(
+    "aria-valuetext",
+    /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d\d:\d\d$/,
   );
   // Nothing on the page scrolls sideways; the strip carries the hours.
   expect(
@@ -151,7 +153,7 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
   expect(errors).toEqual([]);
 });
 
-test("the strip and the slider move together, by swipe, wheel, drag and key", async ({
+test("the strip and the slider move together, by swipe, wheel and key", async ({
   page,
 }) => {
   await openDock(page);
@@ -202,21 +204,17 @@ test("the strip and the slider move together, by swipe, wheel, drag and key", as
   await page.mouse.wheel(0, 200);
   await page.waitForTimeout(200);
   expect(await wrap.evaluate((el) => el.scrollLeft)).toBe(held);
-  // Dragging along the day slider still works: the last day's block.
-  const days = page.locator(".sc-day");
-  const last = (await days.last().boundingBox())!;
-  await page.mouse.move(last.x + 10, last.y + last.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(last.x + last.width - 10, last.y + last.height / 2, {
-    steps: 4,
-  });
-  await page.mouse.up();
-  await expect
-    .poll(async () => Number(await slider(page).inputValue()))
-    .toBeGreaterThan(sampleStrip.length - 6);
-  await expect.poll(() => offCursor(page)).toBeLessThan(2);
-  // And the keys: a day at a time with Page Up and Down.
+  // And the keys, on the slider out of sight: its ring is on the hours.
   await slider(page).focus();
+  await page.keyboard.press("End");
+  await expect(slider(page)).toHaveValue(String(sampleStrip.length - 1));
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  expect(await wrap.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe(
+    "solid",
+  );
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider(page)).toHaveValue(String(sampleStrip.length - 2));
+  // A day at a time with Page Up and Down.
   await slider(page).press("Home");
   await expect(slider(page)).toHaveValue("0");
   // At the start the table sits against the labels, with no blank paper
@@ -256,14 +254,32 @@ test("the stars open nothing on hover, and the ? leads to how they work", async 
   ).toHaveAttribute("href", "/stars?spot=brandon");
 });
 
-test("the head says the day's best, and the pen loops each day's, untitled", async ({
+test("the head is the spot and its buttons, and the pen loops each day's best, untitled", async ({
   page,
 }) => {
   await openDock(page);
-  await expect(page.locator(".dk-best")).toHaveText(
-    /^(Best (today|tomorrow|[A-Z][a-z]+day) \d\d:\d\d(–\d\d:\d\d)? · .*· [\d.]+ m² wing|[A-Z][a-z]+: (no stars|done))$/,
-  );
-  await expect(page.locator(".dk-best")).not.toContainText(/\b(HW|LW)\b/);
+  // No county, no compass, no line of the day's best, no small print: the
+  // star, the name, and play, the view, the page and the rows.
+  const head = page.locator(".dock .dk-head");
+  await expect(head).toHaveText(/^Brandon Bay\s*Table\s*Blend\s*Spot page →$/);
+  await expect(head.getByRole("img")).toHaveCount(0);
+  await expect(
+    head.getByRole("button", { name: "About these figures" }),
+  ).toHaveCount(0);
+  for (const name of [
+    "Star Brandon Bay",
+    "Play forecast",
+    "Show waves, sky and sea",
+  ])
+    await expect(head.getByRole("button", { name })).toBeVisible();
+  // Play is the size of the round button at the other end of the row.
+  const play = (await head
+    .getByRole("button", { name: "Play forecast" })
+    .boundingBox())!;
+  const rows = (await head
+    .getByRole("button", { name: "Show waves, sky and sea" })
+    .boundingBox())!;
+  expect([play.width, play.height]).toEqual([rows.width, rows.height]);
   // The pen loops each day's best still worth riding; the day's heading
   // says its stars and no times, which the loop already shows.
   const days = await page.locator(".dock tr.tt-day td").count();
@@ -341,7 +357,10 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await openDock(page);
   const wing = () => page.locator(".dock tr.tt-wing td[data-i]").allTextContents();
   const before = await wing();
-  await page.getByLabel("Display options", { exact: true }).click();
+  // From the map's controls now, not the dock's head.
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
   await page.locator('[data-units="m/s"]').click();
   await page.locator('input[data-rider="weight"]').fill("100");
   await page.locator('[data-skill="beginner"]').click();
@@ -366,7 +385,9 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await expect(page.locator(".dk-labs")).toContainText("m/s", {
     timeout: 30000,
   });
-  await page.getByLabel("Display options", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
   await expect(page.locator('[data-units="m/s"]')).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -378,26 +399,65 @@ test("units, the rider and the blend's models are display options, kept on reloa
   await expect(page.locator('input[data-model-toggle="gfs"]')).not.toBeChecked();
 });
 
-test("the display options open and close from the keyboard", async ({ page }) => {
+test("the display options open beside the map's controls, one panel at a time", async ({
+  page,
+}) => {
   await openDock(page);
-  const trigger = page.getByLabel("Display options", { exact: true });
+  const trigger = page.getByRole("button", {
+    name: "Display options",
+    exact: true,
+  });
+  const panel = page.locator("#map-options");
+  // Under your spots, over the map's information, in the controls' column.
+  const names = await page
+    .locator(".zbox button")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
+  expect(names).toEqual([
+    "Zoom in",
+    "Zoom out",
+    "Layers",
+    "Your spots",
+    "Display options",
+    "Map information",
+  ]);
+  await expect(page.locator(".dock").getByLabel("Display options")).toHaveCount(
+    0,
+  );
+  // From the keyboard: open, into it, and Escape hands focus back.
   await trigger.focus();
   await page.keyboard.press("Enter");
-  const dialog = page.locator("dialog.display-filter");
-  await expect(dialog).toBeVisible();
+  await expect(panel).toBeVisible();
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(trigger).toHaveAttribute("aria-controls", "map-options");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   expect(
     await page.evaluate(() =>
-      document
-        .querySelector("dialog.display-filter")!
-        .contains(document.activeElement),
+      document.querySelector("#map-options")!.contains(document.activeElement),
     ),
   ).toBe(true);
   await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
+  await expect(panel).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+  // One at a time: the layers take its place.
+  await trigger.click();
+  await expect(panel).toBeVisible();
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Layers" })).toBeVisible();
+  // A tap away, on the dock, shuts it; so does its own button, and Done.
+  await trigger.click();
+  await page.locator(".dock .dk-name").click();
+  await expect(panel).toHaveCount(0);
+  await trigger.click();
+  await trigger.click();
+  await expect(panel).toHaveCount(0);
+  await trigger.click();
+  await page.getByLabel("Close display options").click();
+  await expect(panel).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });
 
 test("the blend draws every model that covers the spot, on the strip's hours", async ({
@@ -410,33 +470,62 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
-  // The tide still runs under it, and the cursor over both.
+  // The tide still runs under it, and the cursor over both. The chart's
+  // label column is its unit and its scale, without a name.
   await expect(page.locator(".dock .tide-row")).toBeVisible();
+  const scale = page.locator(".dock .dk-lab-blend");
+  await expect(scale).toContainText("kn");
+  await expect(scale.locator("b").first()).toHaveText(/^\d+$/);
+  await expect(page.locator(".dk-labs")).not.toContainText(/Blend|Tide/);
   await page.locator(".dock").getByRole("radio", { name: "Table" }).or(
     page.locator(".dock").getByRole("button", { name: "Table" }),
   ).first().click();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("the hours fold away and come back", async ({ page }) => {
+test("the head's chevron is the dock's one fold: the rows under the tide", async ({
+  page,
+}) => {
   await openDock(page);
-  await page.getByRole("button", { name: "Fold the hours" }).click();
-  await expect(page.locator(".dock tr.tt-stars")).toHaveCount(0);
-  await expect(page.locator(".sc-day").first()).toBeVisible();
-  await page.getByRole("button", { name: "Open the hours" }).click();
+  const chevron = page
+    .locator(".dock .dk-head")
+    .getByRole("button", { name: "Show waves, sky and sea" });
+  await expect(chevron).toHaveAttribute("aria-expanded", "false");
+  // No folding the hours away, and no handle to do it with.
+  await expect(
+    page.getByRole("button", { name: /(Fold|Open) the hours/ }),
+  ).toHaveCount(0);
+  await expect(page.locator(".dock-grab")).toHaveCount(0);
+  const height = async () =>
+    (await page.locator(".dock").boundingBox())!.height;
+  const before = await height();
+  await chevron.click();
+  const open = page
+    .locator(".dock .dk-head")
+    .getByRole("button", { name: "Hide waves, sky and sea" });
+  await expect(open).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(1);
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+  expect(await height()).toBeGreaterThan(before + 80);
+  await open.click();
+  await expect(page.locator(".dock tr.tt-waves")).toHaveCount(0);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
-test("on a phone the dock opens folded, and its handle opens the hours", async ({
+test("on a phone the dock opens on the hours, with no handle to fold them", async ({
   page,
 }) => {
   await withTides(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".sc-day").first()).toBeVisible({ timeout: 30000 });
-  await expect(page.locator(".dock tr.tt-stars")).toHaveCount(0);
-  await page.locator(".dock-grab").click();
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.locator(".dock-grab")).toHaveCount(0);
+  // The head and the always-there rows, and still under a third of the screen.
+  expect(
+    (await page.locator(".map-footer").boundingBox())!.height,
+  ).toBeLessThan(844 / 3);
   await slider(page).fill("9");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   expect(
@@ -630,7 +719,7 @@ test("the strip runs fifteen days, the coarser far ones in narrower columns", as
   await openDock(page);
   const dates = [...new Set(sampleStrip.map((c) => c.date))];
   expect(dates).toHaveLength(15);
-  await expect(page.locator(".sc-day")).toHaveCount(15);
+  await expect(page.locator(".dock tr.tt-day td")).toHaveCount(15);
   await slider(page).press("End");
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",

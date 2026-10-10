@@ -97,7 +97,7 @@ export default function MapInfo({
           </ul>
           <p>
             Dark hours aren&rsquo;t rated. Your weight and level are in the
-            dock&rsquo;s display options.
+            display options, under your spots at the top right.
           </p>
           <p className="ip-fig">Rated for {riderLine(rider)}</p>
           <p>

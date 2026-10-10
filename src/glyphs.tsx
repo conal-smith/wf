@@ -1,51 +1,12 @@
 /**
  * The chart's small glyphs, drawn as the mockup draws them and coloured from
- * the theme through src/map.css: which way a beach faces, an arrow blowing
- * downwind, and the red star a rider keeps a spot with.
+ * the theme through src/map.css: an arrow blowing downwind, and the red star
+ * a rider keeps a spot with.
  */
 import { useContext, type ReactNode } from "react";
 import { compass } from "../force5/src/weather";
 import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
-
-const FACE8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-export const face8 = (d: number) =>
-  FACE8[Math.round((((d % 360) + 360) % 360) / 45) % 8];
-
-/** Which way the beach faces: a compass, the beach, and the sea beyond it. */
-export function FacingCompass({
-  facing,
-  size = 18,
-}: {
-  facing: number | null | undefined;
-  size?: number;
-}) {
-  if (facing === null || facing === undefined) return null;
-  const label = `Beach faces ${face8(facing)}, ${Math.round(facing)}°`;
-  return (
-    <svg
-      className="g-facing"
-      width={size}
-      height={size}
-      viewBox="-10 -10 20 20"
-      role="img"
-      aria-label={label}
-    >
-      <title>{label}</title>
-      <circle className="g-paper g-stroke" r="8.8" strokeWidth=".9" />
-      <path className="g-stroke" d="M0 -8.8V-6.4" strokeWidth="1.3" />
-      <g transform={`rotate(${Math.round(facing)})`}>
-        <path className="g-sea" d="M0 -7.6L3.1 .2H-3.1Z" />
-        <path
-          className="g-stroke"
-          d="M-5.2 3H5.2"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
-}
 
 /** An arrow blowing downwind for a wind from `from` degrees. */
 export function WindArrow({ from, size = 13 }: { from: number; size?: number }) {

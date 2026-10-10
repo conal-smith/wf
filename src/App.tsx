@@ -73,6 +73,8 @@ import {
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
+// The display options, only when asked for from the map's controls.
+const DisplayFilter = lazy(() => import("./DisplayFilter"));
 // Gust is a launcher in the corner until he is asked: his code comes once
 // the chart is up, not before it.
 const Companion = lazy(() =>
@@ -208,11 +210,10 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  /** The layers or your spots, open beside the map's controls. */
+  /** The layers, your spots or the display options, beside the map's controls. */
   const [panel, setPanel] = useState<MapPanel>(null);
   /** The information dialog's part to open at, or null while it is shut. */
   const [info, setInfo] = useState<InfoSection | null>(null);
-  const [folded, setFolded] = useState(() => window.matchMedia(PHONE).matches);
   const [view, setView] = useState<DockView>("table");
   const [windStyle, setWindStyle] = useState<WindStyle>(() => {
     const saved = store.get(WIND_KEY) as WindStyle | null;
@@ -361,6 +362,10 @@ export default function App() {
       ? null
       : spotBlend.blend;
   const [wantModels, setWantModels] = useState(false);
+  // The display options list every wind model, and say which answered.
+  useEffect(() => {
+    if (panel === "options") setWantModels(true);
+  }, [panel]);
   const { models } = useModelAvailability(
     !!pendingModel,
     undefined,
@@ -733,7 +738,6 @@ export default function App() {
     setPoint(spot);
     setFocusId(spot.id);
     fav.visit(spot.id);
-    if (phone) setFolded(true);
     if (fly) controls.current?.flyTo(spot);
   };
   /** A tap on the open map: that point's forecast in the dock, and the focus on it. */
@@ -1039,6 +1043,18 @@ export default function App() {
                   onToggleStar={(id) => fav.toggle(id)}
                 />
               )}
+              options={(close) => (
+                <Suspense fallback={null}>
+                  <DisplayFilter
+                    prefs={prefs}
+                    onChange={changePrefs}
+                    models={models.filter(
+                      (model) => model.entry.kind === "wind",
+                    )}
+                    onClose={close}
+                  />
+                </Suspense>
+              )}
               infoOpen={!!info}
               onInfo={setInfo}
               windStyle={windStyle}
@@ -1144,14 +1160,11 @@ export default function App() {
                   onSelect={(at) => selectColumn(at)}
                   now={clockNow}
                   prefs={prefs}
-                  onPrefsChange={changePrefs}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={!picked && starred.includes(dockSpot.id)}
                   onToggleStar={() => fav.toggle(dockSpot.id)}
                   tide={picked ? null : tide.tide}
-                  folded={folded}
-                  onFold={setFolded}
                   phone={phone}
                   view={view}
                   onView={setView}
@@ -1162,7 +1175,6 @@ export default function App() {
                       ? void chooseModel(reachable.id, column.validTime)
                       : undefined
                   }
-                  mapModel={manifest?.modelName ?? "HARMONIE"}
                 />
               )}
             </div>
