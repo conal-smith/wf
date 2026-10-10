@@ -40,10 +40,14 @@ const BUCKETS = 4;
 const TRAIL = 24;
 const MAX_AGE = 70;
 const BINS = 12;
-/** Opacity of the wash over the sea, and over land the mask has not reached. */
-const WASH_SEA = 0.5;
-const WASH_LAND = 0.1;
-const WASH_UNKNOWN = 0.22;
+/**
+ * Opacity of the wash over the sea, over land, and where the mask has not
+ * reached yet. Strong enough to read the wind by: at a half and a tenth the
+ * sea was pale and the land all but blank.
+ */
+const WASH_SEA = 0.72;
+const WASH_LAND = 0.42;
+const WASH_UNKNOWN = 0.55;
 
 export interface WindLayerOptions {
   ink: string;
@@ -161,6 +165,11 @@ export function createWindLayer(
     field = f;
     const n = Math.round(((width * height) / 1000) * density);
     cloud = Array.from({ length: n }, () => spawn());
+    // Run the new cloud a trail's length before the first frame is drawn, so
+    // the arrows come back whole when the camera stops instead of growing
+    // their trails for most of a second. A few milliseconds, once per view.
+    const coloured = style === "arrows";
+    for (let i = 0; i < TRAIL; i++) advance(coloured);
     ctx.clearRect(0, 0, width, height);
   };
 
@@ -195,16 +204,8 @@ export function createWindLayer(
   };
 
   const s = [0, 0, 0];
-  const step = (now: number) => {
-    raf = 0;
-    if (destroyed || paused || !frame || document.hidden || map.isMoving())
-      return;
-    raf = requestAnimationFrame(step);
-    if (now - last < 30) return;
-    last = now;
-    if (!field) build();
-    if (!field) return;
-    const coloured = style === "arrows";
+  /** Every particle one step on, its trail with it; out of the field, respawned. */
+  const advance = (coloured: boolean) => {
     for (const p of cloud) {
       if (p.age > MAX_AGE || !at(p.x, p.y, s)) {
         spawn(p);
@@ -223,6 +224,18 @@ export function createWindLayer(
       p.trail.push(p.x, p.y);
       if (p.trail.length > (TRAIL + 1) * 2) p.trail.splice(0, 2);
     }
+  };
+  const step = (now: number) => {
+    raf = 0;
+    if (destroyed || paused || !frame || document.hidden || map.isMoving())
+      return;
+    raf = requestAnimationFrame(step);
+    if (now - last < 30) return;
+    last = now;
+    if (!field) build();
+    if (!field) return;
+    const coloured = style === "arrows";
+    advance(coloured);
     ctx.clearRect(0, 0, width, height);
     ctx.lineCap = "round";
     drawn = 0;

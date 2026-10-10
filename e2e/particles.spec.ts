@@ -138,11 +138,11 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
   await layers.click();
   const panel = page.getByRole("group", { name: "Layers" });
   for (const [name, style] of [
-    ["Faint wash", "wash"],
+    ["Wash", "wash"],
     ["Coloured arrows", "arrows"],
     ["Ink", "ink"],
     ["Coloured arrows", "arrows"],
-    ["Faint wash", "wash"],
+    ["Wash", "wash"],
     ["Ink", "ink"],
   ]) {
     await panel.getByRole("radio", { name }).check();
@@ -151,7 +151,7 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
     await page.waitForTimeout(150);
     await expect.poll(() => inked(page), { message: name }).toBeGreaterThan(100);
   }
-  await panel.getByRole("radio", { name: "Faint wash" }).check();
+  await panel.getByRole("radio", { name: "Wash" }).check();
   await page.reload();
   await expect(page.locator(".particle-canvas")).toHaveAttribute(
     "data-wind-style",

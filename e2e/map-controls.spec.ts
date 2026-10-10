@@ -33,7 +33,7 @@ test("the chart's controls: zoom and the layers by keyboard, with the credits be
   await page.keyboard.press("Enter");
   const panel = page.getByRole("group", { name: "Layers" });
   await expect(panel).toBeVisible();
-  for (const name of ["Ink", "Coloured arrows", "Faint wash"])
+  for (const name of ["Ink", "Coloured arrows", "Wash"])
     await expect(panel.getByRole("radio", { name })).toBeVisible();
   await expect(panel.getByRole("radio", { name: "Ink" })).toBeChecked();
   await expect(panel.locator(".knot-scale")).toBeVisible();

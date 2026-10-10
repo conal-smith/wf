@@ -12,7 +12,7 @@ import type { InfoSection } from "./mapInfoContext";
 const WIND_LABEL: Record<WindStyle, string> = {
   ink: "Ink",
   arrows: "Coloured arrows",
-  wash: "Faint wash",
+  wash: "Wash",
 };
 const CHART_LABEL: Record<keyof ChartLayers, string> = {
   tints: "Depth tints",

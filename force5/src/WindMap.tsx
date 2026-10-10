@@ -338,11 +338,27 @@ export default function WindMap(props: Props) {
       latest.current.onReady({
         map,
         flyTo(spot) {
+          // As long as the trip: a spot a few kilometres along the same
+          // coast is a short glide, the length of the country a longer
+          // flight. The wind's arrows rest while the camera moves, so a fixed
+          // 2.2 s left them off for that long even for the next bay over.
+          const zoom = Math.max(map.getZoom(), 10.4);
+          const center = seaward(spot);
+          const from = map.project(map.getCenter());
+          const to = map.project(center);
+          const { clientWidth: w, clientHeight: h } = map.getContainer();
+          const across =
+            Math.hypot(to.x - from.x, to.y - from.y) / Math.hypot(w, h);
+          const climb = Math.abs(zoom - map.getZoom());
+          const duration = Math.min(
+            1600,
+            450 + 300 * Math.min(climb, 3) + 500 * Math.min(across, 1.5),
+          );
           map.flyTo({
-            center: seaward(spot),
-            zoom: Math.max(map.getZoom(), 10.4),
+            center,
+            zoom,
             padding: padding(),
-            duration: latest.current.reducedMotion ? 0 : 2200,
+            duration: latest.current.reducedMotion ? 0 : duration,
             curve: 1.5,
             essential: true,
           });
