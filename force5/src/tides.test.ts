@@ -5,6 +5,7 @@ import {
   loadTides,
   tideAt,
   tideForSpot,
+  tideForStation,
   tideSpotNote,
   tideStation,
   tideStations,
@@ -147,6 +148,23 @@ describe("station curve", () => {
     await tideForSpot(m, "dollymount");
     expect(urls[1]).toContain("marine/tides/dublin-port.json");
     expect(await tideForSpot(m, "mizen")).toBeNull();
+  });
+  it("loads a station's curve by id, for a place that is not a spot", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        urls.push(url);
+        return ok(curve());
+      }),
+    );
+    const fenit = await tideForStation(manifest(), "fenit");
+    expect(fenit?.station.name).toBe("Fenit");
+    expect(urls[0]).toContain("marine/tides/fenit.json");
+    // Mid-flood between the 01:30 (1.8 m) and 02:00 (2.4 m) samples.
+    expect(tideAt(fenit!.curve, "2026-09-14T01:45:00Z")).toBeCloseTo(2.1);
+    expect(await tideForStation(manifest(), "cobh")).toBeNull();
+    expect(urls).toHaveLength(1);
   });
   it("keeps a spot the adapter left unmapped, and explains it", () => {
     const m = validateTideManifest({

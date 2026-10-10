@@ -18,8 +18,19 @@ import { X } from "lucide-react";
 import { WindMap } from "../force5/src";
 import type {
   ChartLayers,
+  FoilView,
   MapControls as Controls,
 } from "../force5/src/WindMap";
+import {
+  areaAt,
+  foilColours,
+  foilRamp,
+  foilReadout,
+  nearestArea,
+} from "../force5/src/foilDepth";
+import { elevationAt } from "../force5/src/foilProbe";
+import FoilLegend from "./FoilLegend";
+import { useFoilDepth } from "./useFoilDepth";
 import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
@@ -132,6 +143,7 @@ const DEFAULT_LAYERS: ChartLayers = {
   soundings: true,
   relief: true,
   names: true,
+  foil: false,
 };
 
 function useMedia(query: string) {
@@ -226,6 +238,9 @@ export default function App() {
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [scale, setScale] = useState("");
+  const [centre, setCentre] = useState<{ lon: number; lat: number } | null>(
+    null,
+  );
   // Gust comes once the chart is drawn and the page has a moment to spare.
   const [gustDue, setGustDue] = useState(false);
   useEffect(() => {
@@ -597,6 +612,98 @@ export default function App() {
     (d) => selected >= d.start && selected < d.start + d.count,
   );
 
+  /* ---- foilable depth at the selected tide ---- */
+  const foilState = useFoilDepth(layers.foil);
+  const foilPalette = useMemo(
+    () => foilColours(getComputedStyle(document.documentElement)),
+    [],
+  );
+  const foilTime = column?.time ?? null;
+  const foilTides = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const area of foilState.manifest?.areas ?? []) {
+      const tide = foilState.tides[area.station];
+      out[area.id] =
+        tide && foilTime !== null ? tideAt(tide.curve, foilTime) : null;
+    }
+    return out;
+  }, [foilState, foilTime]);
+  const foilViews = useMemo<FoilView[] | null>(() => {
+    const m = foilState.manifest;
+    if (!layers.foil || !m) return null;
+    return m.areas.flatMap((area) => {
+      const tide = foilTides[area.id];
+      if (tide === null || tide === undefined) return [];
+      return [
+        {
+          id: area.id,
+          url: new URL(
+            `${import.meta.env.BASE_URL}${area.url}`,
+            window.location.href,
+          ).href,
+          bounds: area.bounds,
+          minzoom: area.minzoom,
+          maxzoom: area.maxzoom,
+          tileSize: area.tileSize,
+          color: foilRamp(tide, foilPalette, {
+            dryCeiling: area.dryCeilingMetres,
+            floor: m.floorMetres,
+            noSurvey: m.noSurveyMetres,
+          }),
+          attribution: m.attribution,
+        },
+      ];
+    });
+  }, [layers.foil, foilState.manifest, foilTides, foilPalette]);
+  const foilArea = foilState.manifest
+    ? (picked && areaAt(foilState.manifest.areas, picked.lon, picked.lat)) ||
+      (centre
+        ? nearestArea(foilState.manifest.areas, centre.lon, centre.lat)
+        : foilState.manifest.areas[0])
+    : null;
+  const foilStation = foilArea
+    ? (foilState.tides[foilArea.station]?.station.name ?? foilArea.station)
+    : null;
+  /** The seabed under the last point tapped while the layer was on. */
+  const [foilProbe, setFoilProbe] = useState<{
+    lon: number;
+    lat: number;
+    area: string;
+    z: number | "unsurveyed" | null;
+  } | null>(null);
+  const probeFoil = (lon: number, lat: number) => {
+    const m = foilState.manifest;
+    const area = layers.foil && m ? areaAt(m.areas, lon, lat) : null;
+    if (!m || !area) {
+      setFoilProbe(null);
+      return;
+    }
+    const url = new URL(
+      `${import.meta.env.BASE_URL}${area.url}`,
+      window.location.href,
+    ).href;
+    elevationAt(area, url, lon, lat, m)
+      .then((z) => setFoilProbe({ lon, lat, area: area.id, z }))
+      .catch(() => setFoilProbe(null));
+  };
+  const foilProbeText =
+    foilProbe &&
+    picked &&
+    foilProbe.lon === picked.lon &&
+    foilProbe.lat === picked.lat &&
+    foilArea?.id === foilProbe.area &&
+    foilTides[foilProbe.area] !== null &&
+    foilTides[foilProbe.area] !== undefined &&
+    foilTime !== null &&
+    foilStation
+      ? foilReadout(
+          foilProbe.z,
+          foilTides[foilProbe.area]!,
+          clock(foilTime),
+          foilStation,
+        )
+      : null;
+
   /* ---- choosing a spot ---- */
   const tide = useSpotTide(picked ? undefined : point?.id);
   const selectSpot = (spot: Spot, fly = true) => {
@@ -625,6 +732,7 @@ export default function App() {
     setFocusId(AT_POINT);
     setPopupOpen(false);
     setKeyOpen(false);
+    probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => {
     setFocusId(null);
@@ -648,6 +756,7 @@ export default function App() {
       const p = 10 ** (Math.floor(Math.log10(n)) - 1);
       n = Math.round(n / p) * p;
       setScale(`SCALE 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
+      setCentre({ lon: c.lng, lat: c.lat });
     };
     update();
     map.on("moveend", update);
@@ -831,6 +940,12 @@ export default function App() {
           blend {prefs.blendModels.length} models
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
+        {foilState.manifest && (
+          <li>
+            Foilable depth (pilot areas): {foilState.manifest.attribution}{" "}
+            Heights above LAT against Marine Institute tide predictions.
+          </li>
+        )}
         <li>
           Coast and places: ©{" "}
           <a
@@ -952,6 +1067,7 @@ export default function App() {
               windStyle={windStyle}
               rideStops={rideStops}
               layers={layers}
+              foil={foilViews}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight + (phone ? 54 : 0)}
               rightInset={phone ? 0 : SIDE_INSET}
@@ -1013,6 +1129,20 @@ export default function App() {
                   </button>
                 )}
               </div>
+            )}
+            {layers.foil && (
+              <FoilLegend
+                area={foilArea}
+                station={foilStation}
+                tide={foilArea ? (foilTides[foilArea.id] ?? null) : null}
+                when={
+                  foilTime !== null
+                    ? `${dayShort(foilTime)} ${clock(foilTime)}`
+                    : ""
+                }
+                readout={foilProbeText}
+                error={foilState.error}
+              />
             )}
             <div className="map-print">
               <InfoPop label="Sources and small print" wide side="above">

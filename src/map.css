@@ -1232,6 +1232,71 @@
 .map-model[data-run-state="expired"] {
   color: var(--color-warn);
 }
+
+/* ---------- foilable depth: the key ---------- */
+.foil-key {
+  position: absolute;
+  left: 16px;
+  bottom: calc(var(--dock-height) + 44px);
+  z-index: 18;
+  width: 252px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.foil-key h3 {
+  margin: 0 0 4px;
+  font: 500 9.5px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.foil-key .foil-at {
+  margin: 0 0 6px;
+  font: 500 11px var(--font-mono);
+  color: var(--color-ink);
+}
+.foil-key .foil-at.is-error {
+  color: var(--color-warn);
+}
+.foil-key ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.foil-key li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 1px 0;
+}
+.foil-key .fk {
+  flex: none;
+  width: 22px;
+  height: 10px;
+  border: 1px solid var(--color-ink);
+}
+.foil-key .fk-deep {
+  background: var(--map-foil-deep);
+}
+.foil-key .fk-shallow {
+  background: var(--map-foil-shallow);
+}
+.foil-key .fk-dry {
+  background: var(--map-foil-dry);
+}
+.foil-key .fk-unsurveyed {
+  background: var(--map-foil-unsurveyed);
+}
+.foil-key .foil-probe {
+  margin: 6px 0 0;
+  font: 500 11px var(--font-mono);
+}
+.foil-key .foil-small {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--color-ink-muted);
+}
 .map-footer {
   position: absolute;
   left: 0;
@@ -1344,6 +1409,16 @@
   .map-print {
     left: 12px;
     bottom: calc(var(--dock-height) + 60px);
+  }
+  .foil-key {
+    left: 8px;
+    bottom: calc(var(--dock-height) + 88px);
+    width: min(236px, calc(100vw - 70px));
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .foil-key .foil-small {
+    font-size: 10.5px;
   }
   .frame-status {
     top: 62px;

@@ -1,0 +1,72 @@
+import {
+  FOIL_CLEARANCE_METRES,
+  surveyLine,
+  type FoilArea,
+} from "../force5/src/foilDepth";
+
+/**
+ * The key to the foilable-depth layer, bottom left over the chart: the three
+ * colours, the tide and the hour they are drawn for, a tapped point's water,
+ * and what the picture cannot know.
+ */
+export default function FoilLegend({
+  area,
+  station,
+  tide,
+  when,
+  readout,
+  error,
+  clearance = FOIL_CLEARANCE_METRES,
+}: {
+  area: FoilArea | null;
+  station: string | null;
+  tide: number | null;
+  /** "Sat 18:00". */
+  when: string;
+  readout: string | null;
+  error: string | null;
+  clearance?: number;
+}) {
+  return (
+    <section className="foil-key chart-box" aria-label="Foilable depth key">
+      <h3>Foilable depth</h3>
+      {error ? (
+        <p className="foil-at is-error" role="status">
+          {error}
+        </p>
+      ) : area && station ? (
+        <p className="foil-at" role="status" data-foil-tide={tide ?? ""}>
+          {tide === null
+            ? `No tide prediction at ${station} for ${when}.`
+            : `${when} · tide ${tide.toFixed(1)} m above LAT at ${station}`}
+        </p>
+      ) : (
+        <p className="foil-at">Loading the survey…</p>
+      )}
+      <ul>
+        <li>
+          <i className="fk fk-deep" aria-hidden="true" />
+          Deep enough, {clearance.toFixed(1)} m or more
+        </li>
+        <li>
+          <i className="fk fk-shallow" aria-hidden="true" />
+          Wet, too shallow for the mast
+        </li>
+        <li>
+          <i className="fk fk-dry" aria-hidden="true" />
+          Dry at this tide
+        </li>
+        <li>
+          <i className="fk fk-unsurveyed" aria-hidden="true" />
+          Always wet, depth not surveyed
+        </li>
+      </ul>
+      {readout && <p className="foil-probe">{readout}</p>}
+      <p className="foil-small">
+        Approximate: astronomical tide, no surge or waves
+        {area ? `; survey ${surveyLine(area)}` : ""}. Pilot areas only. Not for
+        navigation.
+      </p>
+    </section>
+  );
+}

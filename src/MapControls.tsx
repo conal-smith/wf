@@ -16,6 +16,7 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
   soundings: "Contours, soundings",
   relief: "Land relief",
   names: "Spot names",
+  foil: "Foilable depth at the tide (pilot)",
 };
 
 /**

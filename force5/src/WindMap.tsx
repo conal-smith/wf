@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import * as maplibregl from "maplibre-gl";
-import type { GeoJSONSource } from "maplibre-gl";
+import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { loopPath } from "../../ui/penPaths";
 import {
@@ -34,6 +34,22 @@ export interface ChartLayers {
   soundings: boolean;
   relief: boolean;
   names: boolean;
+  /** Foilable depth at the selected tide, in the pilot areas. */
+  foil: boolean;
+}
+
+/** One pilot area's foilable-depth layer, as the map draws it. */
+export interface FoilView {
+  id: string;
+  /** The archive's absolute URL. */
+  url: string;
+  bounds: [number, number, number, number];
+  minzoom: number;
+  maxzoom: number;
+  tileSize: number;
+  /** The `color-relief-color` for the selected tide (foilRamp). */
+  color: ExpressionSpecification;
+  attribution: string;
 }
 
 /** What the page can ask of the camera. */
@@ -62,6 +78,8 @@ type Props = {
   windStyle: WindStyle;
   rideStops: readonly RideStop[];
   layers: ChartLayers;
+  /** The foilable-depth areas to draw, or null to draw none. */
+  foil: readonly FoilView[] | null;
   reducedMotion: boolean;
   /** The dock's height, and on a wide screen the side panel's width. */
   bottomInset: number;
@@ -150,6 +168,7 @@ export default function WindMap(props: Props) {
     windStyle,
     rideStops,
     layers,
+    foil,
     reducedMotion,
     bottomInset,
     rightInset,
@@ -411,6 +430,50 @@ export default function WindMap(props: Props) {
           );
     map.getContainer().classList.toggle("no-names", !layers.names);
   }, [ready, layers]);
+
+  // Foilable depth: one raster-dem source and color-relief layer per pilot
+  // area, made the first time it is asked for and kept; the tide moves only
+  // the ramp's stops. Over the depth tints and the contours, under the rivers,
+  // the coast's ink and every name.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const shown = new Set<string>();
+    for (const area of foil ?? []) {
+      const id = `foil-${area.id}`;
+      shown.add(id);
+      if (!map.getSource(id))
+        map.addSource(id, {
+          type: "raster-dem",
+          url: `pmtiles://${area.url}`,
+          encoding: "terrarium",
+          tileSize: area.tileSize,
+          bounds: area.bounds,
+          minzoom: area.minzoom,
+          maxzoom: area.maxzoom,
+          attribution: area.attribution,
+        });
+      if (!map.getLayer(id))
+        map.addLayer(
+          {
+            id,
+            type: "color-relief",
+            source: id,
+            minzoom: area.minzoom,
+            paint: {
+              "color-relief-color": area.color,
+              "color-relief-opacity": 0.82,
+            },
+          },
+          map.getLayer("rivers") ? "rivers" : undefined,
+        );
+      else map.setPaintProperty(id, "color-relief-color", area.color);
+      map.setLayoutProperty(id, "visibility", "visible");
+    }
+    for (const id of map.getLayersOrder())
+      if (id.startsWith("foil-") && !shown.has(id))
+        map.setLayoutProperty(id, "visibility", "none");
+  }, [ready, foil]);
 
   // The lights: made once per set of places, then written to in place.
   useEffect(() => {
