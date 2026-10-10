@@ -19,8 +19,9 @@
 id = "harmonie"
 models = ["harmonie"]
 args = ["--step", "1"]
-minutes = [45]              # Hourly: Met Éireann publishes an hourly DINI cycle.
-timeout_seconds = 3300
+hours = [6, 12]             # Twice a day: 7 am and 1 pm Irish summer time, 6 am and
+minutes = [0]               # noon in winter. Each run is ~810 MB of whole files, so
+timeout_seconds = 3300      # only when riders are planning a session.
 
 [[jobs]]
 id = "icon-eu"
@@ -33,7 +34,7 @@ timeout_seconds = 3300
 [[jobs]]
 id = "icon-eu-weather"
 models = ["icon-eu-weather"]
-hours = [3, 9, 15, 21]      # The same four ICON-EU cycles, after the wind job's slot.
+hours = [3]                 # Once a day: the 00 UTC cycle, ready before the morning.
 minutes = [40]
 timeout_seconds = 3300
 
@@ -53,7 +54,8 @@ timeout_seconds = 3300
 [[jobs]]
 id = "ecmwf-ens"
 models = ["ecmwf-ens"]
-hours = [8, 10, 20, 22]     # 00/12 UTC ENS publishes ~7-9 h after the run; ~2 GB each.
+hours = [8, 10]             # The 00 UTC run only (~7-9 h late); 10:35 is a retry that
+                            # skips the download once 08:35 has published. ~0.49 GB a day.
 minutes = [35]
 timeout_seconds = 3300
 

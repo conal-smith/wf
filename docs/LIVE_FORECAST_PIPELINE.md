@@ -173,12 +173,17 @@ ensemble (stream `enfo`, type `pf`) and publishes `weather/ecmwf-ens.json`. It
 never requests `type=cf`: IFS Cycle 50r1 retired the `scda` stream and merged the
 ENS control into `oper`, which we publish separately as the `ecmwf` model, so
 `ensemble.control` is `null`. The worker passes `--source`; member count, step and
-horizon are the importer's own options and default to **25 members, 6-hourly to
-+144h** (25 steps, `stepHours: 6` with a single-entry `stepRanges` ladder that
-describes the cadence exactly).
+horizon are the importer's own options and default to **10 members of the 00 UTC
+run, 6-hourly from +60h to +144h** (15 steps). The ensemble is kept for the days
+HARMONIE does not reach: `--from-hour 60` starts where HARMONIE's 2 km forecast
+stops, and `--cycle 0` makes discovery look for the 00 UTC run only, so the
+service downloads one ensemble a day. Gusts are kept.
 
-Only the ensemble **mean** is published as map frames, with the same Ireland crop
-and frame contract as the control product. Per-spot member series live in the
+With `--from-hour 0` the ensemble **mean** is also published as map frames, with
+the same Ireland crop and frame contract as the control product, and a
+single-entry `stepRanges` ladder. A later start publishes no frames, no
+`stepRanges` and no `gustMissingHours`: it is a chart-only ensemble, which the
+publisher and the site both accept. Per-spot member series live in the
 manifest (`spotMembers[spotId][index].u/v/gust`, arrays indexed by member), so
 browsers never fetch member grids. `spotForecasts` holds the ensemble mean.
 The publisher validates member counts, alignment, finiteness and ranges for
@@ -187,8 +192,9 @@ every spot and step before uploading anything.
 Bandwidth is the operational constraint, not CPU. Measured on 16 September 2026
 from the real 0.25° `enfo` index: **0.84 MB** per `10u` member-message, **0.83 MB**
 per `10v`, **1.39 MB** per `10fg`, plus a **2.0 MB** index per step — about
-3.07 MB per member per step. The default run therefore downloads about **1.95 GB**;
-all 50 members to +240h would be **6.35 GB** per run. Each run prints its own
+3.07 MB per member per step. The default run (10 members × 15 steps plus 15
+indexes) therefore downloads about **0.49 GB**; 25 members from +0h was **1.95 GB**,
+and all 50 members to +240h would be **6.35 GB** per run. Each run prints its own
 measured transfer. Egress-priced environments should count 2 GB × 2 runs per day,
 plus the per-step index overhead, which shrinks when fewer, larger steps are asked
 for.
@@ -201,10 +207,10 @@ ensemble-mean frames (1.44 MB of JSON, 39–61 kB each) and bundle validation in
 1-hour intervals through +90h and 3-hour intervals from +96h, recorded per frame.
 The run wrote only to a scratch work directory; no AWS resources were created.
 
-Schedule ENS **twice daily** against the 00 and 12 UTC cycles (hourly discovery
-checks are fine: the importer refuses a run older than 24 hours and publishes only
-a complete member set). The 06/18 cycles exist but stop at +144h; they can be used
-by passing `--hours 144`, which the worker does not do. The AWS mirror returned
+Schedule ENS **once a day** against the 00 UTC cycle, at 08:35 UTC with a retry at
+10:35 that skips the download once the run is published. The importer refuses a run
+older than 24 hours and publishes only a complete member set; the registry's 36-hour
+limit covers the day until the next run replaces it. The AWS mirror returned
 sustained `503 SlowDown` during development while other jobs were active, so the
 importer allows 6 retries with a 10-second backoff and honours `--source ecmwf`
 or `--source google`; keep concurrency at 1–2 readers (`--workers`).

@@ -220,7 +220,7 @@ class ENSTests(unittest.TestCase):
     def refresh(self, *extra, client=None):
         client = client or FakeClient(self.run)
         argv = ["fetch_ecmwf_ens.py", "--run", self.run, "--members", "4",
-                "--step", "6", "--hours", "12", *extra]
+                "--step", "6", "--hours", "12", "--from-hour", "0", *extra]
         with patch("sys.argv", argv), patch.object(ens, "ROOT", self.root), \
              patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(self.spots)}), \
              patch.object(ens, "ens_client", return_value=client):
@@ -272,6 +272,35 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(asked[0]["param"], ["10u", "10v"])
         self.assertEqual(asked[6]["param"], ["10u", "10v", "10fg"])
 
+    def test_a_later_start_publishes_member_series_only(self):
+        manifest, client = self.refresh("--from-hour", "6")
+        self.assertEqual(manifest["frames"], [])
+        self.assertNotIn("stepRanges", manifest)
+        self.assertNotIn("gustMissingHours", manifest)
+        self.assertEqual(sorted(request["step"] for request in client.requests), [6, 12])
+        series = manifest["spotMembers"]["brandon"]
+        self.assertEqual([entry["hour"] for entry in series], [6, 12])
+        self.assertEqual(series[0]["gust"], [11, 12, 13, 14])
+        self.assertEqual([entry["hour"] for entry in manifest["spotForecasts"]["brandon"]], [6, 12])
+        self.assertFalse(any((self.root / "public/weather").glob("ecmwf-ens-*/*")))
+        s3 = FakeS3()
+        now = datetime.strptime(self.run, "%Y%m%d%H").replace(tzinfo=timezone.utc) + timedelta(hours=1)
+        self.assertEqual(publish(s3, self.root / "public", "ecmwf-ens", "test",
+                                 max_age_hours=36, now=now), "published")
+        self.assertEqual(s3.writes, ["weather/ecmwf-ens.json"])
+
+    def test_discovers_only_the_requested_daily_cycle(self):
+        client = FakeClient(self.run)
+        asked = {}
+        client.latest = lambda **kwargs: asked.update(kwargs) or FakeClient.latest(client)
+        argv = ["fetch_ecmwf_ens.py", "--members", "4", "--step", "6", "--hours", "12",
+                "--from-hour", "6"]
+        with patch("sys.argv", argv), patch.object(ens, "ROOT", self.root), \
+             patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(self.spots)}), \
+             patch.object(ens, "ens_client", return_value=client):
+            main()
+        self.assertEqual(asked["time"], 0)
+
     def test_cached_step_is_revalidated_and_repaired(self):
         self.refresh()
         cache = self.root / ".cache/ecmwf-ens" / self.run / "006-4m-v1.grib2"
@@ -292,7 +321,8 @@ class ENSTests(unittest.TestCase):
 
     def test_rejects_unusable_arguments_without_downloading(self):
         for extra in [["--members", "1"], ["--members", "51"], ["--hours", "13"],
-                      ["--hours", "400"], ["--step", "3", "--hours", "150"], ["--workers", "9"]]:
+                      ["--hours", "400"], ["--step", "3", "--hours", "150"], ["--workers", "9"],
+                      ["--from-hour", "5"], ["--from-hour", "12"], ["--cycle", "3"]]:
             with self.subTest(extra=extra), self.assertRaises(SystemExit):
                 self.refresh(*extra)
 

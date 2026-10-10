@@ -42,16 +42,16 @@ PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 # their entries.
 MODELS = {
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
-                 "kind": "wind", "maxAgeHours": 12, "cache": "harmonie", "readsPublishedRun": True},
+                 "kind": "wind", "maxAgeHours": 24, "cache": "harmonie", "readsPublishedRun": True},
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
                 "kind": "wind", "maxAgeHours": 12, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
-                        "kind": "weather", "maxAgeHours": 12, "cache": "grib",
+                        "kind": "weather", "maxAgeHours": 30, "cache": "grib",
                         "readsPublishedRun": True},
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
               "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf", "readsPublishedRun": True},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
-                  "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf-ens",
+                  "kind": "wind", "maxAgeHours": 36, "cache": "ecmwf-ens",
                   "readsPublishedRun": True},
     # AIFS Single runs at all four cycles about six hours behind the clock, so a run
     # is never more than twelve hours old when the next one is due. Its cadence is a

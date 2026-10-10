@@ -87,12 +87,12 @@ in UTC. The shipped schedule is:
 
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`        | every hour at :45  | Met Éireann publishes an hourly DINI cycle            |
+| `harmonie`        | 06/12 at :00       | twice a day; ~810 MB a run, 24 h age limit           |
 | `icon-eu`         | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag      |
-| `icon-eu-weather` | 03/09/15/21 at :40 | the same cycles, after the ICON-EU wind job's slot    |
+| `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `ecmwf`           | every hour at :20  | hourly check; the importer picks the newest full run  |
 | `harmonie-eps`    | every hour at :50  | lagged control members; one new cycle each hour       |
-| `ecmwf-ens`       | 08/10/20/22 at :35 | 00/12 ENS publishes ~7–9 h after the run; ~2 GB each  |
+| `ecmwf-ens`       | 08/10 at :35       | 00 UTC run only, 10 members, +60h–+144h; ~0.49 GB/day |
 | `aifs`            | 00/06/12/18 at :25 | all four AIFS cycles, each ~6 h after its run time    |
 | `gfs`             | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
 | `gefs`            | 05/11/17/23 at :10 | the 0.25° members finish 4.5–6 h after run time       |

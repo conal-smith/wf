@@ -19,8 +19,12 @@
       "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
       "schedule": {
         "at": {
+          "hours": [
+            6,
+            12
+          ],
           "minutes": [
-            45
+            0
           ]
         },
         "timezone": "UTC"
@@ -136,10 +140,7 @@
       "schedule": {
         "at": {
           "hours": [
-            3,
-            9,
-            15,
-            21
+            3
           ],
           "minutes": [
             40
@@ -303,9 +304,7 @@
         "at": {
           "hours": [
             8,
-            10,
-            20,
-            22
+            10
           ],
           "minutes": [
             35

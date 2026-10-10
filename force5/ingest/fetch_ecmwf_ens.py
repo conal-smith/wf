@@ -28,8 +28,11 @@ import timing
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
 # 0.84 MB (10u), 0.83 MB (10v) and 1.39 MB (10fg), plus a 2.0 MB step index.
-# 25 members, 6-hourly to +144h therefore downloads about 1.95 GB per run.
-MEMBERS, STEP, HOURS = 25, 6, 144
+# 25 members, 6-hourly from +0h to +144h therefore downloads about 1.95 GB per run.
+# The defaults keep the ensemble for the days HARMONIE does not reach: 10 members of
+# the 00 UTC run only, from +60h (where HARMONIE's 2 km forecast stops) to +144h,
+# 15 steps or about 0.49 GB a day. Gusts stay: they are what riders decide on.
+MEMBERS, STEP, HOURS, FROM_HOUR, CYCLE = 10, 6, 144, 60, 0
 MEMBER_LIMIT = 50
 WIND_PARAMS = {165: "u", 166: "v"}
 GUST_PARAMS = (49, 123, 228028, 237318)
@@ -210,6 +213,11 @@ def main():
     parser.add_argument("--step", type=int, choices=[3, 6, 12], default=STEP,
                         help=f"Uniform source step in hours (default {STEP})")
     parser.add_argument("--hours", type=int, default=HOURS, help=f"Horizon (default {HOURS})")
+    parser.add_argument("--from-hour", type=int, default=FROM_HOUR,
+                        help=f"First step (default {FROM_HOUR}); above 0 publishes member series "
+                        "only, with no map frames")
+    parser.add_argument("--cycle", type=int, choices=[0, 6, 12, 18], default=CYCLE,
+                        help=f"Which daily run to discover (default {CYCLE:02d} UTC)")
     parser.add_argument("--workers", type=int, default=2, help="Concurrent ranged downloads")
     args = parser.parse_args()
     if not 2 <= args.members <= MEMBER_LIMIT:
@@ -218,14 +226,20 @@ def main():
         parser.error("Horizon must be a multiple of the step, at most 360 hours")
     if args.step == 3 and args.hours > 144:
         parser.error("The source is 6-hourly beyond +144h; use --step 6 or --hours 144")
+    if not 0 <= args.from_hour < args.hours or args.from_hour % args.step:
+        parser.error("--from-hour must be a multiple of the step and below the horizon")
     if not 1 <= args.workers <= 4:
         parser.error("Use 1–4 concurrent downloads; the mirrors throttle harder above that")
     members = list(range(1, args.members + 1))
     ranges = [{"throughHour": args.hours, "stepHours": args.step}]
-    hours = ladder_hours(ranges)
+    hours = tuple(hour for hour in ladder_hours(ranges) if hour >= args.from_hour)
+    # Map frames need the whole ladder from +0h; a later start is a chart-only
+    # ensemble, which the publisher and the site both accept.
+    with_frames = args.from_hour == 0
     timing.start("discover")
     run = args.run or ens_client(args.source).latest(
-        step=args.hours, stream="enfo", type="pf", number=1, param="10u").strftime("%Y%m%d%H")
+        time=args.cycle, step=args.hours, stream="enfo", type="pf", number=1,
+        param="10u").strftime("%Y%m%d%H")
     run_time = run_datetime(run, args.hours)
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
     if not -1 <= age <= 24:
@@ -242,7 +256,8 @@ def main():
         print(f"ECMWF ENS {run} is already on disk; publishing it without downloading.", flush=True)
         return 0
     print(f"Fetching ECMWF ENS {run}: {len(members)} members × {len(hours)} steps "
-          f"to +{args.hours}h (about {len(members) * (3 * len(hours) - 1)} member messages)", flush=True)
+          f"+{hours[0]}h to +{args.hours}h (about {len(members) * (3 * len(hours) - (0 in hours))} "
+          "member messages)", flush=True)
     cache = ROOT / ".cache" / "ecmwf-ens" / run
     cache.mkdir(parents=True, exist_ok=True)
     timing.start("download", workers=args.workers)
@@ -268,9 +283,10 @@ def main():
         gust = average([fields["gust"][m] for m in members]) if hour else None
         payload = {"model": "ecmwf-ens", "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": gust, "gustIntervalHours": interval, **mean}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "gustIntervalHours": interval})
+        if with_frames:
+            name = publish_frame(output, prefix, payload)
+            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
+                           "gustIntervalHours": interval})
         for spot in spots:
             lon, lat = spot["lon"], spot["lat"]
             spot_forecasts[spot["id"]].append({
@@ -305,14 +321,17 @@ def main():
                      "product: IFS Cycle 50r1 merged it into the oper stream, published here "
                      "as the separate ecmwf model."},
         "spotForecastsDescription": "spotForecasts holds the ensemble MEAN u/v/gust per spot, "
-        "sampled from the published mean frames. Per-member values are in spotMembers, indexed "
+        "sampled from the ensemble-mean grid. Per-member values are in spotMembers, indexed "
         "identically for every hour. A mean is not the most likely outcome; use the members for "
         "spread and probabilities.",
         "gustAvailable": True, "gustMissingHours": [0],
         "gustDescription": "Ensemble-mean scalar maximum 10 m gust over the source GRIB interval ending at each forecast time. Intervals may be 1, 3 or 6 hours and need not equal the spacing between displayed columns; every member of a step shares one interval. Initialization (+0h) has no preceding forecast gust period and is shown as unavailable, not zero.",
         "processing": f"Ensemble mean of perturbed members 1–{len(members)}, cropped from the "
-        f"public 0.25° regular grid without downscaling. Uniform {args.step}-hour source steps to "
-        f"+{args.hours}h; no hourly forecasts are invented. Frames carry the mean only. Member "
+        f"public 0.25° regular grid without downscaling. Uniform {args.step}-hour source steps "
+        f"from +{hours[0]}h to +{args.hours}h; no hourly forecasts are invented. "
+        + ("Frames carry the mean only. " if with_frames else
+           "No map frames: the series start where HARMONIE's 2 km forecast ends. ")
+        + "Member "
         "spread is published solely as per-spot series, because publishing 50 member grids per "
         "step would be unusable in a browser. Ensemble spread describes model uncertainty, not "
         "local terrain effects, and is not a measured probability of rideable conditions.",
@@ -321,6 +340,9 @@ def main():
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "termsUrl": "https://apps.ecmwf.int/datasets/licences/general/",
     }
+    if not with_frames:
+        # A cadence ladder and a missing +0h gust both describe frames from +0h.
+        del manifest["stepRanges"], manifest["gustMissingHours"]
     write_json(output / "ecmwf-ens.json", manifest)
     cached = sum(path.stat().st_size for path in paths)
     print(f"Published {len(frames)} ECMWF ENS mean frames and {len(spots)} member series to "
