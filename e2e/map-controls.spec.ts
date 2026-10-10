@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 
-test("the chart's controls: zoom, all of Ireland, and the layers by keyboard, with the credits behind the i", async ({
+test("the chart's controls: zoom and the layers by keyboard, with the credits behind the i", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -9,10 +9,13 @@ test("the chart's controls: zoom, all of Ireland, and the layers by keyboard, wi
     timeout: 30000,
   });
   const controls = page.getByRole("group", { name: "Map controls" });
+  // No "all of Ireland": it flew out further than anyone wanted.
+  await expect(
+    controls.getByRole("button", { name: "Show all of Ireland" }),
+  ).toHaveCount(0);
   for (const name of [
     "Zoom in",
     "Zoom out",
-    "Show all of Ireland",
     "Layers",
     "Your spots",
     "Map information",

@@ -132,7 +132,7 @@ test("the depths are one static file, read by range requests", async ({
   expect(ranged.every((range) => /^bytes=\d+-\d+$/.test(range))).toBe(true);
 });
 
-test("finding a spot flies there and focuses it, with no box over the map; Escape and IRL clear it", async ({
+test("finding a spot flies there and focuses it, with no box over the map; Escape clears it", async ({
   page,
 }) => {
   await openChart(page);
@@ -163,11 +163,6 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
   await expect(page.locator(".particle-canvas")).toHaveCSS("opacity", "1");
 
   await page.keyboard.press("Escape");
-  await expect(map).not.toHaveClass(/is-focus/);
-
-  await findSpot(page, "Dollymount");
-  await expect(map).toHaveClass(/is-focus/);
-  await page.getByRole("button", { name: "Show all of Ireland" }).click();
   await expect(map).not.toHaveClass(/is-focus/);
 
   // Clearing the focus is not choosing another place: the dock keeps it.

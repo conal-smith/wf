@@ -753,10 +753,6 @@ export default function App() {
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
-  const toIreland = () => {
-    clearFocus();
-    controls.current?.fitIreland();
-  };
   useEffect(() => {
     if (!mapReady) return;
     controls.current?.fitIreland(0);
@@ -1023,7 +1019,6 @@ export default function App() {
             <MapControls
               onZoomIn={() => controls.current?.zoomIn()}
               onZoomOut={() => controls.current?.zoomOut()}
-              onIreland={toIreland}
               open={panel}
               onOpen={setPanel}
               spots={() => (

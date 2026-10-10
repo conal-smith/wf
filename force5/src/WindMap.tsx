@@ -21,7 +21,7 @@ import type { Frame, Spot } from "./weather";
 maplibregl.setWorkerUrl(workerUrl);
 maplibregl.setWorkerCount(2);
 
-/** All of Ireland, as the IRL button frames it. */
+/** All of Ireland, as the map opens on it. */
 export const IRELAND: [[number, number], [number, number]] = [
   [-10.75, 51.38],
   [-5.42, 55.42],

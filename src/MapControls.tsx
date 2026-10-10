@@ -26,7 +26,7 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
 export type MapPanel = "layers" | "spots" | null;
 
 /**
- * Top right: zoom, all of Ireland, the layers (the wind's style, the chart's
+ * Top right: zoom, the layers (the wind's style, the chart's
  * parts, and which model the map draws), and under them your spots and the
  * "i" that opens the map's information: its key, the stars, the foil layer
  * and the sources. The layers and your spots open beside the controls, one
@@ -35,7 +35,6 @@ export type MapPanel = "layers" | "spots" | null;
 export default function MapControls({
   onZoomIn,
   onZoomOut,
-  onIreland,
   open,
   onOpen,
   spots,
@@ -53,7 +52,6 @@ export default function MapControls({
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onIreland: () => void;
   open: MapPanel;
   onOpen: (panel: MapPanel) => void;
   /** Your spots (src/SidePanel.tsx), drawn while their panel is open. */
@@ -97,15 +95,6 @@ export default function MapControls({
         </button>
         <button type="button" aria-label="Zoom out" title="Zoom out" onClick={onZoomOut}>
           −
-        </button>
-        <button
-          type="button"
-          className="txt"
-          aria-label="Show all of Ireland"
-          title="All of Ireland"
-          onClick={onIreland}
-        >
-          IRL
         </button>
         <button
           ref={layersButton}
