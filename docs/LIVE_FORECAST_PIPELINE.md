@@ -314,6 +314,17 @@ ARPEGE's request count because the packages are laid out parameter-major and the
 block sits about 130 messages into each file; the walk stops there rather than reading
 to end of file.
 
+The bucket now and then never answers a request at all: about one in thirty on the
+afternoon of 10 October 2026, when AROME took 618 s instead of 13 because each stall
+sat out a 120 s socket timeout. A read now gives up after 15 s of silence and is
+retried on a fresh connection, which answers at once; on the same day an ARPEGE run
+with one stall took 46 s against 28 s without. The `index` phase in the job's event
+shows the header walk's requests and retries on their own. The walk cannot be
+skipped: the run's prefix holds only the packages, no index beside them (checked 10
+October 2026), every message's offset depends on the compressed length of the one
+before it, so neither one file's walk can be split between workers nor any run's
+offsets reused for the next.
+
 Schedule **ARPEGE four times a day at cycle + 4 h 50 m** (00/06/12/18 UTC) and **AROME
 eight times a day at cycle + 4 h 55 m** (every three hours). Measured completion of the
 `SP1` package set: ARPEGE 3 h 07 m to 4 h 21 m after run time, AROME 3 h 57 m to
