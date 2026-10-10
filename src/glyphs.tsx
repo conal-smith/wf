@@ -4,9 +4,10 @@
  * it, an arrow blowing downwind, and the red star a rider keeps a spot
  * with.
  */
-import { useId, type ReactNode } from "react";
+import { useContext, useId, type ReactNode } from "react";
 import { SHORE_LABEL, shoreAngle } from "../force5/src/stars";
 import { compass } from "../force5/src/weather";
+import { MapInfoOpen } from "./mapInfoContext";
 
 const FACE8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 export const face8 = (d: number) =>
@@ -163,17 +164,37 @@ export function StarToggle({
   );
 }
 
-/** The "?" by the stars: how they work, on its own page. */
-export const StarsHelp = () => (
-  <a
-    className="help-q"
-    href="/stars"
-    aria-label="How the stars work"
-    title="How the stars work"
-  >
-    ?
-  </a>
-);
+/**
+ * The "?" by the stars: how they work, in the map's information dialog, which
+ * links on to the page that works them through. Anywhere the dialog is not,
+ * the page itself.
+ */
+export function StarsHelp() {
+  const openInfo = useContext(MapInfoOpen);
+  if (!openInfo)
+    return (
+      <a
+        className="help-q"
+        href="/stars"
+        aria-label="How the stars work"
+        title="How the stars work"
+      >
+        ?
+      </a>
+    );
+  return (
+    <button
+      type="button"
+      className="help-q"
+      aria-label="How the stars work"
+      aria-haspopup="dialog"
+      title="How the stars work"
+      onClick={() => openInfo("stars")}
+    >
+      ?
+    </button>
+  );
+}
 
 /** "WSW 14": where it blows from and how hard. */
 export const windWords = (from: number | null, kn: number | null) =>

@@ -642,6 +642,14 @@
   accent-color: var(--color-chart-magenta);
   margin: 0;
 }
+.layers .layer-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.layers .layer-info label {
+  flex: 1;
+}
 .layers .sw {
   display: inline-block;
   width: 30px;
@@ -775,36 +783,29 @@
   scrollbar-width: none;
   padding: 6px 14px 12px;
 }
-.side .tabs {
+.side-head {
   display: flex;
+  align-items: baseline;
   gap: 16px;
   margin: 0 0 4px;
   border-bottom: 1px solid var(--color-ink);
 }
-.side .tabs button {
-  margin-bottom: -1px;
+.side-head h3 {
+  margin: 0 0 -1px;
   padding: 6px 0 5px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  font: 500 14px var(--font-display);
-  color: var(--color-ink-muted);
-  cursor: pointer;
-}
-.side .tabs button[aria-selected="true"] {
+  border-bottom: 2px solid var(--color-ink);
+  font: italic 650 14px var(--font-display);
   color: var(--color-ink);
-  font-style: italic;
-  font-weight: 650;
-  border-bottom-color: var(--color-ink);
 }
-.side .tabs .when {
+.side-head .when {
   margin-left: auto;
   align-self: center;
   font: 500 10px var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--color-ink-muted);
 }
-.side h4 {
+.side h4,
+.map-info h4 {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -880,7 +881,7 @@
 .sbest {
   display: none;
 }
-/* The key */
+/* The key, in the map's information (src/MapInfo.tsx) */
 .key .k-t1 {
   margin: 8px 0 0;
   padding-left: 0.3em;
@@ -947,12 +948,6 @@
   font-style: italic;
   text-align: center;
 }
-.key .kf {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  margin-top: 6px;
-}
 
 /* ---------- small round buttons: i for the small print, ? for the stars ---------- */
 .info-i,
@@ -1002,43 +997,55 @@
     inset: -13px;
   }
 }
-.info-pop {
-  position: fixed;
-  z-index: 70;
-  width: 280px;
-  padding: 11px 13px 10px;
-  font-size: 13px;
-  line-height: 1.35;
+/* What an "i" opens (src/InfoPop.tsx), and the map's information
+   (src/MapInfo.tsx): the kit's dialog, with the chart's small print in it. */
+.info-pop ul,
+.map-info ul {
+  margin: 0;
+  padding-left: 18px;
 }
-.info-pop.is-wide {
-  width: 320px;
-}
-.info-pop p {
-  margin: 0 0 6px;
-}
-.info-pop p:last-child {
-  margin-bottom: 0;
-}
-.info-pop h5 {
-  margin: 0 0 5px;
-  font: 500 9.5px var(--font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.info-pop ul {
-  margin: 0 0 6px;
-  padding-left: 16px;
-}
-.info-pop a {
+.info-pop a,
+.map-info a {
   color: inherit;
 }
 .ip-fig {
-  font: 500 11px var(--font-mono);
+  font: 500 12px var(--font-mono);
+  color: var(--color-ink);
 }
 .ip-small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-ink-muted);
+}
+.mi-part {
+  display: grid;
+  gap: 8px;
+  scroll-margin-top: 12px;
+}
+.mi-part + .mi-part {
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+}
+.mi-part h3 {
+  margin: 0;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.map-info .key {
+  color: var(--color-ink);
+}
+.map-info .mi-glyphs {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+.mi-glyphs li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  align-items: baseline;
 }
 
 /* The red star a rider keeps a spot with. */
@@ -1217,23 +1224,10 @@
   color: var(--color-warn);
 }
 
-/* ---------- foilable depth: the key ---------- */
+/* ---------- foilable depth: the key, in the map's information ---------- */
 .foil-key {
-  position: absolute;
-  left: 16px;
-  bottom: calc(var(--dock-height) + 44px);
-  z-index: 18;
-  width: 252px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.35;
-}
-.foil-key h3 {
-  margin: 0 0 4px;
-  font: 500 9.5px var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
+  font-size: 14px;
+  line-height: 1.4;
 }
 .foil-key .foil-at {
   margin: 0 0 6px;
@@ -1243,7 +1237,7 @@
 .foil-key .foil-at.is-error {
   color: var(--color-warn);
 }
-.foil-key ul {
+.map-info .foil-key ul {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1278,7 +1272,7 @@
 }
 .foil-key .foil-small {
   margin: 6px 0 0;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--color-ink-muted);
 }
 .map-footer {
@@ -1327,10 +1321,6 @@
     right: 44px;
     width: min(250px, calc(100vw - 70px));
     max-height: calc(100vh - var(--dock-height) - 130px);
-  }
-  /* Clear of Gust's button at the right of the chart. */
-  .info-pop.is-wide {
-    width: min(320px, calc(100vw - 96px));
   }
   .side {
     top: 62px;
@@ -1393,16 +1383,6 @@
   .map-print {
     left: 12px;
     bottom: calc(var(--dock-height) + 60px);
-  }
-  .foil-key {
-    left: 8px;
-    bottom: calc(var(--dock-height) + 88px);
-    width: min(236px, calc(100vw - 70px));
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-  .foil-key .foil-small {
-    font-size: 10.5px;
   }
   .frame-status {
     top: 62px;

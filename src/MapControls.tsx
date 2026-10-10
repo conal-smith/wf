@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { RideStop } from "../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../force5/src/models";
@@ -5,6 +6,7 @@ import type { Rider } from "../force5/src/stars";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { WindStyle } from "../force5/src/windLayer";
 import { KnotScale } from "./KnotScale";
+import type { InfoSection } from "./mapInfoContext";
 
 const WIND_LABEL: Record<WindStyle, string> = {
   ink: "Ink",
@@ -20,8 +22,9 @@ const CHART_LABEL: Record<keyof ChartLayers, string> = {
 };
 
 /**
- * Top right: zoom, all of Ireland, and the layers (the wind's style, the
- * chart's parts, and which model the map draws). On a phone, the key too.
+ * Top right: zoom, all of Ireland, the layers (the wind's style, the chart's
+ * parts, and which model the map draws), and under them the "i" that opens
+ * the map's information: its key, the stars, the foil layer and the sources.
  */
 export default function MapControls({
   onZoomIn,
@@ -29,9 +32,8 @@ export default function MapControls({
   onIreland,
   layersOpen,
   onLayers,
-  phone,
-  keyOpen,
-  onKey,
+  infoOpen,
+  onInfo,
   windStyle,
   onWindStyle,
   layers,
@@ -47,9 +49,8 @@ export default function MapControls({
   onIreland: () => void;
   layersOpen: boolean;
   onLayers: (open: boolean) => void;
-  phone: boolean;
-  keyOpen: boolean;
-  onKey: () => void;
+  infoOpen: boolean;
+  onInfo: (at: InfoSection) => void;
   windStyle: WindStyle;
   onWindStyle: (style: WindStyle) => void;
   layers: ChartLayers;
@@ -104,17 +105,16 @@ export default function MapControls({
             <path d="M1 8L8 11.5L15 8" fill="none" strokeWidth="1.2" strokeLinejoin="round" />
           </svg>
         </button>
-        {phone && (
-          <button
-            type="button"
-            className="txt"
-            aria-label="Your spots and the key"
-            aria-pressed={keyOpen}
-            onClick={onKey}
-          >
-            KEY
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label="Map information"
+          title="Map information"
+          aria-haspopup="dialog"
+          aria-expanded={infoOpen}
+          onClick={() => onInfo("key")}
+        >
+          <Info size={16} strokeWidth={1.3} aria-hidden="true" />
+        </button>
       </div>
       {layersOpen && (
         <div
@@ -140,19 +140,39 @@ export default function MapControls({
           ))}
           <KnotScale stops={rideStops} rider={rider} faint={windStyle === "wash"} />
           <h3>Chart</h3>
-          {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => (
-            <label key={key}>
-              <input
-                type="checkbox"
-                data-layer={key}
-                checked={layers[key]}
-                onChange={(event) =>
-                  onLayersChange({ ...layers, [key]: event.target.checked })
-                }
-              />
-              <span>{CHART_LABEL[key]}</span>
-            </label>
-          ))}
+          {(Object.keys(CHART_LABEL) as (keyof ChartLayers)[]).map((key) => {
+            const box = (
+              <label key={key}>
+                <input
+                  type="checkbox"
+                  data-layer={key}
+                  checked={layers[key]}
+                  onChange={(event) =>
+                    onLayersChange({ ...layers, [key]: event.target.checked })
+                  }
+                />
+                <span>{CHART_LABEL[key]}</span>
+              </label>
+            );
+            // The foil layer's key is in the map's information, not on the
+            // chart: its "i" opens it there, beside the switch.
+            return key === "foil" ? (
+              <div key={key} className="layer-info">
+                {box}
+                <button
+                  type="button"
+                  className="info-i"
+                  aria-label="About foilable depth"
+                  aria-haspopup="dialog"
+                  onClick={() => onInfo("foil")}
+                >
+                  i
+                </button>
+              </div>
+            ) : (
+              box
+            );
+          })}
           <h3>Model on the map</h3>
           <div className="models" role="group" aria-label="Weather model">
             {MODELS.map((entry) => (

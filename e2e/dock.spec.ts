@@ -249,9 +249,16 @@ test("the stars explain themselves on hover, and the ? leads to how they work", 
   );
   await page.mouse.move(5, 5);
   await expect(tip).toHaveCount(0);
+  // The ? opens the map's information at the stars, which leads on to the page.
+  await page
+    .locator(".dock")
+    .getByRole("button", { name: "How the stars work" })
+    .click();
+  const info = page.getByRole("dialog", { name: "About the map" });
+  await expect(info.locator("#map-info-stars")).toBeInViewport();
   await expect(
-    page.locator(".dock").getByRole("link", { name: "How the stars work" }),
-  ).toHaveAttribute("href", "/stars");
+    info.getByRole("link", { name: "How the stars work, in full →" }),
+  ).toHaveAttribute("href", "/stars?spot=brandon");
 });
 
 test("the head says the day's best, and the pen loops each day's", async ({
@@ -278,9 +285,7 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   page,
 }) => {
   await openDock(page);
-  const panel = page.getByRole("complementary", {
-    name: "Your spots and the key",
-  });
+  const panel = page.getByRole("complementary", { name: "Your spots" });
   await expect(panel).toContainText("Tap the red star");
   await page.locator(".dock").getByRole("button", { name: "Star Brandon Bay" }).click();
   await expect(
@@ -314,9 +319,12 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   // And unstarring from the panel takes it off.
   await panel.getByRole("button", { name: "Unstar Brandon Bay" }).click();
   await expect(panel).toContainText("Tap the red star");
-  // The key is a tab away.
-  await panel.getByRole("tab", { name: "Key" }).click();
-  await expect(panel).toContainText("Depths in metres below chart datum");
+  // The key is not in the panel: it is the map's information, a button away.
+  await expect(panel).not.toContainText("Depths in metres below chart datum");
+  await page.getByRole("button", { name: "Map information" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "About the map" }),
+  ).toContainText("Depths in metres below chart datum");
 });
 
 test("units, the rider and the blend's models are display options, kept on reload", async ({

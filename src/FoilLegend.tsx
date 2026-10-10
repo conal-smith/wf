@@ -5,11 +5,14 @@ import {
 } from "../force5/src/foilDepth";
 
 /**
- * The key to the foilable-depth layer, bottom left over the chart: the three
- * colours, the tide and the hour they are drawn for, a tapped point's water,
- * and what the picture cannot know.
+ * The key to the foilable-depth layer, in the map's information dialog
+ * (src/MapInfo.tsx) rather than over the chart: the three colours, the tide
+ * and the hour they are drawn for, a tapped point's water, and what the
+ * picture cannot know. With the layer off, the colours and where to turn it
+ * on.
  */
 export default function FoilLegend({
+  on,
   area,
   station,
   tide,
@@ -18,6 +21,8 @@ export default function FoilLegend({
   error,
   clearance = FOIL_CLEARANCE_METRES,
 }: {
+  /** The layer is drawn; off, there is no tide or survey to report. */
+  on: boolean;
   area: FoilArea | null;
   station: string | null;
   tide: number | null;
@@ -28,9 +33,13 @@ export default function FoilLegend({
   clearance?: number;
 }) {
   return (
-    <section className="foil-key chart-box" aria-label="Foilable depth key">
-      <h3>Foilable depth</h3>
-      {error ? (
+    <div className="foil-key">
+      {!on ? (
+        <p className="foil-at">
+          Off. Layers, Chart: &ldquo;Foilable depth at the tide (pilot)&rdquo;
+          turns it on.
+        </p>
+      ) : error ? (
         <p className="foil-at is-error" role="status">
           {error}
         </p>
@@ -61,12 +70,20 @@ export default function FoilLegend({
           Always wet, depth not surveyed
         </li>
       </ul>
-      {readout && <p className="foil-probe">{readout}</p>}
+      {on &&
+        (readout ? (
+          <p className="foil-probe">{readout}</p>
+        ) : (
+          <p className="foil-small">
+            Tap the water on the chart, and its depth at this hour is read out
+            here.
+          </p>
+        ))}
       <p className="foil-small">
         Approximate: astronomical tide, no surge or waves
-        {area ? `; survey ${surveyLine(area)}` : ""}. Pilot areas only. Not for
-        navigation.
+        {on && area ? `; survey ${surveyLine(area)}` : ""}. Pilot areas only.
+        Not for navigation.
       </p>
-    </section>
+    </div>
   );
 }

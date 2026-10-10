@@ -40,7 +40,8 @@ from the sea), drawn as nothing; **40 m** is water of unsurveyed depth.
   (`tideForStation` in `force5/src/tides.ts`) the first time the layer is on.
 - `src/App.tsx`: the tide at the dock's selected column (`tideAt`), the layer
   switch (Layers → Chart → "Foilable depth at the tide (pilot)"), the key
-  (`src/FoilLegend.tsx`), and a tapped point's water
+  (`src/FoilLegend.tsx`, in the map's information dialog, not on the chart),
+  and a tapped point's water
   (`force5/src/foilProbe.ts` reads one pixel out of the archive).
 - The colours are `--map-foil-*` in `ui/theme.css`.
 

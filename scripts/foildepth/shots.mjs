@@ -44,17 +44,29 @@ await page
   .locator(".map-loading")
   .waitFor({ state: "detached", timeout: 60000 });
 await page.waitForTimeout(3500); // the flight to the spot
-await page.keyboard.press("Escape"); // the card and the focus, out of the way
+await page.keyboard.press("Escape"); // the focus, out of the way
 for (let i = 0; i < Number(zooms); i++) {
   await page.getByRole("button", { name: "Zoom in" }).click();
   await page.waitForTimeout(600);
 }
 
+// The key is in the map's information dialog, not on the chart: open it,
+// read it, and shut it again so the chart is clear for the next move.
+const readKey = async (read) => {
+  await page.getByRole("button", { name: "Map information" }).click();
+  const key = page.locator(".foil-at");
+  await key.waitFor();
+  const value = await read(key);
+  await page.keyboard.press("Escape");
+  await page.locator(".map-info").waitFor({ state: "detached" });
+  return value;
+};
+
 // The tide the key reports at each of the next day's columns.
 const tideAt = async (i) => {
   await scrub.fill(String(i));
   await page.waitForTimeout(250);
-  const v = await page.locator(".foil-at").getAttribute("data-foil-tide");
+  const v = await readKey((key) => key.getAttribute("data-foil-tide"));
   return v === null || v === "" ? null : Number(v);
 };
 const first = Number(await scrub.inputValue());
@@ -83,7 +95,7 @@ for (const [name, at] of [
 ]) {
   await scrub.fill(String(at.i));
   await page.waitForTimeout(2500); // tiles, and the ramp
-  const key = await page.locator(".foil-at").innerText();
+  const key = await readKey((at) => at.innerText());
   const file = `${out}/${spot}-${name}.png`;
   await page.screenshot({ path: file });
   console.log(`${name}: ${key} → ${file}`);
@@ -93,11 +105,14 @@ for (const [name, at] of [
 if (process.env.TAP) {
   const [x, y] = process.env.TAP.split(",").map(Number);
   await page.mouse.click(x, y);
-  await page.locator(".foil-probe").waitFor({ timeout: 10000 });
+  await page.waitForTimeout(1000);
   const file = `${out}/${spot}-tap.png`;
   await page.screenshot({ path: file });
-  console.log(
-    `tap: ${await page.locator(".foil-probe").innerText()} → ${file}`,
-  );
+  const probe = await readKey(async () => {
+    const at = page.locator(".foil-probe");
+    await at.waitFor({ timeout: 10000 });
+    return at.innerText();
+  });
+  console.log(`tap: ${probe} → ${file}`);
 }
 await browser.close();

@@ -31,6 +31,8 @@ import {
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
 import FoilLegend from "./FoilLegend";
+import MapInfo from "./MapInfo";
+import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
 import { useFoilDepth } from "./useFoilDepth";
 import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
@@ -39,7 +41,7 @@ import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls from "./MapControls";
 import MapHead from "./MapHead";
-import SidePanel, { type SideTab } from "./SidePanel";
+import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
@@ -209,8 +211,8 @@ export default function App() {
     store.set(MORE_KEY, next ? "1" : "0");
   };
   const [layersOpen, setLayersOpen] = useState(false);
-  const [keyOpen, setKeyOpen] = useState(false);
-  const [sideTab, setSideTab] = useState<SideTab>("yours");
+  /** The information dialog's part to open at, or null while it is shut. */
+  const [info, setInfo] = useState<InfoSection | null>(null);
   const [folded, setFolded] = useState(() => window.matchMedia(PHONE).matches);
   const [view, setView] = useState<DockView>("table");
   const [windStyle, setWindStyle] = useState<WindStyle>(() => {
@@ -238,7 +240,7 @@ export default function App() {
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [scale, setScale] = useState("");
-  // The foilable-depth area nearest the map's centre, for the key's tide
+  // The foilable-depth area nearest the map's centre, for the foil key's tide
   // station. Kept as an id, so a pan that stays near one area renders nothing,
   // and only looked up once the layer has loaded its areas.
   const foilAreas = useRef<readonly FoilArea[] | null>(null);
@@ -731,7 +733,6 @@ export default function App() {
     setPicked(null);
     setPoint(spot);
     setFocusId(spot.id);
-    setKeyOpen(false);
     fav.visit(spot.id);
     if (phone) setFolded(true);
     if (fly) controls.current?.flyTo(spot);
@@ -750,7 +751,6 @@ export default function App() {
       coords: at.place ? coords : "",
     });
     setFocusId(AT_POINT);
-    setKeyOpen(false);
     probeFoil(at.lon, at.lat);
   };
   const clearFocus = () => setFocusId(null);
@@ -792,12 +792,11 @@ export default function App() {
       if (event.key !== "Escape" || document.querySelector("dialog[open]"))
         return;
       if (layersOpen) setLayersOpen(false);
-      else if (keyOpen) setKeyOpen(false);
       else clearFocus();
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [layersOpen, keyOpen]);
+  }, [layersOpen]);
 
   /* ---- Gust moving the map, at the rider's ask ---- */
   const highlightTimer = useRef<number | undefined>(undefined);
@@ -949,7 +948,6 @@ export default function App() {
 
   const sources = (
     <>
-      <h5>Sources</h5>
       <ul>
         <li>
           Wind: {manifest?.modelName ?? "HARMONIE"} on the map
@@ -1001,7 +999,7 @@ export default function App() {
         ? frameError
         : null;
 
-  return (
+  const shell = (
     <div
       className={`app-shell${phone ? " is-phone" : ""}${focusId ? " is-focus" : ""}`}
       style={{ "--dock-height": `${dockHeight}px` } as React.CSSProperties}
@@ -1029,12 +1027,8 @@ export default function App() {
               onIreland={toIreland}
               layersOpen={layersOpen}
               onLayers={setLayersOpen}
-              phone={phone}
-              keyOpen={keyOpen}
-              onKey={() => {
-                setKeyOpen((v) => !v);
-                setSideTab("key");
-              }}
+              infoOpen={!!info}
+              onInfo={setInfo}
               windStyle={windStyle}
               onWindStyle={chooseWind}
               layers={layers}
@@ -1056,13 +1050,7 @@ export default function App() {
                 now={clockNow}
                 onGo={(spot) => selectSpot(spot)}
                 onToggleStar={(id) => fav.toggle(id)}
-                tab={phone ? "key" : sideTab}
-                onTab={setSideTab}
-                strip={phone && !keyOpen}
-                rideStops={rideStops}
-                rider={rider}
-                scale={scale}
-                sources={sources}
+                strip={phone}
               />
             }
             {/* After the boxes: the keys reach the menu, the search and the
@@ -1128,22 +1116,8 @@ export default function App() {
                 )}
               </div>
             )}
-            {layers.foil && (
-              <FoilLegend
-                area={foilArea}
-                station={foilStation}
-                tide={foilArea ? (foilTides[foilArea.id] ?? null) : null}
-                when={
-                  foilTime !== null
-                    ? `${dayShort(foilTime)} ${clock(foilTime)}`
-                    : ""
-                }
-                readout={foilProbeText}
-                error={foilState.error}
-              />
-            )}
             <div className="map-print">
-              <InfoPop label="Sources and small print" wide side="above">
+              <InfoPop label="Sources and small print" wide>
                 {sources}
               </InfoPop>
               <span className="map-model" data-run-state={staleness}>
@@ -1216,6 +1190,34 @@ export default function App() {
           />
         </Suspense>
       )}
+      {info && (
+        <MapInfo
+          at={info}
+          onClose={() => setInfo(null)}
+          scale={scale}
+          rideStops={rideStops}
+          rider={rider}
+          spotId={picked ? null : (point?.id ?? null)}
+          foil={
+            <FoilLegend
+              on={layers.foil}
+              area={foilArea}
+              station={foilStation}
+              tide={foilArea ? (foilTides[foilArea.id] ?? null) : null}
+              when={
+                foilTime !== null
+                  ? `${dayShort(foilTime)} ${clock(foilTime)}`
+                  : ""
+              }
+              readout={foilProbeText}
+              error={foilState.error}
+            />
+          }
+          sources={sources}
+        />
+      )}
     </div>
   );
+  // The "?"s by the stars, in the dock and the panel, open the dialog too.
+  return <MapInfoOpen.Provider value={setInfo}>{shell}</MapInfoOpen.Provider>;
 }
