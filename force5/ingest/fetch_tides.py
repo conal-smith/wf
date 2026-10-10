@@ -20,6 +20,7 @@ from urllib.parse import quote
 import requests
 
 from fetch_forecast import ROOT, load_spots, write_json
+import timing
 
 ERDDAP = "https://erddap.marine.ie/erddap/tabledap"
 CURVE_DATASET = "imiTidePrediction"
@@ -34,7 +35,7 @@ DAYS_BEFORE, DAYS_AFTER = 1, 8
 MAX_DISTANCE_KM = 40.0
 DATUM_TOLERANCE_METRES = 0.03
 EVENT_TOLERANCE_METRES = 0.15
-SESSION = requests.Session()
+SESSION = timing.count_responses(requests.Session())
 
 
 def fetch_csv(url, attempts=3):
@@ -207,6 +208,7 @@ def main():
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=DAYS_BEFORE)
     end = start + timedelta(days=DAYS_BEFORE + args.days_ahead)
     spots = load_spots()
+    timing.start("discover")
     catalogue = station_catalogue(ROOT / ".cache" / "tides")
     assignments = assign_stations(spots, catalogue, args.max_distance_km)
     used = sorted({item["station"] for item in assignments.values() if item["station"]})
@@ -216,13 +218,16 @@ def main():
           f"{len(used)} stations for {len(spots)} riding locations", flush=True)
     output = ROOT / "public" / "marine"
     stations = {}
+    # One station at a time, each read and written before the next is asked for.
+    timing.start("download", workers=1)
     for identifier in used:
         curve, offset = read_curve(fetch_csv(curve_query(identifier, start, end)), identifier, start, end)
         events = read_events(fetch_csv(events_query(identifier, start, end)), identifier, curve, offset)
         payload = station_payload(identifier, curve, offset, events, start, end)
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = (f"tides-{identifier}-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}-{digest}.json")
-        write_json(output / name, payload)
+        with timing.phase("write"):
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
+            name = (f"tides-{identifier}-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}-{digest}.json")
+            write_json(output / name, payload)
         stations[identifier] = {"name": identifier.removesuffix("_MODELLED").replace("_", " "),
                                 "lat": catalogue[identifier]["lat"], "lon": catalogue[identifier]["lon"],
                                 "modelled": catalogue[identifier]["modelled"],
@@ -258,3 +263,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"Tide refresh failed: {error}. Last published predictions preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

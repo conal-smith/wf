@@ -42,6 +42,7 @@ from fetch_forecast import ROOT, load_spots, published_in_bucket, write_json
 # The tide adapter already reads this ERDDAP's CSV dialect; share its helpers.
 from fetch_tides import distance_km, moment, rows as erddap_rows, stamp
 from registry import UNCHANGED_EXIT
+import timing
 
 ERDDAP = "https://erddap.marine.ie/erddap"
 SHELF = "IMI_IRISH_SHELF_SWAN_WAVE"
@@ -102,7 +103,7 @@ DATASETS = {
     NEST: {"label": "Connemara SWAN nest", "searchKm": 2.0},
 }
 INFO_COLUMNS = ["Row Type", "Variable Name", "Attribute Name", "Data Type", "Value"]
-SESSION = requests.Session()
+SESSION = timing.count_responses(requests.Session())
 
 
 def griddap(dataset, query, extension="csv"):
@@ -418,9 +419,13 @@ def build(args, infos, run, cache, now):
     hours = list(range(0, args.hours + 1, args.step))
     series, records = {}, {}
     spots = load_spots()
+    # Each spot's task searches, downloads and reads its own series, so this stage
+    # is the download and the per-spot decode together.
+    timing.start("download", workers=CONCURRENCY)
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
         results = {spot["id"]: pool.submit(spot_task, spot, infos, run, args.hours, args.step,
                                            cache) for spot in spots}
+    timing.start("decode")
     for spot in spots:
         records[spot["id"]], series[spot["id"]] = results[spot["id"]].result()
         record = records[spot["id"]]
@@ -436,9 +441,11 @@ def build(args, infos, run, cache, now):
     if args.frames:
         grid, longitudes, latitudes = frame_grid(infos[SHELF]["bounds"])
         directory = f"mi-swan-{run.strftime('%Y%m%d%H')}-{args.hours}h-v1"
+        timing.start("download", workers=CONCURRENCY)
         with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
             fields = list(pool.map(lambda hour: frame_fields(SHELF, run, hour, longitudes,
                                                             latitudes, cache), hours))
+        timing.start("decode")
         for hour, values in zip(hours, fields):
             when = stamp(run + timedelta(hours=hour))
             frame = {"model": "mi-swan", "run": run.strftime("%Y%m%d%H"), "hour": hour,
@@ -514,6 +521,7 @@ def main(argv=None):
     now = datetime.now(timezone.utc)
     root = Path(ROOT) / ".cache" / "mi-swan"
     datasets = [SHELF] if args.no_nest else [SHELF, NEST]
+    timing.start("discover")
     infos = {dataset: dataset_info(dataset, root / "info") for dataset in datasets}
     run = discover(infos[SHELF], last_time(SHELF, root / "info"))
     if NEST in infos and discover(infos[NEST], last_time(NEST, root / "info")) != run:
@@ -539,3 +547,5 @@ if __name__ == "__main__":
         print(f"Marine Institute SWAN refresh failed: {error}. "
               "Last published wave forecast preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

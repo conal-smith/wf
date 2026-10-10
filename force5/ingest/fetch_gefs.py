@@ -31,6 +31,7 @@ from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+import timing
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
 BUCKET = "https://noaa-gefs-pds.s3.amazonaws.com"
@@ -261,6 +262,7 @@ def main():
     members = list(range(args.members))
     ranges = [{"throughHour": args.hours, "stepHours": args.step}]
     hours = list(ladder_hours(ranges))
+    timing.start("discover")
     run = discover(args.source, hours, members, args.run)
     run_time = run_datetime(run)
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
@@ -277,10 +279,12 @@ def main():
           f"{requests * FILTER_BYTES_PER_MEMBER_STEP / 1e6:.0f} MB through the filter)", flush=True)
     cache = ROOT / ".cache" / "gefs" / run
     cache.mkdir(parents=True, exist_ok=True)
+    timing.start("download", workers=args.workers)
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         list(pool.map(lambda pair: fetch(cache, args.source, run, pair[1], pair[0]),
                       [(hour, member) for hour in hours for member in members]))
     print("Downloads complete. Validating every member and cropping to Ireland…", flush=True)
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"gefs-{run}-{args.hours}h-v1"
     spots = load_spots()
@@ -388,3 +392,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"GEFS refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

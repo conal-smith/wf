@@ -33,6 +33,7 @@ from urllib.parse import quote
 import requests
 
 from fetch_forecast import ROOT, load_spots, write_json
+import timing
 
 ERDDAP = "https://erddap.marine.ie/erddap/tabledap"
 SOURCE_URL = "https://erddap.marine.ie/erddap/search/index.html?searchFor=sea+temperature"
@@ -49,7 +50,7 @@ SINGLE_FILE_LIMIT_BYTES = 300 * 1024
 # A deployment-record suffix on a station name, trimmed for display only.
 DEPLOYMENT_SUFFIX = re.compile(r"\s+(Buoy\s+)?Deployment\s+Location$", re.IGNORECASE)
 NETWORK_RANK = {"coastal": 0, "sentinel": 1, "buoy": 2}
-SESSION = requests.Session()
+SESSION = timing.count_responses(requests.Session())
 
 
 class Source:
@@ -377,7 +378,9 @@ def main(argv=None):
     end = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     start = end - timedelta(days=args.days)
     spots = load_spots()
+    timing.start("download")
     stations, counts = collect(SOURCES, start, end, now)
+    timing.start("decode")
     for dataset, count in counts.items():
         print(f"  {dataset}: {count['stations']} stations, {count['readings']} good readings, "
               f"{count['rejected']} rejected", flush=True)
@@ -407,3 +410,5 @@ if __name__ == "__main__":
         print(f"Sea temperature refresh failed: {error}. Last published observations preserved.",
               file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

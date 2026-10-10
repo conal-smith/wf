@@ -146,7 +146,11 @@ health check on `/healthz`; that only proves the server is up, so judge freshnes
 
 Every ingest job logs a JSON `forecast_complete` or `forecast_failed` event, and the
 scheduler brackets each job with `job_started` / `job_finished` including its exit
-code.
+code. The event's `phases` say where the job's time went (finding the run, download,
+decode, write, validation and publication, with request and byte counts), the adapter
+ends its log with the same as one `Timing:` line, and `status` shows each model's last
+job in its final column; see "Where a job's time goes" in
+[docs/LIVE_FORECAST_PIPELINE.md](../../docs/LIVE_FORECAST_PIPELINE.md).
 
 ## 5. Retention
 

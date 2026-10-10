@@ -24,6 +24,7 @@ from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
 from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample, write_json
 from registry import UNCHANGED_EXIT
+import timing
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
 # 0.84 MB (10u), 0.83 MB (10v) and 1.39 MB (10fg), plus a 2.0 MB step index.
@@ -222,6 +223,7 @@ def main():
     members = list(range(1, args.members + 1))
     ranges = [{"throughHour": args.hours, "stepHours": args.step}]
     hours = ladder_hours(ranges)
+    timing.start("discover")
     run = args.run or ens_client(args.source).latest(
         step=args.hours, stream="enfo", type="pf", number=1, param="10u").strftime("%Y%m%d%H")
     run_time = run_datetime(run, args.hours)
@@ -243,9 +245,11 @@ def main():
           f"to +{args.hours}h (about {len(members) * (3 * len(hours) - 1)} member messages)", flush=True)
     cache = ROOT / ".cache" / "ecmwf-ens" / run
     cache.mkdir(parents=True, exist_ok=True)
+    timing.start("download", workers=args.workers)
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         paths = list(pool.map(lambda hour: fetch(cache, args.source, run, hour, members), hours))
     print("Downloads complete. Validating every member and cropping to Ireland…", flush=True)
+    timing.start("decode")
     spots = load_spots(spots_file())
     spot_forecasts = {spot["id"]: [] for spot in spots}
     spot_members = {spot["id"]: [] for spot in spots}
@@ -336,3 +340,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"ECMWF ENS refresh failed: {error}. Last published manifest preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

@@ -26,6 +26,7 @@ from fetch_ecmwf import SOURCE_URL, client
 from fetch_forecast import (ROOT, decode_handle, load_spots, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+import timing
 
 MODEL = "aifs"
 OPENDATA_MODEL = "aifs-single"
@@ -147,6 +148,7 @@ def main(argv=None):
         """A fresh client per call: its session is not shared between threads."""
         return client(args.source, OPENDATA_MODEL)
 
+    timing.start("discover")
     # Probing the requested last step refuses a cycle that is still publishing.
     # Individual steps are still validated below: the last file existing is not
     # on its own a reason to replace a published snapshot.
@@ -181,8 +183,10 @@ def main(argv=None):
         print(f"  Validated +{hour:03d}h ({path.stat().st_size} bytes)", flush=True)
         return hour, decoded
 
+    timing.start("download", workers=args.workers)
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         decoded = dict(pool.map(download, hours))
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     spot_forecasts = {spot["id"]: [] for spot in spots}
@@ -222,3 +226,5 @@ if __name__ == "__main__":
         print(f"AIFS refresh failed: {error}. Last published snapshot preserved.",
               file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

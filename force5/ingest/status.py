@@ -10,6 +10,11 @@ without map frames, and an observation bundle, which has no future coverage at a
 for that kind the report is the age of the newest observation. The forecast
 archive's summary and the verification scores cover no time either: for those the
 report is how long ago the job last ran, which is what their `run` names.
+
+Each row also carries `lastJob`, the worker's last event for that model (complete,
+unchanged or failed), with where its time went (`phases`, see timing.py), when the
+worker has kept one in `.cache/jobs/`. It is informational: it never changes a
+row's state or the exit status.
 """
 import argparse
 from datetime import datetime, timezone
@@ -20,6 +25,7 @@ import sys
 
 from prune import manifest_urls
 from registry import MANIFESTS, MODELS
+from timing import JOBS_DIRECTORY
 
 # Job outputs rather than data: their `run` is the hour the job ran.
 JOB_KINDS = ("archive", "verification")
@@ -115,18 +121,47 @@ def describe_job(path, row, now, limit):
     return {**row, "state": "fresh", "ok": True}
 
 
+def last_job(root, model):
+    """The worker's last event for this model, trimmed to what a report needs, or None."""
+    try:
+        event = json.loads((Path(root) / JOBS_DIRECTORY / f"{model}.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(event, dict) or not str(event.get("event", "")).startswith("forecast_"):
+        return None
+    return {"outcome": event["event"].removeprefix("forecast_"), "run": event.get("run"),
+            "at": event.get("time"), "seconds": event.get("seconds"),
+            "phases": event.get("phases") or {}, **({"error": event["error"]}
+                                                    if event.get("error") else {})}
+
+
+def job_note(job):
+    """`complete in 1,964 s, 96% download`: the outcome and the phase that took longest."""
+    if not job:
+        return "-"
+    note = job["outcome"]
+    if isinstance(job.get("seconds"), (int, float)):
+        note += f" in {job['seconds']:,} s"
+        phases = {name: entry.get("seconds") or 0 for name, entry in job["phases"].items()
+                  if isinstance(entry, dict)}
+        if phases and job["seconds"] > 0:
+            name = max(phases, key=phases.get)
+            note += f", {min(100, round(100 * phases[name] / job['seconds']))}% {name}"
+    return note
+
+
 def render(rows):
     # Wide enough for the longest model id in the report, so columns stay aligned.
     width = max((len(row["model"]) for row in rows), default=5) + 1
     # "kind" is wide enough for the longest registered kind, "verification".
     lines = [f"{'model':<{width}} {'kind':<12} {'state':<11} {'run':<11} {'age':>8} "
-             f"{'objects':>8} {'missing':>8}  coverage ends / observed at"]
+             f"{'objects':>8} {'missing':>8}  {'coverage ends / observed at':<27}  last job"]
     for row in rows:
         age = f"{row['ageHours']:.1f} h" if "ageHours" in row else "-"
         reach = row.get("coverageEnds") or row.get("observedAt") or row.get("ranAt") or "-"
         lines.append(f"{row['model']:<{width}} {row['kind']:<12} {row['state']:<11} "
                      f"{row.get('run', '-'):<11} {age:>8} {row.get('objects', '-'):>8} "
-                     f"{row.get('missing', '-'):>8}  {reach}")
+                     f"{row.get('missing', '-'):>8}  {reach:<27}  {job_note(row.get('lastJob'))}")
     return "\n".join(lines)
 
 
@@ -149,7 +184,9 @@ def main(argv=None):
         if model not in MANIFESTS:
             unknown.append(model)
             continue
-        rows.append(describe(public, model, now, args.max_age_hours))
+        row = describe(public, model, now, args.max_age_hours)
+        job = last_job(args.root, model)
+        rows.append({**row, "lastJob": job} if job else row)
     if args.json:
         for row in rows:
             print(json.dumps(row), flush=True)

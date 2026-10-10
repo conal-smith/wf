@@ -930,6 +930,60 @@ The browser fetches the manifest on page load and model changes, then reads its 
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
+### Where a job's time goes
+
+Every `forecast_complete`, `forecast_unchanged` and `forecast_failed` event carries
+`phases`, so a slow job says whether it was slow finding its run, downloading,
+decoding or writing. The adapter records its own phases (`force5/ingest/timing.py`) in
+the file the worker names in `FORCE5_TIMINGS_FILE`, and the worker adds its own two:
+
+| phase | who | what it covers |
+| --- | --- | --- |
+| `discover` | adapter | finding the run: listings, inventories, the `latest` probe, the published-run check |
+| `index` | adapter | Météo-France only: walking the package's GRIB headers to find the messages |
+| `download` | adapter | the download pool, and anything the pool does per file |
+| `decode` | adapter | GRIB decode, validation, crop, regrid and spot sampling |
+| `write` | adapter | encoding frames, their sidecars and the manifest, on local disk |
+| `validate` | worker | `validate_bundle`: every referenced object re-read and checked |
+| `publish` | worker | the bucket upload (nothing without one) and the superseded-run delete |
+
+`archive` and `score` are the forecast archive's and the verification's single stages.
+Each phase has `seconds` of wall time, and may have `requests`, `bytes`, `workers` (the
+concurrency it ran with), `retries` (failed attempts tried again) and `failures`
+(requests given up on); counters that stayed at zero are left out. Main-thread phases
+nest and their time is exclusive, so a frame written in the middle of the decode loop
+counts as `write`, and the phases add up to the job's `seconds` less process start-up.
+Work done inside a download pool, such as GFS validating each step as it lands, runs
+alongside the download, so it is reported as `threadSeconds` (summed across the
+workers) with `within` naming the phase it ran inside, rather than as wall time:
+
+```json
+{
+  "event": "forecast_complete", "model": "gfs", "run": "2026101006", "seconds": 278,
+  "phases": {
+    "discover": {"seconds": 3.1, "requests": 2, "bytes": 412000, "failures": 1},
+    "download": {"seconds": 271.4, "workers": 2, "requests": 81, "bytes": 1190000},
+    "decode": {"seconds": 1.2, "threadSeconds": 3.4, "within": "download"},
+    "write": {"seconds": 1.8}, "validate": {"seconds": 0.4}, "publish": {"seconds": 0.0}
+  }
+}
+```
+
+The adapter also prints the same thing as one line at its end, failed or not:
+
+```text
+Timing: discover 3.1 s (2 req, 412.0 kB, 1 failed) · download 271 s (81 req, 1.2 MB, 2 at a time) · decode 1.2 s (+3.4 s across download workers) · write 1.8 s · total 278 s
+```
+
+The adapter rewrites its record every half minute while a download is running, so a
+job killed by its timeout still reports how far it got. The worker keeps each model's
+last event in `.cache/jobs/<model>.json`, and `status.py` adds it to that model's row as
+`lastJob` (`outcome`, `run`, `at`, `seconds`, `phases`, and `error` for a failure), and
+to the text report as e.g. `complete in 1,964 s, 96% download`. It is informational and
+never changes a row's state; like the rest of `.cache` it ages out after
+`FORCE5_CACHE_DAYS`, and in a one-shot container it is gone with the disk, so there the
+event in the log is the record.
+
 ## Validation status / remaining launch work
 
 The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded-object deletion, a tolerated delete failure, the conditional-put fallback, the bucket sweep (age guard, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.

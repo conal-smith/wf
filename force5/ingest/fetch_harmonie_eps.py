@@ -40,6 +40,7 @@ from fetch_forecast import load_spots, spots_file
 from fetch_harmonie import (GEOMETRY, GRID, PORTAL, earth_vectors, inventory,
                             make_layout, messages, resample)
 from registry import UNCHANGED_EXIT
+import timing
 
 MODEL = "harmonie-eps"
 PRODUCT = "CONTROL_grib2_ieIoI"  # Ireland Lambert subset; one file per cycle and step.
@@ -106,6 +107,7 @@ def assemble(published, hours, requested_run=None, max_lag=6):
                        "requested hours. Try again later; existing snapshots are unchanged.")
 
 
+@timing.timed("decode")
 def extract(data):
     """Cache only the two 10 m fields we publish; other levels are discarded."""
     found = {}
@@ -172,6 +174,7 @@ def validate(h, field, member, hour):
         raise ValueError("Incorrect HARMONIE EPS valid time")
 
 
+@timing.timed("decode")
 def decode(member, hour, layout=None):
     """Validate, rotate and regrid one member/step onto the display grid."""
     path = cache_path(source_name(member["run"], member["lag"] + hour))
@@ -231,6 +234,7 @@ def main():
         parser.error(f"Use a 1–{MAX_LAG} hour member lag and at least two members")
     started = time.monotonic()
     hours = list(range(0, args.hours + 1, args.step))
+    timing.start("discover")
     run, members = assemble(catalogue(inventory()), hours, args.run, args.max_lag)
     if len(members) < args.min_members:
         raise RuntimeError(f"Only {len(members)} HARMONIE ensemble members are retrievable; "
@@ -244,11 +248,13 @@ def main():
         return UNCHANGED_EXIT
     print(f"HARMONIE-AROME DINI EPS anchored on {run}: {len(members)} members from cycles "
           f"{', '.join(member['run'] for member in members)} × {len(hours)} steps", flush=True)
+    timing.start("download", workers=2)
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(download, [(member["run"], member["lag"] + hour)
                                  for member in members for hour in hours]))
     print(f"Downloaded {TRANSFER['files']} files, {TRANSFER['bytes'] / 1e6:.0f} MB; "
           "validating, rotating and regridding…", flush=True)
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     run_time = cycle_time(run)
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
@@ -327,3 +333,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"HARMONIE EPS refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

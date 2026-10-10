@@ -24,6 +24,7 @@ from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+import timing
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
 BUCKET = "https://noaa-gfs-bdp-pds.s3.amazonaws.com"
@@ -64,14 +65,19 @@ def get(url, headers=None, attempts=4):
         try:
             request = Request(url, headers={"User-Agent": USER_AGENT, **(headers or {})})
             with urlopen(request, timeout=90) as response:
-                return response.read()
+                body = response.read()
+            timing.request(len(body))
+            return body
         except HTTPError as error:
             # A missing or rejected object is a real answer; only retry transient faults.
             if error.code in (400, 403, 404) or attempt == attempts - 1:
+                timing.failure()
                 raise
         except Exception:
             if attempt == attempts - 1:
+                timing.failure()
                 raise
+        timing.retry()
         time.sleep(2 ** attempt)
 
 
@@ -242,6 +248,7 @@ def main():
         parser.error(f"GFS publishes hourly steps only through +{HOURLY_THROUGH}h; use --step 3")
     THROTTLE.pause = PAUSE[args.source]
     hours = list(range(0, args.hours + 1, args.step))
+    timing.start("discover")
     run = discover(args.source, hours, args.run)
     run_time = run_datetime(run)
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
@@ -273,8 +280,10 @@ def main():
         return hour, decoded
 
     # Two concurrent requests at most: NOMADS asks well-behaved clients to stay low.
+    timing.start("download", workers=2)
     with ThreadPoolExecutor(max_workers=2) as pool:
         decoded = dict(pool.map(fetch, hours))
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"gfs-{run}-{args.hours}h-v1"
     spots = load_spots()
@@ -324,3 +333,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"GFS refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

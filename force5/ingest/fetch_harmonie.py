@@ -29,6 +29,7 @@ from pyproj import Proj
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import ROOT, get, load_spots, messages, published_in_bucket, sample, write_json
 from registry import UNCHANGED_EXIT
+import timing
 
 PORTAL = "https://opendata.met.ie"
 MODEL = "harmonie"
@@ -70,6 +71,7 @@ def discover(items, hours, requested_run=None):
     raise RuntimeError("No complete HARMONIE control run in the public three-hour inventory. Try again later; existing snapshots are unchanged.")
 
 
+@timing.timed("decode")
 def extract(data):
     """Cache only the 10 m wind and its time-maximum gust components."""
     found = {}
@@ -188,6 +190,7 @@ def resample(values, layout):
     return (values[i] * (1-tx) + values[i+1] * tx) * (1-ty) + (values[i+nx] * (1-tx) + values[i+nx+1] * tx) * ty
 
 
+@timing.timed("decode")
 def decode(path, run, hour, layout=None, gusts=True):
     # Initialization's gust window is zero length, so its components are checked
     # when present but never required; every later step must supply both.
@@ -241,6 +244,7 @@ def main():
     if not 3 <= args.hours <= 60 or args.hours % args.step:
         parser.error("Use 3–60 hours, divisible by step")
     hours = list(range(0, args.hours+1, args.step))
+    timing.start("discover")
     run, names = discover(inventory(), hours, args.run)
     # Scheduled hourly against an hourly cycle, but the newest complete run in the
     # portal's three-hour window is often the one the previous slot published.
@@ -248,8 +252,10 @@ def main():
         print(f"HARMONIE-AROME control {run} is already published; nothing to download.", flush=True)
         return UNCHANGED_EXIT
     print(f"HARMONIE-AROME control {run}: downloading {len(hours)} Ireland subsets", flush=True)
+    timing.start("download", workers=2)
     with ThreadPoolExecutor(max_workers=2) as pool:
         paths = dict(zip(hours, pool.map(download, [names[h] for h in hours])))
+    timing.start("decode")
     # Gusts are published only when every forecast step after initialization has
     # both components; otherwise the run stays explicitly wind-only.
     absent = [h for h in hours if h > 0 and not has_gust(paths[h])]
@@ -315,3 +321,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"HARMONIE refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

@@ -9,6 +9,12 @@ its run passed on: if that is the run the adapter resolves, it exits
 UNCHANGED_EXIT, this job logs `forecast_unchanged` and stops there having
 downloaded nothing. That exit code is only read as success for an adapter we
 actually told, so it can never launder an ordinary failure into a clean run.
+
+Every event carries `phases`, where the job's time went (timing.py): the adapter
+records its own discover, download, decode and write phases in the file this job
+names in FORCE5_TIMINGS_FILE, and this job adds `validate` and `publish`. The
+last event for each model is also kept in `.cache/jobs/<model>.json`, which is
+what status.py reports as the model's last job.
 """
 import argparse
 from datetime import datetime, timezone
@@ -23,6 +29,7 @@ import time
 from prune import prune_published
 from publish_s3 import make_client, object_prefix, publish, read_current, validate_bundle
 from registry import MANIFESTS, MODELS, PUBLISHED_RUN_ENV, UNCHANGED_EXIT
+from timing import JOBS_DIRECTORY, TIMINGS_ENV
 from workspace import workspace_lock
 
 # Adapters that read ECMWF's open data and so take a mirror rather than a step.
@@ -108,10 +115,34 @@ def published_run(s3, bucket, prefix, model):
     return (current or {}).get("run")
 
 
+def adapter_phases(path):
+    """The phases an adapter recorded, or none: one killed early may have written nothing."""
+    try:
+        phases = json.loads(path.read_text()).get("phases")
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return phases if isinstance(phases, dict) else {}
+
+
+def emit(root, event, stream=None):
+    """Log one job event and keep it as the model's last; keeping it never fails a job."""
+    print(json.dumps(event), file=stream or sys.stdout, flush=True)
+    try:
+        directory = root / JOBS_DIRECTORY
+        directory.mkdir(parents=True, exist_ok=True)
+        temporary = directory / f"{event['model']}.json.tmp"
+        temporary.write_text(json.dumps(event))
+        os.replace(temporary, directory / f"{event['model']}.json")
+    except OSError:
+        pass
+
+
 def run_models(args, root, s3):
     failures = 0
     for model in dict.fromkeys(args.models):
         started = time.monotonic()
+        record = root / JOBS_DIRECTORY / f"{model}.adapter.json"
+        phases = {}
         try:
             if not args.publish_only:
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
@@ -136,31 +167,43 @@ def run_models(args, root, s3):
                            if MODELS[model].get("readsPublishedRun") else None)
                 if current:
                     environment[PUBLISHED_RUN_ENV] = current
-                code = subprocess.run(command, timeout=args.timeout_seconds, check=False,
-                                      env=environment).returncode
+                record.unlink(missing_ok=True)  # A previous job's phases are not this one's.
+                environment[TIMINGS_ENV] = str(record)
+                try:
+                    code = subprocess.run(command, timeout=args.timeout_seconds, check=False,
+                                          env=environment).returncode
+                finally:
+                    phases = adapter_phases(record)
+                    record.unlink(missing_ok=True)
                 # UNCHANGED_EXIT only means "nothing new" if we actually told this
                 # adapter what the bucket serves. From any other adapter, or when the
                 # pointer could not be read, exit 3 is just a nonzero exit status.
                 if code == UNCHANGED_EXIT and current:
-                    print(json.dumps({"event": "forecast_unchanged", "model": model,
-                                      "run": current, "seconds": round(time.monotonic() - started),
-                                      "time": datetime.now(timezone.utc).isoformat()}), flush=True)
+                    emit(root, {"event": "forecast_unchanged", "model": model,
+                                "run": current, "seconds": round(time.monotonic() - started),
+                                "phases": phases, "time": datetime.now(timezone.utc).isoformat()})
                     continue
                 if code:
                     raise subprocess.CalledProcessError(code, command)
             max_age = args.max_age_hours if args.max_age_hours is not None else MODELS[model]["maxAgeHours"]
+            moment = time.monotonic()
             manifest, _, objects = validate_bundle(root / "public", model, max_age)
+            phases["validate"] = {"seconds": round(time.monotonic() - moment, 1)}
+            moment = time.monotonic()
             status = publish(s3, root / "public", model, args.bucket, args.prefix, max_age) if s3 else "local-only"
             pruned = drop_superseded(root / "public")
-            print(json.dumps({"event": "forecast_complete", "model": model,
-                              "kind": MODELS[model]["kind"], "run": manifest["run"],
-                              "objects": len(objects), "frames": len(manifest.get("frames", [])),
-                              "status": status, "pruned": pruned,
-                              "seconds": round(time.monotonic() - started),
-                              "time": datetime.now(timezone.utc).isoformat()}), flush=True)
+            phases["publish"] = {"seconds": round(time.monotonic() - moment, 1)}
+            emit(root, {"event": "forecast_complete", "model": model,
+                        "kind": MODELS[model]["kind"], "run": manifest["run"],
+                        "objects": len(objects), "frames": len(manifest.get("frames", [])),
+                        "status": status, "pruned": pruned,
+                        "seconds": round(time.monotonic() - started), "phases": phases,
+                        "time": datetime.now(timezone.utc).isoformat()})
         except Exception as error:
             failures += 1
-            print(json.dumps({"event": "forecast_failed", "model": model, "error": str(error)}), file=sys.stderr, flush=True)
+            emit(root, {"event": "forecast_failed", "model": model, "error": str(error),
+                        "seconds": round(time.monotonic() - started), "phases": phases,
+                        "time": datetime.now(timezone.utc).isoformat()}, sys.stderr)
         finally:
             drop_downloads(root, model)
     return 1 if failures else 0

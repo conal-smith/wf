@@ -261,7 +261,7 @@ class AIFSFailureTests(unittest.TestCase):
         self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
     def test_the_client_asks_for_the_ai_model_on_the_chosen_mirror(self):
-        with patch("fetch_ecmwf.Client") as constructor:
+        with patch("fetch_ecmwf.OpenDataClient") as constructor:
             fetch_aifs.client("ecmwf", fetch_aifs.OPENDATA_MODEL)
         self.assertEqual(constructor.call_args.kwargs["model"], "aifs-single")
         self.assertEqual(constructor.call_args.kwargs["source"], "ecmwf")

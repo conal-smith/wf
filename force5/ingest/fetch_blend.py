@@ -22,6 +22,7 @@ from pathlib import Path
 from fetch_forecast import PROJECT_ROOT, ROOT
 from publish_s3 import make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
+import timing
 
 # The bundle force5/Dockerfile builds; in a checkout the source runs through tsx.
 BUNDLE = Path(__file__).resolve().parents[1] / "blend" / "dist" / "blend.mjs"
@@ -64,15 +65,18 @@ def main():
     out = ROOT / "public" / MANIFESTS["blend"]
     out.parent.mkdir(parents=True, exist_ok=True)
     if not args.bucket:
+        timing.start("decode")
         subprocess.run([*builder(), "--root", str(ROOT / "public"), "--out", str(out)],
                        check=True, cwd=PROJECT_ROOT)
         return
     s3 = make_client(args.endpoint_url, args.region)
     with tempfile.TemporaryDirectory(prefix="blend-") as scratch:
+        timing.start("download")
         found = read_bucket(s3, args.bucket, args.prefix, Path(scratch))
         if not found:
             raise RuntimeError("The bucket serves no wind manifests: nothing to blend")
         print(f"Blending what the bucket serves: {', '.join(found)}", flush=True)
+        timing.start("decode")
         subprocess.run([*builder(), "--root", scratch, "--out", str(out)],
                        check=True, cwd=PROJECT_ROOT)
 
@@ -83,3 +87,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"Blend failed: {error}. Last published blend preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

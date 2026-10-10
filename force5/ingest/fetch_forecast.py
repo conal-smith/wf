@@ -21,6 +21,7 @@ import numpy as np
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from registry import PUBLISHED_RUN_ENV, UNCHANGED_EXIT
+import timing
 
 # The two answers `already_published` can give, which mean different things: the
 # first ends the job, the second only skips the download. Both are truthy.
@@ -70,10 +71,14 @@ def get(url):
     for attempt in range(3):
         try:
             with urlopen(Request(url, headers={"User-Agent": "Force5/0.1 (wingfoil.ie prototype)"}), timeout=45) as response:
-                return response.read()
+                body = response.read()
+            timing.request(len(body))
+            return body
         except Exception:
             if attempt == 2:
+                timing.failure()
                 raise
+            timing.retry()
             time.sleep(2 ** attempt)
 
 
@@ -148,6 +153,11 @@ def decode_handle(handle, field, run, hour, layout=None, validate=validate_metad
     `validate` lets another provider apply its own parameter/level/step rules.
     `convert` lets a non-wind field publish its own units, range check and
     rounding; without it the values are wind in m/s, rounded to 0.01 m/s."""
+    with timing.phase("decode"):
+        return _decode_handle(handle, field, run, hour, layout, validate, convert)
+
+
+def _decode_handle(handle, field, run, hour, layout, validate, convert):
     try:
         # ecCodes represents zero-length steps in minutes unless explicitly normalised.
         ec.codes_set(handle, "stepUnits", 1)
@@ -245,10 +255,11 @@ def already_published(manifest, run, prefix):
 
 
 def write_json(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps(value, separators=(",", ":"), allow_nan=False))
-    os.replace(temporary, path)
+    with timing.phase("write"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(value, separators=(",", ":"), allow_nan=False))
+        os.replace(temporary, path)
 
 
 def main():
@@ -260,6 +271,7 @@ def main():
     if not 3 <= args.hours <= 72 or args.step not in (1, 3) or args.hours % args.step:
         parser.error("Use 3–72 hours, step 1 or 3, with hours divisible by step")
     hours = list(range(0, args.hours + 1, args.step))
+    timing.start("discover")
     run, urls = discover(hours, args.run)
     if published_in_bucket(run, args.run):
         print(f"ICON-EU {run} is already published; nothing to download.", flush=True)
@@ -281,9 +293,11 @@ def main():
             os.replace(temporary, path)
         return (hour, field), path
 
+    timing.start("download", workers=4)
     with ThreadPoolExecutor(max_workers=4) as pool:
         paths = dict(pool.map(download, urls.items()))
     print("Downloads complete. Validating and cropping to Ireland…", flush=True)
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     run_time = datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc)
     # A content/version-specific prefix prevents cache collisions on importer changes.
@@ -331,3 +345,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"Forecast refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

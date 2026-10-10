@@ -47,6 +47,7 @@ from archive import forecast_key, observation_key, open_archive
 from fetch_forecast import ROOT, write_json
 from publish_s3 import log_event, make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
+import timing
 
 SUMMARY = MANIFESTS["forecast-archive"]
 STATIONS_FILE = Path(__file__).with_name("wind_stations.json")
@@ -361,6 +362,8 @@ def summary(now, archived, current, failed, observations, station_source, statio
 
 
 def run(source, store, now, out):
+    # Reading a run and writing its archive copy are interleaved, model by model.
+    timing.start("archive")
     observations = source.manifest(OBSERVATIONS)
     points, station_source = station_points(observations)
     merged = archive_observations(store, observations, now)
@@ -399,3 +402,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"Forecast archive failed: {error}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

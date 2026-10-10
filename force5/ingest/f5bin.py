@@ -50,6 +50,8 @@ import struct
 
 import numpy as np
 
+import timing
+
 MAGIC = b"F5F1"
 VERSION = 1
 HEADER_BYTES = 24
@@ -301,7 +303,8 @@ def publish_frame(output, prefix, payload):
     Every wind adapter calls this where it used to hash a JSON payload and call
     `write_json`, so the frame format lives in one place rather than ten.
     """
-    data = encode_frame(payload)
-    name = frame_name(prefix, payload["hour"], data)
-    write_with_sidecars(Path(output) / name, data)
+    with timing.phase("write"):
+        data = encode_frame(payload)
+        name = frame_name(prefix, payload["hour"], data)
+        write_with_sidecars(Path(output) / name, data)
     return name

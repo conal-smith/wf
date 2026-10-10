@@ -51,6 +51,7 @@ class ECMWFTests(unittest.TestCase):
 
     def test_network_requests_have_connect_and_read_timeouts(self):
         with patch("requests.Session.request") as request:
+            request.return_value.status_code, request.return_value.content = 200, b""
             session = ForecastSession()
             session.get("https://example.invalid", timeout=None)
             self.assertEqual(request.call_args.kwargs["timeout"], (15, 90))

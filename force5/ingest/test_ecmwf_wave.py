@@ -407,7 +407,7 @@ class WaveFailureTests(unittest.TestCase):
         self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
     def test_the_client_asks_the_wave_stream_of_the_chosen_mirror(self):
-        with patch("fetch_ecmwf.Client") as constructor:
+        with patch("fetch_ecmwf.OpenDataClient") as constructor:
             fetch_ecmwf_wave.client("ecmwf")
         self.assertEqual(constructor.call_args.kwargs["model"], "ifs")
         self.assertEqual(constructor.call_args.kwargs["source"], "ecmwf")

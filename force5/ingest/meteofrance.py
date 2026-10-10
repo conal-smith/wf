@@ -37,6 +37,7 @@ from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (ROOT, get, load_spots, messages, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+import timing
 
 HOST = "meteofrance-pnt.s3.rbx.io.cloud.ovh.net"
 BUCKET = f"https://{HOST}"
@@ -163,18 +164,23 @@ class Session:
                 body = response.read()
                 self.requests += 1
                 self.bytes += len(body)
+                timing.request(len(body))
                 if byte_range is not None and len(body) != byte_range[1] - byte_range[0] + 1:
                     raise ValueError(f"Short range response for {path}")
                 return body
             except (http.client.HTTPException, socket.error, ssl.SSLError, OSError) as error:
                 self.close()
                 if attempt == attempts - 1:
+                    timing.failure()
                     raise ValueError(f"Could not read {path}: {error}") from error
+                timing.retry()
                 time.sleep(2 ** attempt)
             except ValueError:
                 self.close()
                 if attempt == attempts - 1:
+                    timing.failure()
                     raise
+                timing.retry()
                 time.sleep(2 ** attempt)
 
 
@@ -562,6 +568,7 @@ def values(handle, field):
         raise
 
 
+@timing.timed("decode")
 def decode(path, run, hour, spec, layout=None):
     """Validate and crop one cached forecast hour's messages."""
     fields, interval = {}, None
@@ -618,6 +625,7 @@ def refresh(spec, args, prose):
     hours = list(range(0, args.hours + 1, args.step))
     pool = SessionPool(args.workers)
     try:
+        timing.start("discover")
         run, groups = discover(args.source, pool.session(), spec, hours, args.run)
         run_time = run_datetime(spec, run)
         age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
@@ -632,7 +640,11 @@ def refresh(spec, args, prose):
               f"{len(hours)} frames through +{args.hours}h", flush=True)
         cache = ROOT / ".cache" / "meteofrance" / model / run
         cache.mkdir(parents=True, exist_ok=True)
+        # Walking the packages' headers is its own stage: hundreds of small
+        # requests and almost no data, a cost unlike the messages' download.
+        timing.start("index", workers=args.workers)
         located = index(pool, spec, run, groups, hours, cache)
+        timing.start("download", workers=args.workers)
         paths = dict(pool.map(
             lambda session, hour: (hour, download(session, spec, groups, located, hour, cache)),
             hours))
@@ -641,6 +653,7 @@ def refresh(spec, args, prose):
     finally:
         pool.close()
 
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"{model}-{run}-{args.hours}h-v1"
     spots = load_spots()

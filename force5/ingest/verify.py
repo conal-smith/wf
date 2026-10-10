@@ -44,6 +44,7 @@ from consensus import BLEND_MODELS, direction, place_consensus
 from fetch_forecast import ROOT, write_json
 from publish_s3 import log_event, make_client
 from registry import MANIFESTS
+import timing
 
 SCORES = MANIFESTS["verify"]
 SCHEMA = 1
@@ -446,6 +447,7 @@ def main(argv=None):
     store = (open_archive(s3=make_client(args.endpoint_url, args.region), bucket=args.bucket,
                           prefix=args.prefix) if args.bucket
              else open_archive(public=ROOT / "public"))
+    timing.start("score")
     document = scores(score_days(store, now), now)
     out = ROOT / "public" / SCORES
     write_json(out, document)
@@ -461,3 +463,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"Verification failed: {error}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

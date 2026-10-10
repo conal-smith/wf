@@ -17,22 +17,43 @@ from cadence import ECMWF_HOURS, ECMWF_RANGES
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample, write_json
 from registry import UNCHANGED_EXIT
+import timing
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
 
 
 class ForecastSession(requests.Session):
-    """Apply connect/read limits to discovery, index and ranged data requests."""
+    """Apply connect/read limits to discovery, index and ranged data requests.
+
+    Every request the client makes passes through here, so this is where they are
+    counted. A streamed body is ranged GRIB the client is still to read; its bytes
+    are counted by `OpenDataClient.retrieve` once they are on disk."""
     def request(self, *args, **kwargs):
         if kwargs.get("timeout") is None:
             kwargs["timeout"] = (15, 90)
-        return super().request(*args, **kwargs)
+        try:
+            response = super().request(*args, **kwargs)
+        except requests.RequestException:
+            timing.retry()  # The client's own retry loop decides whether to give up.
+            raise
+        if response.status_code == 429 or response.status_code >= 500:
+            timing.retry()
+        timing.request(0 if kwargs.get("stream") else len(response.content))
+        return response
+
+
+class OpenDataClient(Client):
+    """The open-data client, counting the GRIB bytes each retrieve wrote."""
+    def retrieve(self, *args, **kwargs):
+        result = super().retrieve(*args, **kwargs)
+        timing.received(getattr(result, "size", 0) or 0)
+        return result
 
 
 def client(source, model="ifs"):
     """A timeout-bounded open-data client. `model` selects IFS or AIFS Single."""
-    value = Client(source=source, model=model, resol="0p25",
-                   infer_stream_keyword=False, maximum_retries=2, retry_after=2)
+    value = OpenDataClient(source=source, model=model, resol="0p25",
+                           infer_stream_keyword=False, maximum_retries=2, retry_after=2)
     value.session.close()
     value.session = ForecastSession()
     return value
@@ -130,6 +151,7 @@ def main():
     parser.add_argument("--run", help="Optional YYYYMMDDHH, cycle 00 or 12")
     parser.add_argument("--source", choices=["ecmwf", "aws", "google"], default="ecmwf")
     args = parser.parse_args()
+    timing.start("discover")
     # Probing +360 avoids selecting the shorter 06/18 UTC products. Individual
     # fields/steps are still validated below: existence of the last file alone
     # is not sufficient to publish a snapshot.
@@ -170,6 +192,7 @@ def main():
         print(f"  Validated +{hour:03d}h", flush=True)
         return hour, decoded
 
+    timing.start("download", workers=3)
     with ThreadPoolExecutor(max_workers=3) as pool:
         decoded = dict(pool.map(download, ECMWF_HOURS))
     def fetch_gust(hour):
@@ -178,6 +201,7 @@ def main():
         return hour, result
     with ThreadPoolExecutor(max_workers=2) as pool:
         gusts = dict(pool.map(fetch_gust, ECMWF_HOURS))
+    timing.start("decode")
     spots = load_spots()
     spot_forecasts = {spot["id"]: [] for spot in spots}
     grid = decoded[0][1][2]
@@ -225,3 +249,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"ECMWF refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

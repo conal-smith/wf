@@ -29,6 +29,7 @@ import numpy as np
 from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
                             published_in_bucket, sample, spots_file, write_json)
 from registry import UNCHANGED_EXIT
+import timing
 
 MODEL = "icon-eu-weather"
 CYCLES = ("00", "06", "12", "18")
@@ -307,6 +308,7 @@ def manifest_for(run, run_time, args, grid, frames, series):
 def main(argv=None):
     args = parse_args(argv)
     hours = list(range(0, args.hours + 1, args.step))
+    timing.start("discover")
     run, urls = discover(hours, args.run)
     run_time = datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc)
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
@@ -338,10 +340,12 @@ def main(argv=None):
             downloaded += len(data)
         return (hour, field), path
 
+    timing.start("download", workers=4)
     with ThreadPoolExecutor(max_workers=4) as pool:
         paths = dict(pool.map(download, urls.items()))
     print(f"Downloads complete ({downloaded / 1e6:.1f} MB). Validating and cropping to Ireland…",
           flush=True)
+    timing.start("decode")
     spots = load_spots()
     print(f"Sampling {len(spots)} spots from {spots_file()}", flush=True)
     output = ROOT / "public" / "weather"
@@ -365,9 +369,10 @@ def main(argv=None):
                    # An hour with no interval publishes nulls, never a zeroed field.
                    **{name: fields[name] if fields[name] is not None else [None] * cells
                       for name in args.frame_variables}}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        with timing.phase("write"):
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
+            name = f"{prefix}/{hour:03d}-{digest}.json"
+            write_json(output / name, payload)
         size = (output / name).stat().st_size
         published += size
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
@@ -396,3 +401,5 @@ if __name__ == "__main__":
         print(f"ICON-EU weather refresh failed: {error}. Last published snapshot preserved.",
               file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

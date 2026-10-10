@@ -30,6 +30,7 @@ import fetch_gfs
 from fetch_gfs import get, index_ranges, run_datetime
 from fetch_forecast import ROOT, load_spots, published_in_bucket, sample, spots_file, write_json
 from registry import UNCHANGED_EXIT
+import timing
 
 MODEL = "gfs-wave"
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfswave.pl"
@@ -250,6 +251,7 @@ def validate_metadata(metadata, name, run, hour):
         raise ValueError("Valid time mismatch")
 
 
+@timing.timed("decode")
 def decode(path, run, hour, spots, layout=None):
     """Validate every message of one step, then resample it onto the display grid."""
     native, masks = {}, {}
@@ -456,6 +458,7 @@ def main(argv=None):
     args = parse_args(argv)
     fetch_gfs.THROTTLE.pause = PAUSE[args.source]
     hours = list(range(0, args.hours + 1, args.step))
+    timing.start("discover")
     run = discover(args.source, hours, args.run)
     run_time = run_datetime(run)
     age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
@@ -490,8 +493,10 @@ def main(argv=None):
         return hour, decoded
 
     # Two concurrent requests at most: NOMADS asks well-behaved clients to stay low.
+    timing.start("download", workers=2)
     with ThreadPoolExecutor(max_workers=2) as pool:
         decoded = dict(pool.map(fetch, hours))
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     signature = decoded[0][1]["signature"]
@@ -504,9 +509,10 @@ def main(argv=None):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": GRID, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        with timing.phase("write"):
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
+            name = f"{prefix}/{hour:03d}-{digest}.json"
+            write_json(output / name, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
             series[spot["id"]].append({"hour": hour, "validTime": valid, "values": {
@@ -542,3 +548,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"GFS-Wave refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

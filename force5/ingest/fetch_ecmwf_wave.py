@@ -39,6 +39,7 @@ from cadence import ECMWF_HOURS, ecmwf_ladder
 from fetch_ecmwf import SOURCE_URL, client
 from fetch_forecast import ROOT, decode_handle, load_spots, published_in_bucket, spots_file, write_json
 from registry import UNCHANGED_EXIT
+import timing
 
 MODEL = "ecmwf-wave"
 # Two cycles a day, published roughly eight hours after run time; a run is at most
@@ -156,6 +157,7 @@ def crop_values(name, values, missing):
     return output, wet
 
 
+@timing.timed("decode")
 def decode(path, run, hour, variables, layout=None):
     """Validate and crop every message of one wave step."""
     fields, masks = {}, {}
@@ -368,6 +370,7 @@ def main(argv=None):
         """A fresh client per call: its session is not shared between threads."""
         return client(args.source)
 
+    timing.start("discover")
     # Probing the requested last step avoids selecting the shorter 06/18 products
     # and a cycle that is still publishing. Every step is still validated below.
     run = args.run or wave().latest(step=args.hours, stream="wave",
@@ -404,8 +407,10 @@ def main(argv=None):
         print(f"  Validated +{hour:03d}h ({path.stat().st_size} bytes)", flush=True)
         return hour, decoded
 
+    timing.start("download", workers=args.workers)
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         decoded = dict(pool.map(download, hours))
+    timing.start("decode")
     output = ROOT / "public" / "weather"
     prefix = f"{MODEL}-{run}-{args.hours}h-{len(variables)}v-v1"
     signature, grid = decoded[0][2][0], decoded[0][2][2]
@@ -419,9 +424,10 @@ def main(argv=None):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, **fields}
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-        name = f"{prefix}/{hour:03d}-{digest}.json"
-        write_json(output / name, payload)
+        with timing.phase("write"):
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
+            name = f"{prefix}/{hour:03d}-{digest}.json"
+            write_json(output / name, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
             plan = plans[spot["id"]]
@@ -453,3 +459,5 @@ if __name__ == "__main__":
         print(f"ECMWF wave refresh failed: {error}. Last published snapshot preserved.",
               file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

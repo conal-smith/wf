@@ -47,11 +47,12 @@ from urllib.parse import quote
 import requests
 
 from fetch_forecast import ROOT, write_json
+import timing
 
 MANIFEST = "marine/wind-observations.json"
 STATIONS_FILE = Path(__file__).with_name("wind_stations.json")
 USER_AGENT = "Force5/0.1 (wingfoil.ie prototype)"
-SESSION = requests.Session()
+SESSION = timing.count_responses(requests.Session())
 
 WINDOW_HOURS = 72
 KNOTS_TO_MPS = 0.514444
@@ -489,7 +490,9 @@ def main(argv=None):
     now = datetime.now(timezone.utc)
     end = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     start = end - timedelta(hours=args.hours + 1)
+    timing.start("download")
     stations, statuses, rejected = collect(start, end, load_catalogue(), now)
+    timing.start("decode")
     for key, status in statuses.items():
         print(f"  {key}: {json.dumps(status)}; rejected {json.dumps(rejected.get(key, {}))}",
               flush=True)
@@ -509,3 +512,5 @@ if __name__ == "__main__":
         print(f"Wind observation refresh failed: {error}. Last published observations preserved.",
               file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()

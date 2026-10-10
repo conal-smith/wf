@@ -14,6 +14,7 @@ import argparse
 import sys
 
 import meteofrance
+import timing
 
 SPEC = meteofrance.SPECS["arpege"]
 PROSE = {
@@ -63,3 +64,5 @@ if __name__ == "__main__":
     except Exception as error:
         print(f"ARPEGE refresh failed: {error}. Last published snapshot preserved.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        timing.finish()
