@@ -4,10 +4,9 @@ import type { BlendInput, HourStats } from "../force5/src/blend";
 import { modelEntry, modelHue } from "../force5/src/manifests";
 import type { NightInterval } from "../force5/src/sun";
 import { convert, unitLabel, type Units } from "../force5/src/units";
-import { compass, dayLabel, timeLabel } from "../force5/src/weather";
+import { dayLabel, timeLabel } from "../force5/src/weather";
 import type { DockColumn } from "../force5/src/timeline";
 import {
-  agreementLabel,
   areaPath,
   axisTicks,
   bandPath,
@@ -435,14 +434,6 @@ export default function BlendChart({
                 </div>
               ))}
             </dl>
-            <p>
-              Median {Math.round(show(hovered.median) ?? 0)} {unitLabel(units)}
-              {directions[hover.index] !== null &&
-                ` from ${compass(directions[hover.index]!)}`}
-              {" · ±"}
-              {((show(hovered.spread) ?? 0) / 2).toFixed(1)} {unitLabel(units)}
-              {` · ${agreementLabel(hovered.agreement)}`}
-            </p>
           </div>,
           document.body,
         )}

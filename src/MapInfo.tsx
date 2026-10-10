@@ -7,7 +7,7 @@ import { STARS_HREF } from "../force5/src/siteNav";
 import type { Rider } from "../force5/src/stars";
 import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
-import { riderLine } from "./RatingDetail";
+import { riderLine } from "./riderLine";
 
 const SECTION_ID: Record<InfoSection, string> = {
   key: "map-info-key",
@@ -96,9 +96,8 @@ export default function MapInfo({
             </li>
           </ul>
           <p>
-            Dark hours aren&rsquo;t rated. Hover or tap an hour&rsquo;s stars in
-            the dock for why it has them; your weight and level are in its
-            display options.
+            Dark hours aren&rsquo;t rated. Your weight and level are in the
+            dock&rsquo;s display options.
           </p>
           <p className="ip-fig">Rated for {riderLine(rider)}</p>
           <p>

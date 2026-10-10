@@ -439,12 +439,8 @@ table.tt {
   background: var(--color-ink);
   color: var(--color-ink-inverse);
 }
-/* The stars' explanation button (ui/RatingTip.tsx), fitted to the row. */
-.tt tr.tt-stars td .star-tip {
-  min-height: 0;
-  height: 18px;
-  margin: 0;
-  padding: 0 1px;
+.tt tr.tt-stars td .hour-stars {
+  vertical-align: middle;
 }
 .tt .kn {
   font-weight: 600;
@@ -458,11 +454,6 @@ table.tt {
   display: inline-flex;
   gap: 1px;
   align-items: center;
-}
-.from-cell .cmp {
-  margin: 0 1px;
-  font-size: 9px;
-  color: var(--color-ink-muted);
 }
 .tt tr.tt-wing td {
   font-weight: 600;

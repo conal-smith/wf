@@ -227,7 +227,10 @@ test("a light shows the selected hour's stars, as the dock does, and follows the
     await slider.fill(String(at));
     const cell = page.locator(`.dock tr.tt-stars td[data-i="${at}"]`);
     await expect(cell).toHaveClass(/c-sel/);
-    const said = await cell.locator("button").getAttribute("aria-label");
+    const stars0 = cell.locator(".hour-stars");
+    const said = (await stars0.count())
+      ? await stars0.getAttribute("aria-label")
+      : null;
     const label = await light.getAttribute("aria-label");
     if (!said) {
       await expect(light).toHaveClass(/\bdark\b/);

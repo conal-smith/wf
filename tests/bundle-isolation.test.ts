@@ -234,15 +234,19 @@ describe("the map bundle", () => {
 // The map and the spot page explain an hour's stars with one component. It
 // is the kit's, which both may import, because neither may import the other.
 describe("the stars' explanation", () => {
-  it("is ui/RatingTip.tsx in both the map and the spot page, and nowhere else", () => {
-    for (const entry of ["src/App.tsx", "spot/web/SpotApp.tsx"]) {
-      const graph = [...staticGraph(entry)];
-      expect(graph, entry).toContain("ui/RatingTip.tsx");
-      expect(
-        graph.filter((m) => /(StarTip|RatingTip)\.tsx$/.test(m)),
-        entry,
-      ).toEqual(["ui/RatingTip.tsx"]);
-    }
+  it("is ui/RatingTip.tsx on the spot page, and nowhere else", () => {
+    const graph = [...staticGraph("spot/web/SpotApp.tsx")];
+    expect(
+      graph.filter((m) => /(StarTip|RatingTip)\.tsx$/.test(m)),
+    ).toEqual(["ui/RatingTip.tsx"]);
+  });
+
+  it("is not on the map, whose dock shows the stars and nothing over them", () => {
+    expect(
+      [...staticGraph("src/App.tsx")].filter((m) =>
+        /(StarTip|RatingTip)\.tsx$/.test(m),
+      ),
+    ).toEqual([]);
   });
 });
 

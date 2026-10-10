@@ -118,21 +118,23 @@ test("the week is one strip of hours, 07:00 to 20:00, under the day slider", asy
     await expect(page.locator(".dk-labs")).toContainText(row);
   // Stars only where it is light; a dark hour is left empty, not rated zero.
   expect(
-    await page.locator(".dock tr.tt-stars td[data-i] .star-tip").count(),
+    await page.locator(".dock tr.tt-stars td[data-i] .hour-stars").count(),
   ).toBeGreaterThan(0);
   expect(
-    await page.locator(".dock tr.tt-stars td.night:not(:has(.star-tip))").count(),
+    await page.locator(".dock tr.tt-stars td.night:not(:has(.hour-stars))").count(),
   ).toBeGreaterThan(0);
-  // Every hour reads its wind and gust, and where it blows from against the shore.
+  // Every hour reads its wind and gust, and one arrow for where it goes.
   await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(/^\d+$/);
   await expect(
-    page.locator(".dock tr.tt-from td .g-shore").first(),
-  ).toHaveAttribute("aria-label", /shore|offshore|onshore/);
-  // The tide's turns are named in words, never as HW and LW: a short label
-  // on the row, the time and the height in full in the turn's title.
+    page.locator(".dock tr.tt-from td .from-cell").first(),
+  ).toHaveAttribute("aria-label", /^From [NSEW]{1,3}, .*(shore|offshore|onshore)$/);
+  await expect(page.locator(".dock tr.tt-from td .g-arrow").first()).toBeVisible();
+  await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
+  // The tide's turns are just their times on the curve; the turn and the
+  // height in full are in its title.
   const tide = page.locator(".dock .tide-row");
   await expect(tide.locator(".tide-label").first()).toHaveText(
-    /^(High|Low) \d\d:\d\d$/,
+    /^\d\d:\d\d$/,
   );
   await expect(tide.locator("g > title").first()).toHaveText(
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
@@ -233,22 +235,15 @@ test("a tap on an hour selects it", async ({ page }) => {
   await expect(slider(page)).toHaveValue("6");
 });
 
-test("the stars explain themselves on hover, and the ? leads to how they work", async ({
+test("the stars open nothing on hover, and the ? leads to how they work", async ({
   page,
 }) => {
   await openDock(page);
-  const star = page.locator(".dock tr.tt-stars .star-tip").first();
+  const star = page.locator(".dock tr.tt-stars .hour-stars").first();
   await star.scrollIntoViewIfNeeded();
+  await expect(star).toHaveAttribute("aria-label", /^\d\d:\d\d: /);
   await star.hover();
-  const tip = page.getByRole("tooltip");
-  await expect(tip).toBeVisible();
-  await expect(tip).toContainText(/kg (intermediate|learning|advanced)/);
-  await expect(tip.getByRole("link", { name: "How?" })).toHaveAttribute(
-    "href",
-    "/stars",
-  );
-  await page.mouse.move(5, 5);
-  await expect(tip).toHaveCount(0);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
   // The ? opens the map's information at the stars, which leads on to the page.
   await page
     .locator(".dock")
@@ -261,7 +256,7 @@ test("the stars explain themselves on hover, and the ? leads to how they work", 
   ).toHaveAttribute("href", "/stars?spot=brandon");
 });
 
-test("the head says the day's best, and the pen loops each day's", async ({
+test("the head says the day's best, and the pen loops each day's, untitled", async ({
   page,
 }) => {
   await openDock(page);
@@ -269,13 +264,12 @@ test("the head says the day's best, and the pen loops each day's", async ({
     /^(Best (today|tomorrow|[A-Z][a-z]+day) \d\d:\d\d(–\d\d:\d\d)? · .*· [\d.]+ m² wing|[A-Z][a-z]+: (no stars|done))$/,
   );
   await expect(page.locator(".dk-best")).not.toContainText(/\b(HW|LW)\b/);
-  const best = await page
-    .locator(".dock tr.tt-day td i")
-    .allTextContents();
-  // A loop for each day whose best still ahead is worth riding: two stars or
-  // more. A one-star day keeps its "best" in the heading and gets no loop.
+  // The pen loops each day's best still worth riding; the day's heading
+  // says its stars and no times, which the loop already shows.
+  const days = await page.locator(".dock tr.tt-day td").count();
   const loops = await page.locator(".dock .tt-pen .pen-loop").count();
-  expect(loops).toBeLessThanOrEqual(best.length);
+  expect(loops).toBeLessThanOrEqual(days);
+  await expect(page.locator(".dock tr.tt-day")).not.toContainText("best");
   await expect(
     page.getByRole("link", { name: "Spot page →" }).first(),
   ).toHaveAttribute("href", "/spot/brandon");

@@ -1,11 +1,9 @@
 /**
  * The chart's small glyphs, drawn as the mockup draws them and coloured from
- * the theme through src/map.css: which way a beach faces, the wind against
- * it, an arrow blowing downwind, and the red star a rider keeps a spot
- * with.
+ * the theme through src/map.css: which way a beach faces, an arrow blowing
+ * downwind, and the red star a rider keeps a spot with.
  */
-import { useContext, useId, type ReactNode } from "react";
-import { SHORE_LABEL, shoreAngle } from "../force5/src/stars";
+import { useContext, type ReactNode } from "react";
 import { compass } from "../force5/src/weather";
 import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
@@ -64,61 +62,6 @@ export function WindArrow({ from, size = 13 }: { from: number; size?: number }) 
           d="M0 5.5V-5.2M-3 -1.8L0 -5.6L3 -1.8"
           fill="none"
           strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-    </svg>
-  );
-}
-
-/**
- * The wind against this beach: the sea above, the beach hatched below, the
- * arrow blowing downwind, red when it blows off the beach.
- */
-export function ShoreGlyph({
-  from,
-  facing,
-  size = 15,
-}: {
-  from: number;
-  facing: number | null | undefined;
-  size?: number;
-}) {
-  const id = useId();
-  if (facing === null || facing === undefined) return null;
-  const angle = shoreAngle(from, facing);
-  const off = angle === "offshore" || angle === "cross-off";
-  return (
-    <svg
-      className={`g-shore${off ? " is-off" : ""}`}
-      width={size}
-      height={size}
-      viewBox="-9 -9 18 18"
-      role="img"
-      aria-label={SHORE_LABEL[angle]}
-    >
-      <title>{SHORE_LABEL[angle]}</title>
-      <defs>
-        <pattern
-          id={id}
-          width="3"
-          height="3"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <rect className="g-land" width="3" height="3" />
-          <line className="g-hatch" x1="0" y1="0" x2="0" y2="3" />
-        </pattern>
-      </defs>
-      <rect x="-8.5" y="4.2" width="17" height="4.6" fill={`url(#${id})`} />
-      <path className="g-stroke" d="M-8.5 4.2H8.5" strokeWidth="1.1" />
-      <g transform={`translate(0 -2.2) rotate(${Math.round(from - facing + 180)})`}>
-        <path
-          className="g-shore-arrow"
-          d="M0 5V-5.2M-2.6 -2.3L0 -5.5L2.6 -2.3"
-          fill="none"
-          strokeWidth="1.4"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

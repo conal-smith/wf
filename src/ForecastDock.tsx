@@ -18,14 +18,8 @@ import { loopPath } from "../ui/penPaths";
 const BlendChart = lazy(() => import("./BlendChart"));
 const DisplayFilter = lazy(() => import("./DisplayFilter"));
 import { InfoPop } from "./InfoPop";
-import { HourStars, riderLine } from "./RatingDetail";
-import {
-  FacingCompass,
-  ShoreGlyph,
-  StarToggle,
-  StarsHelp,
-  WindArrow,
-} from "./glyphs";
+import { riderLine } from "./riderLine";
+import { FacingCompass, StarToggle, StarsHelp, WindArrow } from "./glyphs";
 import {
   axisTicks,
   candleGroups,
@@ -65,7 +59,12 @@ import { variableValue } from "../force5/src/variables";
 import { seaTemperatureText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
 import type { Prefs } from "../force5/src/prefs";
-import type { Rider } from "../force5/src/stars";
+import {
+  SESSION_LABEL,
+  SHORE_LABEL,
+  shoreAngle,
+  starsText,
+} from "../force5/src/stars";
 import { dayNights } from "../force5/src/sun";
 import { eventsBetween, tideAt, type SpotTide } from "../force5/src/tides";
 import { convert, type Units } from "../force5/src/units";
@@ -175,10 +174,6 @@ const range = (cols: readonly StripColumn[], best: DayBest) =>
   best.from === best.to
     ? clock(cols[best.from].time)
     : `${clock(cols[best.from].time)}–${clock(cols[best.to].time)}`;
-const shortRange = (cols: readonly StripColumn[], best: DayBest) =>
-  best.from === best.to
-    ? clock(cols[best.from].time)
-    : `${hourLabel(cols[best.from].time)}–${hourLabel(cols[best.to].time)}`;
 
 /** "today", "tomorrow", or the day's name. */
 function relativeDay(day: StripDay, now: number) {
@@ -221,6 +216,25 @@ function DockBest({
   );
 }
 
+/**
+ * Where the wind goes, as one arrow and no letters: red where it blows off
+ * the beach, so the one warning the old shore glyph gave is kept. The words
+ * are for a screen reader only.
+ */
+function FromCell({ from, facing }: { from: number; facing: number | null }) {
+  const angle = facing === null ? null : shoreAngle(from, facing);
+  const off = angle === "offshore" || angle === "cross-off";
+  return (
+    <span
+      className={`from-cell${off ? " is-off" : ""}`}
+      role="img"
+      aria-label={`From ${compass(from)}${angle ? `, ${SHORE_LABEL[angle]}` : ""}`}
+    >
+      <WindArrow from={from} size={13} />
+    </span>
+  );
+}
+
 /** The strip's table: built when the data changes, never when the time does. */
 const StripTable = memo(function StripTable({
   spot,
@@ -228,7 +242,6 @@ const StripTable = memo(function StripTable({
   days,
   hours,
   units,
-  rider,
   tide,
   g,
   now,
@@ -244,7 +257,6 @@ const StripTable = memo(function StripTable({
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
   units: Units;
-  rider: Rider;
   tide: SpotTide | null;
   g: StripGeometry;
   now: number;
@@ -346,7 +358,6 @@ const StripTable = memo(function StripTable({
                           size={8}
                         />
                       </em>
-                      <i>best {shortRange(columns, best)}</i>
                     </>
                   )}
                 </span>
@@ -369,13 +380,19 @@ const StripTable = memo(function StripTable({
               <tr className="tt-stars">
                 {cells("s", (hour, column, at) =>
                   hour?.rating ? (
-                    <HourStars
-                      hour={hour}
-                      time={column.time}
-                      facing={facing}
-                      rider={rider}
+                    // Just the stars: a card on hover covered the chart for
+                    // a reading the head and the ? already give.
+                    <StarGlyphs
+                      className="hour-stars"
+                      stars={hour.rating.stars}
+                      potential={hour.rating.potential}
                       size={starSize(g.w[at], full)}
                       slots="potential"
+                      label={`${clock(column.time)}: ${
+                        hour.rating.potential
+                          ? starsText(hour.rating)
+                          : `No stars, ${SESSION_LABEL[hour.rating.session].toLowerCase()}`
+                      }`}
                     />
                   ) : null,
                 )}
@@ -398,11 +415,7 @@ const StripTable = memo(function StripTable({
             <tr className="tt-from">
               {cells("f", (hour) =>
                 hour && hour.from !== null ? (
-                  <span className="from-cell">
-                    <WindArrow from={hour.from} size={12} />
-                    <span className="cmp">{compass(hour.from)}</span>
-                    <ShoreGlyph from={hour.from} facing={facing} size={14} />
-                  </span>
+                  <FromCell from={hour.from} facing={facing} />
                 ) : null,
               )}
             </tr>
@@ -734,7 +747,7 @@ function TideRow({
         X: xOf(columns, day, g, t),
         Y: y(event.height),
         high,
-        text: `${word} ${clock(t)}`,
+        text: clock(t),
         full: `${word} tide ${clock(t)} · ${event.height.toFixed(1)} m`,
       });
     }
@@ -1371,11 +1384,6 @@ export default function ForecastDock(props: Props) {
                             size={9}
                           />
                         </span>
-                        {best.stars > 0 && (
-                          <span className="bw">
-                            best {shortRange(columns, best)}
-                          </span>
-                        )}
                         <span className="sn">
                           <StarGlyphs
                             stars={best.stars}
@@ -1574,7 +1582,6 @@ export default function ForecastDock(props: Props) {
                 days={days}
                 hours={hours}
                 units={prefs.units}
-                rider={prefs.rider}
                 tide={tide}
                 g={g}
                 now={now}
