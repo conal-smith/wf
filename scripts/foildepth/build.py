@@ -14,7 +14,9 @@ increasing trust (a later source wins over an earlier one where it has data):
    written as `landMetres`, which the map draws as nothing;
 5. clamp anything deeper than `floorMetres` to it (always deep enough, and far
    smaller to store), quantise to 1/32 m, encode as Terrarium RGB in lossless
-   WebP, pyramid down to the min zoom, and pack one PMTiles archive.
+   WebP, pyramid down to the min zoom, and pack one PMTiles archive; each of
+   the area's basins (water held up behind a weir, with a level of its own)
+   is cut out of it into an archive of its own.
 
 It also writes public/foildepth/index.json, the map's index of the areas.
 
@@ -181,11 +183,13 @@ def feather_weight(valid, pixels):
     return np.clip(inside / pixels, 0, 1).astype(np.float32)
 
 
-def merge_one(z, src, layer, feather, bathy):
+def merge_one(z, src, layer, feather, bathy, surface=None):
     """Lay one source over the merge so far, feathered in from its edges.
 
     `bathy` is the merge of the bathymetric surveys alone (not the waterline
-    estimate), which a topographic LiDAR is checked against."""
+    estimate), which a topographic LiDAR is checked against. `surface`, where
+    finite, is a water level the flight saw there instead of the source's own
+    (a lagoon held up above the sea's)."""
     valid = np.isfinite(layer)
     if src.get("kind") == "topo":
         # A topographic LiDAR sees the water's surface, not the bed under it:
@@ -195,6 +199,9 @@ def merge_one(z, src, layer, feather, bathy):
         # Nor at or under the water level the flight is known to have seen.
         if "waterLevelLat" in src:
             water |= valid & (layer <= src["waterLevelLat"])
+        if surface is not None:
+            with np.errstate(invalid="ignore"):
+                water |= valid & (layer <= surface)
         valid &= ~water
     w = feather_weight(valid, feather)
     blend = valid & np.isfinite(z)
@@ -259,6 +266,17 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
     transform, width, height, (x0, x1, y0, y1) = grid_for(area["bbox"], zmax, size)
     print(f"{area['id']}: z{zmax} {width}×{height} px ({transform.a:.2f} m Mercator)")
 
+    # Basins: water held up behind a weir, with a level of its own (see
+    # README.md). Each is cut out of the area's archive into one of its own.
+    basins = area.get("basins", [])
+    basin_masks = [polygon_mask([b["polygon"]], transform, (height, width)) for b in basins]
+    surface = None
+    for b, m in zip(basins, basin_masks):
+        if "lidarWaterLat" in b:
+            if surface is None:
+                surface = np.full((height, width), np.nan, dtype=np.float32)
+            surface[m] = b["lidarWaterLat"]
+
     used = []
     z = np.full((height, width), np.nan, dtype=np.float32)
     wet_at_lat = np.zeros((height, width), dtype=bool)
@@ -295,7 +313,8 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
             continue
         if src.get("kind") == "bathy":
             bathy = merge_one(bathy, src, layer, cfg["featherPixels"], bathy)
-        z = merge_one(z, src, layer, cfg["featherPixels"], bathy)
+        z = merge_one(z, src, layer, cfg["featherPixels"], bathy,
+                      surface if src.get("kind") == "topo" else None)
         used.append(src)
     if not used:
         raise SystemExit(f"{area['id']}: no source data found under {data_dir}")
@@ -358,9 +377,43 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
             dst.write(np.where(outside, np.nan, out).astype(np.float32), 1)
 
     os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"{area['id']}.pmtiles")
+    attribution = "; ".join(s["attribution"] for s in area["sources"] if "attribution" in s)
+    sources = [{k: s[k] for k in ("name", "role", "years", "resolution", "licence")} for s, _ in layers]
+    entries = []
+    # Each basin first, so a reader that takes the first box a point is in
+    # finds the basin; the area's own archive has the basins cut out.
+    for b, m in zip(basins, basin_masks):
+        bx0, bx1, by0, by1 = tile_range(b["bbox"], zmax)
+        crop = np.where(m, out, land)[(by0 - y0) * size:(by1 - y0 + 1) * size, (bx0 - x0) * size:(bx1 - x0 + 1) * size]
+        mb = write_archive(crop, (bx0, by0, bx1, by1), size, zmin, zmax, land, b["bbox"],
+                           os.path.join(out_dir, f"{b['id']}.pmtiles"), b["id"], floor, attribution)
+        stats[b["id"]] = {"pixels": int((m & wet).sum()), "unsurveyed": int((m & wet & unsurveyed).sum()),
+                          "mb": round(mb, 2)}
+        entries.append({
+            "id": b["id"], "name": b["name"], "url": f"foildepth/{b['id']}.pmtiles",
+            "bounds": b["bbox"], "minzoom": zmin, "maxzoom": zmax, "tileSize": size,
+            "station": area["station"], "dryCeilingMetres": ceiling,
+            "level": {k: b["level"][k] for k in ("floorLat", "rangeFactor", "lagHours")},
+            "sources": sources,
+        })
+        out[m] = land
+    mb = write_archive(out, (x0, y0, x1, y1), size, zmin, zmax, land, area["bbox"],
+                       os.path.join(out_dir, f"{area['id']}.pmtiles"), area["id"], floor, attribution)
+    entries.append({
+        "id": area["id"], "name": area["name"], "url": f"foildepth/{area['id']}.pmtiles",
+        "bounds": area["bbox"], "minzoom": zmin, "maxzoom": zmax, "tileSize": size,
+        "station": area["station"], "dryCeilingMetres": ceiling,
+        "sources": sources,
+    })
+    return entries, stats, mb
+
+
+def write_archive(grid, tiles_at_max, size, zmin, zmax, land, bbox, path, name, floor, attribution):
+    """One PMTiles archive of a grid of whole tiles at the max zoom, pyramided
+    down to the min zoom. `tiles_at_max` is the grid's (x0, y0, x1, y1) tiles."""
+    x0, y0, x1, y1 = tiles_at_max
     tiles = []
-    level = out
+    level = grid
     for zoom in range(zmax, zmin - 1, -1):
         tx0, tx1, ty0, ty1 = (x0 >> (zmax - zoom), x1 >> (zmax - zoom), y0 >> (zmax - zoom), y1 >> (zmax - zoom))
         if zoom != zmax:
@@ -380,7 +433,7 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
                 tiles.append((zxy_to_tileid(zoom, tx, ty), encode(tile)))
         prev_x0, prev_y0 = tx0, ty0
     tiles.sort(key=lambda t: t[0])
-    w, s, e, n = area["bbox"]
+    w, s, e, n = bbox
     with open(path, "wb") as fh:
         writer = Writer(fh)
         for tid, data in tiles:
@@ -392,20 +445,14 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
              "max_lon_e7": int(e * 1e7), "max_lat_e7": int(n * 1e7),
              "center_zoom": zmax - 2, "center_lon_e7": int((w + e) / 2 * 1e7),
              "center_lat_e7": int((s + n) / 2 * 1e7)},
-            {"name": f"wingfoil foildepth {area['id']}", "encoding": "terrarium",
+            {"name": f"wingfoil foildepth {name}", "encoding": "terrarium",
              "description": "Seabed and foreshore, metres above LAT (Terrarium). "
                             f"Clamped at {floor} m; {land} m is not water.",
-             "attribution": "; ".join(s["attribution"] for s in area["sources"] if "attribution" in s)},
+             "attribution": attribution},
         )
     mb = os.path.getsize(path) / 1e6
-    print(f"  {len(tiles)} tiles, {mb:.2f} MB → {path}")
-    return {
-        "id": area["id"], "name": area["name"], "url": f"foildepth/{area['id']}.pmtiles",
-        "bounds": area["bbox"], "minzoom": zmin, "maxzoom": zmax, "tileSize": size,
-        "station": area["station"], "dryCeilingMetres": ceiling,
-        "sources": [{k: s[k] for k in ("name", "role", "years", "resolution", "licence")}
-                    for s, _ in layers],
-    }, stats, mb
+    print(f"  {name}: {len(tiles)} tiles, {mb:.2f} MB → {path}")
+    return mb
 
 
 def main():
@@ -421,13 +468,14 @@ def main():
     previous = {}
     if os.path.exists(index_path):
         previous = {a["id"]: a for a in json.load(open(index_path)).get("areas", [])}
-    built = {}
+    areas = []
     for area in cfg["areas"]:
         if args.area and area["id"] not in args.area:
+            # Not rebuilt: its entries (its basins', then its own) as they were.
+            areas += [previous.get(b["id"]) for b in area.get("basins", [])] + [previous.get(area["id"])]
             continue
-        entry, _, _ = build_area(area, cfg, args.data, args.out, args.debug)
-        built[area["id"]] = entry
-    areas = [built.get(a["id"]) or previous.get(a["id"]) for a in cfg["areas"]]
+        entries, _, _ = build_area(area, cfg, args.data, args.out, args.debug)
+        areas += entries
     index = {
         "schemaVersion": 1, "kind": "foildepth",
         "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),

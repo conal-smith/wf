@@ -21,6 +21,27 @@
       "odMalinOffsetMetres": 2.561,
       "dryCeilingMetres": 5.0,
       "spots": ["kilcrea", "broadmeadows-south", "donabate", "low-rock", "portmarnock", "burrow-beach", "bull-island-north", "dollymount", "poolbeg", "sandymount", "seapoint", "dun-laoghaire"],
+      "basins": [
+        {
+          "id": "malahide-lagoon",
+          "name": "Malahide inner estuary, behind the viaduct",
+          "bbox": [-6.26, 53.445, -6.1537, 53.476],
+          "polygon": [
+            [-6.1551, 53.4594], [-6.155, 53.4604], [-6.1545, 53.4634], [-6.1539, 53.4672], [-6.1537, 53.4691],
+            [-6.154, 53.47], [-6.155, 53.476], [-6.26, 53.476], [-6.26, 53.445], [-6.1567, 53.445],
+            [-6.1566, 53.4527], [-6.1562, 53.4554], [-6.156, 53.4563], [-6.1559, 53.4573], [-6.1558, 53.4578]
+          ],
+          "lidarWaterLat": 4.0,
+          "level": { "floorLat": 3.06, "rangeFactor": 0.6, "lagHours": 1 },
+          "notes": {
+            "polygon": "West of the railway: along its two embankments as EMODnet's OSM coastline draws them (the Malahide one to 53.4578 N, the Donabate one from 53.4594 N), straight across the viaduct's 180 m opening between them, and round the inner estuary over land.",
+            "lidarWaterLat": "The TII LiDAR (2010-11) saw a flat surface at +1.3 m OD Malin (3.86 m LAT) under the M1 at the lagoon's west end: the lagoon's water that day, not its bed, so returns at or under 4.0 m LAT in here are dropped.",
+            "floorLat": "The weir under the viaduct: crest about +0.5 m OD Malin before the 2009 collapse (Engineers Ireland, 'The collapse and reconstruction of the Malahide viaduct', part 2), 3.06 m LAT with Howth's offset. The lagoon cannot drain below it; at neaps it drains to it.",
+            "rangeFactor": "The owner's local knowledge: about 1.8 m deep across the middle at low water and 2.5 m at high, a 0.7 m range, against Howth's spring high waters of about 4.2 m LAT: 0.7 / (4.2 - 3.06) = 0.6 of the sea's rise above the crest.",
+            "lagHours": "An estimate, not a measurement: the viaduct's opening slows the flood and the ebb. To be checked on the water."
+          }
+        }
+      ],
       "sources": [
         {
           "name": "EMODnet",

@@ -15,8 +15,9 @@ elevation archive per pilot area. The tide makes it dynamic in the browser:
 | Area | File | Size | Tide station |
 | --- | --- | --- | --- |
 | `dublin-north`: the Malahide estuary, Donabate, Portmarnock, Baldoyle, Bull Island, Howth, and Dublin Bay south to Sandymount, Seapoint and Dún Laoghaire | `dublin-north.pmtiles` | 3.2 MB | Howth |
+| `malahide-lagoon`: the Malahide inner estuary behind the viaduct, a basin of `dublin-north` with a level of its own | `malahide-lagoon.pmtiles` | 0.1 MB | Howth, through the weir |
 | `brandon`: Brandon Bay, the Maharees, Castlegregory to Banna | `brandon.pmtiles` | 4.9 MB | Fenit |
-| | `index.json` | 3 kB | |
+| | `index.json` | 4 kB | |
 
 Each archive holds raster-dem tiles: Terrarium RGB (`m = R·256 + G + B/256 − 32768`)
 in **lossless** WebP (a lossy one would corrupt the heights), 512 px, z10–14
@@ -32,17 +33,20 @@ from the sea), drawn as nothing; **40 m** is water of unsurveyed depth.
   `tide − clearance`, `tide` and the area's dry ceiling (MapLibre wants literal
   stops, so the ramp is rebuilt and set with `setPaintProperty` as the hour
   moves; that is a small texture upload, not a re-tile). Also the datum
-  conversion (`malinToLat`), the class rule (`foilClass`), Terrarium decoding and
-  the tapped-point wording.
+  conversion (`malinToLat`), the class rule (`foilClass`), Terrarium decoding,
+  a basin's level (`basinLevel`, `waterLevelAt`: see below) and the
+  tapped-point wording.
 - `force5/src/WindMap.tsx`: one `raster-dem` source and `color-relief` layer
   per area, under the rivers, the coast's ink and the names.
 - `src/useFoilDepth.ts`: loads `index.json` and each area's station curve
   (`tideForStation` in `force5/src/tides.ts`) the first time the layer is on.
-- `src/App.tsx`: the tide at the dock's selected column (`tideAt`), the layer
-  switch (Layers → Chart → "Foilable depth at the tide (pilot)"), the key
-  (`src/FoilLegend.tsx`, in the map's information dialog, not on the chart),
-  and a tapped point's water
-  (`force5/src/foilProbe.ts` reads one pixel out of the archive).
+- `src/App.tsx`: the water level at the dock's selected column (`tideAt`, and
+  a basin's `waterLevelAt`), the layer switch (Layers → Chart → "Foilable
+  depth at the tide (pilot)"), the key (`src/FoilLegend.tsx`, in the map's
+  information dialog, not on the chart), and a tapped point's water
+  (`force5/src/foilProbe.ts` reads one pixel out of the archive; where a
+  basin's box overlaps its area's, `areasAt` tries each, and the first with
+  water under the point is the side of the weir it is on).
 - The colours are `--map-foil-*` in `ui/theme.css`.
 
 ## Sources (all CC BY 4.0)
@@ -83,7 +87,8 @@ In order of trust; a later one wins where it has data, feathered over 12 px.
    not the bed: returns well above a bathymetric survey are dropped, and round
    Dublin, where the 2011 flight saw water at about −1.0 m OD (≈1.6 m LAT; the
    open sea's surface that day, in Dublin Port, Dún Laoghaire harbour and off
-   Seapoint), so is anything at or under 1.65 m LAT.
+   Seapoint), so is anything at or under 1.65 m LAT. Inside a basin its own
+   surface is used instead (`lidarWaterLat`: 4.0 m LAT in the Malahide lagoon).
 
 ### What was wrong at Sandymount (fixed 2026-10)
 
@@ -121,6 +126,47 @@ unsurveyed. The area now reaches south to 53.287° N (Seapoint and Dún
 Laoghaire), with the OPW 2011 and TII tiles there added to the LiDAR mosaic
 and the INFOMAR surveys cut again for the band.
 
+### A basin's own level: the Malahide lagoon
+
+West of the railway viaduct the Broadmeadow estuary is held up by the weir
+under it. The water passes through the viaduct's 180 m opening, so the lagoon
+never drains below the weir's crest, and fills only part way and late as the
+sea rises past it. Drawn from Howth's open-sea tide it was drained to the
+sea's low water, its margins painted shallow or dry when they are fine to ride.
+
+So it is a **basin**: a polygon in `areas.json` (under its area, with the
+reasons for every number in `notes`), cut out of `dublin-north.pmtiles` into
+`malahide-lagoon.pmtiles` from the same merged grid, and listed in
+`index.json` before its area with a `level`:
+
+```
+level = floorLat + rangeFactor × max(0, tide(t − lagHours) − floorLat)
+```
+
+- `floorLat` **3.06 m**: the weir's crest, about +0.5 m OD Malin (Engineers
+  Ireland, "The collapse and reconstruction of the Malahide viaduct", part 2,
+  which also gives spring tides of +2.22 to −2.38 m OD and says neap high
+  waters top the weir by only about 0.4 m), with Howth's offset.
+- `rangeFactor` **0.6**: the owner's figures, about 1.8 m deep across the
+  middle at low water and 2.5 m at high, a 0.7 m range, over the sea's rise
+  above the crest on a spring tide at Howth (high water about 4.2 m):
+  0.7 / (4.2 − 3.06).
+- `lagHours` **1**: an estimate; nothing measured.
+- The TII LiDAR saw a flat surface at +1.3 m OD (3.86 m LAT) under the M1 at
+  the lagoon's west end: the lagoon's water, near the top of the range this
+  model gives on a spring tide (3.06 + 0.6 × 1.3 ≈ 3.85 m). Returns at or
+  under 4.0 m LAT inside the basin are taken for water (`lidarWaterLat`).
+  The "1.65 m" the README gave for Dublin's LiDAR water is the open sea's
+  surface in Dublin Bay, not the lagoon's: it is under the weir's crest.
+
+The margins' heights are still the waterlines' (0, 2.5 and 3.8 m at the
+satellite LAT, MSL and MHW lines): at the lagoon's low (3.06 m) everything
+inside the MSL line is a metre or more deep and only the rim near the MHW
+line dries, which is how the owner rides it. The client applies the level to
+the station's curve (`waterLevelAt`), builds the basin's ramp from it, and
+reads a tapped point against it. Another impounded lagoon needs only a
+polygon and a level.
+
 Then the mask: ground at or under the area's dry ceiling (HAT plus a margin:
 5.0 m at Howth, 5.6 m at Fenit) and connected to water under LAT; small no-data
 holes inside the water become "unsurveyed"; and water more than 1.5 km from the
@@ -137,16 +183,19 @@ Bathymetry Consortium: EMODnet Digital Bathymetry (DTM 2024) and coastlines".
   water) has no open LiDAR or INFOMAR survey. The satellite LAT line says it
   holds water at every tide (the weir under the viaduct holds it up), so it is
   drawn "unsurveyed", with its rim from the waterlines. A Fingal/OPW flood-study
-  LiDAR, a drone survey or a few soundings at low water would fill it.
+  LiDAR, a drone survey or a few soundings at low water would fill it. Its
+  level is a model (above), calibrated on one rider's figures and a 2009
+  description of the weir; a tide gauge in the lagoon for a fortnight would
+  settle the floor, the range and the lag.
 - **The outer Malahide flats, North Bull/Baldoyle and Sandymount** come from
   the waterlines, not a survey: right in shape, ±0.5 m or so in height. Off
   Merrion and Booterstown the strip between the LAT line and the first
   soundings is drawn unsurveyed (deep blue), though it is probably only a
   metre or less under LAT.
 - The tide is **one station's astronomical prediction** for the whole area: no
-  surge, no waves, and no estuary lag or damping (inside an estuary low water
-  is later and higher than at Howth; the inner lagoon is perched behind its weir).
-  Sandymount uses Howth too: Dublin Port's low waters agree with
+  surge, no waves, and no lag or damping in the open estuaries (inside one low
+  water is later and higher than at Howth); only the basins have a level of
+  their own. Sandymount uses Howth too: Dublin Port's low waters agree with
   Howth's to a few centimetres, its high waters are about 0.15 m lower and
   5–10 minutes later, which matters little on a flat that dries at half tide.
 - LAT from OD Malin is one constant per station, not a modelled surface (a
@@ -173,8 +222,9 @@ python -I build.py --data $D --out ../../public/foildepth [--area dublin-north] 
 node shots.mjs http://127.0.0.1:5173 /tmp/wf-foildepth/shots kilcrea 2   # a look by eye, with the app running
 ```
 
-`build.py` takes 3–4 minutes an area. `--debug` writes each merged grid as a
-GeoTIFF (EPSG:3857) to look at.
+`build.py` takes 3–4 minutes an area, and writes an area's basins with it.
+`--debug` writes each merged grid as a GeoTIFF (EPSG:3857) to look at.
+`python -I test_build.py` checks the gap-fill and basin pieces on toy grids.
 
 Where the data came from (2026-10):
 
