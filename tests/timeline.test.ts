@@ -71,3 +71,30 @@ it("all forecast URLs can use a separate CDN without redirecting spot metadata",
   );
   vi.unstubAllEnvs();
 });
+
+it("a deployment's forecast-base meta tag wins over the build's, so one build serves every environment", () => {
+  vi.stubEnv("VITE_FORECAST_BASE_URL", "https://forecast.example.com/force5");
+  const selectors: string[] = [];
+  vi.stubGlobal("document", {
+    querySelector: (selector: string) => {
+      selectors.push(selector);
+      return { content: " https://data.example.com/staging " };
+    },
+  });
+  expect(forecastUrl("weather/harmonie.json")).toBe(
+    "https://data.example.com/staging/weather/harmonie.json",
+  );
+  expect(selectors).toEqual(['meta[name="wingfoil:forecast-base"]']);
+
+  // No tag, or an empty one: the build's own base, as before.
+  vi.stubGlobal("document", { querySelector: () => ({ content: "  " }) });
+  expect(forecastUrl("weather/harmonie.json")).toBe(
+    "https://forecast.example.com/force5/weather/harmonie.json",
+  );
+  vi.stubGlobal("document", { querySelector: () => null });
+  expect(forecastUrl("weather/harmonie.json")).toBe(
+    "https://forecast.example.com/force5/weather/harmonie.json",
+  );
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
