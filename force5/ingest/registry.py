@@ -98,6 +98,11 @@ MODELS = {
     # so an hourly job publishes a new one each hour and three missed hours is stale.
     "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
               "kind": "blend", "maxAgeHours": 3},
+    # Measured wind at Met Éireann stations and Marine Institute buoys, the truth the
+    # forecasts are verified against (docs/VERIFICATION.md). Like sea temperature,
+    # `run` is the newest observation hour; the feeds lag the clock by about an hour.
+    "wind-obs": {"script": "fetch_wind_obs.py", "manifest": "marine/wind-observations.json",
+                 "kind": "observation", "maxAgeHours": 6},
 }
 
 MANIFESTS = {model: entry["manifest"] for model, entry in MODELS.items()}

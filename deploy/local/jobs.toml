@@ -139,6 +139,12 @@ minutes = [5]               # Hourly, from whatever the wind jobs have published
 timeout_seconds = 600       # then: HARMONIE's :45 run is in 20 minutes later.
 
 [[jobs]]
+id = "wind-obs"
+models = ["wind-obs"]
+minutes = [50]              # Hourly: Met Éireann's readings land 30-45 minutes after the
+timeout_seconds = 600       # hour. Each run re-reads 72 h, so a missed hour loses nothing.
+
+[[jobs]]
 id = "prune"
 command = "prune"
 minutes = [10]              # Backstop only: the worker already deletes a superseded

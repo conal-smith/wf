@@ -1,0 +1,28 @@
+{
+  "$comment": "Where we observe the wind, for fetch_wind_obs.py (class and height) and for archive_forecasts.py when no wind-obs manifest is published. Met Éireann positions are the EDR feed's own; heightM 10 is the WMO standard mast, which the feed does not state per station. Buoy anemometer heights are not published by the dataset, so they are null. Knock, Markree Castle and Phoenix Park are in the feed but report no wind, so they are not listed. class is the exposure: buoy (open sea), coastal (an exposed shore site) or inland.",
+  "stations": [
+    {"id": "MI_M2", "name": "M2 Irish Sea buoy", "lat": 53.4836, "lon": -5.4302, "source": "marine-institute", "class": "buoy", "heightM": null, "elevationM": 0, "sourceId": "M2"},
+    {"id": "MI_M3", "name": "M3 Southwest buoy", "lat": 51.216, "lon": -10.5483, "source": "marine-institute", "class": "buoy", "heightM": null, "elevationM": 0, "sourceId": "M3"},
+    {"id": "MI_M4", "name": "M4 Donegal Bay buoy", "lat": 54.6667, "lon": -9.0667, "source": "marine-institute", "class": "buoy", "heightM": null, "elevationM": 0, "sourceId": "M4"},
+    {"id": "MI_M5", "name": "M5 Celtic Sea buoy", "lat": 51.69, "lon": -6.704, "source": "marine-institute", "class": "buoy", "heightM": null, "elevationM": 0, "sourceId": "M5"},
+    {"id": "MI_M6", "name": "M6 Atlantic buoy", "lat": 53.0748, "lon": -15.8814, "source": "marine-institute", "class": "buoy", "heightM": null, "elevationM": 0, "sourceId": "M6"},
+    {"id": "ME_03951", "name": "Sherkin Island", "lat": 51.47639, "lon": -9.42778, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 21, "sourceId": "9"},
+    {"id": "ME_03952", "name": "Roches Point", "lat": 51.79306, "lon": -8.24444, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 40, "sourceId": "8"},
+    {"id": "ME_03953", "name": "Valentia Observatory", "lat": 51.93833, "lon": -10.24083, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 24, "sourceId": "102"},
+    {"id": "ME_03956", "name": "Johnstown Castle", "lat": 52.29778, "lon": -6.49667, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 62, "sourceId": "16"},
+    {"id": "ME_03958", "name": "Moore Park", "lat": 52.16389, "lon": -8.26389, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 46, "sourceId": "6"},
+    {"id": "ME_03961", "name": "Oak Park", "lat": 52.86111, "lon": -6.91528, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 62, "sourceId": "5"},
+    {"id": "ME_03963", "name": "Mace Head", "lat": 53.32583, "lon": -9.90083, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 21, "sourceId": "2"},
+    {"id": "ME_03966", "name": "Gurteen", "lat": 53.03639, "lon": -8.00861, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 75, "sourceId": "15"},
+    {"id": "ME_03968", "name": "Dunsany", "lat": 53.51583, "lon": -6.66, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 83, "sourceId": "14"},
+    {"id": "ME_03970", "name": "Claremorris", "lat": 53.71083, "lon": -8.9925, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 68, "sourceId": "103"},
+    {"id": "ME_03971", "name": "Mullingar", "lat": 53.53722, "lon": -7.36194, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 101, "sourceId": "1"},
+    {"id": "ME_03975", "name": "Mount Dillon", "lat": 53.72694, "lon": -7.98083, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 39, "sourceId": "10"},
+    {"id": "ME_03976", "name": "Belmullet", "lat": 54.2275, "lon": -10.00694, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 9, "sourceId": "105"},
+    {"id": "ME_03978", "name": "Finner Camp", "lat": 54.49389, "lon": -8.24306, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 33, "sourceId": "104"},
+    {"id": "ME_03979", "name": "Ballyhaise", "lat": 54.05139, "lon": -7.30972, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 78, "sourceId": "7"},
+    {"id": "ME_03980", "name": "Malin Head", "lat": 55.37194, "lon": -7.33917, "source": "met-eireann", "class": "coastal", "heightM": 10, "elevationM": 20, "sourceId": "17"},
+    {"id": "ME_03984", "name": "Newport Furnace", "lat": 53.92361, "lon": -9.57278, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 22, "sourceId": "11"},
+    {"id": "ME_03985", "name": "Athenry", "lat": 53.28917, "lon": -8.78556, "source": "met-eireann", "class": "inland", "heightM": 10, "elevationM": 40, "sourceId": "18"}
+  ]
+}

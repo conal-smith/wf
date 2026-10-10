@@ -25,7 +25,9 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
         nearest-station assignment with its latest reading and a recent series, and
         no immutable objects at all, because the whole bundle is one small file.
         `run` is the newest observation hour, so the freshness limit measures the
-        age of the data.
+        age of the data. `"observes": "wind"` is the wind variant: stations with
+        a class and a window of [time, speed, gust, direction] readings, and no
+        spot assignments, because it exists to verify forecasts.
 """
 from datetime import datetime, timedelta, timezone
 import gzip
@@ -51,6 +53,10 @@ MAX_CODE = 1000  # A code-table entry is a small whole number, never a measureme
 OBSERVATION_MIN_CELSIUS, OBSERVATION_MAX_CELSIUS = -2.0, 35.0
 OBSERVATION_SKEW_SECONDS = 300  # Clock skew allowance; no observation is from the future.
 OBSERVATION_NETWORKS = ("coastal", "sentinel", "buoy")
+# Wind observations: station exposure classes and physical limits, in m/s.
+WIND_OBSERVATION_CLASSES = ("buoy", "coastal", "inland")
+WIND_OBSERVATION_MAX_SPEED, WIND_OBSERVATION_MAX_GUST = 75.0, 90.0
+WIND_OBSERVATION_GUST_SLACK = 0.15  # The adapter's own rounding allowance, plus 0.1 m/s rounding.
 
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 POINTER_CACHE = "public, max-age=0, s-maxage=60, must-revalidate"
@@ -559,6 +565,10 @@ def validate_observation_bundle(public, model, manifest, run, now):
     `run` is the newest observation hour the manifest publishes, which is what makes
     the registry's freshness limit mean "how old is the newest reading".
     """
+    if manifest.get("observes") == "wind":
+        return validate_wind_observations(manifest, run, now)
+    if manifest.get("observes") is not None:
+        raise ValueError(f"Unknown observed quantity {manifest.get('observes')!r}")
     stations, spots = manifest.get("stations"), manifest.get("spots")
     variable = manifest.get("variable")
     if not isinstance(stations, dict) or not stations or not isinstance(spots, dict) or not spots:
@@ -621,6 +631,79 @@ def validate_observation_bundle(public, model, manifest, run, now):
         if previous > at:
             raise ValueError(f"Spot {spot} series runs past its own latest reading")
     # The whole bundle is the pointer manifest; there is nothing immutable to upload.
+    return []
+
+
+def validate_wind_observations(manifest, run, now):
+    """Wind readings at stations: [time, speed, gust, direction] rows, in m/s.
+
+    Each station's readings are strictly increasing in time, inside the declared
+    window behind `run`, physically possible, and never a gust below the speed it
+    accompanies; the latest reading is the last row. Attribution is required,
+    because both networks license the data on condition of it.
+    """
+    stations = manifest.get("stations")
+    if not isinstance(stations, dict) or not stations:
+        raise ValueError("A wind observation manifest needs stations")
+    if manifest.get("readingFields") != ["time", "speed", "gust", "direction"]:
+        raise ValueError("A wind observation manifest must declare its reading fields")
+    if (manifest.get("units") or {}).get("speed") != "m/s":
+        raise ValueError("Wind observations are published in m/s")
+    hours = manifest.get("windowHours")
+    if not whole(hours) or not 1 <= hours <= 240:
+        raise ValueError("A wind observation manifest must declare its window")
+    for key in ("attribution", "licenseUrl"):
+        if not isinstance(manifest.get(key), str) or not manifest[key].strip():
+            raise ValueError(f"A wind observation manifest needs its {key}")
+    if manifest_urls(manifest):
+        # The pruner would read it as an object this manifest keeps alive.
+        raise ValueError("A wind observation manifest must not carry a `url`")
+    earliest = run - timedelta(hours=hours)
+    newest = None
+    for identifier, station in stations.items():
+        label = f"Station {identifier}"
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", identifier):
+            raise ValueError(f"Invalid station id {identifier!r}")
+        if not isinstance(station, dict) or not isinstance(station.get("name"), str) \
+                or not station["name"].strip():
+            raise ValueError(f"{label} needs a name")
+        if not (number(station.get("lat"), 90) and number(station.get("lon"), 180)):
+            raise ValueError(f"{label} has no valid position")
+        if station.get("class") not in WIND_OBSERVATION_CLASSES:
+            raise ValueError(f"{label} declares an unknown class")
+        if not isinstance(station.get("source"), str) or not station["source"].strip():
+            raise ValueError(f"{label} must name its source")
+        height = station.get("heightM")
+        if height is not None and not number(height, 200, 0):
+            raise ValueError(f"{label} has an implausible anemometer height")
+        readings = station.get("readings")
+        if not isinstance(readings, list) or not readings:
+            raise ValueError(f"{label} publishes no readings")
+        previous = None
+        for row in readings:
+            if not isinstance(row, list) or len(row) != 4:
+                raise ValueError(f"{label} has a malformed reading")
+            at = observation_time(row[0], now, label)
+            if previous is not None and at <= previous:
+                raise ValueError(f"{label} readings are not in increasing time order")
+            if at < earliest:
+                raise ValueError(f"{label} has a reading older than the declared window")
+            previous = at
+            speed, gust, heading = row[1:]
+            if not number(speed, WIND_OBSERVATION_MAX_SPEED, 0):
+                raise ValueError(f"{label} has an impossible wind speed")
+            if gust is not None and (not number(gust, WIND_OBSERVATION_MAX_GUST, 0)
+                                     or gust + WIND_OBSERVATION_GUST_SLACK < speed):
+                raise ValueError(f"{label} has an impossible gust")
+            if heading is not None and not (whole(heading) and 0 <= heading < 360):
+                raise ValueError(f"{label} has an impossible direction")
+        latest = station.get("latest")
+        if not isinstance(latest, dict) or [latest.get(k) for k in
+                                            ("time", "speed", "gust", "direction")] != readings[-1]:
+            raise ValueError(f"{label} latest reading is not its newest row")
+        newest = previous if newest is None else max(newest, previous)
+    if newest.replace(minute=0, second=0, microsecond=0) != run:
+        raise ValueError("Run is not the newest published observation hour")
     return []
 
 

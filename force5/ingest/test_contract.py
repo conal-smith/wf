@@ -536,7 +536,8 @@ class PublishedRunContractTests(unittest.TestCase):
         # The blend is not a forecast: its run is the hour it was worked out.
         self.assertEqual(sorted(model for model, entry in MODELS.items()
                                 if not entry.get("readsPublishedRun")),
-                         ["blend", "sea-temperature", "tides"])
+                         ["blend", "sea-temperature", "tides", "wind-obs"])
+
 
 
 if __name__ == "__main__":

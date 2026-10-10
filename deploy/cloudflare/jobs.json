@@ -335,6 +335,20 @@
       ]
     },
     {
+      "id": "wind-obs",
+      "enabled": true,
+      "description": "Wind observations (Met Éireann stations, Marine Institute buoys)",
+      "minutes": [
+        50
+      ],
+      "size": "small",
+      "timeoutSeconds": 600,
+      "args": [
+        "--models",
+        "wind-obs"
+      ]
+    },
+    {
       "id": "prune",
       "enabled": true,
       "description": "Sweep the bucket for objects no manifest references",
