@@ -1,6 +1,11 @@
 {
   "name": "wingfoil-ie",
   "private": true,
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sprintengine/wingfoil.git"
+  },
   "version": "0.1.0",
   "type": "module",
   "engines": {

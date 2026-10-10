@@ -1238,6 +1238,10 @@ npm run preview
 
 Serve `dist/` through any static web host after building. No secrets or account provisioning is needed. Use HTTPS, compression and proper JS MIME types. MapLibre v6's ES-module worker is bundled with Vite's `?worker&url` import; serving its worker asset is essential.
 
+## Builds and releases
+
+CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and push to main, plus the Python suite on the worker image's Python and every Docker image built and smoke-tested (`scripts/release/*-smoke.sh`). A nightly builds main's head into images on GHCR (`ghcr.io/sprintengine/wingfoil-forecast`, `-web`, `-market`) and runs them against real HARMONIE and GFS runs; a release promotes a nightly's exact image digests through staging to production after one approval. [`docs/RELEASES.md`](docs/RELEASES.md) describes the train and the one-time setup.
+
 ## Performance
 
 Two tools time the site as a visitor meets it, rather than as the preview serves it:
@@ -1641,3 +1645,11 @@ whole ~22 MB snapshot; a production point-series endpoint is a future bandwidth
 optimisation. The original eight spots use the small precomputed manifest series; additional directory locations sample the frame grids like arbitrary map points.
 
 Deploy the prepared container worker and S3 publisher using the live runbook, then monitor run age/download failures for all three models. Local locking and conditional S3 pointer writes are implemented; production scheduling, monitoring and safe retention still need configuring. Preserve older files long enough for open browser sessions. Validate HARMONIE gust semantics before enabling them, and consider ensemble uncertainty. Keep model switches explicit; do not silently mix runs/models or interpret interpolated output as observations.
+
+## Contributing
+
+Issues and pull requests are welcome; [`CONTRIBUTING.md`](CONTRIBUTING.md) lists the checks a change has to pass. Report security problems privately, as [`SECURITY.md`](SECURITY.md) describes.
+
+## Licence
+
+The code is licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`): if you run a modified version as a service, you must offer its source to the people using it. Data the site reads keeps its own licence, credited where it is shown: forecasts from Met Éireann, DWD, ECMWF, NOAA, Météo-France and the Marine Institute; places from Fáilte Ireland (CC BY 4.0), OpenStreetMap (ODbL) and the sources listed in [`data/locations/README.md`](data/locations/README.md); depths from EMODnet Bathymetry (CC BY 4.0).

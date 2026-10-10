@@ -12,6 +12,13 @@ Lowest Astronomical Tide where the surveys allow: the datum of the Marine
 Institute tide predictions the dock shows, so depth + tide height is roughly
 the water over the bottom. Not for navigation.
 
+**Licence.** EMODnet data is free to reuse with attribution under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see
+[EMODnet's data policy](https://emodnet.ec.europa.eu/en/emodnet-web-service-documentation)).
+`public/bathy/ireland.pmtiles` is a derived work of the DTM, and the chart's
+attribution names "EMODnet Bathymetry" (`force5/src/chartStyle.ts`). It is not
+covered by this repository's AGPL licence.
+
 **What is in it.** Four vector layers, gzip-compressed MVT in one PMTiles
 archive:
 
