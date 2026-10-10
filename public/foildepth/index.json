@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "kind": "foildepth",
+  "generatedAt": "2026-10-10T02:02:16Z",
+  "datum": "LAT",
+  "encoding": "terrarium",
+  "floorMetres": -6,
+  "landMetres": 50,
+  "noSurveyMetres": 40,
+  "areas": [
+    {
+      "id": "dublin-north",
+      "name": "Malahide estuary, Portmarnock and Dublin Bay north",
+      "url": "foildepth/dublin-north.pmtiles",
+      "bounds": [
+        -6.26,
+        53.32,
+        -5.99,
+        53.5
+      ],
+      "minzoom": 10,
+      "maxzoom": 14,
+      "tileSize": 512,
+      "station": "Howth",
+      "dryCeilingMetres": 5.0,
+      "sources": [
+        {
+          "name": "EMODnet",
+          "role": "fallback",
+          "years": "DTM 2024",
+          "resolution": "~115 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "EMODnet waterlines",
+          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+          "years": "",
+          "resolution": "~10\u201330 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "INFOMAR",
+          "role": "seabed, multibeam",
+          "years": "2003\u20132021",
+          "resolution": "2\u20135 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "OPW/TII LiDAR",
+          "role": "foreshore above the flight's water",
+          "years": "2010\u201311",
+          "resolution": "2 m",
+          "licence": "CC BY 4.0"
+        }
+      ]
+    },
+    {
+      "id": "brandon",
+      "name": "Brandon Bay and Castlegregory",
+      "url": "foildepth/brandon.pmtiles",
+      "bounds": [
+        -10.18,
+        52.22,
+        -9.83,
+        52.35
+      ],
+      "minzoom": 10,
+      "maxzoom": 14,
+      "tileSize": 512,
+      "station": "Fenit",
+      "dryCeilingMetres": 5.6,
+      "sources": [
+        {
+          "name": "EMODnet",
+          "role": "fallback",
+          "years": "DTM 2024",
+          "resolution": "~115 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "EMODnet waterlines",
+          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+          "years": "",
+          "resolution": "~10\u201330 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "INFOMAR",
+          "role": "seabed, multibeam",
+          "years": "2014\u201317",
+          "resolution": "2\u20135 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "INFOMAR LiDAR",
+          "role": "shallows and lower beach, airborne bathymetric LiDAR (Tenix LADS)",
+          "years": "2008",
+          "resolution": "5 m",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "name": "OPW LiDAR",
+          "role": "foreshore",
+          "years": "2006\u201311",
+          "resolution": "2 m",
+          "licence": "CC BY 4.0"
+        }
+      ]
+    }
+  ],
+  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0."
+}

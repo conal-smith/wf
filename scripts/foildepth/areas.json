@@ -1,0 +1,152 @@
+{
+  "clearanceMetres": 1.5,
+  "tileSize": 512,
+  "maxzoom": 14,
+  "minzoom": 10,
+  "floorMetres": -6,
+  "landMetres": 50,
+  "noSurveyMetres": 40,
+  "featherPixels": 12,
+  "seedBelowMetres": -0.3,
+  "minWaterPixels": 400,
+  "maxHolePixels": 4000,
+  "seaBandMetres": 1500,
+  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0.",
+  "areas": [
+    {
+      "id": "dublin-north",
+      "name": "Malahide estuary, Portmarnock and Dublin Bay north",
+      "bbox": [-6.26, 53.32, -5.99, 53.5],
+      "station": "Howth",
+      "odMalinOffsetMetres": 2.561,
+      "dryCeilingMetres": 5.0,
+      "spots": ["kilcrea", "broadmeadows-south", "donabate", "low-rock", "portmarnock", "burrow-beach", "bull-island-north", "dollymount", "poolbeg", "sandymount"],
+      "sources": [
+        {
+          "name": "EMODnet",
+          "role": "fallback",
+          "years": "DTM 2024",
+          "resolution": "~115 m",
+          "licence": "CC BY 4.0",
+          "attribution": "EMODnet Bathymetry Consortium: EMODnet Digital Bathymetry (DTM 2024)",
+          "files": ["emodnet/dublin-north.tif"],
+          "datum": "LAT",
+          "kind": "fallback",
+          "invalid": [0]
+        },
+        {
+          "name": "EMODnet waterlines",
+          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+          "years": "",
+          "resolution": "~10–30 m",
+          "licence": "CC BY 4.0",
+          "attribution": "EMODnet Bathymetry: satellite-derived coastlines (LAT, MSL, MHW)",
+          "files": ["coastlines/dublin-north.json"],
+          "kind": "waterlines",
+          "levels": { "LAT": 0, "MSL": 2.5, "MHW": 3.8 },
+          "coarsen": 2
+        },
+        {
+          "name": "INFOMAR",
+          "role": "seabed, multibeam",
+          "years": "2003–2021",
+          "resolution": "2–5 m",
+          "licence": "CC BY 4.0",
+          "attribution": "INFOMAR, Geological Survey Ireland & Marine Institute",
+          "files": ["infomar/clipped/a1_malahide__*.tif", "infomar/clipped/a2_dublinbay_north__*.tif"],
+          "datum": "LAT",
+          "kind": "bathy",
+          "invalid": [0, -99999],
+          "validRange": [-100, 6]
+        },
+        {
+          "name": "OPW/TII LiDAR",
+          "role": "foreshore above the flight's water",
+          "years": "2010–11",
+          "resolution": "2 m",
+          "licence": "CC BY 4.0",
+          "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland, the Office of Public Works & Transport Infrastructure Ireland) licensed under CC BY 4.0",
+          "files": ["lidar/dub/mosaic_DTM_dub_ITM_ODMalin_2m.tif", "lidar/mal/mosaic_DTM_mal_ITM_ODMalin_2m.tif"],
+          "datum": "MALIN",
+          "kind": "topo",
+          "nodata": -9999,
+          "validRange": [-5, 200],
+          "waterLevelLat": 1.65
+        }
+      ]
+    },
+    {
+      "id": "brandon",
+      "name": "Brandon Bay and Castlegregory",
+      "bbox": [-10.18, 52.22, -9.83, 52.35],
+      "station": "Fenit",
+      "odMalinOffsetMetres": 2.677,
+      "dryCeilingMetres": 5.6,
+      "spots": ["brandon", "fi-maharees-beach", "fermoyle", "kilcummin", "gowlane", "stradbally", "aughacasla", "scraggane", "garrywilliam-point", "banna"],
+      "sources": [
+        {
+          "name": "EMODnet",
+          "role": "fallback",
+          "years": "DTM 2024",
+          "resolution": "~115 m",
+          "licence": "CC BY 4.0",
+          "attribution": "EMODnet Bathymetry Consortium: EMODnet Digital Bathymetry (DTM 2024)",
+          "files": ["emodnet/brandon.tif"],
+          "datum": "LAT",
+          "kind": "fallback",
+          "invalid": [0]
+        },
+        {
+          "name": "EMODnet waterlines",
+          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+          "years": "",
+          "resolution": "~10–30 m",
+          "licence": "CC BY 4.0",
+          "attribution": "EMODnet Bathymetry: satellite-derived coastlines (LAT, MSL, MHW)",
+          "files": ["coastlines/brandon.json"],
+          "kind": "waterlines",
+          "levels": { "LAT": 0, "MSL": 2.7, "MHW": 4.1 },
+          "coarsen": 2
+        },
+        {
+          "name": "INFOMAR",
+          "role": "seabed, multibeam",
+          "years": "2014–17",
+          "resolution": "2–5 m",
+          "licence": "CC BY 4.0",
+          "attribution": "INFOMAR, Geological Survey Ireland & Marine Institute",
+          "files": ["infomar/clipped/a3_brandon_bay__BY_[!L]*.tif"],
+          "datum": "LAT",
+          "kind": "bathy",
+          "invalid": [0, -99999],
+          "validRange": [-100, 6]
+        },
+        {
+          "name": "INFOMAR LiDAR",
+          "role": "shallows and lower beach, airborne bathymetric LiDAR (Tenix LADS)",
+          "years": "2008",
+          "resolution": "5 m",
+          "licence": "CC BY 4.0",
+          "attribution": "INFOMAR, Geological Survey Ireland & Marine Institute: Tralee Bay LiDAR 2008",
+          "files": ["infomar/clipped/a3_brandon_bay__BY_LiDAR_2008_TraleeBay_5m_U29N.tif"],
+          "datum": "LAT",
+          "kind": "bathy",
+          "validRange": [-100, 60]
+        },
+        {
+          "name": "OPW LiDAR",
+          "role": "foreshore",
+          "years": "2006–11",
+          "resolution": "2 m",
+          "licence": "CC BY 4.0",
+          "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland & the Office of Public Works) licensed under CC BY 4.0",
+          "files": ["lidar/bran/mosaic_DTM_bran_ITM_ODMalin_2m.tif"],
+          "datum": "MALIN",
+          "kind": "topo",
+          "nodata": -9999,
+          "validRange": [-3, 200]
+        }
+      ]
+    }
+  ]
+}
