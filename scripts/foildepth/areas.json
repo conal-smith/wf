@@ -1,5 +1,5 @@
 {
-  "clearanceMetres": 1.5,
+  "clearanceMetres": 1,
   "tileSize": 512,
   "maxzoom": 14,
   "minzoom": 10,

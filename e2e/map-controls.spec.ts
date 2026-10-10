@@ -93,7 +93,7 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   await expect(info).toBeVisible();
   for (const name of ["Map key", "Star ratings", "Foilable depth", "Sources"])
     await expect(info.getByRole("heading", { name, exact: true })).toBeVisible();
-  await expect(info).toContainText("Deep enough, 1.5 m or more");
+  await expect(info).toContainText("Deep enough, 1 m or more");
   await expect(info).toContainText("Not for navigation");
   // Modal, over a scrim: the page behind is dimmed and cannot be reached.
   expect(

@@ -14,8 +14,12 @@
  */
 import type { ExpressionSpecification } from "maplibre-gl";
 
-/** A foil mast is 90 cm to 1 m: a rider wants half a metre more than that. */
-export const FOIL_CLEARANCE_METRES = 1.5;
+/**
+ * A metre of water. Up and flying on a 90 cm to 1 m mast, the board rides
+ * above the surface and the wing sits well inside a metre; 1.5 m painted
+ * water a local rider knows is fine to ride as too shallow.
+ */
+export const FOIL_CLEARANCE_METRES = 1;
 
 /** Where the elevation index for the pilot areas is served from, under BASE_URL. */
 export const FOIL_INDEX_PATH = "foildepth/index.json";

@@ -55,7 +55,7 @@ export default function FoilLegend({
       <ul>
         <li>
           <i className="fk fk-deep" aria-hidden="true" />
-          Deep enough, {clearance.toFixed(1)} m or more
+          Deep enough, {clearance} m or more
         </li>
         <li>
           <i className="fk fk-shallow" aria-hidden="true" />

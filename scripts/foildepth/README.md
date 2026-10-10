@@ -3,7 +3,7 @@
 A pilot map layer that shows, at the forecast hour the dock has selected,
 where the water is deep enough to wing-foil:
 
-- **blue**: deep enough, the bed at least the clearance (1.5 m, `FOIL_CLEARANCE_METRES`) under the tide;
+- **blue**: deep enough, the bed at least the clearance (1 m, `FOIL_CLEARANCE_METRES`) under the tide;
 - **ochre**: wet, but too shallow for the mast;
 - **grey-brown**: dry at this tide (sand and mud flats);
 - **pale grey**: wet at every tide, but no survey says how deep.
