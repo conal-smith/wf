@@ -166,3 +166,44 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
   );
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
 });
+
+/** Pixels the particle canvas has a clear colour on, rather than ink. */
+const tinted = (page: Page) =>
+  page.locator(".particle-canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const data = canvas
+      .getContext("2d")!
+      .getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 0; i < data.length; i += 4)
+      if (
+        data[i + 3] > 40 &&
+        Math.max(data[i], data[i + 1], data[i + 2]) -
+          Math.min(data[i], data[i + 1], data[i + 2]) >
+          30
+      )
+        count++;
+    return count;
+  });
+
+test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
+  page,
+}) => {
+  await instrument(page);
+  const layers = page.getByRole("button", { name: "Layers", exact: true });
+  await layers.click();
+  await page
+    .getByRole("group", { name: "Layers" })
+    .getByRole("radio", { name: "Coloured arrows" })
+    .check();
+  await layers.click();
+  await expect.poll(() => tinted(page)).toBeGreaterThan(20);
+  // The depths take over from zoom 11 (windLayer.ts); the chart opens near 6.
+  const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
+  for (let i = 0; i < 7; i++) {
+    await zoomIn.click();
+    await page.waitForTimeout(400);
+  }
+  await expectResumed(page);
+  await expect.poll(() => inked(page)).toBeGreaterThan(100);
+  expect(await tinted(page)).toBe(0);
+});

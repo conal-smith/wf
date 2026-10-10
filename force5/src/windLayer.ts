@@ -29,7 +29,8 @@
  * The wash is an image source covering the view and a margin round it, drawn
  * under the contours and the coast, and kept off the land through a mask made
  * from the basemap's own water polygons; where those have not loaded yet the
- * land gets a fainter wash rather than none.
+ * land gets a fainter wash rather than none. Zoomed right in, where the
+ * depths take over, the wash fades out and the coloured arrows go to ink.
  */
 import type { ImageSource, LngLat, Map as MapLibreMap } from "maplibre-gl";
 import { rideColour, type RideStop } from "./chartStyle";
@@ -58,6 +59,16 @@ const LIFE_SPAN = 180;
 const FADE_IN = 12;
 const FADE_OUT = 16;
 const BINS = 12;
+/**
+ * The zoom where the depths take over. Zoomed right in, a rider is reading
+ * how deep the water is, and the depth tints are at full strength from here
+ * (chartStyle): the wind's colours would clash with them, so the wash has
+ * faded out by this zoom and the coloured arrows are drawn in ink. The
+ * moving lines themselves stay at every zoom.
+ */
+const DEPTHS_ZOOM = 11;
+/** The wash fades over the half zoom before it. */
+const WASH_FADE = 0.5;
 /**
  * Opacity of the wash over the sea, over land, and where the mask has not
  * reached yet. Strong enough to read the wind by: at a half and a tenth the
@@ -159,7 +170,8 @@ export function createWindLayer(
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
   };
-  const colouredNow = () => style === "arrows";
+  /** Speed colours, but for ink where the depths take over. */
+  const colouredNow = () => style === "arrows" && map.getZoom() < DEPTHS_ZOOM;
 
   /* ---- the cloud ---- */
 
@@ -705,6 +717,8 @@ export function createWindLayer(
     if (!on || !frame) return;
     const rect = map.getContainer().getBoundingClientRect();
     const zoom = map.getZoom();
+    // Where the depths take over the wash has faded out: no image to make.
+    if (zoom >= DEPTHS_ZOOM) return;
     const centre = map.getCenter();
     const key = `${frame.model}|${frame.validTime}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}|${stops.map((s) => s.kn.toFixed(1)).join(",")}`;
     if (key === washKey) return;
@@ -794,7 +808,15 @@ export function createWindLayer(
           type: "raster",
           source: "wind-wash",
           paint: {
-            "raster-opacity": 1,
+            "raster-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              DEPTHS_ZOOM - WASH_FADE,
+              1,
+              DEPTHS_ZOOM,
+              0,
+            ],
             "raster-fade-duration": 0,
             "raster-resampling": "linear",
           },
