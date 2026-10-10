@@ -28,6 +28,9 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
         age of the data. `"observes": "wind"` is the wind variant: stations with
         a class and a window of [time, speed, gust, direction] readings, and no
         spot assignments, because it exists to verify forecasts.
+- archive  the forecast archive job's summary of what it has copied under
+        `archive/` (archive.py); it points at nothing the pruner could delete.
+- verification  the forecast verification scores (verify.py), one small file.
 """
 from datetime import datetime, timedelta, timezone
 import gzip
@@ -172,7 +175,9 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Only wind frames may declare a binary encoding")
     validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
                  "weather": validate_variables_bundle, "tide": validate_tide_bundle,
-                 "observation": validate_observation_bundle, "blend": validate_blend_bundle}[kind]
+                 "observation": validate_observation_bundle, "blend": validate_blend_bundle,
+                 "archive": validate_archive_bundle,
+                 "verification": validate_verification_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
@@ -704,6 +709,81 @@ def validate_wind_observations(manifest, run, now):
         newest = previous if newest is None else max(newest, previous)
     if newest.replace(minute=0, second=0, microsecond=0) != run:
         raise ValueError("Run is not the newest published observation hour")
+    return []
+
+
+def generated_hour(manifest, run, label):
+    """A job output's own clock: `generatedAt` must fall in the hour its run names."""
+    try:
+        at = datetime.fromisoformat(str(manifest.get("generatedAt")).replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{label} has no usable generatedAt") from error
+    if at.tzinfo is None or at.replace(minute=0, second=0, microsecond=0) != run:
+        raise ValueError(f"{label} was not generated in the hour its run names")
+
+
+def validate_archive_bundle(public, model, manifest, run, now):
+    """What the archive job copied this hour. Its keys must all be archive keys.
+
+    The archived files themselves are written by the job straight to the archive,
+    which nothing prunes, so they are not objects of this bundle: the summary is
+    the whole publication, and it deliberately carries no `url` for the pruner to
+    follow.
+    """
+    generated_hour(manifest, run, "The archive summary")
+    if manifest.get("schemaVersion") != 1:
+        raise ValueError("Unknown archive summary schema")
+    archived, current = manifest.get("archived"), manifest.get("current")
+    if not isinstance(archived, list) or not isinstance(current, dict):
+        raise ValueError("The archive summary must list what it archived and what is current")
+    for entry in archived:
+        if not isinstance(entry, dict) or not isinstance(entry.get("key"), str) \
+                or not entry["key"].startswith("archive/forecasts/") \
+                or entry.get("model") not in MODELS or MODELS[entry["model"]]["kind"] != "wind" \
+                or not re.fullmatch(r"\d{10}", str(entry.get("run"))):
+            raise ValueError("An archived forecast entry is malformed")
+    for wind_model, entry in current.items():
+        if wind_model not in MODELS or not isinstance(entry, dict) \
+                or not re.fullmatch(r"\d{10}", str(entry.get("run"))):
+            raise ValueError("The archive summary's current runs are malformed")
+    observations = manifest.get("observations")
+    if observations is not None and (not isinstance(observations, dict) or not all(
+            isinstance(key, str) and key.startswith("archive/observations/")
+            for key in observations.get("days", []))):
+        raise ValueError("The archive summary's observation days are malformed")
+    if manifest_urls(manifest):
+        raise ValueError("The archive summary must not reference objects by url")
+    return []
+
+
+def validate_verification_bundle(public, model, manifest, run, now):
+    """Forecast verification scores: tables of rows under declared field names."""
+    generated_hour(manifest, run, "The verification scores")
+    if manifest.get("schemaVersion") != 1:
+        raise ValueError("Unknown verification schema")
+    fields, windows = manifest.get("fields"), manifest.get("windows")
+    if not isinstance(fields, list) or not fields or not all(isinstance(f, str) for f in fields):
+        raise ValueError("Verification scores must declare their fields")
+    if not isinstance(windows, list) or not windows:
+        raise ValueError("Verification scores must declare their windows")
+    for key in ("attribution", "licenseUrl"):
+        if not isinstance(manifest.get(key), str) or not manifest[key].strip():
+            raise ValueError(f"Verification scores need their {key}")
+    for table in ("byClass", "byStation"):
+        tables = manifest.get(table)
+        if not isinstance(tables, dict):
+            raise ValueError(f"Verification scores need {table}")
+        for window in windows:
+            rows = tables.get(str(window.get("days")))
+            if not isinstance(rows, list):
+                raise ValueError(f"{table} has no rows for the {window.get('days')}-day window")
+            for row in rows:
+                if not isinstance(row, list) or len(row) != len(fields) or not all(
+                        value is None or isinstance(value, str) or number(value, 1e9)
+                        for value in row):
+                    raise ValueError(f"A {table} row does not match the declared fields")
+    if manifest_urls(manifest):
+        raise ValueError("Verification scores must not reference objects by url")
     return []
 
 

@@ -1064,6 +1064,115 @@
       }
     },
     {
+      "id": "forecast-archive",
+      "description": "Archive every served wind run and the observations",
+      "schedule": {
+        "at": {
+          "minutes": [
+            15
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "forecast-archive"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "2Gb",
+          "disk": "4Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 2400
+        },
+        "parameters": [
+          "--models",
+          "forecast-archive"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
+      "id": "verify",
+      "description": "Score every model and the blend against the observations",
+      "schedule": {
+        "at": {
+          "hours": [
+            7
+          ],
+          "minutes": [
+            25
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "labels": {
+        "application": "wingfoil",
+        "models": "verify"
+      },
+      "task": {
+        "image": "${WINGFOIL_IMAGE}",
+        "requiredEnv": [
+          "S3_BUCKET",
+          "S3_ENDPOINT_URL",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "FORCE5_SIDECARS"
+        ],
+        "passEnv": [
+          "S3_PREFIX",
+          "AWS_REGION",
+          "ECMWF_SOURCE",
+          "FORCE5_BROTLI_QUALITY"
+        ],
+        "resources": {
+          "cpu": "1",
+          "memory": "2Gb",
+          "disk": "2Gb"
+        },
+        "network": {
+          "type": "Full"
+        },
+        "timeouts": {
+          "queueSeconds": 3600,
+          "totalSeconds": 2400
+        },
+        "parameters": [
+          "--models",
+          "verify"
+        ],
+        "report": {
+          "format": "json-lines",
+          "trackEvent": "forecast_complete",
+          "trackBy": "model"
+        }
+      }
+    },
+    {
       "id": "prune",
       "description": "Sweep the bucket for objects no manifest references",
       "schedule": {

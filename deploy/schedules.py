@@ -55,6 +55,8 @@ DESCRIPTIONS = {
     "sea-temperature": "Sea temperature observations",
     "blend": "Every spot's wind blend, for the map's stars",
     "wind-obs": "Wind observations (Met Éireann stations, Marine Institute buoys)",
+    "forecast-archive": "Archive every served wind run and the observations",
+    "verify": "Score every model and the blend against the observations",
 }
 
 # What a job may use. Bacalhau holds a container to its memory, so these are
@@ -69,6 +71,10 @@ RESOURCES = {
     "tides": SMALL, "sea-temperature": SMALL, "blend": SMALL, "mi-swan": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
     "gfs-wave": {"cpu": "1", "memory": "2Gb", "disk": "6Gb"},
     "wind-obs": SMALL,
+    # The archive decodes a new run's frames one at a time into Python lists, and
+    # verification holds sixteen days of station samples while it scores a day.
+    "forecast-archive": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
+    "verify": {"cpu": "1", "memory": "2Gb", "disk": "2Gb"},
 }
 SWEEP = {"cpu": "0.5", "memory": "512Mb", "disk": "1Gb"}
 

@@ -121,9 +121,10 @@ def run_models(args, root, s3):
                     command += ["--step", str(args.step)]
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
-                # The blend reads what the bucket serves, so it is told where that is;
-                # the credentials stay in the environment it inherits.
-                if MODELS[model]["kind"] == "blend" and args.bucket:
+                # The blend, the archive and the verification read what the bucket
+                # serves, so they are told where that is; the credentials stay in the
+                # environment they inherit.
+                if MODELS[model].get("readsBucket") and args.bucket:
                     command += ["--bucket", args.bucket, "--prefix", args.prefix]
                     if args.endpoint_url:
                         command += ["--endpoint-url", args.endpoint_url]

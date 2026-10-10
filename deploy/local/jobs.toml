@@ -145,6 +145,20 @@ minutes = [50]              # Hourly: Met Éireann's readings land 30-45 minutes
 timeout_seconds = 600       # hour. Each run re-reads 72 h, so a missed hour loses nothing.
 
 [[jobs]]
+id = "forecast-archive"
+models = ["forecast-archive"]
+minutes = [15]              # Hourly, after the blend: copies every run being served into
+timeout_seconds = 1800      # archive/ before its successor deletes it. Shares :15 with
+                            # sea-temperature and mi-swan, which the loop serialises.
+
+[[jobs]]
+id = "verify"
+models = ["verify"]
+hours = [7]                 # Daily, after the 07:15 archive: scores every model and the
+minutes = [25]              # blend against the archived observations (docs/VERIFICATION.md).
+timeout_seconds = 1800
+
+[[jobs]]
 id = "prune"
 command = "prune"
 minutes = [10]              # Backstop only: the worker already deletes a superseded

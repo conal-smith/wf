@@ -14,6 +14,11 @@ it is re-derived or re-downloaded, except for `harmonie-eps`, whose members are
 the controls of earlier cycles and which therefore publishes a smaller ensemble
 there (see docs/LIVE_FORECAST_PIPELINE.md). Adding a model means adding one entry
 here and its fetch script.
+
+`readsBucket` marks a job that reads what the bucket already serves rather than an
+upstream source (the blend, the forecast archive, the verification): the worker
+passes it the bucket, prefix, endpoint and region, and the credentials stay in the
+environment it inherits. Without a bucket such a job reads the work directory.
 """
 
 # The exit code an adapter that declares `readsPublishedRun` uses to say "the run I
@@ -97,12 +102,21 @@ MODELS = {
     # one small file instead of every manifest. `run` is the hour it was worked out,
     # so an hourly job publishes a new one each hour and three missed hours is stale.
     "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
-              "kind": "blend", "maxAgeHours": 3},
+              "kind": "blend", "maxAgeHours": 3, "readsBucket": True},
     # Measured wind at Met Éireann stations and Marine Institute buoys, the truth the
     # forecasts are verified against (docs/VERIFICATION.md). Like sea temperature,
     # `run` is the newest observation hour; the feeds lag the clock by about an hour.
     "wind-obs": {"script": "fetch_wind_obs.py", "manifest": "marine/wind-observations.json",
                  "kind": "observation", "maxAgeHours": 6},
+    # Not a model either: copies every wind run the bucket serves, sampled where we
+    # observe, and the observations, into archive/ before the runs are deleted. The
+    # pointer is only a summary of what it copied; `run` is the hour it ran.
+    "forecast-archive": {"script": "archive_forecasts.py",
+                         "manifest": "verify/forecast-archive.json",
+                         "kind": "archive", "maxAgeHours": 3, "readsBucket": True},
+    # Daily scores of every model, and of the blend, against the archived observations.
+    "verify": {"script": "verify.py", "manifest": "verify/scores.json",
+               "kind": "verification", "maxAgeHours": 36, "readsBucket": True},
 }
 
 MANIFESTS = {model: entry["manifest"] for model, entry in MODELS.items()}

@@ -177,8 +177,8 @@ class ShippedScheduleTest(unittest.TestCase):
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
                                       "arome", "gfs-wave", "mi-swan", "ecmwf-wave", "tides",
-                                      "sea-temperature", "blend", "wind-obs", "prune",
-                                      "status"])
+                                      "sea-temperature", "blend", "wind-obs", "forecast-archive",
+                                      "verify", "prune", "status"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
         # bandwidth for a thin spread, so an operator enables it knowingly.
         self.assertEqual([job["id"] for job in jobs if not job["enabled"]], ["harmonie-eps"])

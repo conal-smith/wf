@@ -7,7 +7,9 @@ disk, and exits nonzero when a model is absent, unreadable, incomplete, stale or
 already expired. Every registered kind is understood, including a tide manifest
 that publishes coverage instead of frames, an ensemble that publishes spot series
 without map frames, and an observation bundle, which has no future coverage at all:
-for that kind the report is the age of the newest observation.
+for that kind the report is the age of the newest observation. The forecast
+archive's summary and the verification scores cover no time either: for those the
+report is how long ago the job last ran, which is what their `run` names.
 """
 import argparse
 from datetime import datetime, timezone
@@ -18,6 +20,9 @@ import sys
 
 from prune import manifest_urls
 from registry import MANIFESTS, MODELS
+
+# Job outputs rather than data: their `run` is the hour the job ran.
+JOB_KINDS = ("archive", "verification")
 
 
 def moment(value):
@@ -61,6 +66,8 @@ def describe(public, model, now, override=None):
     if not path.is_file():
         return {**row, "state": "absent"}
     observed = MODELS[model]["kind"] == "observation"
+    if MODELS[model]["kind"] in JOB_KINDS:
+        return describe_job(path, row, now, limit)
     try:
         manifest = json.loads(path.read_text())
         run = datetime.strptime(manifest["run"], "%Y%m%d%H").replace(tzinfo=timezone.utc)
@@ -93,16 +100,31 @@ def describe(public, model, now, override=None):
     return {**row, "state": "fresh", "ok": True}
 
 
+def describe_job(path, row, now, limit):
+    """The archive or verification job: fresh while it last ran within the limit."""
+    try:
+        manifest = json.loads(path.read_text())
+        run = datetime.strptime(manifest["run"], "%Y%m%d%H").replace(tzinfo=timezone.utc)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {**row, "state": "unreadable", "error": str(error)}
+    age = (now - run).total_seconds() / 3600
+    row.update({"run": manifest["run"], "ageHours": round(age, 2), "objects": 0, "frames": 0,
+                "missing": 0, "ranAt": manifest.get("generatedAt")})
+    if age > limit:
+        return {**row, "state": "stale"}
+    return {**row, "state": "fresh", "ok": True}
+
+
 def render(rows):
     # Wide enough for the longest model id in the report, so columns stay aligned.
     width = max((len(row["model"]) for row in rows), default=5) + 1
-    # "kind" is wide enough for the longest registered kind, "observation".
-    lines = [f"{'model':<{width}} {'kind':<11} {'state':<11} {'run':<11} {'age':>8} "
+    # "kind" is wide enough for the longest registered kind, "verification".
+    lines = [f"{'model':<{width}} {'kind':<12} {'state':<11} {'run':<11} {'age':>8} "
              f"{'objects':>8} {'missing':>8}  coverage ends / observed at"]
     for row in rows:
         age = f"{row['ageHours']:.1f} h" if "ageHours" in row else "-"
-        reach = row.get("coverageEnds") or row.get("observedAt") or "-"
-        lines.append(f"{row['model']:<{width}} {row['kind']:<11} {row['state']:<11} "
+        reach = row.get("coverageEnds") or row.get("observedAt") or row.get("ranAt") or "-"
+        lines.append(f"{row['model']:<{width}} {row['kind']:<12} {row['state']:<11} "
                      f"{row.get('run', '-'):<11} {age:>8} {row.get('objects', '-'):>8} "
                      f"{row.get('missing', '-'):>8}  {reach}")
     return "\n".join(lines)

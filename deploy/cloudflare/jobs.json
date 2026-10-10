@@ -349,6 +349,37 @@
       ]
     },
     {
+      "id": "forecast-archive",
+      "enabled": true,
+      "description": "Archive every served wind run and the observations",
+      "minutes": [
+        15
+      ],
+      "size": "medium",
+      "timeoutSeconds": 1800,
+      "args": [
+        "--models",
+        "forecast-archive"
+      ]
+    },
+    {
+      "id": "verify",
+      "enabled": true,
+      "description": "Score every model and the blend against the observations",
+      "hours": [
+        7
+      ],
+      "minutes": [
+        25
+      ],
+      "size": "medium",
+      "timeoutSeconds": 1800,
+      "args": [
+        "--models",
+        "verify"
+      ]
+    },
+    {
       "id": "prune",
       "enabled": true,
       "description": "Sweep the bucket for objects no manifest references",

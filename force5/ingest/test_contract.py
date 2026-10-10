@@ -533,11 +533,41 @@ class PublishedRunContractTests(unittest.TestCase):
 
     def test_every_forecast_skips_a_published_run(self):
         # Tides and observations have no provider run to compare; see the registry.
-        # The blend is not a forecast: its run is the hour it was worked out.
+        # The blend, the archive and the verification are not forecasts: their run
+        # is the hour they ran.
         self.assertEqual(sorted(model for model, entry in MODELS.items()
                                 if not entry.get("readsPublishedRun")),
-                         ["blend", "sea-temperature", "tides", "wind-obs"])
+                         ["blend", "forecast-archive", "sea-temperature", "tides", "verify",
+                          "wind-obs"])
 
+
+
+class ReadsBucketContractTests(unittest.TestCase):
+    """A `readsBucket` job is handed the bucket's coordinates, so it must take them.
+
+    The worker passes --bucket, --prefix and, when set, --endpoint-url and --region
+    to such a job; a script that did not declare one would fail with a usage error
+    on the first one-shot run, which only the bucket deployment would ever see.
+    """
+
+    HERE = Path(__file__).resolve().parent
+    OPTIONS = {"--bucket", "--prefix", "--endpoint-url", "--region"}
+
+    def declared(self, script):
+        tree = ast.parse((self.HERE / script).read_text())
+        return {node.args[0].value for node in ast.walk(tree)
+                if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "add_argument"
+                and node.args and isinstance(node.args[0], ast.Constant)}
+
+    def test_every_bucket_reader_takes_the_bucket_options(self):
+        readers = [model for model, entry in MODELS.items() if entry.get("readsBucket")]
+        self.assertEqual(sorted(readers), ["blend", "forecast-archive", "verify"])
+        for model in readers:
+            with self.subTest(model=model):
+                self.assertLessEqual(self.OPTIONS, self.declared(MODELS[model]["script"]))
+
+    def test_no_registered_manifest_lives_in_the_archive(self):
+        self.assertFalse([path for path in MANIFESTS.values() if path.split("/")[0] == "archive"])
 
 
 if __name__ == "__main__":
