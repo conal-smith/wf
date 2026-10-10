@@ -69,7 +69,7 @@ test("the chart's controls: zoom and the layers by keyboard, with the credits be
   await expect(print).toContainText("Not for navigation");
 });
 
-test("the map's information is one dialog over the dimmed chart: the i under Layers, the foil layer's i and the stars' ?", async ({
+test("the map's information is one dialog over the dimmed chart: the i under Layers and the foil layer's i", async ({
   page,
 }) => {
   // The foilable-depth layer on, as a rider who had it on last time.
@@ -116,14 +116,14 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   await expect(info).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
-  // The "?" by the dock's stars opens it at the stars, with the way on to
-  // the page that works them through for the spot in view.
-  await page
-    .locator(".dock")
-    .getByRole("button", { name: "How the stars work" })
-    .click();
+  // The stars are explained in it, with the way on to the page that works
+  // them through for the spot in view; the dock has no "?" of its own.
+  await expect(
+    page.locator(".dock").getByRole("button", { name: "How the stars work" }),
+  ).toHaveCount(0);
+  await open.click();
   await expect(info).toBeVisible();
-  await expect(info.locator("#map-info-stars")).toBeInViewport();
+  await expect(info.locator("#map-info-stars")).toBeAttached();
   await expect(
     info.getByRole("link", { name: "How the stars work, in full →" }),
   ).toHaveAttribute("href", "/stars?spot=brandon");
