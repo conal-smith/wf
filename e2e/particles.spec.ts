@@ -101,7 +101,9 @@ test("particle work stops when hidden or for reduced motion, and resumes", async
   await expectResumed(page);
 });
 
-test("dragging defers field rebuilds until the map stops", async ({ page }) => {
+test("dragging carries the arrows with the map and defers field rebuilds until it stops", async ({
+  page,
+}) => {
   await instrument(page);
   await page.mouse.move(700, 260);
   await page.mouse.down();
@@ -112,7 +114,11 @@ test("dragging defers field rebuilds until the map stops", async ({ page }) => {
     await page.mouse.move(730 + i * 8, 275 + i * 3);
     await page.waitForTimeout(35);
   }
-  expect(await page.evaluate(() => window.particleWork)).toEqual(before);
+  const during = await page.evaluate(() => ({ ...window.particleWork }));
+  // The same lines are drawn as the map moves, carried with it, but the
+  // field is resampled only once it stops: per frame it is too costly.
+  expect(during.strokes).toBeGreaterThan(before.strokes);
+  expect(during.fields).toBe(before.fields);
   await page.mouse.up();
   await expectResumed(page);
   await expect

@@ -340,8 +340,8 @@ export default function WindMap(props: Props) {
         flyTo(spot) {
           // As long as the trip: a spot a few kilometres along the same
           // coast is a short glide, the length of the country a longer
-          // flight. The wind's arrows rest while the camera moves, so a fixed
-          // 2.2 s left them off for that long even for the next bay over.
+          // flight. A fixed 2.2 s kept the rider waiting that long even for
+          // the next bay over.
           const zoom = Math.max(map.getZoom(), 10.4);
           const center = seaward(spot);
           const from = map.project(map.getCenter());
