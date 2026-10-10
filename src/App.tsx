@@ -34,6 +34,7 @@ import FoilLegend from "./FoilLegend";
 import { useFoilDepth } from "./useFoilDepth";
 import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
+import { rideWedge } from "../force5/src/rideWedge";
 import { WIND_STYLES, type WindStyle } from "../force5/src/windLayer";
 import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls from "./MapControls";
@@ -582,6 +583,15 @@ export default function App() {
         windKn: hour?.windKn ?? null,
         compass: hour?.from != null ? compass(hour.from) : null,
         mark: offshoreMark(hour?.rating ?? null, rider),
+        wedge: hour?.rating
+          ? rideWedge(
+              rider,
+              hour.windKn,
+              hour.gustKn,
+              hour.from,
+              spot.facing ?? null,
+            )
+          : null,
       });
     }
     return out;

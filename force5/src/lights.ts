@@ -6,6 +6,11 @@
  * one keeps its stars and gets a red arrow instead (and is struck for a
  * learner: the caller decides, through `mark`).
  *
+ * Behind the ring, a wedge spans the headings this rider can hold out to sea
+ * at the hour's wind (./rideWedge): longer the better powered, pulsing faster
+ * the more stars. The pulse is a transform and an opacity on an HTML box, so
+ * the compositor runs it and a hundred lights cost no main-thread frames.
+ *
  * One DOM marker per place, made once and written to in place: rebuilding a
  * hundred and more markers per hour scrubbed stalls the camera.
  *
@@ -13,6 +18,7 @@
  * `placeLabels`.
  */
 import * as maplibregl from "maplibre-gl";
+import type { Wedge } from "./rideWedge";
 import type { Spot } from "./weather";
 
 export interface LightState {
@@ -26,12 +32,16 @@ export interface LightState {
   windKn: number | null;
   compass: string | null;
   mark: "struck" | "cross-off" | null;
+  /** The headings the rider can hold out to sea, or null. */
+  wedge: Wedge | null;
 }
 
 interface Entry {
   el: HTMLButtonElement;
   marker: maplibregl.Marker;
   arrow: SVGGElement;
+  pulse: HTMLElement;
+  wedge: SVGPathElement;
   figure: SVGTextElement;
   sub: HTMLElement;
   key: string;
@@ -52,6 +62,7 @@ const MANAGED = [
   "sel",
   "active",
   "named",
+  "w-over",
 ];
 
 /** The base map's own names, which a light's name should not print over. */
@@ -78,6 +89,21 @@ const overlaps = (a: Box, b: Box, pad = 1) =>
   b.top < a.bottom + pad;
 
 const LIGHT_SVG = `<svg viewBox="-30 -30 60 60" aria-hidden="true"><g class="lt-wind"><path class="lt-arrow" d="M0 -9.6V-20.5M-3.4 -16.6L0 -21L3.4 -16.6"/></g><circle class="lt-ring" r="7.6"/><line class="lt-strike" x1="-5.6" y1="5.6" x2="5.6" y2="-5.6"/><text class="lt-n" y="3.4" text-anchor="middle"></text></svg>`;
+
+/** The wedge's radius, in the light's 60-unit box: just foiling to fully powered. */
+const WEDGE_SHORT = 11;
+const WEDGE_LONG = 32;
+
+const point = (bearing: number, r: number) => {
+  const a = (bearing * Math.PI) / 180;
+  return `${(r * Math.sin(a)).toFixed(2)} ${(-r * Math.cos(a)).toFixed(2)}`;
+};
+
+/** A sector from the ring's centre, clockwise from `from` to `to`. */
+export function wedgePath({ from, to, power }: Wedge): string {
+  const r = WEDGE_SHORT + (WEDGE_LONG - WEDGE_SHORT) * power;
+  return `M0 0L${point(from, r)}A${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${point(to, r)}Z`;
+}
 
 export interface Lights {
   update(
@@ -199,7 +225,7 @@ export function createLights(
     // Before the marker is made: it adds classes of its own to the element.
     el.className = "spot-marker lt pending";
     el.dataset.spotId = spot.id;
-    el.innerHTML = `${LIGHT_SVG}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
+    el.innerHTML = `<span class="lt-pulse" aria-hidden="true"><svg class="lt-wedge" viewBox="-30 -30 60 60"><path/></svg></span>${LIGHT_SVG}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
     el.querySelector(".lt-lab b")!.textContent = spot.name;
     el.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -212,6 +238,8 @@ export function createLights(
       el,
       marker,
       arrow: el.querySelector<SVGGElement>(".lt-wind")!,
+      pulse: el.querySelector<HTMLElement>(".lt-pulse")!,
+      wedge: el.querySelector<SVGPathElement>(".lt-wedge path")!,
       figure: el.querySelector<SVGTextElement>(".lt-n")!,
       sub: el.querySelector<HTMLElement>(".lt-lab i")!,
       key: "",
@@ -224,8 +252,9 @@ export function createLights(
         if (!entry) continue;
         const s = states.get(spot.id);
         const on = spot.id === selected;
+        const w = s?.wedge;
         const key = s
-          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : Math.round(s.windKn)}|${on}|${named.has(spot.id)}`
+          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : Math.round(s.windKn)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
@@ -236,6 +265,7 @@ export function createLights(
           level,
           ...(s?.mark === "struck" ? ["off"] : []),
           ...(s?.mark === "cross-off" ? ["xoff"] : []),
+          ...(w?.state === "over" ? ["w-over"] : []),
           ...(on ? ["sel", "active"] : []),
           ...(named.has(spot.id) ? ["named"] : []),
         ]);
@@ -249,6 +279,10 @@ export function createLights(
           );
           entry.arrow.style.display = "";
         } else entry.arrow.style.display = "none";
+        if (w && level.startsWith("s")) {
+          entry.wedge.setAttribute("d", wedgePath(w));
+          entry.pulse.style.display = "";
+        } else entry.pulse.style.display = "none";
         entry.sub.textContent =
           s && !s.pending && s.compass !== null && s.windKn !== null
             ? // The wind and the shore, not the stars: the ring's figure

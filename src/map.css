@@ -198,6 +198,86 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* The wedge: the headings the rider can hold out to sea (force5/src/
+   lights.ts). Its own stroke in its own colour rounds the corners. The box
+   it sits in is the button's, so it scales from the ring's centre; the pulse
+   is on that box, the compositor's to run, and the svg inside keeps the
+   light's own zoom, hover and focus rules. */
+.lt-pulse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--color-ink);
+  opacity: var(--wedge-op, 0.5);
+}
+.lt-wedge path {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+.lt.s0 .lt-pulse,
+.lt.s1 .lt-pulse {
+  --wedge-op: 0.2;
+}
+.lt.s2 .lt-pulse {
+  --wedge-op: 0.35;
+}
+.lt.s3 .lt-pulse,
+.lt.s4 .lt-pulse {
+  --wedge-op: 0.55;
+}
+.lt.s5 .lt-pulse {
+  --wedge-op: 0.6;
+  color: var(--color-chart-magenta);
+}
+.lt.xoff .lt-pulse,
+.lt.off .lt-pulse {
+  --wedge-op: 0.6;
+  color: var(--color-pen);
+}
+/* Past the rider's range: an outline, still. */
+.lt.w-over .lt-wedge path {
+  fill: none;
+  stroke-width: 1.1;
+  stroke-dasharray: 2.2 1.6;
+}
+/* Grow and flash: quicker, wider and deeper the more stars; still at 0–1. */
+.lt.s2 .lt-pulse {
+  --wedge-amp: 1.08;
+  --wedge-lo: 0.55;
+  animation: lt-pulse 3s ease-in-out infinite;
+}
+.lt.s3 .lt-pulse {
+  --wedge-amp: 1.12;
+  --wedge-lo: 0.45;
+  animation: lt-pulse 2.3s ease-in-out infinite;
+}
+.lt.s4 .lt-pulse {
+  --wedge-amp: 1.16;
+  --wedge-lo: 0.35;
+  animation: lt-pulse 1.7s ease-in-out infinite;
+}
+.lt.s5 .lt-pulse {
+  --wedge-amp: 1.2;
+  --wedge-lo: 0.25;
+  animation: lt-pulse 1.2s ease-in-out infinite;
+}
+.lt.w-over .lt-pulse,
+.map-canvas.is-focus .lt:not(.sel) .lt-pulse {
+  animation: none;
+}
+@keyframes lt-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: var(--wedge-op);
+  }
+  50% {
+    transform: scale(var(--wedge-amp));
+    opacity: calc(var(--wedge-op) * var(--wedge-lo));
+  }
+}
 .lt-ring {
   fill: var(--color-ground);
   stroke: var(--color-ink);
@@ -372,6 +452,9 @@
 @media (prefers-reduced-motion: reduce) {
   .lt svg {
     transition: none;
+  }
+  .lt .lt-pulse {
+    animation: none;
   }
   .map-pen-loop,
   .map-pen-note {
