@@ -6,10 +6,11 @@
  * one keeps its stars and gets a red arrow instead (and is struck for a
  * learner: the caller decides, through `mark`).
  *
- * Behind the ring, a wedge spans the headings this rider can hold out to sea
- * at the hour's wind (./rideWedge): longer the better powered, pulsing faster
- * the more stars. The pulse is a transform and an opacity on an HTML box, so
- * the compositor runs it and a hundred lights cost no main-thread frames.
+ * Behind the open spot's ring, a wedge spans the headings this rider can
+ * hold out to sea at the hour's wind (./rideWedge): longer the better
+ * powered, pulsing faster the more stars. The caller gives it to one light
+ * only; on all of them at once it buried the chart. The pulse is a transform
+ * and an opacity on an HTML box, for the compositor to run.
  *
  * One DOM marker per place, made once and written to in place: rebuilding a
  * hundred and more markers per hour scrubbed stalls the camera.

@@ -572,6 +572,9 @@ export default function App() {
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
+    // The riding wedge is the open spot's alone: on every light at once it
+    // buried the chart, and it is a reading of one place, not an overview.
+    const open = picked ? null : (point?.id ?? null);
     for (const spot of spots) {
       const row = hours.get(spot.id);
       const hour = row?.[selected];
@@ -583,19 +586,20 @@ export default function App() {
         windKn: hour?.windKn ?? null,
         compass: hour?.from != null ? compass(hour.from) : null,
         mark: offshoreMark(hour?.rating ?? null, rider),
-        wedge: hour?.rating
-          ? rideWedge(
-              rider,
-              hour.windKn,
-              hour.gustKn,
-              hour.from,
-              spot.facing ?? null,
-            )
-          : null,
+        wedge:
+          spot.id === open && hour?.rating
+            ? rideWedge(
+                rider,
+                hour.windKn,
+                hour.gustKn,
+                hour.from,
+                spot.facing ?? null,
+              )
+            : null,
       });
     }
     return out;
-  }, [spots, hours, version, selected, rider]);
+  }, [spots, hours, version, selected, rider, picked, point?.id]);
   const named = useMemo(() => new Set(starred), [starred]);
   const column = strip[selected];
   const lightLabel = useCallback(

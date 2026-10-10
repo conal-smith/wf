@@ -246,8 +246,9 @@ export default function SidePanel(props: Props) {
               <KeyLight stars={4} arrow wedge />
             </dt>
             <dd>
-              Wedge: the headings you can hold out to sea at your level in this
-              wind. Longer the better powered; it pulses faster with more stars.
+              Wedge, on the spot you open: the headings you can hold out to sea
+              at your level in this wind. Longer the better powered; it pulses
+              faster with more stars.
             </dd>
             <dt>
               <KeyLight stars={5} />
