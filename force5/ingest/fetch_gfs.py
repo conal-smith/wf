@@ -146,7 +146,7 @@ def object_key(run, hour):
 
 
 def index_ranges(text, hour, records=RECORDS):
-    """Byte ranges of the requested `.idx` records, in file order.
+    """Byte ranges of the requested `.idx` records, in the order of `records`.
 
     Defaults to this importer's u, v and gust; the GFS-Wave adapter passes its
     own (name, level) selectors because the sidecar format is identical."""
@@ -168,6 +168,19 @@ def index_ranges(text, hour, records=RECORDS):
         end = entries[found[0] + 1][0] - 1 if found[0] + 1 < len(entries) else ""
         ranges.append((start, end))
     return ranges
+
+
+def contiguous(ranges):
+    """The same bytes in fewer requests: join each range to the one before it
+    when it starts where that one ends, as 10 m UGRD and VGRD always do. Order is
+    kept, so the concatenated stream is byte-for-byte what the ranges give."""
+    joined = []
+    for start, end in ranges:
+        if joined and joined[-1][1] != "" and joined[-1][1] + 1 == start:
+            joined[-1] = (joined[-1][0], end)
+        else:
+            joined.append((start, end))
+    return joined
 
 
 def download(source, run, hour):

@@ -34,6 +34,8 @@ from workspace import workspace_lock
 
 # Adapters that read ECMWF's open data and so take a mirror rather than a step.
 ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
+# Adapters that read NOAA's NOMADS GRIB filter by default and its S3 mirror on request.
+NOAA_MODELS = ("gefs",)
 
 
 def drop_superseded(public):
@@ -60,6 +62,10 @@ def main():
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
                         default=os.environ.get("ECMWF_SOURCE", "ecmwf"),
                         help="ECMWF-hosted by default; the AWS mirror throttles with 503 SlowDown")
+    parser.add_argument("--noaa-source", choices=["nomads", "s3"],
+                        default=os.environ.get("NOAA_SOURCE", "nomads"),
+                        help="GEFS: NOMADS's subregion filter (about 19 MB, but two connections "
+                        "and half an hour) or NOAA's S3 mirror (about 2.8 GB, a few minutes)")
     parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET"), help="Omit for local-only output")
     parser.add_argument("--prefix", default=os.environ.get("S3_PREFIX", ""))
     parser.add_argument("--endpoint-url", default=os.environ.get("S3_ENDPOINT_URL"),
@@ -150,6 +156,8 @@ def run_models(args, root, s3):
                     command += ["--source", args.ecmwf_source]
                 elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
+                if model in NOAA_MODELS:
+                    command += ["--source", args.noaa_source]
                 if args.run and MODELS[model]["kind"] == "wind":
                     command += ["--run", args.run]
                 # The blend, the archive and the verification read what the bucket

@@ -7,8 +7,12 @@ UGRD/VGRD at 10 m and GUST at the surface.
 The default NOMADS GRIB filter crops the Ireland box server-side and returns
 about 15 KB per member-step. `--source s3` reads the same three messages from the
 `noaa-gefs-pds` Open Data bucket through the `.idx` sidecar, which transfers
-whole-globe messages at about 2.24 MB per member-step — roughly 148 times the
-traffic, so it is an outage fallback, not the normal route (see README).
+whole-globe messages at about 2.2 MB per member-step — roughly 145 times the
+traffic. NOMADS asks for at most two connections and a pause between requests,
+and answers each one in two to three seconds, so its 1,271 requests take 20 to 30
+minutes; the bucket asks for neither, so `--source s3` reads with many more workers
+and finishes in minutes for its 2.8 GB. Which to use is a trade of bandwidth for
+time; see docs/LIVE_FORECAST_PIPELINE.md.
 
 Like the GFS control product, GEFS gusts are INSTANTANEOUS surface values, not
 period maxima: `gustKind: "instantaneous"` with `[hour, hour]` on every frame.
@@ -20,13 +24,15 @@ import os
 import re
 import sys
 import threading
+import time
 from urllib.parse import quote, urlencode
 
 import eccodes as ec
+import requests
 
 import fetch_gfs
 from cadence import ladder_hours
-from fetch_gfs import FIELDS, index_ranges, validate_metadata
+from fetch_gfs import FIELDS, contiguous, index_ranges, validate_metadata
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
                             spots_file, write_json)
@@ -39,7 +45,18 @@ SOURCE_URL = "https://www.nco.ncep.noaa.gov/pmb/products/gens/"
 SET = "pgrb2sp25"  # The 0.25° subset that carries 10 m wind and the surface gust.
 # Measured 2026-09-16 on the live 18 UTC cycle: one member-step is 14.7–15.6 KB
 # through the NOMADS filter and 2.17–2.24 MB through the S3 .idx byte ranges.
-FILTER_BYTES_PER_MEMBER_STEP = 15_400
+BYTES_PER_MEMBER_STEP = {"nomads": 15_400, "s3": 2_220_000}
+# Concurrent downloads, by default and at most, and the pause between request
+# starts. Two connections and 0.6 s are NOMADS's own terms for a well-behaved
+# client, and it answers each request in two to three seconds, so a run takes half
+# an hour however it is asked. The S3 bucket states no such terms. Measured on
+# 10 October 2026 over 62 member-steps: 4 workers read 8.6 MB/s, 8 read 17 MB/s,
+# 12 read 21 MB/s and 16 read 23 MB/s, which is this connection's ceiling, so 12
+# takes a whole run in a little over two minutes; any pause between requests
+# halved it, because each member-step is three requests.
+WORKERS = {"nomads": 2, "s3": 12}
+MAX_WORKERS = {"nomads": 2, "s3": 16}
+PAUSE = {"nomads": fetch_gfs.PAUSE["nomads"], "s3": 0.0}
 PERTURBED = 30  # gep01–gep30; with the gec00 control that is 31 members.
 MEMBERS = PERTURBED + 1
 STEP, HOURS = 6, 240
@@ -86,16 +103,50 @@ class Meter:
             cls.total += size
 
 
+CONNECTIONS = threading.local()
+
+
+def bucket_get(url, headers=None, attempts=4):
+    """`fetch_gfs.get` for the S3 bucket, over one kept-alive connection per thread.
+
+    Sixteen workers opening a fresh TLS connection for every request, some fifteen
+    a second, had new connections refused for minutes at a time (10 October 2026).
+    Reused, each worker connects once, and the same reads ran twice as fast."""
+    session = getattr(CONNECTIONS, "session", None)
+    if session is None:
+        session = CONNECTIONS.session = requests.Session()
+    for attempt in range(attempts):
+        fetch_gfs.THROTTLE.wait()
+        try:
+            response = session.get(url, timeout=(15, 90), headers={
+                "User-Agent": fetch_gfs.USER_AGENT, **(headers or {})})
+            response.raise_for_status()
+            timing.request(len(response.content))
+            return response.content
+        except requests.HTTPError as error:
+            # A missing or rejected object is a real answer; only retry transient faults.
+            if error.response.status_code in (400, 403, 404) or attempt == attempts - 1:
+                timing.failure()
+                raise
+        except Exception:
+            if attempt == attempts - 1:
+                timing.failure()
+                raise
+        timing.retry()
+        time.sleep(2 ** attempt)
+
+
 def download(source, run, member, hour):
     if source == "nomads":
         data = fetch_gfs.get(filter_url(run, member, hour))
         Meter.count(len(data))
         return data
     key = object_key(run, member, hour)
-    sidecar = fetch_gfs.get(f"{BUCKET}/{key}.idx")
+    sidecar = bucket_get(f"{BUCKET}/{key}.idx")
     Meter.count(len(sidecar))
-    parts = [fetch_gfs.get(f"{BUCKET}/{key}", headers={"Range": f"bytes={start}-{end}"})
-             for start, end in index_ranges(sidecar.decode(), hour)]
+    # UGRD and VGRD sit side by side in the file, so this is two ranges, not three.
+    parts = [bucket_get(f"{BUCKET}/{key}", headers={"Range": f"bytes={start}-{end}"})
+             for start, end in contiguous(index_ranges(sidecar.decode(), hour))]
     Meter.count(sum(len(part) for part in parts))
     return b"".join(parts)
 
@@ -249,16 +300,22 @@ def main():
     parser.add_argument("--run", help="Optional specific YYYYMMDDHH run (00/06/12/18)")
     parser.add_argument("--source", choices=["nomads", "s3"], default="nomads",
                         help="NOMADS subregion filter, or ranged reads from NOAA's S3 mirror")
-    parser.add_argument("--workers", type=int, default=2,
-                        help="Concurrent downloads; NOMADS asks for at most two")
+    parser.add_argument("--workers", type=int,
+                        help=f"Concurrent downloads: default {WORKERS['nomads']} from NOMADS, "
+                        f"which asks for at most {MAX_WORKERS['nomads']}, and "
+                        f"{WORKERS['s3']} (at most {MAX_WORKERS['s3']}) from S3")
     args = parser.parse_args()
     if not 3 <= args.hours <= MAX_HOURS or args.hours % args.step:
         parser.error(f"Use 3–{MAX_HOURS} hours divisible by the step")
     if not 2 <= args.members <= MEMBERS:
         parser.error(f"Use 2–{MEMBERS} members; member 0 is the control")
-    if not 1 <= args.workers <= 2:
-        parser.error("Use 1 or 2 concurrent downloads: NOMADS limits well-behaved clients")
-    fetch_gfs.THROTTLE.pause = fetch_gfs.PAUSE[args.source]
+    if args.workers is None:
+        args.workers = WORKERS[args.source]
+    if not 1 <= args.workers <= MAX_WORKERS[args.source]:
+        parser.error(f"Use 1–{MAX_WORKERS[args.source]} concurrent downloads from "
+                     f"{args.source}" + (": NOMADS limits well-behaved clients"
+                                         if args.source == "nomads" else ""))
+    fetch_gfs.THROTTLE.pause = PAUSE[args.source]
     members = list(range(args.members))
     ranges = [{"throughHour": args.hours, "stepHours": args.step}]
     hours = list(ladder_hours(ranges))
@@ -273,10 +330,11 @@ def main():
     if published_in_bucket(run, args.run):
         print(f"GEFS 0.25° {run} is already published; nothing to download.", flush=True)
         return UNCHANGED_EXIT
-    requests = len(members) * len(hours)
+    member_steps = len(members) * len(hours)
     print(f"Fetching GEFS 0.25° {run} from {args.source}: {len(members)} members × "
-          f"{len(hours)} steps to +{args.hours}h ({requests} member-steps, about "
-          f"{requests * FILTER_BYTES_PER_MEMBER_STEP / 1e6:.0f} MB through the filter)", flush=True)
+          f"{len(hours)} steps to +{args.hours}h ({member_steps} member-steps, about "
+          f"{member_steps * BYTES_PER_MEMBER_STEP[args.source] / 1e6:,.0f} MB, "
+          f"{args.workers} at a time)", flush=True)
     cache = ROOT / ".cache" / "gefs" / run
     cache.mkdir(parents=True, exist_ok=True)
     timing.start("download", workers=args.workers)
@@ -379,8 +437,8 @@ def main():
     print(f"Published {len(frames)} GEFS mean frames and {len(spot_members)} member series to "
           f"{output / 'gefs.json'}", flush=True)
     cached = sum(path.stat().st_size for path in cache.glob("*.grib2"))
-    print(f"Transferred {Meter.total / 1e6:.1f} MB this run over {requests} member-steps "
-          f"({Meter.total / max(requests, 1) / 1e3:.1f} kB each); {cached / 1e6:.1f} MB of "
+    print(f"Transferred {Meter.total / 1e6:.1f} MB this run over {member_steps} member-steps "
+          f"({Meter.total / max(member_steps, 1) / 1e3:.1f} kB each); {cached / 1e6:.1f} MB of "
           f"source GRIB is cached under {cache}", flush=True)
 
 

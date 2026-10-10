@@ -102,11 +102,40 @@ cycle of 16 September 2026 at `+006h`, the NOMADS 0.25° ensemble filter
 **14.7–15.6 kB** (5.65 kB UGRD, 5.19 kB VGRD, 4.28 kB GUST), averaging 15.2 kB across
 all 31 members, so a default run transfers about **19.3 MB**. The same three messages
 read from `noaa-gefs-pds` through the `.idx` sidecar are **2.18–2.24 MB** per
-member-step, because the bucket holds whole-globe messages — about 2.84 GB per run,
-148 times the filter. `--source s3` exists only for a NOMADS outage, and each run
-prints its own measured transfer. A default run makes 1,271 filter requests at the
-two connections and minimum pause NOMADS asks for, which dominates its wall time;
-`--step 3` (81 steps) doubles both to 2,511 requests and about 38 MB.
+member-step, because the bucket holds whole-globe messages — about 2.8 GB per run,
+145 times the filter. A GRIB2 message is packed as a whole, so no byte range can
+narrow it to Ireland; the three are already the only messages read, and UGRD and VGRD
+sit side by side in the file, so they come in one range: an `.idx` read and two ranges
+per member-step. A default run makes 1,271 filter requests at the two connections and
+0.6 s pause NOMADS asks for, and NOMADS answers each in two to three seconds, so that
+is the job's wall time; `--step 3` (81 steps) doubles both to 2,511 requests and about
+38 MB. Each run prints its own measured transfer and phases.
+
+The bucket states no such limits, so `--source s3` reads with **12 workers** by
+default (up to 16), over one kept-alive connection each and with no pause; from NOMADS
+the limit stays two. Measured on 10 October 2026 against the same 06 UTC run, one run
+each:
+
+| Source | Requests | Transferred | Download | Decode | Total |
+| --- | --- | --- | --- | --- | --- |
+| NOMADS, 2 workers | 1,271 (+13 retried) | 18.7 MB | 1,289 s | 2.7 s | 1,393 s |
+| S3, 12 workers | 3,813 | 2.78 GB | 116 s | 23 s | 145 s |
+
+Discovery took 101 s of the NOMADS run (a listing that stalled and was retried) and
+5 s of the S3 one. Decoding is slower from S3 because every message is the whole
+globe. Over 62 member-steps, S3 read 8.6 MB/s with 4 workers, 17 MB/s with 8, 21 MB/s
+with 12 and 23 MB/s with 16, which was the connection's ceiling; the old fallback (two
+workers, a fresh connection per request, a 0.05 s pause) read 1.4 MB/s and was no
+faster than NOMADS. Sixteen workers on fresh connections had new connections refused
+for minutes at a time, which is why they are kept alive. The two runs published the
+same bundle except one member at one step (member 20 at +120 h), whose values differ by
+0.01 m/s: the filter re-packs its subregion, and one value rounded the other way.
+
+The worker passes `--noaa-source` (default `nomads`, or `NOAA_SOURCE` in the
+environment) to GEFS as `--source`. Which to use is a trade of bandwidth for time:
+NOMADS costs about 19 MB and 23–33 minutes a run, close to the worker's 45-minute
+adapter timeout on a slow day; S3 costs about 2.8 GB (11 GB a day at four runs) and
+two and a half minutes.
 
 Only the ensemble mean becomes map frames, with the same Ireland crop and frame
 contract as the GFS control, including `gustKind: "instantaneous"` and
@@ -959,20 +988,22 @@ workers) with `within` naming the phase it ran inside, rather than as wall time:
 
 ```json
 {
-  "event": "forecast_complete", "model": "gfs", "run": "2026101006", "seconds": 278,
+  "event": "forecast_complete", "model": "gfs", "run": "2026101006", "seconds": 242,
   "phases": {
-    "discover": {"seconds": 3.1, "requests": 2, "bytes": 412000, "failures": 1},
-    "download": {"seconds": 271.4, "workers": 2, "requests": 81, "bytes": 1190000},
-    "decode": {"seconds": 1.2, "threadSeconds": 3.4, "within": "download"},
-    "write": {"seconds": 1.8}, "validate": {"seconds": 0.4}, "publish": {"seconds": 0.0}
+    "discover": {"seconds": 9.6, "retries": 3, "failures": 1, "requests": 1, "bytes": 53595},
+    "download": {"seconds": 231.7, "workers": 2, "requests": 81, "bytes": 1190818, "retries": 4},
+    "decode": {"seconds": 0.0, "threadSeconds": 0.2, "within": "download"},
+    "write": {"seconds": 0.3}, "validate": {"seconds": 0.1}, "publish": {"seconds": 0.0}
   }
 }
 ```
 
-The adapter also prints the same thing as one line at its end, failed or not:
+That run spent its discovery asking three more times for a 12 UTC cycle NOMADS did not
+have yet, and its download waiting on NOMADS, three seconds a request. The adapter also
+prints the same thing as one line at its end, failed or not:
 
 ```text
-Timing: discover 3.1 s (2 req, 412.0 kB, 1 failed) · download 271 s (81 req, 1.2 MB, 2 at a time) · decode 1.2 s (+3.4 s across download workers) · write 1.8 s · total 278 s
+Timing: discover 9.6 s (1 req, 53.6 kB, 3 retried, 1 failed) · download 232 s (81 req, 1.2 MB, 2 at a time, 4 retried) · decode 0.0 s (+0.2 s across download workers) · write 0.3 s · total 242 s
 ```
 
 The adapter rewrites its record every half minute while a download is running, so a

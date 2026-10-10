@@ -208,6 +208,7 @@ class WorkerEventTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.args = SimpleNamespace(models=["gfs"], step=3, run=None, ecmwf_source="ecmwf",
+                                    noaa_source="nomads",
                                     bucket=None, prefix="", publish_only=False,
                                     max_age_hours=None, timeout_seconds=60)
         self.adapter = {"seconds": 40.0, "phases": {"discover": {"seconds": 1.0},

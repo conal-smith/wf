@@ -5,10 +5,12 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import eccodes as ec
+import requests
 
 from cadence import expected_hours
 import f5bin
@@ -123,19 +125,61 @@ class GefsTests(unittest.TestCase):
             with self.subTest(hour=hour), self.assertRaises(ValueError):
                 index_ranges(text, hour)
 
-    def test_s3_download_concatenates_the_three_ranged_records(self):
+    def test_s3_download_reads_the_three_records_in_two_ranges(self):
         calls = []
+        source = bytes(range(256)) * 20  # Stands in for the whole-globe object.
 
         def fake(url, headers=None, attempts=4):
             calls.append((url, (headers or {}).get("Range")))
-            return idx(6, member=2).encode() if url.endswith(".idx") else b"GRIB-part"
-        with patch.object(gefs.fetch_gfs, "get", side_effect=fake):
-            self.assertEqual(gefs.download("s3", RUN, 2, 6), b"GRIB-part" * 3)
-        self.assertEqual([call[1] for call in calls],
-                         [None, "bytes=2000-2999", "bytes=3000-", "bytes=1000-1999"])
+            if url.endswith(".idx"):
+                return idx(6, member=2).encode()
+            start, _, end = headers["Range"].removeprefix("bytes=").partition("-")
+            return source[int(start):int(end) + 1 if end else None]
+        with patch.object(gefs, "bucket_get", side_effect=fake):
+            data = gefs.download("s3", RUN, 2, 6)
+        # UGRD and VGRD are neighbours in the file, so they are one request; the
+        # stream is still u, v, gust, exactly as three separate ranges gave it.
+        self.assertEqual([call[1] for call in calls], [None, "bytes=2000-", "bytes=1000-1999"])
+        self.assertEqual(data, source[2000:3000] + source[3000:] + source[1000:2000])
         self.assertIn("gep02.t18z.pgrb2s.0p25.f006.idx", calls[0][0])
         # Every ranged byte plus the sidecar is metered for the run report.
-        self.assertEqual(gefs.Meter.total, len(idx(6, member=2)) + 3 * len(b"GRIB-part"))
+        self.assertEqual(gefs.Meter.total, len(idx(6, member=2)) + len(data))
+
+    def test_bucket_reads_reuse_one_connection_per_thread_and_retry_faults(self):
+        responses = []
+
+        def reply(status, body=b""):
+            response = requests.Response()
+            response.status_code, response._content = status, body
+            return response
+
+        session = MagicMock()
+        session.get.side_effect = lambda url, **kwargs: responses.pop(0)
+        with patch.object(gefs, "CONNECTIONS", threading.local()), \
+             patch.object(gefs.requests, "Session", return_value=session) as opened, \
+             patch.object(gefs.time, "sleep"):
+            responses[:] = [reply(503), reply(206, b"GRIB-u-v")]
+            self.assertEqual(gefs.bucket_get("https://bucket/key", {"Range": "bytes=0-7"}),
+                             b"GRIB-u-v")
+            responses[:] = [reply(200, b"idx")]
+            self.assertEqual(gefs.bucket_get("https://bucket/key.idx"), b"idx")
+            responses[:] = [reply(404)]
+            with self.assertRaises(requests.HTTPError):
+                gefs.bucket_get("https://bucket/missing")
+        self.assertEqual(opened.call_count, 1)  # One connection for all four requests.
+        self.assertEqual(session.get.call_count, 4)
+        self.assertEqual(session.get.call_args_list[1].kwargs["headers"]["Range"], "bytes=0-7")
+
+    def test_contiguous_ranges_join_without_reordering(self):
+        self.assertEqual(gefs.contiguous([(2000, 2999), (3000, 3999), (1000, 1999)]),
+                         [(2000, 3999), (1000, 1999)])
+        self.assertEqual(gefs.contiguous([(2000, 2999), (3000, ""), (1000, 1999)]),
+                         [(2000, ""), (1000, 1999)])
+        # Neighbours in the wrong order, or with a gap, stay separate requests.
+        self.assertEqual(gefs.contiguous([(3000, 3999), (2000, 2999)]),
+                         [(3000, 3999), (2000, 2999)])
+        self.assertEqual(gefs.contiguous([(0, 9), (11, 20)]), [(0, 9), (11, 20)])
+        self.assertEqual(gefs.contiguous([]), [])
 
     def test_filter_download_is_metered(self):
         with patch.object(gefs.fetch_gfs, "get", return_value=b"GRIB-body"):
@@ -434,10 +478,31 @@ class GefsTests(unittest.TestCase):
         run = self.fresh_run()
         self.assertEqual(self.run_against_the_bucket(run, "--run", run)[0], "downloaded")
 
+    def test_each_source_downloads_at_its_own_concurrency_and_pace(self):
+        for argv, workers in [([], 2), (["--source", "s3"], gefs.WORKERS["s3"]),
+                              (["--source", "s3", "--workers", "16"], 16)]:
+            source = "s3" if "s3" in argv else "nomads"
+            with self.subTest(argv=argv), \
+                 patch("sys.argv", ["fetch_gefs.py", "--members", "2", "--hours", "6",
+                                    "--step", "6", *argv]), \
+                 patch.object(gefs, "ROOT", self.root), \
+                 patch.object(gefs, "discover", return_value=self.fresh_run()), \
+                 patch.object(gefs, "ThreadPoolExecutor",
+                              side_effect=RuntimeError("stop before downloading")) as pool, \
+                 patch("sys.stdout", io.StringIO()):
+                with self.assertRaises(RuntimeError):
+                    main()
+                self.assertEqual(pool.call_args.kwargs["max_workers"], workers)
+                self.assertEqual(gefs.fetch_gfs.THROTTLE.pause, gefs.PAUSE[source])
+        # NOMADS keeps the two-connection, 0.6-second pace it asks clients for.
+        self.assertEqual((gefs.WORKERS["nomads"], gefs.MAX_WORKERS["nomads"]), (2, 2))
+        self.assertEqual(gefs.PAUSE["nomads"], gefs.fetch_gfs.PAUSE["nomads"])
+
     def test_unusable_arguments_are_refused_without_downloading(self):
         for arguments in [["--members", "1"], ["--members", "32"], ["--hours", "246"],
                          ["--hours", "0"], ["--hours", "100", "--step", "6"],
-                         ["--step", "1"], ["--source", "ecmwf"], ["--workers", "4"]]:
+                         ["--step", "1"], ["--source", "ecmwf"], ["--workers", "4"],
+                         ["--workers", "0"], ["--source", "s3", "--workers", "17"]]:
             with self.subTest(arguments=arguments), \
                  patch("sys.argv", ["fetch_gefs.py", *arguments]), \
                  redirect_stderr(io.StringIO()):
