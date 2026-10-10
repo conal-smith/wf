@@ -204,7 +204,6 @@ export default function App() {
   const phone = useMedia(PHONE);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
-  const [playing, setPlaying] = useState(false);
   const [more, setMore] = useState(() => store.get(MORE_KEY) === "1");
   const chooseMore = (next: boolean) => {
     setMore(next);
@@ -878,40 +877,6 @@ export default function App() {
     return `${day} ${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m²`;
   }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
 
-  /* ---- playing through the hours ---- */
-  useEffect(() => {
-    if (!playing) return;
-    const step = window.setInterval(() => {
-      const s = stripRef.current;
-      const at = selectedRef.current
-        ? nearestColumn(s, Date.parse(selectedRef.current))
-        : 0;
-      if (at >= s.length - 1) {
-        setPlaying(false);
-        return;
-      }
-      chosenTime.current = true;
-      setSelectedTime(s[at + 1].validTime);
-    }, 1100);
-    // Any touch of the page but the button itself takes the hours back.
-    const stop = (event: Event) => {
-      if ((event.target as HTMLElement | null)?.closest?.(".play")) return;
-      setPlaying(false);
-    };
-    document.addEventListener("pointerdown", stop, true);
-    document.addEventListener("wheel", stop, { capture: true, passive: true });
-    document.addEventListener("keydown", stop, true);
-    return () => {
-      clearInterval(step);
-      document.removeEventListener("pointerdown", stop, true);
-      document.removeEventListener("wheel", stop, true);
-      document.removeEventListener("keydown", stop, true);
-    };
-  }, [playing]);
-  const togglePlay = () => {
-    if (!playing && selected >= strip.length - 1) selectColumn(0);
-    setPlaying((v) => !v);
-  };
   const marine = useMarineModels(more && mapReady);
   const focusAt =
     focusId === AT_POINT
@@ -1148,8 +1113,6 @@ export default function App() {
                   spot={dockSpot}
                   isPoint={!!picked}
                   pointPending={!!picked && series.pending}
-                  playing={playing}
-                  onTogglePlay={togglePlay}
                   more={more}
                   onMore={chooseMore}
                   marine={marine}

@@ -45,19 +45,14 @@
   height: 26px;
   padding: 0 10px;
 }
-/* The head's round buttons, the kit's pills (ui/Button), at the size of the
-   switch beside them on a phone as well: a finger's 44px would make the
-   head, and so the whole dock, taller for the sake of two buttons. */
-.dk-acts .play,
+/* The head's round button, the kit's pill (ui/Button), at the size of the
+   switch beside it on a phone as well: a finger's 44px would make the head,
+   and so the whole dock, taller for the sake of one button. */
 .dk-acts .dk-chev {
   min-width: 30px;
   min-height: 30px;
   width: 30px;
   height: 30px;
-}
-.play svg path {
-  fill: currentColor;
-  stroke: currentColor;
 }
 .dk-chev svg {
   stroke: currentColor;
@@ -136,23 +131,21 @@
   letter-spacing: 0;
   color: var(--color-ink-muted);
 }
+/* A row's glyph, its name in its title. */
+.dk-glyph {
+  display: inline-flex;
+  color: var(--color-ink-muted);
+}
+.dk-labs .dk-lab-wind {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
 .dk-labs small {
   font-size: 8px;
   letter-spacing: 0.04em;
   text-transform: none;
   opacity: 0.75;
-}
-.dk-stars-q {
-  position: absolute;
-  left: 40px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-}
-.dk-stars-q .help-q {
-  width: 14px;
-  height: 14px;
-  font-size: 9px;
 }
 .tt-wrap {
   position: relative;
@@ -409,9 +402,6 @@ table.tt {
   .dk-labs div {
     font-size: 8.5px;
     letter-spacing: 0.06em;
-  }
-  .dk-stars-q {
-    left: 34px;
   }
 }
 @media (max-width: 720px) {

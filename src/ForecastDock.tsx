@@ -9,14 +9,24 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowDown, Layers3 } from "lucide-react";
+import {
+  ArrowDown,
+  CloudRain,
+  CloudSun,
+  Layers3,
+  Navigation2,
+  Thermometer,
+  Waves,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { loopPath } from "../ui/penPaths";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
-import { StarToggle, StarsHelp, WindArrow } from "./glyphs";
+import { SeaTempGlyph, StarToggle, WindArrow, WingGlyph } from "./glyphs";
 import {
   axisTicks,
   candleGroups,
@@ -100,8 +110,6 @@ interface Props {
   isPoint: boolean;
   /** Its forecast is still being read out of the map's frames. */
   pointPending?: boolean;
-  playing: boolean;
-  onTogglePlay: () => void;
   /** The waves, weather and sea rows, opened by the head's chevron. */
   more: boolean;
   onMore: (more: boolean) => void;
@@ -129,13 +137,30 @@ const tableRows = (isPoint: boolean) =>
   (isPoint ? 0 : ROWS.stars + ROWS.wing) + ROWS.wind + ROWS.from;
 const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
-const MORE_LABEL: Record<MoreRow, [string, string]> = {
-  waves: ["Waves", "m"],
-  sky: ["Sky", ""],
-  air: ["Air", "°C"],
-  rain: ["Rain", "mm"],
-  sea: ["Sea", "°C"],
+/**
+ * Each row's name as a glyph, with the name and unit in its title: the rows
+ * read by their figures, and a word per row took a column of the dock's
+ * width from the hours.
+ */
+type RowGlyph = LucideIcon | typeof WingGlyph;
+const MORE_LABEL: Record<MoreRow, [RowGlyph, string]> = {
+  waves: [Waves, "Waves, m"],
+  sky: [CloudSun, "Sky"],
+  air: [Thermometer, "Air, °C"],
+  rain: [CloudRain, "Rain, mm"],
+  sea: [SeaTempGlyph, "Sea, °C"],
 };
+const RowLabel = ({
+  glyph: Glyph,
+  title,
+}: {
+  glyph: RowGlyph;
+  title: string;
+}) => (
+  <span className="dk-glyph" title={title}>
+    <Glyph size={14} strokeWidth={1.6} aria-hidden="true" />
+  </span>
+);
 /** Rain, in millimetres over one step, that saturates a cell's tint. */
 const RAIN_FULL_MM = 4;
 /**
@@ -786,14 +811,12 @@ export default function ForecastDock(props: Props) {
     reachable,
     onShowOnMap,
     isPoint,
-    playing,
-    onTogglePlay,
     more,
     onMore,
     marine,
   } = props;
   const cw = phone ? 52 : 62;
-  const label = phone ? 52 : 64;
+  const label = phone ? 28 : 32;
   // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
   const g = useMemo(
     () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
@@ -960,15 +983,19 @@ export default function ForecastDock(props: Props) {
     [],
   );
 
-  // Shift and the wheel move the hours where the system does not already
-  // turn it sideways; a plain vertical wheel is left to the page.
+  // The wheel moves the hours: the dock scrolls one way only, so an up or
+  // down turn of a mouse wheel goes through time without Shift. A trackpad's
+  // own sideways swipe, and a phone's, are left to the browser.
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
     const onWheel = (event: WheelEvent) => {
-      if (!event.shiftKey || event.deltaX || !event.deltaY) return;
+      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || !event.deltaY)
+        return;
       event.preventDefault();
-      el.scrollLeft += event.deltaY;
+      const unit =
+        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1;
+      el.scrollLeft += event.deltaY * unit;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -1060,28 +1087,6 @@ export default function ForecastDock(props: Props) {
           <span className="dk-coords">{spot.county}</span>
         )}
         <div className="dk-acts">
-          {/* App.tsx stops playing at any touch but this one: by `.play`. */}
-          <Button
-            variant="pill"
-            size="sm"
-            icon
-            pressed={playing}
-            className="play"
-            aria-label={playing ? "Pause forecast" : "Play forecast"}
-            onClick={onTogglePlay}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-              {playing ? (
-                <path
-                  d="M3 2v8M9 2v8"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              ) : (
-                <path d="M3.4 1.6L10.4 6L3.4 10.4Z" strokeLinejoin="round" />
-              )}
-            </svg>
-          </Button>
           <Segmented
             className="dk-view"
             aria-label="Show the hours as"
@@ -1210,20 +1215,28 @@ export default function ForecastDock(props: Props) {
               </div>
             ) : (
               <>
+                {/* The stars need no name: they are stars. */}
                 {!isPoint && (
-                  <div aria-hidden="true" style={{ height: ROWS.stars }}>
-                    Stars
-                  </div>
+                  <div aria-hidden="true" style={{ height: ROWS.stars }} />
                 )}
-                <div aria-hidden="true" style={{ height: ROWS.wind }}>
-                  Wind<small>{prefs.units}</small>
+                {/* The wind keeps its unit, which the reader chooses. */}
+                <div
+                  aria-hidden="true"
+                  className="dk-lab-wind"
+                  style={{ height: ROWS.wind }}
+                >
+                  <RowLabel
+                    glyph={Wind}
+                    title={`Wind and gust, ${prefs.units}`}
+                  />
+                  <small>{prefs.units}</small>
                 </div>
                 <div aria-hidden="true" style={{ height: ROWS.from }}>
-                  From
+                  <RowLabel glyph={Navigation2} title="Where the wind goes" />
                 </div>
                 {!isPoint && (
                   <div aria-hidden="true" style={{ height: ROWS.wing }}>
-                    Wing<small>m²</small>
+                    <RowLabel glyph={WingGlyph} title="Wing, m²" />
                   </div>
                 )}
               </>
@@ -1233,18 +1246,14 @@ export default function ForecastDock(props: Props) {
             {more &&
               MORE_ROWS.map((key) => (
                 <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
-                  {MORE_LABEL[key][0]}
-                  <small>{MORE_LABEL[key][1]}</small>
+                  <RowLabel
+                    glyph={MORE_LABEL[key][0]}
+                    title={MORE_LABEL[key][1]}
+                  />
                 </div>
               ))}
           </div>
 
-          {view === "table" && !isPoint && (
-            // The "?" sits on the Stars label, outside the hidden labels.
-            <span className="dk-stars-q" style={{ top: ROWS.day + ROWS.hour }}>
-              <StarsHelp />
-            </span>
-          )}
           <div
             className="tt-wrap"
             ref={wrap}
