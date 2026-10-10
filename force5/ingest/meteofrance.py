@@ -123,9 +123,16 @@ class Session:
 
     Only single-byte-range reads: this endpoint answers a multi-range request
     with 200 and the entire object, so anything but a 206 of the requested
-    length is treated as a fault and the connection is dropped unread."""
+    length is treated as a fault and the connection is dropped unread.
 
-    def __init__(self, host=HOST, timeout=120, pause=0.0):
+    The timeout is short because the bucket now and then never answers at all.
+    Measured on 10 October 2026, a header read takes 0.05 s (0.14 s at the 95th
+    percentile), but about one request in thirty stalled; at a 120 s timeout,
+    eleven stalls took an AROME run from its usual 13 s to 618 s. Fifteen
+    seconds of silence on one socket read is a stall, not a slow answer, and the
+    retry on a fresh connection is usually answered at once."""
+
+    def __init__(self, host=HOST, timeout=15, pause=0.0):
         self.host, self.timeout, self.pause = host, timeout, pause
         self.connection, self.last, self.requests, self.bytes = None, 0.0, 0, 0
 
