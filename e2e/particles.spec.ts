@@ -41,8 +41,14 @@ async function instrument(page: Page) {
     });
   });
   await page.goto("/");
+  // The first strokes wait for the whole chart to load -- tiles, every model's
+  // manifest, the first frame -- which on a CI runner takes longer than the
+  // default five seconds. The same allowance the rest of the suite gives the
+  // chart to come up (openChart in map.spec.ts).
   await expect
-    .poll(() => page.evaluate(() => window.particleWork.strokes))
+    .poll(() => page.evaluate(() => window.particleWork.strokes), {
+      timeout: 30000,
+    })
     .toBeGreaterThan(5);
 }
 

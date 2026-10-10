@@ -31,6 +31,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
+  // One retry in CI only. The suite draws the real basemap from OpenFreeMap over
+  // the network, and a shared runner is slower than a laptop; a test that
+  // passes on its retry is reported as flaky, not hidden, and a real failure
+  // still fails twice.
+  retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     viewport: { width: 1440, height: 1000 },
