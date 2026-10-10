@@ -12,9 +12,10 @@
  * The angles are rough guides from riding, not measurements, and gear moves
  * them as much as skill does: the wedge says "about here", not a polar. They
  * are the headings a session is ridden on, back and forth across the wind,
- * not the deepest a rider could bear away: a wedge reaching 135° and more
- * off the wind told a rider to run downwind, where a session ends a long
- * walk from where it began.
+ * not the deepest a rider could bear away. Centred a little upwind of
+ * across, and never past 110° off: a wedge reaching 135° and more told a
+ * rider to run downwind, where a session ends a long walk from where it
+ * began.
  */
 import { rideableWind, windBand, type Rider, type Skill } from "./stars";
 
@@ -24,20 +25,20 @@ type Range = readonly [number, number];
 /** Powered up, in the sweet spot. */
 const BEST: Record<Skill, Range> = {
   beginner: [85, 105],
-  intermediate: [65, 115],
-  advanced: [50, 120],
+  intermediate: [60, 105],
+  advanced: [45, 110],
 };
 /** Just foiling, at the band's floor: nobody points, and nobody runs off. */
 const AT_FLOOR: Record<Skill, Range> = {
-  beginner: [100, 110],
-  intermediate: [90, 112],
-  advanced: [80, 115],
+  beginner: [95, 102],
+  intermediate: [85, 100],
+  advanced: [75, 105],
 };
 /** At the band's top: a little worse upwind, and less off the wind. */
 const AT_TOP: Record<Skill, Range> = {
-  beginner: [92, 104],
-  intermediate: [72, 110],
-  advanced: [52, 115],
+  beginner: [90, 104],
+  intermediate: [68, 104],
+  advanced: [48, 108],
 };
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";

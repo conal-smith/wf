@@ -52,9 +52,9 @@ describe("rideWedge", () => {
   it("lies on the water in a cross-shore wind, along the beach", () => {
     const w = rideWedge(rider(), 18, 22, 45, SE)!;
     expect(onWater(w, SE)).toBe(true);
-    // Intermediate in the sweet spot: 65°–115° off a north-easterly.
-    expect(w.from).toBeCloseTo(110);
-    expect(w.to).toBeCloseTo(160);
+    // Intermediate in the sweet spot: 60°–105° off a north-easterly.
+    expect(w.from).toBeCloseTo(105);
+    expect(w.to).toBeCloseTo(150);
   });
 
   it("never runs far off the wind: across it, and up, not down", () => {
@@ -62,10 +62,10 @@ describe("rideWedge", () => {
       for (let from = 0; from < 360; from += 15) {
         const w = rideWedge(rider({ skill }), 18, 22, from, SE);
         if (!w) continue;
-        // Every edge stays within 120° of where the wind comes from.
+        // Every edge stays within 110° of where the wind comes from.
         for (const b of [w.from, w.to]) {
           const off = Math.abs(((((b - from) % 360) + 540) % 360) - 180);
-          expect(off).toBeLessThanOrEqual(120 + 1e-9);
+          expect(off).toBeLessThanOrEqual(110 + 1e-9);
         }
       }
   });
