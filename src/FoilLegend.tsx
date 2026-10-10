@@ -36,8 +36,8 @@ export default function FoilLegend({
     <div className="foil-key">
       {!on ? (
         <p className="foil-at">
-          Off. Layers, Chart: &ldquo;Foilable depth at the tide (pilot)&rdquo;
-          turns it on.
+          Off. Turn it on in Layers, under Chart: &ldquo;Foilable depth at the
+          tide (pilot)&rdquo;.
         </p>
       ) : error ? (
         <p className="foil-at is-error" role="status">
