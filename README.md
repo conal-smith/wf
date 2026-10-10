@@ -1310,6 +1310,9 @@ public/weather/<run>/*.json Immutable cropped U/V/gust or wave-variable grids
 public/marine/tides.json   Tide stations, spot assignments, coverage and datum notes
 public/marine/tides-*.json Immutable per-station curves and high/low events
 public/marine/sea-temperature.json Observed sea temperature: stations, per-spot reading and series
+public/marine/wind-observations.json Observed wind at Met Éireann stations and buoys, last 72 h (docs/VERIFICATION.md)
+public/verify/scores.json  Every model's and the blend's verification scores, 30 and 90 days
+public/archive/            What was forecast and observed, kept for verification; never pruned
 force5/src/weather.ts      Validation, sampling, units, bearings, frame cache
 force5/src/variables.ts    The shared wave/weather bundle contract, validator and axis matching
 force5/src/waves.ts        The wave-shaped door onto it: coverage notes, sea-state fields, source order

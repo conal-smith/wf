@@ -497,6 +497,12 @@ docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 # Hourly, after the wind jobs: every spot's blend, read from what the bucket serves
 docker run --rm --env-file r2.env force5-forecast:latest --models blend $R2
 
+# Verification (docs/VERIFICATION.md): observed wind hourly; the archive hourly after
+# the blend, before the next runs delete what it copies; the scores once a day
+docker run --rm --env-file r2.env force5-forecast:latest --models wind-obs $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models forecast-archive $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models verify $R2
+
 # Retention: the bucket sweep, a few times a day, any machine. --dry-run first.
 docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
   /app/force5/ingest/prune.py --bucket wingfoil-forecast \
@@ -599,6 +605,18 @@ an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed
   malformed, or when it is more than six hours old. The blend chart and the model list
   still fetch the manifests, but only once they are opened.
 
+### Verification: what we forecast, against what blew
+
+Superseded runs are deleted, so a run's forecast survives only if it is copied while it
+is still served. The hourly `forecast-archive` job does that, sampling every new wind
+run at Met Éireann's stations and the Marine Institute's buoys and keeping each spot's
+series, into `archive/forecasts/<model>/<run>.json`; it also merges the hourly
+`wind-obs` observations into `archive/observations/YYYY-MM-DD.json`. The daily `verify`
+job scores every model, and the blend as the site works it out, against them and
+publishes `verify/scores.json`. `archive/` is outside every data root and every delete
+path refuses it by name. Everything about it — sources, licences, the scores and what
+they cannot say — is in [VERIFICATION.md](VERIFICATION.md).
+
 ### Deleting what is superseded
 
 `publish()` used to only add objects, so the bucket grew for ever. It now deletes, and
@@ -612,7 +630,8 @@ the rules are deliberately narrow:
 - A path must sit under that model's own object root (`weather/` or `marine/`), be two
   or three segments long, and have its run directory or station file named for **this**
   model and no other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
-  `gfs-wave-…`. Pointer manifests and anything under `manifests/` are never deleted; an
+  `gfs-wave-…`. Pointer manifests, anything under `manifests/` and anything under the
+  forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted; an
   absolute, `..`-bearing or `https://` URL is left alone. An adapter that ever stopped
   naming its objects `<model>-…` would simply stop deleting, and the sweep would collect
   its leftovers — the safe direction to fail in.
@@ -801,6 +820,12 @@ marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
 marine/sea-temperature.json                current sea temperature pointer, readings inline
 marine/manifests/sea-temperature/RUN-HASH.json  archived observation manifests
+marine/wind-observations.json              current wind observations, 72 h of readings inline
+verify/forecast-archive.json               what the archive job copied in its last hour
+verify/scores.json                         current verification scores
+archive/forecasts/MODEL/RUN.json           every wind run, sampled at stations; never deleted
+archive/observations/YYYY-MM-DD.json       every wind observation, by UTC day; never deleted
+archive/verify/sums/YYYY-MM-DD.json        one day's verification sums; never deleted
 weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
 weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
 weather/manifests/harmonie-eps/RUN-HASH.json    archived complete ensemble manifests
@@ -837,7 +862,14 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   −2 to 35 °C, times that parse and do not lie in the future, a strictly increasing
   per-spot series, a stated reason for every spot with no station, and a `run` equal to
   the newest observation hour the manifest publishes. Sea temperature
-  (`sea-temperature`) is the first observation adapter.
+  (`sea-temperature`) is the first observation adapter. Wind observations (`wind-obs`,
+  `"observes": "wind"`) are the second: classed stations with a window of
+  `[time, speed, gust, direction]` readings in m/s, no gust below its speed, and no
+  spot assignments, because they exist to verify forecasts.
+- `archive` and `verification` are the summaries the forecast archive and the
+  verification jobs publish (`verify/forecast-archive.json`, `verify/scores.json`). Both
+  are self-contained, must have been generated in the hour their `run` names, and carry
+  no `url` for the pruner to follow. See [VERIFICATION.md](VERIFICATION.md).
 
 All adapters precompute `spotForecasts` for the 25 ids in `public/riding-locations.json`,
 so a browser chart never has to download grid frames. Regenerate that file with

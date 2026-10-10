@@ -103,6 +103,9 @@ in UTC. The shipped schedule is:
 | `ecmwf-wave`      | 08/20 at :45       | the 00/12 wave stream, published ~8 h after the run   |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
+| `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
+| `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
+| `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | 05:10 daily        | retention (see below)                                 |
 | `status`          | every hour at :55  | a freshness line in the log                           |
 
