@@ -54,7 +54,25 @@ export interface FoilArea {
    * Astronomical Tide at the station plus a margin.
    */
   dryCeilingMetres: number;
+  /**
+   * Water held up behind a weir (the Malahide lagoon behind its viaduct):
+   * its level is not the station's tide but follows it, damped and late.
+   * Absent for open water.
+   */
+  level?: FoilLevel;
   sources: FoilSource[];
+}
+
+/**
+ * A basin's water level from the sea's tide (basinLevel). Heights above LAT.
+ */
+export interface FoilLevel {
+  /** The weir's crest: the basin cannot drain below it. */
+  floorLat: number;
+  /** How much of the sea's rise above the crest the basin follows, 0 to 1. */
+  rangeFactor: number;
+  /** How far the basin's level runs behind the sea's, in hours. */
+  lagHours: number;
 }
 
 export interface FoilManifest {
@@ -112,6 +130,13 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
         (a.tileSize === 256 || a.tileSize === 512) &&
         finite(a.dryCeilingMetres) &&
         a.dryCeilingMetres < m.noSurveyMetres - 1 &&
+        (a.level === undefined ||
+          (finite(a.level.floorLat) &&
+            finite(a.level.rangeFactor) &&
+            a.level.rangeFactor >= 0 &&
+            a.level.rangeFactor <= 1 &&
+            finite(a.level.lagHours) &&
+            a.level.lagHours >= 0)) &&
         Array.isArray(a.sources),
     );
   if (!ok) throw new Error("Invalid foilable-depth index.");
@@ -129,6 +154,34 @@ export const malinToLat = (zMalin: number, odMalinOffsetMetres: number) =>
   zMalin + odMalinOffsetMetres;
 export const latToMalin = (zLat: number, odMalinOffsetMetres: number) =>
   zLat - odMalinOffsetMetres;
+
+/* ---- a basin's level -------------------------------------------------------- */
+
+/**
+ * The water behind a weir, from the sea's tide `lagHours` earlier. Below the
+ * crest the sea cannot reach in and the basin stands at it (it drains no
+ * lower); above, the basin follows only a share of the sea's rise, as the
+ * opening under the weir lets it. So Malahide's lagoon, with its crest at
+ * 3.06 m and a factor of 0.6, sits at 3.06 m through every low water and
+ * rises about 0.7 m on a 4.2 m spring tide.
+ */
+export const basinLevel = (level: FoilLevel, seaTide: number) =>
+  level.floorLat + level.rangeFactor * Math.max(0, seaTide - level.floorLat);
+
+/**
+ * The water level over an area at a time: the station's tide for open
+ * water, a basin's own level (basinLevel) behind a weir. `tideAt` is the
+ * station's prediction (tides.ts), null outside its curve.
+ */
+export function waterLevelAt(
+  area: Pick<FoilArea, "level">,
+  tideAt: (time: number) => number | null,
+  time: number,
+): number | null {
+  if (!area.level) return tideAt(time);
+  const sea = tideAt(time - area.level.lagHours * 3_600_000);
+  return sea === null ? null : basinLevel(area.level, sea);
+}
 
 /* ---- the three classes ----------------------------------------------------- */
 
@@ -251,6 +304,14 @@ export function areaAt(
   return areas.find((a) => inBounds(a.bounds, lon, lat)) ?? null;
 }
 
+/**
+ * Every area whose box holds a point, in the index's order. A basin's box
+ * lies inside its area's and comes first; each archive has water only on its
+ * own side of the weir, so the first one with water under the point is it.
+ */
+export const areasAt = (areas: readonly FoilArea[], lon: number, lat: number) =>
+  areas.filter((a) => inBounds(a.bounds, lon, lat));
+
 /** The area whose box is nearest a point (zero inside it), for the legend. */
 export function nearestArea(
   areas: readonly FoilArea[],
@@ -308,8 +369,20 @@ export function terrariumRgb(metres: number): [number, number, number] {
 const one = (m: number) => (Math.round(m * 10) / 10).toFixed(1);
 
 /**
+ * The level the colours are drawn for: "tide 3.1 m above LAT at Howth", or
+ * behind a weir, where `sea` is the station's tide and `tide` the basin's
+ * own level, "water 3.2 m above LAT behind the weir (tide 0.8 m at Howth)".
+ */
+export function levelLine(tide: number, station: string, sea?: number) {
+  return sea === undefined
+    ? `tide ${one(tide)} m above LAT at ${station}`
+    : `water ${one(tide)} m above LAT behind the weir (tide ${one(sea)} m at ${station})`;
+}
+
+/**
  * A tapped point, as the legend says it: "~2.3 m of water at 18:00 (tide
  * 3.1 m at Howth)", or that it is dry, land, or water no survey has sounded.
+ * Behind a weir `tide` is the basin's level and `sea` the station's tide.
  */
 export function foilReadout(
   z: number | "unsurveyed" | null,
@@ -317,8 +390,12 @@ export function foilReadout(
   clock: string,
   station: string,
   clearance = FOIL_CLEARANCE_METRES,
+  sea?: number,
 ): string {
-  const at = `at ${clock} (tide ${one(tide)} m at ${station})`;
+  const at =
+    sea === undefined
+      ? `at ${clock} (tide ${one(tide)} m at ${station})`
+      : `at ${clock} (water ${one(tide)} m above LAT behind the weir; tide ${one(sea)} m at ${station})`;
   if (z === null) return `Not in the water at any tide ${at}.`;
   if (z === "unsurveyed") return `Wet at every tide, depth not surveyed ${at}.`;
   const water = waterOver(z, tide);

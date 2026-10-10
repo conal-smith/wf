@@ -62,11 +62,12 @@ const readKey = async (read) => {
   return value;
 };
 
-// The tide the key reports at each of the next day's columns.
+// The station's tide the key reports at each of the next day's columns (the
+// sea's, not a basin's own level, which stands still through low water).
 const tideAt = async (i) => {
   await scrub.fill(String(i));
   await page.waitForTimeout(250);
-  const v = await readKey((key) => key.getAttribute("data-foil-tide"));
+  const v = await readKey((key) => key.getAttribute("data-foil-sea"));
   return v === null || v === "" ? null : Number(v);
 };
 const first = Number(await scrub.inputValue());

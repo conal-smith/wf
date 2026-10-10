@@ -23,10 +23,12 @@ import type {
 } from "../force5/src/WindMap";
 import {
   areaAt,
+  areasAt,
   foilColours,
   foilRamp,
   foilReadout,
   nearestArea,
+  waterLevelAt,
   type FoilArea,
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
@@ -646,12 +648,20 @@ export default function App() {
     if (areas && c) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
   }, [foilState.manifest]);
   const foilTime = column?.time ?? null;
+  // Each area's water level at the hour (the station's tide, or behind a
+  // weir the basin's own), and the station's tide it came from.
   const foilTides = useMemo(() => {
-    const out: Record<string, number | null> = {};
+    const out: Record<string, { water: number; sea: number } | null> = {};
     for (const area of foilState.manifest?.areas ?? []) {
       const tide = foilState.tides[area.station];
-      out[area.id] =
-        tide && foilTime !== null ? tideAt(tide.curve, foilTime) : null;
+      if (!tide || foilTime === null) {
+        out[area.id] = null;
+        continue;
+      }
+      const at = (time: number) => tideAt(tide.curve, time);
+      const sea = at(foilTime);
+      const water = waterLevelAt(area, at, foilTime);
+      out[area.id] = sea === null || water === null ? null : { water, sea };
     }
     return out;
   }, [foilState, foilTime]);
@@ -659,8 +669,8 @@ export default function App() {
     const m = foilState.manifest;
     if (!layers.foil || !m || !foilPalette) return null;
     return m.areas.flatMap((area) => {
-      const tide = foilTides[area.id];
-      if (tide === null || tide === undefined) return [];
+      const tide = foilTides[area.id]?.water;
+      if (tide === undefined) return [];
       return [
         {
           id: area.id,
@@ -682,14 +692,6 @@ export default function App() {
       ];
     });
   }, [layers.foil, foilState.manifest, foilTides, foilPalette]);
-  const foilArea = foilState.manifest
-    ? (picked && areaAt(foilState.manifest.areas, picked.lon, picked.lat)) ||
-      foilState.manifest.areas.find((a) => a.id === foilNearId) ||
-      foilState.manifest.areas[0]
-    : null;
-  const foilStation = foilArea
-    ? (foilState.tides[foilArea.station]?.station.name ?? foilArea.station)
-    : null;
   /** The seabed under the last point tapped while the layer was on. */
   const [foilProbe, setFoilProbe] = useState<{
     lon: number;
@@ -697,36 +699,59 @@ export default function App() {
     area: string;
     z: number | "unsurveyed" | null;
   } | null>(null);
-  const probeFoil = (lon: number, lat: number) => {
-    const m = foilState.manifest;
-    const area = layers.foil && m ? areaAt(m.areas, lon, lat) : null;
-    if (!m || !area) {
-      setFoilProbe(null);
-      return;
-    }
-    const url = new URL(
-      `${import.meta.env.BASE_URL}${area.url}`,
-      window.location.href,
-    ).href;
-    elevationAt(area, url, lon, lat, m)
-      .then((z) => setFoilProbe({ lon, lat, area: area.id, z }))
-      .catch(() => setFoilProbe(null));
-  };
-  const foilProbeText =
+  const probed =
     foilProbe &&
     picked &&
     foilProbe.lon === picked.lon &&
-    foilProbe.lat === picked.lat &&
-    foilArea?.id === foilProbe.area &&
-    foilTides[foilProbe.area] !== null &&
-    foilTides[foilProbe.area] !== undefined &&
+    foilProbe.lat === picked.lat
+      ? foilProbe
+      : null;
+  const foilArea = foilState.manifest
+    ? (probed && foilState.manifest.areas.find((a) => a.id === probed.area)) ||
+      (picked && areaAt(foilState.manifest.areas, picked.lon, picked.lat)) ||
+      foilState.manifest.areas.find((a) => a.id === foilNearId) ||
+      foilState.manifest.areas[0]
+    : null;
+  const foilStation = foilArea
+    ? (foilState.tides[foilArea.station]?.station.name ?? foilArea.station)
+    : null;
+  const probeFoil = (lon: number, lat: number) => {
+    const m = foilState.manifest;
+    // A basin's box overlaps its area's: the first archive with water under
+    // the point is the side of the weir it is on.
+    const candidates = layers.foil && m ? areasAt(m.areas, lon, lat) : [];
+    if (!m || !candidates.length) {
+      setFoilProbe(null);
+      return;
+    }
+    (async () => {
+      for (const area of candidates) {
+        const url = new URL(
+          `${import.meta.env.BASE_URL}${area.url}`,
+          window.location.href,
+        ).href;
+        const z = await elevationAt(area, url, lon, lat, m);
+        if (z !== null) return { area: area.id, z };
+      }
+      return { area: candidates[candidates.length - 1].id, z: null };
+    })()
+      .then((found) => setFoilProbe({ lon, lat, ...found }))
+      .catch(() => setFoilProbe(null));
+  };
+  const probedLevel = probed ? foilTides[probed.area] : null;
+  const foilProbeText =
+    probed &&
+    foilArea?.id === probed.area &&
+    probedLevel &&
     foilTime !== null &&
     foilStation
       ? foilReadout(
-          foilProbe.z,
-          foilTides[foilProbe.area]!,
+          probed.z,
+          probedLevel.water,
           clock(foilTime),
           foilStation,
+          undefined,
+          foilArea.level ? probedLevel.sea : undefined,
         )
       : null;
 
@@ -1175,7 +1200,10 @@ export default function App() {
               on={layers.foil}
               area={foilArea}
               station={foilStation}
-              tide={foilArea ? (foilTides[foilArea.id] ?? null) : null}
+              tide={foilArea ? (foilTides[foilArea.id]?.water ?? null) : null}
+              sea={
+                foilArea?.level ? (foilTides[foilArea.id]?.sea ?? null) : null
+              }
               when={
                 foilTime !== null
                   ? `${dayShort(foilTime)} ${clock(foilTime)}`

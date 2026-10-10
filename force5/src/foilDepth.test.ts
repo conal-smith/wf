@@ -3,11 +3,14 @@ import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 import {
   FOIL_CLEARANCE_METRES,
   areaAt,
+  areasAt,
+  basinLevel,
   foilClass,
   foilColours,
   foilRamp,
   foilReadout,
   latToMalin,
+  levelLine,
   malinToLat,
   nearestArea,
   surveyLine,
@@ -15,6 +18,7 @@ import {
   terrariumRgb,
   tilePixel,
   validateFoilManifest,
+  waterLevelAt,
   waterOver,
   type FoilArea,
   type FoilManifest,
@@ -282,6 +286,88 @@ describe("foilReadout", () => {
     );
     expect(foilReadout("unsurveyed", 0.6, "06:00", "Howth")).toMatch(
       /depth not surveyed/,
+    );
+  });
+});
+
+describe("a basin behind a weir", () => {
+  // Malahide's lagoon, as scripts/foildepth/areas.json has it.
+  const level = { floorLat: 3.06, rangeFactor: 0.6, lagHours: 1 };
+  const lagoon = area({
+    id: "malahide-lagoon",
+    bounds: [-6.26, 53.445, -6.1537, 53.476],
+    level,
+  });
+  const HOUR = 3_600_000;
+
+  it("stands at the crest while the sea is under it", () => {
+    for (const sea of [0, 0.55, 1.5, 3.06])
+      expect(basinLevel(level, sea)).toBeCloseTo(3.06, 6);
+  });
+  it("follows a share of the sea's rise above the crest", () => {
+    expect(basinLevel(level, 4.2)).toBeCloseTo(3.06 + 0.6 * 1.14, 6);
+    // The owner's 1.8 m at low water and 2.5 m at high: a 0.7 m range on
+    // a spring tide.
+    expect(basinLevel(level, 4.2) - basinLevel(level, 0.6)).toBeCloseTo(0.7, 1);
+    expect(basinLevel({ ...level, rangeFactor: 0 }, 4.5)).toBe(3.06);
+    expect(basinLevel({ ...level, rangeFactor: 1 }, 4.5)).toBeCloseTo(4.5, 6);
+  });
+  it("takes the sea's tide lagHours earlier, and passes open water through", () => {
+    // A rising sea: 1 m an hour from 0 at time 0.
+    const tideAt = (time: number) =>
+      time < 0 || time > 6 * HOUR ? null : time / HOUR;
+    expect(waterLevelAt(area(), tideAt, 4 * HOUR)).toBe(4);
+    // At 5 h the lagoon sees the sea of 4 h.
+    expect(waterLevelAt(lagoon, tideAt, 5 * HOUR)).toBeCloseTo(
+      3.06 + 0.6 * (4 - 3.06),
+      6,
+    );
+    expect(waterLevelAt(lagoon, tideAt, 2 * HOUR)).toBeCloseTo(3.06, 6);
+    // Before the curve begins, an hour back is off it.
+    expect(waterLevelAt(lagoon, tideAt, 0.5 * HOUR)).toBeNull();
+  });
+  it("is deep at low water where the open sea's tide dried it", () => {
+    // A margin 1.5 m above LAT at a 0.6 m low water at Howth.
+    const sea = 0.6;
+    expect(foilClass(1.5, sea)).toBe("dry");
+    expect(foilClass(1.5, basinLevel(level, sea))).toBe("deep");
+    // The rim near the shore still dries.
+    expect(foilClass(3.4, basinLevel(level, sea))).toBe("dry");
+  });
+  it("is found before its area, and validated", () => {
+    const areas = [lagoon, area({ bounds: [-6.26, 53.287, -5.99, 53.5] })];
+    expect(areasAt(areas, -6.17, 53.46).map((a) => a.id)).toEqual([
+      "malahide-lagoon",
+      "dublin-north",
+    ]);
+    expect(areasAt(areas, -6.2, 53.33).map((a) => a.id)).toEqual([
+      "dublin-north",
+    ]);
+    expect(validateFoilManifest({ ...manifest(), areas }).areas).toHaveLength(
+      2,
+    );
+    for (const bad of [
+      { ...level, rangeFactor: 1.5 },
+      { ...level, lagHours: -1 },
+      { ...level, floorLat: Number.NaN },
+    ])
+      expect(() =>
+        validateFoilManifest({
+          ...manifest(),
+          areas: [{ ...lagoon, level: bad }],
+        }),
+      ).toThrow();
+  });
+  it("says the basin's level and the sea's tide", () => {
+    expect(levelLine(3.1, "Howth")).toBe("tide 3.1 m above LAT at Howth");
+    expect(levelLine(3.06, "Howth", 0.6)).toBe(
+      "water 3.1 m above LAT behind the weir (tide 0.6 m at Howth)",
+    );
+    expect(foilReadout("unsurveyed", 3.06, "17:40", "Howth", 1, 0.8)).toBe(
+      "Wet at every tide, depth not surveyed at 17:40 (water 3.1 m above LAT behind the weir; tide 0.8 m at Howth).",
+    );
+    expect(foilReadout(1.2, 3.06, "17:40", "Howth", 1, 0.8)).toMatch(
+      /^~1\.9 m of water at 17:40 \(water 3\.1 m/,
     );
   });
 });

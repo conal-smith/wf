@@ -1,5 +1,6 @@
 import {
   FOIL_CLEARANCE_METRES,
+  levelLine,
   surveyLine,
   type FoilArea,
 } from "../force5/src/foilDepth";
@@ -16,6 +17,7 @@ export default function FoilLegend({
   area,
   station,
   tide,
+  sea = null,
   when,
   readout,
   error,
@@ -25,7 +27,10 @@ export default function FoilLegend({
   on: boolean;
   area: FoilArea | null;
   station: string | null;
+  /** The water level the colours are drawn for, above LAT. */
   tide: number | null;
+  /** Behind a weir, the station's tide that `tide` follows; else null. */
+  sea?: number | null;
   /** "Sat 18:00". */
   when: string;
   readout: string | null;
@@ -44,10 +49,15 @@ export default function FoilLegend({
           {error}
         </p>
       ) : area && station ? (
-        <p className="foil-at" role="status" data-foil-tide={tide ?? ""}>
+        <p
+          className="foil-at"
+          role="status"
+          data-foil-tide={tide ?? ""}
+          data-foil-sea={sea ?? tide ?? ""}
+        >
           {tide === null
             ? `No tide prediction at ${station} for ${when}.`
-            : `${when} · tide ${tide.toFixed(1)} m above LAT at ${station}`}
+            : `${when} · ${levelLine(tide, station, sea ?? undefined)}`}
         </p>
       ) : (
         <p className="foil-at">Loading the survey…</p>
