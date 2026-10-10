@@ -20,6 +20,11 @@ const PHONE = /community\/phone\.spec\.ts$/;
 const MAP_SHOTS = /map\/shots\.spec\.ts$/;
 /** The marketplace's visual baseline, which sets its own widths and writes files. */
 const MARKET_SHOTS = /market\/shots\.spec\.ts$/;
+/**
+ * The deployed-site smoke suite, for a site somebody else serves on the real
+ * clock (playwright.smoke.config.ts), never this config's frozen sample.
+ */
+const SMOKE = /smoke\//;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -32,7 +37,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", testIgnore: [PHONE, MAP_SHOTS, MARKET_SHOTS] },
+    { name: "desktop", testIgnore: [PHONE, MAP_SHOTS, MARKET_SHOTS, SMOKE] },
     ...(process.env.MAP_SHOTS
       ? [{ name: "map-shots", testMatch: MAP_SHOTS }]
       : []),

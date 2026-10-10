@@ -10,6 +10,7 @@
 #   deploy/home-compute/macmini.sh run JOB  # submit one job now, e.g. harmonie
 #   deploy/home-compute/macmini.sh logs     # follow the controller's log
 #   deploy/home-compute/macmini.sh image    # rebuild the worker image after a code change
+#   deploy/home-compute/macmini.sh pull [REF]   # run a released image instead (default: :production)
 #   deploy/home-compute/macmini.sh restart controller   # only the scheduler, to apply a change
 #   deploy/home-compute/macmini.sh colima-autostart on|off
 #
@@ -24,6 +25,8 @@ HOME_COMPUTE="${HOME_COMPUTE_DIR:-$(cd "$WINGFOIL/.." && pwd)/home-compute}"
 CONFIG="$HERE/home-compute.json"
 ENV_FILE="$HERE/.env"
 IMAGE="wingfoil-forecast:local"
+# What a release promotes to production (docs/RELEASES.md); `pull` fetches it.
+RELEASED_IMAGE="${WINGFOIL_RELEASED_IMAGE:-ghcr.io/sprintengine/wingfoil-forecast:production}"
 BIN="$HOME/.local/bin"
 LOGS="$HOME/Library/Logs/home-compute"
 AGENTS="$HOME/Library/LaunchAgents"
@@ -56,6 +59,20 @@ build_image() {
   # The label is what lets the app say the image is older than the code.
   DOCKER_HOST="$(colima_socket)" docker build -f "$WINGFOIL/force5/Dockerfile" -t "$IMAGE" \
     --label "wingfoil.source-hash=$(panel source-hash)" "$WINGFOIL"
+}
+
+# A released image instead of one built here: the exact digest a release ran
+# through acceptance and staging. Tagged as the local image, so Home Compute and
+# the app need nothing changed; the label it was built with still says whether
+# it matches this checkout.
+pull_image() {
+  local ref="${1:-$RELEASED_IMAGE}"
+  ensure_colima
+  say "Pulling $ref"
+  DOCKER_HOST="$(colima_socket)" docker pull "$ref"
+  DOCKER_HOST="$(colima_socket)" docker tag "$ref" "$IMAGE"
+  DOCKER_HOST="$(colima_socket)" docker image inspect "$IMAGE" \
+    --format "$IMAGE is now {{index .RepoDigests 0}} ({{index .Config.Labels \"org.opencontainers.image.version\"}})"
 }
 
 write_env() {
@@ -235,5 +252,6 @@ case "${1:-help}" in
          -d '{}' "http://127.0.0.1:4786/v1/jobs/$1/run" && echo ;;
   logs) tail -n 50 -F "$LOGS/controller.log" ;;
   image) build_image ;;
+  pull) pull_image "${2:-}" ;;
   *) sed -n '2,/^set -euo/{/^#/p;}' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

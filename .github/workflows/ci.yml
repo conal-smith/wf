@@ -1,0 +1,172 @@
+name: CI
+
+# Every pull request and every push to main -- once the repository is public.
+#
+# While it is private every job skips itself (a skipped job bills nothing), as in
+# SprintEngine Studio: agents land commits on main in bursts, and a public
+# repository gets unlimited standard-runner minutes, so the gate switches itself
+# on the moment the repository is made public. Until then it runs when
+# dispatched by hand, and as the release workflow's quality gate (workflow_call
+# with release_gate), which is never skipped.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit to check"
+        required: true
+        type: string
+      release_gate:
+        description: "Called by release.yml: run regardless of repository visibility"
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+# A newer push supersedes an older one; a release gate gets a group of its own
+# so no push can cancel it.
+concurrency:
+  group: ${{ inputs.release_gate && format('ci-release-{0}', github.run_id) || format('ci-{0}', github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ !inputs.release_gate }}
+
+jobs:
+  # The site's own gates, whole: tsc -b and the build, every unit test vitest
+  # discovers (vitest.config.ts, so a new test file is in the gate the moment it
+  # is written), the UI and design-token lints with the probes that prove they
+  # still bite, and the API and Cloudflare Worker type checks.
+  web:
+    name: Site (build, unit tests, lints)
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Build (tsc -b, vite)
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: UI and design-system lints
+        run: npm run ui:lint
+      - name: Marketplace API type check
+        run: npx tsc -p market/api/tsconfig.json --noEmit
+      - name: Cloudflare Worker type check
+        working-directory: deploy/cloudflare
+        run: npm ci && npm run check
+
+  # On the image's Python (force5/Dockerfile is python:3.12-slim), under the same
+  # pins, so a test that passes here passes where the importers actually run.
+  ingest:
+    name: Ingest (Python unit tests, schedules)
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: force5/ingest/requirements*.txt
+      - run: pip install -r force5/ingest/requirements-worker.txt -c force5/ingest/requirements-lock.txt
+      - name: Ingest unit tests
+        run: python -m unittest discover -s force5/ingest -p 'test_*.py'
+      - name: Schedule generator tests
+        run: python -m unittest discover -s deploy -p 'test_*.py'
+      # Home Compute's and Cloudflare's timetables are generated from
+      # deploy/local/jobs.toml; an edit to one without the others fails here.
+      - name: Generated timetables are current
+        run: python deploy/schedules.py --check
+
+  # The whole Playwright suite against the staged sample site (scripts/e2e-site.mjs):
+  # the map, the dock, spot pages, the marketplace and the community.
+  e2e:
+    name: End-to-end (Chromium)
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright
+        run: npx playwright test --project=desktop --project=phone
+      - name: Keep the report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report-${{ github.run_id }}
+          retention-days: 7
+          path: |
+            playwright-report
+            test-results
+
+  # The Docker images are the artifacts that run in production: the worker is
+  # what fetches every forecast and decides where it goes. Each is built from
+  # this commit and checked as an image (scripts/release/*-smoke.sh), so a
+  # Dockerfile that has drifted from the tree, or a wheel that crashes on its way
+  # out, fails here and not on the machine that runs the jobs. No network fetch:
+  # that is the release's acceptance step.
+  images:
+    name: Images (build and smoke)
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the forecast worker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: force5/Dockerfile
+          tags: wingfoil-forecast:ci
+          load: true
+          cache-from: type=gha,scope=forecast
+          cache-to: type=gha,mode=max,scope=forecast
+      - name: Build the site
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/local/Dockerfile.web
+          tags: wingfoil-web:ci
+          load: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Build the marketplace API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: market/Dockerfile
+          tags: wingfoil-market:ci
+          load: true
+          cache-from: type=gha,scope=market
+          cache-to: type=gha,mode=max,scope=market
+      - name: Worker image smoke
+        run: scripts/release/worker-image-smoke.sh wingfoil-forecast:ci
+      - name: Site image smoke
+        run: scripts/release/web-image-smoke.sh wingfoil-web:ci
+      - name: Marketplace API image boots
+        run: scripts/release/market-image-smoke.sh wingfoil-market:ci
