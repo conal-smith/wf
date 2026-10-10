@@ -75,7 +75,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
   {
     id: "ecmwf-ens",
     name: "ECMWF ENS",
-    detail: "25 km · 51 members",
+    detail: "25 km · 10 members · from day 3",
     manifestUrl: "weather/ecmwf-ens.json",
     kind: "wind",
     ensemble: true,

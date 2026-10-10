@@ -406,7 +406,7 @@ class GefsTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root / "public", "gefs", "test", max_age_hours=24,
                                  now=run_time + timedelta(hours=1)), "published")
         self.assertEqual(s3.writes[-1], "weather/gefs.json")
-        self.assertEqual(len(s3.writes), 4)  # 2 frames + archive + pointer
+        self.assertEqual(len(s3.writes), 3)  # 2 frames + pointer
 
     def test_frames_live_under_a_run_and_horizon_specific_prefix(self):
         manifest, run = self.refresh()

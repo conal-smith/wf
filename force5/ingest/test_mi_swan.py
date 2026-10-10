@@ -325,8 +325,7 @@ class SwanTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root / "public", "mi-swan", "test", max_age_hours=36),
                          "published")
         self.assertEqual(s3.writes[-1], "weather/mi-swan.json")
-        self.assertIn("weather/manifests/mi-swan/", s3.writes[-2])
-        self.assertEqual(len(s3.writes), 2)  # The archived manifest, then the pointer.
+        self.assertEqual(s3.writes, ["weather/mi-swan.json"])  # Only the pointer.
 
     def test_frames_are_optional_and_published_north_to_south(self):
         with patch("fetch_mi_swan.FRAME_BOX", (-10.0, 53.0, -9.9, 53.1)):

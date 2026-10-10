@@ -6,8 +6,12 @@
       "id": "harmonie",
       "enabled": true,
       "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
+      "hours": [
+        6,
+        12
+      ],
       "minutes": [
-        45
+        0
       ],
       "size": "large",
       "timeoutSeconds": 3300,
@@ -45,10 +49,7 @@
       "enabled": true,
       "description": "ICON-EU surface weather (DWD)",
       "hours": [
-        3,
-        9,
-        15,
-        21
+        3
       ],
       "minutes": [
         40
@@ -94,9 +95,7 @@
       "description": "ECMWF ensemble (chance it rides)",
       "hours": [
         8,
-        10,
-        20,
-        22
+        10
       ],
       "minutes": [
         35

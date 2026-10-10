@@ -166,7 +166,7 @@ class AIFSBundleTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, MODEL, "test", max_age_hours=12, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], f"weather/{MODEL}.json")
-        self.assertEqual(len(s3.writes), 63)  # 61 frames + archive + pointer
+        self.assertEqual(len(s3.writes), 62)  # 61 frames + pointer
 
     def test_refuses_a_missing_or_invented_hour_before_uploading_anything(self):
         manifest, now = self.bundle()

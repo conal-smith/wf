@@ -12,7 +12,7 @@ spots:export`).
 - Wind adapters: `gfs` (NOMADS subregion, ~0.6 MB per run, bundled snapshot),
   `gefs` (31 members, 6-hourly to +240 h, ~19 MB per run through the NOMADS 0.25°
   ensemble filter; the first ensemble whose mean the map draws),
-  `ecmwf-ens` (25 members, 6-hourly to +144 h, ~2 GB per run), `harmonie-eps` (a
+  `ecmwf-ens` (10 members of the 00 UTC run, 6-hourly from +60 h to +144 h, ~0.49 GB a day), `harmonie-eps` (a
   time-lagged control ensemble only: see the correction under Wind models; shipped
   disabled in the schedule).
   Météo-France `arpege` (0.1°, +102 h hourly, ~37 MB per run) and `arome`

@@ -173,7 +173,6 @@ class PublishTests(BundleFixture, unittest.TestCase):
     def test_pointer_last_and_retry_is_idempotent(self):
         self.assertEqual(self.run_publish(), "published")
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
-        self.assertIn("/manifests/harmonie/", self.s3.writes[-2])
         self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["ContentEncoding"], "gzip")
         before = list(self.s3.writes)
         self.assertEqual(self.run_publish(), "unchanged-or-newer")
@@ -270,8 +269,6 @@ class SupersededDeleteTest(BundleFixture, unittest.TestCase):
         for info in frames:
             self.assertIn(info["url"], self.s3.objects)
         self.assertIn("weather/harmonie.json", self.s3.objects)
-        # Archived manifests are a few kilobytes each and are the rollback path.
-        self.assertTrue(any("/manifests/harmonie/" in key for key in self.s3.objects))
 
     def test_deletes_happen_only_after_the_new_pointer_is_in_place(self):
         self.assertEqual(self.run_publish(), "published")
@@ -574,11 +571,8 @@ class BinaryUploadTests(unittest.TestCase):
             publish(self.s3, self.root, "harmonie", "test", now=self.now, encoding="zstd")
         self.assertEqual(self.s3.writes, [])
 
-    def test_the_manifest_and_its_archive_stay_gzipped_json(self):
+    def test_the_manifest_stays_gzipped_json(self):
         publish(self.s3, self.root, "harmonie", "test", now=self.now)
-        archive = next(key for key in self.s3.writes if "/manifests/" in key)
-        self.assertEqual(self.stored(archive)["ContentType"], "application/json")
-        self.assertEqual(self.stored(archive)["ContentEncoding"], "gzip")
         pointer = self.stored("weather/harmonie.json")
         self.assertEqual(pointer["ContentType"], "application/json")
         self.assertNotIn("ContentEncoding", pointer)

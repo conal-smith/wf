@@ -439,7 +439,7 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(MODELS["icon-eu-weather"],
                          {"script": "fetch_icon_weather.py",
                           "manifest": "weather/icon-eu-weather.json",
-                          "kind": "weather", "maxAgeHours": 12, "cache": "grib",
+                          "kind": "weather", "maxAgeHours": 30, "cache": "grib",
                           "readsPublishedRun": True})
         self.assertEqual(fetch_icon_weather.MODEL, "icon-eu-weather")
 

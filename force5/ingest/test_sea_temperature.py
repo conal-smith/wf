@@ -320,14 +320,12 @@ class SeaTemperatureTests(unittest.TestCase):
                          newest.replace(minute=0, second=0, microsecond=0))
         self.assertGreater(sea.moment(manifest["generatedAt"]), newest - timedelta(hours=2))
 
-    def test_publication_writes_only_the_archive_and_the_pointer(self):
+    def test_publication_writes_only_the_pointer(self):
         self.run_main()
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root / "public", "sea-temperature", "test",
                                  max_age_hours=48), "published")
-        self.assertEqual(s3.writes[-1], "marine/sea-temperature.json")
-        self.assertIn("marine/manifests/sea-temperature/", s3.writes[-2])
-        self.assertEqual(len(s3.writes), 2)
+        self.assertEqual(s3.writes, ["marine/sea-temperature.json"])
 
     def test_a_corrupt_source_preserves_the_last_published_manifest(self):
         published = self.published()

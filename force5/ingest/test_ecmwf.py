@@ -140,7 +140,7 @@ class ECMWFTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "ecmwf", "test", max_age_hours=24, now=now), "published")
         self.assertEqual(s3.writes[-1], "weather/ecmwf.json")
-        self.assertEqual(len(s3.writes), 87)  # 85 frames + archive + pointer
+        self.assertEqual(len(s3.writes), 86)  # 85 frames + pointer
 
     def test_publisher_rejects_missing_or_invented_hours_before_upload(self):
         manifest, now = self.bundle()
