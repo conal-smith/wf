@@ -558,9 +558,11 @@
   --map-foil-deep: #3b7ea1;
   --map-foil-shallow: #9ccbe0;
   --map-foil-dry: #9a8c70;
-  /* Wet at every tide but no survey says how deep: water's blue, a shade off
-     the deep one, so it reads as water without claiming the depth. */
-  --map-foil-unsurveyed: #6a9cb8;
+  /* Wet at every tide but no survey says how deep: drawn as deep water. Two
+     blues are enough to read (room for a mast, or not quite), and the one
+     place this covers, Malahide's inner lagoon, is about 1.8 m at low water
+     and 2.5 m at high by a rider who sails it. */
+  --map-foil-unsurveyed: var(--map-foil-deep);
 
   /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
      too light, greens deepen through the sweet spot, yellow is the top of it,
