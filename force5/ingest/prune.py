@@ -24,6 +24,10 @@ published nothing. Failed or interrupted uploads are what the bucket sweep is
 for; the ordinary superseded run is deleted by the publisher itself, which needs
 no listing. `--bucket` is never defaulted from the environment: it must be asked
 for, or a scheduled local retention job could silently become a bucket sweep.
+
+Nothing under `archive/` (archive.py) is ever touched, in either mode: it is not a
+data root, both sweeps skip it by name, and `delete_keys` refuses to send any key
+inside it to the store. Those are three separate guards on purpose.
 """
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -39,6 +43,13 @@ from workspace import workspace_lock
 
 DATA_ROOTS = sorted({PurePosixPath(path).parts[0] for path in MANIFESTS.values()})
 ARCHIVE_DIRECTORY = "manifests"  # Archived manifests, never a prunable run.
+# The forecast and observation archive (archive.py): a top-level prefix of its own,
+# which no sweep and no superseded delete may ever reach.
+ARCHIVE_ROOT = "archive"
+if ARCHIVE_ROOT in DATA_ROOTS:
+    # A pointer manifest under archive/ would make the archive a data root, and every
+    # archived file in it "unreferenced". Refuse to run at all rather than sweep it.
+    raise RuntimeError(f"No registered manifest may live under {ARCHIVE_ROOT}/")
 KEEP_CACHE_NAMES = {"worker.lock"}
 DEFAULT_MAX_AGE_HOURS = 0.0
 DEFAULT_CACHE_DAYS = 3.0
@@ -51,9 +62,21 @@ LIST_PAGE = 1000
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 # An observation bundle is one small self-contained file: it carries its readings
 # inline and points at nothing, so having no object URLs is correct, not a fault.
-# So is the blend, every riding place's wind consensus in one file. Each manifest
-# is protected from deletion by being a registered pointer path.
-SELF_CONTAINED_KINDS = {"observation", "blend"}
+# So is the blend, every riding place's wind consensus in one file, and so are the
+# archive job's summary and the verification scores. Each manifest is protected
+# from deletion by being a registered pointer path.
+SELF_CONTAINED_KINDS = {"observation", "blend", "archive", "verification"}
+
+
+def is_archived(path):
+    """Is this published path, or bucket key after its prefix, inside the archive?
+
+    Any segment, not just the first: a bucket key still carrying its deployment
+    prefix (`site/archive/...`) is just as much the archive. A prefix that itself
+    contained an `archive` segment would make nothing deletable, which is the safe
+    direction to fail in.
+    """
+    return ARCHIVE_ROOT in PurePosixPath(str(path)).parts
 
 
 def read_manifests(public):
@@ -165,7 +188,8 @@ def prune_published(public, max_age_hours, now=None, dry_run=False):
             continue
         for entry in sorted(directory.iterdir()):
             published = f"{root}/{entry.name}"
-            if entry.name == ARCHIVE_DIRECTORY or published in MANIFESTS.values():
+            if entry.name == ARCHIVE_DIRECTORY or published in MANIFESTS.values() \
+                    or is_archived(published):
                 continue
             if published in keep_files or published in keep_directories:
                 kept.append({"path": published, "reason": "referenced"})
@@ -224,7 +248,16 @@ def absent(error):
 
 
 def delete_keys(s3, bucket, keys):
-    """Delete exactly these keys in batches. The publisher uses this too."""
+    """Delete exactly these keys in batches. The publisher uses this too.
+
+    The last guard on the archive: whatever a caller computed, no key inside it is
+    ever sent to the store. The whole call is refused, not just that key, because
+    a caller that produced one has a bug worth stopping on.
+    """
+    archived = [key for key in keys if is_archived(key)]
+    if archived:
+        raise ValueError(f"Refusing to delete {len(archived)} archived object(s),"
+                         f" first: {archived[0]}")
     deleted = 0
     for start in range(0, len(keys), DELETE_BATCH):
         batch = keys[start:start + DELETE_BATCH]
@@ -334,7 +367,7 @@ def bucket_prune(s3, bucket, prefix="", min_age_hours=DEFAULT_BUCKET_MIN_AGE_HOU
         published = key[len(prefix):]
         parts = PurePosixPath(published).parts
         if len(parts) < 2 or parts[0] not in DATA_ROOTS or published in pointers \
-                or parts[1] == ARCHIVE_DIRECTORY \
+                or parts[1] == ARCHIVE_DIRECTORY or is_archived(published) \
                 or published in files or "/".join(parts[:2]) in directories:
             kept += 1
             continue

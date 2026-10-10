@@ -38,7 +38,7 @@ import re
 import sys
 from cadence import expected_hours
 import f5bin
-from prune import ARCHIVE_DIRECTORY, delete_keys, manifest_urls, model_owns
+from prune import ARCHIVE_DIRECTORY, delete_keys, is_archived, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
@@ -768,9 +768,10 @@ def superseded_objects(model, previous, manifest):
     root; its run directory or station file must be named for this model and for no
     other, which every adapter satisfies (`weather/ecmwf-RUN-360h-v2/…`,
     `marine/tides-STATION-…json`) — "harmonie" must not match "harmonie-eps", nor
-    "gfs" match "gfs-wave"; and pointer manifests and the archive directory are never
-    touched. An adapter that ever stops using that naming simply stops deleting, and
-    the bucket sweep collects its leftovers instead: the safe direction to fail in.
+    "gfs" match "gfs-wave"; and pointer manifests, the archived manifests and the
+    forecast archive (`archive/`, archive.py) are never touched. An adapter that ever
+    stops using that naming simply stops deleting, and the bucket sweep collects its
+    leftovers instead: the safe direction to fail in.
     """
     if not isinstance(previous, dict) or previous.get("model") != model:
         return []
@@ -779,7 +780,7 @@ def superseded_objects(model, previous, manifest):
     stale = []
     for url in sorted(manifest_urls(previous) - keep):
         parts = PurePosixPath(url).parts
-        if not 2 <= len(parts) <= 3 or parts[0] != root or ".." in parts:
+        if not 2 <= len(parts) <= 3 or parts[0] != root or ".." in parts or is_archived(url):
             continue  # Not one of ours to delete; an absolute or foreign URL is left alone.
         if url in pointers or parts[1] == ARCHIVE_DIRECTORY or not model_owns(model, parts[1]):
             continue
