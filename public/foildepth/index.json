@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "foildepth",
-  "generatedAt": "2026-10-10T02:02:16Z",
+  "generatedAt": "2026-10-10T14:15:17Z",
   "datum": "LAT",
   "encoding": "terrarium",
   "floorMetres": -6,
@@ -10,11 +10,11 @@
   "areas": [
     {
       "id": "dublin-north",
-      "name": "Malahide estuary, Portmarnock and Dublin Bay north",
+      "name": "Malahide estuary, Portmarnock and Dublin Bay",
       "url": "foildepth/dublin-north.pmtiles",
       "bounds": [
         -6.26,
-        53.32,
+        53.287,
         -5.99,
         53.5
       ],

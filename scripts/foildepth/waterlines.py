@@ -106,11 +106,13 @@ def _step(level, crossed):
 
 
 def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
-                      sea_below=-1.0, land_above=8.0):
+                      sea_below=-1.0, land_above=8.0, sea_hint=None):
     """Heights above LAT from the three waterlines on a (coarsened) grid.
 
     `geojson` holds all three line sets, told apart by their `type` property
-    ("LAT", "MSL", "MHW"); `levels` gives each one's height above LAT."""
+    ("LAT", "MSL", "MHW"); `levels` gives each one's height above LAT.
+    `sea_hint` (full grid, optional) marks cells known to be sea though the
+    survey has no height there (a gap-fill thrown out)."""
     h, w = shape
     ch, cw = -(-h // coarsen), -(-w // coarsen)
     t = transform * Affine.scale(coarsen)
@@ -170,7 +172,14 @@ def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
     for i in np.flatnonzero(level == 0):
         leaked[i] = hills[labels == i].sum() >= 50
     in_leaked = leaked[labels] & (grid == 0)
-    grid[in_leaked & ~(coarse <= 0)] = -1
+    sea = coarse <= 0
+    if sea_hint is not None:
+        # A gap-fill thrown out is still sea, not the land round a line's end:
+        # off Sandymount it is the strip between the flats and the soundings.
+        hint = np.zeros((ch * coarsen, cw * coarsen), dtype=bool)
+        hint[:h, :w] = sea_hint
+        sea |= hint.reshape(ch, coarsen, cw, coarsen).any(axis=(1, 3))
+    grid[in_leaked & ~sea] = -1
 
     zs = [float(levels[k]) for k in KINDS]
     d = [ndimage.distance_transform_edt(~ln) for ln in lines]

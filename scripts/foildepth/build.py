@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 import rasterio
+from rasterio import features
 from rasterio.warp import Resampling, reproject
 from rasterio.transform import from_origin
 from scipy import ndimage
@@ -84,8 +85,53 @@ def grid_for(bbox, z, size):
     return from_origin(left, top, px, px), width, height, (x0, x1, y0, y1)
 
 
-def read_source(src, data_dir, transform, width, height, offset):
-    """One source on the target grid, metres above LAT positive up, NaN where none."""
+def lonlat_polygon(ring):
+    """A lon/lat ring as a GeoJSON polygon in Web Mercator metres."""
+    return {"type": "Polygon", "coordinates": [[merc(lon, lat) for lon, lat in ring]]}
+
+
+def polygon_mask(rings, transform, shape):
+    """Pixels of the grid inside any of the lon/lat rings."""
+    shapes = [(lonlat_polygon(r), 1) for r in rings if len(r) >= 3]
+    if not shapes:
+        return np.zeros(shape, dtype=bool)
+    return features.rasterize(shapes, out_shape=shape, transform=transform, dtype="uint8").astype(bool)
+
+
+def gap_fill_mask(spec, data_dir, transform, shape):
+    """Where a gridded source has no survey of its own, only a gap-fill.
+
+    EMODnet's DTM says, per release, which survey or model each cell came
+    from (`emodnet:source_references`). Where no survey reached it fills in
+    from GEBCO, a global grid that knows nothing of drying flats: off
+    Sandymount that fill is a smooth hollow 2–11 m under LAT across sand that
+    dries at every low water. Those cells are not a sounding, and go."""
+    path = os.path.join(data_dir, spec["file"])
+    if not os.path.exists(path):
+        print(f"  gap-fill references missing: {path}; the fill is kept", file=sys.stderr)
+        return np.zeros(shape, dtype=bool)
+    rings = []
+    with open(path) as fh:
+        refs = json.load(fh)
+    for f in refs.get("features", []):
+        p = f.get("properties") or {}
+        if str(p.get("release")) != str(spec["release"]):
+            continue
+        if not str(p.get("identifier", "")).startswith(tuple(spec["identifiers"])):
+            continue
+        g = f.get("geometry") or {}
+        polys = [g["coordinates"]] if g.get("type") == "Polygon" else g.get("coordinates", []) if g.get("type") == "MultiPolygon" else []
+        rings += [poly[0] for poly in polys]
+    # Holes (a survey inside the fill) are rare at this scale; the outer ring is enough.
+    mask = polygon_mask([[(x, y) for x, y, *_ in r] for r in rings], transform, shape)
+    print(f"  gap-fill: {len(rings)} {'/'.join(spec['identifiers'])} polygon(s), {mask.mean() * 100:.1f}% of the grid dropped")
+    return mask
+
+
+def read_source(src, data_dir, transform, width, height, offset, gap=None):
+    """One source on the target grid, metres above LAT positive up, NaN where none.
+
+    `gap` marks the cells that are only a gap-fill (gap_fill_mask): dropped."""
     out = np.full((height, width), np.nan, dtype=np.float32)
     files = sorted({f for pattern in src["files"] for f in glob.glob(os.path.join(data_dir, pattern))})
     if not files:
@@ -111,6 +157,8 @@ def read_source(src, data_dir, transform, width, height, offset):
             )
             take = np.isfinite(dest) & ~np.isfinite(out)
             out[take] = dest[take]
+    if gap is not None:
+        out[gap] = np.nan
     z = out * float(src.get("scale", 1.0))
     if src.get("positive", "up") == "down":
         z = -z
@@ -216,6 +264,9 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
     wet_at_lat = np.zeros((height, width), dtype=bool)
     bathy = np.full((height, width), np.nan, dtype=np.float32)
     above_mhw = np.zeros((height, width), dtype=bool)
+    # Cells a source only gap-filled: not a sounding, but not land either
+    # (EMODnet fills land from a land model, never from GEBCO).
+    gap_fill = np.zeros((height, width), dtype=bool)
     for src in area["sources"]:
         if src.get("kind") == "waterlines":
             path = os.path.join(data_dir, src["files"][0])
@@ -223,7 +274,8 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
                 print(f"  {src['name']}: missing {path}, skipped", file=sys.stderr)
                 continue
             layer, wet, land3, counts = waterline_surface(json.load(open(path)), src["levels"], transform,
-                                                   (height, width), z, coarsen=src.get("coarsen", 2))
+                                                   (height, width), z, coarsen=src.get("coarsen", 2),
+                                                   sea_hint=gap_fill)
             print(f"  {src['name']}: regions {counts}")
             # Under the LAT line is wet at every tide: an earlier source that
             # puts the bed above LAT there is wrong (EMODnet's fill), and goes.
@@ -235,7 +287,10 @@ def build_area(area, cfg, data_dir, out_dir, debug_dir=None):
             z[land3] = np.nan
             above_mhw |= land3
         else:
-            layer = read_source(src, data_dir, transform, width, height, offset)
+            gap = gap_fill_mask(src["gapFill"], data_dir, transform, (height, width)) if "gapFill" in src else None
+            if gap is not None:
+                gap_fill |= gap
+            layer = read_source(src, data_dir, transform, width, height, offset, gap)
         if layer is None:
             continue
         if src.get("kind") == "bathy":

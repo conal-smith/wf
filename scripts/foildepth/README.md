@@ -14,7 +14,7 @@ elevation archive per pilot area. The tide makes it dynamic in the browser:
 
 | Area | File | Size | Tide station |
 | --- | --- | --- | --- |
-| `dublin-north`: the Malahide estuary, Donabate, Portmarnock, Baldoyle, Bull Island and Howth to Sandymount | `dublin-north.pmtiles` | 3.0 MB | Howth |
+| `dublin-north`: the Malahide estuary, Donabate, Portmarnock, Baldoyle, Bull Island, Howth, and Dublin Bay south to Sandymount, Seapoint and Dún Laoghaire | `dublin-north.pmtiles` | 3.2 MB | Howth |
 | `brandon`: Brandon Bay, the Maharees, Castlegregory to Banna | `brandon.pmtiles` | 4.9 MB | Fenit |
 | | `index.json` | 3 kB | |
 
@@ -51,7 +51,10 @@ In order of trust; a later one wins where it has data, feathered over 12 px.
 
 1. **EMODnet Bathymetry DTM** (`emodnet:mean`, 1/16′ ≈ 115 m), fallback only.
    Relative to chart datum ≈ LAT, negative down. It fills the intertidal with
-   0 and land with a coarse, low DEM: both are thrown out.
+   0 and land with a coarse, low DEM: both are thrown out. Where no survey
+   reached, it fills from GEBCO, a global grid; its source references
+   (`emodnet:source_references`, fetched beside the DTM) say which cells, and
+   those are thrown out too (`gapFill` in `areas.json`; see Sandymount below).
 2. **EMODnet satellite-derived waterlines** (WFS `emodnet:coastlines`, types
    `LAT`, `MSL`, `MHW`). Where no LiDAR or sonar has been (the whole Malahide
    estuary), `waterlines.py` interpolates an intertidal surface between the
@@ -63,7 +66,9 @@ In order of trust; a later one wins where it has data, feathered over 12 px.
    relative to LAT, positive up (despite the CRS saying "LAT depth, down"),
    nodata 0 or −99999. Surveys used: Dublin north CB13_01, GEO13_01, GEO17_01,
    KRY17_01 (2013–17, VORF), CV03_01 (2003), KRY09_02 (2009), KRY10_01 (2010),
-   GEO11_01 (2011), TON16_01, LIR17_02 (2016–17), GEO21_06 (2021); Brandon
+   GEO11_01 (2011), TON16_01, LIR17_02 (2016–17), GEO21_06 (2021), the same
+   surveys cut again south of 53.34° N for Sandymount to Dún Laoghaire
+   (`a4_dublinbay_south__*`; none of them sounds the flats); Brandon
    CB14_05, CV14_02, GEO14_03, KRY14_05 (2014), GEO17_03 (2017). Surveys before
    March 2011 were reduced with a Proudman tidal model rather than VORF and are
    on average 0.54 m deeper; the ones here are offshore (−4 to −26 m, always
@@ -76,8 +81,45 @@ In order of trust; a later one wins where it has data, feathered over 12 px.
    Howth 2.561, Fenit 2.677, from `force5/ingest/fetch_tides.py`, which defines
    the offset as LAT height − Malin height). A LiDAR sees the water's surface,
    not the bed: returns well above a bathymetric survey are dropped, and round
-   Dublin, where the 2011 flight saw water at about −1.0 m OD (≈1.6 m LAT), so
-   is anything at or under 1.65 m LAT.
+   Dublin, where the 2011 flight saw water at about −1.0 m OD (≈1.6 m LAT; the
+   open sea's surface that day, in Dublin Port, Dún Laoghaire harbour and off
+   Seapoint), so is anything at or under 1.65 m LAT.
+
+### What was wrong at Sandymount (fixed 2026-10)
+
+The flats off Sandymount and Merrion, which dry for a kilometre and more at
+low water, were drawn deep blue. Sampled across them (metres above LAT):
+
+| Point | LiDAR | EMODnet DTM | Built before | Built after |
+| --- | --- | --- | --- | --- |
+| Sandymount, upper beach (−6.207, 53.331) | 3.55 | – | 3.56 | 3.56 |
+| Sandymount, 1 km out (−6.195, 53.329) | – (water in flight) | −3.99 | −3.81 | 2.09 |
+| Sandymount, 2 km out (−6.184, 53.329) | – | −3.44 | −3.06 | 0.53 |
+| Flats under the South Bull Wall (−6.180, 53.339) | 2.89 | −0.12 | 1.66 | 2.62 |
+| Merrion Strand, 1 km out (−6.194, 53.317) | – | −1.65 | outside | 0.91 |
+| Booterstown, 700 m out (−6.184, 53.309) | – | 0.39 | outside | 1.25 |
+
+INFOMAR has no sounding on the flats at all, and the 2011 LiDAR stops a few
+hundred metres out, where the flight met the water. So the merge fell back on
+EMODnet's DTM, and EMODnet has no survey there either: its source references
+name **GEBCO 2024** for a block of cells from −6.203 to −6.167 E, 53.302 to
+53.339 N, and GEBCO's global grid draws a smooth hollow 2–11 m under LAT
+across the sand. Worse, those cells seeded the waterline method's "under LAT"
+walk, so the whole flat inside the satellite LAT line was taken for sea and
+the waterlines never laid their 0–2.5 m surface over it. The datum was not at
+fault: the LiDAR's beach at +3.5 to +4.2 m LAT sits where the chart puts the
+upper strand (Howth's offset of 2.561 m against Dublin Port's 2.458 m is a
+0.1 m difference here), and the tide station is not the issue either.
+
+The fix: GEBCO-filled cells are dropped from the fallback (they are not a
+sounding), and are not allowed to seed the sea; where the line-walk has to
+guess round a line's open end, they still count as sea, not land. Inside the
+LAT line the flats are now the waterlines' surface (0 at the LAT line rising
+to 2.5 m at the MSL line), under the LiDAR's beach; outside it, between the
+LAT line and the first real soundings, a strip is wet at every tide and
+unsurveyed. The area now reaches south to 53.287° N (Seapoint and Dún
+Laoghaire), with the OPW 2011 and TII tiles there added to the LiDAR mosaic
+and the INFOMAR surveys cut again for the band.
 
 Then the mask: ground at or under the area's dry ceiling (HAT plus a margin:
 5.0 m at Howth, 5.6 m at Fenit) and connected to water under LAT; small no-data
@@ -96,11 +138,17 @@ Bathymetry Consortium: EMODnet Digital Bathymetry (DTM 2024) and coastlines".
   holds water at every tide (the weir under the viaduct holds it up), so it is
   drawn "unsurveyed", with its rim from the waterlines. A Fingal/OPW flood-study
   LiDAR, a drone survey or a few soundings at low water would fill it.
-- **The outer Malahide flats and North Bull/Baldoyle** come from the
-  waterlines, not a survey: right in shape, ±0.5 m or so in height.
+- **The outer Malahide flats, North Bull/Baldoyle and Sandymount** come from
+  the waterlines, not a survey: right in shape, ±0.5 m or so in height. Off
+  Merrion and Booterstown the strip between the LAT line and the first
+  soundings is drawn unsurveyed (deep blue), though it is probably only a
+  metre or less under LAT.
 - The tide is **one station's astronomical prediction** for the whole area: no
   surge, no waves, and no estuary lag or damping (inside an estuary low water
   is later and higher than at Howth; the inner lagoon is perched behind its weir).
+  Sandymount uses Howth too: Dublin Port's low waters agree with
+  Howth's to a few centimetres, its high waters are about 0.15 m lower and
+  5–10 minutes later, which matters little on a flat that dries at half tide.
 - LAT from OD Malin is one constant per station, not a modelled surface (a
   VORF-style separation model would be better).
 
@@ -112,13 +160,15 @@ run it isolated (`python -I`).
 
 ```sh
 D=/tmp/wf-foildepth/data
-sh fetch-emodnet.sh    $D/emodnet    dublin-north -6.30 53.30 -5.96 53.52
+sh fetch-emodnet.sh    $D/emodnet    dublin-north -6.30 53.27 -5.96 53.52
 sh fetch-emodnet.sh    $D/emodnet    brandon     -10.22 52.18 -9.78 52.38
-sh fetch-coastlines.sh $D/coastlines dublin-north -6.26 53.32 -5.99 53.50
+sh fetch-coastlines.sh $D/coastlines dublin-north -6.27 53.28 -5.99 53.50
 sh fetch-coastlines.sh $D/coastlines brandon     -10.18 52.22 -9.83 52.35
 # INFOMAR and the LiDAR by hand, from the portals below, cut to the areas'
 # boxes into $D/infomar/clipped/ and $D/lidar/{dub,mal,bran}/ (see areas.json
-# for the names it globs).
+# for the names it globs). The Dublin LiDAR mosaic reaches 53.285° N: OPW
+# 3235–3237, 3257–3259, 3282–3284, 3311–3312, 3335–3336, 3355–3356 and TII
+# 2472, 2493–2494, 2502–2503, 2509–2510, 2522 joined the first build's tiles.
 python -I build.py --data $D --out ../../public/foildepth [--area dublin-north] [--debug /tmp/wf-foildepth/debug]
 node shots.mjs http://127.0.0.1:5173 /tmp/wf-foildepth/shots kilcrea 2   # a look by eye, with the app running
 ```
