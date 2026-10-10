@@ -274,7 +274,7 @@ test("the head says the day's best, and the pen loops each day's", async ({
   ).toHaveAttribute("href", "/spot/brandon");
 });
 
-test("a starred spot is kept on this device: the dock, the popup and your spots agree", async ({
+test("a starred spot is kept on this device: the dock and your spots agree", async ({
   page,
 }) => {
   await openDock(page);
@@ -291,12 +291,11 @@ test("a starred spot is kept on this device: the dock, the popup and your spots 
     JSON.parse(localStorage.getItem("wingfoil.spots.v1") ?? "{}"),
   );
   expect(stored.starred).toEqual(["brandon"]);
-  // The popup's star is the same star.
+  // Chosen again from the search, the spot comes back starred.
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
   await page.locator(".spot-row").first().click();
-  const popup = page.getByRole("dialog", { name: "Brandon Bay at a glance" });
   await expect(
-    popup.getByRole("button", { name: "Unstar Brandon Bay" }),
+    page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
   // Opening a spot counts it among the often opened; the count is in the
   // entry's title, not printed as a bare "1×".

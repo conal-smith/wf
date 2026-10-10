@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -91,9 +90,6 @@ type Props = {
   /** A tap on the open map, not a light: the point, and the nearest place's name. */
   onPick: (point: { lon: number; lat: number; place: string | null }) => void;
   onReady: (controls: MapControls | null) => void;
-  /** The popup's content, hung on the selected spot, or null for none. */
-  popup: ReactNode | null;
-  onPopupClose: () => void;
 };
 
 const WORLD = [
@@ -174,7 +170,6 @@ export default function WindMap(props: Props) {
     rightInset,
     phone,
     penNote,
-    popup,
   } = props;
   const container = useRef<HTMLDivElement>(null);
   const particles = useRef<HTMLCanvasElement | null>(null);
@@ -329,7 +324,7 @@ export default function WindMap(props: Props) {
       map.on("click", (event) => {
         cancelPick();
         const target = event.originalEvent.target as HTMLElement | null;
-        if (target?.closest(".spot-marker, .maplibregl-popup")) return;
+        if (target?.closest(".spot-marker")) return;
         if (event.originalEvent.detail > 1) return;
         const { lng, lat } = event.lngLat;
         pending = window.setTimeout(() => {
@@ -706,77 +701,6 @@ export default function WindMap(props: Props) {
     };
   }, [ready, picked?.lon, picked?.lat]);
 
-  // The popup, hung on the selected spot.
-  const [holder] = useState(() => document.createElement("div"));
-  const popupOpen = !!popup;
-  useEffect(() => {
-    const map = mapRef.current;
-    const spot = selectedId ? spots.find((s) => s.id === selectedId) : null;
-    if (!ready || !map || !spot || !popupOpen) return;
-    const box = new maplibregl.Popup({
-      className: "chart-popup",
-      closeButton: false,
-      closeOnClick: false,
-      focusAfterOpen: false,
-      offset: 18,
-      maxWidth: "300px",
-    })
-      .setLngLat([spot.lon, spot.lat])
-      .setDOMContent(holder)
-      .addTo(map);
-    // The card fits between the boxes: nudge the map once it has a size, and
-    // once more when a flight to the spot comes to rest. From the reader's
-    // first touch the card goes wherever the map goes.
-    let opening = true;
-    const fit = () => {
-      if (!opening) return;
-      const card = holder.getBoundingClientRect();
-      const view = map.getContainer().getBoundingClientRect();
-      const top = view.top + (latest.current.phone ? 70 : 84);
-      const bottom = view.bottom - latest.current.bottomInset - 16;
-      const left = view.left + 12;
-      const right =
-        view.right - (latest.current.phone ? 12 : latest.current.rightInset + 24);
-      const dx =
-        card.left < left
-          ? card.left - left
-          : card.right > right
-            ? card.right - right
-            : 0;
-      const dy =
-        card.height > bottom - top
-          ? 0
-          : card.top < top
-            ? card.top - top
-            : card.bottom > bottom
-              ? card.bottom - bottom
-              : 0;
-      if (!map.isMoving() && (Math.abs(dx) > 1 || Math.abs(dy) > 1))
-        map.panBy([dx, dy], { duration: 0 });
-    };
-    const handOver = () => {
-      opening = false;
-    };
-    const landed = () => {
-      requestAnimationFrame(fit);
-      window.setTimeout(handOver, 50);
-    };
-    const settle = window.setTimeout(() => {
-      if (!map.isMoving()) landed();
-    }, 60);
-    const el = map.getContainer();
-    el.addEventListener("pointerdown", handOver);
-    el.addEventListener("wheel", handOver, { passive: true });
-    map.once("moveend", landed);
-    return () => {
-      clearTimeout(settle);
-      el.removeEventListener("pointerdown", handOver);
-      el.removeEventListener("wheel", handOver);
-      map.off("moveend", landed);
-      box.remove();
-    };
-  }, [ready, selectedId, popupOpen, spots]);
-
   return (
     <>
       <div
@@ -786,7 +710,6 @@ export default function WindMap(props: Props) {
         aria-label="Chart of Ireland's coast with the wing foil forecast"
       />
       <svg ref={neat} className="map-neat" aria-hidden="true" />
-      {popup && createPortal(popup, holder)}
       {!ready && !error && (
         <div className="map-loading" role="status">
           Drawing the chart…

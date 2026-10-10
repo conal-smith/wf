@@ -1,8 +1,8 @@
 /**
  * The chart's small glyphs, drawn as the mockup draws them and coloured from
  * the theme through src/map.css: which way a beach faces, the wind against
- * it, an arrow blowing downwind, the tide's wave, and the red star a rider
- * keeps a spot with.
+ * it, an arrow blowing downwind, and the red star a rider keeps a spot
+ * with.
  */
 import { useId, type ReactNode } from "react";
 import { SHORE_LABEL, shoreAngle } from "../force5/src/stars";
@@ -124,19 +124,6 @@ export function ShoreGlyph({
     </svg>
   );
 }
-
-/** The tide's wave, beside a height. */
-export const TideWave = () => (
-  <svg
-    className="g-tide"
-    width="14"
-    height="8"
-    viewBox="0 0 14 8"
-    aria-hidden="true"
-  >
-    <path d="M0 5 Q3.5 0 7 4 T14 3" fill="none" strokeWidth="1.3" />
-  </svg>
-);
 
 /** The red star a rider keeps a spot with, filled once it is kept. */
 export function StarToggle({

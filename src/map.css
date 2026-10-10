@@ -1,9 +1,9 @@
 /*
  * The map at /, drawn as the chart (docs/BRAND.md, and the signed-off mockup
  * design/chart/1-the-chart.html): paper boxes ruled in ink over the chart, a
- * neatline round it, the lights, the popup and the small print. Every value
- * is the theme's, through var(); the map's own are in the "map" block at the
- * end of ui/theme.css.
+ * neatline round it, the lights and the small print. Every value is the
+ * theme's, through var(); the map's own are in the "map" block at the end of
+ * ui/theme.css.
  */
 
 .sr-only {
@@ -60,9 +60,6 @@
   pointer-events: none;
   overflow: visible;
   z-index: 4;
-}
-.map-canvas .maplibregl-popup {
-  z-index: 6;
 }
 .map-pen-loop {
   fill: none;
@@ -1113,109 +1110,6 @@
 }
 .g-shore.is-off .g-shore-arrow {
   stroke: var(--color-pen);
-}
-.g-tide path {
-  stroke: var(--map-tide);
-}
-
-/* ---------- the popup ---------- */
-.chart-popup .maplibregl-popup-content {
-  width: 250px;
-  padding: 11px 14px 12px;
-  border: 1px solid var(--color-ink);
-  border-radius: 0;
-  background: var(--color-ground);
-  box-shadow: var(--inset-shadow-frame), var(--shadow-surface);
-  font-family: var(--font-body);
-  color: var(--color-ink);
-}
-.chart-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-.chart-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-.chart-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: var(--color-ink);
-}
-.chart-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-.chart-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-.chart-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: var(--color-ink);
-}
-.chart-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--color-ink);
-}
-.chart-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--color-ink);
-}
-.spot-card .sc-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.spot-card h3 {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font: 600 20px/1.05 var(--font-display);
-  letter-spacing: -0.01em;
-}
-.sc-close {
-  align-self: flex-start;
-  display: grid;
-  place-items: center;
-  padding: 2px;
-  border: 0;
-  background: none;
-  color: var(--color-ink-muted);
-  cursor: pointer;
-}
-@media (hover: hover) and (pointer: fine) {
-  .sc-close:hover {
-    color: var(--color-ink);
-  }
-}
-.sc-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 3px 0 0 26px;
-  font: 500 10px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.sc-when {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 8px 0 6px;
-  padding: 5px 0;
-  border-top: 1px solid var(--color-ink);
-  border-bottom: 1px solid var(--color-line);
-}
-.sc-when .when {
-  margin-right: auto;
-  font: 600 11px var(--font-mono);
-  letter-spacing: 0.04em;
-}
-.sc-dark {
-  font: 11px var(--font-mono);
-  color: var(--color-ink-muted);
-}
-.sc-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin: 3px 0;
-  font: 400 12.5px var(--font-mono);
-}
-.sc-line b {
-  font-weight: 600;
-  font-size: 13.5px;
-}
-.sc-acts {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 9px;
 }
 
 /* What the card the stars open says (ui/RatingTip.tsx), in the chart's words. */

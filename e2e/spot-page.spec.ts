@@ -307,7 +307,7 @@ test("an unknown spot says so and offers what it may have meant", async ({
   await expect(page.locator('a[href^="/spot/"]')).toHaveCount(146);
 });
 
-test("the map's spot popup and dock both open the spot page", async ({
+test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
   page,
 }) => {
   await page.goto("/");
@@ -320,19 +320,22 @@ test("the map's spot popup and dock both open the spot page", async ({
     page.locator(".dock [data-spot-page-link]"),
   ).toHaveAttribute("href", "/spot/brandon");
 
-  await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
+  // A spot chosen on the map is the dock's, with no box over the chart.
+  await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
   await page.locator(".spot-row").first().click();
-  const popup = page.getByRole("dialog", { name: /Brandon Bay at a glance/ });
-  await expect(popup).toBeVisible();
-  const link = popup.getByRole("link", { name: "Spot page →" });
-  await expect(link).toHaveAttribute("href", "/spot/brandon");
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const link = page.locator(".dock").getByRole("link", { name: "Spot page →" });
+  await expect(link).toHaveAttribute("href", "/spot/dollymount");
   await link.click();
-  await expect(page).toHaveURL(/\/spot\/brandon$/);
-  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page).toHaveURL(/\/spot\/dollymount$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Dollymount", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   // And back to the map, on the same place.
   await page.locator("[data-back-to-map]").click();
-  await expect(page).toHaveURL(/\/\?spot=brandon$/);
-  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay", {
+  await expect(page).toHaveURL(/\/\?spot=dollymount$/);
+  await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount", {
     timeout: 30000,
   });
 });

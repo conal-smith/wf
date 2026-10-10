@@ -129,29 +129,28 @@ test("the depths are one static file, read by range requests", async ({
   expect(ranged.every((range) => /^bytes=\d+-\d+$/.test(range))).toBe(true);
 });
 
-test("finding a spot flies there, focuses it and opens its popup; Escape and IRL clear it", async ({
+test("finding a spot flies there and focuses it, with no box over the map; Escape and IRL clear it", async ({
   page,
 }) => {
   await openChart(page);
   const map = page.locator(".map-canvas");
   await expect(map).not.toHaveClass(/is-focus/);
   await findSpot(page, "Dollymount");
-  const popup = page.getByRole("dialog", { name: "Dollymount at a glance" });
-  await expect(popup).toBeVisible();
   await expect(map).toHaveClass(/is-focus/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
   // The other lights go quiet; the chosen one does not.
   await expect
     .poll(() =>
       page
-        .locator('[data-spot-id="brandon"] svg')
+        .locator('[data-spot-id="brandon"] > svg')
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBeLessThan(0.5);
   await expect
     .poll(() =>
       page
-        .locator('[data-spot-id="dollymount"] svg')
+        .locator('[data-spot-id="dollymount"] > svg')
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBe(1);
@@ -162,13 +161,11 @@ test("finding a spot flies there, focuses it and opens its popup; Escape and IRL
 
   await page.keyboard.press("Escape");
   await expect(map).not.toHaveClass(/is-focus/);
-  await expect(popup).toHaveCount(0);
 
   await findSpot(page, "Dollymount");
   await expect(map).toHaveClass(/is-focus/);
   await page.getByRole("button", { name: "Show all of Ireland" }).click();
   await expect(map).not.toHaveClass(/is-focus/);
-  await expect(popup).toHaveCount(0);
 
   // Clearing the focus is not choosing another place: the dock keeps it.
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
@@ -455,9 +452,8 @@ test("a link that names a spot opens the chart on it", async ({ page }) => {
   await expect(page.locator(".dock .dk-name")).toHaveText("Keel Beach", {
     timeout: 30000,
   });
-  await expect(
-    page.getByRole("dialog", { name: "Keel Beach at a glance" }),
-  ).toBeVisible();
   await expect(page.locator(".map-canvas")).toHaveClass(/is-focus/);
+  await expect(page.locator('[data-spot-id="keel"]')).toHaveClass(/\bsel\b/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   void SAMPLE_CLOCK;
 });

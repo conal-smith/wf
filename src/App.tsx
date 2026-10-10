@@ -40,7 +40,6 @@ import ForecastDock, { type DockView } from "./ForecastDock";
 import MapControls from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel, { type SideTab } from "./SidePanel";
-import SpotCard from "./SpotCard";
 import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
@@ -209,7 +208,6 @@ export default function App() {
     setMore(next);
     store.set(MORE_KEY, next ? "1" : "0");
   };
-  const [popupOpen, setPopupOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
   const [sideTab, setSideTab] = useState<SideTab>("yours");
@@ -314,10 +312,7 @@ export default function App() {
         setPoint(
           linked ?? places.find((spot) => spot.id === FIRST_SPOT) ?? places[0],
         );
-        if (linked) {
-          setFocusId(linked.id);
-          setPopupOpen(true);
-        }
+        if (linked) setFocusId(linked.id);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -735,7 +730,6 @@ export default function App() {
   const selectSpot = (spot: Spot, fly = true) => {
     setPicked(null);
     setPoint(spot);
-    setPopupOpen(true);
     setFocusId(spot.id);
     setKeyOpen(false);
     fav.visit(spot.id);
@@ -756,14 +750,10 @@ export default function App() {
       coords: at.place ? coords : "",
     });
     setFocusId(AT_POINT);
-    setPopupOpen(false);
     setKeyOpen(false);
     probeFoil(at.lon, at.lat);
   };
-  const clearFocus = () => {
-    setFocusId(null);
-    setPopupOpen(false);
-  };
+  const clearFocus = () => setFocusId(null);
   const toIreland = () => {
     clearFocus();
     controls.current?.fitIreland();
@@ -1003,9 +993,6 @@ export default function App() {
     </>
   );
 
-  const popupHour = point ? pointHours?.[selected] : undefined;
-  const popupTide =
-    tide.tide && column ? tideAt(tide.tide.curve, column.time) : null;
   const status = pendingModel
     ? `Loading ${MODELS.find((m) => m.id === pendingModel)?.name}…`
     : modelError || modelNotice
@@ -1105,22 +1092,6 @@ export default function App() {
                 controls.current = c;
                 setMapReady(!!c);
               }}
-              popup={
-                point && popupOpen && !picked ? (
-                  <SpotCard
-                    spot={point}
-                    time={column?.time ?? null}
-                    hour={popupHour}
-                    tide={popupTide}
-                    starred={starred.includes(point.id)}
-                    onToggleStar={() => fav.toggle(point.id)}
-                    onClose={() => setPopupOpen(false)}
-                    rider={rider}
-                    units={prefs.units}
-                  />
-                ) : null
-              }
-              onPopupClose={() => setPopupOpen(false)}
             />
             {(status || (loading && frame)) && (
               <div
