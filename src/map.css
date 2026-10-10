@@ -237,6 +237,13 @@
   color: var(--color-pen);
 }
 /* Past the rider's range: an outline, still. */
+.lt-key-wedge {
+  fill: var(--color-ink);
+  stroke: var(--color-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  opacity: 0.45;
+}
 .lt.w-over .lt-wedge path {
   fill: none;
   stroke-width: 1.1;

@@ -243,6 +243,13 @@ export default function SidePanel(props: Props) {
             </dt>
             <dd>Stars at the hour shown; the arrow blows downwind.</dd>
             <dt>
+              <KeyLight stars={4} arrow wedge />
+            </dt>
+            <dd>
+              Wedge: the headings you can hold out to sea at your level in this
+              wind. Longer the better powered; it pulses faster with more stars.
+            </dd>
+            <dt>
               <KeyLight stars={5} />
             </dt>
             <dd>Five stars, in magenta</dd>
@@ -309,11 +316,13 @@ function KeyLight({
   arrow = false,
   struck = false,
   cross = false,
+  wedge = false,
 }: {
   stars: number;
   arrow?: boolean;
   struck?: boolean;
   cross?: boolean;
+  wedge?: boolean;
 }) {
   const level = struck ? "off" : `s${stars}`;
   return (
@@ -324,6 +333,9 @@ function KeyLight({
       aria-hidden="true"
       className={`k-light lt-key ${level}${cross ? " xoff" : ""}`}
     >
+      {wedge && (
+        <path className="lt-key-wedge" d="M0 0L15 0A15 15 0 0 1 6.3 13.6Z" />
+      )}
       {arrow && (
         <path
           className="lt-arrow"
