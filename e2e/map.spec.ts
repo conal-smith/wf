@@ -142,14 +142,14 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
   await expect(map).toHaveClass(/is-focus/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".dock .dk-name")).toHaveText("Dollymount");
-  // The other lights go quiet; the chosen one does not.
+  // The other lights stay at full strength, to be compared with it.
   await expect
     .poll(() =>
       page
         .locator('[data-spot-id="brandon"] > svg')
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
-    .toBeLessThan(0.5);
+    .toBe(1);
   await expect
     .poll(() =>
       page

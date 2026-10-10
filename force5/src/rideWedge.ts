@@ -10,7 +10,11 @@
  * recommend, so the rider's quiver is not read here.
  *
  * The angles are rough guides from riding, not measurements, and gear moves
- * them as much as skill does: the wedge says "about here", not a polar.
+ * them as much as skill does: the wedge says "about here", not a polar. They
+ * are the headings a session is ridden on, back and forth across the wind,
+ * not the deepest a rider could bear away: a wedge reaching 135° and more
+ * off the wind told a rider to run downwind, where a session ends a long
+ * walk from where it began.
  */
 import { rideableWind, windBand, type Rider, type Skill } from "./stars";
 
@@ -19,21 +23,21 @@ type Range = readonly [number, number];
 
 /** Powered up, in the sweet spot. */
 const BEST: Record<Skill, Range> = {
-  beginner: [88, 115],
-  intermediate: [70, 135],
-  advanced: [50, 160],
+  beginner: [85, 105],
+  intermediate: [65, 115],
+  advanced: [50, 120],
 };
-/** Just foiling, at the band's floor. */
+/** Just foiling, at the band's floor: nobody points, and nobody runs off. */
 const AT_FLOOR: Record<Skill, Range> = {
-  beginner: [105, 112],
-  intermediate: [95, 122],
-  advanced: [82, 132],
+  beginner: [100, 110],
+  intermediate: [90, 112],
+  advanced: [80, 115],
 };
-/** At the band's top: a little worse upwind, much less deep downwind. */
+/** At the band's top: a little worse upwind, and less off the wind. */
 const AT_TOP: Record<Skill, Range> = {
-  beginner: [95, 105],
-  intermediate: [75, 118],
-  advanced: [52, 145],
+  beginner: [92, 104],
+  intermediate: [72, 110],
+  advanced: [52, 115],
 };
 
 export type WedgeState = "building" | "sweet" | "overpowered" | "over";
@@ -96,7 +100,7 @@ function clipToSea(
     const x = Math.max(lo + shift, -90);
     const y = Math.min(lo + shift + (b - a), 90);
     // A sliver a few degrees wide is a heading along the beach, not out.
-    if (y - x >= 3) return [norm(facing + x), norm(facing + x) + (y - x)];
+    if (y - x >= 10) return [norm(facing + x), norm(facing + x) + (y - x)];
   }
   return null;
 }
