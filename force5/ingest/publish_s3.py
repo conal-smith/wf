@@ -1007,9 +1007,6 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
         # The local file too, so a frame the adapter already compressed is
         # uploaded from its sidecar instead of being compressed a second time.
         put_immutable(s3, bucket, prefix + path, data, state, encoding, public / path)
-    archive = (f"{object_root(model)}/manifests/{model}/"
-               f"{manifest['run']}-{hashlib.sha256(body).hexdigest()[:16]}.json")
-    put_immutable(s3, bucket, prefix + archive, body, state, encoding)
     for _ in range(4):
         current, etag = read_current(s3, bucket, pointer)
         if already_current(current, manifest):

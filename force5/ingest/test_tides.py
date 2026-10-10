@@ -186,8 +186,7 @@ class TideTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root / "public", "tides", "test", max_age_hours=30), "published")
         self.assertEqual(s3.writes[-1], "marine/tides.json")
-        self.assertIn("marine/manifests/tides/", s3.writes[-2])
-        self.assertEqual(len(s3.writes), 4)  # two stations, the archive, then the pointer
+        self.assertEqual(len(s3.writes), 3)  # two stations, then the pointer
 
     def test_station_files_are_immutable_and_named_by_window_and_content(self):
         manifest = self.run_main()

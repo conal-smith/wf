@@ -85,7 +85,6 @@ class ContractTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-wave", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-wave.json")
-        self.assertIn("weather/manifests/fake-wave/", s3.writes[-2])
         self.assertEqual(manifest["kind"], "wave")
 
     def test_wave_rejects_undescribed_variables_and_bad_fields(self):
@@ -119,7 +118,7 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(len(published["spotSeries"]["brandon"]), 3)
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-wave", "test", now=NOW), "published")
-        self.assertEqual(len(s3.writes), 2)  # The archived manifest, then the pointer.
+        self.assertEqual(s3.writes, ["weather/fake-wave.json"])  # Only the pointer.
 
     def test_a_frameless_wave_bundle_declares_a_horizon_its_series_covers(self):
         manifest = self.wave_bundle()
@@ -280,7 +279,7 @@ class ContractTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-eps", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-eps.json")
-        self.assertEqual(len(s3.writes), 2)  # archived manifest, then the pointer
+        self.assertEqual(s3.writes, ["weather/fake-eps.json"])  # Only the pointer.
 
     def test_frames_may_only_be_empty_for_an_ensemble(self):
         manifest = self.ensemble_bundle()
@@ -371,7 +370,7 @@ class ContractTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-bin", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-bin.json")
-        self.assertEqual(len(s3.writes), 5)  # three frames, the archive, the pointer
+        self.assertEqual(len(s3.writes), 4)  # three frames, then the pointer
 
     def test_a_binary_frame_from_the_wrong_run_or_hour_is_refused(self):
         """The header is what makes this catchable; the file name alone is not."""

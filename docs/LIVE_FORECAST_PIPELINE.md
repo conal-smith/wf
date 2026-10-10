@@ -21,7 +21,7 @@ EventBridge Scheduler
     → discover/download Met Éireann or DWD model output
     → decode + validate + prepare wind frames and spot time series
     → encode wind frames as F5 int16 (.bin) with .br/.gz sidecars
-    → upload immutable frames + archived manifest to private S3
+    → upload immutable frames to private S3
     → conditionally update latest manifest LAST
       → CloudFront HTTPS endpoint → website / future map clients
 ```
@@ -34,7 +34,7 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
 - `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file after the sha256 of its own bytes, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
-- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — every referenced object must sit under a run directory named for this model, by the same rule the superseded delete uses — together with the file name, which must be the sha256 of the bytes it holds; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone puts one model's frame in another's directory under its own correct name. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then an archived manifest, then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
+- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — every referenced object must sit under a run directory named for this model, by the same rule the superseded delete uses — together with the file name, which must be the sha256 of the bytes it holds; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone puts one model's frame in another's directory under its own correct name. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
 **Published sizes recorded per model below predate the binary frames** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for the file on disk plus its sidecars, or by three against what a browser was actually sent; wave and weather figures are unchanged, because those frames are still JSON.
@@ -449,7 +449,7 @@ Sea temperature is an **observation** feed, not a cycle: run it every three hour
 (`deploy/local/jobs.toml` uses 00/03/…/21 UTC at :15, sharing that minute with the SWAN
 job, which the one-job-at-a-time loop serialises). A run takes about 3 seconds, transfers
 a few hundred kilobytes of CSV and publishes a single ~30 KB file with no immutable
-objects, so its only S3 writes are the archived manifest and the pointer. Its `run` is
+objects, so its only S3 write is the pointer. Its `run` is
 the **newest observation hour**, so the 48-hour registry limit is the age of the data:
 alarm when it is exceeded, and expect it to trip when a buoy goes off station rather
 than when the job fails. A station that stops reporting does not fail the run — the spots
@@ -685,13 +685,11 @@ the rules are deliberately narrow:
   `superseded_delete_failed` and **does not fail the forecast that just published** —
   the data is live, the leftovers are only cost, and the sweep collects them.
 
-**Archived manifests (`<root>/manifests/<model>/RUN-HASH.json`) are kept.** They are a
-few kilobytes each and R2's free tier stores 10 GB. They are a **record of what was
-published, not a rollback path**: the owner's policy is to keep only the newest run, so
-by the time an archived manifest is old its frames have already been deleted and
-restoring it would point the site at objects that no longer exist. Real rollback would
-need bucket object versioning, which this design deliberately does not use. Treat them
-as an audit trail — which run, which frames, which hashes — and nothing more.
+**Manifests are not archived.** Earlier versions also wrote every published manifest to
+`<root>/manifests/<model>/RUN-HASH.json`. Nothing read them, and because only the newest
+run's frames are kept they could never be restored, so the publisher no longer writes
+them. The publisher and the sweep still leave a `manifests/` directory alone, so any
+copies from before the change stay until they are deleted by hand.
 
 ### The bucket sweep
 
@@ -750,7 +748,7 @@ Cache headers are set by the uploader and unchanged from the AWS design:
 
 | Objects                                               | Header                                            |
 | ----------------------------------------------------- | ------------------------------------------------- |
-| Hashed frames, station files, archived manifests      | `public, max-age=31536000, immutable`             |
+| Hashed frames and station files                       | `public, max-age=31536000, immutable`             |
 | Pointer manifests (`weather/*.json`, `marine/*.json`) | `public, max-age=0, s-maxage=60, must-revalidate` |
 
 Cloudflare cache rules can override origin headers, so verify the served response, not
@@ -838,32 +836,23 @@ delete.
 ```text
 weather/harmonie-RUN-60h-v1/HOUR-HASH.json  immutable HARMONIE frames
 weather/RUN.../HOUR-HASH.json              immutable ICON-EU frames
-weather/manifests/harmonie/RUN-HASH.json   archived complete manifests
-weather/manifests/icon-eu/RUN-HASH.json
 weather/harmonie.json                     current HARMONIE pointer + metadata
 weather/latest.json                       current ICON-EU pointer + metadata
 weather/ecmwf.json                        current ECMWF pointer + metadata
 weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
 weather/gfs.json                          current GFS pointer + metadata
 weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
-weather/manifests/gfs/RUN-HASH.json        archived complete GFS manifests
 weather/gefs.json                         current GEFS ensemble pointer + member series
 weather/gefs-RUN-240h-v1/HOUR-HASH.json     immutable GEFS ensemble-mean frames
-weather/manifests/gefs/RUN-HASH.json       archived complete GEFS manifests
 weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
 weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
-weather/manifests/mi-swan/RUN-HASH.json    archived wave manifests
 weather/icon-eu-weather.json               current ICON-EU surface weather pointer + spot series
 weather/icon-eu-weather-RUN-72h-v1/HOUR-HASH.json  immutable surface variable grids
-weather/manifests/icon-eu-weather/RUN-HASH.json    archived complete weather manifests
 weather/gfs-wave.json                      current GFS-Wave pointer + metadata
 weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
-weather/manifests/gfs-wave/RUN-HASH.json   archived complete GFS-Wave manifests
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
-marine/manifests/tides/RUN-HASH.json       archived tide manifests
 marine/tides.json                          current tide pointer + metadata
 marine/sea-temperature.json                current sea temperature pointer, readings inline
-marine/manifests/sea-temperature/RUN-HASH.json  archived observation manifests
 marine/wind-observations.json              current wind observations, 72 h of readings inline
 verify/forecast-archive.json               what the archive job copied in its last hour
 verify/scores.json                         current verification scores
@@ -872,10 +861,9 @@ archive/observations/YYYY-MM-DD.json       every wind observation, by UTC day; n
 archive/verify/sums/YYYY-MM-DD.json        one day's verification sums; never deleted
 weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
 weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
-weather/manifests/harmonie-eps/RUN-HASH.json    archived complete ensemble manifests
 ```
 
-Each model's immutable objects and archived manifests sit under the first segment of its
+Each model's immutable objects sit under the first segment of its
 registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
 `S3_PREFIX` still goes before that segment.
 
@@ -920,7 +908,6 @@ so a browser chart never has to download grid frames. Regenerate that file with
 `npm run spots:export`.
 weather/ecmwf-ens.json current ECMWF ENS pointer + member series
 weather/ecmwf-ens-RUN-144h-25m-v1/HOUR-HASH.json immutable ensemble-mean frames
-weather/manifests/ecmwf-ens/RUN-HASH.json archived complete ENS manifests
 
 ````
 
@@ -937,7 +924,7 @@ The publisher:
 
 1. Rejects missing files, nonfinite/invalid vectors, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
 2. Uploads immutable objects with `If-None-Match: *`, gzip encoding and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
-3. Archives the manifest, then reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication.
+3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication.
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
 
 These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html). A failed upload can leave unreferenced frame objects, but never an intentionally published half-complete forecast. The last successfully published model remains available. Models are independent transactions, not a simultaneous cross-model switch.
@@ -946,7 +933,7 @@ These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/us
 
 | Objects                                        | Worker cache header                               | CloudFront behaviour                                          |
 | ---------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| Immutable frames / archived manifests          | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
+| Immutable frames                               | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
 | `weather/harmonie.json`, `weather/latest.json` | `public, max-age=0, s-maxage=60, must-revalidate` | Minimum TTL **0**, cap latest-pointer freshness appropriately |
 
 No whole-distribution invalidation is needed after a normal forecast job. CloudFront's minimum TTL can override origin cache headers, so verify the actual policies, not just the uploaded metadata. See [CloudFront cache settings](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesCacheBehavior.html).
@@ -966,7 +953,7 @@ The browser fetches the manifest on page load and model changes, then reads its 
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
-- Keep S3 versioning and archived manifests. For rollback, an operator can restore a verified archived manifest/version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: there, an archived manifest is a record of what was published, not something that can be restored, because its frames are deleted as soon as the run is superseded.
+- Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's frames are deleted as soon as the newer run is live, so there is nothing to roll back to.
 - Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 

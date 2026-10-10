@@ -336,7 +336,7 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, "ecmwf-ens", "test", max_age_hours=24, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], "weather/ecmwf-ens.json")
-        self.assertEqual(len(s3.writes), 5)  # 3 frames + archive + pointer
+        self.assertEqual(len(s3.writes), 4)  # 3 frames + pointer
 
     def test_publisher_rejects_broken_member_series_before_upload(self):
         manifest, now = self.bundle()
