@@ -44,7 +44,9 @@ silently become a bucket sweep.
 
 Nothing under `archive/` (archive.py) is ever touched, in either mode: it is not a
 data root, both sweeps skip it by name, and `delete_keys` refuses to send any key
-inside it to the store. Those are three separate guards on purpose.
+inside it to the store. Those are three separate guards on purpose. The same three
+hold for the static data under `foildepth/` and `bathy/` (STATIC_ROOTS): published by
+hand under content-versioned prefixes, referenced by no pointer, never swept.
 """
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -69,6 +71,15 @@ if ARCHIVE_ROOT in DATA_ROOTS:
     # A pointer manifest under archive/ would make the archive a data root, and every
     # archived file in it "unreferenced". Refuse to run at all rather than sweep it.
     raise RuntimeError(f"No registered manifest may live under {ARCHIVE_ROOT}/")
+# Static data published once by hand under an immutable, content-versioned prefix
+# (scripts/foildepth/publish.py): the foilable-depth archives and the chart's
+# bathymetry. Nothing in the registry points at them, so to a sweep they would be
+# "unreferenced". They are not data roots, no sweep lists them, and `delete_keys`
+# refuses any key inside them, as for the archive.
+STATIC_ROOTS = ("foildepth", "bathy")
+for _root in STATIC_ROOTS:
+    if _root in DATA_ROOTS:
+        raise RuntimeError(f"No registered manifest may live under {_root}/")
 KEEP_CACHE_NAMES = {"worker.lock"}
 DEFAULT_MAX_AGE_HOURS = 0.0
 DEFAULT_CACHE_DAYS = 3.0
@@ -101,6 +112,13 @@ def is_archived(path):
     direction to fail in.
     """
     return ARCHIVE_ROOT in PurePosixPath(str(path)).parts
+
+
+def is_static(path):
+    """Is this published path, or bucket key after any prefix, static data
+    (STATIC_ROOTS)? Any segment, as for the archive: failing to delete is the safe
+    direction."""
+    return any(root in PurePosixPath(str(path)).parts for root in STATIC_ROOTS)
 
 
 def read_manifests(public):
@@ -353,6 +371,10 @@ def delete_keys(s3, bucket, keys):
     if archived:
         raise ValueError(f"Refusing to delete {len(archived)} archived object(s),"
                          f" first: {archived[0]}")
+    static = [key for key in keys if is_static(key)]
+    if static:
+        raise ValueError(f"Refusing to delete {len(static)} static object(s),"
+                         f" first: {static[0]}")
     deleted = 0
     for start in range(0, len(keys), DELETE_BATCH):
         batch = keys[start:start + DELETE_BATCH]
@@ -505,7 +527,7 @@ def bucket_prune(s3, bucket, prefix="", min_age_hours=DEFAULT_BUCKET_MIN_AGE_HOU
         parts = PurePosixPath(published).parts
         directory = "/".join(parts[:2])
         if len(parts) < 2 or parts[0] not in DATA_ROOTS or published in pointers \
-                or parts[1] == ARCHIVE_DIRECTORY or is_archived(published) \
+                or parts[1] == ARCHIVE_DIRECTORY or is_archived(published) or is_static(published) \
                 or published in files or directory in directories:
             kept += 1
             continue
