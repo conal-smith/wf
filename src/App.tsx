@@ -160,7 +160,7 @@ const DEFAULT_LAYERS: ChartLayers = {
   soundings: true,
   relief: true,
   names: true,
-  foil: false,
+  foil: true,
 };
 
 function useMedia(query: string) {
