@@ -33,6 +33,34 @@ const squaresOf = (key: string): readonly string[] | typeof ALL_SQUARES =>
 export const SQUARE_RETRY_MS = [5000, 30000, 120000] as const;
 
 /**
+ * How many times the squares asked for now have been read again. One question
+ * at a time — the models and the squares — so a new one starts from the first
+ * wait, and so does going back to one asked before: its count is not kept
+ * while other squares are on screen, where an exhausted count would leave it
+ * never read again.
+ */
+export class SquareRetries {
+  private models: readonly ModelAvailability[] | null = null;
+  private key: string | null = null;
+  private count = 0;
+
+  /** The attempt the question is on; asking another question starts at 0. */
+  attempt(models: readonly ModelAvailability[], key: string | null): number {
+    if (models !== this.models || key !== this.key) {
+      this.models = models;
+      this.key = key;
+      this.count = 0;
+    }
+    return this.count;
+  }
+
+  /** The question's read failed again: the next attempt waits longer. */
+  failed(models: readonly ModelAvailability[], key: string | null): void {
+    if (models === this.models && key === this.key) this.count++;
+  }
+}
+
+/**
  * Whether an answer lost something the question had: a model none of whose
  * squares could be read, or some squares of a model that could be.
  */
@@ -103,13 +131,9 @@ export function useSpotSquaresState(
     key: string;
     answer: SquaresState;
   } | null>(null);
-  const [retry, setRetry] = useState<{
-    models: readonly ModelAvailability[];
-    key: string | null;
-    attempt: number;
-  } | null>(null);
-  const attempt =
-    retry && retry.models === models && retry.key === key ? retry.attempt : 0;
+  const [retries] = useState(() => new SquareRetries());
+  const [, setRetried] = useState(0);
+  const attempt = retries.attempt(models, key);
   useEffect(() => {
     if (key === null || !models.length) return;
     let current = true;
@@ -128,7 +152,10 @@ export function useSpotSquaresState(
       const wait = SQUARE_RETRY_MS[attempt];
       if (wait !== undefined && lostModels(models, merged))
         timer = window.setTimeout(
-          () => setRetry({ models, key, attempt: attempt + 1 }),
+          () => {
+            retries.failed(models, key);
+            setRetried((count) => count + 1);
+          },
           wait,
         );
     });

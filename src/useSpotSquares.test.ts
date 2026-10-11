@@ -4,6 +4,7 @@ import { pointerOf, windManifest } from "../force5/src/testing";
 import {
   ALL_SQUARES,
   SQUARE_RETRY_MS,
+  SquareRetries,
   lostModels,
   readSquares,
   shownAnswer,
@@ -47,6 +48,26 @@ describe("spot squares that could not be read", () => {
     expect(readSquares(ALL_SQUARES, [partial])).toEqual(
       run.spots.squares.filter((square) => square !== "n52w008"),
     );
+  });
+
+  it("are read again from the first wait for each set of squares asked", () => {
+    const models = [model(run)];
+    const retries = new SquareRetries();
+    expect(retries.attempt(models, "n52w008")).toBe(0);
+    for (let i = 0; i < SQUARE_RETRY_MS.length; i++)
+      retries.failed(models, "n52w008");
+    expect(retries.attempt(models, "n52w008")).toBe(SQUARE_RETRY_MS.length);
+    // Another set of squares starts afresh, and so does coming back: the
+    // exhausted count is not carried, so the first set is read again.
+    expect(retries.attempt(models, "n54w010")).toBe(0);
+    retries.failed(models, "n54w010");
+    expect(retries.attempt(models, "n54w010")).toBe(1);
+    expect(retries.attempt(models, "n52w008")).toBe(0);
+    // New models (a new run) are a new question too.
+    expect(retries.attempt([model(run)], "n52w008")).toBe(0);
+    // A failure reported for a question no longer asked counts for nothing.
+    retries.failed(models, "n52w008");
+    expect(retries.attempt(models, "n54w010")).toBe(0);
   });
 
   it("are read again a few times, sooner first, then left", () => {
