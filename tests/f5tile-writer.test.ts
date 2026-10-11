@@ -7,6 +7,7 @@ import { decodeTile, tileLevels } from "../force5/src/f5tile";
 // for byte; force5/src/f5tile.test.ts pins the reader to the same files.
 import {
   buildPyramid,
+  latticeOrigin,
   levels,
   manifestTiles,
   tilePath,
@@ -53,6 +54,20 @@ const bytes = (buffer: Buffer): ArrayBuffer =>
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,
   ) as ArrayBuffer;
+
+describe("the Node tile writer's lattice", () => {
+  it("refuses a grid past 180° of longitude or south of the pole, as Python does", () => {
+    for (const grid of [
+      { west: -180, north: 90, dx: 0.25, dy: 0.25, width: 1441, height: 721 },
+      { west: 170, north: 10, dx: 1, dy: 1, width: 20, height: 5 },
+      { west: 0, north: -80, dx: 1, dy: 1, width: 5, height: 12 },
+    ])
+      expect(() => latticeOrigin(grid)).toThrow(/past 180°|south of -90°/);
+    expect(
+      latticeOrigin({ west: 170, north: 10, dx: 1, dy: 1, width: 10, height: 5 }),
+    ).toEqual({ column: 350, row: 80 });
+  });
+});
 
 describe("the Node tile writer", () => {
   for (const pyramid of golden.pyramids)

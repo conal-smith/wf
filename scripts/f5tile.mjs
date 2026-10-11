@@ -54,6 +54,17 @@ export function latticeOrigin(grid) {
     );
   if (column < 0 || row < 0)
     throw new Error("Grid starts west of -180° or north of 90°");
+  // f5tile.lattice_origin: past the circle a column would be cut twice over.
+  if (
+    (around(grid) === null ? column : 0) + grid.width >
+    360 / dx + LATTICE_TOLERANCE
+  )
+    throw new Error(
+      "Grid runs past 180° of longitude: a global grid must not repeat its " +
+        "first column at 180°, and a regional one must not cross it",
+    );
+  if (row + grid.height - 1 > 180 / dy + LATTICE_TOLERANCE)
+    throw new Error("Grid runs south of -90°");
   return { column, row };
 }
 
@@ -176,14 +187,9 @@ function cut(array, spec, x, y, size, border, wrap) {
   for (let r = 0; r < side; r++) {
     const row = y * size - border + r;
     const rowIndex = row - spec.rows[0];
-    // Rows never wrap: there is nothing north of 90° or south of -90°.
-    if (
-      rowIndex < 0 ||
-      rowIndex >= array.rows ||
-      row < 0 ||
-      !(row * spec.dy < 180 - LATTICE_TOLERANCE * spec.dy)
-    )
-      continue;
+    // Rows never wrap: there is nothing north of 90° or south of -90°, and the
+    // level's rows end at the grid's last, so the row at -90° itself is kept.
+    if (rowIndex < 0 || rowIndex >= array.rows) continue;
     for (let c = 0; c < side; c++) {
       let column = x * size - border + c;
       if (wrap) column = modulo(column, wrap);

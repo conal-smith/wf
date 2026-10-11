@@ -1,7 +1,8 @@
 """Tiled wind frames: the lattice, the overviews, the borders, sampling, refusals.
 
-`tests/fixtures/f5tile/` holds two golden pyramids built by `golden()` below: a
-regional grid with holes, and a tiny global grid that wraps. This suite checks
+`tests/fixtures/f5tile/` holds three golden pyramids built by `golden()` below:
+a regional grid with holes, a tiny global grid that wraps, and a global grid
+from pole to pole. This suite checks
 the writer still produces those exact bytes; `force5/src/f5tile.test.ts`
 decodes the same files and checks the same ranges and samples, so the two
 languages cannot drift apart without one suite failing.
@@ -85,6 +86,21 @@ def global_grid():
             "run": "2026101106", "source": {"u": u, "v": v, "gust": None}}
 
 
+def pole_grid():
+    """8 × 7 cells at 45° × 30°, 90° N to 90° S: the poles' own rows, in every level.
+
+    Tiles of 4 put the south pole's row, the grid's seventh, in the second row
+    of tiles at level 0 and alone in its block at level 1.
+    """
+    grid = with_edges({"west": -180.0, "north": 90.0, "dx": 45.0, "dy": 30.0,
+                       "width": 8, "height": 7})
+    u = [round(2 + column * 0.75 - row * 1.25, 2) for row in range(7) for column in range(8)]
+    v = [round(-3 + row * 0.5 + column * 0.35, 2) for row in range(7) for column in range(8)]
+    gust = [round(abs(uu) + abs(vv) + 1, 2) for uu, vv in zip(u, v)]
+    return {"name": "pole", "grid": grid, "size": 4, "border": 1, "hour": 3,
+            "run": "2026101106", "source": {"u": u, "v": v, "gust": gust}}
+
+
 SAMPLE_POINTS = {
     # Edges of the domain and of tiles, grid points, cell middles, points
     # outside, and 52.1 / -8.2 beside the lone gust hole.
@@ -92,6 +108,8 @@ SAMPLE_POINTS = {
                  [-9.6, -9.5, -9.4, -8.2, -8.0, -7.875, -6.0, -5.9, -4.75, -4.7]),
     "global": ([65.0, 60.0, 45.0, 30.0, 0.0, -20.0, -60.0, -61.0],
                [-180.0, -170.0, -135.0, 0.0, 22.5, 135.0, 157.5, 170.0, 179.999]),
+    "pole": ([90.0, 75.0, 0.0, -60.0, -75.0, -89.0, -90.0],
+             [-180.0, -100.0, 0.0, 170.0]),
 }
 
 
@@ -110,7 +128,7 @@ def build(case):
 def golden():
     """Both golden pyramids as golden.json describes them, plus their bytes by path."""
     cases, files = [], {}
-    for case in (regional(), global_grid()):
+    for case in (regional(), global_grid(), pole_grid()):
         spec, tiles = build(case)
         listed = []
         for level, x, y, data in tiles:
@@ -202,7 +220,7 @@ class GoldenTests(unittest.TestCase):
 
     def test_the_golden_carries_the_cases_it_is_meant_to(self):
         """A golden that stopped exercising the hard values would prove nothing."""
-        regional_, global_ = self.golden["pyramids"]
+        regional_, global_, pole = self.golden["pyramids"]
         self.assertEqual([level["level"] for level in regional_["levels"]], [0, 1, 2])
         # The all-land corner empties one tile at level 0 and, by the same cells,
         # one at level 1.
@@ -215,6 +233,21 @@ class GoldenTests(unittest.TestCase):
         self.assertIn(-0.1, cells)  # -0.05 rounded away from zero.
         self.assertIsNotNone(regional_["tiles"][0]["expected"]["gust"])
         self.assertIsNone(global_["tiles"][0]["expected"]["gust"])
+        # The south pole's row is in the tiles, at level 0 and alone in its block
+        # at level 1, and a point on it samples.
+        for level in pole["levels"]:
+            self.assertEqual(level["rows"][1], 6 >> level["level"])
+        bottom = [tile for tile in pole["tiles"] if tile["level"] == 0 and tile["y"] == 1]
+        self.assertTrue(bottom)
+        side = pole["size"] + 2 * pole["border"]
+        for tile in bottom:
+            row = 6 - (tile["y"] * pole["size"] - pole["border"])
+            self.assertNotIn(None, tile["expected"]["u"][row * side + 1:row * side + side - 1])
+        top = next(tile for tile in pole["tiles"] if tile["level"] == 1)
+        row = 3 + pole["border"]
+        self.assertNotIn(None, top["expected"]["u"][row * side + 1:row * side + side - 1])
+        self.assertTrue(any(sample["lat"] == -90.0 and sample["expected"] is not None
+                            for sample in pole["samples"]))
         samples = regional_["samples"] + global_["samples"]
         self.assertTrue(any(s["expected"] is None for s in samples))
         self.assertTrue(any(s["expected"] is not None and s["expected"]["gust"] is None
@@ -232,6 +265,22 @@ class LatticeTests(unittest.TestCase):
         self.assertEqual(f5tile.lattice_origin(HARMONIE), (6764, 1715))
         self.assertEqual(f5tile.lattice_origin(ICON_EU), (2592, 496))
         self.assertEqual(f5tile.lattice_origin(ECMWF), (648, 124))
+
+    def test_a_grid_past_180_degrees_or_the_south_pole_is_refused(self):
+        # GFS's 1441 columns from -180° to 180° repeat the first at the end: cut as
+        # a regional grid, the copy would land in a tile past the date line.
+        repeated = {"west": -180.0, "north": 90.0, "dx": 0.25, "dy": 0.25,
+                    "width": 1441, "height": 721}
+        across = {"west": 170.0, "north": 10.0, "dx": 1.0, "dy": 1.0, "width": 20,
+                  "height": 5}
+        south = {"west": 0.0, "north": -80.0, "dx": 1.0, "dy": 1.0, "width": 5, "height": 12}
+        for grid in (repeated, across, south):
+            with self.subTest(grid=grid), self.assertRaises(ValueError):
+                f5tile.levels(grid)
+        # The same grids without the extra column or row are fine.
+        self.assertEqual(f5tile.lattice_origin(dict(repeated, width=1440)), (0, 0))
+        self.assertEqual(f5tile.lattice_origin(dict(across, width=10)), (350, 80))
+        self.assertEqual(f5tile.lattice_origin(dict(south, height=11)), (180, 170))
 
     def test_a_misaligned_grid_is_refused(self):
         for change in ({"west": -10.91}, {"north": 55.71}, {"dx": 0.03}, {"dx": 0},
@@ -334,7 +383,7 @@ class BorderTests(unittest.TestCase):
         A border cell that no written tile owns lies in a skipped tile, or
         outside the domain, so it must be missing in every field.
         """
-        for case in (regional(), global_grid()):
+        for case in (regional(), global_grid(), pole_grid()):
             spec, tiles = build(case)
             size, border = case["size"], case["border"]
             wraps = f5tile.around(case["grid"])

@@ -431,6 +431,15 @@ measured:
   every value must be plausible; and a native tile may leave no cell of the
   grid missing. An overview is not checked against the native tiles it
   averages.
+- **The poles and the date line.** A global grid keeps its rows at 90° N and
+  90° S in every level (an early cut dropped the row at -90°; the third golden
+  pyramid, `pole`, runs from pole to pole). A grid that runs past 180° of
+  longitude is refused by all three lattice functions (`f5tile.lattice_origin`,
+  scripts/f5tile.mjs and force5/src/f5tile.ts `latticeOrigin`) rather than cut
+  as a regional grid whose extra columns land in tiles past the date line: a
+  global grid that repeats its first column at 180° (GFS's 1441 columns,
+  width·dx = 360° + dx) must drop it, and a regional grid crossing 180° is not
+  supported. So is one reaching south of -90°.
 - **Readers.** Everything that sampled whole frames samples the one native
   tile holding the point (`f5tile.FrameTiles`, which reads tiles lazily):
   the forecast archive (from the bucket it now fetches only the tiles holding

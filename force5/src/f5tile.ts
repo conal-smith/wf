@@ -341,7 +341,12 @@ export function latticeOrigin(grid: Lattice): { column: number; row: number } {
     !(Math.abs(columns - column) <= LATTICE_TOLERANCE) ||
     !(Math.abs(rows - row) <= LATTICE_TOLERANCE) ||
     column < 0 ||
-    row < 0
+    row < 0 ||
+    // Past the circle, or the pole: refused by the writers too
+    // (f5tile.lattice_origin), so never published.
+    (around(grid) === null ? column : 0) + grid.width >
+      360 / grid.dx + LATTICE_TOLERANCE ||
+    row + grid.height - 1 > 180 / grid.dy + LATTICE_TOLERANCE
   )
     throw new Error("Forecast grid is not on the tile lattice.");
   return { column, row };

@@ -193,6 +193,13 @@ describe("the golden tile pyramids", () => {
   });
 });
 
+/** Grids no writer tiles: see force5/ingest/test_f5tile.py. */
+const PAST_THE_EDGE = [
+  { west: -180, north: 90, dx: 0.25, dy: 0.25, width: 1441, height: 721 },
+  { west: 170, north: 10, dx: 1, dy: 1, width: 20, height: 5 },
+  { west: 0, north: -80, dx: 1, dy: 1, width: 5, height: 12 },
+];
+
 describe("the global lattice", () => {
   it("accepts the grids we publish and says where they start", () => {
     expect(latticeOrigin(HARMONIE)).toEqual({ column: 6764, row: 1715 });
@@ -211,6 +218,17 @@ describe("the global lattice", () => {
       expect(() => latticeOrigin({ ...HARMONIE, ...change })).toThrow(
         /not on the tile lattice/,
       );
+  });
+
+  it("refuses a grid past 180° of longitude or south of the pole", () => {
+    // f5tile.lattice_origin's cases: a global grid repeating its first column at
+    // 180°, a regional one crossing the date line, one reaching past -90°.
+    for (const grid of PAST_THE_EDGE)
+      expect(() => latticeOrigin(grid)).toThrow(/not on the tile lattice/);
+    expect(latticeOrigin({ ...PAST_THE_EDGE[0], width: 1440 })).toEqual({
+      column: 0,
+      row: 0,
+    });
   });
 
   it("tiles the real grids as the design says", () => {

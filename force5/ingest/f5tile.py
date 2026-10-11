@@ -46,7 +46,10 @@ and rows likewise, north to south, each row west to east, delta-encoded along
 the row exactly as `f5bin` does: same rounding, same int16 wrap, same missing
 marker. The border repeats the neighbouring tiles' edge cells, so a bilinear
 sample anywhere in a tile's owned area needs no other tile. A cell outside the
-domain is missing. Longitude wraps only for a global grid (width·dx = 360°).
+domain is missing. Longitude wraps only for a global grid (width·dx = 360°). A grid
+reaching -90° keeps that row, in every level. A grid running past 180° — a
+global one that repeats its first column there, width·dx = 360° + dx, or a
+regional one crossing the date line — is refused rather than cut twice over.
 
 **A tile that is not there is all missing.** `levels` gives each level's x and
 y as the bounding ranges of the domain, but a tile inside those ranges whose
@@ -109,6 +112,18 @@ def lattice_origin(grid):
                          f"global {dx} × {dy} lattice")
     if column < 0 or row < 0:
         raise ValueError("Grid starts west of -180° or north of 90°")
+    # Beyond the circle the lattice's columns would name cells a second time:
+    # a global grid that repeats its first column at 180° (width·dx = 360 + dx)
+    # would be cut as a regional one, the copy in a tile past the date line, and
+    # a regional grid running past 180° likewise. Neither is supported; say so
+    # rather than tile it wrongly. A global grid is width·dx = 360 exactly.
+    circle = 360 / dx
+    if "width" in grid and (column if around(grid) is None else 0) \
+            + grid["width"] > circle + LATTICE_TOLERANCE:
+        raise ValueError("Grid runs past 180° of longitude: a global grid must not repeat "
+                         "its first column at 180°, and a regional one must not cross it")
+    if "height" in grid and row + grid["height"] - 1 > 180 / dy + LATTICE_TOLERANCE:
+        raise ValueError("Grid runs south of -90°")
     return column, row
 
 
@@ -343,9 +358,9 @@ def _cut(array, level_spec, x, y, size, border, wrap):
     column_index = columns - level_spec["columns"][0]
     row_index = rows - level_spec["rows"][0]
     column_ok = (column_index >= 0) & (column_index < array.shape[1])
-    # Rows never wrap: there is nothing north of 90° or south of -90°.
-    row_ok = ((row_index >= 0) & (row_index < array.shape[0]) & (rows >= 0)
-              & (rows * level_spec["dy"] < 180 - LATTICE_TOLERANCE * level_spec["dy"]))
+    # Rows never wrap: there is nothing north of 90° or south of -90°, and the
+    # level's rows end at the grid's last, so the row at -90° itself is kept.
+    row_ok = (row_index >= 0) & (row_index < array.shape[0])
     out = np.full((side, side), MISSING, dtype=np.int16)
     out[np.ix_(row_ok, column_ok)] = array[np.ix_(row_index[row_ok], column_index[column_ok])]
     return out
