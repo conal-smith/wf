@@ -5,7 +5,7 @@
 No network: a fake data domain answers from a dict.
 """
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import gzip
 import json
 from pathlib import Path
@@ -22,6 +22,10 @@ NOW = datetime(2026, 10, 11, 16, 0, tzinfo=timezone.utc)
 POINTER_CACHE = {"Cache-Control": "public, max-age=0, s-maxage=60, must-revalidate"}
 IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
 RUN = "harmonie-2026101112-60h-v2-aa1e61c9/"
+RUN_TIME = datetime(2026, 10, 11, 12, 0, tzinfo=timezone.utc)
+# HARMONIE's limit, read as the monitor reads it, so a new maxAgeHours in
+# registry.py moves the tests with it.
+LIMIT_HOURS = float(monitor.MODELS["harmonie"]["maxAgeHours"]) + monitor.MARGIN_HOURS
 
 
 def harmonie(**changes):
@@ -173,7 +177,7 @@ class ARun(unittest.TestCase):
         row = check(domain)
         self.assertEqual(row["problems"], [])
         self.assertEqual((row["run"], row["ageHours"], row["limitHours"], row["filesChecked"]),
-                         ("2026101112", 4.0, 25.0, 4))
+                         ("2026101112", 4.0, LIMIT_HOURS, 4))
         heads = sorted(url.removeprefix(BASE + "weather/" + RUN) for method, url, _ in domain.calls
                        if method == "HEAD")
         # The coarsest level whole, the first level-0 tile not called absent.
@@ -181,9 +185,9 @@ class ARun(unittest.TestCase):
                                  "t/0/53/13/000.bin", "t/1/26/6/000.bin"])
 
     def test_stale_by_the_registry_limit_and_the_margin(self):
-        self.assertEqual(codes(check(self.domain(), now=datetime(2026, 10, 12, 12, 59, tzinfo=timezone.utc))), [])
-        self.assertEqual(codes(check(self.domain(), now=datetime(2026, 10, 12, 13, 1, tzinfo=timezone.utc))),
-                         ["stale"])
+        limit = RUN_TIME + timedelta(hours=LIMIT_HOURS)
+        self.assertEqual(codes(check(self.domain(), now=limit - timedelta(minutes=1))), [])
+        self.assertEqual(codes(check(self.domain(), now=limit + timedelta(minutes=1))), ["stale"])
 
     def test_expired_coverage(self):
         row = check(self.domain(), now=datetime(2026, 10, 14, 1, 0, tzinfo=timezone.utc))
