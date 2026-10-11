@@ -1,4 +1,4 @@
-import { expect, steadyFrames, test } from "./fixtures";
+import { expect, test } from "./fixtures";
 import { readSample } from "./sample";
 
 /**
@@ -47,12 +47,27 @@ test("the lights read the blend's squares in view, and nothing where the blend h
 
   // Zoom in, then pan far to the south-east, over Brittany: a long way from
   // any square the blend lists.
+  // The camera is at rest when the markers sit still: two readings a quarter
+  // second apart agree. (Waiting for frame-rate drawing instead never ends on
+  // CI's software renderer at this zoom.)
+  const markers = () =>
+    page.locator(".spot-marker").evaluateAll((all) =>
+      all.slice(0, 8).map((marker) => {
+        const box = marker.getBoundingClientRect();
+        return `${Math.round(box.left)},${Math.round(box.top)}`;
+      }).join(" "),
+    );
+  const atRest = async () => {
+    const first = await markers();
+    await page.waitForTimeout(250);
+    return first === (await markers());
+  };
   const zoomIn = page.getByRole("button", { name: "Zoom in" });
   for (let i = 0; i < 3; i++) {
     await zoomIn.click();
     await page.waitForTimeout(400);
   }
-  await steadyFrames(page);
+  await expect.poll(atRest, { timeout: 30000 }).toBe(true);
   for (let i = 0; i < 6; i++) {
     await page.mouse.move(1100, 650);
     await page.mouse.down();
@@ -61,20 +76,20 @@ test("the lights read the blend's squares in view, and nothing where the blend h
     await page.mouse.up();
     await page.waitForTimeout(300);
   }
-  await steadyFrames(page);
-  // Nowhere near a light now: every one is off the screen.
-  const onScreen = await page.locator(".spot-marker").evaluateAll((markers) =>
-    markers.filter((marker) => {
-      const box = marker.getBoundingClientRect();
-      return (
-        box.right > 0 &&
-        box.bottom > 0 &&
-        box.left < window.innerWidth &&
-        box.top < window.innerHeight
-      );
-    }).length,
-  );
-  expect(onScreen).toBe(0);
+  // Nowhere near a light now: every one is off the screen once the camera stops.
+  const onScreen = () =>
+    page.locator(".spot-marker").evaluateAll((markers) =>
+      markers.filter((marker) => {
+        const box = marker.getBoundingClientRect();
+        return (
+          box.right > 0 &&
+          box.bottom > 0 &&
+          box.left < window.innerWidth &&
+          box.top < window.innerHeight
+        );
+      }).length,
+    );
+  await expect.poll(onScreen, { timeout: 30000 }).toBe(0);
   // Settled there, it has asked for nothing new, and nothing went wrong.
   await page.waitForTimeout(500);
   expect(squares.length).toBe(read);
