@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import threading
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -290,6 +291,30 @@ class WorkerEventTest(unittest.TestCase):
                "phases": self.adapter["phases"]}
         self.assertEqual(status.job_note(job), "complete in 40 s, 88% download")
         self.assertEqual(status.job_note(None), "-")
+        job["resources"] = {"cpuSeconds": 31.0, "peakRssMb": {"worker": 95, "adapter": 1_210}}
+        self.assertEqual(status.job_note(job), "complete in 40 s, 88% download, 1,305 MB")
+
+    def test_every_outcome_reports_cpu_and_peak_memory(self):
+        # Additive: Home Compute tracks forecast_complete by model and reads its run.
+        for code, s3, outcome in [(0, None, "forecast_complete"), (1, None, "forecast_failed")]:
+            with self.subTest(outcome=outcome):
+                _, event = self.run_models(code, s3)
+                self.assertEqual(event["event"], outcome)
+                used = event["resources"]
+                self.assertEqual(set(used), {"cpuSeconds", "peakRssMb"})
+                self.assertGreaterEqual(used["cpuSeconds"], 0)
+                # This test process is the worker: a real, plausible size in MB,
+                # whichever unit the platform's getrusage reports in.
+                self.assertTrue(10 < used["peakRssMb"]["worker"] < 4096, used)
+                self.assertGreaterEqual(used["peakRssMb"]["adapter"], 0)
+        self.assertEqual(status.last_job(self.root, "gfs")["resources"], used)
+
+    def test_cpu_is_this_models_alone(self):
+        before, spin = self.worker.usage(), time.process_time()
+        while time.process_time() - spin < 0.2:
+            pass
+        self.assertGreaterEqual(self.worker.resources(before)["cpuSeconds"], 0.2)
+        self.assertEqual(self.worker.resources(self.worker.usage())["cpuSeconds"], 0)
 
 
 if __name__ == "__main__":

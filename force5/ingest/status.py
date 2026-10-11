@@ -161,12 +161,14 @@ def last_job(root, model):
         return None
     return {"outcome": event["event"].removeprefix("forecast_"), "run": event.get("run"),
             "at": event.get("time"), "seconds": event.get("seconds"),
-            "phases": event.get("phases") or {}, **({"error": event["error"]}
-                                                    if event.get("error") else {})}
+            "phases": event.get("phases") or {},
+            **({"resources": event["resources"]} if isinstance(event.get("resources"), dict) else {}),
+            **({"error": event["error"]} if event.get("error") else {})}
 
 
 def job_note(job):
-    """`complete in 1,964 s, 96% download`: the outcome and the phase that took longest."""
+    """`complete in 1,964 s, 96% download, 640 MB`: the outcome, the phase that took
+    longest, and the most the worker and its adapter held in memory between them."""
     if not job:
         return "-"
     note = job["outcome"]
@@ -177,6 +179,10 @@ def job_note(job):
         if phases and job["seconds"] > 0:
             name = max(phases, key=phases.get)
             note += f", {min(100, round(100 * phases[name] / job['seconds']))}% {name}"
+    peaks = (job.get("resources") or {}).get("peakRssMb")
+    if isinstance(peaks, dict) and peaks and all(
+            isinstance(value, (int, float)) for value in peaks.values()):
+        note += f", {round(sum(peaks.values())):,} MB"
     return note
 
 

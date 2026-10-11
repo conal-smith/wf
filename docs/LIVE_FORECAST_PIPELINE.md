@@ -1174,7 +1174,22 @@ workers) with `within` naming the phase it ran inside, rather than as wall time:
 ```
 
 That run spent its discovery asking three more times for a 12 UTC cycle NOMADS did not
-have yet, and its download waiting on NOMADS, three seconds a request. The adapter also
+have yet, and its download waiting on NOMADS, three seconds a request.
+
+Every event also carries `resources`, from `getrusage` in the worker:
+
+```json
+"resources": {"cpuSeconds": 41.3, "peakRssMb": {"worker": 72, "adapter": 388}}
+```
+
+`cpuSeconds` is user plus system time of the worker and its adapter for this model.
+`peakRssMb.worker` is the worker's own peak (it validates and uploads the bundle),
+`peakRssMb.adapter` the largest process it waited for, which counts the adapter's own
+children such as the blend's Node build. The worker stays resident while its adapter
+runs, so their sum bounds what the job's container held at once: that, with headroom,
+is what its memory ceiling in `deploy/schedules.py` must cover, because Bacalhau kills a
+container that exceeds it. `status.py` adds the sum to its last-job note
+(`complete in 242 s, 96% download, 460 MB`). The adapter also
 prints the same thing as one line at its end, failed or not:
 
 ```text

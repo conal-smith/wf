@@ -15,12 +15,21 @@ records its own discover, download, decode and write phases in the file this job
 names in FORCE5_TIMINGS_FILE, and this job adds `validate` and `publish`. The
 last event for each model is also kept in `.cache/jobs/<model>.json`, which is
 what status.py reports as the model's last job.
+
+Every event also carries `resources`: the CPU seconds (user + system) this job
+and its adapter spent on the model, and the peak resident memory, in MB, of
+this process (`worker`) and of the largest process it waited for (`adapter`,
+which includes the adapter's own children, such as the blend's Node process).
+The worker stays resident while its adapter runs, so the two added together
+bound what the container held at once; that is what a job's memory ceiling
+in deploy/schedules.py has to cover.
 """
 import argparse
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import resource
 import shutil
 import subprocess
 import sys
@@ -36,6 +45,29 @@ from workspace import workspace_lock
 ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
 # Adapters that read NOAA's NOMADS GRIB filter by default and its S3 mirror on request.
 NOAA_MODELS = ("gefs",)
+# getrusage's ru_maxrss is in kilobytes on Linux, the container, and bytes on macOS.
+MAXRSS_BYTES = 1 if sys.platform == "darwin" else 1024
+
+
+def usage():
+    """CPU seconds so far, and peak RSS in MB, of this process and its waited-for children."""
+    own, children = (resource.getrusage(resource.RUSAGE_SELF),
+                     resource.getrusage(resource.RUSAGE_CHILDREN))
+    return {"cpu": own.ru_utime + own.ru_stime + children.ru_utime + children.ru_stime,
+            "worker": own.ru_maxrss * MAXRSS_BYTES / 2**20,
+            "adapter": children.ru_maxrss * MAXRSS_BYTES / 2**20}
+
+
+def resources(before):
+    """The `resources` of an event: CPU since `before`, and the peaks so far.
+
+    CPU time adds up, so it is this model's alone. Peak memory does not: it is
+    the largest since the job started, which for a job of one model, as every
+    scheduled job is, is that model's.
+    """
+    now = usage()
+    return {"cpuSeconds": round(now["cpu"] - before["cpu"], 1),
+            "peakRssMb": {"worker": round(now["worker"]), "adapter": round(now["adapter"])}}
 
 
 def drop_superseded(public):
@@ -152,7 +184,7 @@ def emit(root, event, stream=None):
 def run_models(args, root, s3):
     failures = 0
     for model in dict.fromkeys(args.models):
-        started = time.monotonic()
+        started, before = time.monotonic(), usage()
         record = root / JOBS_DIRECTORY / f"{model}.adapter.json"
         phases = {}
         try:
@@ -198,7 +230,8 @@ def run_models(args, root, s3):
                 if code == UNCHANGED_EXIT and current:
                     emit(root, {"event": "forecast_unchanged", "model": model,
                                 "run": current, "seconds": round(time.monotonic() - started),
-                                "phases": phases, "time": datetime.now(timezone.utc).isoformat()})
+                                "phases": phases, "resources": resources(before),
+                                "time": datetime.now(timezone.utc).isoformat()})
                     continue
                 if code:
                     raise subprocess.CalledProcessError(code, command)
@@ -215,11 +248,13 @@ def run_models(args, root, s3):
                         "objects": len(objects), "frames": len(manifest.get("frames", [])),
                         "status": status, "pruned": pruned,
                         "seconds": round(time.monotonic() - started), "phases": phases,
+                        "resources": resources(before),
                         "time": datetime.now(timezone.utc).isoformat()})
         except Exception as error:
             failures += 1
             emit(root, {"event": "forecast_failed", "model": model, "error": str(error),
                         "seconds": round(time.monotonic() - started), "phases": phases,
+                        "resources": resources(before),
                         "time": datetime.now(timezone.utc).isoformat()}, sys.stderr)
         finally:
             drop_downloads(root, model)
