@@ -45,6 +45,8 @@ test("at night the strip opens on the hour now, a night column of its own", asyn
   // 22:00 Irish time on the Sunday. The strip used to cut the night out and
   // open on Monday 07:00, with the selected line drawn there.
   const night = Date.parse(harmonie.runTime) + 8 * 3600000;
+  // The dark is a place's: the night is hatched only with a spot open.
+  await rememberSpot(page, "brandon");
   await page.clock.setFixedTime(new Date(night));
   await page.goto("/");
   const slider = page.getByRole("slider", { name: "Forecast time" });
