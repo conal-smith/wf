@@ -32,10 +32,10 @@ import math
 # force5/src/weights.ts
 FINE_GRID_KM = 3
 REGIONAL_GRID_KM = 8
-# force5/src/manifests.ts `windModels()`: every wind model that is not planned, in
-# catalogue order. The published blend reads every one the bucket serves.
-BLEND_MODELS = ("harmonie", "icon-eu", "ecmwf", "gfs", "ecmwf-ens", "gefs", "arpege",
-                "arome", "aifs")
+# force5/src/manifests.ts `windModels()`: every wind model that is neither planned
+# nor retired, in catalogue order. The published blend reads every one the bucket
+# serves.
+BLEND_MODELS = ("harmonie", "icon-eu", "ecmwf", "gfs")
 # weights.ts `MODEL_WEIGHTS`: each judged model's weight on day 0, 1, 2 and 3 on.
 MODEL_WEIGHTS = {
     "harmonie": (4, 4, 4, 4),

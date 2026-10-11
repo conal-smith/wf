@@ -3,6 +3,12 @@
 Status: in progress, 16 September 2026. Research verified against live endpoints on
 that date. Mockup of the target dock: https://claude.ai/artifact/SsCHYWDuqLkfMBrpTokaVU
 
+**Update, 10 October 2026:** to keep downloads near 80 GB a month, six adapters
+below are retired: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME and the ECMWF wave
+stream. Their code is intact and their jobs ship disabled; the site serves HARMONIE,
+ICON-EU, ECMWF and GFS for wind, and MI SWAN and GFS-Wave for waves. See
+`deploy/local/README.md`.
+
 ## Delivered so far (16 September 2026)
 
 - Ingest foundations: `force5/ingest/registry.py` (one line per model), manifest

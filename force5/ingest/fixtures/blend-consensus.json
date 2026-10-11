@@ -798,12 +798,7 @@
   "harmonie",
   "icon-eu",
   "ecmwf",
-  "gfs",
-  "ecmwf-ens",
-  "gefs",
-  "arpege",
-  "arome",
-  "aifs"
+  "gfs"
  ],
  "expected": {
   "a": {

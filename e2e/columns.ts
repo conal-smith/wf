@@ -8,7 +8,7 @@ interface Bundle {
 
 const harmonie = readSample<Bundle>("harmonie");
 const ecmwf = readSample<Bundle>("ecmwf");
-const aifs = readSample<Bundle>("aifs");
+const gfs = readSample<Bundle>("gfs");
 
 /**
  * A clock inside HARMONIE's sample run, eight hours after it was initialised.
@@ -62,9 +62,9 @@ export const sampleColumns = join(harmonie, ecmwf);
 
 /**
  * And when ECMWF is unavailable: HARMONIE still owns the near term, and the
- * long range falls to AIFS, the next run that reaches furthest.
+ * long range falls to GFS, the next live run that reaches furthest.
  */
-export const sampleColumnsWithoutEcmwf = join(harmonie, aifs);
+export const sampleColumnsWithoutEcmwf = join(harmonie, gfs);
 
 /** Index of the column nearest a valid time, as the dock resolves a selection. */
 export const sampleColumn = (validTime: string, columns = sampleColumns) => {

@@ -88,19 +88,19 @@ in UTC. The shipped schedule is:
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
 | `harmonie`        | 06/12 at :00       | twice a day; ~810 MB a run, 24 h age limit           |
-| `icon-eu`         | 03/09/15/21 at :30 | 6-hourly main cycles plus ~3.5 h publication lag      |
+| `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
-| `ecmwf`           | every hour at :20  | hourly check; the importer picks the newest full run  |
-| `harmonie-eps`    | every hour at :50  | lagged control members; one new cycle each hour       |
-| `ecmwf-ens`       | 08/10 at :35       | 00 UTC run only, 10 members, +60h–+144h; ~0.49 GB/day |
-| `aifs`            | 00/06/12/18 at :25 | all four AIFS cycles, each ~6 h after its run time    |
+| `ecmwf`           | every hour at :20  | hourly check; downloads only the new 00/12 UTC runs   |
+| `harmonie-eps`    | off                | lagged control members; enable knowingly              |
+| `ecmwf-ens`       | off (retired)      | 00 UTC run, 10 members, +60h–+144h when enabled       |
+| `aifs`            | off (retired)      | all four AIFS cycles when enabled                     |
 | `gfs`             | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
-| `gefs`            | 05/11/17/23 at :10 | the 0.25° members finish 4.5–6 h after run time       |
-| `arpege`          | 04/10/16/22 at :50 | 6-hourly cycles plus ~4 h 50 m; ~37 MB per run        |
-| `arome`           | every 3 h at :55   | eight cycles a day plus ~4 h 55 m; ~37 MB per run     |
+| `gefs`            | off (retired)      | the 0.25° members finish 4.5–6 h after run time       |
+| `arpege`          | off (retired)      | 6-hourly cycles plus ~4 h 50 m; ~107 MB per run       |
+| `arome`           | off (retired)      | eight cycles a day plus ~4 h 55 m; ~109 MB per run    |
 | `gfs-wave`        | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
-| `ecmwf-wave`      | 08/20 at :45       | the 00/12 wave stream, published ~8 h after the run   |
+| `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
 | `sea-temperature` | every 3 h at :15   | Marine Institute observations, newest reading         |
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
@@ -108,6 +108,14 @@ in UTC. The shipped schedule is:
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | 05:10 daily        | retention (see below)                                 |
 | `status`          | every hour at :55  | a freshness line in the log                           |
+
+Six models are **retired** to keep the home connection's downloads near 80 GB a
+month: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME and ECMWF waves. Their jobs
+ship disabled and `force5/src/manifests.ts` marks them `retired`, so the site,
+the blend, the verification replica and the forecast server neither fetch nor list
+them. Their adapters are unchanged: to bring one back, enable its job, clear
+`retired`, and add it back to `MAP_MODEL_IDS`, `consensus.BLEND_MODELS` and the
+forecast server's lists as the tests direct.
 
 Edit the file, then check and apply it:
 

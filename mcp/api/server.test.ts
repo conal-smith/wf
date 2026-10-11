@@ -120,7 +120,6 @@ describe("the MCP endpoint", () => {
       /Sept, \d\d:\d\d – \d\d:\d\d$/,
     );
     expect(found.sources.map((s: { id: string }) => s.id).sort()).toEqual([
-      "arpege",
       "ecmwf",
       "gfs",
     ]);
@@ -132,7 +131,6 @@ describe("the MCP endpoint", () => {
     const { call } = harness();
     const sources = (await call("forecast_sources")).json();
     expect(sources.wind.map((r: { id: string }) => r.id).sort()).toEqual([
-      "arpege",
       "ecmwf",
       "gfs",
     ]);

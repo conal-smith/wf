@@ -17,11 +17,7 @@ import {
 } from "../../force5/src/stars";
 import { sunTimes } from "../../force5/src/sun";
 import { KNOTS, convert, type Units } from "../../force5/src/units";
-import {
-  rideChance,
-  type ForecastHour,
-  type SpotForecast,
-} from "../../mcp/api/forecast";
+import type { ForecastHour, SpotForecast } from "../../mcp/api/forecast";
 
 export const HOUR = 3600000;
 export const TIME_ZONE = "Europe/Dublin";
@@ -238,24 +234,6 @@ export interface SpotRow {
   rating: HourRating | null;
   /** How the wind meets the shore, rated or not; null where unknown. */
   shore: ShoreAngle | null;
-  /**
-   * The chance it rides, 0–100: the share of ensemble members whose rideable
-   * wind reaches this rider's floor. Null where no ensemble reaches the hour.
-   */
-  chance: number | null;
-}
-
-/**
- * The chance for this rider: re-rated from the members when the forecast kept
- * them, as the page asks it to, or the reduction's own figure (rated for the
- * 80 kg intermediate) when it did not.
- */
-export function hourChance(hour: ForecastHour, rider: Rider): number | null {
-  const ensemble = hour.ensemble;
-  if (!ensemble) return null;
-  return ensemble.samples
-    ? rideChance(ensemble.samples, rider)
-    : ensemble.chance_pct;
 }
 
 /** Rate one forecast hour for a rider at a shore, from the consensus line. */
@@ -313,7 +291,6 @@ export function spotRows(
       facing === null || !hour.wind
         ? null
         : shoreAngle(hour.wind.direction_deg, facing),
-    chance: hourChance(hour, rider),
   }));
 }
 

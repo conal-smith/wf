@@ -41,7 +41,7 @@ DESCRIPTIONS = {
     "icon-eu": "ICON-EU wind (DWD)",
     "icon-eu-weather": "ICON-EU surface weather (DWD)",
     "ecmwf": "ECMWF IFS 15-day",
-    "ecmwf-ens": "ECMWF ensemble (chance it rides)",
+    "ecmwf-ens": "ECMWF ensemble (beyond HARMONIE)",
     "aifs": "ECMWF AIFS (machine-learned)",
     "ecmwf-wave": "ECMWF waves",
     "gfs": "GFS (NOAA)",

@@ -180,8 +180,11 @@ class ShippedScheduleTest(unittest.TestCase):
                                       "sea-temperature", "blend", "wind-obs", "forecast-archive",
                                       "verify", "prune", "status"])
         # The lagged HARMONIE ensemble ships disabled: it is heavy on Met Éireann's
-        # bandwidth for a thin spread, so an operator enables it knowingly.
-        self.assertEqual([job["id"] for job in jobs if not job["enabled"]], ["harmonie-eps"])
+        # bandwidth for a thin spread, so an operator enables it knowingly. The
+        # other six are retired to keep downloads near 80 GB a month.
+        self.assertEqual([job["id"] for job in jobs if not job["enabled"]],
+                         ["harmonie-eps", "ecmwf-ens", "aifs", "gefs", "arpege", "arome",
+                          "ecmwf-wave"])
         for job in jobs:
             self.assertIsNotNone(scheduler.next_due(job, NOW), job["id"])
             for model in job["models"]:

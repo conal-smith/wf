@@ -55,7 +55,7 @@ describe("display preferences", () => {
       tide: true,
     });
     expect(prefs.blendModels).toEqual(windModels().map((model) => model.id));
-    expect(prefs.blendModels).toContain("ecmwf-ens");
+    expect(prefs.blendModels).not.toContain("ecmwf-ens");
     expect(prefs.blendModels).not.toContain("ukv");
   });
   it("rates for the estimated rider until the reader says otherwise", () => {
@@ -99,13 +99,13 @@ describe("display preferences", () => {
     const live = windModels().map((model) => model.id);
     const storage = fakeStorage({
       [PREFS_KEY]: JSON.stringify({
-        blendModels: ["ecmwf", "gfs"],
-        // Saved when every live model but GEFS existed, so GEFS is new.
-        blendKnown: live.filter((id) => id !== "gefs"),
+        blendModels: ["ecmwf"],
+        // Saved when every live model but GFS existed, so GFS is new.
+        blendKnown: live.filter((id) => id !== "gfs"),
       }),
     });
     const loaded = loadPrefs(storage).blendModels;
-    expect(loaded).toEqual(["ecmwf", "gfs", "gefs"]);
+    expect(loaded).toEqual(["ecmwf", "gfs"]);
     // Whatever else was there and left out stays out.
     expect(loaded).not.toContain("harmonie");
   });

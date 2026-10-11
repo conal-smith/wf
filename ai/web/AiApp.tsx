@@ -45,7 +45,7 @@ const styles = tv({
     intro: "flex flex-col gap-3",
     lead: "m-0 font-body text-lead font-normal text-pretty text-ink-2 italic",
     // Each fact on its own line on a phone: wrapped side by side, "Every
-    // model" and "The chance it rides" read as one phrase.
+    // model" and "Waves · tides · daylight" read as one phrase.
     facts: [
       "m-0 flex flex-wrap gap-x-4 gap-y-1 text-ink-muted max-wide:flex-col",
       MONO_LABEL,
@@ -148,7 +148,6 @@ export default function AiApp() {
             </p>
             <p className={s.facts()}>
               <span>Every model</span>
-              <span>The chance it rides</span>
               <span>Waves · tides · daylight</span>
               <span>Free · read-only · no account</span>
             </p>

@@ -44,7 +44,7 @@ MODELS = {
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
                  "kind": "wind", "maxAgeHours": 24, "cache": "harmonie", "readsPublishedRun": True},
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
-                "kind": "wind", "maxAgeHours": 12, "cache": "grib", "readsPublishedRun": True},
+                "kind": "wind", "maxAgeHours": 30, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
                         "kind": "weather", "maxAgeHours": 30, "cache": "grib",
                         "readsPublishedRun": True},

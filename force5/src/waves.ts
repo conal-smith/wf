@@ -38,8 +38,9 @@ export const WAVE_MATCH_HOURS = VARIABLE_MATCH_HOURS;
  * Sources in the order the dock prefers them, finest first. Ireland's own 2.8 km
  * shelf model wins; NOAA's 9 km global model is the fallback; ECMWF's 0.25°
  * (~28 km) wave stream is last, because at that resolution a bay is a cell or
- * two wide and many spots are read from open water nearby. It is still worth
- * having: it is the only source of the three that reaches 15 days.
+ * two wide and many spots are read from open water nearby. It is retired (see
+ * force5/src/manifests.ts), so the site never loads it, but it keeps its place
+ * here for the day it is switched back on.
  */
 export const WAVE_SOURCE_PREFERENCE: readonly string[] = [
   "mi-swan",

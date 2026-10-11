@@ -2,8 +2,8 @@
  * One Irish day, as the broadsheet's table sets it: a header that sticks while
  * its hours scroll under it, with the day's best stars and window; then a row per daylight hour, the dark folded either side;
  * then the tide and the light. Each row is figures, not words: the time, the
- * stars, the wind with its gust raised, where it comes from, the sky and the
- * chance it rides, and the waves with the way they come from. A tap opens the hour's second line, with the session, the
+ * stars, the wind with its gust raised, where it comes from, the waves with
+ * the way they come from, and the sky. A tap opens the hour's second line, with the session, the
  * wing, what it rides like, the waves, the models' spread and every reason a
  * star came off. The pen loops the day's best window, when it is worth riding.
  *
@@ -85,13 +85,8 @@ const styles = tv({
     sky: "w-16",
     air: "ml-1 align-middle text-body font-medium text-ink",
     notYet: "font-body text-caption text-ink-muted italic",
-    rides: "w-12 text-right",
     unit: "text-ink-muted",
     muted: "text-ink-muted",
-    chance:
-      "relative inline-block min-w-10 border border-line px-1 py-0.5 text-center text-caption font-semibold text-ink",
-    chanceBar: "absolute inset-y-0 left-0 bg-wash/22",
-    chanceText: "relative",
     more: "border-b border-line",
     moreCell: "px-1 pt-0 pb-2.5",
     moreBody:
@@ -396,7 +391,7 @@ function DayBody({
   const fold = (rows: SpotRow[], edge: "before" | "after") =>
     rows.length > 0 && (
       <tr className={s.more()}>
-        <td colSpan={10} className="p-0">
+        <td colSpan={9} className="p-0">
           <button
             type="button"
             className={s.fold()}
@@ -592,17 +587,10 @@ function DayBody({
               <span className="sr-only">not forecast yet</span>
             )}
           </td>
-          <td className={s.cell({ className: s.rides() })} data-chance>
-            {row.chance === null ? (
-              <span className={s.muted()}>–</span>
-            ) : (
-              <Chance value={row.chance} />
-            )}
-          </td>
         </tr>
         {isOpen && (
           <tr className={s.more()} data-hour-detail>
-            <td colSpan={10} className={s.moreCell()}>
+            <td colSpan={9} className={s.moreCell()}>
               <HourMore
                 row={row}
                 units={units}
@@ -661,13 +649,6 @@ function DayBody({
                 <th scope="col" className={s.th()}>
                   Sky
                 </th>
-                <th
-                  scope="col"
-                  className={s.th({ className: "text-right" })}
-                  title="The chance it rides: the share of ensemble members windy enough for you"
-                >
-                  Rides
-                </th>
               </tr>
             </thead>
           )}
@@ -702,20 +683,6 @@ function DayBody({
         stationNote={stationNote}
       />
     </>
-  );
-}
-
-/** The chance it rides, as a figure in a box with its share washed in. */
-function Chance({ value }: { value: number }) {
-  const s = styles();
-  return (
-    <span
-      className={s.chance()}
-      title="Chance it rides: the share of ensemble members windy enough for you"
-    >
-      <span className={s.chanceBar()} style={{ width: `${value}%` }} />
-      <span className={s.chanceText()}>{value}%</span>
-    </span>
   );
 }
 
