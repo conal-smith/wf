@@ -21,7 +21,8 @@ EventBridge Scheduler
     → discover/download Met Éireann or DWD model output
     → decode + validate + prepare wind frames and spot time series
     → encode wind frames as F5 int16 (.bin) with .br/.gz sidecars
-    → upload immutable frames to private S3
+    → move the spot series into 2° spot squares, name the run directory for its content
+    → upload the immutable run directory to private S3
     → conditionally update latest manifest LAST
       → CloudFront HTTPS endpoint → website / future map clients
 ```
@@ -33,8 +34,9 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
-- `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file after the sha256 of its own bytes, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
-- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — every referenced object must sit under a run directory named for this model, by the same rule the superseded delete uses — together with the file name, which must be the sha256 of the bytes it holds; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone puts one model's frame in another's directory under its own correct name. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
+- `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file for its hour (`frames/000.bin`) inside the run's directory, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
+- `force5/ingest/rundir.py` and `squares.py`: the run directory and the spot squares (see "Object layout" below). Every forecast adapter writes its frames into a staging directory as it goes and finishes with one call, `write_run`, instead of writing its pointer itself: it moves the per-spot data into one file per 2° square, drops anything the run does not reference, names the directory for the hash of what is in it, renames it and only then writes the pointer. `squares.load_spot_data` is the one Python reader of the squares, and `force5/src/spotData.ts` the one TypeScript reader.
+- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the frames and squares the pointer names. Then every frame is checked, and the spot data read back from the squares is checked as the whole manifest used to be. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — the run directory must be named for this model, by the same rule the superseded delete uses — and the directory's hash proves the bytes are the ones published under that name; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone builds one model's run directory out of another's frames. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
 **Published sizes recorded per model below predate the binary frames** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for the file on disk plus its sidecars, or by three against what a browser was actually sent; wave and weather figures are unchanged, because those frames are still JSON.
@@ -697,9 +699,9 @@ the rules are deliberately narrow:
   compare-and-swap. There is **no bucket listing**, so an upload in flight on another
   machine for another model cannot be seen, let alone deleted.
 - Anything the **new** manifest still references is removed from the set first.
-- A path must sit under that model's own object root (`weather/` or `marine/`), be two
-  or three segments long, and have its run directory or station file named for **this**
-  model and no other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
+- A path must sit directly under that model's own object root (`weather/` or
+  `marine/`) and be a run directory or station file named for **this** model and no
+  other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
   `gfs-wave-…`. Pointer manifests, anything under `manifests/` and anything under the
   forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted; an
   absolute, `..`-bearing or `https://` URL is left alone. An adapter that ever stopped
@@ -707,6 +709,11 @@ the rules are deliberately narrow:
   its leftovers — the safe direction to fail in.
 - It happens **after** the new pointer is successfully in place, never before. A
   failed or racing publish deletes nothing at all.
+- For a forecast it is the replaced pointer's **run directory** (`base`), deleted by
+  listing exactly its own prefix with a trailing `/`, so `…-1a2b3c4d/` never lists a
+  longer name that starts the same way. A republish of the same content names the same
+  directory and deletes nothing. For tides it is the station files the old pointer
+  named and the new one does not.
 - Deletes are batched (`delete_objects`, 1000 keys a request). A failure is logged as
   `superseded_delete_failed` and **does not fail the forecast that just published** —
   the data is live, the leftovers are only cost, and the sweep collects them.
@@ -774,7 +781,7 @@ Cache headers are set by the uploader and unchanged from the AWS design:
 
 | Objects                                               | Header                                            |
 | ----------------------------------------------------- | ------------------------------------------------- |
-| Hashed frames and station files                       | `public, max-age=31536000, immutable`             |
+| Run directories (frames, spot squares), station files | `public, max-age=31536000, immutable`             |
 | Pointer manifests (`weather/*.json`, `marine/*.json`) | `public, max-age=0, s-maxage=60, must-revalidate` |
 
 Cloudflare cache rules can override origin headers, so verify the served response, not
@@ -859,23 +866,28 @@ delete.
 
 ## Object layout and publication safety
 
+Every forecast run (wind, wave, weather) is one **run directory** beside its pointer,
+named `<model>-<run>-<hours>h-v<N>-<hash8>`: the adapter's own prefix and the first 8
+hex digits of a sha256 over the sorted lines `<path> <sha256 of the file's bytes>`, one
+per file inside it, sidecars left out (`force5/ingest/rundir.py`). The same content
+always lands in the same directory, so republishing a run is a no-op; changed content
+lands in a new one; nothing inside a directory is ever rewritten, which is why all of
+it is cached as `immutable`. Files inside need no hash of their own:
+
 ```text
-weather/harmonie-RUN-60h-v1/HOUR-HASH.json  immutable HARMONIE frames
-weather/RUN.../HOUR-HASH.json              immutable ICON-EU frames
-weather/harmonie.json                     current HARMONIE pointer + metadata
-weather/latest.json                       current ICON-EU pointer + metadata
-weather/ecmwf.json                        current ECMWF pointer + metadata
-weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
-weather/gfs.json                          current GFS pointer + metadata
-weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
-weather/gefs.json                         current GEFS ensemble pointer + member series
-weather/gefs-RUN-240h-v1/HOUR-HASH.json     immutable GEFS ensemble-mean frames
-weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
-weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
-weather/icon-eu-weather.json               current ICON-EU surface weather pointer + spot series
-weather/icon-eu-weather-RUN-72h-v1/HOUR-HASH.json  immutable surface variable grids
-weather/gfs-wave.json                      current GFS-Wave pointer + metadata
-weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
+weather/harmonie.json                                        the pointer (schemaVersion 2), a few KB
+weather/harmonie-RUN-60h-v2-HASH8/frames/000.bin             a binary wind frame (and .br/.gz on disk)
+weather/harmonie-RUN-60h-v2-HASH8/spots/n52w008.json         every spot's series in one 2° square
+weather/latest.json                                         ICON-EU's pointer
+weather/icon-eu-RUN-72h-v1-HASH8/frames/HOUR.bin            ICON-EU frames
+weather/ecmwf.json, weather/ecmwf-RUN-360h-v2-HASH8/        ECMWF wind + gust
+weather/gfs.json, weather/gfs-RUN-240h-v1-HASH8/            GFS wind + instantaneous gust
+weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, members in the squares
+weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
+weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
+weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
+weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/frames/HOUR.json  surface variable grids
+weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/frames/HOUR.json  GFS-Wave variable grids
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/tides.json                          current tide pointer + metadata
 marine/sea-temperature.json                current sea temperature pointer, readings inline
@@ -885,16 +897,36 @@ verify/scores.json                         current verification scores
 archive/forecasts/MODEL/RUN.json           every wind run, sampled at stations; never deleted
 archive/observations/YYYY-MM-DD.json       every wind observation, by UTC day; never deleted
 archive/verify/sums/YYYY-MM-DD.json        one day's verification sums; never deleted
-weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
-weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
 ```
+
+A forecast pointer is `schemaVersion` 2 and carries everything a reader needs to
+choose a run and draw it — run, grid, cadence, gust rules, ensemble size — with frame
+urls relative to `"base": "<run directory>/"`, which is itself relative to the
+pointer's directory. Its per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
+`spotMembers`, and SWAN's `spotCells`) is **not** in it but in
+`spots/<square>.json` inside the run directory, one file per 2° × 2° spot square named
+by its south-west corner (`n52w010` covers 52–54° N, 10–8° W):
+`{schemaVersion: 2, model, run, square, …the same per-spot keys, for the spots in that square}`.
+The pointer lists them:
+`"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...], "keys": [...]}`,
+`keys` naming the per-spot keys the squares carry. A run with no frames states its
+reach in `horizonHours`, so freshness never needs a square. A spot page, the dock and
+the forecast server read the one square holding the spot; the browser's own blend and
+the blend job read them all. Ireland's 146 riding places fall in ten squares.
+
+The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters
+still build the whole manifest in memory and none of them knows squares exist.
+`backfill_spots.py`, which recomputes spot series for a run already on disk, publishes
+the result the same way, as a new run directory with the frames linked in unchanged.
 
 Each model's immutable objects sit under the first segment of its
 registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
 `S3_PREFIX` still goes before that segment.
 
-Bundle kinds are all `schemaVersion` 1 and every added field is optional; see the README
-contract section for the field list. `validate_bundle` dispatches on `kind`:
+Forecast bundles (`wind`, `wave`, `weather`) are `schemaVersion` 2 run pointers as
+above; the others are `schemaVersion` 1. Every added field is optional; see the README
+contract section for the field list. `validate_bundle` dispatches on `kind`, and for a
+forecast checks its per-spot data as read back from its squares:
 
 - `wind` (default when `kind` is absent) keeps the existing frame, grid and gust rules,
   and adds `gustKind: "instantaneous"` for sources publishing a surface gust at the valid
@@ -929,28 +961,23 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   are self-contained, must have been generated in the hour their `run` names, and carry
   no `url` for the pruner to follow. See [VERIFICATION.md](VERIFICATION.md).
 
-All adapters precompute `spotForecasts` for the 25 ids in `public/riding-locations.json`,
-so a browser chart never has to download grid frames. Regenerate that file with
-`npm run spots:export`.
-weather/ecmwf-ens.json current ECMWF ENS pointer + member series
-weather/ecmwf-ens-RUN-144h-25m-v1/HOUR-HASH.json immutable ensemble-mean frames
+All adapters precompute their spot series for every place in
+`public/riding-locations.json`, so a browser chart never has to download grid frames.
+Regenerate that file with `npm run spots:export`. The same catalogue gives each spot
+its square; a spot a manifest names that the catalogue does not is refused.
 
-````
-
-The ENS prefix records the horizon and member count, so changing either publishes
-a new immutable frame set instead of colliding with the previous one. The ENS
-manifest is larger than the others because it carries every member: a measured
-114 kB for 8 spots × 25 steps × 25 members, so roughly 350 kB for a 25-location
-catalogue. It is served with the short-lived pointer cache policy and benefits
-from compression; a per-spot series endpoint would be the next optimisation.
+The ENS prefix records the horizon and member count, so changing either publishes a
+new run directory instead of colliding with the previous one. Its members, which made
+the ENS manifest the largest of all (588 KB gzipped for 146 spots), are in the squares
+now: the pointer is under 2 KB and the square holding a spot about 4–170 KB gzipped.
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.
 
 The publisher:
 
-1. Rejects missing files, nonfinite/invalid vectors, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
-2. Uploads immutable objects with `If-None-Match: *`, gzip encoding and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
-3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication.
+1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
+2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
+3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. Then it deletes the run directory the replaced pointer named, if it is not this one.
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
 
 These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html). A failed upload can leave unreferenced frame objects, but never an intentionally published half-complete forecast. The last successfully published model remains available. Models are independent transactions, not a simultaneous cross-model switch.
@@ -959,7 +986,7 @@ These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/us
 
 | Objects                                        | Worker cache header                               | CloudFront behaviour                                          |
 | ---------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| Immutable frames                               | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
+| Run directories (frames, spot squares)         | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
 | `weather/harmonie.json`, `weather/latest.json` | `public, max-age=0, s-maxage=60, must-revalidate` | Minimum TTL **0**, cap latest-pointer freshness appropriately |
 
 No whole-distribution invalidation is needed after a normal forecast job. CloudFront's minimum TTL can override origin cache headers, so verify the actual policies, not just the uploaded metadata. See [CloudFront cache settings](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesCacheBehavior.html).

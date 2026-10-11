@@ -1,6 +1,8 @@
 # Tiling design: map frames and spot data that scale past Ireland
 
-Status: draft for review, 11 October 2026. Nothing here is built yet.
+Status: draft for review, 11 October 2026. Spot squares, run directories and
+the version 2 pointer (decisions 4–6) are built; where the build differs from
+the design is under "As built" at the end. The tiles are not built yet.
 
 ## Why
 
@@ -325,3 +327,47 @@ tiles, the publisher writes both formats for one release, then drops the old one
   for it.
 - **Mercator display tiles.** Only useful for a MapLibre raster layer, which
   we do not use.
+
+## As built: spot squares, run directories and the version 2 pointer
+
+Steps 2 and 3 of "How it ships" went in together, ahead of the tiles, because
+a square file needs a directory to live in. The map still draws whole-frame
+`.bin` files; they now sit at `frames/<HHH>.bin` (wave and weather frames at
+`frames/<HHH>.json`) inside the run directory, and the tiles will join them at
+`t/{level}/{x}/{y}/{HHH}.bin`. Where the build differs from the decisions
+above:
+
+- **The hash.** The run directory's name ends in the first 8 hex digits of a
+  sha256 over the sorted lines `<path> <sha256 of the file's bytes>\n`, one per
+  file in the directory, the `.br`/`.gz` sidecars left out
+  (`force5/ingest/rundir.py`; `scripts/runs.mjs` for the sample generator,
+  both held to `tests/fixtures/run-digest.json`). An adapter writes into a
+  staging directory named with its prefix alone and finishes with
+  `rundir.write_run`, which writes the squares, drops anything the run does not
+  reference, hashes, renames and only then writes the pointer.
+- **The `spots` block has a fourth field**, `keys`: the per-spot keys the
+  squares carry (`spotForecasts`, `spotMembers`, …). It lets a reader see an
+  ensemble, and lets the loader answer every declared key even for a square
+  that holds none of a model's spots, so a split and a merge give back exactly
+  what was split.
+- **More keys move than the three named.** `spotCoverage` (GFS-Wave and ECMWF
+  Wave) and Irish Shelf SWAN's per-spot cell records move too. SWAN's were
+  called `spots`, which is now the square index, so they are `spotCells`.
+- **A run with no frames states `horizonHours` in the pointer**, set by the
+  split from its longest series, so freshness and the dock's axis never need
+  a square.
+- **Only the forecast kinds are version 2.** Tides, sea temperature, wind
+  observations, the blend and the job summaries keep schemaVersion 1: they are
+  one file, or a pointer and its station files, and have no spot series to
+  move.
+- **Squares.** Ireland's 146 riding places fall in ten squares, not eight. On
+  the real runs of 7 October 2026 every pointer is 0.9–2.7 KB gzipped (from
+  27–1,197 KB), and the largest square, `n52w008` around Dublin, is 9.5 KB
+  gzipped for HARMONIE, 38 KB for ECMWF and 107 KB for Irish Shelf SWAN.
+- **Integrity moved from the file to the directory.** A frame's own name no
+  longer carries its hash, so the publisher checks the whole directory against
+  its name before uploading anything. Readers after that (the archive job,
+  `backfill_spots.py`) trust the path and the frame header, as they trust the
+  pointer.
+- **The blend is still one file** (step 5), and it is still worked out from
+  every square of every model, through the same loader.
