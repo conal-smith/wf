@@ -32,12 +32,27 @@ const isMapModel = (id: string): id is ModelId =>
   (MAP_MODEL_IDS as readonly string[]).includes(id);
 
 /**
+ * Whether `fresh`, a pointer just read, moves the map on from the run on
+ * screen: a later run, or the same run republished in another run directory
+ * (its spot series recomputed: the old directory is deleted after its grace
+ * period like any other). An earlier run never does: a CDN edge still holding
+ * an old pointer, or a rolled-back one, must not read as "Updated to…" and
+ * then flip back on the next check.
+ */
+export function movesForward(
+  current: Pick<Manifest, "runTime" | "base">,
+  fresh: Pick<Manifest, "runTime" | "base">,
+): boolean {
+  const then = Date.parse(current.runTime);
+  const now = Date.parse(fresh.runTime);
+  return now > then || (now === then && fresh.base !== current.base);
+}
+
+/**
  * The newest run of the model on screen, loaded whole at the frame nearest
- * `time`, or null when the pointer still names the run directory on screen.
- * Refetches the manifest past the five-minute manifest cache, and past the
- * HTTP cache with it. The same run republished with other content (its spot
- * series recomputed) is a new run directory, and the old one is deleted after
- * its grace period like any other, so it counts as newer.
+ * `time`, or null when the pointer still names the run directory on screen or
+ * an earlier run (`movesForward`). Refetches the manifest past the five-minute
+ * manifest cache, and past the HTTP cache with it.
  */
 export async function loadNewerRun(
   current: Manifest,
@@ -49,8 +64,43 @@ export async function loadNewerRun(
   if (!isMapModel(id)) return null;
   expireManifest(id);
   const fresh = await loadManifest(id, signal);
-  if (signal.aborted || fresh.base === current.base) return null;
+  if (signal.aborted || !movesForward(current, fresh)) return null;
   return loadModel(id, time, signal);
+}
+
+/**
+ * Looking for a newer run after a tile of the run on screen failed (App.tsx,
+ * `recoverRun`). Once the pointer has been read again and compared, that run
+ * directory is done with: whatever the answer, another failing tile of it
+ * does not read the pointer again (the five-minute refresh still does). A look
+ * that failed before it could compare — a timeout, the network gone — leaves
+ * it open, so a later failure, after the run really has been deleted, still
+ * recovers. One look at a time, so a burst of failing tiles reads the pointer
+ * once.
+ */
+export class RunRecovery {
+  private handled: string | null = null;
+  private busy = false;
+
+  attempt(
+    base: string,
+    look: () => Promise<RunSwap | null>,
+    commit: (swap: RunSwap) => void,
+  ): Promise<void> | null {
+    if (this.busy || this.handled === base) return null;
+    this.busy = true;
+    return look()
+      .then(
+        (swap) => {
+          this.handled = base;
+          if (swap) commit(swap);
+        },
+        () => {},
+      )
+      .finally(() => {
+        this.busy = false;
+      });
+  }
 }
 
 /** Whether the reader is holding the time controls right now. */

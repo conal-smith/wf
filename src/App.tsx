@@ -46,7 +46,11 @@ import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
-import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
+import useRunRefresh, {
+  loadNewerRun,
+  RunRecovery,
+  type RunSwap,
+} from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
 import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
@@ -593,23 +597,25 @@ export default function App() {
   /**
    * A tile of the run on screen could not be read — one the map needs for the
    * view, or one of a bare point's hours: the run may have been replaced and
-   * its directory deleted. Look for a newer run, as a failed frame does, once
-   * per run on screen; a tile that fails for any other reason leaves the
-   * coarser tiles drawn, or the point's retry, as before.
+   * its directory deleted. Look for a newer run, as a failed frame does, until
+   * the pointer has been compared once for the run on screen (`RunRecovery`);
+   * a tile that fails for any other reason leaves the coarser tiles drawn, or
+   * the point's retry, as before.
    */
-  const recovered = useRef<string | null>(null);
+  const [recovery] = useState(() => new RunRecovery());
   const recoverRun = (model: string, run: string) => {
     if (!manifest || pendingModel || model !== manifest.model) return;
-    if (run !== manifest.run || recovered.current === manifest.base) return;
-    recovered.current = manifest.base;
+    if (run !== manifest.run) return;
     const epoch = modelEpoch.current;
     const time = selectedTime ?? frame?.validTime;
     if (!time) return;
-    loadNewerRun(manifest, time, new AbortController().signal).then(
+    const shown = manifest;
+    recovery.attempt(
+      shown.base,
+      () => loadNewerRun(shown, time, new AbortController().signal),
       (swap) => {
-        if (swap && epoch === modelEpoch.current) commitRun(swap);
+        if (epoch === modelEpoch.current) commitRun(swap);
       },
-      () => {},
     );
   };
   useRunRefresh({
