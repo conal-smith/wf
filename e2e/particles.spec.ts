@@ -41,15 +41,34 @@ async function instrument(page: Page) {
     });
   });
   await page.goto("/");
-  // The first strokes wait for the whole chart to load -- tiles, every model's
-  // manifest, the first frame -- which on a CI runner takes longer than the
-  // default five seconds. The same allowance the rest of the suite gives the
-  // chart to come up (openChart in map.spec.ts).
+  await firstStrokes(page);
+}
+
+/**
+ * The first strokes on a page just loaded. They wait for the whole chart to
+ * load -- tiles, every model's manifest, the first frame -- which on a CI
+ * runner takes longer than the default five seconds. The same allowance the
+ * rest of the suite gives the chart to come up (openChart in map.spec.ts).
+ */
+async function firstStrokes(page: Page) {
   await expect
     .poll(() => page.evaluate(() => window.particleWork.strokes), {
       timeout: 30000,
     })
     .toBeGreaterThan(5);
+}
+
+/**
+ * Waits for the camera to come to rest after a move the test has just set
+ * off. The field is resampled for the view once the camera is still, and
+ * never while it moves (windLayer.ts), so a rebuild counted after the move
+ * began is one made where it stopped.
+ */
+async function cameraAtRest(page: Page) {
+  const moving = await page.evaluate(() => window.particleWork.fields);
+  await expect
+    .poll(() => page.evaluate(() => window.particleWork.fields))
+    .toBeGreaterThan(moving);
 }
 
 async function expectIdle(page: Page) {
@@ -133,7 +152,7 @@ test("dragging carries the arrows with the map and defers field rebuilds until i
 test("every wind style keeps the arrows drawing, in any order, and is remembered", async ({
   page,
 }) => {
-  await page.goto("/");
+  await instrument(page);
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
@@ -153,17 +172,21 @@ test("every wind style keeps the arrows drawing, in any order, and is remembered
   ]) {
     await panel.getByRole("radio", { name }).check();
     await expect(canvas).toHaveAttribute("data-wind-style", style);
-    // Fresh arrows in the new style, not what was left of the last one.
-    await page.waitForTimeout(150);
-    await expect.poll(() => inked(page), { message: name }).toBeGreaterThan(100);
+    // Fresh arrows in the new style, not what was left of the last one: the
+    // attribute is set once the layer has the style (WindMap.tsx), and each
+    // frame drawn after that clears the canvas and draws every line in it.
+    await expectResumed(page);
+    await expect
+      .poll(() => inked(page), { message: name })
+      .toBeGreaterThan(100);
   }
   await panel.getByRole("radio", { name: "Wash" }).check();
   await page.reload();
-  await expect(page.locator(".particle-canvas")).toHaveAttribute(
-    "data-wind-style",
-    "wash",
-    { timeout: 30000 },
-  );
+  // The style is read back as the page mounts, before the chart is up; the
+  // arrows then wait for the whole chart to load again, as they did the first
+  // time, and on a CI runner that has taken longer than five seconds.
+  await expect(canvas).toHaveAttribute("data-wind-style", "wash");
+  await firstStrokes(page);
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
 });
 
@@ -198,10 +221,14 @@ test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
   await layers.click();
   await expect.poll(() => tinted(page)).toBeGreaterThan(20);
   // The depths take over from zoom 11 (windLayer.ts); the chart opens near 6.
+  // A press zooms one level on from wherever the camera has got to, so each
+  // waits for the last to finish. Under the pinned clock (fixtures.ts) the
+  // page gets a few animation frames a second, not sixty, and seven presses
+  // 400 ms apart ended anywhere from 10.4 to 11.4, still moving: coloured.
   const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
   for (let i = 0; i < 7; i++) {
     await zoomIn.click();
-    await page.waitForTimeout(400);
+    await cameraAtRest(page);
   }
   await expectResumed(page);
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
