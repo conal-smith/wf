@@ -21,9 +21,13 @@ import json
 from pathlib import Path
 import sys
 
-# In the worker image the ingest code is at /app; in a checkout, beside this.
-for ingest in (Path("/app/force5/ingest"), Path(__file__).resolve().parents[2] / "force5" / "ingest"):
-    if ingest.is_dir():
+# In the worker image the ingest code is at /app, and the acceptance run mounts
+# this script at the root (/verify_bucket.py), which has no parents to climb; in
+# a checkout it is beside this, two levels up.
+HERE = Path(__file__).resolve()
+CHECKOUT = HERE.parents[2] / "force5" / "ingest" if len(HERE.parents) > 2 else None
+for ingest in (Path("/app/force5/ingest"), CHECKOUT):
+    if ingest is not None and ingest.is_dir():
         sys.path.insert(0, str(ingest))
         break
 
