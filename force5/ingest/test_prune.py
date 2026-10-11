@@ -614,6 +614,60 @@ class BucketPruneTest(unittest.TestCase):
         self.assertIn(young, self.s3.objects)
 
 
+class StaticDataTest(unittest.TestCase):
+    """The foilable-depth archives and the chart's bathymetry, published by hand
+    under foildepth/v<hash>/ and bathy/v<hash>/, are never swept or deleted."""
+
+    def setUp(self):
+        from test_publish_s3 import FakeS3
+        self.s3 = FakeS3()
+        self.s3.seed("weather/harmonie.json", json.dumps(
+            wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a")).encode(), NOW)
+        self.s3.seed("marine/tides.json", json.dumps(
+            tide_manifest("2026091600", "tides-DUBLIN-live.json")).encode(), NOW)
+        old = NOW - timedelta(days=400)
+        self.static = [self.s3.seed(key, b"PMTiles", old) for key in (
+            "foildepth/v0123456789ab/index.json",
+            "foildepth/v0123456789ab/tide-howth.pmtiles",
+            "foildepth/v0123456789ab/dublin-north.pmtiles",
+            "foildepth/vfedcba987654/tide-howth.pmtiles",  # an older version, still kept
+            "bathy/v0123456789ab/ireland.pmtiles",
+        )]
+
+    def test_the_static_prefixes_are_not_data_roots(self):
+        for root in prune.STATIC_ROOTS:
+            self.assertNotIn(root, prune.DATA_ROOTS)
+        self.assertEqual(set(prune.STATIC_ROOTS), {"foildepth", "bathy"})
+
+    def test_a_bucket_sweep_leaves_every_static_object(self):
+        for kwargs in ({}, {"min_age_hours": 0, "grace": 0}):
+            result = prune.bucket_prune(self.s3, "test", now=NOW, **kwargs)
+            for key in self.static:
+                self.assertIn(key, self.s3.objects, key)
+                self.assertNotIn(key, result["removed"])
+
+    def test_a_static_object_under_a_data_root_is_still_kept(self):
+        # Even misfiled under weather/ (with or without a deployment prefix), the
+        # segment alone protects it.
+        stray = self.s3.seed("weather/foildepth/v1/x.pmtiles", b"x", NOW - timedelta(days=400))
+        result = prune.bucket_prune(self.s3, "test", now=NOW, min_age_hours=0, grace=0)
+        self.assertIn(stray, self.s3.objects)
+        self.assertNotIn(stray, result["removed"])
+        self.assertTrue(prune.is_static("site/foildepth/v1/x.pmtiles"))
+        self.assertFalse(prune.is_static("weather/foildepthy/x.json"))
+
+    def test_delete_keys_refuses_a_static_key_outright(self):
+        other = self.s3.seed("weather/harmonie-old/000.json", b"{}", NOW - timedelta(days=400))
+        for key in ("foildepth/v0123456789ab/tide-howth.pmtiles", "bathy/v0123456789ab/ireland.pmtiles",
+                    "prefix/foildepth/v1/index.json"):
+            with self.assertRaises(ValueError):
+                prune.delete_keys(self.s3, "test", ["weather/harmonie-old/000.json", key])
+        for key in self.static:
+            self.assertIn(key, self.s3.objects)
+        # The whole call is refused: not even the deletable key went.
+        self.assertIn(other, self.s3.objects)
+
+
 class SweepCommandTest(unittest.TestCase):
     def test_the_bucket_mode_reports_and_never_touches_a_work_directory(self):
         from test_publish_s3 import FakeS3
