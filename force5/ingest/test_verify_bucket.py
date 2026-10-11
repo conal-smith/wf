@@ -10,9 +10,12 @@ from registry import MANIFESTS
 from test_publish_s3 import BundleFixture, FakeS3
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "release" / "verify_bucket.py"
-spec = importlib.util.spec_from_file_location("verify_bucket", SCRIPT)
-verify_bucket = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(verify_bucket)
+# The worker image carries only the ingest code, and its smoke test runs this
+# suite there: the release script is a repository tool, checked by CI, not the image.
+if SCRIPT.exists():
+    spec = importlib.util.spec_from_file_location("verify_bucket", SCRIPT)
+    verify_bucket = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verify_bucket)
 
 
 class PagedS3(FakeS3):
@@ -34,6 +37,7 @@ class PagedS3(FakeS3):
         return Pages()
 
 
+@unittest.skipUnless(SCRIPT.exists(), "scripts/release is not in the worker image")
 class VerifyBucketTests(BundleFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
