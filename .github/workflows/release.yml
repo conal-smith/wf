@@ -407,9 +407,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          mkdir site && tar -xzf site.tar.gz -C site
-          node .train/scripts/release/release.mjs configure-site site "${{ vars.STAGING_FORECAST_BASE_URL }}"
-          npx --yes wrangler@4 pages deploy site --project-name "$PAGES_PROJECT" --branch staging \
+          # The checkout has its own site/ (the marketplace's users module), so the
+          # build unpacks beside it, into pages/.
+          mkdir pages && tar -xzf site.tar.gz -C pages
+          node .train/scripts/release/release.mjs configure-site pages "${{ vars.STAGING_FORECAST_BASE_URL }}"
+          npx --yes wrangler@4 pages deploy pages --project-name "$PAGES_PROJECT" --branch staging \
             --commit-hash "$REF" --commit-message "${VERSION} (staging)"
       - name: Smoke the staging site
         if: env.PAGES_PROJECT != ''
@@ -530,9 +532,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          mkdir site && tar -xzf site.tar.gz -C site
-          node .train/scripts/release/release.mjs configure-site site "${{ vars.PRODUCTION_FORECAST_BASE_URL }}"
-          npx --yes wrangler@4 pages deploy site --project-name "$PAGES_PROJECT" --branch main \
+          # The checkout has its own site/ (the marketplace's users module), so the
+          # build unpacks beside it, into pages/.
+          mkdir pages && tar -xzf site.tar.gz -C pages
+          node .train/scripts/release/release.mjs configure-site pages "${{ vars.PRODUCTION_FORECAST_BASE_URL }}"
+          npx --yes wrangler@4 pages deploy pages --project-name "$PAGES_PROJECT" --branch main \
             --commit-hash "$REF" --commit-message "${VERSION}"
       - name: Smoke the production site
         if: env.PAGES_PROJECT != ''
