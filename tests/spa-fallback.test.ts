@@ -29,8 +29,8 @@ const rules = readFileSync(join(ROOT, "public/_redirects"), "utf8")
 describe("the SPA fallback", () => {
   it("has the root and everything under it, for each section with a bundle of its own and the spot page", () => {
     const expected = APP_ROUTES.flatMap((href) => [
-      [href, "/index.html", "200"],
-      [`${href}/*`, "/index.html", "200"],
+      [href, "/", "200"],
+      [`${href}/*`, "/", "200"],
     ]);
     expect(rules).toEqual(expected);
   });
@@ -51,6 +51,17 @@ describe("the SPA fallback", () => {
   // This origin also serves /weather and /marine, whose loaders gate on
   // `!response.ok`: index.html with a 200 for a missing snapshot would be
   // parsed as one.
+  // Cloudflare Pages answers /index.html with a 308 to `/`: a rule rewriting
+  // to it redirects an exact section URL to the map.
+  it("rewrites to the root, not to /index.html", () => {
+    for (const [, to] of rules) expect(to).toBe("/");
+  });
+
+  // Without a 404.html, Pages answers every unknown path with index.html.
+  it("ships a 404 page, so Pages keeps its single-page fallback off", () => {
+    expect(readFileSync(join(ROOT, "public/404.html"), "utf8")).toContain("<title>");
+  });
+
   it("has no blanket rule", () => {
     expect(rules.map(([from]) => from)).not.toContain("/*");
   });
