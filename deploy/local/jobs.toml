@@ -19,9 +19,9 @@
 id = "harmonie"
 models = ["harmonie"]
 args = ["--step", "1"]
-hours = [6, 12]             # Twice a day: 7 am and 1 pm Irish summer time, 6 am and
-minutes = [0]               # noon in winter. Each run is ~810 MB of whole files, so
-timeout_seconds = 3300      # only when riders are planning a session.
+hours = [7, 12]             # Twice a day: 7 am and noon Irish winter time (from 25
+minutes = [0]               # October), 8 am and 1 pm in summer. Each run is ~785 MB of
+timeout_seconds = 3300      # whole files, so only when riders are planning a session.
 
 [[jobs]]
 id = "icon-eu"

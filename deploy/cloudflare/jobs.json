@@ -7,7 +7,7 @@
       "enabled": true,
       "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
       "hours": [
-        6,
+        7,
         12
       ],
       "minutes": [

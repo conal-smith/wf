@@ -41,8 +41,11 @@ PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 # re-upload a run the site already serves. Tides and sea temperature do not: see
 # their entries.
 MODELS = {
+    # Fetched at 07 and 12 UTC, each time the cycle about three hours earlier, so the
+    # noon run is about 22 h old when the morning's replaces it, an hour more if that
+    # job queues. 30 h leaves a late or failed morning slot to the noon one.
     "harmonie": {"script": "fetch_harmonie.py", "manifest": "weather/harmonie.json",
-                 "kind": "wind", "maxAgeHours": 24, "cache": "harmonie", "readsPublishedRun": True},
+                 "kind": "wind", "maxAgeHours": 30, "cache": "harmonie", "readsPublishedRun": True},
     "icon-eu": {"script": "fetch_forecast.py", "manifest": "weather/latest.json",
                 "kind": "wind", "maxAgeHours": 30, "cache": "grib", "readsPublishedRun": True},
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",

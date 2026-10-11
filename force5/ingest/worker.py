@@ -79,8 +79,8 @@ def main():
                         help="Defaults to 'auto' when an endpoint URL is given, as R2 wants")
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
     parser.add_argument("--max-age-hours", type=float,
-                        help="Default: the registry limit per model (12 regional, 24 HARMONIE, "
-                        "30 ICON-EU and tides, 40 ECMWF, 48 observations)")
+                        help="Default: the registry limit per model (12 regional, 30 HARMONIE, "
+                        "ICON-EU and tides, 40 ECMWF, 48 observations)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:

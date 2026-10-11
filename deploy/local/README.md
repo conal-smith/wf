@@ -87,7 +87,7 @@ in UTC. The shipped schedule is:
 
 | Job               | When (UTC)         | Why                                                   |
 | ----------------- | ------------------ | ----------------------------------------------------- |
-| `harmonie`        | 06/12 at :00       | twice a day; ~810 MB a run, 24 h age limit           |
+| `harmonie`        | 07/12 at :00       | twice a day; ~785 MB a run, 30 h age limit            |
 | `icon-eu`         | 03 at :30          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `icon-eu-weather` | 03 at :40          | once a day, the 00 UTC cycle; 30 h age limit          |
 | `ecmwf`           | 08/10 at :20       | the 00 UTC run, out ~07:35; 10:20 is a retry; 40 h    |
@@ -116,6 +116,18 @@ the blend, the verification replica and the forecast server neither fetch nor li
 them. Their adapters are unchanged: to bring one back, enable its job, clear
 `retired`, and add it back to `MAP_MODEL_IDS`, `consensus.BLEND_MODELS` and the
 forecast server's lists as the tests direct.
+
+What the enabled jobs download, at 30 days a month (slots that find their run
+already published download nothing):
+
+| Job | Per run | Runs a day | A month |
+| --- | --- | --- | --- |
+| `harmonie` | ~785 MB (61 whole files) | 2 | ~47 GB |
+| `icon-eu-weather` | ~300 MB | 1 | ~9 GB |
+| `icon-eu` | ~250 MB | 1 | ~7.5 GB |
+| `ecmwf` | ~245 MB | 1 | ~7.4 GB |
+| `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-6 MB each | 4-24 | ~1 GB |
+| **Total** | | | **~72-74 GB** |
 
 Edit the file, then check and apply it:
 
@@ -146,7 +158,7 @@ docker compose -f deploy/local/docker-compose.yml ps
 `status` prints one row per registered model and exits nonzero if any model is
 `absent`, `unreadable`, `incomplete` (a manifest referencing an object that is not on
 disk), `stale` (older than the registry's limit for that model: 12 h for most regional
-models, 24 h for HARMONIE, 30 h for ICON-EU and tides, 36 h for the daily SWAN run, 40 h
+models, 30 h for HARMONIE, ICON-EU and tides, 36 h for the daily SWAN run, 40 h
 for ECMWF's once-a-day run) or `expired` (its coverage has
 already ended). `--json` emits one object per line for a monitoring script, and
 `--models gfs` narrows it to the models you actually serve. `web` also has a Docker
@@ -206,8 +218,8 @@ forecast. A new frontend build changes only `dist/` inside `force5-web:local`.
 The upgrade to run directories and spot squares (schemaVersion 2,
 [docs/TILING_DESIGN.md](../../docs/TILING_DESIGN.md)) is one: the new site refuses the
 old version 1 pointers still in the volume, so each model reads as unavailable until its
-next run replaces its pointer — for HARMONIE, scheduled at 06 and 12 UTC, that is up to
-18 hours of a map that will not open. The blend leaves an old pointer out and names it
+next run replaces its pointer — for HARMONIE, scheduled at 07 and 12 UTC, that is up to
+19 hours of a map that will not open. The blend leaves an old pointer out and names it
 (`blend_input_refused` in the log) rather than failing. Run everything at once instead,
 with the scheduler stopped so a slot cannot collide with a manual job over the worker's
 lock:
@@ -220,7 +232,7 @@ docker compose -f deploy/local/docker-compose.yml start scheduler
 
 `deploy:once` is `scheduler.py --once`: the wind models first, then the blend, the
 archive, verification and the prune, as the file orders them. It takes as long as all
-the downloads (HARMONIE alone is about 810 MB) and exits nonzero if any job failed; the
+the downloads (HARMONIE alone is about 785 MB) and exits nonzero if any job failed; the
 log names it. Afterwards every pointer in the volume (`weather/*.json`) should carry
 `"schemaVersion": 2` and a `"base"`. Setting
 `FORCE5_RUN_AT_START=1` in `deploy/local/.env` does the same each time the scheduler
