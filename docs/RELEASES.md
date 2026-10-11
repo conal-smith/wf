@@ -64,6 +64,7 @@ tag only ever moves to a digest that has passed everything before it.
 | `scripts/release/market-image-smoke.sh` | CI `images`, nightly, staging | the compiled API boots |
 | `scripts/release/acceptance.sh` | nightly, staging | the worker fetching **real** HARMONIE and GFS runs, `status.py` calling them fresh, publishing to an S3-compatible bucket with every referenced object present, and the site image drawing them in Chromium (`e2e/smoke`) |
 | `e2e/smoke` against the deployed URL | staging, production (once Pages is set up) | the deployed site reading its environment's data, CORS included |
+| `scripts/release/monitor.py` | every two hours, against production | a model gone stale, a pointer naming files that are not there, wrong cache headers, the site pointed at the wrong data (see "The production monitor") |
 
 Run any of them locally against an image you built; each script's header says how.
 
@@ -157,6 +158,60 @@ the checkout when you are trying something out. The same image runs anywhere
 Docker does, so moving the jobs to Cloudflare Containers later means pointing
 `deploy/cloudflare/wrangler.jsonc` at the released image, not a new build.
 
+## The production monitor
+
+`.github/workflows/monitor.yml` runs `scripts/release/monitor.py` at 41 minutes
+past every second hour (UTC), and on *Run workflow*. It reads production's data
+at `PRODUCTION_FORECAST_BASE_URL` and changes nothing there.
+
+**Which models.** Worked out from the checkout, so retiring or reviving a model
+changes the monitor with it: every model of an enabled worker job in
+`deploy/local/jobs.toml`, plus any the site lists (`force5/src/catalog.ts`),
+minus every model the site calls `retired` or `planned`. Today that is HARMONIE,
+ICON-EU, ICON-EU weather, ECMWF, GFS, GFS-Wave, MI SWAN, tides, sea temperature,
+the blend, wind observations, the forecast archive and the verification scores.
+
+**What it checks**, per model:
+
+- the pointer answers 200 and parses: a run (`wind`, `wave`, `weather`, the
+  blend) as schemaVersion 2 with a usable `base` and spot square index, the
+  other bundles as the schemaVersion 1 files they are, each naming its own model;
+- its `run` is no older than `maxAgeHours` in `force5/ingest/registry.py` (the
+  limit `status.py` calls stale) plus one hour, and its coverage has not ended;
+- with HEAD requests, not downloads: every spot square it lists; for a tiled run
+  every tile of the coarsest level and the first level-0 tile at the first
+  frame, never one the pointer calls `absent`; for tides, every station file it
+  names by `url`. About 140 requests in all, a few seconds;
+- headers: every one of those files cached `immutable` and every tile served
+  `br` or `gzip`; the pointer itself not cached for longer than five minutes;
+- once `MONITOR_SITE_URL` is set (leave it unset until the first production
+  release has deployed the site): the site answers 200 with the
+  `wingfoil:forecast-base` meta naming the data domain, and the data domain's
+  CORS lets the site's origin read a pointer. No browser.
+
+Every request has a 10-second timeout and is retried twice on a dropped
+connection, a timeout, a 429 or a 5xx, so one lost request is not an alarm. The
+run's summary is a table: model, run, age, limit, files checked, status.
+
+**Where alerts go.** Any problem fails the run and opens the issue *Production
+monitor: forecast data problem* (label `monitor`), with the failing rows and a
+link to the run; GitHub notifies you of it as of any issue in a repository you
+watch (web, and email if your notification settings send it). While it is open,
+a run comments only when the set of problems changes (a model joining or
+leaving, a new kind of fault), not every two hours; the first clean run comments
+and closes it. Separately, GitHub emails a scheduled workflow's failures to the
+user who last edited its `cron` line, so whoever last touched `monitor.yml`'s
+schedule gets a mail per failing run as well. The job's token can write issues
+and read the repository, nothing else.
+
+**Cost.** One job on `ubuntu-latest` with its own `python3`, a sparse checkout
+of the five files it reads and no installs: well under a minute, billed as one.
+Twelve runs a day is about 360 of the 2,000 free Actions minutes a month.
+
+Run it by hand with `npm run -s monitor` (or
+`python3 scripts/release/monitor.py check --base https://data.wingfoil.ie/ --site …`);
+its tests are `npm run -s test:monitor`, and CI runs them in the ingest job.
+
 ## One-time setup
 
 Nothing here is needed for CI or the nightly; they work as soon as the workflows
@@ -189,6 +244,7 @@ a promote moves the image tags only.
    | `STAGING_FORECAST_BASE_URL` | variable | `https://data.wingfoil.ie/` (production's data, read-only) |
    | `PRODUCTION_SITE_URL` | variable | `https://wingfoil.ie` |
    | `PRODUCTION_FORECAST_BASE_URL` | variable | `https://data.wingfoil.ie/` |
+   | `MONITOR_SITE_URL` | variable | `https://wingfoil.ie`, once the first promote has deployed it |
 
    Add the staging site's origin to the data bucket's CORS rule
    (`force5/deploy/r2-cors.example.json`), or the staging smoke test fails on
