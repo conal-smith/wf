@@ -47,6 +47,10 @@ market/api/dist
 !data/locations/*.json
 !src/**
 !force5/src/**
+# The shared test helper that tests under src/ and community/ import; tsc -b
+# type-checks them in the site build (the fixtures it reads are not needed).
+!tests/
+!tests/bundles.ts
 !force5/assets/**
 # Never build from a local install, build output, cache or credential file.
 **/node_modules
