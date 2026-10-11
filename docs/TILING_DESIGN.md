@@ -181,7 +181,7 @@ weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/{square}.json
   archive would mean range reads, harder caching and a rebuilt archive for
   each run.
 - **Pruning gets simpler.** Delete the superseded run's directory. No URL
-  bookkeeping. (As built, not at once: see "As built: keeping superseded runs".)
+  bookkeeping. (As built, not at once: see "As built: the fix pass".)
 
 **Request cost.** The estimate is about 850 objects per HARMONIE run (14
 tiles × 61 hours) and about 1,200 per ICON-EU run (16 × 73). All live models
@@ -529,7 +529,9 @@ commit against this one, Playwright counting response bodies:
 The four frames on load are two the page asks for before it knows its opening
 time (the run's first frame and the one after) and two it then shows (the
 opening hour and the next): that first pair is wasted in both layouts and is
-not a tiling matter. A phone's first view downloads 44% of what it did. A
+not a tiling matter. (It has since gone, so both rows on load now fetch half the
+tiles: see "As built: the fix pass".) A phone's first view downloads 44% of
+what it did. A
 desktop showing all of Ireland downloads 13% more, because nine native tiles
 compress less well than one whole frame (borders, and nine shorter windows),
 and the view needs all of them; the level rule sends a desktop native there
@@ -598,7 +600,13 @@ has no frames.
   spot's square is always among those read. Its blend chart already read the
   one square of the models it needs.
 
-## As built: keeping superseded runs
+## As built: the fix pass
+
+A review of the four steps above found readers left without data when a run
+moved on, a pole row dropped, two unsafe merges and a path check a URL could
+slip past, and downloads the page threw away. What changed:
+
+### Keeping superseded runs
 
 Decision 4 deleted the superseded run's directory, and the publisher did it the moment
 its new pointer was in place. That is exactly when readers still hold the old pointer:
@@ -611,8 +619,8 @@ Yr keeps an old tileset at least 45 minutes for the same reason.
   `[{"base": "harmonie-…-1a2b3c4d/", "at": "2026-10-11T08:52:00Z"}]`, the time being
   the swap's. The publisher works it out from the pointer in the bucket it is replacing,
   inside the compare-and-swap, so the record cannot be lost apart from the swap
-  (`squares.retire`); `rundir.write_run` does the same on disk. Six hours of entries,
-  at most 24.
+  (`squares.retire`); `rundir.write_run` and the blend's writer (scripts/runs.mjs) do
+  the same on disk. Six hours of entries, at most 24.
 - **Nothing is deleted at the swap.** The local prune and the bucket sweep keep a run
   directory some pointer superseded less than the grace period ago (60 minutes,
   `--grace-minutes` or `FORCE5_SUPERSEDED_GRACE_MINUTES`) and delete it after that. The
@@ -623,35 +631,53 @@ Yr keeps an old tileset at least 45 minutes for the same reason.
   sweep is deleting; once its pointer is in place the publisher lists the directory and
   uploads anything missing.
 
-- **Recovering when one is gone anyway** (a pointer cached past the grace, a sweep run
-  by hand). Every reader of a run's files treats a failure as "the run may have been
-  replaced": it reads the model's pointer again past its cache and, when that names
-  another run directory, tries once more from there.
-  - Squares in the browser: `withSpots` (force5/src/manifests.ts, `newerPointer`).
-    `useSpotSquares` and `useBlendSquares` also read again a square that still fails,
-    after 5 s, 30 s and 2 min, instead of keeping the model unavailable until the
-    next sweep of the manifests; the blend's first failed square asks for its pointer
-    again out of turn (`useSpotBlend`'s `recheck`).
-  - Tiles: a frame that fails to load already looked for a newer run
-    (`loadNewerRun`); now a tile the map needs for a pan or a zoom, or one hour of a
-    bare point's series, does the same, once per run on screen (`onTilesFailed` in
-    windLayer.ts, `recoverRun` in App.tsx). Before, the map kept drawing the coarser
-    tile, or blank, until the hour changed. `loadNewerRun` compares run
-    directories, not run times, so the same run republished with new content counts.
-  - The forecast server and the spot page (`loadCatalog` in mcp/api/forecast.ts,
-    through the source's new `forget`) and a thread's spot card (`readSpotSeries`).
-- **Hardening.** A path inside a run is segments of `A–Z a–z 0–9 _ . -` only, in
-  both languages (`checkRunPath`, `squares.run_path`): a browser resolves `%2e%2e`
-  as `..` and drops tabs and newlines, so the old check, which only refused `..`,
-  a leading `/` and a backslash, let an encoded path climb out of `base`. The square loaders merge
-  into records with no prototype and refuse a spot found in two squares
-  (`mergeSpots`), the blend's loader included, which used to keep whichever square
-  came last; a place called `constructor` or `__proto__` is a place like any
-  other. The publisher reads the riding-place catalogue by the adapters' own rule
-  and refuses a square holding a spot the catalogue does not put in it.
+docs/LIVE_FORECAST_PIPELINE.md, "Deleting what is superseded", has the details.
+
+### Recovering when a run's file is gone anyway
+
+A pointer cached past the grace, or a sweep run by hand with a shorter one, can still
+leave a reader asking for a deleted file. Every reader of a run's files now treats a
+failure as "the run may have been replaced": it reads the model's pointer again past
+its cache and, when that names another run directory, tries once more from there.
+
+- Squares in the browser: `withSpots` (force5/src/manifests.ts, `newerPointer`).
+  `useSpotSquares` and `useBlendSquares` also read again a square that still fails,
+  after 5 s, 30 s and 2 min, instead of keeping the model unavailable until the next
+  sweep of the manifests; the blend's first failed square asks for its pointer again
+  out of turn (`useSpotBlend`'s `recheck`).
+- Tiles: a frame that fails to load already looked for a newer run (`loadNewerRun`);
+  now a tile the map needs for a pan or a zoom, or one hour of a bare point's series,
+  does the same, once per run on screen (`onTilesFailed` in windLayer.ts, `recoverRun`
+  in App.tsx). Before, the map kept drawing the coarser tile, or blank, until the hour
+  changed. `loadNewerRun` compares run directories, not run times, so the same run
+  republished with new content counts.
+- The forecast server and the spot page (`loadCatalog` in mcp/api/forecast.ts, through
+  the source's new `forget`) and a thread's spot card (`readSpotSeries`).
+
+### The rest
+
 - **A new run does not blank the dock.** `useSpotSquares` keeps the last answer for
   the same squares on screen while a new run's squares are read (`shownAnswer`);
   before, the blend chart and the waves and weather rows went empty each time a run
   arrived. An answer for other squares is still never shown for a single place.
-
-docs/LIVE_FORECAST_PIPELINE.md, "Deleting what is superseded", has the details.
+- **Hardening.** A path inside a run is segments of `A–Z a–z 0–9 _ . -` only, in
+  both languages (`checkRunPath`, `squares.run_path`): a browser resolves `%2e%2e`
+  as `..` and drops tabs and newlines, so the old check, which only refused `..`, a
+  leading `/` and a backslash, let an encoded path climb out of `base`. The square
+  loaders merge into records with no prototype and refuse a spot found in two squares
+  (`mergeSpots`), the blend's loader included, which used to keep whichever square
+  came last; a place called `constructor` or `__proto__` is a place like any other.
+  The publisher reads the riding-place catalogue by the adapters' own rule and
+  refuses a square holding a spot the catalogue does not put in it.
+- **The first frame is the opening frame.** The page asked for the run's first frame,
+  and prefetched the second, before it knew the time it opens on (its map time was
+  still unset, which read as frame 0), and then for the opening hour and the next.
+  Now the opening time is set by a layout effect before the first paint, from the
+  strip the dock shows, and no frame is asked for until there is a map time; the
+  first time set reaches the map without the scrub throttle's wait. On the e2e site
+  (its synthetic HARMONIE, the clock at the sample's, Playwright counting responses
+  under `weather/` and `marine/`), a phone's load went from 16 HARMONIE tiles (hours
+  0, 1, 17 and 18) and 29 forecast requests to 8 tiles (hours 17 and 18) and 21
+  requests, 1.29 MB to 0.75 MB of response bodies; a desktop's from 38 tiles and 51
+  requests to 19 and 32, 2.77 MB to 1.49 MB. The synthetic fields compress unlike
+  real weather, so the bytes say little; the files halve.

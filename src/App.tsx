@@ -9,6 +9,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -314,9 +315,22 @@ export default function App() {
         setManifest(validated);
         const places = ridingLocations(s) as Spot[];
         setSpots(places);
-        setSelectedTime(
-          validated.frames[nearestFrame(validated.frames)].validTime,
-        );
+        // The opening time is the strip's (the layout effect below), worked out
+        // before the first frame is asked for, so that frame is the one shown.
+        // Only a run with no daylight hour in the strip opens on the nearest frame.
+        const now = Date.now();
+        if (
+          !stripColumns(
+            dockColumns(
+              [{ id: validated.model, manifest: validated, ensemble: false }],
+              now,
+            ),
+            now,
+          ).length
+        )
+          setSelectedTime(
+            validated.frames[nearestFrame(validated.frames)].validTime,
+          );
         const linked = spotFromSearch(location.search, places) as
           Spot | undefined;
         setPoint(
@@ -441,8 +455,10 @@ export default function App() {
   stripRef.current = strip;
 
   // The page opens on now, or first light when it is dark; after that the
-  // time is the reader's.
-  useEffect(() => {
+  // time is the reader's. A layout effect, so the opening time is in before
+  // the first paint and before any frame is asked for: until it is, there is
+  // no map time, and no frame is loaded (the frame effect below).
+  useLayoutEffect(() => {
     if (chosenTime.current || !strip.length) return;
     setSelectedTime(strip[openingColumn(strip, Date.now())].validTime);
   }, [strip]);
@@ -480,7 +496,8 @@ export default function App() {
   }, []);
 
   /* ---- the map's frame follows the time, a little behind a fast scrub ---- */
-  const mapTime = useThrottled(selectedTime, 200);
+  // The first time set goes to the map at once; a scrub after it is throttled.
+  const mapTime = useThrottled(selectedTime, 200) ?? selectedTime;
   const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
     modelEpoch.current++;
     setManifest(next);
@@ -505,7 +522,9 @@ export default function App() {
           : nearestFrame(manifest.frames, Date.parse(mapTime))))
       : 0;
   useEffect(() => {
-    if (!manifest || pendingModel) return;
+    // No frame before the page knows its opening time: one asked for sooner
+    // (the run's first, and its prefetch) would only be thrown away.
+    if (!manifest || pendingModel || !mapTime) return;
     const controller = new AbortController();
     const epoch = modelEpoch.current;
     const current = () =>
@@ -532,7 +551,7 @@ export default function App() {
         setFrameError(e.message);
       });
     return () => controller.abort();
-  }, [manifest, requestedIndex, retry, pendingModel]);
+  }, [manifest, requestedIndex, retry, pendingModel, !mapTime]);
 
   const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;

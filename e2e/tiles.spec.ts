@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
+import { SAMPLE_CLOCK } from "./columns";
 import { tileOf } from "../force5/src/f5tile";
 
 /**
@@ -104,4 +105,32 @@ test("a desktop showing all of Ireland asks for the native tiles and never an ab
   expect(
     asked.filter(([level, x, y]) => absent.has(`${level}/${x}/${y}`)),
   ).toEqual([]);
+});
+
+test("the first frame the page asks for is the one it opens on", async ({
+  page,
+}) => {
+  // The page used to ask for the run's first hour, and prefetch the second,
+  // before it knew its opening time, then for the hour it opens on: the first
+  // pair was thrown away on every load.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const asked = tilesAsked(page);
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+    timeout: 30000,
+  });
+  await expect.poll(() => asked.length, { timeout: 20000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(1500);
+  const hours = [...new Set(asked.map(([, , , hour]) => hour))];
+  // The opening hour first, then the next, prefetched; nothing else.
+  expect(hours).toHaveLength(2);
+  expect(hours[0]).toBeGreaterThan(0);
+  expect(hours[1]).toBe(
+    harmonie.frames[
+      harmonie.frames.findIndex(
+        (frame: { hour: number }) => frame.hour === hours[0],
+      ) + 1
+    ].hour,
+  );
 });
