@@ -1,5 +1,5 @@
 import { SAMPLE_CLOCK } from "./columns";
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
 import { readSampleRun } from "./sample";
 
 /**
@@ -291,11 +291,22 @@ test("the reading keeps up with the clock on a thread left open, and stands down
   await expect(windNow(page)).toHaveCount(0);
 });
 
-test("the map opens where it always has for a spot it does not hold", async ({
+test("the map opens as a plain visit would for a spot it does not hold", async ({
   page,
 }) => {
+  // A first visit: no spot, as on `/`.
+  await page.goto("/?spot=atlantis");
+  await expect(page.locator(".dock .dk-name")).toHaveText("All of Ireland", {
+    timeout: 30000,
+  });
+  await expect(page.locator(".spot-marker.active")).toHaveCount(0);
+  // A returning visitor: the spot they chose last, as on `/`, unfocused.
+  await rememberSpot(page, "brandon");
+  await page.evaluate(() => localStorage.clear());
   await page.goto("/?spot=atlantis");
   await expect(page.locator('[data-spot-id="brandon"]')).toHaveClass(/active/, {
     timeout: 30000,
   });
+  await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
+  await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
 });

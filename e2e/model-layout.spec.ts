@@ -1,4 +1,22 @@
-import { expect, test } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
+
+/** Where the dock and the boxes over the chart stand, to a tenth of a pixel. */
+const geometry = (page: Page) =>
+  page.evaluate(() => {
+    const rect = (selector: string) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10);
+    };
+    return {
+      dock: rect(".map-footer"),
+      head: rect(".map-head"),
+      controls: rect(".zbox"),
+      print: rect(".map-print .info-i"),
+      columnWidth: document
+        .querySelector(".dock tr.tt-hour td[data-i]")!
+        .getBoundingClientRect().width,
+    };
+  });
 
 for (const width of [320, 390, 820, 1440]) {
   test(`every model keeps the same dock geometry at ${width}px`, async ({
@@ -6,30 +24,14 @@ for (const width of [320, 390, 820, 1440]) {
   }) => {
     await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
     await page.setViewportSize({ width, height: 900 });
+    // A spot's dock: Brandon Bay, chosen last.
+    await rememberSpot(page, "brandon");
     await page.goto("/");
     await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
       timeout: 30000,
     });
     await page.evaluate(() => document.fonts.ready);
-    const geometry = () =>
-      page.evaluate(() => {
-        const rect = (selector: string) => {
-          const r = document.querySelector(selector)!.getBoundingClientRect();
-          return [r.x, r.y, r.width, r.height].map(
-            (v) => Math.round(v * 10) / 10,
-          );
-        };
-        return {
-          dock: rect(".map-footer"),
-          head: rect(".map-head"),
-          controls: rect(".zbox"),
-          print: rect(".map-print .info-i"),
-          columnWidth: document
-            .querySelector(".dock tr.tt-hour td[data-i]")!
-            .getBoundingClientRect().width,
-        };
-      });
-    const baseline = await geometry();
+    const baseline = await geometry(page);
     for (const model of ["icon-eu", "ecmwf", "harmonie"]) {
       const layers = page.getByRole("button", { name: "Layers", exact: true });
       await layers.click();
@@ -39,13 +41,33 @@ for (const width of [320, 390, 820, 1440]) {
         "true",
       );
       await layers.click();
-      await expect.poll(geometry).toEqual(baseline);
+      await expect.poll(() => geometry(page)).toEqual(baseline);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBe(width);
     }
     // To the strip's end, where the hours are coarser: the same column width.
     await page.getByRole("slider", { name: "Forecast time" }).press("End");
-    await expect.poll(geometry).toEqual(baseline);
+    await expect.poll(() => geometry(page)).toEqual(baseline);
+  });
+
+  test(`the dock with no spot stands as a spot's does, so choosing one moves nothing, at ${width}px`, async ({
+    page,
+  }) => {
+    await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await expect(page.locator(".dock .dk-none")).toBeVisible({
+      timeout: 30000,
+    });
+    await page.evaluate(() => document.fonts.ready);
+    const none = await geometry(page);
+    await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
+    await page.locator(".spot-row").first().click();
+    await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
+    await expect.poll(() => geometry(page)).toEqual(none);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
   });
 }

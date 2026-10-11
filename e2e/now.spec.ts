@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, rememberSpot, test } from "./fixtures";
 import { readSample } from "./sample";
 import { stripAt } from "./columns";
 
@@ -15,6 +15,7 @@ test("the strip opens on now and fades the hours gone, whatever is selected", as
   // An afternoon inside HARMONIE's run: 16:30 Irish time.
   const now = Date.parse(harmonie.runTime) + 2.5 * 3600000;
   await page.clock.setFixedTime(new Date(now));
+  await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
   const strip = stripAt(now);

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { buildPyramid } from "../scripts/f5tile.mjs";
@@ -6,6 +6,10 @@ import { readFileSync } from "node:fs";
 import { spotSquare } from "../force5/src/squares";
 
 const harmonie = readSample("harmonie");
+
+// A spot's dock: Brandon Bay's, as a visitor who chose it last sees it. A
+// first visit opens on no spot (e2e/no-spot.spec.ts).
+test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /**
  * A tide fixture, so the tide row is tested the same way whether or not

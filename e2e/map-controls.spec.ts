@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, rememberSpot, test } from "./fixtures";
 
 test("the chart's controls: zoom and the layers by keyboard, with the credits behind the i", async ({
   page,
@@ -79,6 +79,8 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
       JSON.stringify({ foil: true }),
     ),
   );
+  // And Brandon Bay in the dock, chosen last: the stars' link names it.
+  await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,

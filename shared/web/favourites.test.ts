@@ -37,6 +37,19 @@ describe("favourites", () => {
     expect(f.frequent().map((v) => v.id)).toEqual(["rusheen", "inch", "keel"]);
   });
 
+  it("stamps each opening after the one before, whatever the clock says", () => {
+    const f = localFavourites(memory());
+    f.visit("keel", 100);
+    f.visit("brandon", 100);
+    f.visit("inch", 50);
+    const { visits } = f.get();
+    expect(visits.keel.last).toBe(100);
+    expect(visits.brandon.last).toBe(101);
+    expect(visits.inch.last).toBe(102);
+    f.visit("keel", 500);
+    expect(f.get().visits.keel.last).toBe(500);
+  });
+
   it("tells subscribers of every change", () => {
     const f = localFavourites(memory());
     const seen: string[][] = [];

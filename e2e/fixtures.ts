@@ -24,6 +24,35 @@ export const test = base.extend<{ page: Page }>({
   },
 });
 
+/** Where the map keeps a visitor's stars and the spots they chose (shared/web/favourites). */
+export const SPOTS_KEY = "wingfoil.spots.v1";
+
+/**
+ * Open the map as a visitor who chose `id` before: the dock opens on that
+ * spot, with the chart on the whole of Ireland and nothing focused.
+ *
+ * A first visit opens on no spot at all (src/openingSpot.ts), so a spec about
+ * a spot's dock says which spot, here or with `/?spot=` (which focuses it as a
+ * shared link does). The store is written before the page's own scripts, and
+ * only while it is empty: a spec that stars, chooses or reloads keeps what the
+ * page wrote.
+ */
+export async function rememberSpot(page: Page, id = "brandon") {
+  await page.addInitScript(
+    ([key, id]) => {
+      if (localStorage.getItem(key) !== null) return;
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          starred: [],
+          visits: { [id]: { id, count: 1, last: 1 } },
+        }),
+      );
+    },
+    [SPOTS_KEY, id] as const,
+  );
+}
+
 export { expect } from "@playwright/test";
 export type { Locator, Page } from "@playwright/test";
 

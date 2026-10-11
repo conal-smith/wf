@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, rememberSpot, test } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleColumnsWithoutEcmwf, stripAt } from "./columns";
 
@@ -86,6 +86,8 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
       : route.fulfill({ status: 503, body: "Unavailable" }),
   );
   await page.clock.setFixedTime(SAMPLE_CLOCK);
+  // A spot's dock, so its rows are there to read: Brandon Bay, chosen last.
+  await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
   // Without ECMWF the long range falls to GFS, and the strip says so.

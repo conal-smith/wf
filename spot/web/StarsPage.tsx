@@ -98,12 +98,14 @@ export default function StarsPage() {
     setRider(next);
     savePrefs({ ...loadPrefs(), rider: next });
   };
-  const spotId =
-    new URLSearchParams(window.location.search).get("spot") ?? DEFAULT_SPOT;
+  const named = new URLSearchParams(window.location.search).get("spot");
+  const spotId = named ?? DEFAULT_SPOT;
   const [chartRef, width] = useWidth<HTMLElement>(640);
 
+  // Back to the spot the reader came from, or to the chart as it opens: the
+  // worked example's place is not one to send them to.
   return (
-    <SpotFrame back={mapSpotHref(spotId)}>
+    <SpotFrame back={named ? mapSpotHref(named) : "/"}>
       <main className={s.main()} ref={chartRef}>
         <Headline>
           How the stars <em className={h.soft()}>work</em>
