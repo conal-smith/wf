@@ -47,11 +47,14 @@ export const lostModels = (
  * and the reader's own spots'.
  *
  * Until the squares are in it answers no models, as the availability sweep did
- * before its first answer, and `null` asks for nothing at all. An answer for
- * models or squares that have since changed is never shown — unless `keep` is
- * set: then, for the same models, the last answer stays while the next set of
- * squares is read, which is right for a reader that only adds places (the
- * lights, as the map moves) and wrong for one about a single place.
+ * before its first answer, and `null` asks for nothing at all. While the
+ * squares of new models are read — a new run, every few hours — the last
+ * answer for the same squares stays on screen (`shownAnswer`): the blend chart
+ * and the waves and weather rows would otherwise go blank for a moment each
+ * time. An answer for other squares is never shown — unless `keep` is set:
+ * then the last answer stays while the next set of squares is read, which is
+ * right for a reader that only adds places (the lights, as the map moves) and
+ * wrong for one about a single place, which would be shown another place's.
  *
  * A model whose squares could not be read comes back unavailable (`withSpots`
  * has already tried the run its pointer names now); the squares are then read
@@ -99,12 +102,23 @@ export function useSpotSquaresState(
       window.clearTimeout(timer);
     };
   }, [models, key, attempt]);
-  return state &&
-    state.models === models &&
-    key !== null &&
-    (state.key === key || keep)
-    ? state.answer
-    : NOTHING;
+  return shownAnswer(state, models, key, keep);
+}
+
+/**
+ * What `useSpotSquaresState` shows for the question (`models`, `key`) given the
+ * last answer it has: that answer while it is for the same squares, whichever
+ * models it was read for, or for any squares with `keep`; nothing when nothing
+ * is asked.
+ */
+export function shownAnswer(
+  last: { models: readonly ModelAvailability[]; key: string; answer: SquaresState } | null,
+  models: readonly ModelAvailability[],
+  key: string | null,
+  keep: boolean,
+): SquaresState {
+  if (!last || key === null || !models.length) return NOTHING;
+  return last.key === key || keep ? last.answer : NOTHING;
 }
 
 /** The merged models alone: `useSpotSquaresState` without the squares. */

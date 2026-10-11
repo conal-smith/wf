@@ -623,5 +623,9 @@ Yr keeps an old tileset at least 45 minutes for the same reason.
     directories, not run times, so the same run republished with new content counts.
   - The forecast server and the spot page (`loadCatalog` in mcp/api/forecast.ts,
     through the source's new `forget`) and a thread's spot card (`readSpotSeries`).
+- **A new run does not blank the dock.** `useSpotSquares` keeps the last answer for
+  the same squares on screen while a new run's squares are read (`shownAnswer`);
+  before, the blend chart and the waves and weather rows went empty each time a run
+  arrived. An answer for other squares is still never shown for a single place.
 
 docs/LIVE_FORECAST_PIPELINE.md, "Deleting what is superseded", has the details.
