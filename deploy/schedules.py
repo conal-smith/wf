@@ -109,8 +109,10 @@ BUCKET_ENV = ["S3_BUCKET", "S3_ENDPOINT_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_A
 REQUIRED_ENV = BUCKET_ENV + ["FORCE5_SIDECARS"]
 OPTIONAL_ENV = ["S3_PREFIX", "AWS_REGION", "ECMWF_SOURCE", "FORCE5_BROTLI_QUALITY"]
 PRUNE_SCRIPT = 'exec python /app/force5/ingest/prune.py --bucket "$S3_BUCKET"'
-# Bacalhau starts the clock at submission, so a job queued behind a large one
-# still has its whole importer timeout once it starts.
+# Bacalhau starts the total clock at submission, and refuses a job whose total
+# is not longer than its queue timeout. So the total is the queue, then the
+# importer's whole timeout, then a margin to start the container: a job queued
+# behind a large one still has its full timeout once it starts.
 QUEUE_SECONDS = 3600
 START_MARGIN_SECONDS = 600
 
@@ -165,7 +167,8 @@ def home_compute(jobs):
             "resources": resources_for(job),
             "network": {"type": "Full"},
             "timeouts": {"queueSeconds": QUEUE_SECONDS,
-                         "totalSeconds": (job["timeout_seconds"] or 2700) + START_MARGIN_SECONDS},
+                         "totalSeconds": QUEUE_SECONDS + (job["timeout_seconds"] or 2700)
+                         + START_MARGIN_SECONDS},
         }
         if job["command"] == "prune":
             task = {**task, "entrypoint": ["sh", "-c", PRUNE_SCRIPT], "requiredEnv": BUCKET_ENV}

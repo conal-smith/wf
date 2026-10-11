@@ -194,12 +194,14 @@ status() {
   curl -fsS -H "Authorization: Bearer $token" "http://127.0.0.1:4786/v1/snapshot?live=false" 2>/dev/null | python3 -c '
 import json, sys
 snapshot = json.load(sys.stdin)
-print(f"{\"job\":<16} {\"state\":<10} {\"next (UTC)\":<17} {\"last\":<10} published")
+# No quotes inside f-string expressions: macOS python3 predates Python 3.12.
+row = "{:<16} {:<10} {:<17} {:<10} {}".format
+print(row("job", "state", "next (UTC)", "last", "published"))
 for job in snapshot["jobs"]:
     state = "running" if job.get("running") else ("paused" if job.get("paused") else ("off" if not job.get("enabled") else "idle"))
     upcoming = (job.get("nextDueAt") or "")[5:16].replace("T", " ")
-    published = ", ".join(f"{model} {entry.get(\"run\")}" for model, entry in (job.get("published") or {}).items())
-    print(f"{job[\"id\"]:<16} {state:<10} {upcoming:<17} {job.get(\"lastOutcome\") or \"-\":<10} {published}")
+    published = ", ".join("%s %s" % (model, entry.get("run")) for model, entry in (job.get("published") or {}).items())
+    print(row(job["id"], state, upcoming, job.get("lastOutcome") or "-", published))
 ' || echo "The controller is not answering on 127.0.0.1:4786"
 }
 

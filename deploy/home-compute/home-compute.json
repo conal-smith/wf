@@ -58,7 +58,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -116,7 +116,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -174,7 +174,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -227,7 +227,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -281,7 +281,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -339,7 +339,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -399,7 +399,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -460,7 +460,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3000
+          "totalSeconds": 6600
         },
         "parameters": [
           "--models",
@@ -522,7 +522,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -582,7 +582,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -648,7 +648,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -709,7 +709,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3000
+          "totalSeconds": 6600
         },
         "parameters": [
           "--models",
@@ -767,7 +767,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 2400
+          "totalSeconds": 6000
         },
         "parameters": [
           "--models",
@@ -825,7 +825,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 3900
+          "totalSeconds": 7500
         },
         "parameters": [
           "--models",
@@ -883,7 +883,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 2400
+          "totalSeconds": 6000
         },
         "parameters": [
           "--models",
@@ -946,7 +946,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 1500
+          "totalSeconds": 5100
         },
         "parameters": [
           "--models",
@@ -999,7 +999,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 1200
+          "totalSeconds": 4800
         },
         "parameters": [
           "--models",
@@ -1052,7 +1052,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 1200
+          "totalSeconds": 4800
         },
         "parameters": [
           "--models",
@@ -1105,7 +1105,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 2400
+          "totalSeconds": 6000
         },
         "parameters": [
           "--models",
@@ -1161,7 +1161,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 2400
+          "totalSeconds": 6000
         },
         "parameters": [
           "--models",
@@ -1213,7 +1213,7 @@
         },
         "timeouts": {
           "queueSeconds": 3600,
-          "totalSeconds": 1500
+          "totalSeconds": 5100
         },
         "entrypoint": [
           "sh",
