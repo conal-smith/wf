@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "../fixtures";
+import { expect, rememberSpot, test, type Page } from "../fixtures";
 import { sampleStrip } from "../columns";
 
 /**
@@ -29,6 +29,10 @@ import { sampleStrip } from "../columns";
  */
 
 test.use({ reducedMotion: "reduce" });
+
+// Every state is a returning visitor's, with Brandon Bay chosen last and so
+// in the dock, as the baseline was drawn: a first visit opens on no spot.
+test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /** Where a shot lands, relative to the repo root Playwright is run from. */
 const shot = (state: string, width: number) =>

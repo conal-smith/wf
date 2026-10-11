@@ -101,9 +101,20 @@ export function localFavourites(
     },
     visit(id, now = Date.now()) {
       const prev = state.visits[id];
+      // Stamped after every earlier opening, so the last one chosen is the
+      // latest even when the clock stands still or has been turned back: the
+      // map opens on it next time (src/openingSpot.ts).
+      const latest = Math.max(
+        0,
+        ...Object.values(state.visits).map((v) => v.last),
+      );
       const visits = {
         ...state.visits,
-        [id]: { id, count: (prev?.count ?? 0) + 1, last: now },
+        [id]: {
+          id,
+          count: (prev?.count ?? 0) + 1,
+          last: now > latest ? now : latest + 1,
+        },
       };
       // Keep the list bounded: forget the least recently opened.
       const ids = Object.keys(visits);

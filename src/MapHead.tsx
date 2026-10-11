@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, type RefObject } from "react";
 import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
@@ -20,7 +20,10 @@ export default function MapHead({
   starred,
   dayStars,
   onPick,
+  inputRef,
 }: {
+  /** The field itself, for a "Find a spot" elsewhere on the page to focus. */
+  inputRef?: RefObject<HTMLInputElement | null>;
   spots: readonly Spot[];
   starred: readonly string[];
   /** The selected day's best stars at a place, where it is known. */
@@ -30,7 +33,8 @@ export default function MapHead({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const input = useRef<HTMLInputElement>(null);
+  const own = useRef<HTMLInputElement>(null);
+  const input = inputRef ?? own;
   /** The list closes a moment after the field loses focus, so a tap on it lands. */
   const closing = useRef(0);
   const list = useId();

@@ -268,6 +268,17 @@ text's), `chart-magenta` 5.70:1, `warn` 5.68:1. The pen's mark `pen` is
 4.09:1, which is enough for a stroke and not for words, so its handwriting
 takes `pen-ink` at 4.93:1. Paper on the hovered accent is 5.70:1.
 
+**2026-10-11 — The map has no default place.** It used to open every first
+visit on Brandon Bay, which told a rider in Donegal where to go before they had
+asked. Now the dock opens on the spot in the link (`?spot=`, focused, as a
+shared link always was), else the spot this visitor chose last, else their
+first star, else none (`src/openingSpot.ts`). With none, the chart is the whole
+of Ireland with every light, and the dock keeps its hours (the time that drives
+the chart, its keys and its slider) and puts a line asking for a tap where a
+spot's rows would be, at their height, so choosing a spot moves nothing. A
+point tapped on the open map is read in the dock but not remembered: it is not
+a riding place.
+
 ---
 
 ## Still open

@@ -78,7 +78,8 @@ import {
   stripColumns,
   stripDays,
 } from "./strip";
-import { ridingLocations, spotFromSearch } from "./locations";
+import { ridingLocations } from "./locations";
+import { openingSpot } from "./openingSpot";
 import { takeEarly } from "../force5/src/boot";
 import {
   loadManifest,
@@ -120,7 +121,6 @@ import {
   type Spot,
 } from "../force5/src";
 
-const FIRST_SPOT = "brandon";
 const WIND_KEY = "wingfoil.map.wind.v1";
 const LAYERS_KEY = "wingfoil.map.layers.v1";
 const MORE_KEY = "wingfoil.map.more.v1";
@@ -209,6 +209,12 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const chosenTime = useRef(false);
   const [point, setPoint] = useState<Spot | null>(null);
+  /**
+   * Whether the opening spot has been worked out (it waits for the places):
+   * until then the dock is not drawn, so a returning visitor's spot never
+   * comes in over a moment of "no spot".
+   */
+  const [opened, setOpened] = useState(false);
   const [error, setError] = useState("");
   const [frameError, setFrameError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -271,6 +277,8 @@ export default function App() {
   }, [mapReady, gustDue]);
 
   const dock = useRef<HTMLDivElement>(null);
+  /** "Find a spot…", which the dock with no spot in it points to. */
+  const search = useRef<HTMLInputElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const modelRequest = useRef<AbortController | null>(null);
@@ -335,12 +343,14 @@ export default function App() {
           setSelectedTime(
             validated.frames[nearestFrame(validated.frames)].validTime,
           );
-        const linked = spotFromSearch(location.search, places) as
-          Spot | undefined;
-        setPoint(
-          linked ?? places.find((spot) => spot.id === FIRST_SPOT) ?? places[0],
-        );
-        if (linked) setFocusId(linked.id);
+        // No default place: the spot in the link, else the one this visitor
+        // chose last, else their first star, else none (src/openingSpot.ts).
+        // Only a link focuses the chart on its spot; the others fill the dock
+        // and the chart still opens on the whole of Ireland.
+        const opening = openingSpot(location.search, places, fav.get());
+        setPoint(opening?.spot ?? null);
+        setOpened(true);
+        if (opening?.why === "link") setFocusId(opening.spot.id);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -388,9 +398,10 @@ export default function App() {
   // The lights read the spot squares in view, once the camera settles, and
   // the open spot's and the reader's own wherever they are: never every place.
   const mapView = useViewBounds(mapReady ? controls.current?.map : null);
+  // With no spot open, that is the squares in view and the reader's own.
   const ownPlaces = useMemo(() => {
     const ids = new Set([
-      point?.id ?? FIRST_SPOT,
+      ...(point ? [point.id] : []),
       ...starred,
       ...frequent.map((v) => v.id),
     ]);
@@ -638,7 +649,11 @@ export default function App() {
     [spots],
   );
   const first = useMemo(
-    () => [point?.id ?? FIRST_SPOT, ...starred, ...frequent.map((v) => v.id)],
+    () => [
+      ...(point ? [point.id] : []),
+      ...starred,
+      ...frequent.map((v) => v.id),
+    ],
     [point?.id, starred, frequent],
   );
   // The reader's own blend reads the same squares from every wind model; the
@@ -1112,6 +1127,7 @@ export default function App() {
         <main className="workspace">
           <section className="map-panel" aria-label="Wind chart">
             <MapHead
+              inputRef={search}
               spots={spots}
               starred={starred}
               dayStars={dayStars}
@@ -1243,9 +1259,12 @@ export default function App() {
                       : ""}
                 </span>
               </div>
-              {dockSpot && strip.length > 0 && (
+              {/* With no spot chosen the dock still keeps the time: its hours
+                  drive the chart, and the rows a spot fills ask for one. */}
+              {opened && strip.length > 0 && (
                 <ForecastDock
                   spot={dockSpot}
+                  onFindSpot={() => search.current?.focus()}
                   isPoint={!!picked}
                   pointPending={!!picked && series.pending}
                   more={more}
@@ -1260,8 +1279,10 @@ export default function App() {
                   prefs={prefs}
                   models={models}
                   onWantModels={() => setWantModels(true)}
-                  starred={!picked && starred.includes(dockSpot.id)}
-                  onToggleStar={() => fav.toggle(dockSpot.id)}
+                  starred={
+                    !!dockSpot && !picked && starred.includes(dockSpot.id)
+                  }
+                  onToggleStar={() => dockSpot && fav.toggle(dockSpot.id)}
                   tide={picked ? null : tide.tide}
                   phone={phone}
                   view={view}

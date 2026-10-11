@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
 import { SAMPLE_CLOCK } from "./columns";
 
 /**
@@ -262,11 +262,12 @@ test("an unknown spot says so and offers what it may have meant", async ({
 test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
   page,
 }) => {
+  await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
-  // The dock opens on Brandon Bay, and links to its page.
+  // The dock opens on Brandon Bay, chosen last, and links to its page.
   await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
   await expect(
     page.locator(".dock [data-spot-page-link]"),

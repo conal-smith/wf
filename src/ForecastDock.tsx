@@ -15,12 +15,14 @@ import {
   CloudSun,
   Layers3,
   Navigation2,
+  Search,
   Thermometer,
   Waves,
   Wind,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { Count } from "../ui/Count";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { loopPath } from "../ui/penPaths";
@@ -82,7 +84,14 @@ import { spotHref } from "../force5/src/siteNav";
 export type DockView = "table" | "blend";
 
 interface Props {
-  spot: Spot;
+  /**
+   * The place whose week the dock shows, or null when none has been chosen:
+   * the dock keeps its hours, which drive the chart, and asks for a spot in
+   * place of the rows one would fill.
+   */
+  spot: Spot | null;
+  /** "Find a spot", from the dock with no spot in it. */
+  onFindSpot?: () => void;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
@@ -139,6 +148,11 @@ const tableRows = (isPoint: boolean) =>
   (isPoint ? 0 : ROWS.stars + ROWS.wing) + ROWS.wind + ROWS.from;
 const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
+/** The height of the rows under the hours, as a spot's dock draws them. */
+const rowsUnderHours = (view: DockView, isPoint: boolean, more: boolean) =>
+  (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
+  ROWS.tide +
+  (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0);
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
  * read by their figures, and a word per row took a column of the dock's
@@ -225,7 +239,8 @@ const StripTable = memo(function StripTable({
   sea,
   isPoint,
 }: {
-  spot: Spot;
+  /** None chosen: the days and the hours alone. */
+  spot: Spot | null;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
@@ -240,7 +255,7 @@ const StripTable = memo(function StripTable({
   sea: SeaTemperatureState;
   isPoint: boolean;
 }) {
-  const facing = spot.facing ?? null;
+  const facing = spot?.facing ?? null;
   const full = Math.max(...g.w, 0);
   const cells = (
     key: string,
@@ -252,7 +267,8 @@ const StripTable = memo(function StripTable({
   ) =>
     columns.map((column, at) => {
       const hour = hours?.[at];
-      const night = !hour || !hour.daylight;
+      // The dark is a place's: with none chosen, no hour is hatched.
+      const night = !!spot && (!hour || !hour.daylight);
       const first = at === 0 || columns[at - 1].date !== column.date;
       return (
         <td
@@ -341,7 +357,7 @@ const StripTable = memo(function StripTable({
         <tr className="tt-hour">
           {cells("h", (_, column) => hourLabel(column.time))}
         </tr>
-        {blend ? (
+        {!spot ? null : blend ? (
           <tr className="tt-blend">
             <td colSpan={columns.length} className="d0 blend-cell">
               {blend}
@@ -403,12 +419,14 @@ const StripTable = memo(function StripTable({
             )}
           </>
         )}
-        <tr className="tt-tide">
-          <td colSpan={columns.length} className="d0">
-            <TideRow tide={tide} columns={columns} days={days} g={g} />
-          </td>
-        </tr>
-        {more && (
+        {spot && (
+          <tr className="tt-tide">
+            <td colSpan={columns.length} className="d0">
+              <TideRow tide={tide} columns={columns} days={days} g={g} />
+            </td>
+          </tr>
+        )}
+        {spot && more && (
           <MoreRows
             columns={columns}
             cells={cells}
@@ -818,6 +836,7 @@ export default function ForecastDock(props: Props) {
     more,
     onMore,
     marine,
+    onFindSpot,
   } = props;
   const cw = phone ? 52 : 62;
   const label = phone ? 28 : 32;
@@ -830,13 +849,15 @@ export default function ForecastDock(props: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   useEffect(() => {
-    if (view === "blend" && !isPoint) onWantModels?.();
-  }, [view, isPoint]);
+    if (view === "blend" && !isPoint && spot) onWantModels?.();
+  }, [view, isPoint, !spot]);
   const penClip = `pen-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
   // The scroll that brings each hour under the cursor, and where the cursor
   // stands at a scroll: still in the middle through the week, walking out to
   // the ends so the first hour sits against the labels (see `stripTrack`).
   const track = useMemo(() => stripTrack(g, wrapWidth), [g, wrapWidth]);
+  const shape = useRef({ g, track });
+  shape.current = { g, track };
   const cursor = useRef<HTMLDivElement>(null);
   const placeCursor = () => {
     const el = wrap.current;
@@ -854,21 +875,24 @@ export default function ForecastDock(props: Props) {
   // is read for it, and for the waves and weather rows, and nothing else.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
   const square = useMemo(
-    () => (isPoint ? null : [spotSquare(spot.lat, spot.lon)]),
-    [isPoint, spot.lat, spot.lon],
+    () => (isPoint || !spot ? null : [spotSquare(spot.lat, spot.lon)]),
+    [isPoint, spot?.lat, spot?.lon],
   );
   const blendModels = useSpotSquares(
-    view === "blend" ? models : NO_MODELS,
+    view === "blend" && spot ? models : NO_MODELS,
     square,
   );
-  const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
+  const marineModels = useSpotSquares(
+    more && spot ? marine : NO_MODELS,
+    square,
+  );
+  const named = isPoint || !spot ? undefined : spot.id;
   const blend = useBlend(
-    view === "blend" && !isPoint ? blendModels : NO_MODELS,
+    view === "blend" && named ? blendModels : NO_MODELS,
     prefs.blendModels,
-    spot.id,
+    named,
     axis,
   );
-  const named = isPoint ? undefined : spot.id;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, named, axis);
   const sea = useSpotSeaTemperature(more ? named : undefined);
@@ -882,7 +906,7 @@ export default function ForecastDock(props: Props) {
     return niceMax(convert(peak, prefs.units));
   }, [blend.stats, prefs.units]);
   const blendNode = useMemo(() => {
-    if (view !== "blend") return null;
+    if (view !== "blend" || !spot) return null;
     if (!blend.lines.length)
       return <p className="blend-empty">Reading the models…</p>;
     const nights = dayNights(
@@ -918,8 +942,8 @@ export default function ForecastDock(props: Props) {
     g,
     prefs.units,
     reducedMotion,
-    spot.lat,
-    spot.lon,
+    spot?.lat,
+    spot?.lon,
   ]);
 
   useLayoutEffect(() => {
@@ -947,11 +971,17 @@ export default function ForecastDock(props: Props) {
     if (!el) return;
     // The column's centre under the cursor.
     const left = track.scrollFor(index);
-    if (Math.abs(el.scrollLeft - left) < 1) return placeCursor();
-    const animate = smooth && !reducedMotion;
-    clearTimeout(scrollEnd.current);
     // Where the browser will actually stop: the strip's own end, at most.
     const reach = Math.min(left, el.scrollWidth - el.clientWidth);
+    // Already there, unless a scroll asked for a moment ago is still carrying
+    // the strip somewhere else: the opening hour, set just after the strip
+    // filled out and asked for its first, must stop that one where it stands.
+    const going = programmatic.current;
+    const elsewhere = !!going && Math.abs(going.left - reach) >= 1;
+    const here = Math.abs(el.scrollLeft - left) < 1;
+    if (here && !elsewhere) return placeCursor();
+    const animate = smooth && !reducedMotion && !here;
+    clearTimeout(scrollEnd.current);
     programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
   };
@@ -960,7 +990,7 @@ export default function ForecastDock(props: Props) {
     scrollTo(selected, true);
   }, [selected, track, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
-  const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
+  const placeKey = !spot ? "" : isPoint ? `${spot.lat},${spot.lon}` : spot.id;
   useLayoutEffect(() => {
     fromScroll.current = -1;
     scrollTo(selected, false);
@@ -980,7 +1010,12 @@ export default function ForecastDock(props: Props) {
     scrollFrame.current = requestAnimationFrame(() => {
       scrollFrame.current = 0;
       const el = wrap.current;
-      if (!el) return;
+      // A frame late, the strip may have filled out and the time been set
+      // and scrolled to since the scroll that asked for it (the browser
+      // re-snapping as the columns arrive does that on load): read nothing
+      // from it then, and read the strip as it is now, not as it was.
+      if (!el || programmatic.current) return;
+      const { g, track } = shape.current;
       const i = columnAtX(g, track.timeAt(el.scrollLeft));
       fromScroll.current = i;
       onSelect(i, false);
@@ -1074,6 +1109,7 @@ export default function ForecastDock(props: Props) {
     if (h === null) return null;
     const lo = Math.min(...tide.curve.curve);
     const hi = Math.max(...tide.curve.curve);
+    if (!spot) return null;
     const top =
       ROWS.day +
       ROWS.hour +
@@ -1085,70 +1121,94 @@ export default function ForecastDock(props: Props) {
   }, [tide, column, selected, g, view]);
 
   return (
-    <section className="dock" aria-label={`Forecast for ${spot.name}`}>
-      <div className="dk-head">
-        {!isPoint && (
-          <StarToggle
-            on={starred}
-            name={spot.name}
-            onToggle={onToggleStar}
-            size={19}
-          />
-        )}
-        <h2 className="dk-name">{spot.name}</h2>
-        {/* A point's place name is a guess at where it is, so its
-            coordinates stay; a riding place's name is enough on its own. */}
-        {isPoint && spot.county && (
-          <span className="dk-coords">{spot.county}</span>
-        )}
-        <div className="dk-acts">
-          <Segmented
-            className="dk-view"
-            aria-label="Show the hours as"
-            options={[
-              { value: "table", label: "Table" },
-              { value: "blend", label: "Blend", disabled: isPoint },
-            ]}
-            value={view}
-            onChange={onView}
-          />
-          {!isPoint && (
+    <section
+      className={`dock${spot ? "" : " is-none"}`}
+      aria-label={
+        spot ? `Forecast for ${spot.name}` : "Forecast, no spot chosen"
+      }
+    >
+      {!spot ? (
+        // The head as a spot's: a name in its place and the one filled action
+        // at the right, so the dock stands just as tall either way.
+        <div className="dk-head">
+          <h2 className="dk-name">All of Ireland</h2>
+          <div className="dk-acts">
             <Button
               variant="primary"
               size="sm"
-              href={spotHref(spot.id)}
-              data-spot-page-link
+              onClick={onFindSpot}
+              data-find-spot
             >
-              Spot page →
+              <Search size={13} strokeWidth={1.5} aria-hidden="true" />
+              Find a spot
             </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="dk-head">
+          {!isPoint && (
+            <StarToggle
+              on={starred}
+              name={spot.name}
+              onToggle={onToggleStar}
+              size={19}
+            />
           )}
-          {/* The dock's one fold: the waves, the sky, the air, the rain and
+          <h2 className="dk-name">{spot.name}</h2>
+          {/* A point's place name is a guess at where it is, so its
+            coordinates stay; a riding place's name is enough on its own. */}
+          {isPoint && spot.county && (
+            <span className="dk-coords">{spot.county}</span>
+          )}
+          <div className="dk-acts">
+            <Segmented
+              className="dk-view"
+              aria-label="Show the hours as"
+              options={[
+                { value: "table", label: "Table" },
+                { value: "blend", label: "Blend", disabled: isPoint },
+              ]}
+              value={view}
+              onChange={onView}
+            />
+            {!isPoint && (
+              <Button
+                variant="primary"
+                size="sm"
+                href={spotHref(spot.id)}
+                data-spot-page-link
+              >
+                Spot page →
+              </Button>
+            )}
+            {/* The dock's one fold: the waves, the sky, the air, the rain and
               the sea, under the rows that are always there. Up to open, as a
               sheet along the foot of the screen grows upwards. */}
-          <Button
-            variant="pill"
-            size="sm"
-            icon
-            className="dk-chev"
-            aria-label={
-              more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
-            }
-            title={more ? "Fewer rows" : "More rows"}
-            aria-expanded={more}
-            onClick={() => onMore(!more)}
-          >
-            <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
-              <path
-                d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
-                fill="none"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Button>
+            <Button
+              variant="pill"
+              size="sm"
+              icon
+              className="dk-chev"
+              aria-label={
+                more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
+              }
+              title={more ? "Fewer rows" : "More rows"}
+              aria-expanded={more}
+              onClick={() => onMore(!more)}
+            >
+              <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
+                <path
+                  d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
+                  fill="none"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
           under the cursor are the slider a finger and a mouse use, and this
@@ -1205,7 +1265,7 @@ export default function ForecastDock(props: Props) {
           <div className="dk-labs">
             <div aria-hidden="true" style={{ height: ROWS.day }} />
             <div aria-hidden="true" style={{ height: ROWS.hour }} />
-            {view === "blend" ? (
+            {!spot ? null : view === "blend" ? (
               <div
                 aria-hidden="true"
                 className="dk-lab-blend"
@@ -1257,8 +1317,9 @@ export default function ForecastDock(props: Props) {
               </>
             )}
             {/* The tide's curve needs no name, nor its times a unit. */}
-            <div aria-hidden="true" style={{ height: ROWS.tide }} />
-            {more &&
+            {spot && <div aria-hidden="true" style={{ height: ROWS.tide }} />}
+            {spot &&
+              more &&
               MORE_ROWS.map((key) => (
                 <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
                   <RowLabel
@@ -1317,9 +1378,7 @@ export default function ForecastDock(props: Props) {
               height={
                 ROWS.day +
                 ROWS.hour +
-                (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
-                ROWS.tide +
-                (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0)
+                (spot ? rowsUnderHours(view, isPoint, more) : 0)
               }
               aria-hidden="true"
             >
@@ -1329,7 +1388,7 @@ export default function ForecastDock(props: Props) {
               <g clipPath={`url(#${penClip})`}>
                 {loops.map((loop) => (
                   <path
-                    key={`${spot.id}-${loop.key}`}
+                    key={`${spot?.id}-${loop.key}`}
                     className="pen-loop"
                     d={loop.d}
                     pathLength={1}
@@ -1357,6 +1416,26 @@ export default function ForecastDock(props: Props) {
             aria-hidden="true"
           />
         </div>
+        {/* No spot: where its rows would be, the ask for one, as tall as
+            they would stand (the rows a spot opens with, in the same view
+            and with the same fold), so choosing one moves nothing. */}
+        {!spot && (
+          <div
+            className="dk-none"
+            style={{
+              height: rowsUnderHours(view, false, more),
+              paddingLeft: label,
+            }}
+          >
+            <p className="dk-none-ask">
+              Tap a light <Count value={4} tone="strong" className="dk-light" />{" "}
+              on the chart for its week.
+            </p>
+            <p className="dk-none-note">
+              Next time the map opens on the last spot you chose.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

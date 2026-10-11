@@ -1,4 +1,8 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
+
+// The map as a returning visitor has it, with a spot's whole week in the dock
+// (Brandon Bay's, chosen last): the most it draws on load.
+test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /**
  * Performance budgets: what each page downloads, how often, and whether it

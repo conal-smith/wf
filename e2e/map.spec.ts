@@ -1,4 +1,10 @@
-import { expect, steadyFrames, test, type Page } from "./fixtures";
+import {
+  expect,
+  rememberSpot,
+  steadyFrames,
+  test,
+  type Page,
+} from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { readSample } from "./sample";
 
@@ -443,6 +449,8 @@ test("an unavailable basemap says so, and the dock still reads the forecast", as
   await page.route("https://tiles.openfreemap.org/planet", (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
+  // A returning visitor's spot: the dock reads it with no basemap drawn.
+  await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".map-error")).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
