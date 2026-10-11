@@ -573,7 +573,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models wind-obs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models forecast-archive $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models verify $R2
 
-# Retention: the bucket sweep, a few times a day, any machine. --dry-run first.
+# Retention: the bucket sweep, hourly at :10, any machine. --dry-run first.
 docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
   /app/force5/ingest/prune.py --bucket wingfoil-forecast \
   --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com --dry-run
@@ -760,7 +760,11 @@ as MET Norway keeps an old tileset at least 45 minutes:
   that long ago is kept whatever its age; an entry whose time cannot be read counts as
   just now.
 - **The publisher deletes nothing.** The bucket sweep below deletes a superseded run
-  directory once its grace is over and it has passed the sweep's own age guard. Locally,
+  directory once its grace is over and it has passed the sweep's own age guard, so it
+  runs every hour (at :10 in the generated Home Compute and Cloudflare schedules,
+  `deploy/schedules.py`): a superseded run leaves the bucket six to seven hours after it
+  was published. Run once a day, as it was while the publisher still deleted at the
+  swap, it left each one there for up to 30 hours. Locally,
   the worker's prune after each publish keeps the replaced run for the grace period and
   the hourly prune job collects it.
 - **A reused directory is put back.** The same content always lands in the same
@@ -823,8 +827,8 @@ bucket-side equivalent of the local `prune_published`, sharing its
    changes with the day, or a run directory a republish of the same content reuses —
    keeps its old `LastModified` and would look both unreferenced and long past the
    guard. Every read aborts on an unreadable manifest and contributes to `noPointer`.
-   The last read costs a GET per pointer per directory deleted; the sweep runs a few
-   times a day and deletes a few dozen directories at most.
+   The last read costs a GET per pointer per directory deleted; the sweep runs hourly
+   and deletes a few directories each time.
 
 `--bucket` must be given **explicitly**; it is deliberately not defaulted from
 `S3_BUCKET`, because the scheduler's environment carries that for the worker and
