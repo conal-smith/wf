@@ -264,14 +264,19 @@ def write_with_sidecars(path, data, quality=None, sidecars=None):
     per object, chosen by `publish_s3.put_immutable` — which reuses the `.br`
     sidecar when one is here, rather than compressing the same bytes twice.
 
-    Each file is replaced atomically, and the frame itself is written first, so
-    a job killed part way leaves a readable frame with no sidecar rather than a
-    sidecar that does not match the frame beside it. Caddy falls back to the
-    plain file when a sidecar is absent, so that state serves correctly too.
+    Each file is replaced atomically. Any sidecar already beside the path goes
+    first, then the frame itself is written, then its new sidecars: so a job
+    killed part way leaves a readable frame with no sidecar rather than a
+    sidecar that does not match the frame beside it, and a staging directory
+    reused by a job with sidecars turned off (an interrupted import, retried
+    with `FORCE5_SIDECARS=0`) keeps none of the old run's. Caddy falls back to
+    the plain file when a sidecar is absent, so that state serves correctly too.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     wanted = sidecars_wanted() if sidecars is None else sidecars
+    for suffix in SIDECARS:
+        Path(str(path) + suffix).unlink(missing_ok=True)
     bodies = {"": data, **(compress(data, quality) if wanted else {})}
     for suffix, body in bodies.items():
         target = Path(str(path) + suffix)

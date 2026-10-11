@@ -187,6 +187,22 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in path.parent.iterdir()),
                              ["000-abc.bin", "000-abc.bin.br", "000-abc.bin.gz"])
 
+    def test_rewriting_a_file_never_leaves_the_old_sidecars_beside_it(self):
+        # An interrupted import's staging directory, reused by a job with
+        # sidecars turned off: Caddy would serve the old .br for the new file.
+        import brotli
+        old, new = b"old frame" * 50, b"new frame" * 50
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "t" / "000.bin"
+            f5bin.write_with_sidecars(path, old, sidecars=True)
+            f5bin.write_with_sidecars(path, new, sidecars=False)
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ["000.bin"])
+            self.assertEqual(path.read_bytes(), new)
+            # With them on, the new ones replace the old.
+            f5bin.write_with_sidecars(path, old, sidecars=True)
+            f5bin.write_with_sidecars(path, new, sidecars=True)
+            self.assertEqual(brotli.decompress(Path(str(path) + ".br").read_bytes()), new)
+
     def test_publish_frame_writes_the_frames_tiles_named_for_its_hour_inside_the_run(self):
         """The run directory is named for its content (rundir.py), so the files need not be."""
         import f5tile

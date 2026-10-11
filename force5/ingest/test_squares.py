@@ -404,6 +404,19 @@ class RunDirectoryTests(unittest.TestCase):
                           "t/0/2/0/000.bin", "t/0/3/0/000.bin", "t/1/1/0/000.bin"])
         self.assertEqual(pointer["base"], self.write()["base"])
 
+    def test_a_reused_staging_directory_keeps_no_stale_sidecar(self):
+        # An interrupted import wrote this hour with sidecars; the retry, with
+        # them off, rewrites the tile and must not leave the old .br beside it.
+        for stale in ("t/0/2/0/000.bin", "spots/n52w008.json"):
+            f5bin.write_with_sidecars(self.output / PREFIX / stale, b"old", sidecars=True)
+        with patch.dict(os.environ, {f5bin.SIDECARS_ENV: "0"}):
+            pointer = self.write()
+        directory = self.output / pointer["base"]
+        self.assertEqual(sorted(path.relative_to(directory).as_posix()
+                                for path in directory.rglob("*") if path.is_file()),
+                         ["spots/n52w008.json", "spots/n52w012.json",
+                          "t/0/2/0/000.bin", "t/0/3/0/000.bin", "t/1/1/0/000.bin"])
+
     def test_a_wind_frame_that_names_a_file_is_refused(self):
         manifest = run_manifest()
         manifest["frames"][0]["url"] = "weather/harmonie-eps-2026091312-2h-v1/frames/000.bin"
