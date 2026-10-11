@@ -13,7 +13,8 @@ COPY mcp/ ./mcp/
 COPY companion/ ./companion/
 # The MCP server reuses the map's unit and sunrise maths, and Gust (the
 # companion) the star ratings and the shore facings; all dependency-free.
-COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts ./force5/src/
+COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts \
+     force5/src/spotData.ts force5/src/squares.ts ./force5/src/
 COPY data/locations/shore-facing.json ./data/locations/
 RUN npx tsc -p market/api/tsconfig.json
 
