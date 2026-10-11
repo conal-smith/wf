@@ -63,7 +63,7 @@ import sys
 from cadence import expected_hours
 import f5bin
 import f5tile
-from prune import bucket_keys, manifest_urls, model_owns
+from prune import bucket_keys, decode_body, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 import rundir
 from squares import (SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, catalogue_squares, check_base,
@@ -1004,9 +1004,7 @@ def read_current(s3, bucket, key):
         if error_code(error) in MISSING_CODES:
             return None, None
         raise
-    body = response["Body"].read()
-    if response.get("ContentEncoding") == "gzip":
-        body = gzip.decompress(body)
+    body = decode_body(response["Body"].read(), response.get("ContentEncoding"))
     try:
         return json.loads(body), response["ETag"]
     except ValueError as error:

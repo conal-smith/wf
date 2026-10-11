@@ -95,6 +95,45 @@ class ManifestUrlsTest(unittest.TestCase):
         self.assertEqual(prune.manifest_urls({"frames": [{"url": 7}, {}]}), set())
 
 
+class DecodeBodyTest(unittest.TestCase):
+    """A body is decoded by what it is, not only by the header that came with it."""
+
+    def test_an_encoded_body_is_decoded(self):
+        import brotli
+        import gzip
+        self.assertEqual(prune.decode_body(gzip.compress(b'{"a":1}'), "gzip"), b'{"a":1}')
+        tile = b"F5T1" + bytes(range(40))
+        self.assertEqual(prune.decode_body(brotli.compress(tile), "br"), tile)
+        self.assertEqual(prune.decode_body(b'{"a":1}', None), b'{"a":1}')
+        # A brotli stream's first byte can be a "[": that is no sign it is JSON.
+        large = b"F5T1" + bytes(70000)
+        stream = brotli.compress(large)
+        self.assertEqual(stream[:1], b"[")
+        self.assertEqual(prune.decode_body(stream, "br"), large)
+
+    def test_a_body_already_decoded_is_kept_whatever_the_header_says(self):
+        # A client or proxy that decoded the body and left Content-Encoding set.
+        tile = b"F5T1" + bytes(range(40))
+        for body, encoding in ((b'{"a":1}', "gzip"), (b"[1,2]", "gzip"), (b'{"a":1}', "br"),
+                               (tile, "br"), (tile, "gzip")):
+            with self.subTest(body=body[:4], encoding=encoding):
+                self.assertEqual(prune.decode_body(body, encoding), body)
+
+    def test_read_object_reads_either(self):
+        import gzip
+
+        class Bucket:
+            def __init__(self, body, encoding):
+                self.response = {"Body": io.BytesIO(body), "ContentEncoding": encoding}
+
+            def get_object(self, Bucket, Key):
+                return self.response
+
+        for body in (gzip.compress(b'{"run":"x"}'), b'{"run":"x"}'):
+            with self.subTest(body=body[:2]):
+                self.assertEqual(prune.read_object(Bucket(body, "gzip"), "b", "k"), b'{"run":"x"}')
+
+
 class PrunePublishedTest(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()

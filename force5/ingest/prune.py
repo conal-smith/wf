@@ -365,11 +365,38 @@ def delete_keys(s3, bucket, keys):
     return deleted
 
 
+TILE_MAGIC = b"F5T1"  # f5tile.MAGIC, without importing numpy here.
+GZIP_MAGIC = b"\x1f\x8b"
+
+
+def decode_body(body, encoding):
+    """An object's bytes as published, from its body and its `ContentEncoding`.
+
+    The header is not trusted blindly: a client, proxy or test double that has
+    already decoded the body may leave it set. A gzip body is decompressed only
+    when it starts with gzip's own magic, which neither a tile nor JSON does. A
+    brotli stream has no magic, and its first byte can be a `[` or a `{`, so a
+    `br` body is kept as it is when it starts as a tile (four bytes no brotli
+    stream of ours begins with) and otherwise decompressed, falling back to the
+    body itself only when that fails and it reads as JSON.
+    """
+    if encoding == "gzip" and body.startswith(GZIP_MAGIC):
+        return gzip.decompress(body)
+    if encoding == "br" and not body.startswith(TILE_MAGIC):
+        import brotli
+        try:
+            return brotli.decompress(body)
+        except brotli.error:
+            if body.lstrip()[:1] in (b"{", b"["):
+                return body
+            raise
+    return body
+
+
 def read_object(s3, bucket, key):
-    """Body bytes, decompressed when the object was stored gzip-encoded."""
+    """Body bytes, decoded when the object was stored encoded (`decode_body`)."""
     response = s3.get_object(Bucket=bucket, Key=key)
-    body = response["Body"].read()
-    return gzip.decompress(body) if response.get("ContentEncoding") == "gzip" else body
+    return decode_body(response["Body"].read(), response.get("ContentEncoding"))
 
 
 def bucket_manifests(s3, bucket, prefix):

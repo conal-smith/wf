@@ -42,7 +42,6 @@ it is ever replaced or pruned.
 """
 import argparse
 from datetime import datetime, timezone
-import gzip
 import json
 import math
 from pathlib import Path
@@ -51,7 +50,7 @@ import sys
 from archive import forecast_key, observation_key, open_archive
 from f5tile import FrameTiles
 from fetch_forecast import ROOT, write_json
-from prune import read_object
+from prune import decode_body, read_object
 from publish_s3 import log_event, make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
 from squares import run_path, with_spot_data
@@ -323,14 +322,7 @@ class BucketSource:
 
     def body(self, url):
         response = self.s3.get_object(Bucket=self.bucket, Key=self.prefix + url)
-        data = response["Body"].read()
-        encoding = response.get("ContentEncoding")
-        if encoding == "gzip":
-            return gzip.decompress(data)
-        if encoding == "br":
-            import brotli
-            return brotli.decompress(data)
-        return data
+        return decode_body(response["Body"].read(), response.get("ContentEncoding"))
 
     def frames(self, model, manifest):
         if not manifest.get("frames"):
