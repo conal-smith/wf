@@ -157,8 +157,12 @@ class ContractTests(unittest.TestCase):
 
     def test_a_frameless_wave_bundle_declares_a_horizon_its_series_covers(self):
         manifest = self.wave_bundle()
-        cases = [{"frames": []},  # No declared horizon at all.
-                 {"frames": [], "horizonHours": 3},  # A horizon the series stops short of.
+        # None declared: the split states the one its series reach, as it does a
+        # wind ensemble's (squares.series_horizon), so the pointer always has one.
+        self.save("fake-wave", {**manifest, "frames": []})
+        published, _, _ = validate_bundle(self.root, "fake-wave", now=NOW)
+        self.assertEqual(published["horizonHours"], 2)
+        cases = [{"frames": [], "horizonHours": 3},  # A horizon the series stops short of.
                  {"frames": [], "horizonHours": 2, "spotSeries": {}},
                  {"horizonHours": 5}]  # Disagrees with the published frame list.
         for change in cases:

@@ -13,7 +13,9 @@
       "previous": {"model": "harmonie", "base": "harmonie-2026091312-2h-v1-0a0b0c0d/"},
       "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
       "now": "2026-09-13T13:30:00Z",
-      "expected": [{"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T13:30:00Z"}]
+      "expected": [
+        {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T13:30:00Z"}
+      ]
     },
     {
       "name": "the same content again replaces nothing",
@@ -47,11 +49,15 @@
       "previous": {
         "model": "harmonie",
         "base": "harmonie-2026091312-2h-v1-1a1b1c1d/",
-        "superseded": [{"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T12:00:00Z"}]
+        "superseded": [
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T12:00:00Z"}
+        ]
       },
       "base": "harmonie-2026091312-2h-v1-0a0b0c0d/",
       "now": "2026-09-13T12:30:00Z",
-      "expected": [{"base": "harmonie-2026091312-2h-v1-1a1b1c1d/", "at": "2026-09-13T12:30:00Z"}]
+      "expected": [
+        {"base": "harmonie-2026091312-2h-v1-1a1b1c1d/", "at": "2026-09-13T12:30:00Z"}
+      ]
     },
     {
       "name": "a time that cannot be read counts as now",
@@ -68,6 +74,149 @@
       "expected": [
         {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T14:30:00Z"},
         {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
+      ]
+    },
+    {
+      "name": "at most 24 entries, the oldest dropped first",
+      "note": "Twenty-five remembered and the run replaced: the 24 newest are kept.",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091319-2h-v1-ffffffff/",
+        "superseded": [
+          {"base": "harmonie-2026091300-2h-v1-00000000/", "at": "2026-09-13T06:00:00Z"},
+          {"base": "harmonie-2026091301-2h-v1-00000001/", "at": "2026-09-13T06:30:00Z"},
+          {"base": "harmonie-2026091302-2h-v1-00000002/", "at": "2026-09-13T07:00:00Z"},
+          {"base": "harmonie-2026091303-2h-v1-00000003/", "at": "2026-09-13T07:30:00Z"},
+          {"base": "harmonie-2026091304-2h-v1-00000004/", "at": "2026-09-13T08:00:00Z"},
+          {"base": "harmonie-2026091305-2h-v1-00000005/", "at": "2026-09-13T08:30:00Z"},
+          {"base": "harmonie-2026091306-2h-v1-00000006/", "at": "2026-09-13T09:00:00Z"},
+          {"base": "harmonie-2026091307-2h-v1-00000007/", "at": "2026-09-13T09:30:00Z"},
+          {"base": "harmonie-2026091308-2h-v1-00000008/", "at": "2026-09-13T10:00:00Z"},
+          {"base": "harmonie-2026091309-2h-v1-00000009/", "at": "2026-09-13T10:30:00Z"},
+          {"base": "harmonie-2026091310-2h-v1-0000000a/", "at": "2026-09-13T11:00:00Z"},
+          {"base": "harmonie-2026091311-2h-v1-0000000b/", "at": "2026-09-13T11:30:00Z"},
+          {"base": "harmonie-2026091312-2h-v1-0000000c/", "at": "2026-09-13T12:00:00Z"},
+          {"base": "harmonie-2026091313-2h-v1-0000000d/", "at": "2026-09-13T12:30:00Z"},
+          {"base": "harmonie-2026091314-2h-v1-0000000e/", "at": "2026-09-13T13:00:00Z"},
+          {"base": "harmonie-2026091315-2h-v1-0000000f/", "at": "2026-09-13T13:30:00Z"},
+          {"base": "harmonie-2026091316-2h-v1-00000010/", "at": "2026-09-13T14:00:00Z"},
+          {"base": "harmonie-2026091317-2h-v1-00000011/", "at": "2026-09-13T14:30:00Z"},
+          {"base": "harmonie-2026091318-2h-v1-00000012/", "at": "2026-09-13T15:00:00Z"},
+          {"base": "harmonie-2026091319-2h-v1-00000013/", "at": "2026-09-13T15:30:00Z"},
+          {"base": "harmonie-2026091320-2h-v1-00000014/", "at": "2026-09-13T16:00:00Z"},
+          {"base": "harmonie-2026091321-2h-v1-00000015/", "at": "2026-09-13T16:30:00Z"},
+          {"base": "harmonie-2026091322-2h-v1-00000016/", "at": "2026-09-13T17:00:00Z"},
+          {"base": "harmonie-2026091323-2h-v1-00000017/", "at": "2026-09-13T17:30:00Z"},
+          {"base": "harmonie-2026091324-2h-v1-00000018/", "at": "2026-09-13T18:00:00Z"}
+        ]
+      },
+      "base": "harmonie-2026091320-2h-v1-eeeeeeee/",
+      "now": "2026-09-13T18:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091314-2h-v1-0000000e/", "at": "2026-09-13T13:00:00Z"},
+        {"base": "harmonie-2026091315-2h-v1-0000000f/", "at": "2026-09-13T13:30:00Z"},
+        {"base": "harmonie-2026091316-2h-v1-00000010/", "at": "2026-09-13T14:00:00Z"},
+        {"base": "harmonie-2026091317-2h-v1-00000011/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091318-2h-v1-00000012/", "at": "2026-09-13T15:00:00Z"},
+        {"base": "harmonie-2026091319-2h-v1-00000013/", "at": "2026-09-13T15:30:00Z"},
+        {"base": "harmonie-2026091320-2h-v1-00000014/", "at": "2026-09-13T16:00:00Z"},
+        {"base": "harmonie-2026091321-2h-v1-00000015/", "at": "2026-09-13T16:30:00Z"},
+        {"base": "harmonie-2026091322-2h-v1-00000016/", "at": "2026-09-13T17:00:00Z"},
+        {"base": "harmonie-2026091323-2h-v1-00000017/", "at": "2026-09-13T17:30:00Z"},
+        {"base": "harmonie-2026091324-2h-v1-00000018/", "at": "2026-09-13T18:00:00Z"},
+        {"base": "harmonie-2026091319-2h-v1-ffffffff/", "at": "2026-09-13T18:30:00Z"}
+      ]
+    },
+    {
+      "name": "an entry exactly six hours old is dropped, one a second younger is kept",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+        "superseded": [
+          {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T08:30:00Z"},
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T08:30:01Z"}
+        ]
+      },
+      "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+      "now": "2026-09-13T14:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T08:30:01Z"},
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
+      ]
+    },
+    {
+      "name": "an offset other than Z is read, and written back as Z",
+      "note": "08:15-05:30 is 13:45 UTC; 10:00+02:00 is 08:00 UTC, more than six hours before.",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+        "superseded": [
+          {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T13:00:00+01:00"},
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T08:15:00-05:30"},
+          {"base": "harmonie-2026091310-2h-v1-8a8b8c8d/", "at": "2026-09-13T10:00:00+02:00"}
+        ]
+      },
+      "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+      "now": "2026-09-13T14:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T12:00:00Z"},
+        {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T13:45:00Z"},
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
+      ]
+    },
+    {
+      "name": "a fraction of a second is read and dropped",
+      "note": "08:30:00.5 is read as 08:30:00, exactly six hours old, and dropped.",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+        "superseded": [
+          {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T12:00:00.999999999Z"},
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T08:30:00.5Z"}
+        ]
+      },
+      "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+      "now": "2026-09-13T14:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T12:00:00Z"},
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
+      ]
+    },
+    {
+      "name": "a time in any other form, or a date that does not exist, counts as now",
+      "note": "Kept, stamped with the swap's time, so they leave six hours later rather than never.",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+        "superseded": [
+          {"base": "harmonie-2026091301-2h-v1-01010101/", "at": "2026-02-30T12:00:00Z"},
+          {"base": "harmonie-2026091302-2h-v1-02020202/", "at": "2026-09-13"},
+          {"base": "harmonie-2026091303-2h-v1-03030303/", "at": "2026-09-13 12:00:00Z"},
+          {"base": "harmonie-2026091304-2h-v1-04040404/", "at": "2026-09-13T12:00:00z"},
+          {"base": "harmonie-2026091305-2h-v1-05050505/", "at": "2026-09-13T12:00Z"},
+          {"base": "harmonie-2026091306-2h-v1-06060606/", "at": "2026-09-13T12:00:00+24:00"},
+          {"base": "harmonie-2026091307-2h-v1-07070707/", "at": "2026-09-13T12:00:00+0100"},
+          {"base": "harmonie-2026091308-2h-v1-08080808/", "at": "20260913T120000Z"},
+          {"base": "harmonie-2026091309-2h-v1-09090909/", "at": "2026-09-13T24:00:00Z"},
+          {"base": "harmonie-2026091310-2h-v1-10101010/", "at": 1789300800},
+          {"base": "harmonie-2026091311-2h-v1-11111111/", "at": "2026-09-13T12:00:00٣Z"}
+        ]
+      },
+      "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+      "now": "2026-09-13T14:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091301-2h-v1-01010101/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091302-2h-v1-02020202/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091303-2h-v1-03030303/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091304-2h-v1-04040404/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091305-2h-v1-05050505/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091306-2h-v1-06060606/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091307-2h-v1-07070707/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091308-2h-v1-08080808/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091309-2h-v1-09090909/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091310-2h-v1-10101010/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091311-2h-v1-11111111/", "at": "2026-09-13T14:30:00Z"},
         {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
       ]
     }

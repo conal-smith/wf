@@ -366,7 +366,10 @@ the build differs from the decisions above:
   called `spots`, which is now the square index, so they are `spotCells`.
 - **A run with no frames states `horizonHours` in the pointer**, set by the
   split from its longest series, so freshness and the dock's axis never need
-  a square.
+  a square. "No frames" is an empty list or none at all, and the series are
+  `spotForecasts`, `spotMembers` and `spotSeries` (a wave or weather run's),
+  each read at its last step; an adapter's own `horizonHours` stands
+  (`squares.series_horizon`, `seriesHorizon` in scripts/runs.mjs).
 - **Only the forecast kinds are version 2** (and, since step 5, the blend: see
   below). Tides, sea temperature, wind observations and the job summaries keep
   schemaVersion 1: they are one file, or a pointer and its station files, and

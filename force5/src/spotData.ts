@@ -181,6 +181,10 @@ export function checkSquare(
       `Spot square ${square} belongs to another model, run or square.`,
     );
   const keys = manifest.spots.keys as readonly string[];
+  // A square is written only for a place that has data, so one with its
+  // envelope alone is not a square of this run (squares.check_square).
+  if (!keys.some((key) => key in body))
+    throw new Error(`Spot square ${square} carries no spot data.`);
   for (const key of Object.keys(body)) {
     if (["schemaVersion", "model", "run", "square"].includes(key)) continue;
     if (!keys.includes(key))

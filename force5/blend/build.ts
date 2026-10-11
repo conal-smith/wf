@@ -32,7 +32,7 @@ import { dirname, join } from "node:path";
 // The run layout the sample generator writes too; plain JavaScript, so it
 // carries no types of its own.
 // @ts-expect-error -- scripts/runs.mjs has no declaration file.
-import { publishRun, retire } from "../../scripts/runs.mjs";
+import { jsonText, publishRun, retire } from "../../scripts/runs.mjs";
 import { readWindRuns } from "./inputs";
 import {
   blendPrefix,
@@ -104,7 +104,7 @@ async function writeRun(
     .catch(() => null);
   const retired = retire(previous, pointer as { base: string });
   const written = retired.length ? { ...pointer, superseded: retired } : pointer;
-  await writeFile(`${out}.tmp`, JSON.stringify(written));
+  await writeFile(`${out}.tmp`, jsonText(written));
   await rename(`${out}.tmp`, out);
 }
 

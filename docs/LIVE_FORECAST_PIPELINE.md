@@ -757,8 +757,12 @@ as MET Norway keeps an old tileset at least 45 minutes:
 - **The grace period** is 60 minutes by default: `prune.py --grace-minutes`, or
   `FORCE5_SUPERSEDED_GRACE_MINUTES`, for both the local prune and the bucket sweep, at
   most the six hours a pointer remembers. A directory any pointer superseded less than
-  that long ago is kept whatever its age; an entry whose time cannot be read counts as
-  just now.
+  that long ago is kept whatever its age. An entry's time is read only as written,
+  `YYYY-MM-DDTHH:MM:SS`, an optional fraction (dropped) and `Z` or `±HH:MM`, and only
+  for a date that exists; anything else cannot be read and counts as just now, by the
+  pruners and by the next swap, which writes the swap's own time for it, so it leaves
+  the list six hours later (`squares.superseded_time`, `supersededTime` in
+  scripts/runs.mjs, held to tests/fixtures/superseded.json).
 - **The publisher deletes nothing.** The bucket sweep below deletes a superseded run
   directory once its grace is over and it has passed the sweep's own age guard, so it
   runs every hour (at :10 in the generated Home Compute and Cloudflare schedules,

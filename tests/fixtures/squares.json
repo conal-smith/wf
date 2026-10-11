@@ -20,5 +20,42 @@
     { "name": "just short of the antimeridian", "lat": 10, "lon": 179.5, "square": "n10e178" },
     { "name": "the north pole", "lat": 90, "lon": 0, "square": "n88e000" },
     { "name": "the south pole", "lat": -90, "lon": 0, "square": "s90e000" }
-  ]
+  ],
+  "refused": [
+    { "name": "just east of the antimeridian", "lat": 10, "lon": 180.000001 },
+    { "name": "just west of the antimeridian", "lat": 10, "lon": -180.5 },
+    { "name": "a longitude typed as 360", "lat": 53.4, "lon": 353.8 },
+    { "name": "a longitude with its sign doubled", "lat": 53.4, "lon": -366.2 },
+    { "name": "north of the pole", "lat": 90.5, "lon": 0 },
+    { "name": "a longitude with a digit too many", "lat": 53.4, "lon": -603.2 }
+  ],
+  "runPaths": {
+    "description": "Paths inside a run directory (squares.run_path, spotData.ts checkRunPath).",
+    "accepted": [
+      "spots/n52w010.json",
+      "t/0/10/3/000.bin",
+      "frames/000.json",
+      "a.b/c_d-e"
+    ],
+    "refused": [
+      "",
+      ".",
+      "..",
+      "./x",
+      "x/.",
+      "x/./y",
+      "x/../y",
+      "/x",
+      "x/",
+      "x//y",
+      "x\\y",
+      "%2e%2e/x",
+      "x?y",
+      "x#y",
+      "x y",
+      "x\ty",
+      "ü/x",
+      "x/١"
+    ]
+  }
 }

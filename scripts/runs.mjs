@@ -31,9 +31,18 @@ export const SPOT_KEYS = [
 
 const pad = (value, width) => String(Math.abs(value)).padStart(width, "0");
 
-/** The square holding a point, named by its south-west corner on even degrees. */
+/**
+ * The square holding a point, named by its south-west corner on even degrees.
+ * A point past 90° of latitude or 180° of longitude is a catalogue typo, and is
+ * refused rather than wrapped into some other square.
+ */
 export function spotSquare(lat, lon) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90)
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lon) > 180
+  )
     throw new Error(`No square for ${lat}, ${lon}`);
   const lat0 = Math.min(
     Math.floor(lat / SQUARE_DEGREES) * SQUARE_DEGREES,
@@ -54,10 +63,57 @@ const isoSecond = (time) =>
   new Date(time).toISOString().replace(/\.\d{3}Z$/, "Z");
 
 /**
+ * A `superseded` entry's time: RFC 3339 with seconds and an offset, the only
+ * form either writer produces (squares.SUPERSEDED_TIME).
+ */
+const SUPERSEDED_TIME =
+  /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:(Z)|([+-])([0-9]{2}):([0-9]{2}))$/;
+
+/**
+ * A `superseded` entry's time in milliseconds, to the second, or null when it
+ * cannot be read: squares.superseded_time. Anything but `SUPERSEDED_TIME` is
+ * null, and so is a date that does not exist (2026-02-30, which `Date` would
+ * roll over into March), an offset past 23:59, or a year Python cannot hold.
+ * A fraction of a second is accepted and dropped.
+ */
+export function supersededTime(value) {
+  const match = typeof value === "string" ? SUPERSEDED_TIME.exec(value) : null;
+  if (!match) return null;
+  const [year, month, day, hour, minute, second] = match
+    .slice(1, 7)
+    .map(Number);
+  let offset = 0;
+  if (!match[7]) {
+    const hours = Number(match[9]);
+    const minutes = Number(match[10]);
+    if (hours > 23 || minutes > 59) return null;
+    offset = (hours * 60 + minutes) * (match[8] === "+" ? 1 : -1);
+  }
+  // setUTCFullYear, not Date.UTC, which reads years 0-99 as 1900-1999.
+  const local = new Date(0);
+  local.setUTCFullYear(year, month - 1, day);
+  local.setUTCHours(hour, minute, second, 0);
+  if (
+    year < 1 ||
+    local.getUTCFullYear() !== year ||
+    local.getUTCMonth() !== month - 1 ||
+    local.getUTCDate() !== day ||
+    local.getUTCHours() !== hour ||
+    local.getUTCMinutes() !== minute ||
+    local.getUTCSeconds() !== second
+  )
+    return null;
+  const when = local.getTime() - offset * 60000;
+  const utcYear = new Date(when).getUTCFullYear();
+  return utcYear >= 1 && utcYear <= 9999 ? when : null;
+}
+
+/**
  * The `superseded` list for `pointer`, about to replace `previous` (or null):
  * squares.retire, so the pruners keep the run directory `previous` named for
  * readers still holding it. What `previous` remembered, younger than six
- * hours, and its own `base` at `now` when that is not `pointer`'s.
+ * hours, and its own `base` at `now` when that is not `pointer`'s. An entry
+ * whose time cannot be read (`supersededTime`) counts as `now`.
  */
 export function retire(previous, pointer, now = Date.now()) {
   const live = pointer.base;
@@ -67,10 +123,7 @@ export function retire(previous, pointer, now = Date.now()) {
   for (const entry of entries) {
     if (!entry || typeof entry.base !== "string" || !RUN_BASE.test(entry.base))
       continue;
-    const parsed = /(Z|[+-]\d\d:\d\d)$/.test(String(entry.at))
-      ? Date.parse(entry.at)
-      : NaN;
-    const when = Number.isFinite(parsed) ? parsed : now;
+    const when = supersededTime(entry.at) ?? now;
     if (entry.base !== live && when > cutoff)
       retired.set(entry.base, Math.max(when, retired.get(entry.base) ?? when));
   }
@@ -94,8 +147,43 @@ export function runDigest(files) {
   return sha256(Buffer.from(lines)).slice(0, 8);
 }
 
+/**
+ * A JSON file of a run, as text: rundir.json_body's compact JSON, which refuses
+ * NaN and ±Infinity rather than writing them as null the way JSON.stringify
+ * does, so a square the blend writes cannot carry a value Python would refuse.
+ */
+export function jsonText(value) {
+  return JSON.stringify(value, (key, item) => {
+    if (typeof item === "number" && !Number.isFinite(item))
+      throw new Error(`A run file cannot hold ${item} (at "${key}"): JSON has no such number.`);
+    return item;
+  });
+}
+
 const bytesOf = (value) =>
-  Buffer.isBuffer(value) ? value : Buffer.from(JSON.stringify(value));
+  Buffer.isBuffer(value) ? value : Buffer.from(jsonText(value));
+
+/** The series keys a frameless run is timed by: squares.SERIES_KEYS. */
+const SERIES_KEYS = ["spotForecasts", "spotSeries", "spotMembers"];
+
+/**
+ * The last hour any spot's series reaches, or undefined: a frameless run's
+ * horizon, by squares.series_horizon's rule. Each series' last step, where its
+ * hour is a whole number.
+ */
+export function seriesHorizon(whole) {
+  const last = [];
+  for (const key of SERIES_KEYS) {
+    const values = whole[key];
+    if (!values || typeof values !== "object" || Array.isArray(values)) continue;
+    for (const steps of Object.values(values)) {
+      const step = Array.isArray(steps) ? steps[steps.length - 1] : undefined;
+      if (step && typeof step === "object" && Number.isInteger(step.hour))
+        last.push(step.hour);
+    }
+  }
+  return last.length ? Math.max(...last) : undefined;
+}
 
 /**
  * A whole manifest, as an adapter holds it, published as a run.
@@ -157,13 +245,11 @@ export function publishRun(whole, prefix, frameBodies, spots, tileFiles = []) {
   );
   pointer.schemaVersion = RUN_SCHEMA_VERSION;
   if ("frames" in whole) pointer.frames = frames;
-  if ("frames" in whole && !frames.length && pointer.horizonHours === undefined) {
-    const reach = ["spotForecasts", "spotMembers"].flatMap((key) =>
-      Object.values(whole[key] ?? {}).flatMap((steps) =>
-        steps.length ? [steps[steps.length - 1].hour] : [],
-      ),
-    );
-    if (reach.length) pointer.horizonHours = Math.max(...reach);
+  // A frameless run, frames empty or absent, states how far it reaches, as
+  // squares.split_spot_data does.
+  if (!frames.length && !("horizonHours" in whole)) {
+    const horizon = seriesHorizon(whole);
+    if (horizon !== undefined) pointer.horizonHours = horizon;
   }
   pointer.spots = {
     squareDegrees: SQUARE_DEGREES,

@@ -67,6 +67,17 @@ class SquareKeyTests(unittest.TestCase):
         for lat, lon in ((91, 0), (-91, 0), (float("nan"), 0), (0, float("inf"))):
             with self.subTest(lat=lat, lon=lon), self.assertRaises(ValueError):
                 spot_square(lat, lon)
+        # Past the edges of the world: a catalogue typo, refused in all three.
+        for case in json.loads(FIXTURE.read_text())["refused"]:
+            with self.subTest(case["name"]), self.assertRaises(ValueError):
+                spot_square(case["lat"], case["lon"])
+
+    def test_a_square_name_is_ascii_digits_only(self):
+        self.assertIsNone(squares.SQUARE_NAME.fullmatch("n\u0665\u0662w010"))
+        with self.assertRaises(ValueError):
+            squares.square_index({"spots": {"squareDegrees": 2, "url": "spots/{square}.json",
+                                            "squares": ["n\u0665\u0662w010"],
+                                            "keys": ["spotForecasts"]}})
 
     def test_squares_for_a_list_of_spots_is_sorted_and_distinct(self):
         self.assertEqual(squares.squares_for(SPOTS), ["n52w008", "n52w012"])
@@ -145,6 +156,15 @@ class SplitTests(unittest.TestCase):
         self.assertEqual(pointer["horizonHours"], 2)
         pointer, _ = split_spot_data({**manifest, "horizonHours": 6}, SPOTS)
         self.assertEqual(pointer["horizonHours"], 6)
+        # A wave run's series count too, frames empty or absent, as in
+        # scripts/runs.mjs (seriesHorizon).
+        waves = {"model": "gfs-wave", "run": "2026101106",
+                 "spotSeries": {"keel": [{"hour": 0}, {"hour": 9}], "brandon": [{"hour": 6}]}}
+        for manifest in (waves, {**waves, "frames": []}):
+            pointer, _ = split_spot_data(manifest, SPOTS)
+            self.assertEqual(pointer["horizonHours"], 9)
+        self.assertIsNone(squares.series_horizon(
+            {"spotForecasts": {"keel": [{"hour": "9"}], "brandon": []}}))
 
     def test_a_square_from_elsewhere_is_refused(self):
         pointer, documents = split_spot_data(whole_manifest(), SPOTS)
@@ -179,6 +199,13 @@ class SplitTests(unittest.TestCase):
     def test_run_paths_never_leave_the_run(self):
         base = "harmonie-2026091312-2h-v1-0a0b0c0d/"
         self.assertEqual(squares.run_path(base, "frames/000.bin"), base + "frames/000.bin")
+        # The cases spotData.ts checkRunPath is held to: "." is not the run itself.
+        paths = json.loads(FIXTURE.read_text())["runPaths"]
+        for relative in paths["accepted"]:
+            self.assertEqual(squares.run_path(base, relative), base + relative)
+        for relative in paths["refused"]:
+            with self.subTest(relative=relative), self.assertRaises(ValueError):
+                squares.run_path(base, relative)
         for relative in ("", "../x", "frames/../../x", "/etc/passwd", "./frames/000.bin",
                          "frames//000.bin", "frames\\000.bin",
                          # What a browser would read as something else: an encoded
@@ -267,6 +294,12 @@ class RunDirectoryTests(unittest.TestCase):
         files[changed["path"]] = changed["content"].encode()
         self.assertEqual(rundir.digest(files), changed["digest"])
         self.assertNotEqual(changed["digest"], fixture["digest"])
+        # Nested tile paths sort byte by byte: t/0/1/… before t/0/10/….
+        nested = fixture["nested"]
+        self.assertEqual(sorted(nested["files"]), nested["order"])
+        self.assertEqual(rundir.digest({path: text.encode()
+                                        for path, text in nested["files"].items()}),
+                         nested["digest"])
 
     def test_the_hash_matches_the_documented_recipe(self):
         import hashlib
@@ -313,6 +346,23 @@ class RunDirectoryTests(unittest.TestCase):
             "url": "t/{level}/{x}/{y}/{hour}.bin",
             "levels": [{"level": 0, "dx": 0.5, "dy": 0.4, "x": [2, 3], "y": [0, 0], "absent": []},
                        {"level": 1, "dx": 1.0, "dy": 0.8, "x": [1, 1], "y": [0, 0], "absent": []}]})
+
+    def test_the_tile_size_the_manifest_states_is_the_one_cut(self):
+        # Sixteen-cell tiles, as the committed sample bundles use: the native level
+        # is four tiles wide here, not two, and has a third level above it.
+        f5tile.write_pyramid(self.output / PREFIX, GRID, field(1.0), field(-2.0), None, 0,
+                             "2026091312", size=16, keep_empty=True)
+        manifest = {**run_manifest(), "tiles": {"size": 16, "border": 1}}
+        pointer = rundir.write_run(self.output, "harmonie-eps.json", manifest, PREFIX, SPOTS)
+        tiles = pointer["tiles"]
+        self.assertEqual((tiles["size"], tiles["border"]), (16, 1))
+        self.assertEqual([(level["x"], level["y"]) for level in tiles["levels"]],
+                         [(spec["x"], spec["y"]) for spec in f5tile.levels(GRID, 16)])
+        self.assertGreater(len(tiles["levels"]), 2)
+        published = sorted(path for path in rundir.content_files(
+            self.output / pointer["base"]) if path.startswith("t/"))
+        self.assertEqual(published, sorted(f5tile.run_tiles(pointer)))
+        self.assertEqual(f5tile.check_tiles(pointer), tiles)
 
     def test_a_tile_missing_in_every_hour_is_absent_and_not_published(self):
         # Global columns 384-387 are tile (3, 0)'s at level 0: all missing, both hours.

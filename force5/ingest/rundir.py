@@ -193,10 +193,18 @@ def settle_tiles(staging, manifest):
     outside the domain) is listed absent and left for `_keep_only` to delete; a
     tile with data in any hour is kept for every hour, so a reader never meets a
     tile that exists at one hour and not the next.
+
+    The tiles are cut at the size and border the manifest's own `tiles` block
+    states, when the adapter gives one (the size is the manifest's to state,
+    docs/TILING_DESIGN.md decision 1), and at f5tile's 128 and 1 otherwise.
     """
     grid, frames = manifest["grid"], manifest["frames"]
+    stated = manifest.get("tiles") if isinstance(manifest.get("tiles"), dict) else {}
+    size, border = stated.get("size", f5tile.TILE_SIZE), stated.get("border", f5tile.BORDER)
+    if not all(isinstance(value, int) and not isinstance(value, bool) for value in (size, border)):
+        raise ValueError(f"Unusable tile size {size!r} or border {border!r}")
     absent = {}
-    for spec in f5tile.levels(grid):
+    for spec in f5tile.levels(grid, size):
         level = spec["level"]
         for y in range(spec["y"][0], spec["y"][1] + 1):
             for x in range(spec["x"][0], spec["x"][1] + 1):
@@ -212,7 +220,7 @@ def settle_tiles(staging, manifest):
                 # Most tiles have data at the first hour, so most cost one read.
                 if all(f5tile.owned_empty(path.read_bytes()) for path in paths):
                     absent.setdefault(level, []).append((x, y))
-    return f5tile.manifest_tiles(grid, frames, absent)
+    return f5tile.manifest_tiles(grid, frames, absent, size=size, border=border)
 
 
 def _keep_only(directory, wanted):

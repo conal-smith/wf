@@ -11,5 +11,29 @@
     "path": "frames/003.bin",
     "content": "F5F1 hour thref",
     "digest": "595319eb"
+  },
+  "nested": {
+    "description": "Paths compared byte by byte, not segment by segment: 't/0/1-0' < 't/0/1.5' < 't/0/1/0' < 't/0/10'.",
+    "files": {
+      "t/0/1/0/000.bin": "level 0, x 1",
+      "t/0/10/0/000.bin": "level 0, x 10",
+      "t/0/1/10/000.bin": "level 0, x 1, y 10",
+      "t/0/1-0/000.bin": "a hyphen sorts before a slash",
+      "t/0/1.5/000.bin": "and a dot between them",
+      "t/1/0/0/000.bin": "level 1",
+      "spots/N52w010.json": "capitals sort before lower case",
+      "spots/n52w010.json": "the square"
+    },
+    "order": [
+      "spots/N52w010.json",
+      "spots/n52w010.json",
+      "t/0/1-0/000.bin",
+      "t/0/1.5/000.bin",
+      "t/0/1/0/000.bin",
+      "t/0/1/10/000.bin",
+      "t/0/10/0/000.bin",
+      "t/1/0/0/000.bin"
+    ],
+    "digest": "a99fd604"
   }
 }

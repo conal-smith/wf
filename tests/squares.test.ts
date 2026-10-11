@@ -13,12 +13,16 @@ import {
   squaresToRead,
   VIEW_SQUARE_LIMIT,
 } from "../force5/src/squares";
+import { checkRunPath } from "../force5/src/spotData";
 import {
+  jsonText,
   publishRun,
   retire,
   runDigest,
+  seriesHorizon,
   spotSquare as scriptSquare,
   SQUARE_DEGREES as SCRIPT_DEGREES,
+  supersededTime,
 } from "../scripts/runs.mjs";
 
 const squares = JSON.parse(
@@ -26,6 +30,8 @@ const squares = JSON.parse(
 ) as {
   squareDegrees: number;
   cases: { name: string; lat: number; lon: number; square: string }[];
+  refused: { name: string; lat: number; lon: number }[];
+  runPaths: { accepted: string[]; refused: string[] };
 };
 const digest = JSON.parse(
   readFileSync("tests/fixtures/run-digest.json", "utf8"),
@@ -33,6 +39,7 @@ const digest = JSON.parse(
   files: Record<string, string>;
   digest: string;
   oneByteChanged: { path: string; content: string; digest: string };
+  nested: { files: Record<string, string>; order: string[]; digest: string };
 };
 
 const superseded = JSON.parse(
@@ -53,6 +60,27 @@ describe("superseded run directories", () => {
       expect(retire(previous, { base }, Date.parse(now)), name).toEqual(
         expected,
       );
+  });
+  it("read only an RFC 3339 time with seconds and an offset, and a real date", () => {
+    expect(supersededTime("2026-09-13T13:00:00+01:00")).toBe(
+      Date.parse("2026-09-13T12:00:00Z"),
+    );
+    expect(supersededTime("2026-09-13T12:00:00.999Z")).toBe(
+      Date.parse("2026-09-13T12:00:00Z"),
+    );
+    // Date.parse rolls the 30th of February over into March; this does not.
+    expect(Date.parse("2026-02-30T00:00:00Z")).not.toBeNaN();
+    for (const time of [
+      "2026-02-30T00:00:00Z",
+      "2026-09-13",
+      "Sun, 13 Sep 2026 12:00:00 Z",
+      "2026-09-13T12:00:00+24:00",
+      "0001-01-01T00:30:00+01:00",
+      null,
+    ])
+      expect(supersededTime(time), String(time)).toBeNull();
+    // Python reads the years 1 to 9999, as written; Date.UTC would read 0050 as 1950.
+    expect(new Date(supersededTime("0050-01-01T00:00:00Z")!).getUTCFullYear()).toBe(50);
   });
 });
 
@@ -76,6 +104,11 @@ describe("spot squares", () => {
       [0, Infinity],
     ])
       expect(() => spotSquare(lat, lon)).toThrow();
+    // Past the edges of the world: a catalogue typo, refused in all three.
+    for (const { name, lat, lon } of squares.refused) {
+      expect(() => spotSquare(lat, lon), name).toThrow();
+      expect(() => scriptSquare(lat, lon), name).toThrow();
+    }
   });
   it("gives the sorted, distinct squares of a list of places", () => {
     expect(
@@ -97,6 +130,71 @@ describe("run directories", () => {
   it("hash as the Python publisher hashes them", () => {
     expect(runDigest(files())).toBe(digest.digest);
     expect(runDigest(files().reverse())).toBe(digest.digest);
+  });
+  it("sort their paths byte by byte, as Python does", () => {
+    const nested = Object.entries(digest.nested.files).map(
+      ([path, text]) => [path, Buffer.from(text)] as [string, Buffer],
+    );
+    expect(Object.keys(digest.nested.files).sort()).toEqual(
+      digest.nested.order,
+    );
+    expect(runDigest(nested)).toBe(digest.nested.digest);
+  });
+  it("hold the same paths inside a run as the Python reader", () => {
+    for (const relative of squares.runPaths.accepted)
+      expect(checkRunPath(relative), relative).toBe(relative);
+    for (const relative of squares.runPaths.refused)
+      expect(() => checkRunPath(relative), JSON.stringify(relative)).toThrow();
+  });
+  it("write JSON Python would read, refusing what it would refuse", () => {
+    expect(jsonText({ a: [1, null, -0.5] })).toBe('{"a":[1,null,-0.5]}');
+    for (const value of [NaN, Infinity, -Infinity])
+      expect(() => jsonText({ spotBlend: { keel: { wind: [1, value] } } })).toThrow(
+        /JSON has no such number/,
+      );
+    const whole = {
+      model: "blend",
+      run: "2026101106",
+      spotBlend: { keel: { wind: [NaN] } },
+    };
+    expect(() =>
+      publishRun(whole, "blend-2026101106-0h-v2", [], [
+        { id: "keel", lat: 53.971, lon: -10.067 },
+      ]),
+    ).toThrow(/NaN/);
+  });
+  it("time a frameless run by its longest series, frames empty or absent", () => {
+    const spots = [
+      { id: "keel", lat: 53.971, lon: -10.067 },
+      { id: "brandon", lat: 52.276, lon: -10.024 },
+    ];
+    const waves = {
+      model: "gfs-wave",
+      run: "2026101106",
+      spotSeries: { keel: [{ hour: 0 }, { hour: 9 }], brandon: [{ hour: 6 }] },
+    };
+    expect(seriesHorizon(waves)).toBe(9);
+    for (const whole of [waves, { ...waves, frames: [] }])
+      expect(
+        publishRun(whole, "gfs-wave-2026101106-9h-v1", [], spots).pointer
+          .horizonHours,
+      ).toBe(9);
+    // Stated already, or nothing to time it by: left as it is.
+    expect(
+      publishRun({ ...waves, horizonHours: 12 }, "gfs-wave-x-v1", [], spots)
+        .pointer.horizonHours,
+    ).toBe(12);
+    expect(
+      publishRun(
+        { model: "blend", run: "2026101106", spotBlend: { keel: {} } },
+        "blend-x-v2",
+        [],
+        spots,
+      ).pointer,
+    ).not.toHaveProperty("horizonHours");
+    expect(
+      seriesHorizon({ spotForecasts: { keel: [{ hour: "9" }], brandon: [] } }),
+    ).toBeUndefined();
   });
   it("change name when one byte changes", () => {
     const { path, content } = digest.oneByteChanged;

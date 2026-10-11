@@ -40,7 +40,8 @@ SCHEMA_VERSION = 2
 SPOT_KEYS = ("spotForecasts", "spotSeries", "spotCoverage", "spotMembers", "spotCells",
              "spotBlend")
 SQUARE_URL = "spots/{square}.json"
-SQUARE_NAME = re.compile(r"[ns]\d{2}[ew]\d{3}")
+# [0-9], not \d, which in Python also matches other scripts' digits.
+SQUARE_NAME = re.compile(r"[ns][0-9]{2}[ew][0-9]{3}")
 # `<model>-<run>-<hours>h-v<N>-<hash8>/`, one path segment. rundir.py names it.
 RUN_DIRECTORY = re.compile(r"[a-z0-9][a-z0-9.-]*-[0-9a-f]{8}")
 # One segment of a path inside a run (`run_path`).
@@ -50,16 +51,22 @@ RUN_PATH_SEGMENT = re.compile(r"[A-Za-z0-9_.-]+")
 # few enough that an hourly model's pointer grows by a few hundred bytes.
 SUPERSEDED_KEEP_HOURS = 6
 SUPERSEDED_LIMIT = 24
+# A `superseded` entry's time: RFC 3339 with seconds and an offset, the only form
+# either writer produces. The same pattern is `supersededTime` in scripts/runs.mjs.
+SUPERSEDED_TIME = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+                             r"(?:\.[0-9]+)?(?:(Z)|([+-])([0-9]{2}):([0-9]{2}))")
 
 
 def spot_square(lat, lon):
     """The square holding a point: 'n' or 's', two digits, 'e' or 'w', three digits.
 
     Floor, not truncation, so 0.5° S is in s02 (2° S to the equator), and the
-    square is always named by its south-west corner. Longitude wraps, so 180° E
-    is the square at 180° W; a latitude of exactly 90° belongs to the top row.
+    square is always named by its south-west corner. 180° E is the square at
+    180° W; a latitude of exactly 90° belongs to the top row. A point past 90°
+    of latitude or 180° of longitude is refused, not wrapped: in a catalogue it
+    is a typo, and a wrapped one would file the place in some other square.
     """
-    if not (math.isfinite(lat) and math.isfinite(lon)) or abs(lat) > 90:
+    if not (math.isfinite(lat) and math.isfinite(lon)) or abs(lat) > 90 or abs(lon) > 180:
         raise ValueError(f"No square for {lat}, {lon}")
     lat0 = min(math.floor(lat / SQUARE_DEGREES) * SQUARE_DEGREES, 90 - SQUARE_DEGREES)
     lon0 = (math.floor(lon / SQUARE_DEGREES) * SQUARE_DEGREES + 180) % 360 - 180
@@ -88,16 +95,42 @@ def run_path(base, relative):
     `%2e%2e` as `..`, drops tabs and newlines, reads `\\` as `/` and stops at `?`
     or `#`. The same rule as `checkRunPath` in force5/src/spotData.ts.
     """
-    path = PurePosixPath(str(relative))
-    if not relative or path.is_absolute() or ".." in path.parts or "." in path.parts \
-            or str(relative) != str(path) \
-            or not all(RUN_PATH_SEGMENT.fullmatch(part) for part in str(relative).split("/")):
+    # The raw segments, not PurePosixPath's parts: "." has no parts at all, so
+    # it would pass as the run directory itself.
+    segments = relative.split("/") if isinstance(relative, str) else None
+    if not segments or any(segment in (".", "..") or not RUN_PATH_SEGMENT.fullmatch(segment)
+                           for segment in segments):
         raise ValueError(f"Unusable path {relative!r} inside a run directory")
-    return check_base(base) + str(path)
+    return check_base(base) + relative
 
 
 def iso_time(moment):
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def superseded_time(value):
+    """A `superseded` entry's time, to the second, or None when it cannot be read.
+
+    Only `SUPERSEDED_TIME`: a date that does not exist (2026-02-30), an offset
+    past 23:59, a date alone or any other ISO 8601 form is None, as in
+    scripts/runs.mjs (`supersededTime`), so both writers keep the same entries.
+    A fraction of a second is accepted and dropped, as the times written are.
+    """
+    match = SUPERSEDED_TIME.fullmatch(value) if isinstance(value, str) else None
+    if match is None:
+        return None
+    year, month, day, hour, minute, second = (int(match.group(index)) for index in range(1, 7))
+    offset = 0
+    if not match.group(7):
+        hours, minutes = int(match.group(9)), int(match.group(10))
+        if hours > 23 or minutes > 59:
+            return None
+        offset = (hours * 60 + minutes) * (1 if match.group(8) == "+" else -1)
+    try:
+        return datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc) \
+            - timedelta(minutes=offset)
+    except (ValueError, OverflowError):
+        return None
 
 
 def superseded_entries(manifest):
@@ -107,7 +140,9 @@ def superseded_entries(manifest):
     `superseded`, `[{"base": "harmonie-…-1a2b3c4d/", "at": "2026-10-11T12:00:00Z"}]`,
     so the pruners can leave it for readers still holding the old pointer. An
     entry whose base is unusable names nothing and is skipped; one whose time
-    cannot be read gives `when` None, which the pruners read as "just now".
+    cannot be read (`superseded_time`) gives `when` None, which the pruners read
+    as "just now" and `retire` stamps with the time of the swap, so it is kept
+    for the six hours after that, never for ever and never dropped unseen.
     """
     entries = manifest.get("superseded") if isinstance(manifest, dict) else None
     out = []
@@ -118,12 +153,7 @@ def superseded_entries(manifest):
             base = check_base(entry.get("base"))
         except ValueError:
             continue
-        try:
-            when = datetime.fromisoformat(str(entry.get("at")).replace("Z", "+00:00"))
-            when = when if when.tzinfo else None
-        except ValueError:
-            when = None
-        out.append((base, when))
+        out.append((base, superseded_time(entry.get("at"))))
     return out
 
 
@@ -172,6 +202,27 @@ def square_path(manifest, square):
     return run_path(manifest.get("base"), square_index(manifest)["url"].replace("{square}", square))
 
 
+# The per-spot keys that are series of hours, which a frameless run is timed by.
+SERIES_KEYS = ("spotForecasts", "spotSeries", "spotMembers")
+
+
+def series_horizon(manifest):
+    """The last hour any spot's series reaches, or None: a frameless run's horizon.
+
+    Each series' last step, where it is a whole hour. The same rule as
+    `seriesHorizon` in scripts/runs.mjs.
+    """
+    last = []
+    for key in SERIES_KEYS:
+        values = manifest.get(key)
+        for steps in values.values() if isinstance(values, dict) else ():
+            if isinstance(steps, list) and steps and isinstance(steps[-1], dict):
+                hour = steps[-1].get("hour")
+                if isinstance(hour, int) and not isinstance(hour, bool):
+                    last.append(hour)
+    return max(last) if last else None
+
+
 def split_spot_data(manifest, spots):
     """The pointer and one document per square, from a whole manifest held in memory.
 
@@ -210,10 +261,9 @@ def split_spot_data(manifest, spots):
     if not manifest.get("frames") and "horizonHours" not in manifest:
         # A frameless run used to be timed by its series; the pointer alone must
         # still say how far it reaches, so a reader need not load a square for it.
-        last = [steps[-1]["hour"] for key in ("spotForecasts", "spotMembers")
-                for steps in (manifest.get(key) or {}).values() if steps]
-        if last:
-            pointer["horizonHours"] = max(last)
+        horizon = series_horizon(manifest)
+        if horizon is not None:
+            pointer["horizonHours"] = horizon
     pointer["spots"] = {"squareDegrees": SQUARE_DEGREES, "url": SQUARE_URL,
                         "squares": sorted(documents), "keys": keys}
     return pointer, documents

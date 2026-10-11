@@ -123,6 +123,17 @@ describe("the spot square loader", () => {
       await expect(
         loadSpotSquares(relabel(change), POINTER, run),
       ).rejects.toThrow();
+    // The envelope alone: a square is only ever written for places with data,
+    // and squares.check_square refuses this one too.
+    const empty: ReadJson = async (path) => {
+      const { spotForecasts: _spots, ...envelope } = (await read(
+        path,
+      )) as Record<string, unknown>;
+      return envelope;
+    };
+    await expect(loadSpotSquares(empty, POINTER, run)).rejects.toThrow(
+      /carries no spot data/,
+    );
     const twice: ReadJson = async (path) => {
       const body = (await read(path)) as Record<string, unknown>;
       return {

@@ -11,18 +11,25 @@
 export const SQUARE_DEGREES = 2;
 
 /** A square's name: `n`/`s`, two digits, `e`/`w`, three digits. */
-export const SQUARE_NAME = /^[ns]\d{2}[ew]\d{3}$/;
+export const SQUARE_NAME = /^[ns][0-9]{2}[ew][0-9]{3}$/;
 
 const pad = (value: number, width: number) =>
   String(Math.abs(value)).padStart(width, "0");
 
 /**
  * The square holding a point. Floor, not truncation, so 0.5° S is in `s02`
- * (2° S to the equator); longitude wraps, so 180° E is the square at 180° W;
- * a latitude of exactly 90° belongs to the top row.
+ * (2° S to the equator); 180° E is the square at 180° W; a latitude of exactly
+ * 90° belongs to the top row. A point past 90° of latitude or 180° of
+ * longitude is refused, not wrapped: in a catalogue it is a typo, and wrapped
+ * it would file the place in some other square.
  */
 export function spotSquare(lat: number, lon: number): string {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90)
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lon) > 180
+  )
     throw new Error(`No square for ${lat}, ${lon}.`);
   const lat0 = Math.min(
     Math.floor(lat / SQUARE_DEGREES) * SQUARE_DEGREES,
