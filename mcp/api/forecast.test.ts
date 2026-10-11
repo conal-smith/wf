@@ -21,7 +21,7 @@ import {
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
-import { cached } from "./httpSource";
+import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
   squaresFor,
@@ -466,6 +466,32 @@ describe("which spot squares are read", () => {
     expect(await source.json("weather/ecmwf.json")).toBe(1);
     source.forget!("weather/ecmwf.json");
     expect(await source.json("weather/ecmwf.json")).toBe(2);
+  });
+
+  it("keeps no run's files, drops what has expired, and holds at most its limit", async () => {
+    let clock = 0;
+    let reads = 0;
+    const source = cached(async () => ++reads, 60000, () => clock);
+    // Every run has new square paths: kept, they would pile up for ever.
+    for (let run = 0; run < 50; run++)
+      await source.json(
+        `weather/harmonie-20261011${String(run).padStart(2, "0")}-61h-v3-0a0b0c0d/spots/n52w008.json`,
+      );
+    expect(source.size()).toBe(0);
+    // Shared while in flight, all the same.
+    const square = "weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/n52w008.json";
+    const [a, b] = await Promise.all([source.json(square), source.json(square)]);
+    expect(a).toBe(b);
+    await source.json("weather/ecmwf.json");
+    await source.json("marine/tides/dublin-2026-10-11.json");
+    expect(source.size()).toBe(2);
+    // A day's tide station files expire, and the next read sweeps them out.
+    clock = 60000;
+    await source.json("weather/gfs.json");
+    expect(source.size()).toBe(1);
+    for (let i = 0; i < SOURCE_CACHE_LIMIT + 10; i++)
+      await source.json(`marine/tides/station-${i}.json`);
+    expect(source.size()).toBe(SOURCE_CACHE_LIMIT);
   });
 
   it("reads a county's squares for a county search, and none for the status", async () => {
