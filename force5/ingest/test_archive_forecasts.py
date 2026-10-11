@@ -146,6 +146,22 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(record["spotHours"], [0, 1, 2])
         self.assertIsNone(record["members"])
 
+    def test_no_more_than_one_frame_is_held_decoded_at_a_time(self):
+        # A run's frames are walked once: each frame's tiles are let go once its
+        # stations are read, rather than the whole run staying decoded.
+        manifest = write_bundle(self.public, hours=(0, 1, 2, 3))
+        held, frames = [], list(job.LocalSource(self.public).frames("harmonie", manifest))
+
+        def watched():
+            for frame in frames:
+                held.append(sum(len(other.loaded) for other in frames))
+                yield frame
+
+        record = job.forecast_record(manifest, watched(), POINTS, "committed", NOW)
+        self.assertEqual(len(record["stations"]["ME_03980"]["u"]), 4)
+        self.assertEqual(held, [0, 0, 0, 0])
+        self.assertTrue(all(not frame.loaded for frame in frames))
+
     def test_an_ensemble_keeps_its_member_spread_at_spots(self):
         manifest = write_bundle(self.public, model="ecmwf-ens", ensemble=True)
         record = job.forecast_record(manifest, job.LocalSource(self.public).frames(

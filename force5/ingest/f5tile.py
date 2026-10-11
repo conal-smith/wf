@@ -723,6 +723,16 @@ class FrameTiles:
                 self.loaded[key] = decode_tile(data)
         return self.loaded[key]
 
+    def release(self):
+        """Forget the tiles decoded so far; a later sample reads them again.
+
+        A decoded tile is three lists of 130 × 130 Python floats, about 1.5 MB, so
+        a reader that walks every frame of a run (the archive: 61 frames of
+        HARMONIE, a handful of tiles each) releases each frame once it is done
+        with it rather than holding the whole run decoded.
+        """
+        self.loaded.clear()
+
     def sample(self, lat, lon, level=0):
         """{u, v, gust} in m/s, bilinear, or None off the grid or where u/v is missing.
 

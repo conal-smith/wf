@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Keep what every wind model forecast, and what the wind then did, before it is gone.
 
-The publisher deletes a run's frames the moment the next run replaces it, so the
-only moment to record a forecast is while it is still being served. Every hour,
+Once the next run replaces a run, its directory is kept for the grace period
+readers still holding the old pointer need (an hour by default; the bucket
+sweep's six-hour age guard can keep it a little longer), and then the prune or
+the sweep deletes it, so the moment to record a forecast is while it is still
+being served. Every hour,
 after the blend, this reads every wind manifest that is published right now and,
 for each run the archive does not hold yet, writes `archive/forecasts/<model>/<run>.json`
 (archive.py), once, never to be changed:
@@ -128,7 +131,9 @@ def member_summary(step):
 def station_series(frames, points):
     """{station: {u, v, gust}} over the frames; a station off the grid is left out.
 
-    `frames` are `f5tile.FrameTiles`, sampled at level 0.
+    `frames` are `f5tile.FrameTiles`, sampled at level 0. Each frame's decoded
+    tiles are released once its stations are read, so a run is never held
+    decoded whole: for 61 frames of HARMONIE that was most of the job's memory.
     """
     series = {identifier: {"u": [], "v": [], "gust": []} for identifier in points}
     for frame in frames:
@@ -136,6 +141,7 @@ def station_series(frames, points):
             wind = frame.sample(lat, lon) or {}
             for field in ("u", "v", "gust"):
                 series[identifier][field].append(tenth(wind.get(field)))
+        frame.release()
     return {identifier: values for identifier, values in series.items()
             if any(value is not None for value in values["u"])}
 
