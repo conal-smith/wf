@@ -43,9 +43,10 @@ const JOBS = schedule.jobs as Job[];
 
 /**
  * Memory and disk are billed for the whole run, CPU only while it works. These
- * match the Mac mini's ceilings (deploy/schedules.py): 1 GB for the station
- * feeds, 4 GB for a model with headroom for GRIB decoding, and 20 GB of disk
- * only for the ensembles, which download a few GB a run.
+ * match the Mac mini's ceilings (deploy/schedules.py): every enabled job was
+ * measured at under 400 MB and is held to 512 MB or 1 GB, so it runs `small`;
+ * the retired, unmeasured models keep 4 GB, and only the ensembles get 20 GB of
+ * disk, as they download a few GB a run.
  */
 type Instance = NonNullable<ContainerStartupOptions["instance"]>;
 

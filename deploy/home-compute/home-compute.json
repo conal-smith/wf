@@ -49,8 +49,8 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
+          "cpu": "1",
+          "memory": "1Gb",
           "disk": "12Gb"
         },
         "network": {
@@ -107,8 +107,8 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
+          "cpu": "1",
+          "memory": "1Gb",
           "disk": "12Gb"
         },
         "network": {
@@ -165,8 +165,8 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
+          "cpu": "1",
+          "memory": "512Mb",
           "disk": "12Gb"
         },
         "network": {
@@ -222,8 +222,8 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
+          "cpu": "1",
+          "memory": "1Gb",
           "disk": "12Gb"
         },
         "network": {
@@ -457,8 +457,8 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "2",
-          "memory": "4Gb",
+          "cpu": "1",
+          "memory": "512Mb",
           "disk": "12Gb"
         },
         "network": {
@@ -707,7 +707,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "2Gb",
+          "memory": "1Gb",
           "disk": "6Gb"
         },
         "network": {
@@ -765,7 +765,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "2Gb",
+          "memory": "512Mb",
           "disk": "4Gb"
         },
         "network": {
@@ -881,7 +881,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "1Gb",
+          "memory": "512Mb",
           "disk": "2Gb"
         },
         "network": {
@@ -944,7 +944,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "1Gb",
+          "memory": "512Mb",
           "disk": "2Gb"
         },
         "network": {
@@ -997,7 +997,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "1Gb",
+          "memory": "512Mb",
           "disk": "2Gb"
         },
         "network": {
@@ -1050,7 +1050,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "1Gb",
+          "memory": "512Mb",
           "disk": "2Gb"
         },
         "network": {
@@ -1103,7 +1103,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "2Gb",
+          "memory": "512Mb",
           "disk": "4Gb"
         },
         "network": {
@@ -1159,7 +1159,7 @@
         ],
         "resources": {
           "cpu": "1",
-          "memory": "2Gb",
+          "memory": "512Mb",
           "disk": "2Gb"
         },
         "network": {

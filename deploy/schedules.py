@@ -60,22 +60,47 @@ DESCRIPTIONS = {
 }
 
 # What a job may use. Bacalhau holds a container to its memory, so these are
-# ceilings, not hints: the forecast models get the 4 GB the worker was sized at
-# on Fargate, the station feeds a fraction of it. A Mac mini's Colima VM fits
-# one large job at a time, and Bacalhau queues the rest rather than overcommit.
-LARGE = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
+# ceilings, not hints: a job that outgrows its ceiling is killed and its model
+# silently stops updating. Every enabled job was measured on 11 October 2026
+# (deploy/home-compute/README.md, "What a job uses"): the peak resident memory
+# of the worker and its adapter together, which the worker now reports in each
+# event's `resources`, is 130-360 MB (MEASURED_PEAK_MB), so the ceilings are at
+# least twice that and mostly three times. The VM's page cache is not counted against
+# a job: Linux reclaims it at the ceiling (the HARMONIE, ICON-EU and ECMWF
+# adapters each ran whole in the image under a 384 MB limit). Every job is
+# CPU-light, under 25 CPU seconds a run, and mostly waits on the network, so each
+# gets one CPU, which Bacalhau passes to Docker as the container's CPU limit.
+MODEL = {"cpu": "1", "memory": "1Gb", "disk": "12Gb"}      # Peaks 290-360 MB.
+FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "12Gb"}  # Peaks of about 225 MB.
+FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}       # Peaks of 130-220 MB.
+# The retired adapters were never measured: they keep the 4 GB the worker was
+# sized at on Fargate, more than the recommended VM gives Bacalhau, so enabling
+# one means measuring it first (deploy/home-compute/README.md).
+UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
-SMALL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}
 RESOURCES = {
+    "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": {**MODEL, "disk": "6Gb"},
+    "icon-eu-weather": FORECAST, "gfs": FORECAST,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
-    "tides": SMALL, "sea-temperature": SMALL, "blend": SMALL, "mi-swan": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
-    "gfs-wave": {"cpu": "1", "memory": "2Gb", "disk": "6Gb"},
-    "wind-obs": SMALL,
+    "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
+    "mi-swan": {**FEED, "disk": "4Gb"},
     # The archive decodes a new run's frames one at a time into Python lists, and
-    # verification holds sixteen days of station samples while it scores a day.
-    "forecast-archive": {"cpu": "1", "memory": "2Gb", "disk": "4Gb"},
-    "verify": {"cpu": "1", "memory": "2Gb", "disk": "2Gb"},
+    # verification holds sixteen days of archived runs while it scores a day.
+    "forecast-archive": {**FEED, "disk": "4Gb"},
+    "verify": FEED,
 }
+# The measured peaks, in MB: the worker with its S3 client (72 MB) plus the
+# adapter's peak RSS, natively on macOS, which read 10-25% above the same adapters
+# in the Linux image. HARMONIE and ICON-EU are full hourly runs decoded from cached
+# GRIB, ECMWF its whole 85-frame run from cache, verification a 30-day archive.
+MEASURED_PEAK_MB = {
+    "harmonie": 290, "icon-eu": 335, "ecmwf": 315, "gfs-wave": 360,
+    "icon-eu-weather": 225, "gfs": 230, "verify": 225,
+    "mi-swan": 190, "blend": 185, "forecast-archive": 140,
+    "tides": 135, "sea-temperature": 135, "wind-obs": 135,
+}
+# A ceiling an edit may not go below: an OOM kill stops a model without a word.
+MIN_HEADROOM = 1.5
 SWEEP = {"cpu": "0.5", "memory": "512Mb", "disk": "1Gb"}
 # When the bucket sweep runs, every hour (scheduled()).
 SWEEP_MINUTES = [10]
@@ -90,8 +115,9 @@ def cloudflare_size(resources):
     return "small" if megabytes <= 1024 else "medium" if megabytes <= 2048 else "large"
 
 
-# What `memory = "..."` in jobs.toml may say. The Mac mini's Colima VM gives
-# Bacalhau 5.5 GB, so a larger ceiling would queue for ever there.
+# What `memory = "..."` in jobs.toml may say. Bacalhau is told the Colima VM's size
+# less half a GiB (macmini.sh), 2.5 GB in the recommended 3 GiB VM: a ceiling
+# larger than that queues until its timeout, and `macmini.sh setup` warns of it.
 MEMORY_CHOICES = ["512Mb", "1Gb", "2Gb", "3Gb", "4Gb", "5Gb"]
 
 
@@ -120,7 +146,7 @@ START_MARGIN_SECONDS = 600
 def default_resources(job):
     if job["command"] == "prune":
         return SWEEP
-    return max((RESOURCES.get(model, LARGE) for model in job["models"]),
+    return max((RESOURCES.get(model, UNMEASURED) for model in job["models"]),
                key=lambda value: memory_mb(value["memory"]))
 
 
@@ -326,6 +352,11 @@ def apply_set(args):
         raise ValueError(f"No job {args.set!r} in the timetable")
     if not current["scheduleEditable"] and ("hours" in changes or "minutes" in changes):
         raise ValueError(f"{args.set} runs at a fixed time; only its switch and memory can change")
+    if "memory" in changes:
+        peak = max((MEASURED_PEAK_MB.get(model, 0) for model in current["models"]), default=0)
+        if memory_mb(changes["memory"]) < peak * MIN_HEADROOM:
+            raise ValueError(f"{args.set} has been measured using {peak} MB; give it at least "
+                             f"{round(peak * MIN_HEADROOM)} MB so it is never killed mid-run")
     text = edit(JOBS_FILE.read_text(), args.set, **changes)
     with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False) as handle:
         handle.write(text)

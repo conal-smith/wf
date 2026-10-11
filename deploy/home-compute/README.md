@@ -60,8 +60,96 @@ bucket already serves and exits at once if its source has nothing newer
 its 08:20 slot has published, or a SWAN slot that finds the same day's run, costs a
 listing, not an import.
 
-Bacalhau is told the Colima VM's size (4 CPUs, 5.5 GB of its 6 GiB), and each job's
-memory is a hard ceiling: 4 GB for a model, 1-2 GB for the station feeds. So one
-large import runs at a time and the rest queue for up to an hour. Give Colima more
-memory (`colima stop && colima start --memory 8`, then `macmini.sh setup` to
-rewrite the agents) if queues grow long.
+Bacalhau is told the Colima VM's size, less half a GiB for Docker and the kernel,
+and each job's memory is a hard ceiling (`RESOURCES` in `deploy/schedules.py`): 1 GB
+for HARMONIE, ICON-EU, ECMWF and GFS-Wave, 512 MB for everything else. Every job asks
+for one CPU. In the recommended VM (2 CPUs, 3 GiB: Bacalhau gets 2 CPUs and 2.5 GB) at
+most two jobs run at once and the rest queue, for up to an hour each.
+
+## What a job uses
+
+Every job's event now carries `resources`: its CPU seconds and the peak resident
+memory of the worker and its adapter (docs/LIVE_FORECAST_PIPELINE.md, "Where a job's
+time goes"), so the Home Compute log shows what each run really took. The ceilings
+come from measuring each enabled job on 11 October 2026, on this Mac with the
+repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
+
+| Job | Ceiling | Peak, MB | CPU s | How it was measured |
+| --- | --- | --- | --- | --- |
+| `gfs-wave` | 1 GB | 360 | 2.5 | a live run, local output only |
+| `icon-eu` | 1 GB | 335 | 16 | 73 hourly frames decoded from cached GRIB (*) |
+| `ecmwf` | 1 GB | 315 | 4 | the whole cached 2026100700 run, 85 frames |
+| `harmonie` | 1 GB | 290 | 5 | 61 hourly frames from cached GRIB (*); two whole files downloaded at once peaked at 171 |
+| `gfs` | 512 MB | 230 | 2 | a live run |
+| `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps as scheduled |
+| `verify` | 512 MB | 225 | 23 | a 30-day archive made from today's archived runs |
+| `mi-swan` | 512 MB | 190 | 1 | a live run |
+| `blend` | 512 MB | 185 | 0.4 | the site's current runs, read over public HTTPS; includes Node |
+| `forecast-archive` | 512 MB | 140 | 1.4 | archiving four new runs at once from that copy |
+| `tides`, `sea-temperature`, `wind-obs` | 512 MB | 135 | 0.2-0.4 | live runs |
+| `prune` (bucket sweep) | 512 MB | under 100 | - | the local sweep; the bucket listing adds little |
+
+The peak is the worker with its S3 client (72 MB) plus the adapter's own peak, which
+is what a container holds while the adapter runs; the worker's later upload phase
+peaked lower (HARMONIE 172, ICON-EU 207 MB). (*) The cache held every third hour, so
+the hours between were copies with their step rewritten: the same work as a real run
+without downloading 785 MB of HARMONIE. macOS figures; the same adapters in the
+`wingfoil-forecast:local` image under Colima read 10-25% lower (HARMONIE 180, ICON-EU
+201, ECMWF 211 MB) and each finished under a 384 MB limit. Docker adds nothing to
+speak of: a sea-temperature container peaked at 55 MB in its cgroup. A container's
+cgroup also counts the page cache of the files it reads and writes, but Linux
+reclaims that at the limit instead of killing the job (ECMWF under 384 MB met the
+limit 248 times, with no OOM kill).
+
+The ceilings are at least twice those peaks. `deploy/schedules.py --set` (and so
+the app's Timetable tab) refuses one below 1.5 times a job's measured peak, because a
+job killed for memory stops its model updating without saying why. After a change
+that may make a job bigger, check the `resources` in its next events before lowering
+anything. The retired models were never measured and keep 4 GB, more than the
+recommended VM offers: measure one before enabling it, or Bacalhau leaves it queued.
+
+## Sizing the VM
+
+The VM's memory is what macOS loses while Colima runs, not what the jobs use: Colima's
+`vz` VM takes memory from macOS as Linux touches it and does not give it back, and
+Linux fills whatever is spare with page cache. So the VM's size, not Bacalhau's, is
+what the Mac gives up. The jobs need 3 GiB (two of the largest at once, plus Docker);
+2 GiB also works, one large job and one small at a time, with slower image builds.
+
+`macmini.sh setup` reads the VM's size and writes it into Bacalhau's launch agent,
+warns if an enabled job could never fit, and says so if the VM is larger than the
+jobs need. To shrink it from 6 GiB to 3, when `macmini.sh status` shows no job
+running:
+
+```sh
+deploy/home-compute/macmini.sh stop      # the scheduler and Bacalhau
+colima stop
+colima start --cpu 2 --memory 3          # kept in ~/.colima/default/colima.yaml
+deploy/home-compute/macmini.sh setup     # rebuilds the image; Bacalhau gets 2 CPUs, 2.5Gb
+deploy/home-compute/macmini.sh start
+deploy/home-compute/macmini.sh status    # Bacalhau's node should list 2 CPUs and 2.5 GB
+```
+
+`brew services start colima` starts the same profile, so it comes back at 3 GiB after
+a reboot. To give Bacalhau less than the VM, for a VM other containers share, set
+`BACALHAU_CPUS` and `BACALHAU_MEMORY` (e.g. `2Gb`) when running `setup`.
+
+## Keeping the jobs in the background
+
+Every job asks for one CPU, which Bacalhau hands to Docker as the container's CPU
+limit, and the VM has two: whatever runs, the jobs never use more than two of the
+Mac's ten cores. They rarely use one: no job spends more than 25 CPU seconds a run,
+and most of a run is spent waiting on a download or an upload.
+
+`nice` inside the container would only order processes within the VM; macOS
+schedules the VM's virtual CPUs as one ordinary app, so it is not used. To lower that
+app's priority below your own, after each `colima start`:
+
+```sh
+renice -n 10 -p "$(pgrep -f com.apple.Virtualization.VirtualMachine)"   # undone by restarting Colima
+```
+
+That matches any `vz` VM, which is why `macmini.sh` does not do it for you. macOS's
+background policy (`taskpolicy -b -p PID`) would go further, onto the efficiency cores
+with throttled disk and network I/O, at the cost of HARMONIE's 785 MB download and its
+upload taking noticeably longer.

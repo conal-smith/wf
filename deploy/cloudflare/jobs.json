@@ -13,7 +13,7 @@
       "minutes": [
         0
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -32,7 +32,7 @@
       "minutes": [
         30
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -51,7 +51,7 @@
       "minutes": [
         40
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -69,7 +69,7 @@
       "minutes": [
         20
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -145,7 +145,7 @@
       "minutes": [
         0
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 2400,
       "args": [
         "--models",
@@ -235,7 +235,7 @@
       "minutes": [
         30
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 2400,
       "args": [
         "--models",
@@ -254,7 +254,7 @@
       "minutes": [
         15
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",
@@ -357,7 +357,7 @@
       "minutes": [
         15
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",
@@ -374,7 +374,7 @@
       "minutes": [
         25
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",

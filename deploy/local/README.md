@@ -23,9 +23,11 @@ Because the site and the data share an origin, the frontend needs **no**
 
 - Docker with Compose v2 or newer (`docker compose version`). A plain Docker install
   is enough; the build does not depend on the buildx plugin.
-- 4–6 GB of RAM available to Docker for the ingest container, and 10–20 GB of disk for
-  runs and raw GRIB caches, depending on how many models you enable. On macOS or
-  Windows that is the VM's allocation, not the machine's.
+- 2 GB of RAM available to Docker (the enabled jobs, one at a time, peak at 130-360 MB;
+  see "What a job uses" in [deploy/home-compute/README.md](../home-compute/README.md)),
+  and 10–20 GB of disk for runs and raw GRIB caches, depending on how many models you
+  enable. On macOS or Windows that is the VM's allocation, not the machine's, and the
+  machine gives all of it up while the VM runs.
 - Outbound HTTPS to the forecast providers (Met Éireann, DWD, ECMWF, NOAA). No
   inbound port needs to be open to the internet.
 
