@@ -170,8 +170,9 @@ timeout_seconds = 1800
 [[jobs]]
 id = "prune"
 command = "prune"
-minutes = [10]              # Backstop only: the worker already deletes a superseded
-                            # run when the new one lands. This also ages the raw cache.
+minutes = [10]              # Deletes a superseded run an hour after the new one lands
+                            # (the worker keeps it that long for readers still holding
+                            # the old pointer), and ages the raw cache.
 timeout_seconds = 900
 
 [[jobs]]

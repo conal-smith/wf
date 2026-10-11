@@ -98,11 +98,13 @@ A download is small, but the server holds **every frame of every run** until
 (`deploy/local/jobs.toml`), 61 frames a run, and retention used to be 48 h with
 a daily sweep, so about 48 runs sat on disk at once.
 
-A superseded run is never shown again, so **nothing old is kept**. As soon as
-a new run has fully arrived and passed validation, the worker deletes the run
-it replaced (`worker.py`, `drop_superseded`), under the same lock every import
-holds, so a run that is still being written is never touched. The hourly
-`prune` job is only a backstop and ages the raw cache. A browser tab that asks
+A superseded run is never shown again, so **nothing old is kept** past the
+hour readers may still hold its pointer. As soon as a new run has fully arrived
+and passed validation, the worker prunes (`worker.py`, `drop_superseded`),
+under the same lock every import holds, so a run that is still being written is
+never touched; the run it replaced is named under the new pointer's
+`superseded` and kept for an hour, and the hourly `prune` job deletes it after
+that and ages the raw cache (docs/TILING_DESIGN.md, "As built: the fix pass"). A browser tab that asks
 for a frame of a deleted run loads the newest run at the same time instead of
 showing an error (`App.tsx`, `loadNewerRun`). One run per model is on disk:
 

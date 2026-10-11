@@ -162,12 +162,15 @@ job in its final column; see "Where a job's time goes" in
 
 ## 5. Retention
 
-Only the newest run of each model is kept. As soon as a new run has fully arrived and
+Only the newest run of each model is served. As soon as a new run has fully arrived and
 passed validation, the worker deletes every published object that **no current manifest
-references**: the run directory it just replaced under `weather/`, and superseded
-station files under `marine/`. Nothing old is held "just in case"; a browser tab that
-asks for a frame of a deleted run moves itself to the newest run instead of showing an
-error.
+references** — superseded station files under `marine/`, the wreckage of a failed
+import — except a run directory a pointer replaced less than an hour ago: the new
+pointer names it under `superseded`, because a browser tab, the CDN or the forecast
+server can still hold the old pointer for a few minutes, and the hourly `prune` job
+deletes it once the hour is up (`--grace-minutes`, or
+`FORCE5_SUPERSEDED_GRACE_MINUTES`). A browser tab that still meets a deleted run moves
+itself to the newest run instead of showing an error.
 
 `prune` is the scheduled backstop (hourly in `jobs.toml`). It does the same sweep, and
 also removes anything left under `.cache` older than `FORCE5_CACHE_DAYS` (default 1). Raw
