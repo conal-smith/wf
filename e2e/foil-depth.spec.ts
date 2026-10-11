@@ -91,7 +91,7 @@ async function open(page: Page, ranges: boolean) {
   // is the same picture.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?spot=kilcrea");
-  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+  await expect(page.locator(".spot-marker")).toHaveCount(141, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0, { timeout: 30000 });

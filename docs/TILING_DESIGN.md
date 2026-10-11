@@ -17,7 +17,7 @@ Beyond Ireland it does not:
   would be about 40× that per frame, and over the globe about 300×. The
   phone would download all of it to show the screen it is looking at.
 - The manifests are already 0.25–3.3 MB raw (34–375 KB gzip). That is 97%
-  spot data for 146 spots, and it is fetched on every page load and
+  spot data for 141 spots, and it is fetched on every page load and
   revalidated every five minutes. A thousand spots would make each manifest
   7× bigger.
 - Zoomed out to the whole of Ireland on a phone, the map downloads more
@@ -376,7 +376,7 @@ the build differs from the decisions above:
   below). Tides, sea temperature, wind observations and the job summaries keep
   schemaVersion 1: they are one file, or a pointer and its station files, and
   have no spot series to move.
-- **Squares.** Ireland's 146 riding places fall in ten squares, not eight. On
+- **Squares.** Ireland's 141 riding places fall in ten squares, not eight. On
   the real runs of 7 October 2026 every pointer is 0.9–2.7 KB gzipped (from
   27–1,197 KB), and the largest square, `n52w008` around Dublin, is 9.5 KB
   gzipped for HARMONIE, 38 KB for ECMWF and 107 KB for Irish Shelf SWAN.

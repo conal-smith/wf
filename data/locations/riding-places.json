@@ -1,0 +1,3145 @@
+{
+  "schemaVersion": 1,
+  "source": "OpenStreetMap contributors",
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL-1.0",
+  "licenceUrl": "https://www.openstreetmap.org/copyright",
+  "retrievedAt": "2026-10-12",
+  "note": "Wind-sport places around the island, each placed on an OpenStreetMap feature: the named beach, bay, slipway, lake or club it is called after, or, for a place named after a town or townland, the mapped beach or shore point nearest it. Where the feature is a line or area the coordinate is one of its own vertices (`sourceNode`). These are references to where people ride, not verified launches.",
+  "records": [
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "doogort",
+      "name": "Doogort — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.0117275,
+      "lon": -10.023357,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Dugort",
+        "Achill",
+        "Doogort Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/577274734",
+      "sourceId": "way/577274734",
+      "sourceNode": "node/13605399970",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Doogort Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dooniver",
+      "name": "Dooniver Beach — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.0073982,
+      "lon": -9.9399742,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Bullsmouth",
+        "Achill"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1483596611",
+      "sourceId": "way/1483596611",
+      "sourceNode": "node/13604026112",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Dún Ibhir. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "keel-lake",
+      "name": "Keel Lake — Achill",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.9825926,
+      "lon": -10.064315,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lake",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Achill",
+        "Keel Lough"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/93206841",
+      "sourceId": "way/93206841",
+      "sourceNode": "node/1080497359",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Keel Lough. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aghleam",
+      "name": "Aghleam",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1165899,
+      "lon": -10.0933091,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Blacksod",
+        "Mullet",
+        "Termon Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1418909665",
+      "sourceId": "way/1418909665",
+      "sourceNode": "node/13039202125",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest An Eachléim (Termon Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "belmullet",
+      "name": "Belmullet",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.2233834,
+      "lon": -9.9919257,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/1378762624",
+      "sourceId": "way/1378762624",
+      "sourceNode": "node/12767026964",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Béal an Mhuirthead. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "elly-beach",
+      "name": "Elly Beach",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1579494,
+      "lon": -10.0850399,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Barnagh",
+        "Mullet",
+        "Elly Bay",
+        "Trá Oilí"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/435036297",
+      "sourceId": "way/435036297",
+      "sourceNode": "node/4329720440",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Trá Oilí. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "trawmore-bay",
+      "name": "Trawmore Bay — Claggan",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 54.1827063,
+      "lon": -9.9523908,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Claggan",
+        "Cuan na Trá Móire"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/2002389362",
+      "sourceId": "node/2002389362",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cuan na Trá Móire. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bertra",
+      "name": "Bertra Beach",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.7942632,
+      "lon": -9.6548957,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Clew Bay",
+        "Westport"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/7448166",
+      "sourceId": "relation/7448166",
+      "sourceNode": "node/5017118749",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Bertra Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carrownisky",
+      "name": "Carrownisky Strand",
+      "county": "Mayo",
+      "jurisdiction": "IE",
+      "lat": 53.7480506,
+      "lon": -9.8996126,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Louisburgh",
+        "Carrownisky Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/410374031",
+      "sourceId": "way/410374031",
+      "sourceNode": "node/1886111519",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Carrownisky Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dogs-bay",
+      "name": "Dog's Bay & Gurteen — Roundstone",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.3778239,
+      "lon": -9.9648625,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Roundstone",
+        "Gurteen Bay",
+        "Errisbeg",
+        "Trá Chuan an Mhada"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/173056357",
+      "sourceId": "way/173056357",
+      "sourceNode": "node/1650571130",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Trá Chuan an Mhada. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "spanish-point",
+      "name": "Spanish Point",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.840184,
+      "lon": -9.4336574,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Miltown Malbay",
+        "Spanish Point Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/4250072",
+      "sourceId": "relation/4250072",
+      "sourceNode": "node/2208152972",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Spanish Point Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "easkey",
+      "name": "Easkey",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2919858,
+      "lon": -8.9563344,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Easky"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/2049726317",
+      "sourceId": "node/2049726317",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Easky. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "enniscrone",
+      "name": "Enniscrone",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2099362,
+      "lon": -9.1184999,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Inishcrone",
+        "Killala Bay",
+        "Enniscrone Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/87255228",
+      "sourceId": "way/87255228",
+      "sourceNode": "node/2600658885",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Enniscrone Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunmoran",
+      "name": "Dunmoran Strand",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2637981,
+      "lon": -8.731616,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/555306114",
+      "sourceId": "way/555306114",
+      "sourceNode": "node/1894684035",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Dunmoran Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "strandhill",
+      "name": "Strandhill",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.2728222,
+      "lon": -8.6070365,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/309661952",
+      "sourceId": "way/309661952",
+      "sourceNode": "node/3149993722",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Strandhill. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rosses-point",
+      "name": "Rosses Point",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.3151013,
+      "lon": -8.5715508,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Rosses Point Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/2371153",
+      "sourceId": "relation/2371153",
+      "sourceNode": "node/2905997552",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Rosses Point Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lissadell",
+      "name": "Lissadell",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.3436505,
+      "lon": -8.5797133,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Drumcliff Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/9072595",
+      "sourceId": "relation/9072595",
+      "sourceNode": "node/2352250584",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Drumcliff Bay, at the point nearest Lissadell House. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "streedagh",
+      "name": "Streedagh Beach",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.4044112,
+      "lon": -8.5583766,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Grange"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/493891548",
+      "sourceId": "way/493891548",
+      "sourceNode": "node/3714354032",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Streedagh Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portnoo",
+      "name": "Portnoo",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.8435089,
+      "lon": -8.4451282,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Narin",
+        "Naran Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/49404669",
+      "sourceId": "way/49404669",
+      "sourceNode": "node/627401609",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Naran Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bloody-foreland",
+      "name": "Bloody Foreland",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1585183,
+      "lon": -8.2850695,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Brinlack",
+        "Gweedore"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/28603418",
+      "sourceId": "node/28603418",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Bloody Foreland. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunfanaghy",
+      "name": "Dunfanaghy Lagoon",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1844998,
+      "lon": -7.9516263,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lagoon",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Dunfanaghy",
+        "Killahoey",
+        "Killahoey Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/133046233",
+      "sourceId": "way/133046233",
+      "sourceNode": "node/1463989039",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Killahoey Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "downings",
+      "name": "Downings — Trá Beg",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1929825,
+      "lon": -7.8366689,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Rosapenna",
+        "Sheephaven Bay",
+        "Trá Beg",
+        "Tra Beg (Downings Beach)"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/4519140191",
+      "sourceId": "node/4519140191",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Tra Beg (Downings Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portsalon",
+      "name": "Portsalon — Ballymastocker Bay",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1942051,
+      "lon": -7.6160591,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ballymastocker",
+        "Lough Swilly",
+        "Portsalon Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/259070813",
+      "sourceId": "way/259070813",
+      "sourceNode": "node/3787915861",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Portsalon Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portstewart",
+      "name": "Portstewart Strand",
+      "county": "Derry",
+      "jurisdiction": "UK-NI",
+      "lat": 55.1689295,
+      "lon": -6.746131,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/305364153",
+      "sourceId": "way/305364153",
+      "sourceNode": "node/3099843586",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Portstewart Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "whiterocks",
+      "name": "Whiterocks",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.2074639,
+      "lon": -6.633128,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Portrush",
+        "East Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/200831667",
+      "sourceId": "way/200831667",
+      "sourceNode": "node/4393512219",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: East Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portballintrae",
+      "name": "Bushfoot — Portballintrae",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.2158571,
+      "lon": -6.5476264,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Bushmills",
+        "Bushfoot",
+        "Portballintrae",
+        "Portballintrae Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/298903541",
+      "sourceId": "way/298903541",
+      "sourceNode": "node/28587544",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Portballintrae Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "browns-bay",
+      "name": "Browns Bay — Larne",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 54.854313,
+      "lon": -5.7663078,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Larne",
+        "Islandmagee",
+        "Browns Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/2004132625",
+      "sourceId": "node/2004132625",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Browns Bay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lough-neagh-antrim",
+      "name": "Lough Neagh — Antrim",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 54.7161331,
+      "lon": -6.2408518,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lake",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Antrim",
+        "Antrim Boat Club"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/9244234939",
+      "sourceId": "node/9244234939",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Antrim Boat Club. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "oxford-island",
+      "name": "Lough Neagh — Oxford Island",
+      "county": "Armagh",
+      "jurisdiction": "UK-NI",
+      "lat": 54.489371,
+      "lon": -6.3668812,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lake",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Lurgan",
+        "Craigavon",
+        "Kinnego Marina"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/457738783",
+      "sourceId": "way/457738783",
+      "sourceNode": "node/2946161781",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Kinnego Marina. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "millisle",
+      "name": "Millisle",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.6076335,
+      "lon": -5.5253308,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ards Peninsula"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1508206561",
+      "sourceId": "way/1508206561",
+      "sourceNode": "node/8668679217",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Millisle. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kearney",
+      "name": "Kearney",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.3847639,
+      "lon": -5.4725416,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Portaferry",
+        "Ards Peninsula"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1557474912",
+      "sourceId": "way/1557474912",
+      "sourceNode": "node/14165038422",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Kearney. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "newcastle",
+      "name": "Newcastle — Dundrum Bay",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.2111818,
+      "lon": -5.888831,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Murlough",
+        "Dundrum Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/409126335",
+      "sourceId": "way/409126335",
+      "sourceNode": "node/4110201928",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Newcastle. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cranfield",
+      "name": "Cranfield",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.0230747,
+      "lon": -6.0631466,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Carlingford Lough",
+        "Kilkeel",
+        "Cranfield Point"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/10904425615",
+      "sourceId": "node/10904425615",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cranfield Point. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "warrenpoint",
+      "name": "Warrenpoint",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.0993169,
+      "lon": -6.2554859,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Carlingford Lough"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1172080341",
+      "sourceId": "way/1172080341",
+      "sourceNode": "node/10890153505",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Warrenpoint. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carlingford",
+      "name": "Carlingford",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 54.0516865,
+      "lon": -6.1919862,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Carlingford Lough",
+        "Carlingford Marina"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/3044198335",
+      "sourceId": "node/3044198335",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Carlingford Marina. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "greenore",
+      "name": "Greenore",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 54.0348032,
+      "lon": -6.1322996,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Carlingford Lough",
+        "Greenore Point"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/12383202605",
+      "sourceId": "node/12383202605",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Greenore Point. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "giles-quay",
+      "name": "Gyles Quay",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.9853127,
+      "lon": -6.238613,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Giles Quay",
+        "Dundalk Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1334862474",
+      "sourceId": "way/1334862474",
+      "sourceNode": "node/12349052183",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Gyles Quay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "annagassan",
+      "name": "Annagassan",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.8893743,
+      "lon": -6.3547178,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Annagassin",
+        "Dundalk Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1337832061",
+      "sourceId": "way/1337832061",
+      "sourceNode": "node/12374808681",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Annagassan. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "clogherhead",
+      "name": "Clogherhead",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.7996517,
+      "lon": -6.2446772,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/relation/5144919",
+      "sourceId": "relation/5144919",
+      "sourceNode": "node/3520688254",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Clogherhead. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "termonfeckin",
+      "name": "Termonfeckin",
+      "county": "Louth",
+      "jurisdiction": "IE",
+      "lat": 53.7588424,
+      "lon": -6.2496212,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Baltray",
+        "Drogheda"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/4856407",
+      "sourceId": "relation/4856407",
+      "sourceNode": "node/3493133284",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Termonfeckin. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bettystown",
+      "name": "Bettystown",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6984243,
+      "lon": -6.2433413,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/relation/3165921",
+      "sourceId": "relation/3165921",
+      "sourceNode": "node/12669043173",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Bettystown. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "laytown",
+      "name": "Laytown",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6816193,
+      "lon": -6.2374363,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/relation/3165921",
+      "sourceId": "relation/3165921",
+      "sourceNode": "node/3260298849",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Laytown. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "gormanston",
+      "name": "Gormanston",
+      "county": "Meath",
+      "jurisdiction": "IE",
+      "lat": 53.6426632,
+      "lon": -6.2174053,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Gormanstown"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/4444581",
+      "sourceId": "relation/4444581",
+      "sourceNode": "node/28541990",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Gormanston. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "skerries",
+      "name": "Skerries",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5828858,
+      "lon": -6.1067048,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "North Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/39840258",
+      "sourceId": "way/39840258",
+      "sourceNode": "node/477633161",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: North Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rush-north",
+      "name": "Rush North Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5246422,
+      "lon": -6.0850177,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Rush"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/329909012",
+      "sourceId": "way/329909012",
+      "sourceNode": "node/3368538149",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest North Beach road, Rush. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rush-south",
+      "name": "Rush South Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.5112127,
+      "lon": -6.1054856,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Rush",
+        "Portrane"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6499065",
+      "sourceId": "relation/6499065",
+      "sourceNode": "node/4354034190",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Rush South Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "donabate",
+      "name": "Donabate",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4636495,
+      "lon": -6.1274164,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Portrane",
+        "Donabate Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/22907706",
+      "sourceId": "way/22907706",
+      "sourceNode": "node/246637953",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Donabate Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "low-rock",
+      "name": "Low Rock — Malahide",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4498029,
+      "lon": -6.1369824,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Malahide",
+        "Malahide Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/5404565",
+      "sourceId": "relation/5404565",
+      "sourceNode": "node/11225462896",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Malahide Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portmarnock",
+      "name": "Portmarnock — Velvet Strand",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.4109071,
+      "lon": -6.1164339,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Velvet Strand",
+        "Portmarnock Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/363359614",
+      "sourceId": "way/363359614",
+      "sourceNode": "node/310527889",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Portmarnock Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "burrow-beach",
+      "name": "Burrow Beach — Sutton",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3933421,
+      "lon": -6.1025727,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Sutton",
+        "Howth",
+        "Burrow Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/27541309",
+      "sourceId": "way/27541309",
+      "sourceNode": "node/11228529790",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Burrow Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bull-island-north",
+      "name": "North Bull Island — Sutton end",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3827485,
+      "lon": -6.1125757,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Bull Island",
+        "Sutton"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/16137892",
+      "sourceId": "way/16137892",
+      "sourceNode": "node/662094421",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Dollymount Strand, at the point nearest Sutton. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "poolbeg",
+      "name": "Poolbeg",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.33724,
+      "lon": -6.190029,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Shelly Banks",
+        "Ringsend",
+        "The Shelly Banks (part of)"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/2869598",
+      "sourceId": "relation/2869598",
+      "sourceNode": "node/2260347332",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: The Shelly Banks (part of). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "sandymount",
+      "name": "Sandymount Strand",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.3289999,
+      "lon": -6.20844,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Sandymount"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/746942791",
+      "sourceId": "way/746942791",
+      "sourceNode": "node/9813230220",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Sandymount Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "seapoint",
+      "name": "Seapoint",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.2973278,
+      "lon": -6.1588509,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Monkstown",
+        "Blackrock"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/306849010",
+      "sourceId": "way/306849010",
+      "sourceNode": "node/3118565013",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Seapoint. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "killiney",
+      "name": "Killiney Beach",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.2588676,
+      "lon": -6.1114243,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/35264887",
+      "sourceId": "way/35264887",
+      "sourceNode": "node/2981899167",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Killiney Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bray",
+      "name": "Bray Beach",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.202527,
+      "lon": -6.0965727,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Bray"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/24592907",
+      "sourceId": "way/24592907",
+      "sourceNode": "node/3310559286",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Bray Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "greystones",
+      "name": "Greystones",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.1442758,
+      "lon": -6.0590489,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Greystones South Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/299875392",
+      "sourceId": "way/299875392",
+      "sourceNode": "node/3311736640",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Greystones South Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "brittas-bay",
+      "name": "Brittas Bay",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 52.8863569,
+      "lon": -6.0546207,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/16313794",
+      "sourceId": "way/16313794",
+      "sourceNode": "node/28418123",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Brittas Bay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kilmuckridge",
+      "name": "Kilmuckridge",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.5111806,
+      "lon": -6.240908,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Cahore",
+        "Morriscastle",
+        "Morriscastle Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/36414317",
+      "sourceId": "way/36414317",
+      "sourceNode": "node/424626320",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Morriscastle Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "curracloe",
+      "name": "Curracloe",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.3867464,
+      "lon": -6.3633611,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Curracloe Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/13472334",
+      "sourceId": "relation/13472334",
+      "sourceNode": "node/2293849539",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Curracloe Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "the-burrow",
+      "name": "The Burrow — Rosslare",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2991109,
+      "lon": -6.3902871,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Rosslare"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/49789810",
+      "sourceId": "way/49789810",
+      "sourceNode": "node/12834871756",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest The Burrow (golf links, way/1161365354) (Rosslare Strand Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rosslare",
+      "name": "Rosslare Strand",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2889243,
+      "lon": -6.3899528,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Rosslare"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/49789810",
+      "sourceId": "way/49789810",
+      "sourceNode": "node/13734128610",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Rosslare Strand Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "st-margarets",
+      "name": "St Margaret's Beach",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2029755,
+      "lon": -6.3502341,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Carnsore",
+        "St. Margaret's Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/8826216388",
+      "sourceId": "node/8826216388",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: St. Margaret's Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ladys-island-lake",
+      "name": "Lady's Island Lake",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2008024,
+      "lon": -6.3906142,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lagoon",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ladies Island Lake"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/223994",
+      "sourceId": "relation/223994",
+      "sourceNode": "node/478257977",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Lady's Island Lake. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "kilmore-quay",
+      "name": "Kilmore Quay",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.1719457,
+      "lon": -6.5883368,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Ballyteige",
+        "Kilmore Quay Marina"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/510043140",
+      "sourceId": "way/510043140",
+      "sourceNode": "node/5704937703",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Kilmore Quay Marina. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cullenstown",
+      "name": "Cullenstown",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.215863,
+      "lon": -6.7206674,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Bannow Bay",
+        "Cullenstown Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/58744470",
+      "sourceId": "way/58744470",
+      "sourceNode": "node/728024886",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cullenstown Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "duncannon",
+      "name": "Duncannon",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.2196862,
+      "lon": -6.9290269,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Waterford Harbour"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/331379359",
+      "sourceId": "way/331379359",
+      "sourceNode": "node/3384401651",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Duncannon. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dungarvan",
+      "name": "Dungarvan",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.0852062,
+      "lon": -7.6108646,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cunnigar",
+        "Abbeyside",
+        "Cunnigar Point"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/11580208536",
+      "sourceId": "node/11580208536",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cunnigar Point. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "red-barn",
+      "name": "Red Barn — Youghal",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.9491458,
+      "lon": -7.8424189,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Youghal"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/688042185",
+      "sourceId": "way/688042185",
+      "sourceNode": "node/6450728770",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Youghal. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ballycotton",
+      "name": "Ballycotton — Ballynamona",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.838391,
+      "lon": -8.0226676,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ballynamona",
+        "Ardnahinch",
+        "Garryvoe Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6913264",
+      "sourceId": "relation/6913264",
+      "sourceNode": "node/3990693534",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Ballycotton (Garryvoe Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cobh",
+      "name": "Cobh — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8502186,
+      "lon": -8.2916708,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cork Harbour",
+        "Great Island"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1154992614",
+      "sourceId": "way/1154992614",
+      "sourceNode": "node/10741280011",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Cobh. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cork-harbour",
+      "name": "Cork Harbour — lower",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8047779,
+      "lon": -8.2959746,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Crosshaven",
+        "Cork Harbour"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/71423911",
+      "sourceId": "way/71423911",
+      "sourceNode": "node/849854648",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest alias) (Crosshaven. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "garrettstown",
+      "name": "Garrettstown",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6430886,
+      "lon": -8.5803839,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Garretstown",
+        "Old Head",
+        "Garretstown Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/165985431",
+      "sourceId": "way/165985431",
+      "sourceNode": "node/1774843125",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Garretstown Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "coolmaine",
+      "name": "Coolmaine",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6412742,
+      "lon": -8.673366,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Courtmacsherry Bay",
+        "Coolmain Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/3540129367",
+      "sourceId": "node/3540129367",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Coolmain Bay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "owenahincha",
+      "name": "Owenahincha",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.5660346,
+      "lon": -9.000244,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing"
+      ],
+      "aliases": [
+        "Ownahincha",
+        "Rosscarbery",
+        "Ownahincha Strand (West)"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/256859657",
+      "sourceId": "way/256859657",
+      "sourceNode": "node/2624853666",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Ownahincha Strand (West). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "glandore",
+      "name": "Glandore Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.5610016,
+      "lon": -9.1250419,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/node/2001542856",
+      "sourceId": "node/2001542856",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Glandore Harbour. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "schull",
+      "name": "Schull",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.5222193,
+      "lon": -9.5292475,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Schull Harbour"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1149915004",
+      "sourceId": "way/1149915004",
+      "sourceNode": "node/28489276",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Schull Harbour. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bantry-bay",
+      "name": "Bantry Bay",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6800614,
+      "lon": -9.460869,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Bantry",
+        "Bantry Harbour Marina"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/921671393",
+      "sourceId": "way/921671393",
+      "sourceNode": "node/8556845851",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Bantry Harbour Marina. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "waterville",
+      "name": "Waterville — Ballinskelligs Bay",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 51.8267541,
+      "lon": -10.1730548,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ballinskelligs Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/124663775",
+      "sourceId": "way/124663775",
+      "sourceNode": "node/28772624",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Waterville. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "rossbeigh",
+      "name": "Rossbeigh",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.069371,
+      "lon": -9.9731676,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Glenbeigh",
+        "Rossbeigh Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/225253340",
+      "sourceId": "way/225253340",
+      "sourceNode": "node/13794346347",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Rossbeigh Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "inch",
+      "name": "Inch Beach",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.123582,
+      "lon": -9.966576,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Inch Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/2789155",
+      "sourceId": "relation/2789155",
+      "sourceNode": "node/2374434989",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Inch Beach, at the point nearest Inch townland. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "ventry",
+      "name": "Ventry",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1326182,
+      "lon": -10.3604987,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/1066346602",
+      "sourceId": "way/1066346602",
+      "sourceNode": "node/2328765602",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Ceann Trá. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "smerwick",
+      "name": "Smerwick Harbour",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1940524,
+      "lon": -10.3798505,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Wine Strand",
+        "Ballydavid",
+        "Cuan Ard na Caithne"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/9069383",
+      "sourceId": "relation/9069383",
+      "sourceNode": "node/1871848851",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cuan Ard na Caithne. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "fermoyle",
+      "name": "Fermoyle",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2435291,
+      "lon": -10.1246336,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cloghane",
+        "Kilcummin"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6344659",
+      "sourceId": "relation/6344659",
+      "sourceNode": "node/5055907148",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Fermoyle Beach, at the point nearest Fermoyle townland. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "gowlane",
+      "name": "Gowlane",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2480549,
+      "lon": -10.0855141,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6344659",
+      "sourceId": "relation/6344659",
+      "sourceNode": "node/2124262459",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Fermoyle Beach, at the point nearest Gowlane townland. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "stradbally",
+      "name": "Stradbally — Castlegregory",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2530143,
+      "lon": -10.0739145,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Castlegregory"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6344659",
+      "sourceId": "relation/6344659",
+      "sourceNode": "node/4259092260",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Stradbally (Fermoyle Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aughacasla",
+      "name": "Aughacasla",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.2384809,
+      "lon": -9.9704866,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Tralee Bay",
+        "Castlegregory",
+        "Castlegregory Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/3209788",
+      "sourceId": "relation/3209788",
+      "sourceNode": "node/28756946",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Aughacasla (Castlegregory Beach). Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "scraggane",
+      "name": "Scraggane Bay",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.3083504,
+      "lon": -10.0264547,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Candeehy",
+        "Maharees",
+        "Fahamore",
+        "Seraggane Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/2000679986",
+      "sourceId": "node/2000679986",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Seraggane Bay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "garrywilliam-point",
+      "name": "Garrywilliam Point",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.3066288,
+      "lon": -10.0596786,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Maharees"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/8518513086",
+      "sourceId": "node/8518513086",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Garrywilliam Point. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "banna",
+      "name": "Banna Strand",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.3363005,
+      "lon": -9.8380008,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "kitesurfing",
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ardfert"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/57734398",
+      "sourceId": "way/57734398",
+      "sourceNode": "node/2653960714",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Banna Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mullaghmore",
+      "name": "Mullaghmore",
+      "county": "Sligo",
+      "jurisdiction": "IE",
+      "lat": 54.4663656,
+      "lon": -8.4478694,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [],
+      "sourceUrl": "https://www.openstreetmap.org/way/475337151",
+      "sourceId": "way/475337151",
+      "sourceNode": "node/4690972653",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Mullaghmore. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "aghada",
+      "name": "Aghada — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8451317,
+      "lon": -8.2097691,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cork Harbour",
+        "Lower Aghada Slipway"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1557700608",
+      "sourceId": "way/1557700608",
+      "sourceNode": "node/14167390411",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Lower Aghada Slipway. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "annascaul",
+      "name": "Annascaul river mouth",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 52.1365108,
+      "lon": -10.0502712,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Inch",
+        "Bunaneer Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1378871243",
+      "sourceId": "way/1378871243",
+      "sourceNode": "node/12768258612",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Bunaneer Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "blessington",
+      "name": "Blessington Lakes",
+      "county": "Wicklow",
+      "jurisdiction": "IE",
+      "lat": 53.1702408,
+      "lon": -6.5291099,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lake",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Poulaphouca",
+        "Blessington",
+        "Poulaphouca Reservoir"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/1207986",
+      "sourceId": "relation/1207986",
+      "sourceNode": "node/12839551123",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Poulaphouca Reservoir, at the point nearest Blessington. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "broadmeadows-south",
+      "name": "Broadmeadows Estuary — south shore",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.456851,
+      "lon": -6.1785879,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Malahide",
+        "Malahide Estuary",
+        "Swords Sailing and Boating Club"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/256011092",
+      "sourceId": "node/256011092",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Swords Sailing and Boating Club. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "bunbeg",
+      "name": "Bunbeg Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.0647834,
+      "lon": -8.3089143,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Gweedore"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/6928940",
+      "sourceId": "relation/6928940",
+      "sourceNode": "node/28611846",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest An Bun Beag. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cahore",
+      "name": "Cahore",
+      "county": "Wexford",
+      "jurisdiction": "IE",
+      "lat": 52.5719999,
+      "lon": -6.2036882,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cahore Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/57040340",
+      "sourceId": "way/57040340",
+      "sourceNode": "node/2107693455",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cahore Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "carrickfinn",
+      "name": "Carrickfinn Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.0453236,
+      "lon": -8.34639,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Donegal Airport",
+        "Trá na Carraige Finne"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/207312966",
+      "sourceId": "way/207312966",
+      "sourceNode": "node/2175083648",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Trá na Carraige Finne. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "clonea",
+      "name": "Clonea Strand",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.0952697,
+      "lon": -7.5416373,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Clonea"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/2718355",
+      "sourceId": "relation/2718355",
+      "sourceNode": "node/2124510252",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Clonea Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "cunnamore",
+      "name": "Cunnamore Pier",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.5038814,
+      "lon": -9.4248126,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Roaringwater Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/858229047",
+      "sourceId": "way/858229047",
+      "sourceNode": "node/8013653546",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Cunnamore Pier. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dooey",
+      "name": "Dooey Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.8524842,
+      "lon": -8.4000242,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Lettermacaward"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/13753390",
+      "sourceId": "relation/13753390",
+      "sourceNode": "node/9469753396",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Dooey townland, Lettermacaward. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dun-laoghaire",
+      "name": "Dún Laoghaire Harbour",
+      "county": "Dublin",
+      "jurisdiction": "IE",
+      "lat": 53.2975647,
+      "lon": -6.1368705,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Dun Laoghaire",
+        "Dun Laoghaire Marina"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/1031044077",
+      "sourceId": "node/1031044077",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Dun Laoghaire Marina. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "dunmore-east",
+      "name": "Dunmore East",
+      "county": "Waterford",
+      "jurisdiction": "IE",
+      "lat": 52.1513883,
+      "lon": -6.9870589,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Waterford Harbour",
+        "Dunmore Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/2001641848",
+      "sourceId": "node/2001641848",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Dunmore Bay. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "east-ferry",
+      "name": "East Ferry — Cork Harbour",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.8694586,
+      "lon": -8.2042659,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Midleton",
+        "Cork Harbour",
+        "East Ferry"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/52229953",
+      "sourceId": "node/52229953",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: East Ferry. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "glin",
+      "name": "Glin — Shannon Estuary",
+      "county": "Limerick",
+      "jurisdiction": "IE",
+      "lat": 52.588609,
+      "lon": -9.2939272,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "estuary",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Shannon Estuary"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/1501544204",
+      "sourceId": "way/1501544204",
+      "sourceNode": "node/28750090",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Glin. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "liscannor",
+      "name": "Liscannor",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.9419242,
+      "lon": -9.3746644,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Liscannor Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/24550688",
+      "sourceId": "way/24550688",
+      "sourceNode": "node/2176035491",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped beach nearest Liscannor. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mannin-bay",
+      "name": "Mannin Bay",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.4427759,
+      "lon": -10.063777,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ballyconneely",
+        "Connemara",
+        "Mannin Bay Coral Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/291799742",
+      "sourceId": "way/291799742",
+      "sourceNode": "node/2953062448",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Mannin Bay Coral Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "marble-hill",
+      "name": "Marble Hill",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 55.1772988,
+      "lon": -7.8998359,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Sheephaven Bay",
+        "Marble Hill Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/203805140",
+      "sourceId": "way/203805140",
+      "sourceNode": "node/2138017158",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Marble Hill Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "mountcharles",
+      "name": "Mountcharles Pier",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.6505556,
+      "lon": -8.2082636,
+      "kind": "spot",
+      "coordinateType": "osm-shore-near-place",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Donegal Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/4031005718",
+      "sourceId": "node/4031005718",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: the mapped shore point nearest Mountcharles. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "murvagh",
+      "name": "Murvagh Beach",
+      "county": "Donegal",
+      "jurisdiction": "IE",
+      "lat": 54.6049242,
+      "lon": -8.1633732,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Donegal Bay"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/9126911109",
+      "sourceId": "node/9126911109",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Murvagh Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "oysterhaven",
+      "name": "Oysterhaven",
+      "county": "Cork",
+      "jurisdiction": "IE",
+      "lat": 51.6958777,
+      "lon": -8.4506335,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Kinsale",
+        "Oyster Haven"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/3517877170",
+      "sourceId": "node/3517877170",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Oyster Haven. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "portrush",
+      "name": "Portrush",
+      "county": "Antrim",
+      "jurisdiction": "UK-NI",
+      "lat": 55.2023468,
+      "lon": -6.6564811,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "West Strand"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/2698515",
+      "sourceId": "relation/2698515",
+      "sourceNode": "node/2107946118",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: West Strand. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "tracht",
+      "name": "Traught Beach — Kinvara",
+      "county": "Galway",
+      "jurisdiction": "IE",
+      "lat": 53.1717761,
+      "lon": -8.9865749,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Tracht",
+        "Kinvara",
+        "Traught Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/relation/4524837",
+      "sourceId": "relation/4524837",
+      "sourceNode": "node/28731561",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Traught Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "tyrella",
+      "name": "Tyrella",
+      "county": "Down",
+      "jurisdiction": "UK-NI",
+      "lat": 54.252153,
+      "lon": -5.73882,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Dundrum Bay",
+        "Tyrella Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/601718247",
+      "sourceId": "way/601718247",
+      "sourceNode": "node/28568722",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: Tyrella Beach. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "lough-derg-killaloe",
+      "name": "Lough Derg — Killaloe",
+      "county": "Clare",
+      "jurisdiction": "IE",
+      "lat": 52.8398208,
+      "lon": -8.4679362,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "lake",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Ballycuggeran",
+        "Two Mile Gate",
+        "Killaloe",
+        "University of Limerick Activity Centre"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/node/449383585",
+      "sourceId": "node/449383585",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: University of Limerick Activity Centre. Access and suitability for wingfoiling have not been checked."
+    },
+    {
+      "retrievedAt": "2026-10-12",
+      "verificationStatus": "source-located",
+      "launchVerified": false,
+      "id": "white-strand-kerry",
+      "name": "White Strand — Cahersiveen",
+      "county": "Kerry",
+      "jurisdiction": "IE",
+      "lat": 51.9429875,
+      "lon": -10.27488,
+      "kind": "spot",
+      "coordinateType": "osm-feature",
+      "waterType": "sea",
+      "sports": [
+        "windsurfing"
+      ],
+      "aliases": [
+        "Cahersiveen",
+        "White Strand Beach"
+      ],
+      "sourceUrl": "https://www.openstreetmap.org/way/225251611",
+      "sourceId": "way/225251611",
+      "sourceNode": "node/28763089",
+      "licence": "ODbL-1.0",
+      "licenceUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "note": "Coordinate from OpenStreetMap: White Strand Beach. Access and suitability for wingfoiling have not been checked."
+    }
+  ]
+}

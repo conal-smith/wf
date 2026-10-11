@@ -670,7 +670,7 @@ an explicit `--run` always skips the check.
 
 ### The blend: every spot's stars, by spot square
 
-The map rates all 146 riding places at once, and before this it did so in the browser
+The map rates all 141 riding places at once, and before this it did so in the browser
 from every wind model's manifest: about 2.4 MB compressed, which on a slow phone kept
 the lights pending for some 20 seconds. The `blend` job works that consensus out once
 an hour instead and publishes it as a run, the way the models are published: the
@@ -1022,7 +1022,7 @@ The pointer lists them:
 reach in `horizonHours`, so freshness never needs a square. A spot page, the dock and
 the forecast server read the one square holding the spot; the browser's own blend reads
 the squares in view and the reader's own spots'; the blend job reads them all. Ireland's
-146 riding places fall in ten squares. The blend is published the same way, its places
+141 riding places fall in ten squares. The blend is published the same way, its places
 under `spotBlend` (see "The blend" above).
 
 The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters

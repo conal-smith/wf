@@ -104,7 +104,7 @@
       "station": "Fenit",
       "odMalinOffsetMetres": 2.677,
       "dryCeilingMetres": 5.6,
-      "spots": ["brandon", "fi-maharees-beach", "fermoyle", "kilcummin", "gowlane", "stradbally", "aughacasla", "scraggane", "garrywilliam-point", "banna"],
+      "spots": ["brandon", "fi-maharees-beach", "fermoyle", "gowlane", "stradbally", "aughacasla", "scraggane", "garrywilliam-point", "banna"],
       "sources": [
         {
           "name": "EMODnet",

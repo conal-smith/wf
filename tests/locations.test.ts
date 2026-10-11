@@ -17,7 +17,7 @@ describe("saved Irish wind-sport coordinates", () => {
     const spots = ridingLocations(
       JSON.parse(readFileSync("public/spots.json", "utf8")),
     );
-    expect(spots).toHaveLength(146);
+    expect(spots).toHaveLength(141);
     expect(spots.every((s) => s.kind === "spot" && !s.website)).toBe(true);
     expect(spots.find((s) => s.id === "kilcrea")).toMatchObject({
       name: "Kilcrea — Malahide Estuary",
@@ -45,8 +45,8 @@ describe("saved Irish wind-sport coordinates", () => {
   it("retains all collected research records while preserving original forecast IDs and coordinates", () => {
     const original = JSON.parse(readFileSync("public/spots.json", "utf8"));
     const merged = mergeLocations(original);
-    expect(merged).toHaveLength(173);
-    expect(new Set(merged.map((s) => s.id)).size).toBe(173);
+    expect(merged).toHaveLength(168);
+    expect(new Set(merged.map((s) => s.id)).size).toBe(168);
     for (const spot of original)
       expect(merged.find((s) => s.id === spot.id)).toMatchObject(spot);
     for (const row of records)
@@ -132,26 +132,27 @@ describe("saved Irish wind-sport coordinates", () => {
   });
 });
 
-const guides = JSON.parse(
-  readFileSync("data/locations/spot-guides.json", "utf8"),
+const places = JSON.parse(
+  readFileSync("data/locations/riding-places.json", "utf8"),
 );
 const facing = JSON.parse(
   readFileSync("data/locations/shore-facing.json", "utf8"),
 );
 
-describe("riding places read from the spot guides", () => {
+describe("riding places placed on OpenStreetMap", () => {
   const spots = ridingLocations(
     JSON.parse(readFileSync("public/spots.json", "utf8")),
   );
   it("adds over a hundred places, each a unique id the map did not already hold", () => {
-    expect(guides.records).toHaveLength(121);
-    const ids = guides.records.map((record: { id: string }) => record.id);
+    expect(places.records).toHaveLength(116);
+    const ids = places.records.map((record: { id: string }) => record.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const record of [...bundles.flatMap((b) => b.records)])
       expect(ids).not.toContain(record.id);
   });
-  it("keeps every place on the island, backed by a wind-sport listing, with its sources", () => {
-    for (const record of guides.records) {
+  it("keeps every place on the island, on a cited OpenStreetMap feature", () => {
+    expect(places.licence).toBe("ODbL-1.0");
+    for (const record of places.records) {
       expect(record.lat).toBeGreaterThan(51);
       expect(record.lat).toBeLessThan(56);
       expect(record.lon).toBeGreaterThan(-11);
@@ -160,16 +161,11 @@ describe("riding places read from the spot guides", () => {
       expect(record.kind).toBe("spot");
       expect(record.launchVerified).toBe(false);
       expect(record.sports.length).toBeGreaterThan(0);
-      expect(record.listings.length).toBeGreaterThan(0);
-      for (const listing of record.listings)
-        expect(new URL(listing.url).protocol).toBe("https:");
-      // The coordinate is one of the listed pins, never an invented one.
-      expect(
-        record.listings.some(
-          (listing: { lat: number; lon: number }) =>
-            listing.lat === record.lat && listing.lon === record.lon,
-        ),
-      ).toBe(true);
+      expect(record.licence).toBe("ODbL-1.0");
+      expect(record.sourceId).toMatch(/^(node|way|relation)\/\d+$/);
+      expect(record.sourceUrl).toBe(
+        `https://www.openstreetmap.org/${record.sourceId}`,
+      );
     }
   });
   it("puts no new pin on top of a place already on the map", () => {

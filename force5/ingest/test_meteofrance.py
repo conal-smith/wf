@@ -401,7 +401,7 @@ class LayoutTest(unittest.TestCase):
         north_coast = [
             "bloody-foreland", "browns-bay", "bunbeg", "carrickfinn", "dooey",
             "downings", "dunfanaghy", "fi-pollan-bay", "marble-hill",
-            "port-arthur", "portballintrae", "portnoo", "portrush", "portsalon",
+            "portballintrae", "portnoo", "portrush", "portsalon",
             "portstewart", "web-benone-strand", "web-magheraroarty",
             "whiterocks",
         ]

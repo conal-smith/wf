@@ -1,7 +1,7 @@
 import failte from "../data/locations/failte-ireland.json";
 import osm from "../data/locations/openstreetmap.json";
 import web from "../data/locations/web-research.json";
-import guides from "../data/locations/spot-guides.json";
+import places from "../data/locations/riding-places.json";
 import type { Spot } from "../force5/src/weather";
 import { shoreFacing } from "../force5/src/shoreFacing";
 
@@ -74,7 +74,7 @@ export function mergeLocations(original: Spot[]): Spot[] {
     ...failte.records,
     ...osm.records,
     ...web.records,
-    ...guides.records,
+    ...places.records,
   ]) {
     const source = {
       name: row.name,
@@ -83,17 +83,7 @@ export function mergeLocations(original: Spot[]): Spot[] {
       lat: row.lat,
       lon: row.lon,
     };
-    // A place several guides list keeps every listing, each with its own pin.
-    const sources =
-      "listings" in row
-        ? row.listings.map((listing) => ({
-            name: listing.name,
-            url: listing.url,
-            licence: row.licence,
-            lat: listing.lat,
-            lon: listing.lon,
-          }))
-        : [source];
+    const sources = [source];
     const existing = result.find(
       (spot) => spot.id === (existingIds[row.id] || row.id),
     );
