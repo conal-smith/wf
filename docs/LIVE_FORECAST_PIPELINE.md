@@ -642,18 +642,27 @@ re-import of the run already published: the new objects land with the source's n
 cycle (within 12 hours for ECMWF, a day for SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
 
-### The blend: every spot's stars in one file
+### The blend: every spot's stars, by spot square
 
 The map rates all 146 riding places at once, and before this it did so in the browser
 from every wind model's manifest: about 2.4 MB compressed, which on a slow phone kept
 the lights pending for some 20 seconds. The `blend` job works that consensus out once
-an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed):
+an hour instead and publishes it as a run, the way the models are published: the
+pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside it,
+`weather/blend-RUN-HOURSh-v2-HASH8/spots/<square>.json`, one file per 2° spot square
+(about 81 kB compressed between Ireland's ten, the largest, around Dublin, 22 kB):
 
 - **What it holds.** Each place's weighted median wind and gust (tenths of a knot),
   mean bearing (whole degrees) and agreement letter, on every time a deterministic
   model publishes, plus a summary of each model's run so the dock can build its
   columns without the manifests. No stars: those depend on the reader's weight, level
   and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).
+  The pointer (`schemaVersion` 2) holds the times, the models and the square index,
+  `"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...],
+  "keys": ["spotBlend"]}`; each square holds its places under `spotBlend`, in the same
+  envelope as a model's squares. Each place goes in the square the riding-place
+  catalogue puts it in, the catalogue the models were split by; a place the catalogue
+  no longer lists is left out and named in the job's log.
 - **The weighting.** Each model counts by how well it verified against Irish stations
   that far into its run (`MODEL_WEIGHTS` in `force5/src/weights.ts`; the backtest is in
   docs/VERIFICATION.md, "Blend weights"): HARMONIE 4 for as long as it runs, AROME and
@@ -667,15 +676,26 @@ an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed
   serves into a scratch directory (never over a persistent work directory's own) and
   runs `force5/blend/build.ts`, the site's own TypeScript bundled into the image with
   esbuild, so there is one implementation of the blend. Without a bucket it reads
-  `public/weather`; `npm run blend` does the same in a checkout. The worker then
-  validates (`validate_blend_bundle`) and publishes it as one self-contained file.
+  `public/weather`; `npm run blend` does the same in a checkout. `build.ts` writes the
+  run directory with `scripts/runs.mjs`, the JavaScript twin of `rundir.py` held to
+  the same hash fixture, and the pointer last. The worker then validates it as it
+  validates a model's run (the directory's hash, exactly the squares the pointer
+  lists, then `validate_blend_bundle` over the places merged back in), uploads the
+  squares, swaps the pointer and deletes the run directory it replaced; the pruner
+  keeps the blend's directory by its `base`, like any model's.
 - **Its run** is the hour it was worked out, so the hourly job (`:05`, after HARMONIE's
   `:45` slot) publishes a new one each hour; `maxAgeHours` is 3.
-- **The browser** reads it when the map mounts and revalidates it every five minutes.
-  It falls back to the old path, every manifest and the blend worked out in the
-  browser, when the reader has picked their own models, when the file is missing or
-  malformed, or when it is more than six hours old. The blend chart and the model list
-  still fetch the manifests, but only once they are opened.
+- **The browser** reads the pointer when the map mounts and revalidates it every five
+  minutes. The lights read only the squares in view — the map's bounds grown by a
+  third on every side, recomputed when the camera settles, at most 36 squares, the
+  nearest the centre — plus the squares of the open spot and of the reader's starred
+  and frequent spots wherever they are, which the dock and the panel of their spots
+  read. A place whose square has not been read keeps a pending light rather than a
+  wrong one. It falls back to the old path, the blend worked out in the browser from
+  the models' squares for the same places, when the reader has picked their own
+  models, when the pointer is missing or malformed, when it is more than six hours
+  old, or when none of the squares asked for can be read. The blend chart and the
+  model list still fetch the manifests, but only once they are opened.
 
 ### Verification: what we forecast, against what blew
 
@@ -888,6 +908,7 @@ weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, 
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
 weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/frames/HOUR.json  surface variable grids
 weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/frames/HOUR.json  GFS-Wave variable grids
+weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/tides.json                          current tide pointer + metadata
 marine/sea-temperature.json                current sea temperature pointer, readings inline
@@ -911,8 +932,10 @@ The pointer lists them:
 `"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...], "keys": [...]}`,
 `keys` naming the per-spot keys the squares carry. A run with no frames states its
 reach in `horizonHours`, so freshness never needs a square. A spot page, the dock and
-the forecast server read the one square holding the spot; the browser's own blend and
-the blend job read them all. Ireland's 146 riding places fall in ten squares.
+the forecast server read the one square holding the spot; the browser's own blend reads
+the squares in view and the reader's own spots'; the blend job reads them all. Ireland's
+146 riding places fall in ten squares. The blend is published the same way, its places
+under `spotBlend` (see "The blend" above).
 
 The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters
 still build the whole manifest in memory and none of them knows squares exist.
@@ -923,8 +946,8 @@ Each model's immutable objects sit under the first segment of its
 registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
 `S3_PREFIX` still goes before that segment.
 
-Forecast bundles (`wind`, `wave`, `weather`) are `schemaVersion` 2 run pointers as
-above; the others are `schemaVersion` 1. Every added field is optional; see the README
+Forecast bundles (`wind`, `wave`, `weather`) and the blend are `schemaVersion` 2 run
+pointers as above; the others are `schemaVersion` 1. Every added field is optional; see the README
 contract section for the field list. `validate_bundle` dispatches on `kind`, and for a
 forecast checks its per-spot data as read back from its squares:
 
@@ -960,6 +983,10 @@ forecast checks its per-spot data as read back from its squares:
   verification jobs publish (`verify/forecast-archive.json`, `verify/scores.json`). Both
   are self-contained, must have been generated in the hour their `run` names, and carry
   no `url` for the pruner to follow. See [VERIFICATION.md](VERIFICATION.md).
+- `blend` is a run of spot squares with no frames: its times in order, its coverage
+  their first and last, each source's columns inside them, and for every place under
+  `spotBlend` a wind, gust and bearing per time within range and an agreement letter
+  per time (`h`, `m`, `l` or `-`). Its squares carry `spotBlend` and nothing else.
 
 All adapters precompute their spot series for every place in
 `public/riding-locations.json`, so a browser chart never has to download grid frames.

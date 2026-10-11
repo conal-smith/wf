@@ -1,8 +1,9 @@
 # Tiling design: map frames and spot data that scale past Ireland
 
 Status: draft for review, 11 October 2026. Spot squares, run directories and
-the version 2 pointer (decisions 4–6) are built; where the build differs from
-the design is under "As built" at the end. The tiles are not built yet.
+the version 2 pointer (decisions 4–6) are built, and so is the blend per square
+(step 5); where the build differs from the design is under "As built" at the
+end. The tiles are not built yet.
 
 ## Why
 
@@ -356,10 +357,10 @@ above:
 - **A run with no frames states `horizonHours` in the pointer**, set by the
   split from its longest series, so freshness and the dock's axis never need
   a square.
-- **Only the forecast kinds are version 2.** Tides, sea temperature, wind
-  observations, the blend and the job summaries keep schemaVersion 1: they are
-  one file, or a pointer and its station files, and have no spot series to
-  move.
+- **Only the forecast kinds are version 2** (and, since step 5, the blend: see
+  below). Tides, sea temperature, wind observations and the job summaries keep
+  schemaVersion 1: they are one file, or a pointer and its station files, and
+  have no spot series to move.
 - **Squares.** Ireland's 146 riding places fall in ten squares, not eight. On
   the real runs of 7 October 2026 every pointer is 0.9–2.7 KB gzipped (from
   27–1,197 KB), and the largest square, `n52w008` around Dublin, is 9.5 KB
@@ -369,5 +370,62 @@ above:
   its name before uploading anything. Readers after that (the archive job,
   `backfill_spots.py`) trust the path and the frame header, as they trust the
   pointer.
-- **The blend is still one file** (step 5), and it is still worked out from
-  every square of every model, through the same loader.
+- **The blend** was still one file at this step; step 5, below, cut it into
+  squares. It is still worked out from every square of every model, through the
+  same loader.
+
+## As built: the blend per square
+
+Step 5. The blend is published as a run, like a model's, at schemaVersion 2:
+
+```text
+weather/blend.json                                     the pointer: times, sources, coverage, run, base, spots
+weather/blend-2026101106-360h-v2-1a2b3c4d/spots/n52w008.json   {schemaVersion, model: "blend", run, square, spotBlend: {id: {wind, gust, from, agreement}}}
+```
+
+The pointer's `spots` block has the models' shape,
+`{"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...], "keys": ["spotBlend"]}`.
+`spotBlend` is the old per-place `spots` record under a new name, since `spots`
+is now the square index; it joins the per-spot keys in both languages. A blend
+has no frames.
+
+- **Who writes it.** The arithmetic was already TypeScript (force5/blend/build.ts
+  runs `buildSpotBlend`), and the e2e site and `npm run blend` run it without the
+  Python pipeline, so build.ts writes the run itself with `scripts/runs.mjs`, the
+  JavaScript twin of rundir.py that the sample generator already used. Both are
+  held to tests/fixtures/run-digest.json, and the Python validator re-hashes the
+  directory, so the two writers cannot drift unnoticed. The directory is written
+  under a staging name and renamed whole, then the pointer. `--spots` is the
+  riding-place catalogue (fetch_blend.py passes the one the models were split
+  by); a blended place the catalogue no longer has is left out and named rather
+  than failing the job. The image's build stage copies `scripts/runs.mjs` in.
+- **Publishing and pruning** need nothing of their own: the blend joins the run
+  kinds, so the publisher re-hashes its directory, uploads its squares, swaps the
+  pointer by compare-and-swap and deletes the directory it replaced, and the
+  pruner keeps it by its `base`. It is no longer a "self-contained" kind.
+- **What the map reads.** The lights read the squares in view: the map's bounds,
+  grown by a third on every side (decision 7's margin), read when the camera
+  settles (`moveend`), intersected with the squares the blend lists, at most 36
+  of them, the nearest the centre (`squaresInView`, force5/src/squares.ts). The
+  open spot's square and those of the reader's starred and frequent spots are
+  always added, wherever they are, since the dock and the panel of their spots
+  rate them too. At the all-Ireland view that is all ten squares; zoomed in on a
+  bay it is one or two; over open sea or a country with no places it is none, and
+  no request is made. The last squares read stay shown while the next are read.
+  A place whose square has not been read gets no row and keeps its pending light,
+  never a calm one: this holds for the browser's own blend too, where a place
+  with no model data would otherwise rate as an hour of no wind.
+- **The browser's own blend** (the reader picked their own models, or the
+  published blend is more than six hours old, or none of its squares can be read)
+  reads the same squares from each wind model, rather than every square of every
+  model. Those two rules are unchanged (`trustedSpotBlend`); a square of the
+  published blend that fails alone leaves its places pending and the rest shown.
+- **Sizes**, on the real blend of 9 October 2026 (146 places, 126 times): one
+  file of 247 KB raw, 77 KB gzipped, became a pointer of 5.7 KB raw, 1.2 KB
+  gzipped, and ten squares of 1.7–71 KB raw, 0.8–22 KB gzipped, 81 KB gzipped in
+  all. The all-Ireland view reads about 6% more than before, in eleven requests
+  instead of one; a view of Dublin Bay reads the pointer, `n52w008` and the open
+  spot's square, about 31 KB; and a view anywhere else reads only the pointer.
+- **Dock.** The dock's stars come from the same table as the lights, so its
+  spot's square is always among those read. Its blend chart already read the
+  one square of the models it needs.

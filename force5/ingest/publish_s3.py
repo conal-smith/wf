@@ -28,6 +28,12 @@ The per-spot keys below are read from the squares and checked as before.
         may declare `"kind": "code"`, making its values whole code-table entries
         rather than measurements, so no range check applies to them.
 
+The blend is a run too, at schemaVersion 2 (docs/TILING_DESIGN.md, decision 6):
+
+- blend  every riding place's wind consensus (src/spotBlend.ts). The pointer
+        holds the times, the models it read and its square index; each place's
+        series is under `spotBlend` in the square it falls in. No frames.
+
 The other kinds are at schemaVersion 1 and are single files, or (tide) a pointer
 and its station files:
 
@@ -88,7 +94,7 @@ PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict",
 UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
 MISSING_CODES = ("NoSuchKey", "NotFound", "404")
 # Kinds published as a run directory and a schemaVersion 2 pointer.
-RUN_KINDS = ("wind", "wave", "weather")
+RUN_KINDS = ("wind", "wave", "weather", "blend")
 
 
 def error_code(error):
@@ -270,11 +276,12 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         # The run's own checks read the spot data from its squares, merged back in
         # exactly as the adapter held it, and every file of the run is uploaded.
         whole, files, objects = run_bundle(public, model, manifest)
-        validator = validate_wind_bundle if kind == "wind" else validate_variables_bundle
+        validator = {"wind": validate_wind_bundle, "blend": validate_blend_bundle}.get(
+            kind, validate_variables_bundle)
         validator(files, model, whole, run, now)
         return manifest, body, objects
     validator = {"tide": validate_tide_bundle,
-                 "observation": validate_observation_bundle, "blend": validate_blend_bundle,
+                 "observation": validate_observation_bundle,
                  "archive": validate_archive_bundle,
                  "verification": validate_verification_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
@@ -615,20 +622,27 @@ def observation_value(value, label):
     return value
 
 
+BLEND_KEY = "spotBlend"  # The one per-spot key of the blend's squares (squares.SPOT_KEYS).
 BLEND_AGREEMENT = set("hml-")
 BLEND_SERIES = {"wind": (0, 2000), "gust": (0, 2000), "from": (0, 360)}
 
 
-def validate_blend_bundle(public, model, manifest, run, now):
-    """Every riding place's wind consensus (src/spotBlend.ts): one self-contained file.
+def validate_blend_bundle(files, model, manifest, run, now):
+    """Every riding place's wind consensus (src/spotBlend.ts): a run of spot squares.
 
-    `run` is the hour it was worked out, not a provider's run, so the registry's
-    freshness limit means "how long since the blend was last worked out". Speeds
-    are tenths of a knot and bearings whole degrees, one value per time.
+    `manifest` is the pointer with its squares merged back in (`run_bundle`), so
+    the places are under `spotBlend` exactly as the blend job held them. `run` is
+    the hour it was worked out, not a provider's run, so the registry's freshness
+    limit means "how long since the blend was last worked out". Speeds are tenths
+    of a knot and bearings whole degrees, one value per time. A blend has no
+    frames: its run directory holds its squares and nothing else (`run_files`).
     """
-    times, sources, spots = manifest.get("times"), manifest.get("sources"), manifest.get("spots")
-    if manifest.get("schemaVersion") != 1:
-        raise ValueError("Unknown blend schema")
+    times, sources = manifest.get("times"), manifest.get("sources")
+    spots = manifest.get(BLEND_KEY)
+    if manifest.get("frames"):
+        raise ValueError("A blend has no frames")
+    if (manifest.get("spots") or {}).get("keys") != [BLEND_KEY]:
+        raise ValueError(f"A blend's squares carry {BLEND_KEY} and nothing else")
     if not isinstance(times, list) or not times or not all(isinstance(t, str) for t in times):
         raise ValueError("A blend needs the times it covers")
     moments = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times]
@@ -659,7 +673,6 @@ def validate_blend_bundle(public, model, manifest, run, now):
         if not isinstance(agreement, str) or len(agreement) != len(times) \
                 or not set(agreement) <= BLEND_AGREEMENT:
             raise ValueError(f"The blend's agreement for {spot} is malformed")
-    return []
 
 
 def validate_observation_bundle(public, model, manifest, run, now):

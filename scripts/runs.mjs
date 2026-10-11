@@ -1,7 +1,8 @@
 /**
- * The published run layout, for scripts that write runs without the Python
- * pipeline: the synthetic sample bundles (scripts/sample-weather.mjs) and the
- * e2e site built from them.
+ * The published run layout, for code that writes runs without the Python
+ * pipeline: the synthetic sample bundles (scripts/sample-weather.mjs), the e2e
+ * site built from them, and the blend job (force5/blend/build.ts), which
+ * publishes the blend as a run of spot squares in production too.
  *
  *   weather/<model>.json                                    the pointer
  *   weather/<model>-<run>-<hours>h-v1-<hash8>/frames/000.bin
@@ -24,6 +25,7 @@ export const SPOT_KEYS = [
   "spotCoverage",
   "spotMembers",
   "spotCells",
+  "spotBlend",
 ];
 
 const pad = (value, width) => String(Math.abs(value)).padStart(width, "0");
@@ -61,7 +63,8 @@ const bytesOf = (value) =>
  * A whole manifest, as an adapter holds it, published as a run.
  *
  * `frames` are [hour, suffix, body] in the manifest's frame order; `spots` are
- * the catalogue entries that place each spot in its square. Returns the
+ * the catalogue entries that place each spot in its square. A run with no
+ * `frames` key at all (the blend) gets none in its pointer either. Returns the
  * schemaVersion 2 pointer and the files to write, as [path from the directory
  * above weather/, bytes].
  */
@@ -70,7 +73,7 @@ export function publishRun(whole, prefix, frameBodies, spots) {
     spots.map((spot) => [spot.id, spotSquare(spot.lat, spot.lon)]),
   );
   const inside = [];
-  const frames = whole.frames.map((frame, index) => {
+  const frames = (whole.frames ?? []).map((frame, index) => {
     const [hour, suffix, body] = frameBodies[index];
     if (hour !== frame.hour) throw new Error(`Frame ${index} is not +${hour}h`);
     const url = `frames/${String(hour).padStart(3, "0")}.${suffix}`;
@@ -105,8 +108,8 @@ export function publishRun(whole, prefix, frameBodies, spots) {
     Object.entries(whole).filter(([key]) => !SPOT_KEYS.includes(key)),
   );
   pointer.schemaVersion = RUN_SCHEMA_VERSION;
-  pointer.frames = frames;
-  if (!frames.length && pointer.horizonHours === undefined) {
+  if ("frames" in whole) pointer.frames = frames;
+  if ("frames" in whole && !frames.length && pointer.horizonHours === undefined) {
     const reach = ["spotForecasts", "spotMembers"].flatMap((key) =>
       Object.values(whole[key] ?? {}).flatMap((steps) =>
         steps.length ? [steps[steps.length - 1].hour] : [],

@@ -48,9 +48,15 @@ import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
-import { ALL_SQUARES, useSpotSquares } from "./useSpotSquares";
-import { blendColumnModels, staleSpotBlend } from "./spotBlend";
-import { useSpotBlend } from "./useSpotBlend";
+import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
+import {
+  blendColumnModels,
+  ownBlendModels,
+  trustedSpotBlend,
+} from "./spotBlend";
+import { useBlendSquares, useSpotBlend } from "./useSpotBlend";
+import { useViewBounds } from "./useViewBounds";
+import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
   offshoreMark,
@@ -356,13 +362,34 @@ export default function App() {
   const spotBlend = useSpotBlend(!!pendingModel);
   // The blend is published for every wind model; a reader who has left some
   // out gets theirs worked out here, from the manifests, as before.
-  const ownBlend = !windModels().every((model) =>
-    prefs.blendModels.includes(model.id),
+  const ownBlend = ownBlendModels(
+    prefs.blendModels,
+    windModels().map((model) => model.id),
   );
-  const published =
-    ownBlend || !spotBlend.blend || staleSpotBlend(spotBlend.blend, clockNow)
-      ? null
-      : spotBlend.blend;
+  const pointer = trustedSpotBlend(spotBlend.blend, ownBlend, clockNow);
+  // The lights read the spot squares in view, once the camera settles, and
+  // the open spot's and the reader's own wherever they are: never every place.
+  const mapView = useViewBounds(mapReady ? controls.current?.map : null);
+  const ownPlaces = useMemo(() => {
+    const ids = new Set([
+      point?.id ?? FIRST_SPOT,
+      ...starred,
+      ...frequent.map((v) => v.id),
+    ]);
+    return spots.filter((spot) => ids.has(spot.id));
+  }, [spots, point?.id, starred, frequent]);
+  const blendSquares = useBlendSquares(
+    pointer,
+    useMemo(
+      () =>
+        pointer
+          ? squaresToRead(mapView, pointer.spots.squares, ownPlaces)
+          : null,
+      [pointer, mapView, ownPlaces],
+    ),
+  );
+  // Squares that cannot be read are as good as no blend at all.
+  const published = blendSquares.failed ? null : pointer;
   const [wantModels, setWantModels] = useState(false);
   // The display options list every wind model, and say which answered.
   useEffect(() => {
@@ -564,17 +591,37 @@ export default function App() {
     () => [point?.id ?? FIRST_SPOT, ...starred, ...frequent.map((v) => v.id)],
     [point?.id, starred, frequent],
   );
-  // The reader's own blend rates every place, so it reads every spot square
-  // of every model; the published blend needs none of them.
-  const rated = useSpotSquares(models, published ? null : ALL_SQUARES);
+  // The reader's own blend reads the same squares from every wind model; the
+  // published blend needs none of them.
+  const windOnly = useMemo(
+    () => models.filter((model) => model.wind !== null),
+    [models],
+  );
+  const ownSquares = useMemo(
+    () =>
+      published
+        ? null
+        : squaresToRead(
+            mapView,
+            windOnly.flatMap((model) => model.wind!.spots.squares),
+            ownPlaces,
+          ),
+    [published, mapView, windOnly, ownPlaces],
+  );
+  const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const { hours, version } = useRatings(
-    rated,
+    rated.models,
     prefs.blendModels,
     places,
     axis,
     rider,
     first,
-    published,
+    published ? blendSquares.blend : null,
+    published
+      ? (blendSquares.blend?.loaded ?? [])
+      : rated.squares === ALL_SQUARES
+        ? null
+        : (rated.squares ?? []),
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();

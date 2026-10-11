@@ -2,9 +2,14 @@
 """Work out the blend every riding place's stars are rated from (src/spotBlend.ts).
 
 Not an importer: it reads what the wind importers have already published and
-writes one file, weather/blend.json, for the worker to validate and publish like
-any other bundle. The arithmetic is the site's own, in TypeScript, run by Node
-(force5/blend/build.ts); this only gathers its inputs and starts it.
+writes a run of its own for the worker to validate and publish like any other:
+the pointer weather/blend.json, and beside it a run directory named for its
+content holding each riding place's blend in its 2° spot square,
+`blend-<run>-<hours>h-v2-<hash>/spots/<square>.json` (docs/TILING_DESIGN.md,
+decision 6). The arithmetic and the writing are the site's own, in TypeScript,
+run by Node (force5/blend/build.ts, through scripts/runs.mjs); this only gathers
+its inputs, hands it the spot catalogue that places each spot in its square, and
+starts it.
 
 With a bucket the inputs are the wind pointers the bucket serves right now, and
 every spot square of the runs they name, read into a scratch directory laid out
@@ -21,7 +26,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fetch_forecast import PROJECT_ROOT, ROOT
+from fetch_forecast import PROJECT_ROOT, ROOT, spots_file
 from prune import read_object
 from publish_s3 import make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
@@ -79,10 +84,13 @@ def main():
     args = parser.parse_args()
     out = ROOT / "public" / MANIFESTS["blend"]
     out.parent.mkdir(parents=True, exist_ok=True)
+    # The same catalogue the models were split by, so each place lands in the
+    # square the browser computes from its own copy of it.
+    catalogue = ["--spots", str(spots_file())]
     if not args.bucket:
         timing.start("decode")
-        subprocess.run([*builder(), "--root", str(ROOT / "public"), "--out", str(out)],
-                       check=True, cwd=PROJECT_ROOT)
+        subprocess.run([*builder(), "--root", str(ROOT / "public"), "--out", str(out),
+                        *catalogue], check=True, cwd=PROJECT_ROOT)
         return
     s3 = make_client(args.endpoint_url, args.region)
     with tempfile.TemporaryDirectory(prefix="blend-") as scratch:
@@ -92,7 +100,7 @@ def main():
             raise RuntimeError("The bucket serves no wind manifests: nothing to blend")
         print(f"Blending what the bucket serves: {', '.join(found)}", flush=True)
         timing.start("decode")
-        subprocess.run([*builder(), "--root", scratch, "--out", str(out)],
+        subprocess.run([*builder(), "--root", scratch, "--out", str(out), *catalogue],
                        check=True, cwd=PROJECT_ROOT)
 
 

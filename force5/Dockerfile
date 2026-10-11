@@ -10,6 +10,8 @@ WORKDIR /src
 COPY force5/src/ force5/src/
 COPY force5/blend/ force5/blend/
 COPY src/ src/
+# The run layout the blend is published in (a run directory of spot squares).
+COPY scripts/runs.mjs scripts/runs.mjs
 RUN /opt/esbuild/node_modules/.bin/esbuild force5/blend/build.ts --bundle \
       --platform=node --format=esm --target=node22 '--define:import.meta.env={}' \
       --outfile=force5/blend/dist/blend.mjs

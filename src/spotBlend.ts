@@ -1,6 +1,6 @@
 /**
  * The blend, worked out once for every riding place when the forecast is
- * published, so the map's stars need one small file rather than every wind
+ * published, so the map's stars need a few small files rather than every wind
  * model's manifest (two and a half megabytes between them, which a phone took
  * twenty seconds to fetch before a single light could say how good an hour was).
  *
@@ -11,11 +11,26 @@
  * bearing. It does not keep stars: those are the reader's own (weight, level,
  * wings), and rating an hour is arithmetic the browser does in microseconds.
  *
+ * It is published as a run, the way the models are (docs/TILING_DESIGN.md,
+ * decision 6): the pointer `weather/blend.json` holds the times, the models it
+ * read and the list of its 2° spot squares, and each place's consensus sits
+ * under `spotBlend` in the square of the run directory it falls in. The map
+ * reads only the squares in view, and the dock only its spot's
+ * (`loadBlendSquares`, through the one spot loader, force5/src/spotData.ts).
+ *
  * Only the default blend, every wind model, is published. A reader who picks
  * their own models gets the old path: the manifests, and the blend worked out
  * in the browser (src/useRatings.ts).
  */
 import type { Agreement } from "../force5/src/blend";
+import {
+  checkBase,
+  checkSpotIndex,
+  loadSpotSquares,
+  SPOT_KEYS,
+  type ReadJson,
+  type SpotIndex,
+} from "../force5/src/spotData";
 import { rateHour, type Rider } from "../force5/src/stars";
 import { modelTimes, type ColumnModel } from "../force5/src/timeline";
 import { KNOTS } from "../force5/src/units";
@@ -28,9 +43,11 @@ import {
   type RatedPlace,
 } from "./ratings";
 
-/** Where the blend is published, beside the models' own pointers. */
+/** Where the blend's pointer is published, beside the models' own pointers. */
 export const SPOT_BLEND_PATH = "weather/blend.json";
-export const SPOT_BLEND_SCHEMA = 1;
+export const SPOT_BLEND_SCHEMA = 2;
+/** The one per-spot key the blend's squares carry. */
+export const BLEND_KEY = "spotBlend";
 /**
  * How old a blend may be before the map stops trusting it. The job runs hourly;
  * one that has stopped would otherwise leave the lights on runs the map itself
@@ -39,8 +56,31 @@ export const SPOT_BLEND_SCHEMA = 1;
 export const SPOT_BLEND_MAX_AGE_HOURS = 6;
 
 /** Whether the blend was worked out too long ago to rate from. */
-export const staleSpotBlend = (blend: SpotBlend, now = Date.now()) =>
-  now - Date.parse(blend.generatedAt) > SPOT_BLEND_MAX_AGE_HOURS * 3600000;
+export const staleSpotBlend = (
+  blend: Pick<SpotBlend, "generatedAt">,
+  now = Date.now(),
+) => now - Date.parse(blend.generatedAt) > SPOT_BLEND_MAX_AGE_HOURS * 3600000;
+
+/**
+ * Whether the reader blends their own set of models: any wind model left out.
+ * Only the blend of every wind model is published.
+ */
+export const ownBlendModels = (
+  blendModels: readonly string[],
+  windModelIds: readonly string[],
+) => !windModelIds.every((id) => blendModels.includes(id));
+
+/**
+ * The published blend the map may rate from, or null for the browser to work
+ * the blend out itself from the models: when there is none, when the reader
+ * blends their own models, or once it is older than six hours.
+ */
+export const trustedSpotBlend = <B extends Pick<SpotBlend, "generatedAt">>(
+  blend: B | null,
+  ownModels: boolean,
+  now = Date.now(),
+): B | null =>
+  ownModels || !blend || staleSpotBlend(blend, now) ? null : blend;
 
 /** One model the blend read: enough of its run for the dock's columns. */
 export interface BlendSource {
@@ -65,7 +105,11 @@ export interface BlendSpot {
   agreement: string;
 }
 
-export interface SpotBlend {
+/** Every place's consensus, by place id. */
+export type BlendSpots = Record<string, BlendSpot>;
+
+/** What every form of the blend carries: the run, its times and its models. */
+interface BlendHead {
   schemaVersion: typeof SPOT_BLEND_SCHEMA;
   kind: "blend";
   model: "blend";
@@ -80,7 +124,27 @@ export interface SpotBlend {
    */
   times: string[];
   sources: BlendSource[];
-  spots: Record<string, BlendSpot>;
+}
+
+/** The blend as the job works it out, every place in hand, before it is cut into squares. */
+export interface BlendRun extends BlendHead {
+  spotBlend: BlendSpots;
+}
+
+/** The published pointer: no places, the squares they are in. */
+export interface SpotBlend extends BlendHead {
+  /** The run directory beside the pointer (`blend-<run>-<hours>h-v2-<hash8>/`). */
+  base: string;
+  spots: SpotIndex;
+}
+
+/** The pointer with the places of the squares read so far. */
+export interface LoadedBlend extends SpotBlend {
+  spotBlend: BlendSpots;
+  /** The squares whose places are in `spotBlend`: a place outside them is unknown, not calm. */
+  loaded: readonly string[];
+  /** Squares asked for that could not be read or did not hold together. */
+  failed: readonly string[];
 }
 
 const AGREEMENT_CODE: Record<Agreement, string> = {
@@ -114,7 +178,7 @@ const isEnsemble = (manifest: Manifest) =>
 export function buildSpotBlend(
   manifests: readonly Manifest[],
   now = new Date(),
-): SpotBlend {
+): BlendRun {
   const runTimes = new Map(
     manifests.map((manifest) => [
       manifest.model,
@@ -133,7 +197,7 @@ export function buildSpotBlend(
       ),
     ),
   ].sort();
-  const spots: Record<string, BlendSpot> = {};
+  const spots: BlendSpots = {};
   for (const id of places) {
     const c = placeConsensus(manifests, ids, id, times);
     spots[id] = {
@@ -165,8 +229,23 @@ export function buildSpotBlend(
       weight: modelWeight(manifest.model, 0, manifest.resolutionKm),
       columns: runTimes.get(manifest.model)!.map((time) => index.get(time)!),
     })),
-    spots,
+    [BLEND_KEY]: spots,
   };
+}
+
+/**
+ * The run directory's name before its hash, as the publisher names a run:
+ * `blend-<run>-<hours>h-v2`, the hours from the hour it was worked out to its
+ * last time.
+ */
+export function blendPrefix(blend: Pick<BlendHead, "run" | "runTime" | "coverage">): string {
+  const reach = Math.max(
+    0,
+    Math.ceil(
+      (Date.parse(blend.coverage.to) - Date.parse(blend.runTime)) / 3600000,
+    ) || 0,
+  );
+  return `blend-${blend.run}-${reach}h-v${SPOT_BLEND_SCHEMA}`;
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -174,7 +253,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const numberOrNull = (value: unknown) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
 
-/** The published file, checked; throws with a sentence when it is not one. */
+/** The published pointer, checked; throws with a sentence when it is not one. */
 export function parseSpotBlend(body: unknown): SpotBlend {
   if (!isObject(body) || body.kind !== "blend" || body.model !== "blend")
     throw new Error("Not a blend file.");
@@ -186,8 +265,8 @@ export function parseSpotBlend(body: unknown): SpotBlend {
     !times.every((t) => typeof t === "string" && Number.isFinite(Date.parse(t)))
   )
     throw new Error("The blend's times are not a list of times.");
-  if (!Array.isArray(body.sources) || !isObject(body.spots))
-    throw new Error("The blend has no sources or no places.");
+  if (!Array.isArray(body.sources))
+    throw new Error("The blend names no models.");
   for (const source of body.sources)
     if (
       !isObject(source) ||
@@ -199,24 +278,79 @@ export function parseSpotBlend(body: unknown): SpotBlend {
       )
     )
       throw new Error("A blend source is malformed.");
-  for (const [id, spot] of Object.entries(body.spots)) {
+  checkBase(body.base);
+  const index = checkSpotIndex(body.spots);
+  if (index.keys.length !== 1 || index.keys[0] !== BLEND_KEY)
+    throw new Error(`The blend's squares must carry ${BLEND_KEY} alone.`);
+  const inline = SPOT_KEYS.filter((key) => key in body);
+  if (inline.length)
+    throw new Error("The blend's places belong in its squares, not its pointer.");
+  return body as unknown as SpotBlend;
+}
+
+/** One square's places, checked against the blend's times; throws naming the place. */
+export function checkBlendSpots(
+  blend: Pick<BlendHead, "times">,
+  spots: unknown,
+): BlendSpots {
+  if (!isObject(spots)) throw new Error("The blend's places are malformed.");
+  const n = blend.times.length;
+  for (const [id, spot] of Object.entries(spots)) {
     const ok =
       isObject(spot) &&
       typeof spot.agreement === "string" &&
-      spot.agreement.length === times.length &&
+      spot.agreement.length === n &&
       [spot.wind, spot.gust, spot.from].every(
         (series) =>
           Array.isArray(series) &&
-          series.length === times.length &&
+          series.length === n &&
           series.every(numberOrNull),
       );
     if (!ok) throw new Error(`The blend's series for ${id} are malformed.`);
   }
-  return body as unknown as SpotBlend;
+  return spots as BlendSpots;
+}
+
+/**
+ * The pointer with the places of `squares` merged in, read through the one
+ * spot loader (so a square is fetched once, and kept: its path is immutable).
+ * A square the blend does not list holds no places and is not asked for. Each
+ * square stands alone: one that cannot be read, or does not hold together,
+ * is named in `failed` and its places stay unknown, while the others are used.
+ */
+export async function loadBlendSquares(
+  read: ReadJson,
+  blend: SpotBlend,
+  squares: readonly string[],
+): Promise<LoadedBlend> {
+  const listed = new Set(blend.spots.squares);
+  const wanted = [...new Set(squares)].filter((s) => listed.has(s)).sort();
+  const results = await Promise.allSettled(
+    wanted.map(async (square) => {
+      const data = await loadSpotSquares(read, SPOT_BLEND_PATH, blend, [
+        square,
+      ]);
+      return checkBlendSpots(blend, data.spotBlend);
+    }),
+  );
+  const spotBlend: BlendSpots = {};
+  const loaded: string[] = [];
+  const failed: string[] = [];
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      failed.push(wanted[i]);
+      return;
+    }
+    loaded.push(wanted[i]);
+    Object.assign(spotBlend, result.value);
+  });
+  return { ...blend, spotBlend, loaded, failed };
 }
 
 /** The runs the blend read, as the dock's column builder takes them. */
-export function blendColumnModels(blend: SpotBlend): ColumnModel[] {
+export function blendColumnModels(
+  blend: Pick<BlendHead, "sources" | "times">,
+): ColumnModel[] {
   return blend.sources.map((source) => ({
     id: source.id,
     ensemble: source.ensemble,
@@ -228,14 +362,14 @@ export function blendColumnModels(blend: SpotBlend): ColumnModel[] {
   }));
 }
 
-const positions = new WeakMap<SpotBlend, Map<number, number>>();
+const positions = new WeakMap<readonly string[], Map<number, number>>();
 
 /** Where each axis time sits in the blend's times, or -1 where it has none. */
-function columnsOf(blend: SpotBlend, axis: readonly string[]): number[] {
-  let at = positions.get(blend);
+function columnsOf(times: readonly string[], axis: readonly string[]): number[] {
+  let at = positions.get(times);
   if (!at) {
-    at = new Map(blend.times.map((time, i) => [Date.parse(time), i]));
-    positions.set(blend, at);
+    at = new Map(times.map((time, i) => [Date.parse(time), i]));
+    positions.set(times, at);
   }
   return axis.map((time) => at!.get(Date.parse(time)) ?? -1);
 }
@@ -243,17 +377,18 @@ function columnsOf(blend: SpotBlend, axis: readonly string[]): number[] {
 /**
  * One place's columns from the published blend, rated for this rider: what
  * `placeHours` gives from the manifests, without them. A place the blend does
- * not know gets no row, and so reads as pending, as before it was rated.
+ * not know — or whose square has not been read — gets no row, and so reads as
+ * pending, as before it was rated.
  */
 export function spotBlendHours(
-  blend: SpotBlend,
+  blend: Pick<BlendRun, "times" | "spotBlend">,
   place: RatedPlace,
   axis: readonly string[],
   rider: Rider,
 ): PlaceHour[] | null {
-  const spot = blend.spots[place.id];
+  const spot = blend.spotBlend[place.id];
   if (!spot) return null;
-  const columns = columnsOf(blend, axis);
+  const columns = columnsOf(blend.times, axis);
   const light = daylightOn(place, axis);
   return columns.map((i, at) => {
     const wind = i < 0 ? null : spot.wind[i];

@@ -1,8 +1,9 @@
 """Spot squares: the 2° × 2° key every spot-shaped file is cut by.
 
 A run's per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
-`spotMembers`, `spotCells`) used to sit inside its pointer manifest, which made
-every manifest grow with every spot and made every page load download all of it.
+`spotMembers`, `spotCells`, and the blend's `spotBlend`) used to sit inside its
+pointer manifest, which made every manifest grow with every spot and made every
+page load download all of it.
 It now lives in one file per square of the run directory,
 `spots/<square>.json`, and the manifest only lists the squares
 (docs/TILING_DESIGN.md, decision 6).
@@ -29,8 +30,11 @@ SQUARE_DEGREES = 2
 SCHEMA_VERSION = 2
 # Every per-spot key a run manifest may carry. `spotCells` is Irish Shelf SWAN's
 # record of the wet cell each spot was read from; it used to be called `spots`,
-# which is now the name of the square index.
-SPOT_KEYS = ("spotForecasts", "spotSeries", "spotCoverage", "spotMembers", "spotCells")
+# which is now the name of the square index. `spotBlend` is the blend's own
+# consensus per riding place (src/spotBlend.ts), which the blend publishes as a
+# run of its own, and which no model carries.
+SPOT_KEYS = ("spotForecasts", "spotSeries", "spotCoverage", "spotMembers", "spotCells",
+             "spotBlend")
 SQUARE_URL = "spots/{square}.json"
 SQUARE_NAME = re.compile(r"[ns]\d{2}[ew]\d{3}")
 # `<model>-<run>-<hours>h-v<N>-<hash8>/`, one path segment. rundir.py names it.
