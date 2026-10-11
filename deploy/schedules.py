@@ -216,6 +216,12 @@ def home_compute(jobs):
         "stateFile": "state/state.json",
         "envFile": ".env",
         "api": {"host": "127.0.0.1", "port": 4786, "tokenEnv": "HOME_COMPUTE_API_TOKEN"},
+        # The controller's dashboard: the last 50 runs a job, the Tailscale logins
+        # signed in without a token, and the timetable edited through this repo's
+        # own command, so jobs.toml stays the one place it is written.
+        "history": {"keep": 50},
+        "dashboard": {"allowedLoginsEnv": "HOME_COMPUTE_DASHBOARD_LOGINS"},
+        "timetable": {"command": ["./macmini.sh", "jobs", "set"], "timeoutSeconds": 120},
         "bacalhau": {"binary": "bacalhau", "apiHost": "127.0.0.1", "apiPort": 1234},
         "jobs": entries,
     }
