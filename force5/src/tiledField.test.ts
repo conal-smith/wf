@@ -532,6 +532,35 @@ describe("loading tiles for a view", () => {
     expect(fetcher).toHaveBeenCalledTimes(2 * count - TILE_CACHE_SIZE);
   });
 
+  it("never lets the next hour push out the tiles the view on screen draws from", async () => {
+    // Tiles of 16, and a native view of more than half the cache's worth.
+    const { manifest, fetcher } = serve(HARMONIE, [0, 1], harmonie, {
+      size: 16,
+    });
+    const view: MapView = {
+      west: -9.6,
+      east: -5.6,
+      north: 55.2,
+      south: 52.2,
+      pxPerLon: NATIVE,
+      pxPerLat: NATIVE,
+    };
+    const shown = new TiledField(manifest, 0);
+    const wanted = shown.want(view).tiles.length;
+    expect(wanted).toBeGreaterThan(TILE_CACHE_SIZE / 2);
+    await shown.load(view);
+    // The next hour, prefetched for the same view, as the map does.
+    await new TiledField(manifest, 1).load(view, { base: false });
+    const asked = fetcher.mock.calls.length;
+    // Back to the hour on screen, or a new frame of it: every tile still there.
+    expect(new TiledField(manifest, 0).request(view)).toBeNull();
+    // And the next hour's too: the cache made room for both.
+    expect(new TiledField(manifest, 1).request(view, { base: false })).toBeNull();
+    expect(fetcher.mock.calls.length).toBe(asked);
+    expect(tileCacheSize()).toBeGreaterThan(TILE_CACHE_SIZE);
+    expect(tileCacheSize()).toBeLessThanOrEqual(2 * wanted + 1);
+  });
+
   it("reads through the cache for a bare point, without filling it", async () => {
     const { manifest, fetcher } = serve(HARMONIE, [0, 1, 2], harmonie);
     for (const index of [0, 1, 2])

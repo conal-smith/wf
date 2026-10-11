@@ -20,7 +20,10 @@
  * any other tile exists for every hour, so a failed request is an error.
  *
  * Tiles are cached by url, decoded, in one LRU of `TILE_CACHE_SIZE` shared by
- * every frame and every model, with requests in flight shared too. A tile is
+ * every frame and every model, with requests in flight shared too. The tiles
+ * the hour on screen draws its view from are pinned: the next hour's prefetch,
+ * or a bare point's walk, never pushes them out, and the cache stretches to
+ * twice their number when a large view needs more than half of it. A tile is
  * kept as its stored int16 tenths (f5tile.ts, `decodeTileValues`), so a
  * hundred of them cost about what the eight whole frames this replaces did, and
  * `value / 10` is bit for bit the number a whole frame held: at level 0 a
@@ -112,11 +115,29 @@ function wholeView(grid: Grid): MapView {
 
 const cache = new Map<string, TileValues>();
 const pending = new Map<string, Promise<TileValues>>();
+/** The tiles of the view on screen, at the hour on screen: never evicted. */
+let pinned = new Set<string>();
+
+/**
+ * How many tiles the cache holds: `TILE_CACHE_SIZE`, or room for the view on
+ * screen and the next hour's same view, whichever is more.
+ */
+const cacheLimit = () => Math.max(TILE_CACHE_SIZE, 2 * pinned.size);
 
 function remember(url: string, tile: TileValues) {
   cache.delete(url);
   cache.set(url, tile);
-  while (cache.size > TILE_CACHE_SIZE) cache.delete(cache.keys().next().value!);
+  const limit = cacheLimit();
+  // The least recently used first, passing over the pinned.
+  for (const key of cache.keys()) {
+    if (cache.size <= limit) break;
+    if (!pinned.has(key)) cache.delete(key);
+  }
+}
+
+/** The view on screen's tiles from now on, replacing the last view's. */
+function pin(urls: Iterable<string>) {
+  pinned = new Set(urls);
 }
 
 /** A cached tile, marked as just used, or undefined. */
@@ -130,6 +151,7 @@ function cached(url: string): TileValues | undefined {
 export function clearTileCache() {
   cache.clear();
   pending.clear();
+  pinned = new Set();
 }
 /** For tests and the perf probe: how many decoded tiles are held. */
 export const tileCacheSize = () => cache.size;
@@ -309,7 +331,8 @@ export class TiledField {
    *
    * At the native level `base` also loads the coarsest level's tiles
    * (`loadBase`), without waiting for them; a prefetch of the next hour asks
-   * for none.
+   * for none. A request with `base` is for the hour on screen, or about to be,
+   * so its tiles (and that base) are pinned in the cache.
    */
   request(
     view: MapView,
@@ -317,8 +340,14 @@ export class TiledField {
   ): Promise<void> | null {
     const { level, tiles } = this.want(view);
     this.level = level;
-    if (base && level === this.levels[0].level && this.levels.length > 1)
-      this.loadBase(keep);
+    const underneath =
+      base && level === this.levels[0].level && this.levels.length > 1;
+    if (keep && base)
+      pin([
+        ...tiles.map(({ x, y }) => this.url(level, x, y)),
+        ...(underneath ? this.baseUrls() : []),
+      ]);
+    if (underneath) this.loadBase(keep);
     const plan = this.levels.find((entry) => entry.level === level)!;
     const missing = tiles.filter(({ x, y }) => {
       const at = slotOf(plan, x, y);
@@ -378,6 +407,22 @@ export class TiledField {
       }
       this.loadTile(plan, x, y, keep).catch(() => {});
     }
+  }
+
+  /** The coarsest level's tiles for this hour, absent ones left out. */
+  private baseUrls(): string[] {
+    const plan = this.levels[this.levels.length - 1];
+    const urls: string[] = [];
+    for (let at = 0; at < plan.slots.length; at++)
+      if (!plan.absent.has(at))
+        urls.push(
+          this.url(
+            plan.level,
+            plan.spec.x[0] + (at % plan.across),
+            plan.spec.y[0] + Math.floor(at / plan.across),
+          ),
+        );
+    return urls;
   }
 
   private loadTile(plan: LevelPlan, x: number, y: number, keep: boolean) {

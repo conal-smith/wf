@@ -476,7 +476,10 @@ measured:
   an overview's edge block reaches past the domain.
 - **Cache.** 96 decoded tiles, LRU, shared by every frame and model, with
   requests in flight shared; a bare point's series reads through it
-  (`keep: false`) as it read through the frame cache. A tile is held as its
+  (`keep: false`) as it read through the frame cache. The tiles the hour on
+  screen draws its view from (and the base under a native view) are pinned, so
+  the next hour's prefetch never pushes them out, and the cache stretches to
+  twice their number when a large view needs more than half of 96. A tile is held as its
   stored int16 tenths, a quarter of the memory of floats, which keeps 96 tiles
   (about 9.7 MB) near what eight whole frames cost; `value / 10` is bit for
   bit the decoder's number, so nothing samples differently for it.
