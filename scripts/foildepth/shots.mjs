@@ -6,7 +6,7 @@
 //   node scripts/foildepth/shots.mjs http://127.0.0.1:5197 /tmp/wf-foildepth/shots kilcrea 2
 //
 // Arguments: the app's URL, the output folder, a spot to centre on, and how
-// many times to zoom in past the spot's own zoom.
+// many times to zoom in past the spot's own zoom ("ireland" and 0: all of it).
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
 
@@ -36,7 +36,8 @@ await page.addInitScript(() => {
     }),
   );
 });
-await page.goto(`${base}/?spot=${spot}`);
+// "ireland": no spot, the chart as it opens on all of Ireland.
+await page.goto(spot === "ireland" ? `${base}/` : `${base}/?spot=${spot}`);
 const scrub = page.getByRole("slider", { name: "Forecast time" });
 await scrub.waitFor({ timeout: 30000 });
 // The chart up before anything moves it: "Drawing the chart…" gone.

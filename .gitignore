@@ -41,3 +41,7 @@ deploy/home-compute/state/
 
 # The blend job's bundle, built inside the forecast image (force5/Dockerfile).
 force5/blend/dist/
+
+# The national foilable-depth regions: on the data host only (scripts/foildepth/publish.py),
+# too large to commit. A local copy beside the pilots, for the dev server, stays out of git.
+public-data/foildepth/*/tide-*.pmtiles

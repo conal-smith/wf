@@ -21,6 +21,7 @@ On the target grid:
 Returns (heights above LAT with NaN where none, a mask of level 0, a mask
 of level 3, region counts).
 """
+import math
 from collections import deque
 
 import numpy as np
@@ -105,12 +106,27 @@ def _step(level, crossed):
     return None
 
 
+def _level_grid(value, shape, coarse_shape, coarsen):
+    """A waterline's height on the coarse grid: a number everywhere, or a
+    full-resolution grid sampled every `coarsen` pixels."""
+    if np.ndim(value) == 0:
+        return np.full(coarse_shape, float(value), dtype=np.float32)
+    grid = np.asarray(value, dtype=np.float32)
+    if grid.shape != shape:
+        raise ValueError(f"level grid {grid.shape} is not the target's {shape}")
+    ch, cw = coarse_shape
+    sampled = grid[::coarsen, ::coarsen]
+    return np.pad(sampled, ((0, ch - sampled.shape[0]), (0, cw - sampled.shape[1])), mode="edge")
+
+
 def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
-                      sea_below=-1.0, land_above=8.0, sea_hint=None):
+                      sea_below=-1.0, land_above=8.0, sea_hint=None, max_band_metres=1200.0):
     """Heights above LAT from the three waterlines on a (coarsened) grid.
 
     `geojson` holds all three line sets, told apart by their `type` property
-    ("LAT", "MSL", "MHW"); `levels` gives each one's height above LAT.
+    ("LAT", "MSL", "MHW"); `levels` gives each one's height above LAT, a
+    number or a grid of the target's shape (a region's tide station's levels,
+    one per pixel, for the national build).
     `sea_hint` (full grid, optional) marks cells known to be sea though the
     survey has no height there (a gap-fill thrown out)."""
     h, w = shape
@@ -133,6 +149,17 @@ def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
             if k >= max(20, 0.3 * size):
                 seeds.append((int(i), target))
 
+    # Where the survey says sea (under LAT, or a gap-fill thrown out, which is
+    # never land), per region: the evidence a region needs to be "under LAT"
+    # when it is reached straight from the land.
+    hint = np.zeros((ch, cw), dtype=bool)
+    if sea_hint is not None:
+        padded = np.zeros((ch * coarsen, cw * coarsen), dtype=bool)
+        padded[:h, :w] = sea_hint
+        hint = padded.reshape(ch, coarsen, cw, coarsen).any(axis=(1, 3))
+    with np.errstate(invalid="ignore"):
+        seaish = (coarse <= 0) | hint
+    sea_cells = ndimage.sum(seaish, labels, index=np.arange(count + 1)) if count else np.zeros(1)
     edges = {}
     for a, b, c in _edges(labels, lines):
         edges.setdefault(a, []).append((b, c))
@@ -148,18 +175,40 @@ def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
             if level[b] >= 0:
                 continue
             nxt = _step(int(level[a]), c)
+            if nxt == 0 and level[a] == 3 and sea_cells[b] < 5:
+                # Straight from the land to under LAT across all three lines
+                # at once, with no seabed inside: not a cliff's foot but a
+                # lake, whose shore the satellite traced as every waterline at
+                # one place (no tide there). Lough Corrib was "sea" this way.
+                # It is inland water, above any tide: land here.
+                nxt = 3
             if nxt is not None:
                 level[b] = nxt
                 queue.append(b)
     # A gap in a line joins a band to the land behind it, and the band's level
     # then spreads over fields: a band whose survey (EMODnet's land heights,
     # coarse as they are) mostly stands well above high water is land.
-    mhw = float(levels["MHW"])
+    zs = [_level_grid(levels[k], (h, w), (ch, cw), coarsen) for k in KINDS]
+    mhw = zs[2]
     for i in np.flatnonzero((level == 1) | (level == 2)):
-        values = coarse[labels == i]
+        inside = labels == i
+        values = coarse[inside]
         values = values[np.isfinite(values)]
-        if values.size >= 20 and np.median(values) > mhw + 1.5:
+        if values.size >= 20 and np.median(values) > np.median(mhw[inside]) + 1.5:
             level[i] = 3
+    # An intertidal band is narrow: its ground is never far from the lines
+    # that bound it. A "band" whose ground is mostly kilometres from any line
+    # is open sea the walk placed wrongly (where EMODnet only had GEBCO's fill,
+    # off Achill and north-west Donegal, there is no survey to seed the sea),
+    # and its interpolated heights would draw kilometres of dry sand at sea.
+    d = [ndimage.distance_transform_edt(~ln) for ln in lines]
+    _, lat_mid = t * (0, ch / 2)
+    metres = t.a * math.cos(2 * math.atan(math.exp(lat_mid / 6378137.0)) - math.pi / 2)
+    bands = np.flatnonzero((level == 1) | (level == 2))
+    if len(bands):
+        nearest = np.minimum(np.minimum(d[0], d[1]), d[2]) * metres
+        spread = ndimage.median(nearest, labels, index=bands)
+        level[bands[np.asarray(spread) > max_band_metres]] = -1
     grid = level[labels]
     grid[labels == 0] = -1
     # And pixel by pixel, where the band reaches well up a slope.
@@ -172,28 +221,24 @@ def waterline_surface(geojson, levels, transform, shape, survey, coarsen=2,
     for i in np.flatnonzero(level == 0):
         leaked[i] = hills[labels == i].sum() >= 50
     in_leaked = leaked[labels] & (grid == 0)
-    sea = coarse <= 0
-    if sea_hint is not None:
-        # A gap-fill thrown out is still sea, not the land round a line's end:
-        # off Sandymount it is the strip between the flats and the soundings.
-        hint = np.zeros((ch * coarsen, cw * coarsen), dtype=bool)
-        hint[:h, :w] = sea_hint
-        sea |= hint.reshape(ch, coarsen, cw, coarsen).any(axis=(1, 3))
+    # A gap-fill thrown out is still sea, not the land round a line's end:
+    # off Sandymount it is the strip between the flats and the soundings.
+    with np.errstate(invalid="ignore"):
+        sea = (coarse <= 0) | hint
     grid[in_leaked & ~sea] = -1
 
-    zs = [float(levels[k]) for k in KINDS]
-    d = [ndimage.distance_transform_edt(~ln) for ln in lines]
+    # (d, each line's distance, from above)
     z = np.full((ch, cw), np.nan, dtype=np.float32)
     for lv in (1, 2):
         lo, hi = lv - 1, lv
         sel = grid == lv
         t_ = d[lo][sel] / np.maximum(d[lo][sel] + d[hi][sel], 1e-6)
-        z[sel] = zs[lo] + (zs[hi] - zs[lo]) * t_
+        z[sel] = zs[lo][sel] + (zs[hi][sel] - zs[lo][sel]) * t_
     # On a line: its own level (the mean where lines share a pixel).
     on = np.zeros((ch, cw), dtype=np.float32)
     n_on = np.zeros((ch, cw), dtype=np.float32)
     for k in range(3):
-        on[lines[k]] += zs[k]
+        on[lines[k]] += zs[k][lines[k]]
         n_on[lines[k]] += 1
     # Only lines between known intertidal or sea regions, not stray ones on land.
     near = ndimage.maximum_filter(np.isin(grid, (0, 1, 2)).astype(np.uint8), size=3) > 0
