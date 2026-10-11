@@ -10,13 +10,12 @@ import numpy as np
 from pyproj import Proj, Geod
 import eccodes as ec
 
-import f5bin
 from fetch_harmonie import discover, earth_vectors, resample, messages, validate, GRID
 from fetch_harmonie import extract, has_gust, gust_window, main, GUST_FIELDS, PARAMETERS
 from fetch_forecast import write_json
 from registry import UNCHANGED_EXIT
 from publish_s3 import validate_bundle
-from runfixtures import read_whole
+from runfixtures import published_frame, read_whole
 
 # Recorded from the live control run 2026091620 +3h, whose full-domain export
 # carries the scalar gust (parameter 22) beside its components (23/24):
@@ -234,10 +233,11 @@ class HarmonieTests(unittest.TestCase):
                          [None, [2, 3], [5, 6]])
         self.assertEqual([s["gust"] for s in manifest["spotForecasts"]["brandon"]],
                          [None, 14.5, 14.5])
-        self.assertEqual(manifest["encoding"], f5bin.ENCODING)
-        self.assertTrue(all(f["url"].endswith(".bin") for f in manifest["frames"]))
-        frames = [f5bin.decode_frame((root / "public/weather" / manifest["base"] / f["url"])
-                                     .read_bytes()) for f in manifest["frames"]]
+        self.assertNotIn("encoding", manifest)
+        self.assertTrue(all("url" not in f for f in manifest["frames"]))
+        self.assertEqual(manifest["tiles"]["blocks"], ["u", "v", "gust"])
+        frames = [published_frame(root / "public/weather", manifest, index)
+                  for index in range(len(manifest["frames"]))]
         self.assertEqual([frame["run"] for frame in frames], [manifest["run"]] * 3)
         self.assertIsNone(frames[0]["gust"])
         self.assertEqual(len(frames[2]["gust"]), GRID["width"] * GRID["height"])
@@ -251,9 +251,9 @@ class HarmonieTests(unittest.TestCase):
         self.assertIn("did not supply gust components", manifest["gustDescription"])
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [None, None, None])
         self.assertEqual([s["gust"] for s in manifest["spotForecasts"]["brandon"]], [None] * 3)
-        for frame in manifest["frames"]:
-            decoded = f5bin.decode_frame((root / "public/weather" / manifest["base"]
-                                          / frame["url"]).read_bytes())
+        self.assertEqual(manifest["tiles"]["blocks"], ["u", "v"])
+        for index in range(len(manifest["frames"])):
+            decoded = published_frame(root / "public/weather", manifest, index)
             self.assertIsNone(decoded["gust"])
             self.assertEqual(decoded["blockCount"], 2)
         validate_bundle(root / "public", "harmonie", max_age_hours=10**6,

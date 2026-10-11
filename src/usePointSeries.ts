@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  loadFrame,
-  sample,
-  type Manifest,
-  type Point,
-  type Wind,
-} from "../force5/src/weather";
+import { samplePoint } from "../force5/src/tiledField";
+import type { Manifest, Point, Wind } from "../force5/src/weather";
 import { loadOrder } from "../force5/src/timeline";
 
 export interface PointSeries {
@@ -24,11 +19,11 @@ const EMPTY: (Wind | null | undefined)[] = [];
 /**
  * The selected position's series: the precomputed one for a named spot whose
  * square is merged into the manifest, otherwise sampled from the map frames
- * progressively, two requests at a
- * time, with a retry. Lifted out of `ForecastSheet` so every dock view — and
+ * progressively — the one native tile holding the point, for each hour — two
+ * requests at a time, with a retry. Lifted out of `ForecastSheet` so every dock view — and
  * the scrubber's colours — read the same values.
  *
- * A bare point costs one file per forecast hour, so the order matters more than
+ * A bare point costs one tile per forecast hour, so the order matters more than
  * the total: `loadOrder` starts at the hour the reader is looking at and, for a
  * run finer than three-hourly, takes every third hour before filling the rest
  * in. The table is readable long before the last file lands.
@@ -97,11 +92,9 @@ export function usePointSeries(
       while (!cancelled && next < order.length) {
         const i = order[next++];
         try {
-          result[i] = sample(
-            await loadFrame(manifest, i, { keep: false }),
-            point.lon,
-            point.lat,
-          );
+          result[i] = await samplePoint(manifest, i, point.lat, point.lon, {
+            keep: false,
+          });
           done[i] = true;
         } catch {
           failures++;

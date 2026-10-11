@@ -282,17 +282,9 @@ class WaveBundleTests(unittest.TestCase):
         variables = variables if variables is not None else list(ALL_VARIABLES)
         grid = {"width": 3, "height": 3, "west": -8.0, "east": -7.5, "north": 54.25,
                 "south": 53.75, "dx": 0.25, "dy": 0.25}
-        (self.root / "weather/ecmwf-wave-run").mkdir(parents=True)
-        frames, series = [], {"wet": [], "dry": []}
+        series = {"wet": [], "dry": []}
         for hour in hours:
             valid = (self.run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-            fields = {name: [1.5 if index not in LAND else None for index in range(9)]
-                      for name in variables}
-            (self.root / f"weather/ecmwf-wave-run/{hour}.json").write_text(json.dumps({
-                "model": MODEL, "run": "2026091600", "hour": hour, "validTime": valid,
-                "grid": grid, **fields}))
-            frames.append({"hour": hour, "validTime": valid,
-                           "url": f"weather/ecmwf-wave-run/{hour}.json"})
             series["wet"].append({"hour": hour, "validTime": valid,
                                   "values": {name: 1.5 for name in variables}})
             # A location the model cannot see publishes nulls, not an absent series.
@@ -301,7 +293,7 @@ class WaveBundleTests(unittest.TestCase):
         coverage = {"wet": coverage_for({"mode": "bilinear", "offsetKm": 0.0}, True),
                     "dry": coverage_for({"mode": "none", "offsetKm": None}, False)}
         manifest = manifest_for("2026091600", self.run_time, list(hours), variables,
-                                grid, frames, series, coverage)
+                                grid, series, coverage)
         publish_whole(self.root / "weather", f"{MODEL}.json", manifest, spots=SPOTS)
         return manifest, self.run_time + timedelta(hours=1)
 
@@ -313,6 +305,8 @@ class WaveBundleTests(unittest.TestCase):
                          {"units", "label", "description"})
         self.assertIn("FROM", manifest["directionConvention"])
         self.assertIn("only swell information", manifest["partitionNote"])
+        # No map frames: the spot series is the product, and the horizon is stated.
+        self.assertEqual((manifest["frames"], manifest["horizonHours"]), ([], 6))
 
     def test_the_bundle_validates_and_publishes_with_the_pointer_last(self):
         _, now = self.bundle()
@@ -320,7 +314,7 @@ class WaveBundleTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, MODEL, "test", max_age_hours=24, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], f"weather/{MODEL}.json")
-        self.assertEqual(len(s3.writes), 6)  # 3 frames, a square per spot, the pointer
+        self.assertEqual(len(s3.writes), 3)  # a square per spot, then the pointer
 
     def test_a_band_only_manifest_still_validates(self):
         _, now = self.bundle(variables=list(SEA))
@@ -328,10 +322,14 @@ class WaveBundleTests(unittest.TestCase):
 
     def test_a_missing_or_misordered_hour_stops_the_upload(self):
         manifest, now = self.bundle()
-        for frames in [manifest["frames"][:-1],
-                       [{**f, "hour": 4} if i == 1 else f
-                        for i, f in enumerate(manifest["frames"])]]:
-            publish_whole(self.root / "weather", f"{MODEL}.json", {**manifest, "frames": frames}, spots=SPOTS)
+        wet = manifest["spotSeries"]["wet"]
+        for change in [{"horizonHours": 3},
+                       {"spotSeries": {**manifest["spotSeries"], "wet": wet[:-1]}},
+                       {"spotSeries": {**manifest["spotSeries"],
+                                       "wet": [{**step, "hour": 4} if i == 1 else step
+                                               for i, step in enumerate(wet)]}}]:
+            publish_whole(self.root / "weather", f"{MODEL}.json", {**manifest, **change},
+                          spots=SPOTS)
             s3 = FakeS3()
             with self.assertRaises(ValueError):
                 publish(s3, self.root, MODEL, "test", max_age_hours=24, now=now)
@@ -348,7 +346,7 @@ class WaveBundleTests(unittest.TestCase):
         """`manifest_for` checks its own hours against the cadence it declares."""
         with self.assertRaises(ValueError):
             manifest_for("2026091600", self.run_time, [0, 4, 8], ["swh"], {},
-                         [], {"wet": []}, {})
+                         {"wet": []}, {})
 
 
 class WaveFailureTests(unittest.TestCase):

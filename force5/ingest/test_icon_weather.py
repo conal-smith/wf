@@ -269,15 +269,14 @@ class DiscoveryTests(unittest.TestCase):
                 discover([0, 3, 6])
         self.assertIn("Inventory unavailable", errors.getvalue())
 
-    def test_horizon_step_and_frame_variable_arguments_are_checked(self):
+    def test_horizon_and_step_arguments_are_checked(self):
         args = parse_args([])
         self.assertEqual((args.hours, args.step), (72, 3))
-        self.assertEqual(args.frame_variables, ["t2m", "precip", "clct", "pmsl", "ww"])
-        self.assertEqual(parse_args(["--frame-variables", "all"]).frame_variables, list(VARIABLES))
+        # Map frames are not published, so there is nothing to choose for them.
+        self.assertFalse(hasattr(args, "frame_variables"))
         for arguments in [["--hours", "0"], ["--hours", "96"], ["--hours", "10", "--step", "3"],
                           ["--step", "2"], ["--run", "2026091613"], ["--run", "nonsense"],
-                          ["--frame-variables", "t2m,t2m"], ["--frame-variables", "swh"],
-                          ["--frame-variables", ""]]:
+                          ["--frame-variables", "t2m"]]:
             with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit):
                     parse_args(arguments)
@@ -337,16 +336,15 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(set(manifest["variables"]), set(VARIABLES))
         self.assertEqual(manifest["variables"]["ww"]["kind"], "code")
         self.assertNotIn("kind", manifest["variables"]["t2m"])
-        self.assertEqual(manifest["frameVariables"], ["t2m", "precip", "clct", "pmsl", "ww"])
-        # A weather frame carries many units, so the grid declares none.
+        self.assertNotIn("frameVariables", manifest)
+        # The grid the series were sampled on carries many units, so it declares none.
         self.assertNotIn("units", manifest["grid"])
-        self.assertEqual([frame["hour"] for frame in manifest["frames"]], [0, 3, 6])
-        self.assertEqual([frame["precipIntervalHours"] for frame in manifest["frames"]],
-                         [None, [0, 3], [3, 6]])
+        # No map frames: the spot series is the product, and the horizon is stated.
+        self.assertEqual((manifest["frames"], manifest["horizonHours"]), ([], 6))
         published, _, objects = validate_bundle(self.root / "public", "icon-eu-weather", 12,
                                                 self.run_time + timedelta(hours=1))
         self.assertEqual((published["run"], len(objects)),
-                         (self.run, 3 + len(published["spots"]["squares"])))
+                         (self.run, len(published["spots"]["squares"])))
 
     def test_precipitation_is_null_at_initialization_and_differenced_after_it(self):
         manifest = self.run_main()
@@ -355,11 +353,6 @@ class BundleTests(unittest.TestCase):
         self.assertEqual([step["values"]["tp"] for step in series], [0.0, 1.5, 3.0])
         self.assertEqual([step["precipIntervalHours"] for step in series],
                          [None, [0, 3], [3, 6]])
-        first, second = (json.loads((self.root / "public/weather" / manifest["base"] / info["url"]).read_text())
-                         for info in manifest["frames"][:2])
-        self.assertEqual(first["precip"], [None] * 4)      # Nulls, never a zeroed field.
-        self.assertEqual(second["precip"], [1.5] * 4)
-        self.assertEqual(first["ww"], [45, 0, 0, 0])
 
     def test_every_variable_is_sampled_for_every_spot_including_one_off_the_grid(self):
         manifest = self.run_main()
@@ -371,15 +364,6 @@ class BundleTests(unittest.TestCase):
         # Codes are read from the containing cell, never interpolated between cells.
         self.assertEqual(manifest["spotSeries"]["brandon"][0]["values"]["ww"], 45)
         self.assertIsNone(manifest["spotSeries"]["faraway"][0]["values"]["ww"])
-
-    def test_frames_may_carry_every_variable_when_asked(self):
-        manifest = self.run_main(["--frame-variables", "all"])
-        self.assertEqual(manifest["frameVariables"], list(VARIABLES))
-        frame = json.loads((self.root / "public/weather" / manifest["base"] / manifest["frames"][2]["url"]).read_text())
-        for name in VARIABLES:
-            self.assertEqual(len(frame[name]), 4, name)
-        validate_bundle(self.root / "public", "icon-eu-weather", 12,
-                        self.run_time + timedelta(hours=1))
 
     def test_a_stale_run_is_refused_before_anything_is_downloaded(self):
         output = self.root / "public/weather/icon-eu-weather.json"

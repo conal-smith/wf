@@ -5,7 +5,12 @@ for one HARMONIE step and 225 KB once gzipped. The same numbers as little-endian
 int16 at 0.1 m/s, row-delta-encoded and brotli-compressed, are about 71 KB — and
 the display rounds to whole knots, so nothing a reader can see is lost.
 
-Layout of `frames/HHH.bin`, a 24-byte header then one block per variable:
+Whole frames are no longer published: every wind frame goes out as a pyramid
+of tiles (f5tile.py, written by `publish_frame` below), whose blocks use this
+module's rounding, deltas and sidecars. The whole-frame format is kept as the
+reference those tiles are tested against, and for the golden fixture.
+
+Layout of a whole frame, a 24-byte header then one block per variable:
 
     0   4  magic "F5F1"
     4   1  version (1)
@@ -275,24 +280,21 @@ def write_with_sidecars(path, data, quality=None, sidecars=None):
         os.replace(temporary, target)
 
 
-def frame_name(prefix, hour):
-    """Where a frame is written inside its run's staging directory (rundir.py).
-
-    The name carries only the hour. The run directory is named for the hash of
-    everything inside it once the run is complete, which is what makes each
-    frame immutable and checkable; see rundir.py.
-    """
-    return f"{prefix}/frames/{hour:03d}.bin"
-
-
 def publish_frame(output, prefix, payload):
-    """Encode and write one wind frame. Returns its name under `output`.
+    """Write one wind frame as its tile pyramid. Returns the paths written under `output`.
 
-    Every wind adapter calls this where it used to hash a JSON payload and call
-    `write_json`, so the frame format lives in one place rather than ten.
+    Every wind adapter calls this once per hour, so the frame format lives in
+    one place rather than ten. A frame is no longer one file: it is every tile of
+    every level (f5tile.py), at `<prefix>/t/{level}/{x}/{y}/{hour:03d}.bin`. All
+    of them are written, the all-missing ones too, because whether a tile is
+    absent is decided per run, once every hour is in (`rundir.write_run`). The
+    adapter's manifest lists the frame with no `url`; the run's `tiles` block
+    says where its tiles are.
     """
+    import f5tile  # f5tile is built on this module.
+
     with timing.phase("write"):
-        data = encode_frame(payload)
-        name = frame_name(prefix, payload["hour"])
-        write_with_sidecars(Path(output) / name, data)
-    return name
+        _, written = f5tile.write_pyramid(
+            Path(output) / prefix, payload["grid"], payload["u"], payload["v"],
+            payload.get("gust"), payload["hour"], payload["run"], keep_empty=True)
+    return sorted(f"{prefix}/{path}" for path in written)

@@ -19,7 +19,7 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from registry import PUBLISHED_RUN_ENV, UNCHANGED_EXIT
 from rundir import write_run
 import timing
@@ -323,8 +323,8 @@ def main():
         payload = {"model": "icon-eu", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": gust_interval, **fields}
         # Hash makes every published frame immutable, including after a code correction.
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": gust_interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": gust_interval})
         for spot in spots:
             point = {field: sample(grid, fields[field], spot["lon"], spot["lat"]) for field in PARAMS}
             spot_forecasts[spot["id"]].append({"hour": hour, "validTime": valid, **point})
@@ -332,7 +332,7 @@ def main():
     manifest = {"schemaVersion": 1, "model": "icon-eu", "modelName": "ICON-EU", "provider": "DWD",
                 "resolutionKm": 6.5, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+                "grid": layout[2], "frames": frames,
                 "spotForecasts": spot_forecasts,
                 "sourceUrl": BASE + "/", "attribution": "Weather data: Deutscher Wetterdienst (DWD), modified and cropped by wingfoil.ie",
                 "licenseUrl": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"}

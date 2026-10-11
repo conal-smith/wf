@@ -26,7 +26,7 @@ import eccodes as ec
 import numpy as np
 from pyproj import Proj
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from fetch_forecast import ROOT, get, load_spots, messages, published_in_bucket, sample
 from registry import UNCHANGED_EXIT
 from rundir import write_run
@@ -274,8 +274,8 @@ def main():
         interval = fields["gustIntervalHours"]
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid, "grid": GRID, **fields}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
         sources.append({"file": names[hour], "gribSha256": hashlib.sha256(paths[hour].read_bytes()).hexdigest()})
         for spot in spots:
             point = {f: sample(GRID, fields[f], spot["lon"], spot["lat"]) for f in ["u", "v"]}
@@ -292,7 +292,7 @@ def main():
                 "modelDetail": "HARMONIE-AROME DINI control (member 0)", "resolutionKm": 2,
                 "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": GRID, "encoding": FRAME_ENCODING, "frames": frames, "spotForecasts": series,
+                "grid": GRID, "frames": frames, "spotForecasts": series,
                 "gustAvailable": gusts,
                 **({"gustMissingHours": [0]} if gusts else {}),
                 "gustDescription": ("Maximum 10 m gust over the one hour ending at each forecast time, taken from the "

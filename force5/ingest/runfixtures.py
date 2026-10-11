@@ -13,9 +13,14 @@ import json
 from pathlib import Path
 import shutil
 
+import f5bin
 import rundir
 
 CATALOGUE = Path(__file__).resolve().parents[2] / "public" / "riding-locations.json"
+# Two cells by two on the tile lattice (f5tile.lattice_origin): the smallest grid
+# a wind run can publish, as tiles, in the suites' hand-built manifests.
+TINY_GRID = {"west": -11.0, "east": -10.5, "north": 56.0, "south": 55.6,
+             "dx": 0.5, "dy": 0.4, "width": 2, "height": 2}
 
 
 def catalogue():
@@ -33,15 +38,39 @@ def publish_whole(weather, pointer_name, manifest, spots=None, prefix=None):
     prefix = prefix or f"{manifest['model']}-{manifest['run']}-test-v1"
     staging = weather / prefix
     shutil.rmtree(staging, ignore_errors=True)
+    wind = manifest.get("kind", "wind") == "wind"
     frames = []
     for info in manifest.get("frames") or []:
         source = weather.parent / info["url"]
+        if wind:
+            # A wind frame is published as its tiles, from the grids in the file.
+            f5bin.publish_frame(weather, prefix, wind_payload(source, manifest, info))
+            frames.append({key: value for key, value in info.items() if key != "url"})
+            continue
         name = rundir.frame_name(prefix, info["hour"], source.suffix[1:] or "json")
         (weather / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, weather / name)
         frames.append({**info, "url": f"{weather.name}/{name}"})
-    return rundir.write_run(weather, pointer_name, {**manifest, "frames": frames}, prefix,
+    whole = {key: value for key, value in manifest.items() if key != "encoding"}
+    return rundir.write_run(weather, pointer_name, {**whole, "frames": frames}, prefix,
                             catalogue() if spots is None else spots)
+
+
+def wind_payload(source, manifest, info):
+    """A wind frame's grids from a test's frame file: JSON, or a whole F5 frame.
+
+    The tiles are written for the hour the manifest lists the file at, and for
+    the run the file names (the manifest's when it names none), so a test can
+    still publish a frame list with an invented hour, or tiles of another run.
+    """
+    data = Path(source).read_bytes()
+    if data[:4] == f5bin.MAGIC:
+        frame = f5bin.decode_frame(data)
+    else:
+        frame = json.loads(data)
+    return {"run": frame.get("run", manifest["run"]), "hour": info["hour"],
+            "grid": manifest["grid"], "u": frame["u"], "v": frame["v"],
+            "gust": frame.get("gust")}
 
 
 def read_whole(pointer):
@@ -50,6 +79,25 @@ def read_whole(pointer):
     pointer = Path(pointer)
     return with_spot_data(json.loads(pointer.read_text()),
                           lambda relative: json.loads((pointer.parent / relative).read_text()))
+
+
+def published_frame(weather, manifest, index):
+    """Frame `index` of a published wind run, read back whole from its native tiles.
+
+    `weather` is the directory holding the pointer and its run directory. The
+    shape `f5bin.decode_frame` returns, which the adapter suites assert on.
+    """
+    import f5tile
+    info = manifest["frames"][index]
+    directory = Path(weather) / manifest["base"]
+    frame = f5tile.FrameTiles(manifest, info, lambda relative: (directory / relative).read_bytes())
+    values = frame.native()
+    headers = {f5tile.read_tile_header((directory / path).read_bytes())["run"]
+               for path, (level, _, _, entry) in f5tile.run_tiles(manifest).items()
+               if level == 0 and entry is info}
+    return {"run": headers.pop() if len(headers) == 1 else None, "hour": info["hour"],
+            "width": manifest["grid"]["width"], "height": manifest["grid"]["height"],
+            "blockCount": 3 if values["gust"] is not None else 2, **values}
 
 
 def frame_path(pointer, index):

@@ -7,8 +7,10 @@
  * write to it. So the suite gets a public directory of its own:
  *
  *   .e2e/public/            the committed files in public/, copied
- *   .e2e/public/weather/    synthetic sample bundles, generated fresh each run,
- *                           and the blend of them (force5/blend/build.ts)
+ *   .e2e/public/weather/    synthetic sample bundles, generated fresh each run
+ *                           (`--site`: HARMONIE on the real 0.025° grid, so the
+ *                           map has every level of tiles to choose from), and
+ *                           the blend of them (force5/blend/build.ts)
  *   .e2e/dist/              the build vite preview then serves
  *
  * `vite.config.ts` points `publicDir` and `build.outDir` at those when E2E_SITE
@@ -52,6 +54,7 @@ function main() {
     [
       join(ROOT, "scripts", "sample-weather.mjs"),
       "--all",
+      "--site",
       "--out",
       E2E_WEATHER,
     ],

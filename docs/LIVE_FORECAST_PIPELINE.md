@@ -20,7 +20,7 @@ EventBridge Scheduler
   → ECS Fargate task (Force5 container from ECR)
     → discover/download Met Éireann or DWD model output
     → decode + validate + prepare wind frames and spot time series
-    → encode wind frames as F5 int16 (.bin) with .br/.gz sidecars
+    → cut each wind frame into a tile pyramid (F5T1 .bin) with .br/.gz sidecars
     → move the spot series into 2° spot squares, name the run directory for its content
     → upload the immutable run directory to private S3
     → conditionally update latest manifest LAST
@@ -34,12 +34,12 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
-- `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file for its hour (`frames/000.bin`) inside the run's directory, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
+- `force5/ingest/f5tile.py` and `f5bin.py`: the wind frame as tiles ("F5T1", docs/TILING_DESIGN.md). Every wind adapter publishes its map frames through `f5bin.publish_frame`, which cuts the u/v/gust grids into 128 × 128-cell tiles on a global lattice, with overview levels averaged 2 × 2 until one tile holds the whole domain, each tile stored with a one-cell border as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run, the forecast hour, the level and the tile's place. It writes every tile of every level for the hour at `t/{level}/{x}/{y}/<HHH>.bin` inside the run's directory, with precompressed `.bin.br` and `.bin.gz` sidecars beside each. `rundir.write_run` then lists the tiles that are empty at every hour as absent and drops them, and gives the pointer a `tiles` block (below). On the real HARMONIE run of 7 October 2026 a frame's nine native tiles are about 85 KB brotli in all (largest 30 KB), its four level-1 tiles 32 KB and its one level-2 tile 10 KB, against 74 KB for the same frame as one whole file. The rounding rule and the wrapping delta arithmetic are f5bin's; `force5/src/f5tile.ts` reads the tiles in the browser and `scripts/f5tile.mjs` writes them for the sample bundles, both pinned to the Python writer by the golden pyramids in `tests/fixtures/f5tile`. Whole frames (`f5-int16-v1`) are no longer published; the format stays as the reference the tiles' level 0 is tested against.
 - `force5/ingest/rundir.py` and `squares.py`: the run directory and the spot squares (see "Object layout" below). Every forecast adapter writes its frames into a staging directory as it goes and finishes with one call, `write_run`, instead of writing its pointer itself: it moves the per-spot data into one file per 2° square, drops anything the run does not reference, names the directory for the hash of what is in it, renames it and only then writes the pointer. `squares.load_spot_data` is the one Python reader of the squares, and `force5/src/spotData.ts` the one TypeScript reader.
-- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the frames and squares the pointer names. Then every frame is checked, and the spot data read back from the squares is checked as the whole manifest used to be. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — the run directory must be named for this model, by the same rule the superseded delete uses — and the directory's hash proves the bytes are the ones published under that name; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone builds one model's run directory out of another's frames. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
+- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the tiles, frames and squares the pointer names — for a wind run every tile its `tiles` block does not call absent, at every hour. The `tiles` block must match the grid (`f5tile.check_tiles`: the grid on the global lattice, exactly the levels and cell sizes the grid gives, absent tiles inside their ranges, gust blocks exactly when some frame has a gust window). Then every tile is checked: its header must name the run, the hour, the level and the place it is published as, carry a gust block exactly where the frame has a gust window, and hold only plausible values, and a native tile may leave no cell of the grid missing; the spot data read back from the squares is checked as the whole manifest used to be. A tile carries no model, so the **model** comes from the path — the run directory must be named for this model, by the same rule the superseded delete uses — and the directory's hash proves the bytes are the ones published under that name. What is therefore _not_ checked: that a tile's numbers are this model's rather than another's, if someone builds one model's run directory out of another's tiles, nor that an overview tile is the mean of the native ones. It uploads one encoding per immutable object: a `.bin` tile brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same tile twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
-**Published sizes recorded per model below predate the binary frames** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for the file on disk plus its sidecars, or by three against what a browser was actually sent; wave and weather figures are unchanged, because those frames are still JSON.
+**Published sizes recorded per model below predate the binary frames and the tiles** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for one whole binary frame on disk plus its sidecars, or by three against what a browser was sent for one; a frame's tiles at every level are about 1.7 times its whole binary frame on disk (127 KB brotli against 74 KB for HARMONIE), and a browser fetches one level of them for its view. Wave and weather runs no longer publish frames at all.
 
 The worker defaults to **hourly HARMONIE**, with the importer's full 60-hour horizon: 61 frames including hour zero. ICON-EU uses its full 72-hour horizon when selected. The existing bundled website snapshots remain three-hourly until a new snapshot is generated and served. Hourly output is genuine source data, not temporal interpolation. On 13 September 2026 the live Met Éireann inventory was checked and contained all control files from +000 through +060 at one-hour intervals.
 
@@ -260,12 +260,12 @@ concurrent connections and a 0.56 MB manifest, so this job is far cheaper than a
 GRIB model.
 GFS-Wave is the first **wave** bundle: `--models gfs-wave` imports NOAA's
 WAVEWATCH III `arctic.9km` output, nine wave variables on a 0.05° Ireland display
-grid, and publishes `weather/gfs-wave.json` with immutable frames beside it. The
+grid, and publishes `weather/gfs-wave.json` with its spot squares beside it. The
 worker only passes `--step`/`--run` to wind models, so a wave task takes the
-importer's defaults: 0–240 h at three-hour steps, 81 frames. A measured live run
+importer's defaults: 0–240 h at three-hour steps, 81 steps. A measured live run
 took 75 seconds, downloading 5.3 MB through the NOMADS wave filter (about 70 KB a
-step) and publishing 45 MB of frames plus a 372 KB manifest — an order of
-magnitude more output than a wind model, so size the volume and CDN accordingly.
+step). It used to publish 45 MB of map frames as well, an order of magnitude more
+output than a wind model; nothing read them, so it no longer does.
 Run `fetch_gfswave.py --source s3` directly if the filter service is down; that
 path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
 publish when the cut-out does not land on the source lattice, which is the check
@@ -275,10 +275,11 @@ ICON-EU surface weather is the first **weather** bundle: `--models icon-eu-weath
 runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level parameters
 (temperature, dew point, humidity, accumulated precipitation, four cloud layers,
 mean-sea-level pressure, visibility, mean-layer CAPE, WMO present weather and ground
-temperature) from one cycle and publishes `weather/icon-eu-weather.json` with
-immutable frames beside it. The worker passes `--step`/`--run` only to wind models, so
-this task takes the importer's defaults: 0–72 h at three-hour steps, 25 frames. Its
-registry age limit is 12 hours, the same as ICON-EU wind.
+temperature) from one cycle and publishes `weather/icon-eu-weather.json` with its
+spot squares beside it, and no map frames: nothing reads them. The worker passes
+`--step`/`--run` only to wind models, so this task takes the importer's defaults:
+0–72 h at three-hour steps, 25 steps. Its registry age limit is 12 hours, the same as
+ICON-EU wind.
 
 Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
 parameter per step with no server-side subsetting, so a default run transfers **301 MB
@@ -515,7 +516,7 @@ explicit endpoint URL; nothing else differs from S3.
 | `FORCE5_WORK_DIR`                             | Scratch directory, `/data` in the image. Discarded when the container exits.                                                                                                                                                                                                                                                                     |
 | `FORCE5_SPOTS_FILE`                           | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image.                                                                                                                                                                                                                                             |
 | `FORCE5_SWEEP_MIN_AGE_HOURS`                  | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason.                                                                                                                                                                                                                                                                    |
-| `FORCE5_SIDECARS`                             | `0` to stop writing `.bin.br`/`.bin.gz` beside every wind frame. **A job that only uploads to the bucket should set this**: the bucket stores one encoding per object and serves no sidecar, so writing them spends a brotli and a gzip per frame on bytes nothing will read. Default `1`, which is what the local Caddy deployment serves from. |
+| `FORCE5_SIDECARS`                             | `0` to stop writing `.bin.br`/`.bin.gz` beside every wind tile. **A job that only uploads to the bucket should set this**: the bucket stores one encoding per object and serves no sidecar, so writing them spends a brotli and a gzip per tile on bytes nothing will read. Default `1`, which is what the local Caddy deployment serves from.   |
 | `FORCE5_BUCKET_ENCODING`                      | `br` (default) or `gzip`: how a `.bin` frame is stored in the bucket, and the `Content-Encoding` it is served with. One encoding per object either way. The way back if a CDN ever mangles brotli.                                                                                                                                               |
 | `FORCE5_BROTLI_QUALITY`                       | 0–11, default 9. Raising it shrinks frames a little and costs a lot of ingest time — see the table in docs/FORECAST_DATA_PLAN.md. A value outside that range fails the job with a sentence naming this variable.                                                                                                                                 |
 
@@ -896,18 +897,20 @@ it is cached as `immutable`. Files inside need no hash of their own:
 
 ```text
 weather/harmonie.json                                        the pointer (schemaVersion 2), a few KB
-weather/harmonie-RUN-60h-v2-HASH8/frames/000.bin             a binary wind frame (and .br/.gz on disk)
+weather/harmonie-RUN-60h-v2-HASH8/t/0/53/14/000.bin          one native wind tile (and .br/.gz on disk)
+weather/harmonie-RUN-60h-v2-HASH8/t/1/26/6/000.bin           an overview tile, 2 × 2 cells averaged
 weather/harmonie-RUN-60h-v2-HASH8/spots/n52w008.json         every spot's series in one 2° square
 weather/latest.json                                         ICON-EU's pointer
-weather/icon-eu-RUN-72h-v1-HASH8/frames/HOUR.bin            ICON-EU frames
+weather/icon-eu-RUN-72h-v1-HASH8/t/LEVEL/X/Y/HOUR.bin       ICON-EU's tiles
 weather/ecmwf.json, weather/ecmwf-RUN-360h-v2-HASH8/        ECMWF wind + gust
 weather/gfs.json, weather/gfs-RUN-240h-v1-HASH8/            GFS wind + instantaneous gust
 weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, members in the squares
 weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
 weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
 weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
-weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/frames/HOUR.json  surface variable grids
-weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/frames/HOUR.json  GFS-Wave variable grids
+weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
+weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
+weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only
 weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/tides.json                          current tide pointer + metadata
@@ -921,9 +924,34 @@ archive/verify/sums/YYYY-MM-DD.json        one day's verification sums; never de
 ```
 
 A forecast pointer is `schemaVersion` 2 and carries everything a reader needs to
-choose a run and draw it — run, grid, cadence, gust rules, ensemble size — with frame
-urls relative to `"base": "<run directory>/"`, which is itself relative to the
-pointer's directory. Its per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
+choose a run and draw it — run, grid, cadence, gust rules, ensemble size — with its
+files relative to `"base": "<run directory>/"`, which is itself relative to the
+pointer's directory. A wind run's frames name no file: they are its tiles, and the
+pointer says where they are in a `tiles` block:
+
+```jsonc
+"tiles": {
+  "size": 128, "border": 1, "encoding": "f5-tile-v1",
+  "blocks": ["u", "v", "gust"],               // the most a tile carries; a frame whose
+                                              // gustIntervalHours is null has u and v
+  "url": "t/{level}/{x}/{y}/{hour}.bin",      // {hour} zero-padded to three digits
+  "levels": [                                 // exactly what f5tile.levels(grid) gives
+    {"level": 0, "dx": 0.025, "dy": 0.02, "x": [52, 54], "y": [13, 15], "absent": []},
+    {"level": 1, "dx": 0.05,  "dy": 0.04, "x": [26, 27], "y": [6, 7],   "absent": []},
+    {"level": 2, "dx": 0.1,   "dy": 0.08, "x": [13, 13], "y": [3, 3],   "absent": []}
+  ]
+},
+"frames": [{"hour": 0, "validTime": "…", "gustIntervalHours": null}, …]
+```
+
+`x` and `y` are inclusive tile ranges on the global lattice at that level. `absent`
+lists, as `[x, y]` pairs in order, the tiles inside the ranges whose every owned cell
+is missing at every hour (all land, or all outside a cropped domain): they are never
+written and never requested. Absence is per run, not per hour, so every other tile
+exists for every frame hour and a 404 for one is an error. A run without frames (a
+frameless ensemble) has no `tiles`. Wave and weather runs no longer publish map
+frames at all — nothing reads them — and state their reach in `horizonHours`; their
+validator still accepts JSON frames for the day a map layer needs them. Its per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
 `spotMembers`, and SWAN's `spotCells`) is **not** in it but in
 `spots/<square>.json` inside the run directory, one file per 2° × 2° spot square named
 by its south-west corner (`n52w010` covers 52–54° N, 10–8° W):
@@ -939,8 +967,10 @@ under `spotBlend` (see "The blend" above).
 
 The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters
 still build the whole manifest in memory and none of them knows squares exist.
-`backfill_spots.py`, which recomputes spot series for a run already on disk, publishes
-the result the same way, as a new run directory with the frames linked in unchanged.
+`backfill_spots.py`, which recomputes spot series for a run already on disk (sampling
+the one native tile holding each spot), publishes the result the same way, as a new
+run directory with the tiles linked in unchanged. Without wave frames it can no longer
+recompute a wave run's series, and says so.
 
 Each model's immutable objects sit under the first segment of its
 registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
@@ -952,16 +982,18 @@ contract section for the field list. `validate_bundle` dispatches on `kind`, and
 forecast checks its per-spot data as read back from its squares:
 
 - `wind` (default when `kind` is absent) keeps the existing frame, grid and gust rules,
-  and adds `gustKind: "instantaneous"` for sources publishing a surface gust at the valid
-  time (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
+  checks the `tiles` block and every tile as above, and adds `gustKind:
+  "instantaneous"` for sources publishing a surface gust at the valid time
+  (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
   `ensemble`/`spotMembers`. An ensemble manifest holds the **mean** in `spotForecasts`
-  and may publish an empty `frames` list — only an ensemble may.
+  and may publish an empty `frames` list — only an ensemble may. A manifest declaring
+  a whole-frame `encoding` is refused: that format is retired.
 - `wave` validates a `variables` map and a `spotSeries` per riding location, plus
   optional frames holding one array per gridded variable with `null` for land. `frames`
   may be empty when `spotSeries` is present, and `horizonHours` then declares the last
-  published hour; `frameVariables` may narrow frames to a subset of `variables`.
-  Marine Institute Irish Shelf SWAN (`mi-swan`) is the first wave adapter and publishes
-  no frames by default.
+  published hour; `frameVariables` may narrow frames to a subset of `variables`. No
+  adapter publishes wave frames any more (GFS-Wave and ECMWF Wave stopped; Irish Shelf
+  SWAN only with its opt-in `--frames`), because nothing reads them.
 - `weather` runs the same validator as `wave` for surface variables. It allows
   measurements up to 100,000 (hectopascals, millimetres, J/kg) instead of 1,000, and a
   variable may declare `"kind": "code"` for a whole code-table entry such as WMO present
@@ -1003,7 +1035,7 @@ Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weat
 The publisher:
 
 1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
-2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
+2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` tiles and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
 3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. Then it deletes the run directory the replaced pointer named, if it is not this one.
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
 
@@ -1024,7 +1056,7 @@ Set the frontend environment before building:
 VITE_FORECAST_BASE_URL=https://forecast.wingfoil.ie/
 ````
 
-The browser fetches the manifest on page load and model changes, then reads its immutable frame URLs. It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A tab that is still reading the previous run when its frames are deleted does the same thing on the failed frame request: it loads the newest run at the selected time (`loadNewerRun`), so superseded runs do not need to be kept for open tabs.
+The browser fetches the manifest on page load and model changes, then reads the immutable tiles the view needs, at the level the screen can show (force5/src/tiledField.ts). It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A tab that is still reading the previous run when its frames are deleted does the same thing on the failed frame request: it loads the newest run at the selected time (`loadNewerRun`), so superseded runs do not need to be kept for open tabs.
 
 ## Monitoring, retries and recovery
 

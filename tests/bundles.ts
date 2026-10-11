@@ -4,11 +4,10 @@
 // suite reads small SYNTHETIC bundles written in exactly the published format by
 // `npm run weather:fixtures` (scripts/sample-weather.mjs). They carry a smooth
 // analytic field, and every manifest says so in its provider and attribution.
-// Each pointer names its run directory beside it, `base`, and its frame urls
-// and spot squares are inside that directory, exactly as they are in `public/`,
-// so the fixtures mirror that layout.
+// Each pointer names its run directory beside it, `base`, and its wind tiles,
+// wave frames and spot squares are inside that directory, exactly as they are in
+// `public/`, so the fixtures mirror that layout.
 import { readFileSync } from "node:fs";
-import { F5_ENCODING, decodeFrame } from "../force5/src/f5bin";
 import {
   runPath,
   withSpotSquares,
@@ -28,8 +27,6 @@ import {
 import {
   validateManifest,
   validateWindSpots,
-  type Frame,
-  type FrameInfo,
   type Manifest,
 } from "../force5/src/weather";
 
@@ -81,18 +78,22 @@ export const readFrame = <T>(manifest: { base: string }, url: string): T =>
   JSON.parse(readFileSync(runFile(manifest, url), "utf8"));
 
 /**
- * One wind frame, whichever encoding its manifest declares.
- *
- * A binary fixture goes through the browser's own decoder, so a test that reads
- * a bundle end to end is reading it the way the site does.
+ * A `fetch` that serves the fixtures at the URLs the site asks for them
+ * (`/weather/...`, the test build's base), recording every URL asked. Stub the
+ * global with it to read a run's tiles through the site's own `TiledField`.
  */
-export function readWindFrame(manifest: Manifest, info: FrameInfo): Frame {
-  if (manifest.encoding !== F5_ENCODING)
-    return readFrame<Frame>(manifest, info.url);
-  const file = readFileSync(runFile(manifest, info.url));
-  const buffer = file.buffer.slice(
-    file.byteOffset,
-    file.byteOffset + file.byteLength,
-  ) as ArrayBuffer;
-  return decodeFrame(buffer, manifest, info);
+export function fixtureFetch(): typeof fetch & { asked: string[] } {
+  const asked: string[] = [];
+  const serve = (async (input: RequestInfo | URL) => {
+    const url = String(input instanceof Request ? input.url : input);
+    asked.push(url);
+    const path = new URL(url, "http://fixtures.test").pathname;
+    try {
+      return new Response(readFileSync(`${FIXTURE_ROOT}${path}`));
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
+  }) as typeof fetch & { asked: string[] };
+  serve.asked = asked;
+  return serve;
 }

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { validateManifest, validateWindSpots } from "../force5/src/weather";
 import type { Manifest } from "../force5/src/weather";
-import { pointerOf } from "../force5/src/testing";
+import { pointerOf, tilesFor } from "../force5/src/testing";
 
 /** The pointer as published, then the spot data as it arrives from its squares. */
 const validate = (m: Manifest): Manifest => {
@@ -15,6 +15,22 @@ const at = (hour: number) =>
   new Date(Date.parse(runTime) + hour * 3600000)
     .toISOString()
     .replace(".000", "");
+
+const grid = {
+  width: 2,
+  height: 2,
+  west: -8,
+  east: -7.75,
+  north: 54.25,
+  south: 54,
+  dx: 0.25,
+  dy: 0.25,
+};
+const frames = hours.map((hour) => ({
+  hour,
+  validTime: at(hour),
+  gustIntervalHours: hour === 0 ? null : ([hour - 6, hour] as [number, number]),
+}));
 
 const ensembleManifest = () =>
   ({
@@ -30,16 +46,8 @@ const ensembleManifest = () =>
     resolutionLabel: "0.25° open-data grid",
     stepHours: 6,
     stepRanges: [{ throughHour: 12, stepHours: 6 }],
-    grid: {
-      width: 2,
-      height: 2,
-      west: -8,
-      east: -7.75,
-      north: 54.25,
-      south: 54,
-      dx: 0.25,
-      dy: 0.25,
-    },
+    grid,
+    tiles: tilesFor(grid, frames),
     base: "ecmwf-ens-2026091612-12h-2m-v1-0a1b2c3d/",
     spots: {
       squareDegrees: 2,
@@ -47,13 +55,7 @@ const ensembleManifest = () =>
       squares: ["n52w012"],
       keys: ["spotForecasts", "spotMembers"],
     },
-    frames: hours.map((hour) => ({
-      hour,
-      validTime: at(hour),
-      url: `frames/${String(hour).padStart(3, "0")}.bin`,
-      gustIntervalHours:
-        hour === 0 ? null : ([hour - 6, hour] as [number, number]),
-    })),
+    frames: frames.map((frame) => ({ ...frame })),
     spotForecasts: {
       brandon: hours.map((hour) => ({
         hour,

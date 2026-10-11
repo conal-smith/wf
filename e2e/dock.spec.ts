@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
-import { encodeFrame } from "../scripts/f5bin.mjs";
+import { buildPyramid } from "../scripts/f5tile.mjs";
 import { readFileSync } from "node:fs";
 import { spotSquare } from "../force5/src/squares";
 
@@ -555,9 +555,9 @@ test("an hour past the map's model offers the run that reaches it", async ({
 
 /**
  * A newer HARMONIE run, 16 UTC to the bundled 13 UTC, in a run directory of its
- * own with frames and spot squares of its own: a frame carries its run and hour
- * and is checked against the manifest that named it, and a square names its
- * run, which is what makes an atomic swap safe.
+ * own with tiles and spot squares of its own: a tile carries its run, hour and
+ * place and is checked against the manifest that named it, and a square names
+ * its run, which is what makes an atomic swap safe.
  */
 const NEWER_RUN = "2026091316";
 const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
@@ -568,7 +568,6 @@ const newerValidTime = (hour: number) =>
 const newerFrames = Array.from({ length: 25 }, (_, hour) => ({
   hour,
   validTime: newerValidTime(hour),
-  url: `frames/${String(hour).padStart(3, "0")}.bin`,
   gustIntervalHours: null,
 }));
 const newerHarmonie = {
@@ -604,26 +603,40 @@ const newerSquare = (square: string) => ({
   ),
 });
 const CELLS = harmonie.grid.width * harmonie.grid.height;
-const newerFrame = (hour: number) => ({
-  model: "harmonie",
-  run: NEWER_RUN,
-  hour,
-  validTime: newerValidTime(hour),
-  grid: harmonie.grid,
-  gustIntervalHours: null,
-  u: Array.from({ length: CELLS }, () => 6),
-  v: Array.from({ length: CELLS }, () => -4),
-  gust: null,
-});
-async function withNewerRunFrames(page: Page) {
-  await page.route(`**/${NEWER_RUN_DIR}/frames/*`, (route) => {
-    const hour = Number(
-      /(\d+)\.bin$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
+/** Every tile of one hour of the newer run: a steady wind, written as the site's are. */
+const newerTiles = new Map<number, Map<string, Buffer>>();
+function newerTile(level: number, x: number, y: number, hour: number) {
+  if (!newerTiles.has(hour)) {
+    const { tiles } = buildPyramid(
+      harmonie.grid,
+      {
+        u: Array.from({ length: CELLS }, () => 6),
+        v: Array.from({ length: CELLS }, () => -4),
+      },
+      hour,
+      NEWER_RUN,
+      { size: harmonie.tiles.size },
     );
-    return route.fulfill({
-      body: encodeFrame(newerFrame(hour)),
-      contentType: "application/octet-stream",
-    });
+    newerTiles.set(
+      hour,
+      new Map(tiles.map((tile) => [`${tile.level}/${tile.x}/${tile.y}`, tile.bytes])),
+    );
+  }
+  return newerTiles.get(hour)!.get(`${level}/${x}/${y}`);
+}
+async function withNewerRunFrames(page: Page) {
+  await page.route(`**/${NEWER_RUN_DIR}/t/**`, (route) => {
+    const [level, x, y, hour] = (
+      /\/t\/(\d+)\/(\d+)\/(\d+)\/(\d+)\.bin$/.exec(
+        new URL(route.request().url()).pathname,
+      ) ?? []
+    )
+      .slice(1)
+      .map(Number);
+    const body = newerTile(level, x, y, hour);
+    return body
+      ? route.fulfill({ body, contentType: "application/octet-stream" })
+      : route.fulfill({ status: 404, body: "Not found" });
   });
   await page.route(`**/${NEWER_RUN_DIR}/spots/*`, (route) => {
     const square = /([ns]\d{2}[ew]\d{3})\.json$/.exec(

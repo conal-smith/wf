@@ -12,6 +12,7 @@ from unittest.mock import patch
 import backfill_spots
 from backfill_spots import backfill, main
 import f5bin
+import f5tile
 from fetch_forecast import sample, write_json
 import rundir
 from squares import with_spot_data
@@ -35,8 +36,11 @@ def valid_time(hour):
     return (RUN_TIME + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
 
 
-def field(seed):
-    return [round(index * 0.25 + seed, 2) for index in range(GRID["width"] * GRID["height"])]
+def field(seed, step=0.3):
+    """A frame's field. Tenths by default, which tiles store exactly; 0.25 is lossy."""
+    decimals = 1 if step == 0.3 else 2
+    return [round(index * step + seed, decimals)
+            for index in range(GRID["width"] * GRID["height"])]
 
 
 def wind_point(values, spot, order=("u", "v", "gust")):
@@ -47,11 +51,14 @@ def wind_point(values, spot, order=("u", "v", "gust")):
 class Published:
     """A run published as an adapter publishes one, from frames kept aside.
 
-    The frames are written once into `source/`, outside public/, so a test can
-    change the manifest and publish it again: each `write` copies them into a
-    staging directory and `rundir.write_run` names the run for its content and
-    moves the spot data into squares, exactly as for a real run.
+    A wave run's frames are written once into `source/`, outside public/, and a
+    wind run's grids are kept in `payloads`, so a test can change the manifest
+    or a frame and publish again: each `write` stages the frames (a wind frame
+    as its tiles, f5bin.publish_frame) and `rundir.write_run` names the run for
+    its content and moves the spot data into squares, exactly as for a real run.
     """
+
+    payloads = None
 
     def publish(self):
         prefix = f"{self.model}-{RUN}-3h-v1"
@@ -59,6 +66,10 @@ class Published:
         shutil.rmtree(output / prefix, ignore_errors=True)
         frames = []
         for info in self.manifest.get("frames") or []:
+            if self.payloads is not None:
+                f5bin.publish_frame(output, prefix, self.payloads[info["hour"]])
+                frames.append({key: value for key, value in info.items() if key != "url"})
+                continue
             name = rundir.frame_name(prefix, info["hour"], Path(info["url"]).suffix[1:])
             (output / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(self.source / info["url"], output / name)
@@ -85,30 +96,40 @@ class Published:
         pointer = self.read_pointer()
         return self.path.parent / pointer["base"] / pointer["frames"][index]["url"]
 
+    def tile(self, hour):
+        """Where the one native tile of a wind run's frame at `hour` is published."""
+        return self.path.parent / self.read_pointer()["base"] / TILE.format(hour=hour)
+
+
+# GRID's cells are global columns 169-173 and rows 34-37 at 1°: one native tile.
+TILE = "t/0/1/0/{hour:03d}.bin"
+
 
 class Bundle(Published):
-    """A published wind snapshot on disk: a manifest and the frames it references."""
+    """A published wind snapshot on disk: a manifest and the tiles of its frames.
+
+    `lossy` makes every field a multiple of 0.25, half of which the tiles' tenths
+    cannot hold, which is the worst case the backfill's tolerance is sized for.
+    """
 
     def __init__(self, root, model="gfs", gust_available=True, missing_gust_hours=(),
-                 published=("kept",), encoding=None, **extra):
+                 published=("kept",), lossy=False, **extra):
         self.public = Path(root) / "public"
         self.source = Path(root) / "source"
         self.model = model
         self.path = self.public / "weather" / f"{model}.json"
-        self.values = {}
+        step = 0.25 if lossy else 0.3
+        self.values, self.payloads = {}, {}
         frames = []
         for hour in HOURS:
-            gust = None if not gust_available or hour in missing_gust_hours else field(hour + 2)
-            self.values[hour] = {"u": field(hour), "v": field(hour + 1), "gust": gust}
+            gust = (None if not gust_available or hour in missing_gust_hours
+                    else field(hour + 2, step))
+            self.values[hour] = {"u": field(hour, step), "v": field(hour + 1, step), "gust": gust}
             interval = None if gust is None else [hour, hour]
-            frame = {"model": model, "run": RUN, "hour": hour, "validTime": valid_time(hour),
-                     "grid": GRID, "gustIntervalHours": interval, **self.values[hour]}
-            url = f"{model}/{hour:03d}.{'bin' if encoding else 'json'}"
-            self.write_frame(self.source / url, frame, encoding)
-            frames.append({"hour": hour, "validTime": valid_time(hour), "url": url,
+            self.payloads[hour] = {"model": model, "run": RUN, "hour": hour, "grid": GRID,
+                                   **self.values[hour]}
+            frames.append({"hour": hour, "validTime": valid_time(hour),
                            "gustIntervalHours": interval})
-        if encoding:
-            extra = {"encoding": encoding, **extra}
         self.manifest = {
             "schemaVersion": 1, "model": model, "modelName": model.upper(), "provider": "Test",
             "run": RUN, "runTime": RUN_TIME.isoformat().replace("+00:00", "Z"),
@@ -121,13 +142,6 @@ class Bundle(Published):
         if missing_gust_hours:
             self.manifest["gustMissingHours"] = list(missing_gust_hours)
         self.write()
-
-    @staticmethod
-    def write_frame(path, frame, encoding):
-        if not encoding:
-            return write_json(path, frame)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(f5bin.encode_frame(frame))
 
 
 class WaveBundle(Published):
@@ -223,8 +237,8 @@ class BackfillTests(unittest.TestCase):
         self.assertEqual(rundir.digest(rundir.content_files(weather / new["base"])),
                          rundir.hash_of(new["base"]))
         self.assertTrue((weather / old["base"]).is_dir())
-        self.assertEqual(rundir.content_files(weather / old["base"])["frames/000.json"],
-                         rundir.content_files(weather / new["base"])["frames/000.json"])
+        self.assertEqual(rundir.content_files(weather / old["base"])[TILE.format(hour=0)],
+                         rundir.content_files(weather / new["base"])[TILE.format(hour=0)])
         self.assertEqual(old["spots"]["squares"], ["n54w010"])
         self.assertEqual(new["spots"]["squares"], ["n52w010", "n54w002", "n54w010"])
 
@@ -249,7 +263,7 @@ class BackfillTests(unittest.TestCase):
 
     def test_a_manifest_that_disagrees_with_its_frames_is_refused(self):
         bundle = Bundle(self.root)
-        bundle.manifest["spotForecasts"]["kept"][1]["u"] += 0.02
+        bundle.manifest["spotForecasts"]["kept"][1]["u"] += 0.2
         bundle.write()
         before = bundle.bytes()
         with self.assertRaises(ValueError) as caught:
@@ -302,12 +316,12 @@ class BackfillTests(unittest.TestCase):
 
     def test_a_frame_missing_a_wind_component_is_a_fault(self):
         bundle = Bundle(self.root)
-        frame = json.loads(bundle.frame(1).read_text())
-        frame["v"] = None
-        write_json(bundle.frame(1), frame)
+        bundle.payloads[3]["v"] = [None] * len(bundle.payloads[3]["v"])
+        bundle.write()
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
-        self.assertIn("missing its v field", str(caught.exception))
+        self.assertIn("kept +3h u: published", str(caught.exception))
+        self.assertIn("frames give None", str(caught.exception))
 
     def test_a_frame_whose_identity_drifted_is_a_fault(self):
         bundle = Bundle(self.root)
@@ -315,11 +329,12 @@ class BackfillTests(unittest.TestCase):
         bundle.write()
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
-        self.assertIn("not the frame the manifest lists", str(caught.exception))
+        self.assertIn("published valid time", str(caught.exception))
 
-    def test_an_unsafe_frame_url_is_refused(self):
+    def test_a_wind_frame_that_names_a_file_is_refused(self):
+        """A wind frame is its tiles; a url on one is a manifest from before them."""
         bundle = Bundle(self.root)
-        for url in ("../../etc/passwd", "frames/../../../etc/passwd", "frames/003.json"):
+        for url in ("../../etc/passwd", "frames/../../../etc/passwd", "frames/003.bin"):
             with self.subTest(url=url):
                 pointer = bundle.read_pointer()
                 pointer["frames"][0]["url"] = url
@@ -340,7 +355,8 @@ class BackfillTests(unittest.TestCase):
                 self.assertEqual(bundle.bytes(), before)
 
     def test_a_manifest_whose_kind_contradicts_the_registry_is_refused(self):
-        bundle = Bundle(self.root, kind="wave")
+        bundle = Bundle(self.root)
+        bundle.path.write_text(json.dumps({**bundle.read_pointer(), "kind": "wave"}))
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
         self.assertIn("not the registry's 'wind'", str(caught.exception))
@@ -361,8 +377,8 @@ class BackfillTests(unittest.TestCase):
         self.assertIn("no frames are bundled", " ".join(self.log))
 
 
-class BinaryBackfillTests(unittest.TestCase):
-    """The same job over F5 int16 frames, which are lossier than the series they check."""
+class LossyBackfillTests(unittest.TestCase):
+    """The same job over tiles that cannot hold the fields exactly, as with real runs."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -371,7 +387,7 @@ class BinaryBackfillTests(unittest.TestCase):
         self.log = []
 
     def bundle(self, **kwargs):
-        return Bundle(self.root, encoding=f5bin.ENCODING, **kwargs)
+        return Bundle(self.root, lossy=True, **kwargs)
 
     def backfill(self, bundle, **kwargs):
         return backfill(bundle.public, bundle.model, SPOTS, log=self.log.append, **kwargs)
@@ -416,18 +432,19 @@ class BinaryBackfillTests(unittest.TestCase):
         self.assertIn("kept +3h u", str(caught.exception))
 
     def test_a_frame_from_another_run_or_hour_is_a_fault(self):
-        for change in ({"run": "2026091600"}, {"hour": 9}):
-            with self.subTest(**change):
+        for run, hour in (("2026091600", HOURS[1]), (RUN, 9)):
+            with self.subTest(run=run, hour=hour):
                 bundle = self.bundle()
-                frame = {"model": bundle.model, "run": RUN, "hour": HOURS[1],
-                         "grid": GRID, **bundle.values[HOURS[1]], **change}
-                bundle.frame(1).write_bytes(f5bin.encode_frame(frame))
+                values = bundle.values[HOURS[1]]
+                _, tiles = f5tile.build_pyramid(GRID, values["u"], values["v"], values["gust"],
+                                                hour, run)
+                bundle.tile(HOURS[1]).write_bytes(tiles[0][3])
                 with self.assertRaises(ValueError) as caught:
                     self.backfill(bundle)
-                self.assertIn("is not the frame the manifest lists", str(caught.exception))
+                self.assertIn("is from run", str(caught.exception))
 
     def test_a_frame_under_another_models_directory_is_a_fault(self):
-        """A binary frame carries no model, so the run directory has to say who owns it."""
+        """A tile carries no model, so the run directory has to say who owns it."""
         bundle = self.bundle()
         pointer = bundle.read_pointer()
         theirs = "icon-eu" + pointer["base"][len(bundle.model):]
@@ -437,14 +454,15 @@ class BinaryBackfillTests(unittest.TestCase):
             self.backfill(bundle)
         self.assertIn(f"is not named for {bundle.model}", str(caught.exception))
 
-    def test_an_unreadable_encoding_is_refused(self):
+    def test_an_unreadable_tile_encoding_is_refused(self):
         bundle = self.bundle()
-        bundle.manifest["encoding"] = "f5-int16-v2"
-        bundle.write()
+        pointer = bundle.read_pointer()
+        pointer["tiles"]["encoding"] = "f5-tile-v2"
+        bundle.path.write_text(json.dumps(pointer))
         with self.assertRaises(ValueError):
             self.backfill(bundle)
 
-    def test_unavailable_gusts_stay_null_over_binary_frames_too(self):
+    def test_unavailable_gusts_stay_null_over_lossy_tiles_too(self):
         bundle = self.bundle(gust_available=False)
         self.assertEqual(self.backfill(bundle), ["added", "offgrid"])
         for series in bundle.read()["spotForecasts"].values():

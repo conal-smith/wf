@@ -1,9 +1,10 @@
 # Tiling design: map frames and spot data that scale past Ireland
 
-Status: draft for review, 11 October 2026. Spot squares, run directories and
-the version 2 pointer (decisions 4–6) are built, and so is the blend per square
-(step 5); where the build differs from the design is under "As built" at the
-end. The tiles are not built yet.
+Status: 11 October 2026. Everything in "How it ships" is built: spot squares,
+run directories and the version 2 pointer (decisions 4–6), the tiles and the
+map that reads them (decisions 1–3 and 7), and the blend per spot square
+(step 5). Where the build differs from the design, and what was measured, is
+under the "As built" sections at the end.
 
 ## Why
 
@@ -11,7 +12,8 @@ Today every map frame is one file covering a model's whole box. Every model
 manifest also carries every spot's full series. At Ireland scale that works.
 Beyond Ireland it does not:
 
-- A HARMONIE frame is 72 KB brotli for 233×236 cells. ECMWF over Europe
+- A HARMONIE frame is 72 KB brotli for 233×236 cells (74 KB on average,
+  78 KB at most, over the real run of 7 October 2026). ECMWF over Europe
   would be about 40× that per frame, and over the globe about 300×. The
   phone would download all of it to show the screen it is looking at.
 - The manifests are already 0.25–3.3 MB raw (34–375 KB gzip). That is 97%
@@ -89,6 +91,9 @@ Why 128 cells rather than 256:
 - With 128, a phone zoomed in on a coast needs one or two native HARMONIE
   tiles. That is about 22–45 KB, against 72 KB for the whole frame today.
   (At today's 1.3 bytes a cell after brotli, a 130 × 130 tile is about 22 KB.)
+  Measured: a full HARMONIE tile is 27 KB on average and 30 KB at most, and
+  Dublin Bay, on a part-filled tile, costs 17 KB a frame; see "As built: the
+  map on tiles".
 - The tile size is a manifest field per model, so a model can use 256 later
   without a format change.
 
@@ -250,9 +255,11 @@ renderer calls today, so the particle and wash code barely changes.
   the wash's sampling step (5 screen px), measured at the view's centre, and
   never finer than native.
   - A phone showing all of Ireland gets HARMONIE level 1: about 18 KB a
-    frame instead of 72 KB.
-  - A desktop showing all of Ireland gets native.
+    frame instead of 72 KB. (Measured: 32 KB in four tiles, against 74 KB.)
+  - A desktop showing all of Ireland gets native. (Measured: all nine native
+    tiles, 85 KB a frame, 13% more than the whole frame.)
   - Zoomed in on a bay, it gets one or two native tiles, about 22–45 KB.
+    (Measured: Dublin Bay is one tile, 17 KB a frame.)
 - **Which tiles.** The tiles covering the view plus a margin of a third of
   the view on each side, the same margin the wash already paints.
 - **While loading.** Draw from the coarser parent tile already in memory, then
@@ -263,10 +270,13 @@ renderer calls today, so the particle and wash code barely changes.
 - **Scrubbing.** Prefetch the next hour's tiles for the current view, as the
   next frame is prefetched now.
 - **Decoding.** Done in a Web Worker so it never blocks a frame. The decode
-  work is the same as today, just on a smaller file.
+  work is the same as today, just on a smaller file. (As built it is on the
+  main thread: a 130 × 130 × 3 tile decodes in about 0.1 ms.)
 - **A bare map point tapped.** Its series reads the one native tile holding
   the point for each hour. Today it reads every whole frame (about 4.3 MB for
-  hourly HARMONIE); with tiles it is roughly 1.3 MB.
+  hourly HARMONIE); with tiles it is roughly 1.3 MB. (Measured per tile: 17 KB
+  a frame at Dublin Bay and at most 30 KB anywhere, so 1.0–1.8 MB for 61
+  hourly frames.)
 
 The renderer stays on the CPU canvas. A WebGL layer can come later. The
 1-cell border and the per-tile layout are the shape a shader wants, so that
@@ -332,11 +342,11 @@ tiles, the publisher writes both formats for one release, then drops the old one
 ## As built: spot squares, run directories and the version 2 pointer
 
 Steps 2 and 3 of "How it ships" went in together, ahead of the tiles, because
-a square file needs a directory to live in. The map still draws whole-frame
-`.bin` files; they now sit at `frames/<HHH>.bin` (wave and weather frames at
-`frames/<HHH>.json`) inside the run directory, and the tiles will join them at
-`t/{level}/{x}/{y}/{HHH}.bin`. Where the build differs from the decisions
-above:
+a square file needs a directory to live in. The map then still drew whole-frame
+`.bin` files, at `frames/<HHH>.bin` (wave and weather frames at
+`frames/<HHH>.json`) inside the run directory; the tiles have since replaced
+them at `t/{level}/{x}/{y}/{HHH}.bin` (see "As built: the map on tiles"). Where
+the build differs from the decisions above:
 
 - **The hash.** The run directory's name ends in the first 8 hex digits of a
   sha256 over the sorted lines `<path> <sha256 of the file's bytes>\n`, one per
@@ -373,6 +383,146 @@ above:
 - **The blend** was still one file at this step; step 5, below, cut it into
   squares. It is still worked out from every square of every model, through the
   same loader.
+
+## As built: the map on tiles
+
+Steps 1 and 4 of "How it ships" are built: every wind adapter publishes its
+frames as tiles, the map draws from them, and whole frames are no longer
+published. Where the build differs from the decisions above, and what it
+measured:
+
+- **Adapters change by one line.** `f5bin.publish_frame`, which every wind
+  adapter already called once an hour, writes the hour's whole pyramid
+  (`f5tile.write_pyramid`), every tile of every level, the empty ones too, at
+  `t/{level}/{x}/{y}/<HHH>.bin` in the staging directory. The adapters only
+  stopped putting a `url` on their frames and an `encoding` on their manifest.
+- **Absence is per run, not per hour.** `rundir.write_run` decides it once
+  every hour is in: a tile whose owned cells are missing at every hour is
+  listed `absent` and deleted; any other is kept for every hour, so a reader
+  never meets a tile that exists at one hour and not the next, and a 404 for a
+  tile the manifest does not call absent is an error. Today's grids are full,
+  so no live run has an absent tile; a land-masked or global field would.
+- **The `tiles` block** (decision 5's sketch, with three additions):
+
+  ```jsonc
+  "tiles": {
+    "size": 128, "border": 1, "encoding": "f5-tile-v1",
+    "blocks": ["u", "v", "gust"],          // the most a tile carries; a frame with
+                                           // a null gustIntervalHours has u and v
+    "url": "t/{level}/{x}/{y}/{hour}.bin", // {hour} zero-padded to three digits
+    "levels": [{ "level": 0, "dx": 0.025, "dy": 0.02, "x": [52, 54], "y": [13, 15],
+                 "absent": [] }, …]
+  }
+  ```
+
+  Each level carries its cell size (`dx`, `dy`: the grid's times 2^level,
+  exact in binary floating point, so both languages compare them exactly) and
+  its `absent` tiles as ordered `[x, y]` pairs. Frames keep `hour`,
+  `validTime` and `gustIntervalHours` and lose `url`. The pointer stays
+  schemaVersion 2: nothing is live, and a pointer with frames and no `tiles`
+  block is refused by both validators, so an old one cannot be misread.
+- **Validation, both languages.** `f5tile.check_tiles` (Python) and
+  `validateTiles` (TypeScript) hold the block to the grid: on the lattice,
+  exactly `levels(grid, size)` with its cell sizes, absent tiles distinct,
+  ordered and inside their ranges, `blocks` gust exactly when some frame has a
+  gust window. At publish every tile not absent must be there for every hour
+  and nothing else may be; each tile's header must repeat its run, hour, level
+  and place and carry a gust block exactly where its frame has a gust window;
+  every value must be plausible; and a native tile may leave no cell of the
+  grid missing. An overview is not checked against the native tiles it
+  averages.
+- **Readers.** Everything that sampled whole frames samples the one native
+  tile holding the point (`f5tile.FrameTiles`, which reads tiles lazily):
+  the forecast archive (from the bucket it now fetches only the tiles holding
+  a station, with no scratch directory) and `backfill_spots.py`. The golden
+  pyramids prove level 0 samples exactly as the whole frame did, in both
+  languages.
+- **The map.** `force5/src/tiledField.ts`. A `Frame` is now an hour's identity
+  and a `TiledField`; `loadFrame` resolves once the view's tiles are in, so a
+  new hour or model is shown complete as before, and App.tsx did not change.
+  The wind layer measures the view when the camera settles (and the map
+  publishes it as soon as it exists, before the first frame is asked for): the
+  wash's box, a third of the view past each edge, and CSS pixels per degree at
+  the centre through MapLibre's own projection. Level: the coarsest whose
+  cells are at most `WASH_STEP` (5 CSS px, the wash's sampling step) in both
+  directions, never finer than native. HARMONIE's rows are its coarser side on
+  screen: 0.02° of latitude is 0.033° of Mercator at 53° N. Tiles:
+  `tilesCovering` that box at that level, minus `absent`. While they load, a
+  sample tries the wanted level, then coarser levels, then finer, and along
+  the domain's edge, where an overview's values stop short at its edge cells'
+  centres, a finer tile or nothing. When the tiles arrive, the arrows' field
+  and the wash are drawn again (a field `version` is part of the wash's key)
+  and the next hour's tiles for the same box are prefetched; App.tsx still
+  prefetches the next hour when the time changes.
+- **Cache.** 96 decoded tiles, LRU, shared by every frame and model, with
+  requests in flight shared; a bare point's series reads through it
+  (`keep: false`) as it read through the frame cache. A tile is held as its
+  stored int16 tenths, a quarter of the memory of floats, which keeps 96 tiles
+  (about 9.7 MB) near what eight whole frames cost; `value / 10` is bit for
+  bit the decoder's number, so nothing samples differently for it.
+- **No Web Worker.** Decoding a 130 × 130 × 3 tile takes about 0.1 ms
+  (measured in Node; force5/src/tiledField.test.ts prints it), against 5–20 ms
+  for a wash paint. A worker would add a second bundle, message passing, and a
+  decode path the unit tests could not run, to save well under a frame.
+- **Sample bundles.** `scripts/f5tile.mjs` is a second writer, held to the
+  Python one byte for byte by the golden pyramids (tests/f5tile-writer.test.ts);
+  a run the Node writer published and the same run the Python one published
+  land in the same content-named directory. The committed fixtures use tiles of
+  16 cells — the size is the manifest's to state — so they stay small and
+  still have several tiles and levels; the e2e site's HARMONIE is on the real
+  0.025° × 0.02° grid with 128-cell tiles (`--site`), so the map has all three
+  levels to choose from. ECMWF's and AIFS's 1° sample grids moved their north
+  edge from 56° to 56.4° to sit on the lattice.
+- **Wave and weather frames are no longer published.** Nothing read them: the
+  browser, the forecast server and the blend read spot series, and
+  verification reads wind. GFS-Wave, ECMWF Wave and ICON-EU surface weather
+  stopped writing them (ICON-EU's `--frame-variables` went with them) and
+  state `horizonHours` instead; Irish Shelf SWAN already wrote none unless
+  asked with `--frames`, which stays. The validators still accept wave and
+  weather frames for the day a layer needs them, and the sample bundles keep
+  some so that path has a fixture. `backfill_spots.py` can no longer recompute
+  a wave run's series, and says so, as it always did for SWAN.
+
+### Measured
+
+Sizes on disk are brotli at quality 9, from the real HARMONIE run of
+7 October 2026 17 UTC (21 three-hourly frames), published both ways from the
+same grids:
+
+| | per frame | tiles | largest tile |
+|---|---|---|---|
+| Whole frame, as before | 74 KB (78 KB at most) | 1 | — |
+| Level 0, native | 85 KB (91 KB at most) | 9 | 30 KB |
+| Level 1 | 32 KB | 4 | 14 KB |
+| Level 2 | 10 KB | 1 | 10 KB |
+| Every level | 127 KB | 14 | — |
+
+What a browser transferred for HARMONIE's frames, the same run served both
+ways by scripts/perf-serve.mjs (brotli sidecars, as production), the parent
+commit against this one, Playwright counting response bodies:
+
+| | before | after |
+|---|---|---|
+| Phone (390 × 844), all of Ireland on load | 263 KB, 4 files | 115 KB, 16 tiles (level 1) |
+| Then into Dublin Bay (zoom 10.4), extra | 0 | 31 KB, 2 tiles (level 0) |
+| Phone, 24 forecast hours scrubbed at that view | 376 KB, 5 files | 161 KB, 20 tiles |
+| Desktop (1440 × 900), all of Ireland on load | 263 KB, 4 files | 298 KB, 36 tiles (level 0) |
+| Desktop, 24 forecast hours scrubbed | 376 KB, 5 files | 428 KB, 45 tiles |
+
+The four frames on load are two the page asks for before it knows its opening
+time (the run's first frame and the one after) and two it then shows (the
+opening hour and the next): that first pair is wasted in both layouts and is
+not a tiling matter. A phone's first view downloads 44% of what it did. A
+desktop showing all of Ireland downloads 13% more, because nine native tiles
+compress less well than one whole frame (borders, and nine shorter windows),
+and the view needs all of them; the level rule sends a desktop native there
+by design.
+
+The e2e site's synthetic HARMONIE, published both ways, asks for the same
+files (four frames against 16 level-1 tiles on a phone, 36 native tiles on a
+desktop, one native tile an hour for the bay), but its smooth analytic fields
+compress to almost nothing (0.3 KB a whole frame), so its byte counts say
+nothing about real weather.
 
 ## As built: the blend per square
 

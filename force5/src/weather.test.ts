@@ -9,9 +9,10 @@ import {
   validateFrame,
   validateManifest,
   windColor,
-  type Frame,
+  type GridFrame,
   type Manifest,
 } from "./weather";
+import { tilesFor } from "./testing";
 
 const grid = {
   width: 2,
@@ -23,7 +24,7 @@ const grid = {
   dx: 1,
   dy: 1,
 };
-const frame: Frame = {
+const frame: GridFrame = {
   model: "icon-eu",
   run: "2026091306",
   hour: 0,
@@ -45,16 +46,15 @@ const manifest = {
     {
       hour: 0,
       validTime: frame.validTime,
-      url: "frames/000.bin",
       gustIntervalHours: [0, 0],
     },
     {
       hour: 3,
       validTime: "2026-09-13T09:00:00Z",
-      url: "frames/003.bin",
       gustIntervalHours: [0, 3],
     },
   ],
+  tiles: tilesFor(grid, [{ gustIntervalHours: [0, 0] }]),
   spots: {
     squareDegrees: 2,
     url: "spots/{square}.json",
@@ -235,23 +235,74 @@ describe("forecast integrity and freshness", () => {
       ),
     ).toThrow();
   });
-  it("rejects non-sequential times and paths outside the run directory", () => {
+  it("rejects non-sequential times and frames published other than as tiles", () => {
     expect(() =>
       validateManifest({ ...manifest, frames: [...manifest.frames].reverse() }),
     ).toThrow();
-    for (const url of [
-      "https://bad.example/frame",
-      "../harmonie.json",
-      "frames/../../latest.json",
-      "/weather/a.bin",
-      "weather/a.bin/",
+    // Frames are tiles: a run with frames needs its tiles block, a whole-frame
+    // encoding is an old format, and a run without frames has no tiles.
+    expect(() => validateManifest({ ...manifest, tiles: undefined })).toThrow(
+      /tiles/,
+    );
+    expect(() =>
+      validateManifest({ ...manifest, encoding: "f5-int16-v1" } as Manifest),
+    ).toThrow(/old format/);
+    expect(() =>
+      validateManifest({
+        ...manifest,
+        frames: [],
+        ensemble: { members: 2, control: 0, description: "Two" },
+        horizonHours: 3,
+      }),
+    ).toThrow(/no tiles/);
+  });
+  it("checks the tiles block against the grid and the gust periods", () => {
+    const tiles = manifest.tiles!;
+    const level = tiles.levels[0];
+    for (const broken of [
+      { ...tiles, encoding: "f5-tile-v2" },
+      { ...tiles, url: "tiles/{level}/{x}/{y}/{hour}.bin" },
+      { ...tiles, size: 0 },
+      { ...tiles, border: 0 },
+      { ...tiles, blocks: ["u", "v"] },
+      { ...tiles, levels: [] },
+      { ...tiles, levels: [{ ...level, x: [1, 2] as [number, number] }] },
+      { ...tiles, levels: [{ ...level, dx: 2 }] },
+      {
+        ...tiles,
+        levels: [{ ...level, absent: [[9, 9]] as [number, number][] }],
+      },
+      {
+        ...tiles,
+        levels: [
+          {
+            ...level,
+            absent: [
+              [level.x[0], level.y[0]],
+              [level.x[0], level.y[0]],
+            ] as [number, number][],
+          },
+        ],
+      },
     ])
-      expect(() =>
-        validateManifest({
-          ...manifest,
-          frames: [{ ...manifest.frames[0], url }],
-        }),
-      ).toThrow();
+      expect(() => validateManifest({ ...manifest, tiles: broken })).toThrow();
+    // A grid off the tile lattice cannot be tiled at all.
+    expect(() =>
+      validateManifest({
+        ...manifest,
+        grid: { ...grid, west: -10.3, east: -9.3 },
+      }),
+    ).toThrow(/lattice/);
+    // An absent tile inside the ranges is fine.
+    expect(() =>
+      validateManifest({
+        ...manifest,
+        tiles: {
+          ...tiles,
+          levels: [{ ...level, absent: [[level.x[0], level.y[0]]] }],
+        },
+      }),
+    ).not.toThrow();
   });
   it("is a schemaVersion 2 pointer: a run directory beside it, no spot data inline", () => {
     expect(() => validateManifest({ ...manifest, schemaVersion: 1 })).toThrow(
@@ -288,6 +339,7 @@ describe("forecast integrity and freshness", () => {
   it("needs a stated horizon for a run with no map frames", () => {
     const frameless = {
       ...manifest,
+      tiles: undefined,
       frames: [],
       ensemble: { members: 2, control: null, description: "Two." },
     };

@@ -14,7 +14,7 @@ import {
   type Tile,
   type TileRequest,
 } from "./f5tile";
-import { sample, type Frame, type Grid } from "./weather";
+import { sample, type GridFrame, type Grid } from "./weather";
 
 // The same files force5/ingest/test_f5tile.py builds and checks, so the two
 // languages decode the same bytes and must agree on every number below.
@@ -297,7 +297,7 @@ describe("tiles in view", () => {
 });
 
 /** A whole frame of the regional golden, as `decodeFrame` would return it. */
-function wholeFrame(pyramid: Pyramid): Frame {
+function wholeFrame(pyramid: Pyramid): GridFrame {
   // Quantised exactly as the encoder does: half away from zero, then tenths.
   const stored = (values: Values) =>
     values.map((value) => {

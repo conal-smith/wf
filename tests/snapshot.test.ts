@@ -1,14 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { readBundle, readFrame, readRun, readWindFrame } from "./bundles";
-import {
-  sample,
-  validateFrame,
-  validateManifest,
-  validateWindSpots,
-} from "../force5/src/weather";
+import { fixtureFetch, readBundle, readFrame, readRun } from "./bundles";
+import { validateManifest, validateWindSpots } from "../force5/src/weather";
 import type { Manifest, Spot } from "../force5/src/weather";
-import { F5_ENCODING } from "../force5/src/f5bin";
+import { clearTileCache, samplePoint } from "../force5/src/tiledField";
 import {
   validateWaveManifest,
   validateWaveSpots,
@@ -53,23 +48,32 @@ const originalIds: string[] = JSON.parse(
 describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
   "published %s wind bundle",
   (name) => {
+    // The tiles are read the way the map reads them: through TiledField, over
+    // a fetch that serves the fixtures at the URLs the site asks for.
+    const served = fixtureFetch();
+    beforeAll(() => {
+      clearTileCache();
+      vi.stubGlobal("fetch", served);
+    });
+    afterAll(() => vi.unstubAllGlobals());
+
     it("all files match the manifest and all spot summaries match their wind grid", async () => {
       validateManifest(readBundle<Manifest>(name));
       const m = validateWindSpots(await readRun<Manifest>(name));
-      // A binary frame stores tenths of a metre per second while the spot series
-      // beside it is the full-precision value rounded to hundredths, so the two
-      // may differ by the quantisation (0.05) plus both roundings. See
+      // A tile stores tenths of a metre per second while the spot series beside
+      // it is the full-precision value rounded to hundredths, so the two may
+      // differ by the quantisation (0.05) plus both roundings. See
       // force5/ingest/f5bin.py and backfill_spots.py, which allows the same.
-      const limit = m.encoding === F5_ENCODING ? 0.06 : 0.00501;
+      const limit = 0.06;
       // Exactly the published catalogue: no riding place missing, none invented.
       expect(Object.keys(m.spotForecasts!).sort()).toEqual(
         [...placeIds].sort(),
       );
       for (const id of originalIds) expect(m.spotForecasts![id]).toBeTruthy();
-      m.frames.forEach((info, i) => {
-        const frame = validateFrame(readWindFrame(m, info), m, info);
+      for (const [i, info] of m.frames.entries()) {
         for (const spot of places) {
-          const wind = sample(frame, spot.lon, spot.lat)!;
+          // The native tile holding the spot: what a bare point reads too.
+          const wind = (await samplePoint(m, i, spot.lat, spot.lon))!;
           const summary = m.spotForecasts![spot.id][i];
           expect(summary.validTime).toBe(info.validTime);
           // Every riding place sits inside every bundled grid, so a null u or v
@@ -92,7 +96,14 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
           }
           expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(limit);
         }
-      });
+      }
+      // Only level-0 tiles of this run were read, each from inside its directory.
+      expect(served.asked.length).toBeGreaterThan(0);
+      for (const url of served.asked)
+        expect(url).toMatch(
+          new RegExp(`/weather/${m.base}t/0/\\d+/\\d+/\\d{3}\\.bin$`),
+        );
+      served.asked.length = 0;
     });
   },
 );

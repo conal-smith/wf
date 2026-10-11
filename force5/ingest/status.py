@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 import sys
 
+from f5tile import run_tiles
 from prune import manifest_urls, run_directory
 from registry import MANIFESTS, MODELS
 from squares import square_index, square_path, load_spot_data
@@ -72,12 +73,19 @@ def horizon(manifest, read_json=None):
 
 
 def published_objects(manifest, pointer):
-    """Every published path a manifest names: a run's frames and squares, or its urls."""
+    """Every published path a manifest names: a run's frames and squares, or its urls.
+
+    A wind run's frames are its tiles: every tile its `tiles` block does not
+    list as absent, at every hour.
+    """
     directory = run_directory(manifest, pointer)
     if directory is None:
         return manifest_urls(manifest)
     parent = Path(pointer).parent.as_posix()
-    frames = [f"{directory}/{frame['url']}" for frame in manifest.get("frames") or []]
+    if "tiles" in manifest:
+        frames = [f"{directory}/{path}" for path in run_tiles(manifest)]
+    else:
+        frames = [f"{directory}/{frame['url']}" for frame in manifest.get("frames") or []]
     squares = [f"{parent}/{square_path(manifest, square)}"
                for square in square_index(manifest)["squares"]]
     return set(frames) | set(squares)

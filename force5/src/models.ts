@@ -1,4 +1,5 @@
-import { loadFrame, nearestFrame } from "./weather";
+import { nearestFrame } from "./weather";
+import { loadFrame } from "./tiledField";
 import { loadManifest, requireModel, type ModelEntry } from "./manifests";
 
 /** Models the map itself can show today; the full registry is MODEL_CATALOG. */

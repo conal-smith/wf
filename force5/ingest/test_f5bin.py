@@ -29,6 +29,10 @@ def frame(width=4, height=3, run="2026091712", hour=30, with_gust=True, **fields
     return payload
 
 
+# Four by three cells on the tile lattice, for what is published as tiles.
+LATTICE_GRID = {"west": -11.0, "north": 56.0, "dx": 0.5, "dy": 0.4, "width": 4, "height": 3}
+
+
 class GoldenTests(unittest.TestCase):
     """The committed file both languages read, and the encoder that produced it."""
 
@@ -183,13 +187,24 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in path.parent.iterdir()),
                              ["000-abc.bin", "000-abc.bin.br", "000-abc.bin.gz"])
 
-    def test_publish_frame_names_a_file_after_its_hour_inside_the_run(self):
-        """The run directory is named for its content (rundir.py), so the file need not be."""
-        payload = frame()
+    def test_publish_frame_writes_the_frames_tiles_named_for_its_hour_inside_the_run(self):
+        """The run directory is named for its content (rundir.py), so the files need not be."""
+        import f5tile
+        payload = frame(grid=LATTICE_GRID)
         with tempfile.TemporaryDirectory() as temp:
-            name = f5bin.publish_frame(Path(temp), "model-2026091712-30h-v1", payload)
-            self.assertEqual(name, "model-2026091712-30h-v1/frames/030.bin")
-            self.assertEqual((Path(temp) / name).read_bytes(), f5bin.encode_frame(payload))
+            names = f5bin.publish_frame(Path(temp), "model-2026091712-30h-v1", payload)
+            self.assertEqual(names, ["model-2026091712-30h-v1/t/0/2/0/030.bin"])
+            _, tiles = f5tile.build_pyramid(LATTICE_GRID, payload["u"], payload["v"],
+                                            payload["gust"], 30, "2026091712")
+            self.assertEqual((Path(temp) / names[0]).read_bytes(), tiles[0][3])
+            self.assertTrue(Path(temp, names[0] + ".br").is_file())
+
+    def test_publish_frame_writes_tiles_with_nothing_in_them_too(self):
+        """Whether a tile is absent is the run's decision, once every hour is in."""
+        payload = frame(grid=LATTICE_GRID, u=[None] * 12, v=[None] * 12, gust=None)
+        with tempfile.TemporaryDirectory() as temp:
+            names = f5bin.publish_frame(Path(temp), "p", payload)
+            self.assertEqual(names, ["p/t/0/2/0/030.bin"])
 
     def test_sidecars_can_be_turned_off_for_a_job_that_only_uploads(self):
         """A bucket-only run serves no sidecar, so it should not spend one per frame."""
@@ -225,7 +240,8 @@ class SidecarTests(unittest.TestCase):
         import rundir
         with tempfile.TemporaryDirectory() as temp:
             names = set()
-            for payload in (frame(), frame(u=[9.0] * 12), frame(run="2026091713")):
+            for payload in (frame(grid=LATTICE_GRID), frame(grid=LATTICE_GRID, u=[9.0] * 12),
+                            frame(grid=LATTICE_GRID, run="2026091713")):
                 directory = Path(temp) / payload["run"] / str(len(names))
                 f5bin.publish_frame(directory, "p", payload)
                 names.add(rundir.directory_name("p", rundir.content_files(directory / "p")))

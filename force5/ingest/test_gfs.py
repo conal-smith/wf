@@ -10,13 +10,12 @@ from unittest.mock import patch
 
 import eccodes as ec
 
-import f5bin
 import fetch_gfs
 from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory,
                        main, object_key, run_datetime, validate_metadata)
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
-from runfixtures import publish_whole, read_whole
+from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
 RUN = "2026091612"
@@ -198,7 +197,7 @@ class GfsTests(unittest.TestCase):
         directory = self.root / "weather/gfs-run"
         directory.mkdir(parents=True)
         manifest = {"model": "gfs", "run": RUN, "runTime": run_time.isoformat().replace("+00:00", "Z"),
-                    "stepHours": 3, "grid": {"width": 2, "height": 2}, "frames": [],
+                    "stepHours": 3, "grid": dict(TINY_GRID), "frames": [],
                     "gustAvailable": True, "gustKind": gust_kind, "spotForecasts": {"brandon": []}}
         for hour in hours:
             valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
@@ -330,12 +329,12 @@ class GfsTests(unittest.TestCase):
         self.assertIsNone(manifest["resolutionKm"])
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [[0, 0], [3, 3]])
         self.assertEqual([f["hour"] for f in manifest["spotForecasts"]["brandon"]], [0, 3])
-        # The frames are binary; the gust window and the grid geometry they used to
-        # repeat now live only in the manifest, which is where they are checked.
-        self.assertEqual(manifest["encoding"], f5bin.ENCODING)
+        # The frames are tiles; the gust window and the grid geometry live only in
+        # the manifest, which is where they are checked.
+        self.assertNotIn("encoding", manifest)
+        self.assertEqual(manifest["tiles"]["blocks"], ["u", "v", "gust"])
         self.assertEqual(manifest["grid"]["order"], "north-to-south, west-to-east")
-        frame = f5bin.decode_frame(
-            (self.root / "public/weather" / manifest["base"] / manifest["frames"][0]["url"]).read_bytes())
+        frame = published_frame(self.root / "public/weather", manifest, 0)
         self.assertEqual((frame["run"], frame["hour"]), (run, 0))
         self.assertEqual((frame["width"], frame["height"]),
                          (manifest["grid"]["width"], manifest["grid"]["height"]))

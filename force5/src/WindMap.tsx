@@ -15,7 +15,13 @@ import {
 } from "./chartStyle";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
-import { createWindLayer, type WindLayer, type WindStyle } from "./windLayer";
+import { setMapView } from "./tiledField";
+import {
+  createWindLayer,
+  viewOf,
+  type WindLayer,
+  type WindStyle,
+} from "./windLayer";
 import type { Frame, Spot } from "./weather";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -243,6 +249,9 @@ export default function WindMap(props: Props) {
       return;
     }
     mapRef.current = map;
+    // What the map shows, before it has loaded: the first frame's tiles are
+    // asked for while the basemap is still on its way.
+    setMapView(viewOf(map));
     // The wind's canvas and the pen's sheet go inside the map, over its canvas
     // and, by z-index (src/map.css), under the lights and over them.
     const canvasBox = map.getCanvasContainer();

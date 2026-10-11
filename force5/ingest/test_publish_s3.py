@@ -14,10 +14,12 @@ import unittest
 from unittest.mock import patch
 
 import f5bin
+import f5tile
 import publish_s3
 import rundir
 from publish_s3 import publish, superseded_objects, validate_bundle, already_current
 from registry import MANIFESTS, MODELS, UNCHANGED_EXIT
+from runfixtures import TINY_GRID
 
 
 FIXTURE = object()  # "use the test's own fake bucket", which None cannot mean here.
@@ -126,12 +128,17 @@ SPOTS = [{"id": "dollymount", "lat": 53.365, "lon": -6.135},
          {"id": "brandon", "lat": 52.276, "lon": -10.024}]
 
 
+# The native tile a frame of TINY_GRID publishes, at each hour.
+TILE = "t/0/2/0/{hour:03d}.bin"
+
+
 class BundleFixture:
     """A validated three-frame HARMONIE run on disk and an empty fake bucket.
 
-    The run is written as an adapter writes one: frames into a staging
-    directory, then `rundir.write_run`, which moves the spot series into squares
-    and names the run directory for its content.
+    The run is written as an adapter writes one: each frame's tiles into a
+    staging directory (f5bin.publish_frame), then `rundir.write_run`, which
+    settles the tiles, moves the spot series into squares and names the run
+    directory for its content.
     """
 
     def setUp(self):
@@ -145,9 +152,10 @@ class BundleFixture:
     def build(self, run, frame=None, whole=None, gusts=False):
         """Write a run of this hour: `frame` and `whole` may change a frame or the manifest."""
         prefix = f"harmonie-{run}-2h-v1"
-        grid = {"width": 2, "height": 2}
+        grid = dict(TINY_GRID)
         start = int(run[-2:])
         frames, forecasts = [], {spot["id"]: [] for spot in SPOTS}
+        shutil.rmtree(self.root / "weather" / prefix, ignore_errors=True)
         for hour in range(3):
             valid = f"2026-09-13T{start + hour}:00:00Z"
             interval = ([hour - 1, hour] if hour else None) if gusts else None
@@ -155,12 +163,8 @@ class BundleFixture:
                        "grid": grid, "gustIntervalHours": interval, "u": [1] * 4, "v": [2] * 4,
                        "gust": [4] * 4 if interval else None}
             payload = frame(hour, payload) if frame else payload
-            name = rundir.frame_name(prefix, hour, "json")
-            target = self.root / "weather" / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(json.dumps(payload))
-            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                           "gustIntervalHours": interval})
+            f5bin.publish_frame(self.root / "weather", prefix, payload)
+            frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
             for spot in forecasts.values():
                 spot.append({"hour": hour, "validTime": valid, "u": 1, "v": 2, "gust": None})
         manifest = {"schemaVersion": 1, "model": "harmonie", "run": run,
@@ -179,10 +183,10 @@ class BundleFixture:
         (self.root / "weather/harmonie.json").write_text(json.dumps(self.manifest))
 
     def keys(self, manifest=None):
-        """Every object key of a run: its frames and its squares."""
+        """Every object key of a run: its frames' tiles and its squares."""
         manifest = manifest or self.manifest
         directory = f"weather/{manifest['base']}"
-        return ([directory + frame["url"] for frame in manifest["frames"]]
+        return ([directory + path for path in sorted(f5tile.run_tiles(manifest))]
                 + [f"{directory}spots/{square}.json" for square in manifest["spots"]["squares"]])
 
     def run_publish(self):
@@ -202,7 +206,9 @@ class PublishTests(BundleFixture, unittest.TestCase):
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
         self.assertEqual(sorted(self.s3.writes[:-1]), sorted(self.keys()))
         for key in self.keys():
-            self.assertEqual(self.s3.objects[key]["ContentEncoding"], "gzip")
+            # Tiles are brotli, JSON (the squares) gzip.
+            self.assertEqual(self.s3.objects[key]["ContentEncoding"],
+                             "br" if key.endswith(".bin") else "gzip")
             self.assertEqual(self.s3.objects[key]["CacheControl"], publish_s3.IMMUTABLE_CACHE)
         before = list(self.s3.writes)
         self.assertEqual(self.run_publish(), "unchanged-or-newer")
@@ -315,13 +321,14 @@ class PublishTests(BundleFixture, unittest.TestCase):
                     validate_bundle(self.root, "harmonie", now=self.now)
 
     def test_a_directory_whose_content_does_not_match_its_name_is_refused(self):
-        path = self.root / "weather" / self.manifest["base"] / "frames/001.json"
-        path.write_text(json.dumps({**json.loads(path.read_text()), "u": [1, 1, 1, 2]}))
+        path = self.root / "weather" / self.manifest["base"] / TILE.format(hour=1)
+        _, tiles = f5tile.build_pyramid(TINY_GRID, [1, 1, 1, 2], [2] * 4, None, 1, "2026091312")
+        path.write_bytes(tiles[0][3])
         with self.assertRaisesRegex(ValueError, "content its name claims"):
             validate_bundle(self.root, "harmonie", now=self.now)
 
     def test_a_stray_file_in_the_run_directory_is_refused(self):
-        (self.root / "weather" / self.manifest["base"] / "frames/099.json").write_text("{}")
+        (self.root / "weather" / self.manifest["base"] / "t/0/2/0/099.bin").write_text("{}")
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "harmonie", now=self.now)
 
@@ -332,7 +339,7 @@ class PublishTests(BundleFixture, unittest.TestCase):
             validate_bundle(self.root, "harmonie", now=self.now)
 
     def test_missing_frame_rejected_before_any_upload(self):
-        (self.root / "weather" / self.manifest["base"] / "frames/001.json").unlink()
+        (self.root / "weather" / self.manifest["base"] / TILE.format(hour=1)).unlink()
         with self.assertRaises(ValueError):
             self.run_publish()
         self.assertEqual(self.s3.writes, [])
@@ -499,7 +506,7 @@ class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
         self.assertEqual(status, "published")
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
         key = self.keys()[0]
-        self.assertEqual(self.s3.objects[key]["ContentEncoding"], "gzip")
+        self.assertEqual(self.s3.objects[key]["ContentEncoding"], "br")
         self.assertEqual(self.s3.objects[key]["CacheControl"],
                          "public, max-age=31536000, immutable")
         # Asked once for the immutable objects and once for the pointer, not per object.
@@ -649,25 +656,23 @@ class BinaryUploadTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.now = datetime(2026, 9, 13, 12, 30, tzinfo=timezone.utc)
-        grid = {"width": 2, "height": 2}
+        grid = dict(TINY_GRID)
         frames, bodies = [], {}
         prefix = "harmonie-2026091312-2h-v1"
         for hour in range(3):
             valid = f"2026-09-13T{12 + hour}:00:00Z"
             payload = {"model": "harmonie", "run": "2026091312", "hour": hour,
                        "grid": grid, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": None}
-            data = f5bin.encode_frame(payload)
-            name = f5bin.frame_name(prefix, hour)
             # Written exactly as an adapter writes it, sidecars and all. Asked for
             # explicitly so the suite does not depend on FORCE5_SIDECARS.
-            f5bin.write_with_sidecars(self.root / "weather" / name, data, sidecars=True)
-            bodies[name.split("/", 1)[1]] = data
-            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                           "gustIntervalHours": None})
+            with patch.dict(os.environ, {"FORCE5_SIDECARS": "1"}):
+                f5bin.publish_frame(self.root / "weather", prefix, payload)
+            name = TILE.format(hour=hour)
+            bodies[name] = (self.root / "weather" / prefix / name).read_bytes()
+            frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": None})
         whole = {"schemaVersion": 1, "model": "harmonie", "run": "2026091312",
                  "runTime": "2026-09-13T12:00:00Z", "stepHours": 1,
-                 "gustAvailable": False, "grid": grid,
-                 "encoding": f5bin.ENCODING, "frames": frames,
+                 "gustAvailable": False, "grid": grid, "frames": frames,
                  "spotForecasts": {"dollymount": [
                      {"hour": hour, "validTime": f"2026-09-13T{12 + hour}:00:00Z",
                       "u": 1.5, "v": -2.5, "gust": None} for hour in range(3)]}}
@@ -785,7 +790,7 @@ class BinaryUploadTests(unittest.TestCase):
         The bucket has no sidecars to delete, and the local sweep removes a run
         directory whole, so neither path can be confused by one.
         """
-        written = sorted(p.name for p in (self.root / self.directory / "frames").iterdir())
+        written = sorted(p.name for p in (self.root / self.directory / "t/0/2/0").iterdir())
         self.assertEqual(len(written), 9)
         self.assertTrue(any(name.endswith(".br") for name in written))
         files = rundir.content_files(self.root / self.directory)
