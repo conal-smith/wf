@@ -15,15 +15,21 @@ const harmonie = readSample<{
   frames: { validTime: string; hour: number }[];
 }>("harmonie");
 
-/** The chart up, every light placed and rated, and the dock drawn. */
+/**
+ * The chart up, every light placed, and the dock drawn. On all of Ireland every
+ * light is rated too; a linked spot flies the chart in, and the lights read
+ * only the blend squares in view (src/spotBlend.ts), so the far ones may stay
+ * pending there, depending on whether the squares or the flight come first.
+ */
 async function openMap(page: Page, path = "/") {
   await page.goto(path);
   await expect(page.locator(".spot-marker")).toHaveCount(146, {
     timeout: 30000,
   });
-  await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
-    timeout: 30000,
-  });
+  if (!new URL(path, "http://x").searchParams.has("spot"))
+    await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+      timeout: 30000,
+    });
   await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible();
 }
 
