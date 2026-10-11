@@ -9,7 +9,8 @@ for each run the archive does not hold yet, writes `archive/forecasts/<model>/<r
 
 - **at every observing station**: u, v and gust sampled from the run's own frames
   at the station's position, bilinearly, exactly as the adapters sample a riding
-  spot (`fetch_forecast.sample`). The stations come from the published wind
+  spot (`fetch_forecast.sample`): from the one native tile holding the station
+  (f5tile.FrameTiles), which gives what sampling the whole frame gave. The stations come from the published wind
   observations; with none published, from the committed wind_stations.json. A
   station outside the model's grid is left out, never clamped to the edge.
 - **at every riding spot**: the run's own `spotForecasts`, copied from its spot
@@ -18,7 +19,7 @@ for each run the archive does not hold yet, writes `archive/forecasts/<model>/<r
   and 90th percentile and mean of the member speeds, and the mean member gust.
   An ensemble publishes only mean frames, so at a station it is the mean wind.
 
-Values are m/s rounded to 0.1, which is the precision the binary frames store.
+Values are m/s rounded to 0.1, which is the precision the tiles store.
 Each record also keeps the manifest's `generatedAt`, when the run became
 available, so that verify.py can rebuild the blend a rider was shown at any hour.
 
@@ -28,8 +29,9 @@ reading merged twice is stored once. The observation manifest carries 72 hours,
 so this job can miss two days of runs and lose no observation.
 
 With `--bucket` everything is read from what the bucket serves and written to
-its archive; the frames of each new run are fetched into a scratch directory,
-checked by the same code that validates them for publication, and deleted again.
+its archive; of each new run's frames only the native tiles holding a station
+are fetched, each checked by its header for the run, hour and place it is
+published as.
 Without it, the work directory's own public/ is read and its public/archive/
 written. The pointer it publishes, verify/forecast-archive.json, only says what
 it copied this hour; the archive itself is written directly, because nothing in
@@ -42,9 +44,9 @@ import json
 import math
 from pathlib import Path
 import sys
-import tempfile
 
 from archive import forecast_key, observation_key, open_archive
+from f5tile import FrameTiles
 from fetch_forecast import ROOT, write_json
 from prune import read_object
 from publish_s3 import log_event, make_client, object_prefix, read_current
@@ -124,15 +126,16 @@ def member_summary(step):
 # --- one run's record ---------------------------------------------------------
 
 def station_series(frames, points):
-    """{station: {u, v, gust}} over the frames; a station off the grid is left out."""
+    """{station: {u, v, gust}} over the frames; a station off the grid is left out.
+
+    `frames` are `f5tile.FrameTiles`, sampled at level 0.
+    """
     series = {identifier: {"u": [], "v": [], "gust": []} for identifier in points}
     for frame in frames:
-        grid = frame["grid"]
         for identifier, (lat, lon) in points.items():
+            wind = frame.sample(lat, lon) or {}
             for field in ("u", "v", "gust"):
-                values = frame.get(field)
-                value = None if values is None else sample_point(grid, values, lon, lat)
-                series[identifier][field].append(tenth(value))
+                series[identifier][field].append(tenth(wind.get(field)))
     return {identifier: values for identifier, values in series.items()
             if any(value is not None for value in values["u"])}
 
@@ -172,7 +175,7 @@ def member_stats(manifest):
 
 
 def forecast_record(manifest, frames, points, station_source, archived_at):
-    """Everything kept of one run. `frames` are decoded wind frames, in order."""
+    """Everything kept of one run. `frames` are its frames' tiles, in order."""
     frames = list(frames)
     spot_hours, spots = spot_copies(manifest)
     member_hours, members = member_stats(manifest)
@@ -193,7 +196,7 @@ def forecast_record(manifest, frames, points, station_source, archived_at):
         "gustAvailable": manifest.get("gustAvailable") is not False,
         "units": "m/s, rounded to 0.1",
         "stationSource": station_source,
-        "hours": [frame["hour"] for frame in frames],
+        "hours": [frame.hour for frame in frames],
         "gustWindowHours": windows,
         "stations": station_series(frames, points),
         "spotHours": spot_hours, "spots": spots,
@@ -293,16 +296,15 @@ class LocalSource:
 
 
 class BucketSource:
-    """What the bucket serves: pointers read directly, frames via a scratch directory.
+    """What the bucket serves: pointers and spot squares, and the tiles a station needs.
 
-    Each frame is downloaded into a scratch copy of public/ and read through
-    backfill_spots.read_frame, so a frame the bucket serves is checked exactly as
-    one on disk would be (its path, its run and hour, and its content hash).
+    A frame's tiles are read from the bucket one at a time as the stations ask
+    for them (f5tile.FrameTiles), and each is checked by its header for the run,
+    hour, level and place it is published as, as one on disk would be.
     """
 
-    def __init__(self, s3, bucket, prefix, scratch):
+    def __init__(self, s3, bucket, prefix):
         self.s3, self.bucket, self.prefix = s3, bucket, object_prefix(prefix)
-        self.scratch = Path(scratch).resolve()
 
     def manifest(self, model):
         manifest, _ = read_current(self.s3, self.bucket, self.prefix + MANIFESTS[model])
@@ -325,16 +327,11 @@ class BucketSource:
         return data
 
     def frames(self, model, manifest):
-        from backfill_spots import read_frame
-        for info in manifest.get("frames") or []:
-            published = run_file(model, manifest, info["url"])
-            target = self.scratch / published
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(self.body(published))
-            try:
-                yield read_frame(self.scratch, model, manifest, info)
-            finally:
-                target.unlink(missing_ok=True)
+        if not manifest.get("frames"):
+            return
+        for info in manifest["frames"]:
+            yield FrameTiles(manifest, info,
+                             lambda relative: self.body(run_file(model, manifest, relative)))
 
 
 def archive_runs(source, store, points, station_source, now, models=None):
@@ -413,9 +410,8 @@ def main(argv=None):
         public = ROOT / "public"
         return run(LocalSource(public), open_archive(public=public), now, out)
     s3 = make_client(args.endpoint_url, args.region)
-    with tempfile.TemporaryDirectory(prefix="archive-") as scratch:
-        return run(BucketSource(s3, args.bucket, args.prefix, scratch),
-                   open_archive(s3=s3, bucket=args.bucket, prefix=args.prefix), now, out)
+    return run(BucketSource(s3, args.bucket, args.prefix),
+               open_archive(s3=s3, bucket=args.bucket, prefix=args.prefix), now, out)
 
 
 if __name__ == "__main__":

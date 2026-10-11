@@ -11,10 +11,12 @@
  * so in its provider and attribution, so a bundle can never be mistaken for
  * model output.
  *
- * Wind frames are written in the published binary encoding ("f5-int16-v1",
- * scripts/f5bin.mjs) for every model but ARPEGE, which stays on JSON frames so
- * that the readers' legacy path keeps a fixture of its own. Wave and weather
- * frames are JSON, as they are in production.
+ * Wind frames are published as tiles (scripts/f5tile.mjs, the same bytes
+ * force5/ingest/f5tile.py writes), every tile of every level of every hour,
+ * with the manifest's `tiles` block saying where they are. Wave and weather
+ * frames are JSON. Production no longer publishes those, because nothing reads
+ * them; the samples keep them so that the contract's optional frame path, which
+ * every validator still accepts, keeps a fixture of its own.
  *
  *   npm run weather:fixtures     the committed fixtures the unit tests read
  *   npm run weather:sample       the same bundles in public/weather, for local
@@ -24,7 +26,9 @@
  *
  * Options: --profile fixtures|live, --out <dir>, --spacing <degrees of
  * longitude; latitude follows at DY_RATIO of it>, --now <iso>, --all (include
- * the models no test needs), --force.
+ * the models no test needs), --force, --site (the fixtures profile at the e2e
+ * site's spacing: HARMONIE at the real 0.025° × 0.02°, so the map has a whole
+ * pyramid of tiles to choose from).
  *
  * The output directory is never written over anything that could be a forecast.
  * A `*.json` manifest OR a run directory is enough to stop the write, because a
@@ -74,7 +78,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { F5_ENCODING, encodeFrame } from "./f5bin.mjs";
+import { buildPyramid, manifestTiles, tilePath } from "./f5tile.mjs";
 import { publishRun } from "./runs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -122,23 +126,41 @@ const runId = (ms) => {
 const DY_RATIO = 0.8;
 
 /**
+ * Where a grid edge goes so that it sits on the global tile lattice: a whole
+ * number of cells from -180° or 90° (force5/ingest/f5tile.py). The box's own
+ * edge when it already does, which it does for every spacing but 1° (whose
+ * 0.8° rows do not divide the 34° from the box's top to the pole); otherwise
+ * the next lattice line outside the box.
+ */
+function onLattice(edge, origin, step) {
+  const cells = Math.abs(edge - origin) / step;
+  if (Math.abs(cells - Math.round(cells)) <= 1e-6) return edge;
+  // Fewer whole cells from the origin is further out: west for a west edge
+  // counted from -180°, north for a north edge counted from 90°.
+  return q3(origin + Math.sign(edge - origin) * Math.floor(cells) * step);
+}
+
+/**
  * A regular grid covering the display box at the given longitude spacing.
  *
- * The cell counts are rounded up and the east and south edges then restated from
- * them, so the grid describes itself exactly — `east - west === (width - 1) · dx`
- * to the browser's tolerance — for any spacing, without dx and dy having to
+ * The west and north edges are put on the tile lattice (`onLattice`), the cell
+ * counts are rounded up and the east and south edges then restated from them,
+ * so the grid describes itself exactly — `east - west === (width - 1) · dx` to
+ * the browser's tolerance — for any spacing, without dx and dy having to
  * divide the box.
  */
 function gridAt(dx, dy = q3(dx * DY_RATIO)) {
-  const width = Math.ceil((BOX.east - BOX.west) / dx) + 1;
-  const height = Math.ceil((BOX.north - BOX.south) / dy) + 1;
+  const west = onLattice(BOX.west, -180, dx);
+  const north = onLattice(BOX.north, 90, dy);
+  const width = Math.ceil(q3(BOX.east - west) / dx) + 1;
+  const height = Math.ceil(q3(north - BOX.south) / dy) + 1;
   return {
     width,
     height,
-    west: BOX.west,
-    east: q3(BOX.west + (width - 1) * dx),
-    north: BOX.north,
-    south: q3(BOX.north - (height - 1) * dy),
+    west,
+    east: q3(west + (width - 1) * dx),
+    north,
+    south: q3(north - (height - 1) * dy),
     dx,
     dy,
     order: "north-to-south, west-to-east",
@@ -537,13 +559,23 @@ function gustInterval(model, hours, index) {
   return [hour - window, hour];
 }
 
-function windBundle(model, spots, runMs, grid) {
+/**
+ * The tile size a sample run is cut into. Production's 128 for the site and the
+ * live bundles; 16 for the committed fixtures, whose grids are a few cells
+ * across, so that they stay small on disk and still have several tiles and
+ * levels for the readers to be tested against. The size is the manifest's to
+ * state (`tiles.size`), so every reader takes it from there.
+ */
+const TILE_SIZES = { fixtures: 16, live: 128, site: 128 };
+
+function windBundle(model, spots, runMs, grid, tileSize) {
   const run = runId(runMs);
   const hours = frameHours(model);
   const prefix = `${model.id}-${run}-${hours[hours.length - 1]}h-v1`;
   const series = Object.fromEntries(spots.map((spot) => [spot.id, []]));
   const frames = [];
-  const files = [];
+  /** Every tile of every hour, by path inside the run. */
+  const tiles = new Map();
   hours.forEach((hour, index) => {
     const planes = {
       u: plane(grid, WIND.u, hour, model.seed),
@@ -567,14 +599,14 @@ function windBundle(model, spots, runMs, grid) {
         ? null
         : bounded(field(grid, planes.gust), 150, 0, `${model.id} gust`),
     };
-    // A binary bundle hashes the bytes it publishes, exactly as the adapters do;
-    // a JSON one keeps hashing its payload, so the legacy path stays covered.
-    const body =
-      model.encoding === F5_ENCODING ? encodeFrame(payload) : payload;
-    const suffix = model.encoding === F5_ENCODING ? "bin" : "json";
-    const url = `weather/${prefix}/${pad(hour, 3)}.${suffix}`;
-    files.push([url, body]);
-    frames.push({ hour, validTime: valid, url, gustIntervalHours: interval });
+    // Every tile of every level, the empty ones too: which are absent is the
+    // run's decision once every hour is in, as rundir.write_run makes it.
+    for (const tile of buildPyramid(grid, payload, hour, run, {
+      size: tileSize,
+      keepEmpty: true,
+    }).tiles)
+      tiles.set(tilePath(tile.level, tile.x, tile.y, hour), tile);
+    frames.push({ hour, validTime: valid, gustIntervalHours: interval });
     for (const spot of spots) {
       const x = spotX(grid, spot.lon);
       const y = spotY(grid, spot.lat);
@@ -601,7 +633,7 @@ function windBundle(model, spots, runMs, grid) {
     stepHours: model.stepHours,
     ...(model.stepRanges ? { stepRanges: model.stepRanges } : {}),
     grid,
-    ...(model.encoding ? { encoding: model.encoding } : {}),
+    tiles: null,
     frames,
     spotForecasts: series,
     ...(model.gust === "none" ? { gustAvailable: false } : {}),
@@ -613,7 +645,61 @@ function windBundle(model, spots, runMs, grid) {
         : "Sample gusts: a smooth analytic field, not a forecast.",
     ...provenance(),
   };
-  return { manifest, files, prefix };
+  const { tiles: block, files: tileFiles } = settleTiles(
+    grid,
+    frames,
+    tiles,
+    tileSize,
+  );
+  manifest.tiles = block;
+  return { manifest, files: [], tileFiles, prefix };
+}
+
+/**
+ * The run's `tiles` block and the tiles it publishes, as rundir.write_run
+ * settles them: a tile empty in every hour is absent, and is not published; any
+ * other is published for every hour.
+ */
+function settleTiles(grid, frames, tiles, tileSize) {
+  const absent = {};
+  const files = [];
+  const byPlace = new Map();
+  for (const [path, tile] of tiles) {
+    const place = `${tile.level}/${tile.x}/${tile.y}`;
+    if (!byPlace.has(place)) byPlace.set(place, []);
+    byPlace.get(place).push([path, tile]);
+  }
+  for (const entries of byPlace.values()) {
+    if (entries.length !== frames.length)
+      throw new Error(`Tile ${entries[0][0]} is not written for every hour`);
+    const { level, x, y } = entries[0][1];
+    if (entries.every(([, tile]) => emptyTile(tile.bytes)))
+      (absent[level] ??= []).push([x, y]);
+    else for (const [path, tile] of entries) files.push([path, tile.bytes]);
+  }
+  return { tiles: manifestTiles(grid, frames, absent, tileSize), files };
+}
+
+/** Whether every cell a tile owns is missing in every block. */
+function emptyTile(bytes) {
+  const blocks = bytes.readUInt8(5),
+    border = bytes.readUInt8(7),
+    size = bytes.readUInt16LE(8);
+  const side = size + 2 * border;
+  for (let block = 0; block < blocks; block++)
+    for (let row = border; row < border + size; row++) {
+      let value = 0;
+      for (let column = 0; column < side; column++) {
+        const delta = bytes.readInt16LE(
+          24 + 2 * ((block * side + row) * side + column),
+        );
+        value =
+          column === 0 ? delta : ((value + delta + 32768) & 0xffff) - 32768;
+        if (column >= border && column < border + size && value !== -32768)
+          return false;
+      }
+    }
+  return true;
 }
 
 function waveBundle(model, spots, runMs, grid) {
@@ -928,7 +1014,6 @@ const FIXTURE_RUNS = {
 const CATALOGUE = [
   {
     id: "harmonie",
-    encoding: F5_ENCODING,
     file: "harmonie.json",
     kind: "wind",
     name: "HARMONIE",
@@ -942,11 +1027,13 @@ const CATALOGUE = [
     horizonHours: 24,
     gust: "none",
     resolutionKm: 2,
-    spacing: { fixtures: 0.5, live: 0.125 },
+    // The e2e site's HARMONIE is the real grid, so the map has three levels of
+    // tiles to choose from as it does in production; the committed fixtures
+    // keep the coarse grid, one tile a frame.
+    spacing: { fixtures: 0.5, live: 0.125, site: 0.025 },
   },
   {
     id: "icon-eu",
-    encoding: F5_ENCODING,
     file: "latest.json",
     kind: "wind",
     name: "ICON-EU",
@@ -959,7 +1046,6 @@ const CATALOGUE = [
   },
   {
     id: "ecmwf",
-    encoding: F5_ENCODING,
     file: "ecmwf.json",
     kind: "wind",
     name: "ECMWF",
@@ -977,7 +1063,6 @@ const CATALOGUE = [
   },
   {
     id: "gfs",
-    encoding: F5_ENCODING,
     file: "gfs.json",
     kind: "wind",
     name: "GFS",
@@ -989,9 +1074,6 @@ const CATALOGUE = [
     spacing: { fixtures: 0.5, live: 0.25 },
     live: { horizonHours: 120 },
   },
-  // ARPEGE deliberately stays on JSON frames while both encodings are supported,
-  // so the readers' legacy path is exercised by a real fixture rather than only
-  // by a unit test. Move it to F5_ENCODING when JSON frame support is dropped.
   {
     id: "arpege",
     file: "arpege.json",
@@ -1008,7 +1090,6 @@ const CATALOGUE = [
   },
   {
     id: "arome",
-    encoding: F5_ENCODING,
     file: "arome.json",
     kind: "wind",
     name: "AROME",
@@ -1023,7 +1104,6 @@ const CATALOGUE = [
   },
   {
     id: "aifs",
-    encoding: F5_ENCODING,
     file: "aifs.json",
     kind: "wind",
     name: "AIFS",
@@ -1074,7 +1154,7 @@ function liveRun(nowMs, cycleHours, lagHours) {
   return Math.floor((nowMs - lagHours * HOUR) / cycle) * cycle;
 }
 
-function build({ profile, now, spacing, all }) {
+function build({ profile, now, spacing, all, site }) {
   const spots = JSON.parse(
     readFileSync(join(ROOT, "public", "riding-locations.json"), "utf8"),
   );
@@ -1087,12 +1167,18 @@ function build({ profile, now, spacing, all }) {
       profile === "fixtures"
         ? Date.parse(FIXTURE_RUNS[model.id])
         : liveRun(now, model.stepHours === 6 ? 6 : 3, 3);
-    const grid = gridAt(spacing ?? model.spacing[profile]);
-    const { manifest, files, prefix } = BUILDERS[model.kind](
+    const grid = gridAt(
+      spacing ??
+        (site
+          ? (model.spacing.site ?? model.spacing.fixtures)
+          : model.spacing[profile]),
+    );
+    const { manifest, files, tileFiles, prefix } = BUILDERS[model.kind](
       shaped,
       spots,
       runMs,
       grid,
+      TILE_SIZES[site ? "site" : profile],
     );
     // Published as the pipeline publishes a run: frames and spot squares in a
     // directory named for their content, and a small pointer beside it.
@@ -1105,6 +1191,7 @@ function build({ profile, now, spacing, all }) {
         body,
       ]),
       spots,
+      tileFiles,
     );
     bundles.push({
       model: shaped,
@@ -1241,14 +1328,18 @@ function main() {
   if (spacing !== null && !(spacing > 0))
     throw new Error("--spacing must be positive");
   const all = args.includes("--all");
-  const bundles = build({ profile, now, spacing, all });
+  const site = args.includes("--site");
+  if (site && profile !== "fixtures")
+    throw new Error("--site is the fixtures profile at the site's spacing");
+  const bundles = build({ profile, now, spacing, all, site });
   const bytes = write(bundles, out, { force: args.includes("--force") });
-  const frames = bundles.reduce(
+  const files = bundles.reduce(
     (total, bundle) => total + bundle.files.length,
     0,
   );
   console.log(
-    `Wrote ${bundles.length} synthetic ${profile} bundles (${frames} frames, ` +
+    `Wrote ${bundles.length} synthetic ${profile}${site ? " (site)" : ""} bundles ` +
+      `(${files} files, ` +
       `${(bytes / 1024).toFixed(0)} KiB) to ${out}`,
   );
 }

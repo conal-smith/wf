@@ -8,9 +8,11 @@
 // golden pyramids in tests/fixtures/f5tile that the Python suite builds, and
 // both suites check the same tile ranges and the same sampled values.
 //
-// A tile that the manifest's ranges include but that was never written is all
-// missing (every cell it owns was missing, so the writer left it out). The
-// caller treats a 404 inside the ranges that way, not as an error.
+// A tile inside a level's ranges that a run never wrote, because every cell it
+// owns is missing at every hour, is listed in the manifest as `absent` and is
+// all missing. Every other tile in the ranges exists for every hour, so a
+// reader never requests an absent one and treats a 404 as the error it is.
+// `TiledField` (tiledField.ts) is the reader the map uses.
 import type { Grid, Wind } from "./weather";
 
 /** What a manifest's `tiles.encoding` says when its frames are tiled. */
@@ -37,6 +39,107 @@ export interface TileLevel {
   level: number;
   x: [number, number];
   y: [number, number];
+}
+
+/**
+ * A level of a manifest's `tiles` block: its ranges, its cell size, and the
+ * tiles inside the ranges that were never written because every cell they own
+ * is missing at every hour. A tile not listed absent exists for every hour.
+ */
+export interface TilesLevel extends TileLevel {
+  dx: number;
+  dy: number;
+  absent: [number, number][];
+}
+
+/**
+ * A wind manifest's `tiles` block (force5/ingest/f5tile.py, `manifest_tiles`):
+ * where a run's frames are and how they are cut. `blocks` is the most a tile
+ * carries; a frame whose `gustIntervalHours` is null has u and v only. `url`
+ * is relative to the run directory, `{hour}` zero-padded to three digits.
+ */
+export interface TilesSpec {
+  size: number;
+  border: number;
+  encoding: string;
+  blocks: string[];
+  url: string;
+  levels: TilesLevel[];
+}
+
+/** The one url template a manifest may give its tiles. */
+export const TILE_URL = "t/{level}/{x}/{y}/{hour}.bin";
+
+const whole = (value: unknown, min: number, max: number): value is number =>
+  Number.isInteger(value) &&
+  (value as number) >= min &&
+  (value as number) <= max;
+
+/**
+ * A wind manifest's `tiles` block, checked against its grid and frames as the
+ * publisher checks it (`check_tiles` in force5/ingest/f5tile.py): the grid on
+ * the lattice, exactly the levels `tileLevels` gives with their cell sizes,
+ * absent tiles inside their level's ranges, once each and in order, and gust
+ * blocks exactly when some frame has a gust window. Returns the block.
+ */
+export function validateTiles(
+  grid: Pick<Grid, "west" | "north" | "dx" | "dy" | "width" | "height">,
+  frames: readonly { gustIntervalHours: [number, number] | null }[],
+  tiles: unknown,
+): TilesSpec {
+  const bad = (why: string): never => {
+    throw new Error(`Invalid forecast tiles: ${why}. Refresh the page.`);
+  };
+  if (!tiles || typeof tiles !== "object" || Array.isArray(tiles))
+    bad("no tiles block");
+  const t = tiles as TilesSpec;
+  if (t.encoding !== TILE_ENCODING) throw new Error(NEWER);
+  if (t.url !== TILE_URL) bad("an unknown url");
+  if (!whole(t.size, 1, 65535)) bad("the tile size");
+  if (!whole(t.border, 1, 255)) bad("no border to sample");
+  latticeOrigin(grid);
+  const gust = frames.some((frame) => frame.gustIntervalHours !== null);
+  if (
+    !Array.isArray(t.blocks) ||
+    t.blocks.join() !== (gust ? "u,v,gust" : "u,v")
+  )
+    bad("blocks that do not match the gust periods");
+  const expected = tileLevels(grid, t.size);
+  if (!Array.isArray(t.levels) || t.levels.length !== expected.length)
+    bad("levels that do not match the grid");
+  t.levels.forEach((level, index) => {
+    const want = expected[index];
+    const { dx, dy } = levelCellDegrees(grid, want.level);
+    if (
+      !level ||
+      level.level !== want.level ||
+      level.dx !== dx ||
+      level.dy !== dy ||
+      !Array.isArray(level.x) ||
+      !Array.isArray(level.y) ||
+      level.x[0] !== want.x[0] ||
+      level.x[1] !== want.x[1] ||
+      level.y[0] !== want.y[0] ||
+      level.y[1] !== want.y[1] ||
+      !Array.isArray(level.absent)
+    )
+      bad(`level ${want.level} does not match the grid`);
+    let previous: [number, number] | null = null;
+    for (const pair of level.absent) {
+      if (
+        !Array.isArray(pair) ||
+        pair.length !== 2 ||
+        !whole(pair[0], want.x[0], want.x[1]) ||
+        !whole(pair[1], want.y[0], want.y[1]) ||
+        (previous &&
+          (pair[0] < previous[0] ||
+            (pair[0] === previous[0] && pair[1] <= previous[1])))
+      )
+        bad(`absent tiles of level ${want.level}`);
+      previous = pair;
+    }
+  });
+  return t;
 }
 
 /** What the caller asked for, which the tile's own header must repeat. */
@@ -101,14 +204,18 @@ export function readTileHeader(buffer: ArrayBuffer) {
   return { version, blockCount, level, border, size, scale, hour, run, x, y };
 }
 
-/** One block: f5bin.ts's `block`, into a Float64Array. */
+/**
+ * One block's stored values: the deltas summed along each row, wrapping in
+ * int16 as f5bin's do, every value range-checked. Tenths of a metre per
+ * second, `TILE_MISSING` where missing.
+ */
 function block(
   deltas: Int16Array,
   offset: number,
   side: number,
   gust: boolean,
-): Float64Array {
-  const values = new Float64Array(side * side);
+): Int16Array {
+  const values = new Int16Array(side * side);
   for (let row = 0; row < side; row++) {
     let previous = 0;
     const start = row * side;
@@ -116,28 +223,53 @@ function block(
       const delta = deltas[offset + start + column];
       const value = column === 0 ? delta : ((previous + delta) << 16) >> 16;
       previous = value;
-      if (value === MISSING) {
-        values[start + column] = NaN;
-        continue;
-      }
+      values[start + column] = value;
+      if (value === MISSING) continue;
       if (value > MAX_SCALED || value < -MAX_SCALED || (gust && value < 0))
         throw new Error(
           `Invalid ${gust ? "gust" : "wind"} data in this forecast tile.`,
         );
-      values[start + column] = value / SCALE;
     }
   }
   return values;
 }
 
+/** Stored tenths as m/s, NaN where missing: what `decodeTile` hands back. */
+function metres(values: Int16Array): Float64Array {
+  const out = new Float64Array(values.length);
+  for (let i = 0; i < values.length; i++)
+    out[i] = values[i] === MISSING ? NaN : values[i] / SCALE;
+  return out;
+}
+
+/** The value a stored cell holds when it is missing, in `decodeTileValues`'s blocks. */
+export const TILE_MISSING = MISSING;
+/** Stored values are tenths of a metre per second. */
+export const TILE_SCALE = SCALE;
+
 /**
- * A tile, checked against the request it answers.
+ * A decoded tile as its stored int16 tenths: a quarter of `Tile`'s memory,
+ * which is what lets the map keep a hundred of them. `value / TILE_SCALE` is
+ * exactly the number `decodeTile` gives for the same cell, so a sampler over
+ * these is bit-for-bit the one over `Tile`.
+ */
+export interface TileValues extends Omit<Tile, "u" | "v" | "gust"> {
+  u: Int16Array;
+  v: Int16Array;
+  gust: Int16Array | null;
+}
+
+/**
+ * A tile, checked against the request it answers, as its stored tenths.
  *
  * The header repeats the run, hour, level, position, size and block count, so
  * a file served under the wrong key — another run, another hour, the tile next
  * door — is refused here rather than drawn in the wrong place.
  */
-export function decodeTile(buffer: ArrayBuffer, expected: TileRequest): Tile {
+export function decodeTileValues(
+  buffer: ArrayBuffer,
+  expected: TileRequest,
+): TileValues {
   const header = readTileHeader(buffer);
   if (header.hour !== expected.hour || String(header.run) !== expected.run)
     throw new Error(WRONG_RUN);
@@ -175,6 +307,17 @@ export function decodeTile(buffer: ArrayBuffer, expected: TileRequest): Tile {
     u: block(deltas, 0, side, false),
     v: block(deltas, count, side, false),
     gust: header.blockCount === 3 ? block(deltas, 2 * count, side, true) : null,
+  };
+}
+
+/** A tile, checked against the request it answers, in m/s with NaN for missing. */
+export function decodeTile(buffer: ArrayBuffer, expected: TileRequest): Tile {
+  const tile = decodeTileValues(buffer, expected);
+  return {
+    ...tile,
+    u: metres(tile.u),
+    v: metres(tile.v),
+    gust: tile.gust && metres(tile.gust),
   };
 }
 

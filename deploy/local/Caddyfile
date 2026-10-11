@@ -28,7 +28,7 @@
 		root * /data/public
 		# Manifests and the JSON frames are typed explicitly because they have no
 		# extension the MIME table would help with in every image; wind frames are
-		# binary (force5/ingest/f5bin.py) and must not be mislabelled as JSON, which
+		# binary tiles (force5/ingest/f5tile.py) and must not be mislabelled as JSON, which
 		# is why the content type is matched rather than set for everything here.
 		@json path *.json
 		@bin path *.bin
@@ -36,7 +36,7 @@
 		header @bin Content-Type "application/octet-stream"
 		# Everything the importers publish immutably is content-addressed: any file
 		# inside a run directory, which is named for the hash of its content
-		# (weather/harmonie-2026101106-61h-v2-1a2b3c4d/frames/000.bin, and its
+		# (weather/harmonie-2026101106-61h-v2-1a2b3c4d/t/1/26/6/000.bin, a wind tile, and its
 		# spots/n52w010.json squares, force5/ingest/rundir.py), or a file whose
 		# name ends in its content hash (marine/tides-DUBLIN-20260914-20260923-<hash>.json).
 		# The first matching handle wins, so the pointer manifests, and a staging

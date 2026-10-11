@@ -3,8 +3,9 @@
 // acceptance data.
 //
 // Each builder returns a run as a reader holds it once its spot squares have
-// been merged in: a schemaVersion 2 pointer (`base`, `spots`, frame urls inside
-// the run directory) with its per-spot keys inline. `pointerOf` strips those
+// been merged in: a schemaVersion 2 pointer (`base`, `spots`, a wind run's
+// `tiles` or a wave run's frame urls inside the run directory) with its
+// per-spot keys inline. `pointerOf` strips those
 // keys again, which is what a validator or the loader is handed, and
 // `squareReader` serves the squares the loader would read.
 import locations from "../../public/riding-locations.json";
@@ -18,11 +19,21 @@ import {
   type SpotIndex,
   type SpotKey,
 } from "./spotData";
+import {
+  TILE_BORDER,
+  TILE_ENCODING,
+  TILE_SIZE,
+  TILE_URL,
+  levelCellDegrees,
+  tileLevels,
+  type TilesSpec,
+} from "./f5tile";
 import type { WeatherManifest, WeatherStep } from "./surface";
 import type { BundleVariable } from "./variables";
 import type { WaveManifest, WaveStep, WaveVariable } from "./waves";
 import {
   manifestPath,
+  type Grid,
   type Manifest,
   type MemberFrame,
   type Wind,
@@ -119,6 +130,35 @@ export function squareReader(
 const frameUrl = (hour: number, suffix = "json") =>
   `frames/${String(hour).padStart(3, "0")}.${suffix}`;
 
+/**
+ * The `tiles` block a wind run on `grid` publishes, as the publisher writes it
+ * (force5/ingest/f5tile.py, `manifest_tiles`): every level, nothing absent
+ * unless asked.
+ */
+export function tilesFor(
+  grid: Grid,
+  frames: readonly { gustIntervalHours: [number, number] | null }[],
+  {
+    size = TILE_SIZE,
+    absent = {},
+  }: { size?: number; absent?: Record<number, [number, number][]> } = {},
+): TilesSpec {
+  return {
+    size,
+    border: TILE_BORDER,
+    encoding: TILE_ENCODING,
+    blocks: frames.some((frame) => frame.gustIntervalHours !== null)
+      ? ["u", "v", "gust"]
+      : ["u", "v"],
+    url: TILE_URL,
+    levels: tileLevels(grid, size).map((level) => ({
+      ...level,
+      ...levelCellDegrees(grid, level.level),
+      absent: absent[level.level] ?? [],
+    })),
+  };
+}
+
 export const testGrid = {
   width: 2,
   height: 2,
@@ -177,15 +217,16 @@ export function windManifest(options: WindFixture = {}): Manifest {
   } = options;
   const interval = (hour: number): [number, number] =>
     gustKind === "instantaneous" ? [hour, hour] : [Math.max(0, hour - 3), hour];
+  const frames = hours.map((hour) => ({
+    hour,
+    validTime: validTime(runTime, hour),
+    gustIntervalHours: interval(hour),
+  }));
   return indexed({
     ...base(model, runTime),
     ...(gustKind ? { gustKind } : {}),
-    frames: hours.map((hour) => ({
-      hour,
-      validTime: validTime(runTime, hour),
-      url: frameUrl(hour),
-      gustIntervalHours: interval(hour),
-    })),
+    frames,
+    tiles: tilesFor(testGrid, frames),
     spotForecasts: {
       [spotId]: hours.map((hour, index) => ({
         hour,
@@ -232,6 +273,13 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
       ? null
       : (values as number[]).reduce((sum, value) => sum + value, 0) /
         values.length;
+  const frames = withFrames
+    ? hours.map((hour) => ({
+        hour,
+        validTime: validTime(runTime, hour),
+        gustIntervalHours: [Math.max(0, hour - 3), hour] as [number, number],
+      }))
+    : [];
   return indexed({
     ...base(model, runTime),
     ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
@@ -240,14 +288,8 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
       control: 0,
       description: `${members} synthetic members`,
     },
-    frames: withFrames
-      ? hours.map((hour) => ({
-          hour,
-          validTime: validTime(runTime, hour),
-          url: frameUrl(hour),
-          gustIntervalHours: [Math.max(0, hour - 3), hour] as [number, number],
-        }))
-      : [],
+    frames,
+    ...(withFrames ? { tiles: tilesFor(testGrid, frames) } : {}),
     spotMembers: { [spotId]: spotMembers },
     spotForecasts: {
       [spotId]: spotMembers.map((frame) => ({

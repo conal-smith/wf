@@ -11,7 +11,7 @@ from cadence import ECMWF_HOURS, ECMWF_RANGES, expected_hours
 from fetch_ecmwf import decode_wind, decode_gust, download_gust, gust_parameter, run_datetime, main, ForecastSession
 from publish_s3 import publish
 from test_publish_s3 import FakeS3
-from runfixtures import publish_whole
+from runfixtures import TINY_GRID, publish_whole
 
 
 class ECMWFTests(unittest.TestCase):
@@ -125,7 +125,7 @@ class ECMWFTests(unittest.TestCase):
         run = datetime(2026, 9, 13, tzinfo=timezone.utc)
         manifest = {"model": "ecmwf", "run": "2026091300", "runTime": run.isoformat(),
                     "stepHours": 3, "stepRanges": ECMWF_RANGES, "gustAvailable": False,
-                    "grid": {"width": 2, "height": 2}, "frames": [],
+                    "grid": dict(TINY_GRID), "frames": [],
                     "spotForecasts": {"brandon": []}}
         for hour in ECMWF_HOURS:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")

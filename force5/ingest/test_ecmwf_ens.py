@@ -9,12 +9,11 @@ from unittest.mock import patch
 import eccodes as ec
 
 from cadence import expected_hours, ladder_hours
-import f5bin
 import fetch_ecmwf_ens as ens
 from fetch_ecmwf_ens import average, decode_step, load_spots, main, parameter_sets, run_datetime
 from publish_s3 import publish, validate_ensemble
 from test_publish_s3 import FakeS3
-from runfixtures import publish_whole, read_whole
+from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole
 
 PARAM_IDS = {"10u": 165, "10v": 166, "10fg": 49, "10fg3": 49, "10fg6": 49}
 
@@ -241,8 +240,7 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(manifest["gustMissingHours"], [0])
         self.assertEqual(expected_hours(manifest), (0, 6, 12))
         # Members 1..4 hold u = member, v = -member, gust = 10 + member.
-        frame = f5bin.decode_frame(
-            (self.root / "public/weather" / manifest["base"] / manifest["frames"][1]["url"]).read_bytes())
+        frame = published_frame(self.root / "public/weather", manifest, 1)
         self.assertEqual(frame["u"], [2.5] * 4)
         self.assertEqual(frame["v"], [-2.5] * 4)
         self.assertEqual(frame["gust"], [12.5] * 4)
@@ -339,7 +337,7 @@ class ENSTests(unittest.TestCase):
         manifest = {"model": "ecmwf-ens", "run": "2026091600", "runTime": run.isoformat(),
                     "stepHours": 6, "stepRanges": [{"throughHour": 12, "stepHours": 6}],
                     "gustAvailable": True, "gustMissingHours": [0],
-                    "grid": {"width": 2, "height": 2}, "frames": [],
+                    "grid": dict(TINY_GRID), "frames": [],
                     "spotForecasts": {"brandon": []}, "spotMembers": {"brandon": []},
                     "ensemble": {"members": members, "control": None, "description": "test"}}
         for hour in hours:

@@ -50,9 +50,11 @@ domain is missing. Longitude wraps only for a global grid (width·dx = 360°).
 
 **A tile that is not there is all missing.** `levels` gives each level's x and
 y as the bounding ranges of the domain, but a tile inside those ranges whose
-owned cells are all missing (all land, say) is never written. A reader must
-treat a missing file inside the ranges as a tile of missing cells, not as an
-error.
+owned cells are all missing (all land, say) need not be written. A run decides
+that once for all its hours (`rundir.write_run`) and lists such tiles in its
+manifest as `absent` (`manifest_tiles`, below); every other tile in the ranges
+exists for every hour, so a reader never asks for an absent tile and treats a
+missing file that is not listed as the error it is.
 
 The browser's reader and the same lattice arithmetic are in
 `force5/src/f5tile.ts`; tests/fixtures/f5tile holds the golden pyramids both
@@ -83,6 +85,10 @@ MAX_LEVELS = 15
 # Edges are decimals like -10.9 that binary floating point cannot hold exactly.
 LATTICE_TOLERANCE = 1e-6
 TILE_PATH = "t/{level}/{x}/{y}/{hour:03d}.bin"
+# The same path as a manifest's `tiles.url` spells it: `{hour}` is the forecast
+# hour zero-padded to three digits, as in TILE_PATH.
+TILE_URL = "t/{level}/{x}/{y}/{hour}.bin"
+TILES_DIRECTORY = "t"
 
 
 def lattice_origin(grid):
@@ -345,7 +351,8 @@ def _cut(array, level_spec, x, y, size, border, wrap):
     return out
 
 
-def build_pyramid(grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER):
+def build_pyramid(grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER,
+                  keep_empty=False):
     """Every tile of every level, as `(levels(grid, size), [(level, x, y, bytes), …])`.
 
     `u`, `v` and `gust` (or None) are the frame's fields in m/s, as an adapter
@@ -353,6 +360,10 @@ def build_pyramid(grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER):
     None or NaN where missing. A tile whose owned cells are all missing is left
     out; the levels still give the bounding ranges, so a reader treats a tile
     that is absent inside them as all missing.
+
+    `keep_empty` keeps those tiles too. A run publishes a tile for every hour or
+    for none (`run_tiles`), so the adapters write them all and the run decides,
+    once it has every hour, which tiles are missing in all of them.
     """
     _check_identity(0, 0, 0, hour, run, size, border)
     if u is None or v is None:
@@ -370,7 +381,8 @@ def build_pyramid(grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER):
             for x in range(level_spec["x"][0], level_spec["x"][1] + 1):
                 cut = [_cut(block, level_spec, x, y, size, border, wrap) for block in blocks]
                 owned = slice(border, border + size)
-                if all(np.all(block[owned, owned] == MISSING) for block in cut):
+                if not keep_empty and all(np.all(block[owned, owned] == MISSING)
+                                          for block in cut):
                     continue
                 tiles.append((level, x, y, _encode_quantised(level, x, y, hour, run, cut,
                                                              size, border)))
@@ -378,7 +390,7 @@ def build_pyramid(grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER):
 
 
 def write_pyramid(output_dir, grid, u, v, gust, hour, run, size=TILE_SIZE, border=BORDER,
-                  quality=None, sidecars=None):
+                  quality=None, sidecars=None, keep_empty=False):
     """Write every tile under `output_dir` as `t/{level}/{x}/{y}/{hour:03d}.bin`.
 
     Each file gets f5bin's brotli and gzip sidecars, unless they are turned off
@@ -386,7 +398,7 @@ def write_pyramid(output_dir, grid, u, v, gust, hour, run, size=TILE_SIZE, borde
     can be written from the one and the bucket's collision check fed from the
     other.
     """
-    spec, tiles = build_pyramid(grid, u, v, gust, hour, run, size, border)
+    spec, tiles = build_pyramid(grid, u, v, gust, hour, run, size, border, keep_empty)
     written = {}
     for level, x, y, data in tiles:
         path = tile_path(level, x, y, hour)
@@ -483,4 +495,249 @@ def sample(tile_lookup, grid, level, lat, lon, size=TILE_SIZE):
     if u is None or v is None:
         return None
     return {"u": u, "v": v, "gust": None if tile["gust"] is None else bilinear(tile["gust"])}
+
+
+# --- a run's tiles, as its manifest describes them ---------------------------------
+#
+# A wind run publishes, for every frame hour, every tile of every level inside the
+# ranges `levels` gives, except the tiles listed `absent`: those whose owned cells
+# are missing in *every* hour. Absence is per run, not per hour, so a reader never
+# has to guess whether a 404 means "all land" or "broken": a tile the manifest
+# does not list as absent exists for every hour, and one it lists never does.
+#
+#     "tiles": {"size": 128, "border": 1, "encoding": "f5-tile-v1",
+#               "blocks": ["u", "v", "gust"], "url": "t/{level}/{x}/{y}/{hour}.bin",
+#               "levels": [{"level": 0, "dx": 0.025, "dy": 0.02, "x": [52, 54],
+#                           "y": [13, 15], "absent": [[52, 13]]}, …]}
+#
+# `blocks` names the most a tile carries. A frame whose `gustIntervalHours` is
+# null (no gust at that hour, as at +0h of an interval gust) has u and v only.
+# A level's dx and dy are the grid's times 2^level, which is exact in binary
+# floating point, so both languages compare them exactly.
+
+TILE_KEYS = ("size", "border", "encoding", "blocks", "url", "levels")
+LEVEL_KEYS = ("level", "dx", "dy", "x", "y", "absent")
+
+
+def tile_blocks(frames):
+    """The blocks a run's tiles carry: gust too when any frame has a gust window."""
+    gust = any(frame.get("gustIntervalHours") is not None for frame in frames)
+    return list(FIELDS if gust else FIELDS[:2])
+
+
+def frame_blocks(info):
+    """How many blocks one frame's tiles carry: three when it has a gust window."""
+    return 3 if info.get("gustIntervalHours") is not None else 2
+
+
+def manifest_tiles(grid, frames, absent=None, size=TILE_SIZE, border=BORDER):
+    """A manifest's `tiles` block. `absent` is {level: [(x, y), …]} of skipped tiles."""
+    absent = absent or {}
+    return {"size": size, "border": border, "encoding": ENCODING,
+            "blocks": tile_blocks(frames), "url": TILE_URL,
+            "levels": [{"level": spec["level"], "dx": spec["dx"], "dy": spec["dy"],
+                        "x": list(spec["x"]), "y": list(spec["y"]),
+                        "absent": [list(pair) for pair in sorted(
+                            {tuple(pair) for pair in absent.get(spec["level"], ())})]}
+                       for spec in levels(grid, size)]}
+
+
+def _whole(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def check_tiles(manifest):
+    """A wind manifest's `tiles` block, checked against its grid and frames.
+
+    The grid must sit on the lattice; the levels must be exactly the ones
+    `levels(grid, size)` gives, with each level's cell size; `absent` may only
+    name tiles inside its level's ranges, once each, in order; `blocks` must say
+    gust exactly when some frame has a gust window. Returns the block.
+    """
+    tiles, grid = manifest.get("tiles"), manifest.get("grid")
+    if not isinstance(tiles, dict) or set(tiles) != set(TILE_KEYS):
+        raise ValueError(f"A tiled run needs a tiles block of {', '.join(TILE_KEYS)}")
+    if not isinstance(grid, dict):
+        raise ValueError("A tiled run needs a grid")
+    lattice_origin(grid)
+    size, border = tiles["size"], tiles["border"]
+    if not (_whole(size) and 1 <= size <= 65535):
+        raise ValueError("Invalid tile size")
+    if not (_whole(border) and 1 <= border <= 255):
+        raise ValueError("A tile needs a border of at least one cell to be sampled")
+    if tiles["encoding"] != ENCODING:
+        raise ValueError(f"Unknown tile encoding {tiles['encoding']!r}")
+    if tiles["url"] != TILE_URL:
+        raise ValueError(f"Tiles are published at {TILE_URL}, not {tiles['url']!r}")
+    if tiles["blocks"] != tile_blocks(manifest.get("frames") or []):
+        raise ValueError("Tile blocks do not match the published gust periods")
+    expected = levels(grid, size)
+    published = tiles["levels"]
+    if not isinstance(published, list) or len(published) != len(expected):
+        raise ValueError("Tile levels do not match the grid")
+    for entry, spec in zip(published, expected):
+        if not isinstance(entry, dict) or set(entry) != set(LEVEL_KEYS):
+            raise ValueError(f"A tile level needs {', '.join(LEVEL_KEYS)}")
+        if (entry["level"], entry["dx"], entry["dy"], entry["x"], entry["y"]) != (
+                spec["level"], spec["dx"], spec["dy"], list(spec["x"]), list(spec["y"])):
+            raise ValueError(f"Tile level {spec['level']} does not match the grid")
+        absent = entry["absent"]
+        pairs = ([tuple(pair) for pair in absent] if isinstance(absent, list) and all(
+            isinstance(pair, list) and len(pair) == 2 and all(map(_whole, pair))
+            for pair in absent) else None)
+        if pairs is None or pairs != sorted(set(pairs)) or not all(
+                spec["x"][0] <= x <= spec["x"][1] and spec["y"][0] <= y <= spec["y"][1]
+                for x, y in pairs):
+            raise ValueError(f"Absent tiles of level {spec['level']} must be distinct "
+                             "[x, y] pairs inside its ranges, in order")
+    return tiles
+
+
+def run_tiles(manifest):
+    """Every tile file a tiled run publishes: {path inside the run: (level, x, y, info)}.
+
+    The tiles inside each level's ranges that are not absent, for every frame,
+    `info` being the frame's entry in the manifest.
+    """
+    tiles = check_tiles(manifest)
+    out = {}
+    for entry in tiles["levels"]:
+        level, absent = entry["level"], {tuple(pair) for pair in entry["absent"]}
+        for y in range(entry["y"][0], entry["y"][1] + 1):
+            for x in range(entry["x"][0], entry["x"][1] + 1):
+                if (x, y) in absent:
+                    continue
+                for info in manifest.get("frames") or []:
+                    out[tile_path(level, x, y, info["hour"])] = (level, x, y, info)
+    return out
+
+
+def decode_blocks(data):
+    """A tile's int16 blocks (tenths, MISSING marked), refusing what decode_tile refuses."""
+    return _decode_quantised(data)[1]
+
+
+def owned_empty(data):
+    """Whether every cell a tile owns is missing in every block (its border aside)."""
+    header, blocks = _decode_quantised(data)
+    side, border, size = header["size"] + 2 * header["border"], header["border"], header["size"]
+    owned = slice(border, border + size)
+    return all(np.all(block.reshape(side, side)[owned, owned] == MISSING) for block in blocks)
+
+
+def owns_domain(grid, level, x, y, size=TILE_SIZE):
+    """Whether tile (x, y) at `level` owns any cell of the grid's domain."""
+    spec = next(entry for entry in levels(grid, size) if entry["level"] == level)
+    return (x * size <= spec["columns"][1] and (x + 1) * size > spec["columns"][0]
+            and y * size <= spec["rows"][1] and (y + 1) * size > spec["rows"][0])
+
+
+def covers_domain(header, blocks, grid):
+    """Whether a level-0 tile has every block's value at every grid cell it owns.
+
+    A wind frame has a value at every cell of its grid; only the cells of a
+    tile outside the grid may be missing. `blocks` are `decode_blocks`'s.
+    """
+    if header["level"] != 0:
+        raise ValueError("Only a native tile maps one to one onto the grid")
+    size, border = header["size"], header["border"]
+    side = size + 2 * border
+    column0, row0 = lattice_origin(grid)
+    first_row = max(row0, header["y"] * size)
+    last_row = min(row0 + grid["height"], (header["y"] + 1) * size)
+    if around(grid):
+        first_column, last_column = header["x"] * size, (header["x"] + 1) * size
+        last_column = min(last_column, grid["width"])
+    else:
+        first_column = max(column0, header["x"] * size)
+        last_column = min(column0 + grid["width"], (header["x"] + 1) * size)
+    if first_row >= last_row or first_column >= last_column:
+        return True
+    rows = slice(first_row - header["y"] * size + border, last_row - header["y"] * size + border)
+    columns = slice(first_column - header["x"] * size + border,
+                    last_column - header["x"] * size + border)
+    return all(not np.any(block.reshape(side, side)[rows, columns] == MISSING)
+               for block in blocks)
+
+
+def check_tile(data, manifest, level, x, y, info):
+    """A tile's header against the run, the place and the frame it is published as."""
+    tiles = manifest["tiles"]
+    header = read_tile_header(data)
+    where = tile_path(level, x, y, info["hour"])
+    if (header["run"], header["hour"]) != (manifest["run"], info["hour"]):
+        raise ValueError(f"Tile {where} is from run {header['run']} +{header['hour']}h")
+    if (header["level"], header["x"], header["y"]) != (level, x, y):
+        raise ValueError(f"Tile {where} is tile {header['level']}/{header['x']}/{header['y']}")
+    if (header["size"], header["border"]) != (tiles["size"], tiles["border"]):
+        raise ValueError(f"Tile {where} does not match the manifest's tile size")
+    if header["blockCount"] != frame_blocks(info):
+        raise ValueError(f"Gust block does not match the published gust period in tile {where}")
+    return header
+
+
+class FrameTiles:
+    """One frame of a tiled run, read a tile at a time as samples need them.
+
+    `read(path)` returns a tile's bytes by its path inside the run directory.
+    A tile the manifest lists as absent is never read and samples as missing.
+    `sample(lat, lon)` at level 0 is the whole-frame sampler's answer exactly,
+    so everything that used to sample a whole frame (the archive, a backfill)
+    reads the same numbers from far fewer bytes.
+    """
+
+    def __init__(self, manifest, info, read):
+        self.tiles = check_tiles(manifest)
+        self.manifest, self.info, self.read = manifest, info, read
+        self.grid, self.hour = manifest["grid"], info["hour"]
+        self.valid_time = info.get("validTime")
+        self.size = self.tiles["size"]
+        self.absent = {entry["level"]: {tuple(pair) for pair in entry["absent"]}
+                       for entry in self.tiles["levels"]}
+        self.loaded = {}
+
+    def tile(self, level, x, y):
+        """A decoded tile, or None for an absent one."""
+        key = (level, x, y)
+        if key not in self.loaded:
+            if (x, y) in self.absent.get(level, ()):
+                self.loaded[key] = None
+            else:
+                data = self.read(tile_path(level, x, y, self.hour))
+                check_tile(data, self.manifest, level, x, y, self.info)
+                self.loaded[key] = decode_tile(data)
+        return self.loaded[key]
+
+    def sample(self, lat, lon, level=0):
+        """{u, v, gust} in m/s, bilinear, or None off the grid or where u/v is missing.
+
+        `level` is for drawing only: everything that reads numbers reads level 0.
+        """
+        return sample(self.tile, self.grid, level, lat, lon, self.size)
+
+    def native(self):
+        """The whole frame back from its native tiles: {u, v, gust} over the grid.
+
+        Lists of width × height values, rows north to south, None where missing,
+        `gust` None when the frame has no gust block. What a whole frame held;
+        for tests and tools, never for the map.
+        """
+        width, height = self.grid["width"], self.grid["height"]
+        column0, row0 = lattice_origin(self.grid)
+        native = around(self.grid)
+        out = {"u": [None] * (width * height), "v": [None] * (width * height),
+               "gust": [None] * (width * height) if frame_blocks(self.info) == 3 else None}
+        for row in range(height):
+            for column in range(width):
+                global_column = (column0 + column) % native if native else column0 + column
+                x, y = global_column // self.size, (row0 + row) // self.size
+                tile = self.tile(0, x, y)
+                if tile is None:
+                    continue
+                at = ((row0 + row - (y * self.size - tile["border"])) * tile["side"]
+                      + global_column - (x * self.size - tile["border"]))
+                for field in ("u", "v", "gust"):
+                    if out[field] is not None:
+                        out[field][row * width + column] = tile[field][at]
+        return out
 

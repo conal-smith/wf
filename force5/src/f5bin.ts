@@ -1,4 +1,9 @@
-// The browser's reader for "F5 int16" wind frames (`encoding: "f5-int16-v1"`).
+// The reader for "F5 int16" whole wind frames (`encoding: "f5-int16-v1"`).
+//
+// No run publishes whole frames any more: a wind frame is a pyramid of tiles
+// (f5tile.ts), whose blocks use this format's rounding and deltas. This reader
+// stays as the reference for the golden whole frame, which the tiles' level 0
+// is tested against.
 //
 // The format, the header layout and the two rules both sides must agree on —
 // rounding half away from zero, and delta arithmetic that wraps in int16 — are
@@ -16,7 +21,7 @@
 // those four are tautologies here and cannot be leaned on. The model is
 // established at ingest instead, by the run directory's name and the frame's
 // content hash; see `wind_frame` in force5/ingest/publish_s3.py.
-import type { Frame, FrameInfo, Manifest } from "./weather";
+import type { FrameInfo, GridFrame, Manifest } from "./weather";
 
 /** What a manifest's `encoding` says when its frames are binary. */
 export const F5_ENCODING = "f5-int16-v1";
@@ -128,7 +133,7 @@ export function decodeFrame(
   buffer: ArrayBuffer,
   manifest: Manifest,
   info: FrameInfo,
-): Frame {
+): GridFrame {
   const header = readHeader(buffer);
   const grid = manifest.grid;
   if (header.hour !== info.hour || String(header.run) !== manifest.run)

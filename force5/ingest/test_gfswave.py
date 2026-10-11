@@ -368,30 +368,25 @@ class GfsWaveTests(unittest.TestCase):
         self.assertNotIn("stepRanges", manifest)
         self.assertEqual(set(manifest["variables"]), set(VARIABLES))
         self.assertEqual(set(manifest["grid"]), set(GRID))
-        self.assertEqual([frame["hour"] for frame in manifest["frames"]], [0, 3, 6])
+        # No map frames: the spot series is the product, and the horizon is stated.
+        self.assertEqual((manifest["frames"], manifest["horizonHours"]), ([], 6))
         self.assertEqual([step["hour"] for step in manifest["spotSeries"]["brandon"]], [0, 3, 6])
         self.assertEqual(set(manifest["spotCoverage"]), {"brandon", "dollymount"})
         for entry in manifest["spotCoverage"].values():
             self.assertIsInstance(entry["landMasked"], bool)
             self.assertTrue(entry["note"].strip())
-        frame = json.loads((self.root / "public/weather" / manifest["base"] / manifest["frames"][1]["url"]).read_text())
-        self.assertEqual((frame["hour"], frame["model"], frame["grid"]), (3, "gfs-wave", GRID))
-        self.assertEqual(len(frame["swh"]), GRID["width"] * GRID["height"])
-        # Every spot value must be reproducible from the published frame alone.
-        for name in VARIABLES:
-            self.assertEqual(manifest["spotSeries"]["brandon"][1]["values"][name],
-                             sample_wave(GRID, frame[name], SPOTS[0]["lon"], SPOTS[0]["lat"]))
         published, _, objects = validate_bundle(
             self.root / "public", "gfs-wave", 24,
             datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc) + timedelta(hours=1))
         self.assertEqual((published["run"], len(objects)),
-                         (run, 3 + len(published["spots"]["squares"])))
+                         (run, len(published["spots"]["squares"])))
 
-    def test_frames_are_immutable_and_named_for_their_hour_and_content(self):
+    def test_the_run_directory_holds_only_its_spot_squares(self):
         _, manifest = self.published()
         self.assertRegex(manifest["base"], r"^gfs-wave-\d{10}-\d+h-v1-[0-9a-f]{8}/$")
-        self.assertEqual([frame["url"] for frame in manifest["frames"]],
-                         ["frames/000.json", "frames/003.json"])
+        directory = self.root / "public/weather" / manifest["base"]
+        self.assertEqual(sorted(path.parent.name for path in directory.rglob("*.json")),
+                         ["spots"] * len(manifest["spots"]["squares"]))
 
     def test_download_failure_preserves_the_published_manifest(self):
         output = self.root / "public/weather/gfs-wave.json"

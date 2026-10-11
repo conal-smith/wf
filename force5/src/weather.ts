@@ -1,6 +1,6 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
 import { modelEntry } from "./catalog";
-import { F5_ENCODING, decodeFrame } from "./f5bin";
+import { validateTiles, type TilesSpec } from "./f5tile";
 import {
   RUN_SCHEMA_VERSION,
   SPOT_KEYS,
@@ -10,6 +10,7 @@ import {
   runPath,
   type SpotIndex,
 } from "./spotData";
+import type { TiledField } from "./tiledField";
 import { forecastUrl } from "./urls";
 // Units live in units.ts; re-exported so existing weather imports keep working.
 export {
@@ -36,14 +37,34 @@ export interface Wind {
   v: number;
   gust: number | null;
 }
+/**
+ * One forecast hour a wind run publishes. Its map data is the run's tiles
+ * (`Manifest.tiles`), so the frame names no file of its own.
+ */
 export interface FrameInfo {
   hour: number;
   validTime: string;
-  /** Inside the run directory the manifest's `base` names: `frames/000.bin`. */
-  url: string;
   gustIntervalHours: [number, number] | null;
 }
-export interface Frame extends WindArrays {
+/**
+ * One map frame: a forecast hour of a run, and the field the map samples it
+ * from, read a tile at a time for the view (tiledField.ts).
+ */
+export interface Frame {
+  model: string;
+  run: string;
+  hour: number;
+  validTime: string;
+  grid: Grid;
+  gustIntervalHours: [number, number] | null;
+  field: TiledField;
+}
+/**
+ * A whole frame's grids, as the retired whole-frame files held them
+ * (force5/src/f5bin.ts). Nothing is published this way any more; it is the
+ * reference the tiles are tested against, and `sample` reads it.
+ */
+export interface GridFrame extends WindArrays {
   model: string;
   run: string;
   hour: number;
@@ -139,10 +160,10 @@ export interface Manifest extends Partial<WindSpotData> {
   stepRanges?: { throughHour: number; stepHours: number }[];
   grid: Grid;
   /**
-   * How the frame files are encoded. Absent means the original JSON frames;
-   * "f5-int16-v1" means the binary frames force5/src/f5bin.ts reads.
+   * Where the run's map frames are: a pyramid of tiles in the run directory
+   * (f5tile.ts). Present exactly when there are frames.
    */
-  encoding?: string;
+  tiles?: TilesSpec;
   /** The run directory, relative to the pointer's own directory. */
   base: string;
   frames: FrameInfo[];
@@ -191,7 +212,16 @@ export const compass = (degrees: number) =>
     "NNW",
   ][Math.round(degrees / 22.5) % 16];
 
-export function sample(frame: Frame, lon: number, lat: number): Wind | null {
+/**
+ * Bilinear wind at a point of a whole grid. The map samples tiles
+ * (`TiledField.sample`, which takes lat then lon); this is the whole-grid
+ * reference level 0 of the tiles matches to the bit.
+ */
+export function sample(
+  frame: Pick<GridFrame, "grid" | "u" | "v" | "gust">,
+  lon: number,
+  lat: number,
+): Wind | null {
   const g = frame.grid;
   const x = (lon - g.west) / g.dx,
     y = (g.north - lat) / g.dy;
@@ -368,8 +398,9 @@ export function validateManifest(m: Manifest): Manifest {
     throw new Error("A forecast without map frames must state its horizon.");
   if (m.kind !== undefined && !KINDS.includes(m.kind))
     throw new Error("Unknown forecast kind.");
-  if (m.encoding !== undefined && m.encoding !== F5_ENCODING)
-    throw new Error("Unknown frame encoding.");
+  // Whole-frame encodings are retired: a run with frames publishes tiles.
+  if ("encoding" in m)
+    throw new Error("This forecast is an old format. Refresh the forecast.");
   if (
     m.gustKind !== undefined &&
     m.gustKind !== "interval" &&
@@ -380,6 +411,9 @@ export function validateManifest(m: Manifest): Manifest {
     throw new Error("Instantaneous gusts have no missing hours.");
   if (m.ensemble !== undefined) validateEnsemble(m.ensemble);
   if (m.grid || m.frames.length) validateGrid(m.grid);
+  if (m.frames.length) validateTiles(m.grid, m.frames, m.tiles);
+  else if (m.tiles !== undefined)
+    throw new Error("A forecast without map frames has no tiles.");
   if (
     m.gustMissingHours &&
     (!Array.isArray(m.gustMissingHours) ||
@@ -424,8 +458,7 @@ export function validateManifest(m: Manifest): Manifest {
       !Number.isFinite(f.hour) ||
       f.hour <= previous ||
       !Number.isFinite(Date.parse(f.validTime)) ||
-      Date.parse(f.validTime) !== Date.parse(m.runTime) + f.hour * 3600000 ||
-      !usableRunPath(f.url)
+      Date.parse(f.validTime) !== Date.parse(m.runTime) + f.hour * 3600000
     )
       throw new Error("Forecast timeline is invalid.");
     if (m.gustAvailable === false || m.gustMissingHours?.includes(f.hour)) {
@@ -478,11 +511,12 @@ export const runFileUrl = (
 ): string =>
   forecastUrl(runPath(manifestPath(manifest), manifest.base, relative));
 
+/** A whole frame's grids against its manifest: the reference the tiles are tested to. */
 export function validateFrame(
-  f: Frame,
+  f: GridFrame,
   manifest: Manifest,
   info: FrameInfo,
-): Frame {
+): GridFrame {
   if (
     !f ||
     f.run !== manifest.run ||
@@ -537,57 +571,6 @@ export function validateFrame(
   return f;
 }
 
-const cache = new Map<string, Frame>();
-const pending = new Map<string, Promise<Frame>>();
-/**
- * One map frame, from an eight-frame cache shared by everything that reads
- * frames. `keep: false` reads through the cache without filling it: a bare
- * point's series walks every hour of the run, and keeping each would push the
- * frame the map is drawing, and the one prefetched after it, out of the cache
- * by the time the reader steps back to them.
- */
-export function loadFrame(
-  manifest: Manifest,
-  index: number,
-  { keep = true }: { keep?: boolean } = {},
-): Promise<Frame> {
-  const info = manifest.frames[index],
-    url = runFileUrl(manifest, info.url);
-  const found = cache.get(url);
-  if (found) {
-    cache.delete(url);
-    cache.set(url, found);
-    return Promise.resolve(validateFrame(found, manifest, info));
-  }
-  const remember = (frame: Frame) => {
-    cache.set(url, frame);
-    if (cache.size > 8) cache.delete(cache.keys().next().value!);
-  };
-  const inflight = pending.get(url);
-  if (inflight)
-    return inflight.then((frame) => {
-      // Joined a read-through request: the map still wants this one kept.
-      if (keep && !cache.has(url)) remember(frame);
-      return validateFrame(frame, manifest, info);
-    });
-  const request = fetch(url, { signal: AbortSignal.timeout(20000) })
-    .then(async (r) => {
-      if (!r.ok)
-        throw new Error("This forecast frame could not be loaded. Try again.");
-      // `decodeFrame` checks the run and the hour the binary header carries;
-      // `validateFrame` then applies every rule the JSON path has always had.
-      const body =
-        manifest.encoding === F5_ENCODING
-          ? decodeFrame(await r.arrayBuffer(), manifest, info)
-          : await r.json();
-      const frame = validateFrame(body, manifest, info);
-      if (keep) remember(frame);
-      return frame;
-    })
-    .finally(() => pending.delete(url));
-  pending.set(url, request);
-  return request;
-}
 export function nearestFrame(
   frames: readonly Pick<FrameInfo, "validTime">[],
   now = Date.now(),

@@ -7,13 +7,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import f5bin
 from fetch_forecast import write_json
 from fetch_harmonie import GRID
 from fetch_harmonie_eps import assemble, cache_path, catalogue, main, source_name, validate
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
-from runfixtures import read_whole
+from runfixtures import published_frame, read_whole
 
 SPOTS = [{"id": "brandon", "lat": 52.276, "lon": -10.024},
          {"id": "dollymount", "lat": 53.365, "lon": -6.135}]
@@ -149,8 +148,7 @@ class PublicationTests(unittest.TestCase):
         # spotForecasts is the ensemble mean, sampled from the published mean grid.
         self.assertEqual([(e["u"], e["v"], e["gust"]) for e in manifest["spotForecasts"]["brandon"]],
                          [(6.0, -3.0, None), (9.0, -3.0, None), (12.0, -3.0, None)])
-        frame = f5bin.decode_frame(
-            (self.root / "public/weather" / manifest["base"] / manifest["frames"][2]["url"]).read_bytes())
+        frame = published_frame(self.root / "public/weather", manifest, 2)
         self.assertEqual((frame["u"][0], frame["v"][0], frame["gust"]), (12.0, -3.0, None))
         self.assertEqual((frame["width"], frame["height"]), (GRID["width"], GRID["height"]))
         self.assertEqual(manifest["grid"], GRID)
@@ -163,7 +161,8 @@ class PublicationTests(unittest.TestCase):
         now = datetime(2026, 9, 16, 19, 30, tzinfo=timezone.utc)
         checked, _, objects = validate_bundle(self.root / "public", "harmonie-eps", 12, now)
         self.assertEqual(checked["run"], manifest["run"])
-        self.assertEqual(len(objects), 3 + len(checked["spots"]["squares"]))
+        # Three hours of HARMONIE's fourteen tiles (nine native, four, one), and the squares.
+        self.assertEqual(len(objects), 3 * 14 + len(checked["spots"]["squares"]))
 
     def test_a_source_failure_keeps_the_previously_published_manifest(self):
         target = self.root / "public/weather/harmonie-eps.json"

@@ -10,6 +10,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import f5bin
+import f5tile
 import rundir
 import squares
 from squares import SQUARE_DEGREES, load_spot_data, spot_square, split_spot_data
@@ -178,21 +180,45 @@ class SplitTests(unittest.TestCase):
                 squares.run_path(base, relative)
 
 
+# A small grid on the lattice whose native level straddles two tiles (global
+# columns 338-387 at 0.5°, tiles of 128 columns), so absence can be tested.
+GRID = {"west": -11.0, "north": 56.0, "dx": 0.5, "dy": 0.4, "width": 50, "height": 14,
+        "east": 13.5, "south": 50.8}
+PREFIX = "harmonie-eps-2026091312-2h-v1"
+
+
+def run_manifest(hours=(0,)):
+    """The whole manifest as a wind adapter holds it once its tiles are written."""
+    manifest = whole_manifest()
+    manifest["grid"] = GRID
+    manifest["frames"] = [{"hour": hour, "validTime": f"2026-09-13T{12 + hour}:00:00Z",
+                           "gustIntervalHours": None} for hour in hours]
+    return manifest
+
+
+def field(value, missing_columns=()):
+    """A frame's field: `value` everywhere but the listed global columns, missing."""
+    column0 = 338
+    return [None if column0 + index % GRID["width"] in missing_columns else value
+            for index in range(GRID["width"] * GRID["height"])]
+
+
 class RunDirectoryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.output = Path(self.temp.name) / "weather"
 
-    def stage(self, prefix="harmonie-eps-2026091312-2h-v1", body=b"frame"):
-        target = self.output / prefix / "frames/000.bin"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(body)
+    def stage(self, prefix=PREFIX, u=1.0, hour=0, missing_columns=()):
+        """One frame's tiles, as f5bin.publish_frame writes them for an adapter."""
+        f5bin.publish_frame(self.output, prefix, {
+            "run": "2026091312", "hour": hour, "grid": GRID,
+            "u": field(u, missing_columns), "v": field(-2.0, missing_columns), "gust": None})
 
     def write(self, manifest=None, **kwargs):
         self.stage(**kwargs)
-        return rundir.write_run(self.output, "harmonie-eps.json", manifest or whole_manifest(),
-                                "harmonie-eps-2026091312-2h-v1", SPOTS)
+        return rundir.write_run(self.output, "harmonie-eps.json", manifest or run_manifest(),
+                                PREFIX, SPOTS)
 
     def test_the_hash_is_over_sorted_paths_and_file_hashes(self):
         files = {"spots/n52w008.json": b"{}", "frames/000.bin": b"frame"}
@@ -227,11 +253,11 @@ class RunDirectoryTests(unittest.TestCase):
                          [first["base"][:-1]])
         self.assertRegex(first["base"], r"^harmonie-eps-2026091312-2h-v1-[0-9a-f]{8}/$")
 
-    def test_one_changed_byte_lands_in_a_new_directory(self):
+    def test_one_changed_value_lands_in_a_new_directory(self):
         first = self.write()
-        second = self.write(body=b"framf")
+        second = self.write(u=1.1)
         self.assertNotEqual(first["base"], second["base"])
-        changed = whole_manifest()
+        changed = run_manifest()
         changed["spotForecasts"]["keel"][0]["u"] = 99
         third = self.write(changed)
         self.assertNotIn(third["base"], (first["base"], second["base"]))
@@ -241,39 +267,84 @@ class RunDirectoryTests(unittest.TestCase):
         pointer = self.write()
         written = json.loads((self.output / "harmonie-eps.json").read_text())
         self.assertEqual(written, pointer)
-        self.assertEqual(pointer["frames"][0]["url"], "frames/000.bin")
+        self.assertNotIn("url", pointer["frames"][0])
         directory = self.output / pointer["base"]
         self.assertEqual(sorted(rundir.content_files(directory)),
-                         ["frames/000.bin", "spots/n52w008.json", "spots/n52w012.json"])
+                         ["spots/n52w008.json", "spots/n52w012.json",
+                          "t/0/2/0/000.bin", "t/0/3/0/000.bin", "t/1/1/0/000.bin"])
         self.assertEqual(rundir.digest(rundir.content_files(directory)),
                          rundir.hash_of(pointer["base"]))
-        self.assertFalse((self.output / "harmonie-eps-2026091312-2h-v1").exists())
+        self.assertFalse((self.output / PREFIX).exists())
+
+    def test_the_pointer_describes_the_tiles(self):
+        tiles = self.write()["tiles"]
+        self.assertEqual(tiles, {
+            "size": 128, "border": 1, "encoding": "f5-tile-v1", "blocks": ["u", "v"],
+            "url": "t/{level}/{x}/{y}/{hour}.bin",
+            "levels": [{"level": 0, "dx": 0.5, "dy": 0.4, "x": [2, 3], "y": [0, 0], "absent": []},
+                       {"level": 1, "dx": 1.0, "dy": 0.8, "x": [1, 1], "y": [0, 0], "absent": []}]})
+
+    def test_a_tile_missing_in_every_hour_is_absent_and_not_published(self):
+        # Global columns 384-387 are tile (3, 0)'s at level 0: all missing, both hours.
+        self.stage(hour=1, missing_columns=range(384, 388))
+        pointer = self.write(run_manifest((0, 1)), missing_columns=range(384, 388))
+        self.assertEqual(pointer["tiles"]["levels"][0]["absent"], [[3, 0]])
+        self.assertEqual(pointer["tiles"]["levels"][1]["absent"], [])
+        self.assertEqual(sorted(path for path in rundir.content_files(
+            self.output / pointer["base"]) if path.startswith("t/")),
+            ["t/0/2/0/000.bin", "t/0/2/0/001.bin", "t/1/1/0/000.bin", "t/1/1/0/001.bin"])
+        self.assertFalse(any((self.output / pointer["base"] / "t/0/3").rglob("*")))
+
+    def test_a_tile_missing_in_one_hour_only_is_published_for_every_hour(self):
+        self.stage(hour=1)
+        pointer = self.write(run_manifest((0, 1)), missing_columns=range(384, 388))
+        self.assertEqual([level["absent"] for level in pointer["tiles"]["levels"]], [[], []])
+        files = rundir.content_files(self.output / pointer["base"])
+        self.assertIn("t/0/3/0/000.bin", files)
+        self.assertIn("t/0/3/0/001.bin", files)
+        self.assertTrue(f5tile.owned_empty(files["t/0/3/0/000.bin"]))
+
+    def test_a_tile_written_for_some_hours_only_is_refused(self):
+        self.stage(hour=1)
+        (self.output / PREFIX / "t/0/3/0/001.bin").unlink()
+        with self.assertRaisesRegex(ValueError, "Tile 0/3/0 is missing at \\+1h"):
+            self.write(run_manifest((0, 1)))
+        self.assertFalse((self.output / "harmonie-eps.json").exists())
 
     def test_leftovers_of_an_interrupted_import_are_not_published(self):
         self.stage()
-        stale = self.output / "harmonie-eps-2026091312-2h-v1/frames/007.bin"
-        stale.write_bytes(b"old")
-        Path(str(stale) + ".br").write_bytes(b"old")
+        for stale in ("frames/007.bin", "t/0/2/0/007.bin"):
+            path = self.output / PREFIX / stale
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"old")
+            Path(str(path) + ".br").write_bytes(b"old")
         pointer = self.write()
         self.assertEqual(sorted(rundir.content_files(self.output / pointer["base"])),
-                         ["frames/000.bin", "spots/n52w008.json", "spots/n52w012.json"])
+                         ["spots/n52w008.json", "spots/n52w012.json",
+                          "t/0/2/0/000.bin", "t/0/3/0/000.bin", "t/1/1/0/000.bin"])
         self.assertEqual(pointer["base"], self.write()["base"])
 
+    def test_a_wind_frame_that_names_a_file_is_refused(self):
+        manifest = run_manifest()
+        manifest["frames"][0]["url"] = "weather/harmonie-eps-2026091312-2h-v1/frames/000.bin"
+        with self.assertRaisesRegex(ValueError, "names a url"):
+            self.write(manifest)
+        with self.assertRaisesRegex(ValueError, "retired"):
+            self.write({**run_manifest(), "encoding": "f5-int16-v1"})
+
     def test_a_frame_outside_the_run_is_refused(self):
-        manifest = whole_manifest()
-        manifest["frames"][0]["url"] = "weather/elsewhere/frames/000.bin"
+        manifest = run_manifest()
+        manifest.update(kind="wave", frames=[{"hour": 0, "validTime": "2026-09-13T12:00:00Z",
+                                              "url": "weather/elsewhere/frames/000.json"}])
         with self.assertRaises(ValueError):
             self.write(manifest)
-        manifest["frames"][0]["url"] = "weather/harmonie-eps-2026091312-2h-v1/../x.bin"
+        manifest["frames"][0]["url"] = "weather/harmonie-eps-2026091312-2h-v1/../x.json"
         with self.assertRaises(ValueError):
             self.write(manifest)
 
     def test_a_missing_frame_is_refused_before_the_pointer_moves(self):
-        manifest = whole_manifest()
-        manifest["frames"].append({"hour": 1, "validTime": "2026-09-13T13:00:00Z",
-                                   "url": "weather/harmonie-eps-2026091312-2h-v1/frames/001.bin"})
         with self.assertRaisesRegex(ValueError, "missing"):
-            self.write(manifest)
+            self.write(run_manifest((0, 1)))
         self.assertFalse((self.output / "harmonie-eps.json").exists())
 
     def test_rewriting_a_run_makes_a_new_directory_and_keeps_the_old(self):
@@ -285,10 +356,22 @@ class RunDirectoryTests(unittest.TestCase):
         rewritten = rundir.rewrite_run(self.output, "harmonie-eps.json", whole, SPOTS)
         self.assertNotEqual(rewritten["base"], pointer["base"])
         self.assertTrue(old.is_dir())
-        self.assertEqual((self.output / rewritten["base"] / "frames/000.bin").read_bytes(), b"frame")
+        self.assertEqual(rewritten["tiles"], pointer["tiles"])
+        for tile in ("t/0/2/0/000.bin", "t/0/3/0/000.bin", "t/1/1/0/000.bin"):
+            self.assertEqual((self.output / rewritten["base"] / tile).read_bytes(),
+                             (old / tile).read_bytes())
         merged = load_spot_data(rewritten, lambda path: json.loads((self.output / path).read_text()))
         self.assertEqual(merged["spotForecasts"]["keel"][0]["u"], 42)
         self.assertEqual(json.loads((self.output / "harmonie-eps.json").read_text()), rewritten)
+
+    def test_rewriting_keeps_absent_tiles_absent(self):
+        self.stage(hour=1, missing_columns=range(384, 388))
+        pointer = self.write(run_manifest((0, 1)), missing_columns=range(384, 388))
+        whole = {**pointer, **load_spot_data(
+            pointer, lambda path: json.loads((self.output / path).read_text()))}
+        whole["spotForecasts"]["keel"][0]["u"] = 42
+        rewritten = rundir.rewrite_run(self.output, "harmonie-eps.json", whole, SPOTS)
+        self.assertEqual(rewritten["tiles"], pointer["tiles"])
 
 
 if __name__ == "__main__":

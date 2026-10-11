@@ -4,7 +4,8 @@
  * e2e site built from them.
  *
  *   weather/<model>.json                                    the pointer
- *   weather/<model>-<run>-<hours>h-v1-<hash8>/frames/000.bin
+ *   weather/<model>-<run>-<hours>h-v1-<hash8>/t/1/26/6/000.bin   a wind frame's tile
+ *   weather/<model>-<run>-<hours>h-v1-<hash8>/frames/000.json    a wave frame
  *   weather/<model>-<run>-<hours>h-v1-<hash8>/spots/n52w010.json
  *
  * The same rules as force5/ingest/rundir.py and squares.py, which are the
@@ -60,23 +61,30 @@ const bytesOf = (value) =>
 /**
  * A whole manifest, as an adapter holds it, published as a run.
  *
- * `frames` are [hour, suffix, body] in the manifest's frame order; `spots` are
- * the catalogue entries that place each spot in its square. Returns the
- * schemaVersion 2 pointer and the files to write, as [path from the directory
- * above weather/, bytes].
+ * A wave or weather run's `frameBodies` are [hour, suffix, body] in the
+ * manifest's frame order. A wind run's frames name no file: its `tiles` block
+ * is already in the manifest (scripts/f5tile.mjs, `manifestTiles`) and its
+ * tiles come in `tileFiles`, [path inside the run, bytes], as rundir.write_run
+ * leaves them once it has settled which are absent. `spots` are the catalogue
+ * entries that place each spot in its square. Returns the schemaVersion 2
+ * pointer and the files to write, as [path from the directory above weather/,
+ * bytes].
  */
-export function publishRun(whole, prefix, frameBodies, spots) {
+export function publishRun(whole, prefix, frameBodies, spots, tileFiles = []) {
   const where = new Map(
     spots.map((spot) => [spot.id, spotSquare(spot.lat, spot.lon)]),
   );
-  const inside = [];
-  const frames = whole.frames.map((frame, index) => {
-    const [hour, suffix, body] = frameBodies[index];
-    if (hour !== frame.hour) throw new Error(`Frame ${index} is not +${hour}h`);
-    const url = `frames/${String(hour).padStart(3, "0")}.${suffix}`;
-    inside.push([url, bytesOf(body)]);
-    return { ...frame, url };
-  });
+  const inside = tileFiles.map(([path, bytes]) => [path, bytesOf(bytes)]);
+  const frames = whole.tiles
+    ? whole.frames.map((frame) => ({ ...frame }))
+    : whole.frames.map((frame, index) => {
+        const [hour, suffix, body] = frameBodies[index];
+        if (hour !== frame.hour)
+          throw new Error(`Frame ${index} is not +${hour}h`);
+        const url = `frames/${String(hour).padStart(3, "0")}.${suffix}`;
+        inside.push([url, bytesOf(body)]);
+        return { ...frame, url };
+      });
   const keys = SPOT_KEYS.filter((key) => key in whole);
   const squares = new Map();
   for (const key of keys)

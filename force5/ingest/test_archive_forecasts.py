@@ -14,6 +14,7 @@ import brotli
 import archive_forecasts as job
 from archive import BucketArchive, LocalArchive, forecast_key, observation_key
 import f5bin
+import f5tile
 from publish_s3 import validate_bundle
 from runfixtures import publish_whole, read_whole
 from test_publish_s3 import FakeS3
@@ -36,7 +37,7 @@ def field(hour, base):
 
 
 def write_bundle(public, model="harmonie", run=RUN, hours=(0, 1, 2), ensemble=False):
-    """A binary wind run exactly as the adapters publish one, spot squares and all.
+    """A wind run exactly as the adapters publish one, as tiles, spot squares and all.
 
     Returns the published pointer with its squares merged back in.
     """
@@ -209,10 +210,11 @@ class JobTests(unittest.TestCase):
         s3 = FakeS3()
         s3.seed("weather/harmonie.json", json.dumps(manifest).encode())
         s3.seed("marine/wind-observations.json", json.dumps(obs).encode())
-        for index, info in enumerate(manifest["frames"]):
-            key = f"weather/{manifest['base']}{info['url']}"
+        # GRID is one native tile, so one tile per hour.
+        for index, path in enumerate(sorted(f5tile.run_tiles(manifest))):
+            key = f"weather/{manifest['base']}{path}"
             data = (staging / key).read_bytes()
-            # One frame stored brotli-encoded, one gzip, one plain: each must be read back.
+            # One tile stored brotli-encoded, one gzip, one plain: each must be read back.
             body, encoding = [(brotli.compress(data), "br"), (gzip.compress(data), "gzip"),
                               (data, None)][index]
             s3.objects[key] = {"Body": body, "ETag": f'"f{index}"', "LastModified": s3.clock,
@@ -222,9 +224,8 @@ class JobTests(unittest.TestCase):
             s3.objects[key] = {"Body": gzip.compress((staging / key).read_bytes()),
                                "ContentEncoding": "gzip", "ETag": '"s"', "LastModified": s3.clock}
         before = set(s3.objects)
-        with tempfile.TemporaryDirectory() as scratch:
-            summary = self.quietly(job.BucketSource(s3, "bucket", "", scratch),
-                                   BucketArchive(s3, "bucket"), NOW, self.out)
+        summary = self.quietly(job.BucketSource(s3, "bucket", ""),
+                               BucketArchive(s3, "bucket"), NOW, self.out)
         self.assertEqual([entry["model"] for entry in summary["archived"]], ["harmonie"])
         written = set(s3.objects) - before
         self.assertTrue(written)
@@ -238,8 +239,8 @@ class JobTests(unittest.TestCase):
     def test_a_corrupt_frame_fails_that_run_only(self):
         harmonie = write_bundle(self.public)
         write_bundle(self.public, model="gfs")
-        target = self.public / "weather" / harmonie["base"] / harmonie["frames"][1]["url"]
-        # Truncated, which the frame's own header gives away.
+        target = self.public / "weather" / harmonie["base"] / "t/0/2/0/001.bin"
+        # Truncated, which the tile's own header gives away.
         target.write_bytes(target.read_bytes()[:-2])
         summary = self.quietly(job.LocalSource(self.public), LocalArchive(self.public), NOW, self.out)
         self.assertEqual([entry["model"] for entry in summary["archived"]], ["gfs"])

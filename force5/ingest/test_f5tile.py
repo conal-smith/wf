@@ -625,6 +625,207 @@ class WriteTests(unittest.TestCase):
             files = sorted(str(p.relative_to(temp)) for p in Path(temp).rglob("*") if p.is_file())
             self.assertEqual(len(files), 3 * 12)  # No .tmp left behind.
 
+    def test_empty_tiles_are_written_too_when_kept(self):
+        case = regional()
+        source = case["source"]
+        with tempfile.TemporaryDirectory() as temp:
+            _, written = f5tile.write_pyramid(temp, case["grid"], source["u"], source["v"],
+                                              source["gust"], case["hour"], case["run"],
+                                              case["size"], sidecars=False, keep_empty=True)
+            self.assertEqual(len(written), 14)
+            self.assertTrue(f5tile.owned_empty((Path(temp) / "t/0/85/17/042.bin").read_bytes()))
+            self.assertFalse(f5tile.owned_empty((Path(temp) / "t/0/86/18/042.bin").read_bytes()))
+
+
+def tiled_manifest(case, absent=None, hours=None):
+    """A manifest naming a golden case's tiles, as rundir.write_run describes them."""
+    hours = hours or [case["hour"]]
+    frames = [{"hour": hour, "validTime": "2026-09-19T06:00:00Z",
+               "gustIntervalHours": [hour - 1, hour] if case["source"]["gust"] else None}
+              for hour in hours]
+    return {"model": "golden", "run": case["run"], "grid": case["grid"], "frames": frames,
+            "tiles": f5tile.manifest_tiles(case["grid"], frames, absent, case["size"])}
+
+
+class ManifestTilesTests(unittest.TestCase):
+    """The `tiles` block: what a run publishes, and how a reader finds a frame in it."""
+
+    def setUp(self):
+        self.case = regional()
+        self.manifest = tiled_manifest(self.case, {0: [(85, 17)], 1: [(42, 8)]})
+
+    def test_the_block_describes_the_levels_and_the_absent_tiles(self):
+        tiles = self.manifest["tiles"]
+        self.assertEqual({key: tiles[key] for key in ("size", "border", "encoding", "blocks", "url")},
+                         {"size": 8, "border": 1, "encoding": "f5-tile-v1",
+                          "blocks": ["u", "v", "gust"], "url": "t/{level}/{x}/{y}/{hour}.bin"})
+        self.assertEqual(tiles["levels"], [
+            {"level": 0, "dx": 0.25, "dy": 0.25, "x": [85, 87], "y": [17, 19],
+             "absent": [[85, 17]]},
+            {"level": 1, "dx": 0.5, "dy": 0.5, "x": [42, 43], "y": [8, 9], "absent": [[42, 8]]},
+            {"level": 2, "dx": 1.0, "dy": 1.0, "x": [21, 21], "y": [4, 4], "absent": []}])
+        self.assertIs(f5tile.check_tiles(self.manifest), tiles)
+
+    def test_gust_is_a_block_only_when_some_frame_has_a_window(self):
+        frames = [{"gustIntervalHours": None}, {"gustIntervalHours": [0, 1]}]
+        self.assertEqual(f5tile.tile_blocks(frames), ["u", "v", "gust"])
+        self.assertEqual(f5tile.tile_blocks(frames[:1]), ["u", "v"])
+        self.assertEqual([f5tile.frame_blocks(frame) for frame in frames], [2, 3])
+
+    def test_every_tile_but_the_absent_is_published_for_every_hour(self):
+        manifest = tiled_manifest(self.case, {0: [(85, 17)], 1: [(42, 8)]}, hours=[1, 2])
+        tiles = f5tile.run_tiles(manifest)
+        self.assertEqual(len(tiles), 2 * (8 + 3 + 1))
+        self.assertIn("t/0/86/17/002.bin", tiles)
+        self.assertNotIn("t/0/85/17/001.bin", tiles)
+        level, x, y, info = tiles["t/1/43/9/001.bin"]
+        self.assertEqual((level, x, y, info["hour"]), (1, 43, 9, 1))
+
+    def test_a_block_that_does_not_describe_the_grid_is_refused(self):
+        tiles = self.manifest["tiles"]
+        level = tiles["levels"][0]
+        broken = {
+            "no block": None,
+            "missing key": {key: value for key, value in tiles.items() if key != "url"},
+            "size": {**tiles, "size": 0},
+            "no border": {**tiles, "border": 0},
+            "encoding": {**tiles, "encoding": "f5-tile-v2"},
+            "url": {**tiles, "url": "tiles/{level}.bin"},
+            "blocks": {**tiles, "blocks": ["u", "v"]},
+            "fewer levels": {**tiles, "levels": tiles["levels"][:2]},
+            "ranges": {**tiles, "levels": [{**level, "x": [85, 88]}, *tiles["levels"][1:]]},
+            "cell size": {**tiles, "levels": [{**level, "dx": 0.5}, *tiles["levels"][1:]]},
+            "outside": {**tiles, "levels": [{**level, "absent": [[84, 17]]}, *tiles["levels"][1:]]},
+            "twice": {**tiles, "levels": [{**level, "absent": [[85, 17], [85, 17]]},
+                                          *tiles["levels"][1:]]},
+            "unordered": {**tiles, "levels": [{**level, "absent": [[86, 17], [85, 17]]},
+                                              *tiles["levels"][1:]]},
+            "not pairs": {**tiles, "levels": [{**level, "absent": [[85]]}, *tiles["levels"][1:]]},
+        }
+        for name, block in broken.items():
+            with self.subTest(name), self.assertRaises(ValueError):
+                f5tile.check_tiles({**self.manifest, "tiles": block})
+        with self.assertRaisesRegex(ValueError, "lattice"):
+            f5tile.check_tiles({**self.manifest, "grid": {**self.case["grid"], "west": -9.4}})
+
+    def test_a_tile_knows_whether_it_owns_part_of_the_grid(self):
+        grid = self.case["grid"]
+        # The regional grid's level-0 cells are columns 682-701 and rows 140-153.
+        self.assertTrue(f5tile.owns_domain(grid, 0, 85, 17, 8))  # Empty, but inside.
+        self.assertTrue(f5tile.owns_domain(grid, 0, 87, 19, 8))
+        self.assertFalse(f5tile.owns_domain(grid, 0, 84, 17, 8))
+        self.assertFalse(f5tile.owns_domain(grid, 0, 85, 20, 8))
+        self.assertTrue(f5tile.owns_domain(grid, 2, 21, 4, 8))
+
+    def test_a_tile_header_must_be_the_tile_it_is_published_as(self):
+        _, tiles = build(self.case)
+        level, x, y, data = tiles[0]
+        info = self.manifest["frames"][0]
+        f5tile.check_tile(data, self.manifest, level, x, y, info)
+        cases = {"another place": ((level, x + 1, y, info), "is tile"),
+                 "another hour": ((level, x, y, {**info, "hour": 41}), "is from run"),
+                 "no gust window": ((level, x, y, {**info, "gustIntervalHours": None}),
+                                    "Gust block")}
+        for name, (args, message) in cases.items():
+            with self.subTest(name), self.assertRaisesRegex(ValueError, message):
+                f5tile.check_tile(data, self.manifest, *args)
+        with self.assertRaisesRegex(ValueError, "is from run"):
+            f5tile.check_tile(data, {**self.manifest, "run": "2026091700"}, level, x, y, info)
+        with self.assertRaisesRegex(ValueError, "tile size"):
+            f5tile.check_tile(data, {**self.manifest, "tiles": {**self.manifest["tiles"],
+                                                                "size": 16}}, level, x, y, info)
+
+    def test_a_native_tile_covers_the_grid_or_says_it_does_not(self):
+        full = dict(self.case, source={field: [1.0 if value is None else value
+                                               for value in values]
+                                       for field, values in self.case["source"].items()})
+        _, tiles = build(full)
+        for level, x, y, data in tiles:
+            if level == 0:
+                header = f5tile.read_tile_header(data)
+                self.assertTrue(f5tile.covers_domain(header, f5tile.decode_blocks(data),
+                                                     self.case["grid"]), (x, y))
+        # The regional case has holes inside its grid, and the tiles say so.
+        _, holed = build(self.case)
+        verdicts = [f5tile.covers_domain(f5tile.read_tile_header(data), f5tile.decode_blocks(data),
+                                         self.case["grid"]) for level, _, _, data in holed
+                    if level == 0]
+        self.assertIn(False, verdicts)
+        with self.assertRaises(ValueError):
+            level1 = next(data for level, _, _, data in holed if level == 1)
+            f5tile.covers_domain(f5tile.read_tile_header(level1), f5tile.decode_blocks(level1),
+                                 self.case["grid"])
+
+
+class FrameTilesTests(unittest.TestCase):
+    """One frame read a tile at a time: what the archive and a backfill sample."""
+
+    def frame(self, case):
+        _, tiles = build(case)
+        files = {f5tile.tile_path(level, x, y, case["hour"]): data
+                 for level, x, y, data in tiles}
+        written = {(level, x, y) for level, x, y, _ in tiles}
+        absent = {}
+        for spec in f5tile.levels(case["grid"], case["size"]):
+            for y in range(spec["y"][0], spec["y"][1] + 1):
+                for x in range(spec["x"][0], spec["x"][1] + 1):
+                    if (spec["level"], x, y) not in written:
+                        absent.setdefault(spec["level"], []).append((x, y))
+        manifest = tiled_manifest(case, absent)
+        asked = []
+
+        def read(path):
+            asked.append(path)
+            return files[path]
+        return f5tile.FrameTiles(manifest, manifest["frames"][0], read), asked
+
+    def test_level_zero_is_the_whole_frame_sampler_and_reads_only_what_it_needs(self):
+        case = regional()
+        frame, asked = self.frame(case)
+        grid = case["grid"]
+        stored = {field: [None if value is None else
+                          math.copysign(math.floor(abs(value * 10) + 0.5), value) / 10 + 0
+                          for value in values] for field, values in case["source"].items()}
+        compared = 0
+        for j in range(4 * grid["height"] + 4):
+            for i in range(4 * grid["width"] + 4):
+                lat = grid["north"] + 0.05 - j * grid["dy"] / 4
+                lon = grid["west"] - 0.05 + i * grid["dx"] / 4
+                whole = {field: sample_point(grid, stored[field], lon, lat)
+                         for field in ("u", "v", "gust")}
+                tiled = frame.sample(lat, lon)
+                if whole["u"] is None or whole["v"] is None:
+                    self.assertIsNone(tiled)
+                    continue
+                compared += 1
+                self.assertEqual(tiled, whole)
+        self.assertGreater(compared, 100)
+        self.assertTrue(all(path.startswith("t/0/") for path in asked))
+        self.assertEqual(len(asked), len(set(asked)))  # Each tile read once.
+        self.assertNotIn("t/0/85/17/042.bin", asked)  # Absent: never read.
+
+    def test_the_native_grids_come_back_whole(self):
+        case = regional()
+        frame, _ = self.frame(case)
+        native = frame.native()
+        for field in ("u", "v", "gust"):
+            expected = [None if value is None else
+                        math.copysign(math.floor(abs(value * 10) + 0.5), value) / 10 + 0
+                        for value in case["source"][field]]
+            self.assertEqual(native[field], expected, field)
+        case = global_grid()
+        frame, _ = self.frame(case)
+        self.assertEqual(len(frame.native()["u"]), case["grid"]["width"] * case["grid"]["height"])
+
+    def test_a_tile_from_elsewhere_is_refused_as_it_is_read(self):
+        case = regional()
+        frame, _ = self.frame(case)
+        _, tiles = build(case)
+        wrong = next(data for level, x, y, data in tiles if (level, x, y) == (0, 86, 17))
+        frame.read = lambda path: wrong
+        with self.assertRaisesRegex(ValueError, "is tile"):
+            frame.sample(54.0, -7.0)
+
 
 if __name__ == "__main__":
     if "--write-golden" in sys.argv:

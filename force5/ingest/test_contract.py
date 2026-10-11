@@ -14,10 +14,12 @@ import unittest
 from unittest.mock import patch
 
 import f5bin
+import f5tile
 import publish_s3
 from publish_s3 import publish, validate_bundle
 from registry import MANIFESTS, MODELS
 import rundir
+from runfixtures import TINY_GRID, wind_payload
 from test_publish_s3 import FakeS3
 
 RUN = datetime(2026, 9, 13, 12, tzinfo=timezone.utc)
@@ -53,17 +55,30 @@ class ContractTests(unittest.TestCase):
         (self.root / self.run_directory).mkdir(parents=True, exist_ok=True)
         return self.run_directory
 
-    def save(self, model, manifest):
-        """Publish a whole manifest, as an adapter holds it, from the tests' own frames."""
+    def save(self, model, manifest, spoil=None):
+        """Publish a whole manifest, as an adapter holds it, from the tests' own frames.
+
+        A wind frame is published as its tiles (f5bin.publish_frame), from the
+        grids in the test's frame file. `spoil(staging)` may then change the
+        staged files before the run is finished and named for its content, so
+        whatever it breaks is what the validator has to catch.
+        """
         staging = self.root / "weather" / self.prefix
         shutil.rmtree(staging, ignore_errors=True)
-        suffix = "bin" if manifest.get("encoding") else "json"
+        wind = manifest.get("kind", "wind") == "wind"
         frames = []
         for info in manifest.get("frames") or []:
-            name = rundir.frame_name(self.prefix, info["hour"], suffix)
+            if wind:
+                f5bin.publish_frame(self.root / "weather", self.prefix,
+                                    wind_payload(self.root / info["url"], manifest, info))
+                frames.append({key: value for key, value in info.items() if key != "url"})
+                continue
+            name = rundir.frame_name(self.prefix, info["hour"], "json")
             (staging / "frames").mkdir(parents=True, exist_ok=True)
             shutil.copyfile(self.root / info["url"], self.root / "weather" / name)
             frames.append({**info, "url": f"weather/{name}"})
+        if spoil:
+            spoil(staging)
         self.pointer = rundir.write_run(self.root / "weather", Path(MANIFESTS[model]).name,
                                         {**manifest, "frames": frames}, self.prefix, SPOTS)
         return manifest
@@ -241,7 +256,7 @@ class ContractTests(unittest.TestCase):
     # --- instantaneous gusts ---------------------------------------------
     def gust_bundle(self, kind, interval):
         self.register("fake-gfs", "weather/fake-gfs.json", "wind")
-        grid = {"width": 2, "height": 2}
+        grid = dict(TINY_GRID)
         frames = []
         for hour in (0, 1, 2):
             url = f"{self.run_directory}/{hour}.json"
@@ -341,163 +356,243 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "fake-eps", max_age_hours=48, now=RUN + timedelta(hours=6))
 
-    # --- binary wind frames ------------------------------------------------
-    GRID = {"width": 2, "height": 2}
+    # --- tiled wind frames -------------------------------------------------
+    GRID = TINY_GRID
+    TILE = "t/0/2/0/{hour:03d}.bin"  # The one native tile TINY_GRID's cells fall in.
 
-    def binary_frame(self, hour, **changes):
-        """The bytes one published frame holds, with room to spoil them."""
+    def wind_frame(self, hour, **changes):
+        """One frame's grids, as an adapter holds them before they are tiled."""
         payload = {"model": "fake-bin", "run": "2026091312", "hour": hour,
                    "grid": self.GRID, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": [9.0] * 4}
         payload.update(changes)
-        return f5bin.encode_frame(payload)
+        return payload
 
-    def binary_bundle(self, gusts=True, **changes):
-        """A wind bundle whose frames are F5 int16 rather than JSON."""
+    def tile(self, hour, **changes):
+        """The bytes of the native tile a frame publishes, with room to spoil them."""
+        payload = self.wind_frame(hour, **changes)
+        _, tiles = f5tile.build_pyramid(self.GRID, payload["u"], payload["v"], payload["gust"],
+                                        payload["hour"], payload["run"], keep_empty=True)
+        return tiles[0][3]
+
+    def tiled_bundle(self, gusts=True, spoil=None, **changes):
+        """A wind bundle, published as tiles from the tests' own frame files."""
         self.register("fake-bin", "weather/fake-bin.json", "wind")
         frames = []
         for hour in (0, 1, 2):
-            data = self.binary_frame(hour, **({} if gusts else {"gust": None}))
-            url = f"{self.run_directory}/{hour}.bin"
+            url = f"{self.run_directory}/{hour}.json"
             frames.append({"hour": hour, "validTime": valid(hour), "url": url,
                            "gustIntervalHours": [max(hour - 1, 0), hour] if gusts else None})
-            (self.root / url).write_bytes(data)
-        manifest = {**self.identity("fake-bin", "wind"), "grid": self.GRID,
-                    "encoding": f5bin.ENCODING, "frames": frames,
+            (self.root / url).write_text(json.dumps(
+                self.wind_frame(hour, **({} if gusts else {"gust": None}))))
+        manifest = {**self.identity("fake-bin", "wind"), "grid": self.GRID, "frames": frames,
                     "gustAvailable": gusts, "spotForecasts": {"brandon": []}}
-        self.manifest = self.save("fake-bin", {**manifest, **changes})
+        self.manifest = self.save("fake-bin", {**manifest, **changes}, spoil)
         return self.manifest
 
-    def rewrite(self, index, data):
-        """Replace one frame and publish the run again, in a directory named for it.
+    def replacing(self, hour, data):
+        """A spoil that swaps one hour's native tile before the run is named."""
+        def spoil(staging):
+            (staging / self.TILE.format(hour=hour)).write_bytes(data)
+        return spoil
 
-        The directory's hash then matches, so whatever the test is really
-        attacking is what fails. A test that wants the hash check itself
-        changes the published file in place instead.
-        """
-        info = self.manifest["frames"][index]
-        (self.root / info["url"]).write_bytes(data)
-        self.save("fake-bin", self.manifest)
-        return self.root / info["url"]
+    def repoint(self, **changes):
+        """Rewrite the published pointer itself, leaving the run directory alone."""
+        pointer = {**self.pointer, **changes}
+        (self.root / "weather/fake-bin.json").write_text(json.dumps(pointer))
+        return pointer
 
-    def test_a_binary_wind_bundle_validates_and_publishes_its_frames(self):
-        manifest = self.binary_bundle()
+    def test_a_tiled_wind_bundle_validates_and_publishes_its_tiles(self):
+        self.tiled_bundle()
         published, _, objects = validate_bundle(self.root, "fake-bin", now=NOW)
-        self.assertEqual(published["encoding"], f5bin.ENCODING)
+        self.assertNotIn("encoding", published)
+        self.assertEqual(published["tiles"]["levels"],
+                         [{"level": 0, "dx": 0.5, "dy": 0.4, "x": [2, 2], "y": [0, 0],
+                           "absent": []}])
         directory = f"weather/{published['base']}"
         self.assertEqual([path for path, _ in objects],
-                         [f"{directory}frames/{hour:03d}.bin" for hour in (0, 1, 2)]
-                         + [f"{directory}spots/n52w012.json"])
-        # The bytes uploaded are the frame's own, uncompressed: compression is the
+                         [f"{directory}spots/n52w012.json"]
+                         + [f"{directory}{self.TILE.format(hour=hour)}" for hour in (0, 1, 2)])
+        # The bytes uploaded are the tile's own, uncompressed: compression is the
         # uploader's business and the sidecars are never objects of their own.
-        self.assertEqual(objects[0][1], (self.root / manifest["frames"][0]["url"]).read_bytes())
+        self.assertEqual(objects[1][1], self.tile(0))
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-bin", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-bin.json")
-        self.assertEqual(len(s3.writes), 5)  # three frames, a square, then the pointer
+        self.assertEqual(len(s3.writes), 5)  # three tiles, a square, then the pointer
 
-    def test_a_binary_frame_from_the_wrong_run_or_hour_is_refused(self):
+    def test_a_tile_from_the_wrong_run_hour_or_place_is_refused(self):
         """The header is what makes this catchable; the file name alone is not."""
-        for change in ({"hour": 9}, {"hour": 0}, {"run": "2026091300"},
-                       {"run": "2026091313"}):
-            with self.subTest(**change):
-                self.binary_bundle()
-                self.rewrite(1, self.binary_frame(**{"hour": 1, **change}))
-                with self.assertRaises(ValueError) as caught:
+        cases = {"later hour": self.tile(9), "earlier hour": self.tile(0),
+                 "earlier run": self.tile(1, run="2026091300"),
+                 "later run": self.tile(1, run="2026091313")}
+        for name, data in cases.items():
+            with self.subTest(name):
+                self.tiled_bundle(spoil=self.replacing(1, data))
+                with self.assertRaisesRegex(ValueError, "is from run"):
                     validate_bundle(self.root, "fake-bin", now=NOW)
-                self.assertIn("Mixed model/run/frame metadata", str(caught.exception))
+        neighbour = bytearray(self.tile(1))
+        neighbour[18:20] = (3).to_bytes(2, "little")  # Tile x = 3, published as x = 2.
+        self.tiled_bundle(spoil=self.replacing(1, bytes(neighbour)))
+        with self.assertRaisesRegex(ValueError, "is tile 0/3/0"):
+            validate_bundle(self.root, "fake-bin", now=NOW)
 
-    def test_a_frame_under_another_models_run_directory_is_refused(self):
+    def test_a_tile_under_another_models_run_directory_is_refused(self):
         """The model is not in the file, so the path is what has to carry it.
 
         Every wind model's objects live under `weather/`, so without this a
-        HARMONIE manifest could reference a GFS run's frames with the same run,
+        HARMONIE manifest could reference a GFS run's tiles with the same run,
         hour and grid and be accepted — and GFS's next publish would then delete
         objects a live HARMONIE pointer still pointed at.
         """
-        self.binary_bundle()
+        self.tiled_bundle()
         pointer = dict(self.pointer)
         theirs = "fake-other" + pointer["base"][len("fake-bin"):]
         os.replace(self.root / "weather" / pointer["base"], self.root / "weather" / theirs)
-        (self.root / "weather/fake-bin.json").write_text(json.dumps({**pointer, "base": theirs}))
+        self.repoint(base=theirs)
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertIn("is not named for fake-bin", str(caught.exception))
 
-    def test_a_frame_swapped_inside_a_published_run_is_refused(self):
-        """The run directory is named for its content, so a swapped frame is noticed.
+    def test_a_tile_swapped_inside_a_published_run_is_refused(self):
+        """The run directory is named for its content, so a swapped tile is noticed.
 
-        The substituted frame carries the right run, hour and grid, so every
-        header check passes and only the directory's hash is left to catch it —
-        which is the case that matters, because a frame silently swapped for
-        another of the same shape is exactly what a hash is supposed to notice.
+        The substituted tile carries the right run, hour and place, so every
+        header check passes and only the directory's hash is left to catch it.
         """
-        self.binary_bundle()
-        published = self.root / "weather" / self.pointer["base"] / "frames/001.bin"
-        published.write_bytes(self.binary_frame(1, u=[7.5] * 4))
+        self.tiled_bundle()
+        published = self.root / "weather" / self.pointer["base"] / self.TILE.format(hour=1)
+        published.write_bytes(self.tile(1, u=[7.5] * 4))
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertIn("does not hold the content its name claims", str(caught.exception))
 
-    def test_a_binary_frame_of_the_wrong_size_or_shape_is_refused(self):
-        whole = self.binary_frame(1)
+    def test_a_tile_of_the_wrong_size_or_shape_is_refused(self):
+        whole = self.tile(1)
+        payload = self.wind_frame(1)
+        _, small = f5tile.build_pyramid(self.GRID, payload["u"], payload["v"], payload["gust"],
+                                        1, "2026091312", size=64, keep_empty=True)
         cases = {
-            "wider grid": self.binary_frame(1, grid={"width": 4, "height": 2},
-                                            u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
-            "taller grid": self.binary_frame(1, grid={"width": 2, "height": 4},
-                                             u=[1.5] * 8, v=[-2.5] * 8, gust=[9.0] * 8),
+            "another tile size": small[0][3],
             "truncated": whole[:-2],
             "oversized": whole + b"\0\0",
-            "header only": whole[:f5bin.HEADER_BYTES],
-            "not a frame": b"{\"model\": \"fake-bin\"}",
-            "reserved bytes used": whole[:18] + b"\1" + whole[19:],
+            "header only": whole[:f5tile.HEADER_BYTES],
+            "not a tile": b"{\"model\": \"fake-bin\"}",
+            "a whole frame": f5bin.encode_frame(payload),
+            "reserved bytes used": whole[:22] + b"\1" + whole[23:],
         }
         for name, body in cases.items():
             with self.subTest(name):
-                self.binary_bundle()
-                self.rewrite(1, body)
+                self.tiled_bundle(spoil=self.replacing(1, body))
                 with self.assertRaises(ValueError):
                     validate_bundle(self.root, "fake-bin", now=NOW)
 
-    def test_a_binary_bundle_keeps_every_gust_rule(self):
+    def test_a_tiled_bundle_keeps_every_gust_rule(self):
         # A gust block where the manifest declares none.
-        self.binary_bundle(gusts=False)
-        for index in (0, 1, 2):
-            self.rewrite(index, self.binary_frame(index))
+        self.tiled_bundle(gusts=False, spoil=self.replacing(1, self.tile(1)))
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertIn("Gust block does not match", str(caught.exception))
         # The same bundle with the gust block actually absent is fine.
-        self.binary_bundle(gusts=False)
+        self.tiled_bundle(gusts=False)
+        self.assertEqual(self.pointer["tiles"]["blocks"], ["u", "v"])
         self.assertEqual(len(validate_bundle(self.root, "fake-bin", now=NOW)[2]), 4)
         # And a missing gust block where the manifest promises one is refused.
-        self.binary_bundle()
-        self.rewrite(1, self.binary_frame(1, gust=None))
+        self.tiled_bundle(spoil=self.replacing(1, self.tile(1, gust=None)))
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertIn("Gust block does not match", str(caught.exception))
 
-    def test_an_implausible_value_inside_a_binary_frame_is_refused(self):
+    def test_an_implausible_value_inside_a_tile_is_refused(self):
         """Hand-built bytes, because the encoder refuses to write these at all."""
-        for offset, value in [(0, 1501), (4 * 2, -1501), (8 * 2, -1)]:
-            with self.subTest(offset=offset):
-                self.binary_bundle()
-                body = bytearray(self.binary_frame(1))
-                body[f5bin.HEADER_BYTES + offset:f5bin.HEADER_BYTES + offset + 2] = (
-                    int(value).to_bytes(2, "little", signed=True))
-                self.rewrite(1, bytes(body))
+        side = 130 * 130 * 2
+        # u, v and gust each at the tile's first owned cell, (1, 1): 131 cells in.
+        for block, value in [(0, 1501), (1, -1501), (2, -1)]:
+            with self.subTest(block=block):
+                body = bytearray(self.tile(1))
+                offset = f5tile.HEADER_BYTES + block * side + 131 * 2
+                # The cell before it, the first of its row, is stored as a value (missing,
+                # off the grid); the delta to the new value wraps in int16, as f5bin's do.
+                previous = int.from_bytes(body[offset - 2:offset], "little", signed=True)
+                delta = ((value - previous + 32768) & 0xFFFF) - 32768
+                body[offset:offset + 2] = delta.to_bytes(2, "little", signed=True)
+                self.tiled_bundle(spoil=self.replacing(1, bytes(body)))
                 with self.assertRaises(ValueError):
                     validate_bundle(self.root, "fake-bin", now=NOW)
 
-    def test_an_unknown_encoding_is_refused_rather_than_read_as_json(self):
-        self.binary_bundle(encoding="f5-int16-v2")
-        with self.assertRaises(ValueError):
+    def test_a_native_tile_may_not_leave_a_hole_in_the_grid(self):
+        self.tiled_bundle(spoil=self.replacing(1, self.tile(1, v=[-2.5, None, -2.5, -2.5])))
+        with self.assertRaisesRegex(ValueError, "leaves part of the grid missing"):
             validate_bundle(self.root, "fake-bin", now=NOW)
 
-    def test_only_wind_frames_may_declare_a_binary_encoding(self):
-        manifest = self.wave_bundle()
-        self.save("fake-wave", {**manifest, "encoding": f5bin.ENCODING})
-        with self.assertRaises(ValueError):
-            validate_bundle(self.root, "fake-wave", now=NOW)
+    def test_every_tile_the_manifest_does_not_call_absent_must_be_there(self):
+        # A tile listed absent that is there all the same.
+        self.tiled_bundle()
+        tiles = self.pointer["tiles"]
+        absent = {**tiles, "levels": [{**tiles["levels"][0], "absent": [[2, 0]]}]}
+        self.repoint(tiles=absent)
+        with self.assertRaisesRegex(ValueError, "unreferenced"):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        # A tile written at no hour is absent; but a wind field has a value at every
+        # cell, so a native tile that holds part of the grid cannot be.
+        def empty(staging):
+            for path in (staging / "t").rglob("*.bin*"):
+                path.unlink()
+        self.tiled_bundle(spoil=empty)
+        self.assertEqual(self.pointer["tiles"]["levels"][0]["absent"], [[2, 0]])
+        with self.assertRaisesRegex(ValueError, "absent but holds part of the grid"):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        # A pointer that calls it present names files the run does not have.
+        self.repoint(tiles={**self.pointer["tiles"], "levels": [
+            {**self.pointer["tiles"]["levels"][0], "absent": []}]})
+        with self.assertRaisesRegex(ValueError, "missing"):
+            validate_bundle(self.root, "fake-bin", now=NOW)
+        # And a tile written for some hours and not others is never published at all.
+        def gap(staging):
+            (staging / self.TILE.format(hour=2)).unlink()
+        with self.assertRaisesRegex(ValueError, "missing at \\+2h"):
+            self.tiled_bundle(spoil=gap)
+
+    def test_the_tiles_block_must_describe_the_grid(self):
+        self.tiled_bundle()
+        tiles = self.pointer["tiles"]
+        level = tiles["levels"][0]
+        broken = {
+            "no tiles": {"tiles": None},
+            "size": {"tiles": {**tiles, "size": 64}},
+            "no border": {"tiles": {**tiles, "border": 0}},
+            "encoding": {"tiles": {**tiles, "encoding": "f5-tile-v2"}},
+            "url": {"tiles": {**tiles, "url": "tiles/{level}/{x}/{y}/{hour}.bin"}},
+            "blocks": {"tiles": {**tiles, "blocks": ["u", "v"]}},
+            "ranges": {"tiles": {**tiles, "levels": [{**level, "x": [2, 3]}]}},
+            "cell size": {"tiles": {**tiles, "levels": [{**level, "dx": 0.25}]}},
+            "extra level": {"tiles": {**tiles, "levels": [level, {**level, "level": 1}]}},
+            "absent outside": {"tiles": {**tiles, "levels": [{**level, "absent": [[3, 0]]}]}},
+            "absent twice": {"tiles": {**tiles, "levels": [{**level, "absent": [[2, 0], [2, 0]]}]}},
+            "unknown key": {"tiles": {**tiles, "levels": [{**level, "extra": 1}]}},
+            "off the lattice": {"grid": {**self.GRID, "west": -10.9, "east": -10.4}},
+            "a whole-frame encoding": {"encoding": "f5-int16-v1"},
+            "a frame url": {"frames": [{**self.pointer["frames"][0], "url": "frames/000.bin"},
+                                       *self.pointer["frames"][1:]]},
+        }
+        for name, change in broken.items():
+            with self.subTest(name):
+                self.repoint(**change)
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-bin", now=NOW)
+
+    def test_only_wind_frames_are_tiles_and_no_bundle_declares_an_encoding(self):
+        self.wave_bundle()
+        for change in ({"encoding": "f5-int16-v1"},
+                       {"tiles": {"size": 128, "border": 1, "encoding": "f5-tile-v1",
+                                  "blocks": ["u", "v"], "url": "t/{level}/{x}/{y}/{hour}.bin",
+                                  "levels": []}}):
+            with self.subTest(sorted(change)):
+                (self.root / "weather/fake-wave.json").write_text(
+                    json.dumps({**self.pointer, **change}))
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "fake-wave", now=NOW)
+        with self.assertRaisesRegex(ValueError, "retired"):
+            self.tiled_bundle(encoding="f5-int16-v1")
 
     def test_registry_kind_must_match_the_manifest(self):
         self.wave_bundle()

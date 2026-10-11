@@ -13,7 +13,6 @@ import eccodes as ec
 import requests
 
 from cadence import expected_hours
-import f5bin
 import fetch_gefs as gefs
 from fetch_gefs import (average, decode_member, decode_step, discover, file_name, filter_url,
                         inventory, main, member_name, object_key, run_datetime)
@@ -21,7 +20,7 @@ from fetch_gfs import index_ranges
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
-from runfixtures import read_whole
+from runfixtures import published_frame, read_whole
 
 NOW = datetime(2026, 9, 16, 23, 40, tzinfo=timezone.utc)
 RUN = "2026091618"
@@ -376,8 +375,7 @@ class GefsTests(unittest.TestCase):
         self.assertNotIn("gustMissingHours", manifest)
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [[0, 0], [6, 6]])
         # Members 0..2 hold u = member, v = -member, gust = 10 + member.
-        frame = f5bin.decode_frame(
-            (self.root / "public/weather" / manifest["base"] / manifest["frames"][1]["url"]).read_bytes())
+        frame = published_frame(self.root / "public/weather", manifest, 1)
         self.assertEqual((frame["u"], frame["v"], frame["gust"]),
                          ([1.0] * 4, [-1.0] * 4, [11.0] * 4))
         self.assertEqual((frame["run"], frame["hour"]), (run, 6))
@@ -413,8 +411,8 @@ class GefsTests(unittest.TestCase):
     def test_frames_live_under_a_run_and_horizon_specific_prefix(self):
         manifest, run = self.refresh()
         self.assertRegex(manifest["base"], rf"^gefs-{run}-6h-v1-[0-9a-f]{{8}}/$")
-        self.assertEqual([f["url"] for f in manifest["frames"]],
-                         ["frames/000.bin", "frames/006.bin"])
+        self.assertTrue(all("url" not in f for f in manifest["frames"]))
+        self.assertEqual(manifest["tiles"]["url"], "t/{level}/{x}/{y}/{hour}.bin")
 
     def test_a_broken_member_preserves_the_previous_manifest(self):
         published = self.root / "public/weather/gefs.json"

@@ -15,7 +15,7 @@ from fetch_aifs import MODEL, STEP, decode_wind, main, parse_args, run_datetime
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
-from runfixtures import publish_whole
+from runfixtures import TINY_GRID, publish_whole
 
 # The identity the live 0.25° AIFS product carries, read on 17 September 2026.
 # `dataType` is ecCodes' alias for `marsType`, so it is set once, not twice.
@@ -138,7 +138,7 @@ class AIFSBundleTests(unittest.TestCase):
         manifest = {"model": MODEL, "run": "2026091600", "runTime": run.isoformat(),
                     "stepHours": STEP, "gustAvailable": False,
                     "stepRanges": [{"throughHour": hours[-1], "stepHours": STEP}],
-                    "grid": {"width": 2, "height": 2}, "frames": [],
+                    "grid": dict(TINY_GRID), "frames": [],
                     "spotForecasts": {"brandon": []}}
         for hour in hours:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
@@ -183,7 +183,9 @@ class AIFSBundleTests(unittest.TestCase):
 
     def test_a_gust_value_cannot_slip_into_a_gustless_product(self):
         manifest, now = self.bundle(hours=[0, 6])
-        for change in ({"gust": [1] * 4}, {"gustIntervalHours": [0, 6]}):
+        # A tile carries a gust block or not; the gust window is the manifest's alone,
+        # and a declared one is test_a_declared_gust_interval_is_refused_on_the_frame_list.
+        for change in ({"gust": [1] * 4},):
             path = self.root / "weather/aifs-run/6.json"
             path.write_text(json.dumps({**json.loads(path.read_text()), **change}))
             publish_whole(self.root / "weather", f"{MODEL}.json", manifest)

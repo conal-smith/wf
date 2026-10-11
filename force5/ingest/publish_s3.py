@@ -54,6 +54,7 @@ import re
 import sys
 from cadence import expected_hours
 import f5bin
+import f5tile
 from prune import (ARCHIVE_DIRECTORY, bucket_keys, delete_keys, is_archived, manifest_urls,
                    model_owns, run_directory)
 from registry import MANIFESTS, MODELS, object_root
@@ -175,10 +176,10 @@ def run_files(public, model, manifest):
 
     The directory must sit beside the pointer, be named for this model (the rule
     `prune.model_owns` applies, so "harmonie" never claims "harmonie-eps-…"),
-    hash to the name it carries, and hold exactly the frames and spot squares the
-    manifest names: nothing missing, and nothing extra that would be uploaded and
-    served under a run that never mentions it. Returns {path inside the run:
-    bytes}.
+    hash to the name it carries, and hold exactly the frames (a wind run's tiles)
+    and spot squares the manifest names: nothing missing, and nothing extra that
+    would be uploaded and served under a run that never mentions it. Returns
+    {path inside the run: bytes}.
     """
     base = check_base(manifest.get("base"))
     if not model_owns(model, base[:-1]):
@@ -191,9 +192,13 @@ def run_files(public, model, manifest):
     if rundir.digest(files) != rundir.hash_of(base):
         raise ValueError(f"{base} does not hold the content its name claims")
     index = manifest.get("spots") or {}
-    named = {frame.get("url") for frame in manifest.get("frames") or []} | {
+    named = {frame.get("url") for frame in manifest.get("frames") or []
+             if "tiles" not in manifest} | {
         str(index.get("url", "")).replace("{square}", square)
         for square in index.get("squares") or []}
+    if "tiles" in manifest:
+        # A tiled run's frames are every tile its `tiles` block does not call absent.
+        named |= set(f5tile.run_tiles(manifest))
     for url in named:
         run_path(base, url)
     if set(files) != named:
@@ -241,7 +246,7 @@ def run_bundle(public, model, manifest):
 
 
 def frame_file(files, info, hour, suffix):
-    """A frame's bytes, at the one name its hour may have inside the run."""
+    """A wave or weather frame's bytes, at the one name its hour may have inside the run."""
     if info.get("url") != f"{rundir.FRAMES}/{hour:03d}.{suffix}":
         raise ValueError(f"Frame +{hour}h is published as {info.get('url')!r}")
     return files[info["url"]]
@@ -264,8 +269,10 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Run time does not match run identity")
     # Wave and weather bundles are the same shape: declared variables, optional
     # frames of one array each, and a precomputed series per riding location.
-    if kind != "wind" and manifest.get("encoding") is not None:
-        raise ValueError("Only wind frames may declare a binary encoding")
+    if manifest.get("encoding") is not None:
+        raise ValueError("Whole-frame encodings are retired: wind frames are published as tiles")
+    if kind != "wind" and manifest.get("tiles") is not None:
+        raise ValueError("Only wind frames are published as tiles")
     if kind in RUN_KINDS:
         # The run's own checks read the spot data from its squares, merged back in
         # exactly as the adapter held it, and every file of the run is uploaded.
@@ -280,54 +287,17 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
     return manifest, body, validator(public, model, manifest, run, now)
 
 
-def frame_encoding(manifest):
-    """Which frame encoding a manifest declares. Absent is the original JSON."""
-    encoding = manifest.get("encoding")
-    if encoding is not None and encoding != f5bin.ENCODING:
-        raise ValueError(f"Unknown frame encoding {encoding!r}")
-    return encoding
-
-
-def wind_frame(data, encoding, model, manifest, grid, info, hour, valid):
-    """One wind frame as a dict, from JSON bytes or from an F5 int16 body.
-
-    What a binary frame proves about itself, and what it cannot:
-
-    - **run, forecast hour, grid size**: in the header, checked here.
-    - **model**: *not* in the file. It is established by the path instead —
-      `run_files()` has already required the run directory to be named for this
-      model — and by the directory's content hash, which proves the bytes are the
-      ones published under that name. The dict returned therefore carries the
-      model it was asked about, and the `frame.get("model") != model` check
-      downstream is a tautology for a binary frame; the path check is what stands
-      in for it.
-    - **valid time and grid geometry**: not in the file either. The manifest
-      declares them, and `validate_bundle` has already checked the manifest's own
-      run/hour/validTime arithmetic, so they are filled in from it here.
-    - **gust window**: not in the file. Only the *presence* of the gust block is
-      checkable, and it is, immediately below and again downstream: a frame with
-      no window must carry no gust block, and one with a window must carry it.
-    """
-    if encoding is None:
-        return json.loads(data)
-    decoded = f5bin.decode_frame(data)
-    if ((decoded["run"], decoded["hour"], decoded["width"], decoded["height"])
-            != (manifest["run"], hour, grid["width"], grid["height"])):
-        raise ValueError("Mixed model/run/frame metadata")
-    # The window lives only in the manifest, so this is the one thing the two can
-    # still be made to agree about: no window means no gust block, and vice versa.
-    if (info.get("gustIntervalHours") is None) != (decoded["gust"] is None):
-        raise ValueError("Gust block does not match the published gust period")
-    return {"model": model, "run": decoded["run"], "hour": decoded["hour"],
-            "validTime": valid, "grid": grid,
-            "gustIntervalHours": info.get("gustIntervalHours"),
-            "u": decoded["u"], "v": decoded["v"], "gust": decoded["gust"]}
-
-
 def validate_wind_bundle(files, model, manifest, run, now):
-    """A wind run: `manifest` with its squares merged in, `files` its run directory."""
+    """A wind run: `manifest` with its squares merged in, `files` its run directory.
+
+    Its frames are tiles (f5tile.py): the `tiles` block must match the grid,
+    every tile it does not call absent must be there for every hour (which
+    `run_files` has already required), and each tile must say in its header the
+    run, hour, level and place it is published as, carry a gust block exactly
+    where the frame has a gust window, hold only plausible values, and at level
+    0 leave no cell of the grid missing.
+    """
     frames, grid = manifest["frames"], manifest.get("grid")
-    encoding = frame_encoding(manifest)
     ensemble = manifest.get("ensemble")
     last = validate_ensemble(manifest, ensemble, run) if ensemble is not None else None
     gust_kind = manifest.get("gustKind", "interval")
@@ -342,6 +312,8 @@ def validate_wind_bundle(files, model, manifest, run, now):
         # Only an ensemble may publish spot series without map frames.
         if ensemble is None:
             raise ValueError("Empty forecast or unsupported cadence")
+        if manifest.get("tiles") is not None:
+            raise ValueError("A run without frames has no tiles")
         if last <= now:
             raise ValueError("Forecast horizon has already expired")
         # The pointer alone says how far a frameless run reaches (squares.py).
@@ -353,25 +325,28 @@ def validate_wind_bundle(files, model, manifest, run, now):
     hours = expected_hours(manifest)
     if len(frames) != len(hours):
         raise ValueError("Empty forecast or unsupported cadence")
-    count = grid_count(grid)
-    encoded = "bin" if encoding else "json"
+    grid_count(grid)
+    if manifest.get("tiles") is None:
+        raise ValueError("A wind run's frames are published as tiles")
+    tiles = f5tile.check_tiles(manifest)
+    # A wind field has a value at every cell of its grid, so no native tile that
+    # owns part of the grid can be empty at every hour.
+    for x, y in tiles["levels"][0]["absent"]:
+        if f5tile.owns_domain(grid, 0, x, y, tiles["size"]):
+            raise ValueError(f"Tile 0/{x}/{y} is absent but holds part of the grid")
     for index, info in enumerate(frames):
         hour = hours[index]
-        data = frame_file(files, info, hour, encoded)
         valid = valid_time(run, hour)
-        if (info["hour"], info["validTime"]) != (hour, valid):
+        if (info.get("hour"), info.get("validTime")) != (hour, valid):
             raise ValueError("Incomplete or misordered forecast")
-        frame = wind_frame(data, encoding, model, manifest, grid, info, hour, valid)
-        if any(frame.get(k) != v for k, v in {"model": model, "run": manifest["run"],
-               "grid": grid, "hour": hour, "validTime": valid}.items()):
-            raise ValueError("Mixed model/run/frame metadata")
+        if "url" in info:
+            raise ValueError(f"Frame +{hour}h names a url; a wind frame is its tiles")
         gust_missing = manifest.get("gustAvailable") is False or hour in missing_gust_hours
         interval = info.get("gustIntervalHours")
         if not gust_missing:
             if (not isinstance(interval, list) or len(interval) != 2
                     or not all(whole(x) for x in interval)
-                    or interval[0] < 0 or interval[0] > interval[1] or interval[1] != hour
-                    or frame.get("gustIntervalHours") != interval):
+                    or interval[0] < 0 or interval[0] > interval[1] or interval[1] != hour):
                 raise ValueError("Invalid or mismatched gust interval")
             if gust_kind == "instantaneous":
                 # A surface gust read at the valid time, not a period maximum.
@@ -379,17 +354,16 @@ def validate_wind_bundle(files, model, manifest, run, now):
                     raise ValueError("Instantaneous gusts declare a zero-length interval")
             elif hour > 0 and interval[0] == interval[1]:
                 raise ValueError("Invalid or mismatched gust interval")
-        elif interval is not None or frame.get("gustIntervalHours") is not None:
+        elif interval is not None:
             raise ValueError("Unavailable gusts cannot declare a period")
-        for field in ("u", "v", "gust"):
-            values = frame.get(field)
-            if field == "gust" and gust_missing:
-                if values is not None:
-                    raise ValueError("Unexpected gust data")
-                continue
-            if not isinstance(values, list) or len(values) != count or not all(
-                    number(v, 150, 0 if field == "gust" else None) for v in values):
-                raise ValueError(f"Invalid {field} field")
+    for path, (level, x, y, info) in sorted(f5tile.run_tiles(manifest).items()):
+        data = files[path]
+        # The header says which run, hour, tile and gust period the bytes are;
+        # decoding refuses implausible values and a negative gust.
+        header = f5tile.check_tile(data, manifest, level, x, y, info)
+        blocks = f5tile.decode_blocks(data)
+        if level == 0 and not f5tile.covers_domain(header, blocks, grid):
+            raise ValueError(f"Tile {path} leaves part of the grid missing")
     if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
         raise ValueError("Forecast horizon has already expired")
 

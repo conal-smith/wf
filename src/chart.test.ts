@@ -31,7 +31,6 @@ const frames = (hours: readonly number[], from = "2026-09-14T00:00:00Z") =>
   hours.map((hour): FrameInfo => ({
     hour,
     validTime: new Date(Date.parse(from) + hour * 3600000).toISOString(),
-    url: `weather/run/${hour}.json`,
     gustIntervalHours: null,
   }));
 /** Column times, which is what the geometry helpers actually take. */
