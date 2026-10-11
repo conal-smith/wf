@@ -34,12 +34,13 @@ import zipfile
 import eccodes as ec
 import numpy as np
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, published_in_bucket, sample, write_json
+from f5bin import publish_frame
+from fetch_forecast import ROOT, get, published_in_bucket, sample
 from fetch_forecast import load_spots, spots_file
 from fetch_harmonie import (GEOMETRY, GRID, PORTAL, earth_vectors, inventory,
                             make_layout, messages, resample)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "harmonie-eps"
@@ -274,9 +275,8 @@ def main():
                 for field in ("u", "v")}
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid, "grid": GRID,
                    "gustIntervalHours": None, **mean, "gust": None}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "gustIntervalHours": None})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": None})
         for spot in spots:
             point = {field: sample(GRID, mean[field], spot["lon"], spot["lat"]) for field in ("u", "v")}
             if any(value is None for value in point.values()):
@@ -290,7 +290,7 @@ def main():
                 "provider": "Met Éireann", "modelDetail": "HARMONIE-AROME DINI ensemble members",
                 "resolutionKm": 2, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": GRID, "encoding": FRAME_ENCODING, "frames": frames,
+                "grid": GRID, "frames": frames,
                 "spotForecasts": mean_series,
                 "spotMembers": member_series,
                 "ensemble": {"members": len(members), "control": 0,
@@ -317,7 +317,7 @@ def main():
                                "successive cycles, CC BY 4.0; lag-assembled, rotated, resampled and "
                                "cropped by Force5 / wingfoil.ie.",
                 "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"}
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     print(f"Published {len(frames)} ensemble-mean frames and {len(members)}-member spot series in "
           f"{time.monotonic() - started:.0f}s; {TRANSFER['bytes'] / 1e6:.0f} MB downloaded"
           + (f" ({TRANSFER['bytes'] / TRANSFER['files'] / 1e6:.1f} MB per member-step)"

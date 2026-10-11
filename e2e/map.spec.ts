@@ -333,7 +333,13 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
     .getByRole("slider", { name: "Forecast time" })
     .fill(String(noon));
   await expect(page.locator(".frame-status")).toHaveCount(0);
-  await page.route("**/weather/harmonie-*/*", (route) =>
+  // HARMONIE's tiles for that hour fail, so the switch cannot complete.
+  const noonTiles = `**/weather/harmonie-*/t/*/*/*/${String(
+    harmonie.frames.find(
+      (f: { validTime: string }) => f.validTime === "2026-09-14T12:00:00Z",
+    ).hour,
+  ).padStart(3, "0")}.bin`;
+  await page.route(noonTiles, (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
   await chooseModel(page, "harmonie");
@@ -341,8 +347,8 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
     "ICON-EU is still shown",
   );
   await expectModel(page, "icon-eu");
-  await page.unroute("**/weather/harmonie-*/*");
-  await page.route("**/weather/harmonie-*/*", async (route) => {
+  await page.unroute(noonTiles);
+  await page.route(noonTiles, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 900));
     await route.continue();
   });
@@ -351,7 +357,7 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
   await page.waitForTimeout(1100);
   await expectModel(page, "icon-eu");
   await expect(page.locator(".map-model")).toContainText("ICON-EU");
-  await page.unroute("**/weather/harmonie-*/*");
+  await page.unroute(noonTiles);
   await chooseModel(page, "harmonie");
   await expectModel(page, "harmonie");
 });
@@ -373,7 +379,9 @@ test("a missing frame keeps the map on its last good frame and offers a retry", 
     (f: { validTime: string }) =>
       Date.parse(f.validTime) === sampleStrip[target].time,
   );
-  await page.route("**/" + broken.url, (route) =>
+  // Every tile of that hour: a frame is its tiles.
+  const brokenTiles = `**/weather/${harmonie.base}t/*/*/*/${String(broken.hour).padStart(3, "0")}.bin`;
+  await page.route(brokenTiles, (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
   await slider.fill(String(target));
@@ -382,7 +390,7 @@ test("a missing frame keeps the map on its last good frame and offers a retry", 
   await expect(
     page.locator(`.dock tr.tt-hour td[data-i="${target}"]`),
   ).toHaveClass(/c-sel/);
-  await page.unroute("**/" + broken.url);
+  await page.unroute(brokenTiles);
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.locator(".frame-status")).toHaveCount(0);
   await expect(slider).toHaveValue(String(target));

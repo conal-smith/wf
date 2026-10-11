@@ -20,9 +20,10 @@ class AlreadyPublishedTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.weather = Path(directory.name) / "weather"
         self.manifest = self.weather / "ecmwf.json"
-        (self.weather / "ecmwf-2026091700-360h-v2").mkdir(parents=True)
-        write_json(self.manifest, {"run": "2026091700", "frames": [
-            {"url": "weather/ecmwf-2026091700-360h-v2/000-abc.json"}]})
+        self.directory = self.weather / "ecmwf-2026091700-360h-v2-0a1b2c3d"
+        self.directory.mkdir(parents=True)
+        write_json(self.manifest, {"run": "2026091700", "base": "ecmwf-2026091700-360h-v2-0a1b2c3d/",
+                                   "frames": [{"url": "frames/000.bin"}]})
 
     def test_the_run_on_the_pointer_is_not_downloaded_again(self):
         self.assertEqual(already_published(self.manifest, "2026091700",
@@ -31,6 +32,8 @@ class AlreadyPublishedTests(unittest.TestCase):
     def test_a_newer_run_or_a_different_bundle_is_downloaded(self):
         self.assertFalse(already_published(self.manifest, "2026091712", "ecmwf-2026091712-360h-v2"))
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v3"))
+        # A prefix that merely starts the same way is another bundle.
+        self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h"))
 
     def test_the_run_the_bucket_serves_wins_over_an_empty_disk(self):
         # A one-shot container has no previous output, so the worker's answer is the
@@ -53,7 +56,7 @@ class AlreadyPublishedTests(unittest.TestCase):
 
     def test_a_missing_or_broken_pointer_or_run_directory_is_downloaded(self):
         self.assertFalse(already_published(self.weather / "absent.json", "2026091700", "x"))
-        (self.weather / "ecmwf-2026091700-360h-v2").rmdir()
+        self.directory.rmdir()
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))
         self.manifest.write_text("nope")
         self.assertFalse(already_published(self.manifest, "2026091700", "ecmwf-2026091700-360h-v2"))

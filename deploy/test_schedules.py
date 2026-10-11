@@ -109,5 +109,21 @@ class SetTest(unittest.TestCase):
             schedules.apply_set(arguments("harmonie", memory="6Gb"))
 
 
+class SweepTest(unittest.TestCase):
+    """The bucket sweep in the real timetable: it deletes superseded run directories."""
+
+    def test_the_bucket_sweep_runs_every_hour_at_a_minute_of_its_own(self):
+        jobs = list(schedules.scheduled(schedules.load()))
+        sweep = next(job for job in jobs if job["command"] == "prune")
+        # Every hour, so a superseded run leaves the bucket 6-7 hours on, not 6-30.
+        self.assertEqual(schedules.slots(sweep), {"minutes": schedules.SWEEP_MINUTES})
+        taken = {minute for job in jobs if job["enabled"] and job["command"] != "prune"
+                 for minute in job["minutes"]}
+        self.assertFalse(taken & set(schedules.SWEEP_MINUTES))
+        home = next(entry for entry in schedules.home_compute(schedules.load())["jobs"]
+                    if entry["id"] == "prune")
+        self.assertEqual(home["schedule"]["at"], {"minutes": schedules.SWEEP_MINUTES})
+
+
 if __name__ == "__main__":
     unittest.main()

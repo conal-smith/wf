@@ -55,8 +55,8 @@ def expected_hours(manifest):
         return hours
     if step not in (1, 3, 6):
         raise ValueError("Unsupported source cadence")
-    if not manifest["frames"] and manifest.get("kind") == "wave":
-        # A wave bundle may publish spot series with no map frames; the horizon is
+    if not manifest["frames"] and manifest.get("kind") in ("wave", "weather"):
+        # A wave or weather bundle publishes spot series with no map frames; the horizon is
         # then declared rather than implied by the frame count.
         horizon = manifest.get("horizonHours")
         if (not isinstance(horizon, int) or isinstance(horizon, bool)

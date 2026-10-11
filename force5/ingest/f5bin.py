@@ -5,7 +5,12 @@ for one HARMONIE step and 225 KB once gzipped. The same numbers as little-endian
 int16 at 0.1 m/s, row-delta-encoded and brotli-compressed, are about 71 KB — and
 the display rounds to whole knots, so nothing a reader can see is lost.
 
-Layout of `HHH-hash.bin`, a 24-byte header then one block per variable:
+Whole frames are no longer published: every wind frame goes out as a pyramid
+of tiles (f5tile.py, written by `publish_frame` below), whose blocks use this
+module's rounding, deltas and sidecars. The whole-frame format is kept as the
+reference those tiles are tested against, and for the golden fixture.
+
+Layout of a whole frame, a 24-byte header then one block per variable:
 
     0   4  magic "F5F1"
     4   1  version (1)
@@ -22,8 +27,9 @@ The header length is even because the browser views the payload as an
 `Int16Array` at that offset, and an odd offset throws. It carries only what makes
 a frame from the wrong run or the wrong hour recognisable on its own; the grid
 geometry, valid time, gust window and model stay in the manifest, which is where
-they always were, and the file name still ends in its content hash, so every
-published object is still immutable.
+they always were, and the run directory the frame sits in is named for the hash
+of everything inside it (rundir.py), so every published object is still
+immutable.
 
 Two rules the encoder and both decoders (Python here, TypeScript in
 `force5/src/f5bin.ts` and `scripts/f5bin.mjs`) must agree on exactly:
@@ -43,7 +49,6 @@ Deltas run **along a row** (west to east), the axis that measured smallest over
 the real HARMONIE, ICON-EU, ECMWF and GFS runs of 17 September 2026; see
 docs/FORECAST_DATA_PLAN.md for the numbers.
 """
-import hashlib
 import os
 from pathlib import Path
 import struct
@@ -259,14 +264,19 @@ def write_with_sidecars(path, data, quality=None, sidecars=None):
     per object, chosen by `publish_s3.put_immutable` — which reuses the `.br`
     sidecar when one is here, rather than compressing the same bytes twice.
 
-    Each file is replaced atomically, and the frame itself is written first, so
-    a job killed part way leaves a readable frame with no sidecar rather than a
-    sidecar that does not match the frame beside it. Caddy falls back to the
-    plain file when a sidecar is absent, so that state serves correctly too.
+    Each file is replaced atomically. Any sidecar already beside the path goes
+    first, then the frame itself is written, then its new sidecars: so a job
+    killed part way leaves a readable frame with no sidecar rather than a
+    sidecar that does not match the frame beside it, and a staging directory
+    reused by a job with sidecars turned off (an interrupted import, retried
+    with `FORCE5_SIDECARS=0`) keeps none of the old run's. Caddy falls back to
+    the plain file when a sidecar is absent, so that state serves correctly too.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     wanted = sidecars_wanted() if sidecars is None else sidecars
+    for suffix in SIDECARS:
+        Path(str(path) + suffix).unlink(missing_ok=True)
     bodies = {"": data, **(compress(data, quality) if wanted else {})}
     for suffix, body in bodies.items():
         target = Path(str(path) + suffix)
@@ -275,36 +285,21 @@ def write_with_sidecars(path, data, quality=None, sidecars=None):
         os.replace(temporary, target)
 
 
-def basename(hour, data):
-    """A frame's file name: its hour, then the hash of its own bytes."""
-    return f"{hour:03d}-{hashlib.sha256(data).hexdigest()[:12]}.bin"
-
-
-def frame_name(prefix, hour, data):
-    """Where a frame is published, under its run directory."""
-    return f"{prefix}/{basename(hour, data)}"
-
-
-def names_these_bytes(name, hour, data):
-    """Does this published file name say it holds exactly these bytes, at this hour?
-
-    Every binary frame is content-addressed, so its name is checkable in a way a
-    JSON frame's never was: the reader can confirm the file is the one the
-    manifest meant rather than another frame moved into its place. The validator
-    uses it as an integrity check, and it is also the only thing that ties a
-    binary frame's *hour* to its name.
-    """
-    return name == basename(hour, data)
-
-
 def publish_frame(output, prefix, payload):
-    """Encode, name and write one wind frame. Returns the manifest's `weather/…` name.
+    """Write one wind frame as its tile pyramid. Returns the paths written under `output`.
 
-    Every wind adapter calls this where it used to hash a JSON payload and call
-    `write_json`, so the frame format lives in one place rather than ten.
+    Every wind adapter calls this once per hour, so the frame format lives in
+    one place rather than ten. A frame is no longer one file: it is every tile of
+    every level (f5tile.py), at `<prefix>/t/{level}/{x}/{y}/{hour:03d}.bin`. All
+    of them are written, the all-missing ones too, because whether a tile is
+    absent is decided per run, once every hour is in (`rundir.write_run`). The
+    adapter's manifest lists the frame with no `url`; the run's `tiles` block
+    says where its tiles are.
     """
+    import f5tile  # f5tile is built on this module.
+
     with timing.phase("write"):
-        data = encode_frame(payload)
-        name = frame_name(prefix, payload["hour"], data)
-        write_with_sidecars(Path(output) / name, data)
-    return name
+        _, written = f5tile.write_pyramid(
+            Path(output) / prefix, payload["grid"], payload["u"], payload["v"],
+            payload.get("gust"), payload["hour"], payload["run"], keep_empty=True)
+    return sorted(f"{prefix}/{path}" for path in written)

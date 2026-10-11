@@ -31,7 +31,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 
-from prune import ARCHIVE_ROOT, is_archived
+from prune import ARCHIVE_ROOT, decode_body, is_archived
 
 # A merge is read-modify-write. Two archive jobs never run at once by schedule, but
 # a retried container could overlap its predecessor, so the bucket write is
@@ -150,9 +150,7 @@ class BucketArchive:
             if error_code(error) in MISSING_CODES:
                 return None, None
             raise
-        body = response["Body"].read()
-        if response.get("ContentEncoding") == "gzip":
-            body = gzip.decompress(body)
+        body = decode_body(response["Body"].read(), response.get("ContentEncoding"))
         return json.loads(body), response.get("ETag")
 
     def read(self, key):

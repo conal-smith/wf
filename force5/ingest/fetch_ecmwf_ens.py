@@ -20,10 +20,11 @@ import threading
 import eccodes as ec
 
 from cadence import ladder_hours
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
-from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample, write_json
+from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
@@ -284,9 +285,8 @@ def main():
         payload = {"model": "ecmwf-ens", "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": gust, "gustIntervalHours": interval, **mean}
         if with_frames:
-            name = publish_frame(output, prefix, payload)
-            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                           "gustIntervalHours": interval})
+            publish_frame(output, prefix, payload)
+            frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
         for spot in spots:
             lon, lat = spot["lon"], spot["lat"]
             spot_forecasts[spot["id"]].append({
@@ -311,7 +311,7 @@ def main():
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "stepRanges": ranges, "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+        "stepRanges": ranges, "grid": layout[2], "frames": frames,
         "spotForecasts": spot_forecasts, "spotMembers": spot_members,
         "ensemble": {"members": len(members), "control": None,
                      "description": f"Perturbed members 1–{len(members)} of ECMWF's open-data "
@@ -343,7 +343,7 @@ def main():
     if not with_frames:
         # A cadence ladder and a missing +0h gust both describe frames from +0h.
         del manifest["stepRanges"], manifest["gustMissingHours"]
-    write_json(output / "ecmwf-ens.json", manifest)
+    write_run(output, "ecmwf-ens.json", manifest, prefix, spots)
     cached = sum(path.stat().st_size for path in paths)
     print(f"Published {len(frames)} ECMWF ENS mean frames and {len(spots)} member series to "
           f"{output / 'ecmwf-ens.json'}", flush=True)

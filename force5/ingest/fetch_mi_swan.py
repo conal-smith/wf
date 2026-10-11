@@ -25,9 +25,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import csv
 from datetime import datetime, timedelta, timezone
-import hashlib
 import io
-import json
 import math
 import os
 from pathlib import Path
@@ -42,6 +40,8 @@ from fetch_forecast import ROOT, load_spots, published_in_bucket, write_json
 # The tide adapter already reads this ERDDAP's CSV dialect; share its helpers.
 from fetch_tides import distance_km, moment, rows as erddap_rows, stamp
 from registry import UNCHANGED_EXIT
+from rundir import frame_name, write_run
+from squares import SPOT_KEYS
 import timing
 
 ERDDAP = "https://erddap.marine.ie/erddap"
@@ -438,9 +438,10 @@ def build(args, infos, run, cache, now):
 
     grid, frames = None, []
     output = ROOT / "public" / "weather"
+    # The run directory, framed or not: the spot squares are written into it too.
+    directory = f"mi-swan-{run.strftime('%Y%m%d%H')}-{args.hours}h-v1"
     if args.frames:
         grid, longitudes, latitudes = frame_grid(infos[SHELF]["bounds"])
-        directory = f"mi-swan-{run.strftime('%Y%m%d%H')}-{args.hours}h-v1"
         timing.start("download", workers=CONCURRENCY)
         with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
             fields = list(pool.map(lambda hour: frame_fields(SHELF, run, hour, longitudes,
@@ -450,8 +451,7 @@ def build(args, infos, run, cache, now):
             when = stamp(run + timedelta(hours=hour))
             frame = {"model": "mi-swan", "run": run.strftime("%Y%m%d%H"), "hour": hour,
                      "validTime": when, "grid": grid, **values}
-            body = json.dumps(frame, separators=(",", ":"), allow_nan=False).encode()
-            name = f"{directory}/{hour:03d}-{hashlib.sha256(body).hexdigest()[:12]}.json"
+            name = frame_name(directory, hour, "json")
             write_json(output / name, frame)
             frames.append({"hour": hour, "validTime": when, "url": f"weather/{name}"})
         print(f"  {len(frames)} frames of {grid['width']} x {grid['height']} cells", flush=True)
@@ -484,7 +484,7 @@ def build(args, infos, run, cache, now):
         "sourceHistory": attributes.get("history"),
         "sourceTimeRange": {"from": attributes.get("time_coverage_start"),
                             "to": attributes.get("time_coverage_end")},
-        "variables": VARIABLES, "frames": frames, "spotSeries": series, "spots": records,
+        "variables": VARIABLES, "frames": frames, "spotSeries": series, "spotCells": records,
         "processing": describe(args.step, args.hours, bool(frames), records),
         "source": f"Marine Institute ERDDAP griddap {SHELF}"
                   + (f" and {NEST}" if NEST in infos else ""),
@@ -496,10 +496,11 @@ def build(args, infos, run, cache, now):
         manifest["grid"] = grid
         manifest["frameVariables"] = list(FRAME_VARIABLES)
     # Only this final atomic write advances the published wave forecast.
-    write_json(output / "mi-swan.json", manifest)
+    pointer = write_run(output, "mi-swan.json", manifest, directory, spots)
     print(f"Published {len(hours)} steps for {len(spots)} locations to "
           f"{output / 'mi-swan.json'}", flush=True)
-    return manifest
+    # What a reader of the published run sees: the pointer, with its squares merged in.
+    return {**pointer, **{key: manifest[key] for key in SPOT_KEYS if key in manifest}}
 
 
 def main(argv=None):

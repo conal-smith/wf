@@ -39,10 +39,12 @@ NOAA_MODELS = ("gefs",)
 
 
 def drop_superseded(public):
-    """Delete every run no manifest points at, now that the new one is published.
+    """Delete every run no manifest needs, now that the new one is published.
 
-    Only the newest run of a model is ever served, so the one it replaced is
-    junk the moment the new manifest is in place. This runs under the workspace
+    Only the newest run of a model is ever served, but the run it replaced is
+    named under the new pointer's `superseded` and kept for the grace period
+    (prune.py), because readers still hold the old pointer for a few minutes;
+    the hourly prune job collects it after that. This runs under the workspace
     lock, so no other import can be half-way through writing a run directory.
     A failure here is logged and never fails the forecast that just landed.
     """

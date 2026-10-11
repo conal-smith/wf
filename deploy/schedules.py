@@ -77,6 +77,8 @@ RESOURCES = {
     "verify": {"cpu": "1", "memory": "2Gb", "disk": "2Gb"},
 }
 SWEEP = {"cpu": "0.5", "memory": "512Mb", "disk": "1Gb"}
+# When the bucket sweep runs, every hour (scheduled()).
+SWEEP_MINUTES = [10]
 
 # Cloudflare sizes, named here and defined in deploy/cloudflare/src/index.ts.
 # Memory and disk are billed for the whole run, so each job gets the smallest
@@ -134,7 +136,7 @@ def slots(job):
 
 def describe(job):
     if job["command"] == "prune":
-        return "Sweep the bucket for objects no manifest references"
+        return "Sweep the bucket: superseded runs past their grace, and objects nothing references"
     return " + ".join(DESCRIPTIONS.get(model, model) for model in job["models"])
 
 
@@ -144,9 +146,12 @@ def scheduled(jobs):
         if job["command"] == "status":
             continue
         if job["command"] == "prune":
-            # The worker already deletes what a new run supersedes; the sweep only
-            # catches what a failed upload left, so once a day is plenty.
-            job = {**job, "hours": [2], "minutes": [10]}
+            # The bucket sweep is what deletes a superseded run directory once its
+            # grace period is over: the publisher deletes nothing. Run once a day, it
+            # left each one in the bucket for 6-30 hours; hourly, past its six-hour
+            # age guard, it is 6-7. The slot is fixed rather than jobs.toml's (where
+            # `prune` is the local retention job), at a minute no other job uses.
+            job = {**job, "hours": list(range(24)), "minutes": SWEEP_MINUTES}
         yield job
 
 

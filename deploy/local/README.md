@@ -106,7 +106,7 @@ in UTC. The shipped schedule is:
 | `wind-obs`        | every hour at :50  | Met Éireann and buoy wind observations, last 72 h     |
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
-| `prune`           | 05:10 daily        | retention (see below)                                 |
+| `prune`           | every hour at :10  | retention (see below)                                 |
 | `status`          | every hour at :55  | a freshness line in the log                           |
 
 Six models are **retired** to keep the home connection's downloads near 80 GB a
@@ -162,12 +162,15 @@ job in its final column; see "Where a job's time goes" in
 
 ## 5. Retention
 
-Only the newest run of each model is kept. As soon as a new run has fully arrived and
+Only the newest run of each model is served. As soon as a new run has fully arrived and
 passed validation, the worker deletes every published object that **no current manifest
-references**: the run directory it just replaced under `weather/`, and superseded
-station files under `marine/`. Nothing old is held "just in case"; a browser tab that
-asks for a frame of a deleted run moves itself to the newest run instead of showing an
-error.
+references** — superseded station files under `marine/`, the wreckage of a failed
+import — except a run directory a pointer replaced less than an hour ago: the new
+pointer names it under `superseded`, because a browser tab, the CDN or the forecast
+server can still hold the old pointer for a few minutes, and the hourly `prune` job
+deletes it once the hour is up (`--grace-minutes`, or
+`FORCE5_SUPERSEDED_GRACE_MINUTES`). A browser tab that still meets a deleted run moves
+itself to the newest run instead of showing an error.
 
 `prune` is the scheduled backstop (hourly in `jobs.toml`). It does the same sweep, and
 also removes anything left under `.cache` older than `FORCE5_CACHE_DAYS` (default 1). Raw
@@ -197,6 +200,30 @@ npm run deploy:up             # recreates the containers; the volume is untouche
 
 Published data lives in the volume, not in the images, so rebuilding never discards a
 forecast. A new frontend build changes only `dist/` inside `force5-web:local`.
+
+**After an upgrade that changes the published format, run every enabled job once.**
+The upgrade to run directories and spot squares (schemaVersion 2,
+[docs/TILING_DESIGN.md](../../docs/TILING_DESIGN.md)) is one: the new site refuses the
+old version 1 pointers still in the volume, so each model reads as unavailable until its
+next run replaces its pointer — for HARMONIE, scheduled at 06 and 12 UTC, that is up to
+18 hours of a map that will not open. The blend leaves an old pointer out and names it
+(`blend_input_refused` in the log) rather than failing. Run everything at once instead,
+with the scheduler stopped so a slot cannot collide with a manual job over the worker's
+lock:
+
+```sh
+docker compose -f deploy/local/docker-compose.yml stop scheduler
+npm run deploy:once            # every enabled job in jobs.toml, in file order, then exits
+docker compose -f deploy/local/docker-compose.yml start scheduler
+```
+
+`deploy:once` is `scheduler.py --once`: the wind models first, then the blend, the
+archive, verification and the prune, as the file orders them. It takes as long as all
+the downloads (HARMONIE alone is about 810 MB) and exits nonzero if any job failed; the
+log names it. Afterwards every pointer in the volume (`weather/*.json`) should carry
+`"schemaVersion": 2` and a `"base"`. Setting
+`FORCE5_RUN_AT_START=1` in `deploy/local/.env` does the same each time the scheduler
+starts.
 
 ## 7. Back up (and restore) the volume
 

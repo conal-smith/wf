@@ -8,12 +8,18 @@ runs is bundled, and the adapters derive each spot series from nothing except th
 frame grids and `sample()`. So the missing series are recoverable exactly, with no
 new source data and no change to any immutable frame.
 
-This tool reads a manifest, re-derives every spot's series from the frames it
-already references, and rewrites only `spotForecasts` (wind) or `spotSeries`
-(wave). Spots that are already published are checked against the recomputation
-and then kept byte-for-byte: a disagreement means the frames and the manifest
-describe different data, which is a corrupt bundle rather than something to
-paper over, so the run aborts without writing.
+This tool reads a manifest and its spot squares, re-derives every spot's series
+from the frames it already references, and rewrites only `spotForecasts` (wind)
+or `spotSeries` (wave). Spots that are already published are checked against
+the recomputation and then kept byte-for-byte: a disagreement means the frames
+and the manifest describe different data, which is a corrupt bundle rather than
+something to paper over, so the run aborts without writing.
+
+A run directory is never rewritten (rundir.py), so the new series are published
+as a new one: the frames are linked into it unchanged, the squares are written
+afresh, it is named for its new content, and the pointer moves to it. The old
+directory is left whole for the pruner, so a reader holding the old pointer can
+still read everything it names.
 
     .venv/bin/python force5/ingest/backfill_spots.py --all --check
     .venv/bin/python force5/ingest/backfill_spots.py harmonie icon-eu ecmwf gfs
@@ -21,15 +27,16 @@ paper over, so the run aborts without writing.
 Ensemble manifests are refused: `spotMembers` holds per-member values and the
 bundled frames are the ensemble mean, so the members are not recoverable.
 
-Binary frames (`encoding: "f5-int16-v1"`) are decoded and resampled the same way,
-but they store tenths of a metre per second while an adapter's own series was
+A wind run's frames are tiles (f5tile.py): each spot is sampled from the one
+native tile holding it, which gives exactly what sampling the whole frame did.
+The tiles store tenths of a metre per second while an adapter's own series was
 sampled from the full-precision field, so recomputation over them agrees only to
 `BINARY_TOLERANCE` rather than to rounding noise. That looser limit applies to a
-binary manifest and to nothing else.
+tiled wind run and to nothing else.
 
-**A series this tool adds to a binary bundle is therefore coarser than one the
+**A series this tool adds to a wind run is therefore coarser than one the
 adapter published.** The adapter sampled the source field; this samples the
-quantised frame, because the source is long gone — that is the whole point of
+quantised tiles, because the source is long gone — that is the whole point of
 the tool. The difference is at most 0.06 m/s, well under a tenth of a knot, and
 it is invisible in the table and the chart. It is worth knowing about anyway:
 a backfilled spot's series and a freshly ingested one are not byte-identical,
@@ -40,10 +47,12 @@ import json
 from pathlib import Path, PurePosixPath
 import sys
 
-import f5bin
-from fetch_forecast import ROOT, load_spots, sample, spots_file, write_json
-from publish_s3 import frame_encoding, referenced
+import f5tile
+from fetch_forecast import ROOT, load_spots, spots_file
+from publish_s3 import run_file
 from registry import MANIFESTS, MODELS
+from rundir import FRAMES, rewrite_run
+from squares import with_spot_data
 
 WIND_FIELDS = ("u", "v", "gust")
 # The manifest's own agreement limit: recomputation is deterministic, so anything
@@ -59,32 +68,29 @@ BINARY_TOLERANCE = 0.06
 
 
 def tolerance(manifest):
-    """How far a recomputed value may sit from its published one, per encoding."""
-    return BINARY_TOLERANCE if frame_encoding(manifest) else TOLERANCE
+    """How far a recomputed value may sit from its published one: looser for tiles."""
+    return BINARY_TOLERANCE if "tiles" in manifest else TOLERANCE
 
 
 def read_frame(public, model, manifest, info):
     """One referenced frame, through the publisher's own unsafe-path guard.
 
-    `referenced` requires the run directory to be named for this model, which is
-    what establishes a binary frame's model — the file itself does not carry one.
-    Its header carries the run, the hour and the grid size, and its name is the
-    hash of its own bytes, so a file from the wrong step or with the wrong
-    contents is refused. The valid time is the manifest's, as it is for JSON.
+    `run_file` requires the run directory to be named for this model, which is
+    what establishes a tile's model — the file itself does not carry one, and
+    the run directory's name is the hash of its content. A wind frame comes
+    back as `f5tile.FrameTiles`, which reads the tiles a sample needs and checks
+    each header's run, hour, level and place; a wave frame is its JSON, checked
+    for its hour, valid time and model.
     """
-    _, data = referenced(public, info["url"], model, 3)
-    if frame_encoding(manifest):
-        decoded = f5bin.decode_frame(data)
-        if (decoded["run"], decoded["hour"]) != (manifest["run"], info["hour"]):
-            raise ValueError(f"{info['url']} is not the frame the manifest lists at "
-                             f"+{info['hour']}h of run {manifest['run']}")
-        if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, info["hour"], data):
-            raise ValueError(f"{info['url']} does not hold the frame its name claims")
-        grid = manifest["grid"]
-        if (decoded["width"], decoded["height"]) != (grid["width"], grid["height"]):
-            raise ValueError(f"{info['url']} does not match the published grid")
-        return {"model": model, "hour": decoded["hour"], "validTime": info["validTime"],
-                "grid": grid, "u": decoded["u"], "v": decoded["v"], "gust": decoded["gust"]}
+    if "tiles" in manifest:
+        if "url" in info:
+            raise ValueError(f"{info['url']} is not where the frame at +{info['hour']}h belongs: "
+                             "a wind frame is its tiles")
+        return f5tile.FrameTiles(
+            manifest, info, lambda relative: run_file(public, model, manifest, relative)[1])
+    if PurePosixPath(info["url"]) != PurePosixPath(FRAMES, f"{info['hour']:03d}.json"):
+        raise ValueError(f"{info['url']} is not where the frame at +{info['hour']}h belongs")
+    _, data = run_file(public, model, manifest, info["url"])
     frame = json.loads(data)
     if (frame.get("hour"), frame.get("validTime")) != (info["hour"], info["validTime"]):
         raise ValueError(f"{info['url']} is not the frame the manifest lists at "
@@ -101,33 +107,33 @@ def field_order(published, fields):
 
 
 def wind_series(manifest, model, public, spots, order):
-    """Every spot's u/v/gust series, sampled from the frames as the adapters do."""
+    """Every spot's u/v/gust series, sampled from the native tiles as the adapters do."""
+    if "tiles" not in manifest:
+        raise ValueError(f"{model} publishes its wind frames as tiles, and this run has none")
     gust_available = manifest.get("gustAvailable") is not False
     missing_gust_hours = manifest.get("gustMissingHours", [])
     series = {spot["id"]: [] for spot in spots}
     for info in manifest["frames"]:
         frame = read_frame(public, model, manifest, info)
-        grid, hour = frame["grid"], frame["hour"]
+        hour = info["hour"]
         # A gust the manifest declares absent is null everywhere, never zero; a
-        # gust it declares present must actually be in the frame.
+        # gust it declares present must actually be in the tiles, which
+        # FrameTiles checks against the frame's gust window.
         gust_missing = not gust_available or hour in missing_gust_hours
-        fields = {}
-        for field in WIND_FIELDS:
-            values = frame.get(field)
-            if field == "gust" and gust_missing:
-                if values is not None:
-                    raise ValueError(f"+{hour}h carries a gust the manifest calls unavailable")
-                values = None
-            elif values is None:
-                raise ValueError(f"+{hour}h is missing its {field} field")
-            fields[field] = values
+        if gust_missing and info.get("gustIntervalHours") is not None:
+            raise ValueError(f"+{hour}h carries a gust the manifest calls unavailable")
+        if not gust_missing and info.get("gustIntervalHours") is None:
+            raise ValueError(f"+{hour}h is missing its gust field")
         for spot in spots:
             # A spot outside the grid samples to None, exactly as ECMWF and GFS
             # publish it: no clamping to the edge and no invented value.
-            point = {field: None if fields[field] is None
-                     else sample(grid, fields[field], spot["lon"], spot["lat"])
-                     for field in order}
-            series[spot["id"]].append({"hour": hour, "validTime": frame["validTime"], **point})
+            # Rounded to hundredths, as `fetch_forecast.sample` rounds every series.
+            wind = {field: None if value is None else round(value, 2)
+                    for field, value in (frame.sample(spot["lat"], spot["lon"]) or {}).items()}
+            values = {"u": wind.get("u"), "v": wind.get("v"),
+                      "gust": None if gust_missing else wind.get("gust")}
+            point = {field: values[field] for field in order}
+            series[spot["id"]].append({"hour": hour, "validTime": info["validTime"], **point})
     return series
 
 
@@ -200,7 +206,7 @@ def backfill(public, model, spots=None, check=False, log=print):
     """
     public = Path(public).resolve()
     path = public / MANIFESTS[model]
-    manifest = json.loads(path.read_text())
+    manifest = read_run(path)
     kind = manifest.get("kind", "wind")
     if kind != MODELS[model]["kind"]:
         raise ValueError(f"{model} manifest declares kind {kind!r}, "
@@ -260,10 +266,18 @@ def backfill(public, model, spots=None, check=False, log=print):
     if check or not added:
         return added
     # Assigning an existing key keeps its position, so the manifest's shape is
-    # unchanged apart from the series themselves.
+    # unchanged apart from the series themselves; the run is then published again
+    # as a new run directory, named for its new content.
     manifest[key] = series
-    write_json(path, manifest)
+    rewrite_run(path.parent, path.name, manifest, spots)
     return added
+
+
+def read_run(path):
+    """A local pointer with its spot squares merged back in."""
+    pointer = json.loads(Path(path).read_text())
+    return with_spot_data(pointer, lambda relative: json.loads(
+        (Path(path).parent / relative).read_text()))
 
 
 def backfillable_models(public, log=print):
@@ -279,7 +293,8 @@ def backfillable_models(public, log=print):
         if entry["kind"] not in ("wind", "wave") or not path.exists():
             continue
         manifest = json.loads(path.read_text())
-        if manifest.get("spotMembers") is not None or manifest.get("ensemble") is not None:
+        keys = (manifest.get("spots") or {}).get("keys") or []
+        if "spotMembers" in keys or manifest.get("ensemble") is not None:
             log(f"{model}: an ensemble's members cannot be recomputed from mean frames. Skipped.")
             continue
         models.append(model)

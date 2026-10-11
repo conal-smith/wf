@@ -7,14 +7,17 @@
  *
  * The forecast is the one piece of weather the community touches, and the
  * browser fetches it: the API stores the spot's id and knows nothing about
- * weather. It is read from the series the map's manifest already publishes for
- * every riding location, so there is no frame to load and no grid to sample,
- * and rated by the same stars the dock and the spot page draw, for the rider
+ * weather. It is read from the series the map's model already publishes for
+ * every riding location — the one spot square holding this spot, through the
+ * same loader the map uses (force5/src/spotData.ts) — so there is no frame to
+ * load and no grid to sample, and rated by the same stars the dock and the
+ * spot page draw, for the rider
  * the reader has set on the map. Without it the card is the name and the link,
  * which is all it has to be.
  */
 import { ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { readForecastJson } from "../../../force5/src/manifests";
 import { loadPrefs } from "../../../force5/src/prefs";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
 import {
@@ -23,6 +26,7 @@ import {
   type HourRating,
   type Rider,
 } from "../../../force5/src/stars";
+import { loadSpotSquares, spotSquare } from "../../../force5/src/spotData";
 import { dayNights } from "../../../force5/src/sun";
 import { forecastUrl } from "../../../force5/src/urls";
 import {
@@ -32,6 +36,7 @@ import {
   nearestFrame,
   speed,
   type Manifest,
+  type WindSpotData,
 } from "../../../force5/src/weather";
 import { mapSpotHref } from "../../../force5/src/siteNav";
 import { windStop } from "../../../shared/web/windStops";
@@ -335,8 +340,10 @@ export function SpotCardView({ spot, reading, outlook }: SpotCardViewProps) {
   );
 }
 
-/** One spot's hours, as the manifest holds them. */
-type SpotSeries = Manifest["spotForecasts"][string];
+/** One spot's hours, as its spot square holds them. */
+type SpotSeries = WindSpotData["spotForecasts"][string];
+/** Where the map's model is published; its run directory is relative to it. */
+const HARMONIE = "weather/harmonie.json";
 
 /**
  * The spot behind an id, and its wind once the spot is known. Both files are
@@ -353,21 +360,66 @@ type SpotSeries = Manifest["spotForecasts"][string];
  * card: a thread list or a long thread can name the same spot many times.
  */
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
-let harmonie: { at: number; manifest: Promise<Manifest | null> } | null = null;
-function harmonieManifest(): Promise<Manifest | null> {
-  if (harmonie && Date.now() - harmonie.at < MANIFEST_TTL_MS)
+let harmonie: {
+  at: number;
+  manifest: Promise<Manifest | null>;
+  /** The manifest once it is in, so a card can tell whether it is the one it read. */
+  value?: Manifest | null;
+} | null = null;
+/**
+ * The manifest, cached for the page. `gone` is one whose run's square could
+ * not be read: that run may have been replaced and its directory deleted, so it
+ * is asked for again — once, however many cards held it.
+ */
+function harmonieManifest(gone?: Manifest): Promise<Manifest | null> {
+  if (
+    harmonie &&
+    Date.now() - harmonie.at < MANIFEST_TTL_MS &&
+    !(gone && harmonie.value === gone)
+  )
     return harmonie.manifest;
-  const manifest = fetch(forecastUrl("weather/harmonie.json"), {
+  const manifest = fetch(forecastUrl(HARMONIE), {
     cache: "no-cache",
   })
     .then((reply) => (reply.ok ? (reply.json() as Promise<Manifest>) : null))
     .catch(() => null);
-  harmonie = { at: Date.now(), manifest };
+  const entry: NonNullable<typeof harmonie> = { at: Date.now(), manifest };
+  harmonie = entry;
   // A failure is not kept: the next card asks again.
   void manifest.then((m) => {
-    if (!m && harmonie?.manifest === manifest) harmonie = null;
+    entry.value = m;
+    if (!m && harmonie === entry) harmonie = null;
   });
   return manifest;
+}
+
+/** For tests: forget the page's manifest. */
+export const forgetSpotCardManifest = () => {
+  harmonie = null;
+};
+
+/**
+ * One spot's hours from the map's model, from the square holding it, or null
+ * when the model cannot be had. A square that cannot be read is tried once
+ * more from the run the manifest, read again, names now.
+ */
+export async function readSpotSeries(
+  spotId: string,
+  square: string,
+): Promise<SpotSeries | null> {
+  const manifest = await harmonieManifest();
+  if (!manifest) return null;
+  const read = (run: Manifest) =>
+    loadSpotSquares<WindSpotData>(readForecastJson, HARMONIE, run, [square]);
+  let data: WindSpotData;
+  try {
+    data = await read(manifest);
+  } catch (error) {
+    const fresh = await harmonieManifest(manifest);
+    if (!fresh || fresh.base === manifest.base) throw error;
+    data = await read(fresh);
+  }
+  return data.spotForecasts?.[spotId] ?? null;
 }
 
 export function useSpotCard(
@@ -400,20 +452,27 @@ export function useSpotCard(
   }, [spotId]);
 
   // Only for a spot the map lists: a thread naming a place the map does not
-  // know has no reading to show, and no reason to download the forecast.
+  // know has no reading to show, and no reason to download the forecast. The
+  // one square that holds the spot is all that is read of it.
   const knownId = spot?.id ?? null;
+  const square =
+    spot && spot.lat !== undefined && spot.lon !== undefined
+      ? spotSquare(spot.lat, spot.lon)
+      : null;
   useEffect(() => {
     setSeries(null);
-    if (!knownId) return;
+    if (!knownId || !square) return;
     let current = true;
-    harmonieManifest().then((manifest) => {
-      if (current && manifest)
-        setSeries(manifest.spotForecasts?.[knownId] ?? null);
-    });
+    readSpotSeries(knownId, square).then(
+      (found) => {
+        if (current && found) setSeries(found);
+      },
+      () => {},
+    );
     return () => {
       current = false;
     };
-  }, [knownId]);
+  }, [knownId, square]);
 
   const reading = useMemo(
     () =>

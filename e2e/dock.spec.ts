@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
-import { encodeFrame } from "../scripts/f5bin.mjs";
+import { buildPyramid } from "../scripts/f5tile.mjs";
+import { readFileSync } from "node:fs";
+import { spotSquare } from "../force5/src/squares";
 
 const harmonie = readSample("harmonie");
 
@@ -552,19 +554,20 @@ test("an hour past the map's model offers the run that reaches it", async ({
 });
 
 /**
- * A newer HARMONIE run, 16 UTC to the bundled 13 UTC, with frames of its own:
- * a frame carries its run and hour and is checked against the manifest that
- * named it, which is what makes an atomic swap safe.
+ * A newer HARMONIE run, 16 UTC to the bundled 13 UTC, in a run directory of its
+ * own with tiles and spot squares of its own: a tile carries its run, hour and
+ * place and is checked against the manifest that named it, and a square names
+ * its run, which is what makes an atomic swap safe.
  */
 const NEWER_RUN = "2026091316";
 const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
-const NEWER_RUN_DIR = `weather/harmonie-${NEWER_RUN}-24h-test`;
+const NEWER_BASE = `harmonie-${NEWER_RUN}-24h-v1-0a1b2c3d/`;
+const NEWER_RUN_DIR = `weather/${NEWER_BASE}`.slice(0, -1);
 const newerValidTime = (hour: number) =>
   new Date(Date.parse(NEWER_RUN_TIME) + hour * 3600000).toISOString();
 const newerFrames = Array.from({ length: 25 }, (_, hour) => ({
   hour,
   validTime: newerValidTime(hour),
-  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.bin`,
   gustIntervalHours: null,
 }));
 const newerHarmonie = {
@@ -572,11 +575,23 @@ const newerHarmonie = {
   run: NEWER_RUN,
   runTime: NEWER_RUN_TIME,
   generatedAt: NEWER_RUN_TIME,
+  base: NEWER_BASE,
   frames: newerFrames,
+};
+/** One square of the newer run: every riding location in it, a steady wind. */
+const places: { id: string; lat: number; lon: number }[] = JSON.parse(
+  readFileSync("public/riding-locations.json", "utf8"),
+);
+const newerSquare = (square: string) => ({
+  schemaVersion: 2,
+  model: "harmonie",
+  run: NEWER_RUN,
+  square,
   spotForecasts: Object.fromEntries(
-    Object.keys(harmonie.spotForecasts as Record<string, unknown>).map(
-      (spot) => [
-        spot,
+    places
+      .filter((place) => spotSquare(place.lat, place.lon) === square)
+      .map((place) => [
+        place.id,
         newerFrames.map((frame, column) => ({
           hour: frame.hour,
           validTime: frame.validTime,
@@ -584,31 +599,50 @@ const newerHarmonie = {
           v: -4,
           gust: null,
         })),
-      ],
-    ),
+      ]),
   ),
-};
-const CELLS = harmonie.grid.width * harmonie.grid.height;
-const newerFrame = (hour: number) => ({
-  model: "harmonie",
-  run: NEWER_RUN,
-  hour,
-  validTime: newerValidTime(hour),
-  grid: harmonie.grid,
-  gustIntervalHours: null,
-  u: Array.from({ length: CELLS }, () => 6),
-  v: Array.from({ length: CELLS }, () => -4),
-  gust: null,
 });
-async function withNewerRunFrames(page: Page) {
-  await page.route(`**/${NEWER_RUN_DIR}/*`, (route) => {
-    const hour = Number(
-      /(\d+)\.bin$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
+const CELLS = harmonie.grid.width * harmonie.grid.height;
+/** Every tile of one hour of the newer run: a steady wind, written as the site's are. */
+const newerTiles = new Map<number, Map<string, Buffer>>();
+function newerTile(level: number, x: number, y: number, hour: number) {
+  if (!newerTiles.has(hour)) {
+    const { tiles } = buildPyramid(
+      harmonie.grid,
+      {
+        u: Array.from({ length: CELLS }, () => 6),
+        v: Array.from({ length: CELLS }, () => -4),
+      },
+      hour,
+      NEWER_RUN,
+      { size: harmonie.tiles.size },
     );
-    return route.fulfill({
-      body: encodeFrame(newerFrame(hour)),
-      contentType: "application/octet-stream",
-    });
+    newerTiles.set(
+      hour,
+      new Map(tiles.map((tile) => [`${tile.level}/${tile.x}/${tile.y}`, tile.bytes])),
+    );
+  }
+  return newerTiles.get(hour)!.get(`${level}/${x}/${y}`);
+}
+async function withNewerRunFrames(page: Page) {
+  await page.route(`**/${NEWER_RUN_DIR}/t/**`, (route) => {
+    const [level, x, y, hour] = (
+      /\/t\/(\d+)\/(\d+)\/(\d+)\/(\d+)\.bin$/.exec(
+        new URL(route.request().url()).pathname,
+      ) ?? []
+    )
+      .slice(1)
+      .map(Number);
+    const body = newerTile(level, x, y, hour);
+    return body
+      ? route.fulfill({ body, contentType: "application/octet-stream" })
+      : route.fulfill({ status: 404, body: "Not found" });
+  });
+  await page.route(`**/${NEWER_RUN_DIR}/spots/*`, (route) => {
+    const square = /([ns]\d{2}[ew]\d{3})\.json$/.exec(
+      new URL(route.request().url()).pathname,
+    )?.[1];
+    return route.fulfill({ json: newerSquare(square ?? "") });
   });
 }
 
@@ -648,6 +682,46 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   await expect(slider(page)).toHaveAttribute("aria-valuetext", showing);
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("a tab whose run's tiles have gone moves to the run its pointer names now", async ({
+  page,
+}) => {
+  // The run on screen is superseded and, past its grace period, deleted while
+  // the tab still shows it: the next tiles it needs answer 404. The tab finds
+  // the newer run then, not at its next five-minute check.
+  let published = harmonie;
+  let deleted = false;
+  await withTides(page);
+  await withNewerRunFrames(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({ json: published }),
+  );
+  await page.route(`**/weather/${harmonie.base}t/**`, (route) =>
+    deleted
+      ? route.fulfill({ status: 404, body: "Not found" })
+      : route.fallback(),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  // An hour of the reader's own, so nothing but the map's view asks for tiles.
+  const ahead =
+    sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;
+  await page.locator(`.dock tr.tt-wing td[data-i="${ahead}"]`).click();
+  await expect(slider(page)).toHaveValue(String(ahead));
+  await expect(page.locator(".frame-status")).toHaveCount(0, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  // All of Ireland on a phone is drawn from overview tiles; a bay needs native
+  // ones, which nothing has read yet.
+  published = newerHarmonie;
+  deleted = true;
+  await page.locator('[data-spot-id="dollymount"]').dispatchEvent("click");
+  await expect(page.locator(".frame-status")).toContainText(
+    "Updated to the 16:00 UTC run",
+    { timeout: 20000 },
+  );
 });
 
 test("a tab coming back lands on now, unless the reader chose a later hour", async ({

@@ -4,6 +4,7 @@ import {
   ECMWF_WAVE_VARIABLES,
   GFS_WAVE_VARIABLES,
   SWAN_VARIABLES,
+  pointerOf,
   waveManifest,
 } from "./testing";
 import {
@@ -12,6 +13,7 @@ import {
   WAVE_SOURCE_PREFERENCE,
   preferredWaveSource,
   validateWaveManifest,
+  validateWaveSpots,
   waveAtAxis,
   waveCoverageNote,
   waveFields,
@@ -23,6 +25,14 @@ import {
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200 });
+/**
+ * A wave run as the site reads it: the pointer validated as published, without
+ * its spot data, and the series as they arrive from the squares.
+ */
+const checkWave = (m: WaveManifest): WaveManifest => {
+  validateWaveManifest(pointerOf(m));
+  return validateWaveSpots(m);
+};
 const broken = (extra: Partial<WaveManifest>) =>
   waveManifest({ extra }) as unknown as WaveManifest;
 
@@ -31,13 +41,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("wave manifest contract", () => {
   it("accepts a frameless bundle that declares its horizon", () => {
-    const manifest = validateWaveManifest(waveManifest());
+    const manifest = checkWave(waveManifest());
     expect(manifest.kind).toBe("wave");
     expect(manifest.frames).toEqual([]);
     expect(waveHours(manifest)).toEqual([0, 3, 6]);
   });
   it("accepts a bundle whose frames imply the horizon", () => {
-    const manifest = validateWaveManifest(
+    const manifest = checkWave(
       waveManifest({ withFrames: true, hours: [0, 3, 6, 9] }),
     );
     expect(manifest.frames).toHaveLength(4);
@@ -67,16 +77,16 @@ describe("wave manifest contract", () => {
   it("refuses a missing or wrong kind, version and identity", () => {
     for (const extra of [
       { kind: "wind" },
-      { schemaVersion: 2 },
+      { schemaVersion: 1 },
       { model: "" },
       { provider: "  " },
       { attribution: "" },
       { runTime: "not a time" },
     ] as Partial<WaveManifest>[])
-      expect(() => validateWaveManifest(broken(extra))).toThrow(
+      expect(() => checkWave(broken(extra))).toThrow(
         /Invalid wave forecast manifest/,
       );
-    expect(() => validateWaveManifest(null as unknown as WaveManifest)).toThrow(
+    expect(() => checkWave(null as unknown as WaveManifest)).toThrow(
       /Invalid wave forecast manifest/,
     );
   });
@@ -88,7 +98,7 @@ describe("wave manifest contract", () => {
       { swh: { units: " ", label: "H", description: "d" } },
     ])
       expect(() =>
-        validateWaveManifest(broken({ variables } as Partial<WaveManifest>)),
+        checkWave(broken({ variables } as Partial<WaveManifest>)),
       ).toThrow(/Invalid wave forecast manifest/);
   });
   it("refuses a frameless bundle with no usable horizon", () => {
@@ -100,20 +110,20 @@ describe("wave manifest contract", () => {
       1.5,
     ])
       expect(() =>
-        validateWaveManifest(
+        checkWave(
           waveManifest({ extra: { horizonHours } as Partial<WaveManifest> }),
         ),
       ).toThrow(/Invalid wave forecast manifest/);
   });
   it("refuses a horizon that disagrees with the published cadence", () => {
     expect(() =>
-      validateWaveManifest(
+      checkWave(
         waveManifest({ withFrames: true, extra: { horizonHours: 99 } }),
       ),
     ).toThrow(/Invalid wave forecast manifest/);
   });
   it("refuses frames that are misordered, mistimed or off-site", () => {
-    const manifest = validateWaveManifest(waveManifest({ withFrames: true }));
+    const manifest = checkWave(waveManifest({ withFrames: true }));
     for (const mutate of [
       (m: WaveManifest) => (m.frames[1].hour = 4),
       (m: WaveManifest) => (m.frames[1].validTime = "2026-01-01T00:00:00Z"),
@@ -122,14 +132,12 @@ describe("wave manifest contract", () => {
     ]) {
       const copy = JSON.parse(JSON.stringify(manifest)) as WaveManifest;
       mutate(copy);
-      expect(() => validateWaveManifest(copy)).toThrow(
-        /Invalid wave forecast manifest/,
-      );
+      expect(() => checkWave(copy)).toThrow(/Invalid wave forecast manifest/);
     }
   });
   it("requires frameVariables to be a distinct subset of the variables", () => {
     expect(
-      validateWaveManifest(
+      checkWave(
         waveManifest({
           withFrames: true,
           extra: { frameVariables: ["swh", "mwd"] },
@@ -138,36 +146,41 @@ describe("wave manifest contract", () => {
     ).toEqual(["swh", "mwd"]);
     for (const frameVariables of [[], ["swh", "swh"], ["swh", "nope"]])
       expect(() =>
-        validateWaveManifest(
+        checkWave(
           waveManifest({ withFrames: true, extra: { frameVariables } }),
         ),
       ).toThrow(/Invalid wave forecast manifest/);
   });
   it("requires every spot series to cover every step and every variable", () => {
-    const manifest = validateWaveManifest(waveManifest());
+    const manifest = checkWave(waveManifest());
     for (const mutate of [
-      (m: WaveManifest) => m.spotSeries.brandon.pop(),
-      (m: WaveManifest) => (m.spotSeries.brandon[1].hour = 4),
+      (m: WaveManifest) => m.spotSeries!.brandon.pop(),
+      (m: WaveManifest) => (m.spotSeries!.brandon[1].hour = 4),
       (m: WaveManifest) =>
-        (m.spotSeries.brandon[1].validTime = "2026-01-01T00:00:00Z"),
-      (m: WaveManifest) => delete m.spotSeries.brandon[1].values.mwd,
-      (m: WaveManifest) => (m.spotSeries.brandon[1].values.extra = 1),
+        (m.spotSeries!.brandon[1].validTime = "2026-01-01T00:00:00Z"),
+      (m: WaveManifest) => delete m.spotSeries!.brandon[1].values.mwd,
+      (m: WaveManifest) => (m.spotSeries!.brandon[1].values.extra = 1),
       // Land and unresolved cells are null, and a value is bounded.
-      (m: WaveManifest) => (m.spotSeries.brandon[1].values.swh = 1e6),
+      (m: WaveManifest) => (m.spotSeries!.brandon[1].values.swh = 1e6),
       (m: WaveManifest) =>
-        ((m.spotSeries.brandon[1].values as Record<string, unknown>).swh =
+        ((m.spotSeries!.brandon[1].values as Record<string, unknown>).swh =
           "1.2"),
-      (m: WaveManifest) => (m.spotSeries = {}),
     ]) {
       const copy = JSON.parse(JSON.stringify(manifest)) as WaveManifest;
       mutate(copy);
-      expect(() => validateWaveManifest(copy)).toThrow(
-        /Invalid wave forecast manifest/,
-      );
+      expect(() => checkWave(copy)).toThrow(/Invalid wave forecast manifest/);
     }
+    // A run whose squares carry no series is not a wave run at all; a square
+    // read for one place may well hold none of this model's series.
+    expect(() =>
+      validateWaveManifest(
+        pointerOf({ ...manifest, spots: { ...manifest.spots, keys: [] } }),
+      ),
+    ).toThrow(/Invalid wave forecast manifest/);
+    expect(checkWave({ ...manifest, spotSeries: {} }).spotSeries).toEqual({});
   });
   it("accepts an all-null series: a location the model cannot resolve", () => {
-    const manifest = validateWaveManifest(
+    const manifest = checkWave(
       waveManifest({ spotId: "rusheen", values: () => null }),
     );
     expect(waveSeries(manifest, "rusheen")).toHaveLength(3);
@@ -176,14 +189,14 @@ describe("wave manifest contract", () => {
 });
 
 describe("reading a wave series", () => {
-  const manifest = validateWaveManifest(waveManifest());
+  const manifest = checkWave(waveManifest());
   it("returns a series only for a spot it publishes", () => {
     expect(waveSeries(manifest, "brandon")).toHaveLength(3);
     expect(waveSeries(manifest, "dollymount")).toBeNull();
     expect(waveSeries(manifest, undefined)).toBeNull();
   });
   it("takes the nearest native step inside the tolerance and nothing else", () => {
-    const columns = waveAtAxis(manifest.spotSeries.brandon, [
+    const columns = waveAtAxis(manifest.spotSeries!.brandon, [
       "2026-09-16T18:00:00Z", // exactly the run hour
       "2026-09-16T19:00:00Z", // an hour past it, inside 1.5 h
       "2026-09-16T20:00:00Z", // an hour before +3, inside 1.5 h
@@ -204,7 +217,7 @@ describe("reading a wave series", () => {
     // Half way between +0 and +3 is outside the tolerance from both, so the
     // column is empty rather than holding an averaged sea state.
     const [mid] = waveAtAxis(
-      manifest.spotSeries.brandon,
+      manifest.spotSeries!.brandon,
       ["2026-09-16T19:30:00Z"],
       0.4,
     );
@@ -236,7 +249,7 @@ describe("coverage notes", () => {
       model: "mi-swan",
       variables: SWAN_VARIABLES,
       extra: {
-        spots: {
+        spotCells: {
           brandon: { dataset: "shelf", nearestOffsetKm: 0 },
           keel: { dataset: "shelf", nearestOffsetKm: 2.4 },
           "mountshannon-lough-derg": {
@@ -397,7 +410,7 @@ describe("choosing a source per spot", () => {
 describe("loading a wave manifest", () => {
   it("validates it and serves it from the shared manifest cache", async () => {
     const fetcher = vi.fn(async () =>
-      ok(waveManifest({ model: "gfs-wave", withFrames: true })),
+      ok(pointerOf(waveManifest({ model: "gfs-wave", withFrames: true }))),
     );
     vi.stubGlobal("fetch", fetcher);
     const first = await loadWaveManifest("gfs-wave");
@@ -417,7 +430,7 @@ describe("loading a wave manifest", () => {
   it("refuses a wave manifest whose model is not the one requested", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ok(waveManifest({ model: "mi-swan" }))),
+      vi.fn(async () => ok(pointerOf(waveManifest({ model: "mi-swan" })))),
     );
     await expect(loadWaveManifest("gfs-wave")).rejects.toThrow(
       /does not match/,

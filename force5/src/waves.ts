@@ -10,6 +10,7 @@ import {
   VARIABLE_STEP_HOURS,
   VARIABLE_VALUE_LIMITS,
   pickVariable,
+  validateVariableSpots,
   validateVariablesManifest,
   variableAtAxis,
   variableSeries,
@@ -79,10 +80,15 @@ export interface WaveSpotRecord {
   nest?: boolean;
   reason?: string;
 }
+/**
+ * A wave run's pointer. `spotCoverage` and `spotCells` are per-spot, like the
+ * series, so they too are present only once the run's squares have been read.
+ */
 export interface WaveManifest extends VariablesManifest {
   kind: "wave";
   spotCoverage?: Record<string, WaveCoverage>;
-  spots?: Record<string, WaveSpotRecord>;
+  /** Irish Shelf SWAN's record of the wet cell each spot was read from. */
+  spotCells?: Record<string, WaveSpotRecord>;
   directionConvention?: string;
   partitionNote?: string;
 }
@@ -101,6 +107,8 @@ export const waveHours = (manifest: WaveManifest): number[] =>
  */
 export const validateWaveManifest =
   validateVariablesManifest<WaveManifest>("wave");
+/** A wave run's spot series, once read from its squares. */
+export const validateWaveSpots = validateVariableSpots<WaveManifest>("wave");
 
 /** The precomputed series for a named spot, or null when this model omits it. */
 export const waveSeries = (
@@ -131,8 +139,8 @@ export const waveAtAxis = (
 /**
  * The manifest's own words on why a spot reads the way it does, or null when it
  * sits in resolved water and there is nothing to explain. GFS-Wave publishes
- * `spotCoverage`; Irish Shelf SWAN publishes a `spots` record with the dataset
- * and offset it used, or a reason it used none.
+ * `spotCoverage`; Irish Shelf SWAN publishes a `spotCells` record with the
+ * dataset and offset it used, or a reason it used none.
  */
 export function waveCoverageNote(
   manifest: WaveManifest,
@@ -144,7 +152,7 @@ export function waveCoverageNote(
     return coverage.landMasked || coverage.resolved === false
       ? (coverage.note ?? "This model cannot resolve waves at this location.")
       : null;
-  const record = manifest.spots?.[spotId];
+  const record = manifest.spotCells?.[spotId];
   if (!record) return null;
   if (record.dataset === null || record.dataset === undefined)
     return (

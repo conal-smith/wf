@@ -15,6 +15,7 @@ from fetch_aifs import MODEL, STEP, decode_wind, main, parse_args, run_datetime
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
+from runfixtures import TINY_GRID, publish_whole
 
 # The identity the live 0.25° AIFS product carries, read on 17 September 2026.
 # `dataType` is ecCodes' alias for `marsType`, so it is set once, not twice.
@@ -137,7 +138,7 @@ class AIFSBundleTests(unittest.TestCase):
         manifest = {"model": MODEL, "run": "2026091600", "runTime": run.isoformat(),
                     "stepHours": STEP, "gustAvailable": False,
                     "stepRanges": [{"throughHour": hours[-1], "stepHours": STEP}],
-                    "grid": {"width": 2, "height": 2}, "frames": [],
+                    "grid": dict(TINY_GRID), "frames": [],
                     "spotForecasts": {"brandon": []}}
         for hour in hours:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
@@ -150,7 +151,7 @@ class AIFSBundleTests(unittest.TestCase):
                 "model": MODEL, "run": "2026091600", "hour": hour, "validTime": valid,
                 "grid": manifest["grid"], "u": [1] * 4, "v": [2] * 4, "gust": None,
                 "gustIntervalHours": None}))
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         return manifest, run + timedelta(hours=1)
 
     def test_uniform_six_hour_cadence_reaches_fifteen_days(self):
@@ -166,7 +167,7 @@ class AIFSBundleTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, MODEL, "test", max_age_hours=12, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], f"weather/{MODEL}.json")
-        self.assertEqual(len(s3.writes), 62)  # 61 frames + pointer
+        self.assertEqual(len(s3.writes), 63)  # 61 frames, a spot square, the pointer
 
     def test_refuses_a_missing_or_invented_hour_before_uploading_anything(self):
         manifest, now = self.bundle()
@@ -174,8 +175,7 @@ class AIFSBundleTests(unittest.TestCase):
                        manifest["frames"][:5] + manifest["frames"][6:],
                        [{**f, "hour": 7} if i == 1 else f
                         for i, f in enumerate(manifest["frames"])]]:
-            (self.root / f"weather/{MODEL}.json").write_text(
-                json.dumps({**manifest, "frames": frames}))
+            publish_whole(self.root / "weather", f"{MODEL}.json", {**manifest, "frames": frames})
             s3 = FakeS3()
             with self.assertRaises(ValueError):
                 publish(s3, self.root, MODEL, "test", max_age_hours=12, now=now)
@@ -183,9 +183,12 @@ class AIFSBundleTests(unittest.TestCase):
 
     def test_a_gust_value_cannot_slip_into_a_gustless_product(self):
         manifest, now = self.bundle(hours=[0, 6])
-        for change in ({"gust": [1] * 4}, {"gustIntervalHours": [0, 6]}):
+        # A tile carries a gust block or not; the gust window is the manifest's alone,
+        # and a declared one is test_a_declared_gust_interval_is_refused_on_the_frame_list.
+        for change in ({"gust": [1] * 4},):
             path = self.root / "weather/aifs-run/6.json"
             path.write_text(json.dumps({**json.loads(path.read_text()), **change}))
+            publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
             with self.assertRaises(ValueError):
                 validate_bundle(self.root, MODEL, 12, now)
             path.write_text(json.dumps({
@@ -193,12 +196,13 @@ class AIFSBundleTests(unittest.TestCase):
                 "validTime": manifest["frames"][1]["validTime"],
                 "grid": manifest["grid"], "u": [1] * 4, "v": [2] * 4, "gust": None,
                 "gustIntervalHours": None}))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         self.assertTrue(validate_bundle(self.root, MODEL, 12, now))
 
     def test_a_declared_gust_interval_is_refused_on_the_frame_list(self):
         manifest, now = self.bundle(hours=[0, 6])
         manifest["frames"][1]["gustIntervalHours"] = [0, 6]
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         with self.assertRaises(ValueError):
             validate_bundle(self.root, MODEL, 12, now)
 

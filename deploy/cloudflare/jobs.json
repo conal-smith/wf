@@ -378,10 +378,7 @@
     {
       "id": "prune",
       "enabled": true,
-      "description": "Sweep the bucket for objects no manifest references",
-      "hours": [
-        2
-      ],
+      "description": "Sweep the bucket: superseded runs past their grace, and objects nothing references",
       "minutes": [
         10
       ],

@@ -70,8 +70,9 @@ them, and **nothing ever deletes from it**:
 
 - no registered manifest may live under it (`prune.py` refuses to start if one does), so
   it is never a data root, and neither sweep ever lists it;
-- the local prune, the bucket sweep and the publisher's superseded delete each skip an
-  `archive` path by name (`prune.is_archived`);
+- the local prune and the bucket sweep each skip an `archive` path by name
+  (`prune.is_archived`), and a pointer's `superseded` list can only name a run directory
+  beside its pointer (`squares.check_base`);
 - `prune.delete_keys`, which every bucket delete goes through, refuses the whole call if
   any key has an `archive` segment.
 

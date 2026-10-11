@@ -5,7 +5,6 @@
 `scripts/f5bin.mjs`. Three implementations of one format cannot drift without
 one of those two suites failing.
 """
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,6 +27,10 @@ def frame(width=4, height=3, run="2026091712", hour=30, with_gust=True, **fields
                "gust": [5.0] * count if with_gust else None}
     payload.update(fields)
     return payload
+
+
+# Four by three cells on the tile lattice, for what is published as tiles.
+LATTICE_GRID = {"west": -11.0, "north": 56.0, "dx": 0.5, "dy": 0.4, "width": 4, "height": 3}
 
 
 class GoldenTests(unittest.TestCase):
@@ -184,14 +187,40 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in path.parent.iterdir()),
                              ["000-abc.bin", "000-abc.bin.br", "000-abc.bin.gz"])
 
-    def test_publish_frame_names_a_file_after_the_bytes_it_wrote(self):
-        payload = frame()
+    def test_rewriting_a_file_never_leaves_the_old_sidecars_beside_it(self):
+        # An interrupted import's staging directory, reused by a job with
+        # sidecars turned off: Caddy would serve the old .br for the new file.
+        import brotli
+        old, new = b"old frame" * 50, b"new frame" * 50
         with tempfile.TemporaryDirectory() as temp:
-            name = f5bin.publish_frame(Path(temp), "model-2026091712-30h-v1", payload)
-            data = f5bin.encode_frame(payload)
-            digest = hashlib.sha256(data).hexdigest()[:12]
-            self.assertEqual(name, f"model-2026091712-30h-v1/030-{digest}.bin")
-            self.assertEqual((Path(temp) / name).read_bytes(), data)
+            path = Path(temp) / "t" / "000.bin"
+            f5bin.write_with_sidecars(path, old, sidecars=True)
+            f5bin.write_with_sidecars(path, new, sidecars=False)
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ["000.bin"])
+            self.assertEqual(path.read_bytes(), new)
+            # With them on, the new ones replace the old.
+            f5bin.write_with_sidecars(path, old, sidecars=True)
+            f5bin.write_with_sidecars(path, new, sidecars=True)
+            self.assertEqual(brotli.decompress(Path(str(path) + ".br").read_bytes()), new)
+
+    def test_publish_frame_writes_the_frames_tiles_named_for_its_hour_inside_the_run(self):
+        """The run directory is named for its content (rundir.py), so the files need not be."""
+        import f5tile
+        payload = frame(grid=LATTICE_GRID)
+        with tempfile.TemporaryDirectory() as temp:
+            names = f5bin.publish_frame(Path(temp), "model-2026091712-30h-v1", payload)
+            self.assertEqual(names, ["model-2026091712-30h-v1/t/0/2/0/030.bin"])
+            _, tiles = f5tile.build_pyramid(LATTICE_GRID, payload["u"], payload["v"],
+                                            payload["gust"], 30, "2026091712")
+            self.assertEqual((Path(temp) / names[0]).read_bytes(), tiles[0][3])
+            self.assertTrue(Path(temp, names[0] + ".br").is_file())
+
+    def test_publish_frame_writes_tiles_with_nothing_in_them_too(self):
+        """Whether a tile is absent is the run's decision, once every hour is in."""
+        payload = frame(grid=LATTICE_GRID, u=[None] * 12, v=[None] * 12, gust=None)
+        with tempfile.TemporaryDirectory() as temp:
+            names = f5bin.publish_frame(Path(temp), "p", payload)
+            self.assertEqual(names, ["p/t/0/2/0/030.bin"])
 
     def test_sidecars_can_be_turned_off_for_a_job_that_only_uploads(self):
         """A bucket-only run serves no sidecar, so it should not spend one per frame."""
@@ -222,22 +251,17 @@ class SidecarTests(unittest.TestCase):
                     f5bin.brotli_quality()
                 self.assertIn(f5bin.QUALITY_ENV, str(caught.exception))
 
-    def test_a_name_says_which_bytes_it_holds(self):
-        data = f5bin.encode_frame(frame(hour=30))
-        name = f5bin.basename(30, data)
-        self.assertTrue(f5bin.names_these_bytes(name, 30, data))
-        # Another hour, or another frame of the same shape, is a different name.
-        self.assertFalse(f5bin.names_these_bytes(name, 31, data))
-        self.assertFalse(f5bin.names_these_bytes(
-            name, 30, f5bin.encode_frame(frame(hour=30, u=[9.0] * 12))))
-
-    def test_a_changed_value_changes_the_published_name(self):
-        """The name is the content hash, which is what makes an object immutable."""
+    def test_a_changed_value_changes_the_run_directory_it_is_published_in(self):
+        """The directory's name is the content hash, which is what makes it immutable."""
+        import rundir
         with tempfile.TemporaryDirectory() as temp:
-            first = f5bin.publish_frame(Path(temp), "p", frame())
-            second = f5bin.publish_frame(Path(temp), "p", frame(hour=31))
-            third = f5bin.publish_frame(Path(temp), "p", frame(run="2026091713"))
-            self.assertEqual(len({first, second, third}), 3)
+            names = set()
+            for payload in (frame(grid=LATTICE_GRID), frame(grid=LATTICE_GRID, u=[9.0] * 12),
+                            frame(grid=LATTICE_GRID, run="2026091713")):
+                directory = Path(temp) / payload["run"] / str(len(names))
+                f5bin.publish_frame(directory, "p", payload)
+                names.add(rundir.directory_name("p", rundir.content_files(directory / "p")))
+            self.assertEqual(len(names), 3)
 
 
 if __name__ == "__main__":

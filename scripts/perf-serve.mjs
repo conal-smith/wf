@@ -7,8 +7,10 @@
  * at full size and every repeat visit re-downloads the bundle. This server
  * follows deploy/local/Caddyfile instead:
  *
- * - `/assets/*` and content-addressed data (a frame inside a run directory, or
- *   a file whose name ends in its hash) are `immutable` for a year;
+ * - `/assets/*` and content-addressed data (any file inside a run directory,
+ *   which is named for the hash of its content — its frames and its spot
+ *   squares — or a file whose name ends in its hash) are `immutable` for a
+ *   year;
  * - pointer manifests and the entry document revalidate on every load;
  * - a `.br` / `.gz` sidecar beside a file is served when the browser accepts it
  *   (Caddy's `precompressed br gzip`), and JSON, JS, CSS, HTML and SVG are
@@ -54,7 +56,7 @@ const TYPES = {
 };
 const COMPRESSIBLE = new Set([".html", ".js", ".mjs", ".css", ".json", ".svg"]);
 const IMMUTABLE_DATA =
-  /^\/(?:weather|marine)\/(?:[^/]+\/.+|[^/]*-[0-9a-f]{8,}\.json)$/;
+  /^\/(?:weather|marine)\/(?:[a-z0-9][a-z0-9.-]*-[0-9a-f]{8}\/.+|[^/]*-[0-9a-f]{8,}\.json)$/;
 
 /** On-the-fly encodings, memoised: the same manifest is asked for repeatedly. */
 const encoded = new Map();

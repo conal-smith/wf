@@ -21,7 +21,7 @@ describe("precomputed spot series", () => {
     const uncovered: Manifest = {
       ...manifest,
       spotForecasts: {
-        brandon: manifest.spotForecasts.brandon.map((point) => ({
+        brandon: manifest.spotForecasts!.brandon.map((point) => ({
           ...point,
           u: null as unknown as number,
           v: null as unknown as number,

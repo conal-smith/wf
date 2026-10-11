@@ -1,14 +1,23 @@
 """Validate a local snapshot; publish immutable objects before its S3 pointer.
 
-No bucket creation, ACL changes or credentials stored in this module. It does
-delete, but only ever the immutable objects the pointer manifest it has just
-replaced referenced and the new one does not: nothing a live manifest points at
-can be in that set, and nothing is listed to find it.
+No bucket creation, ACL changes or credentials stored in this module, and no
+deletes. The run directory a new pointer replaces is not deleted here: readers
+hold the old pointer for minutes after the swap (the browser revalidates every
+five, the CDN caches a pointer for one), and would find its files gone. The new
+pointer names it under `superseded` with the time of the swap instead
+(squares.retire), and the bucket sweep (`prune.py --bucket`) deletes it once the
+grace period is over.
 
 The backend is AWS S3 or any S3-compatible store; Cloudflare R2 is selected by
 passing an endpoint URL. Credentials come from the standard environment chain.
 
-Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
+The forecast kinds (wind, wave, weather) are **runs** at schemaVersion 2: the
+pointer names one run directory, `base`, beside itself, and everything the run
+publishes is inside it (rundir.py): its frames, at urls relative to `base`, and
+its per-spot data in one file per 2° spot square, listed under `spots`
+(squares.py). The directory's name ends in the hash of its content, which the
+validator recomputes, and it must hold exactly the files the manifest names.
+The per-spot keys below are read from the squares and checked as before.
 
 - wind  frames of u/v/gust grids plus `spotForecasts`. Optional `gustKind`
         ("interval", the default, or "instantaneous") and `ensemble`/`spotMembers`.
@@ -20,6 +29,16 @@ Bundle kinds (`kind`, default "wind" when absent, all at schemaVersion 1):
         precipitation, cloud, pressure, humidity, visibility, CAPE). A variable
         may declare `"kind": "code"`, making its values whole code-table entries
         rather than measurements, so no range check applies to them.
+
+The blend is a run too, at schemaVersion 2 (docs/TILING_DESIGN.md, decision 6):
+
+- blend  every riding place's wind consensus (src/spotBlend.ts). The pointer
+        holds the times, the models it read and its square index; each place's
+        series is under `spotBlend` in the square it falls in. No frames.
+
+The other kinds are at schemaVersion 1 and are single files, or (tide) a pointer
+and its station files:
+
 - tide  a station manifest plus immutable per-station prediction files.
 - observation  in-situ measurements rather than a forecast: stations, a per-spot
         nearest-station assignment with its latest reading and a recent series, and
@@ -43,8 +62,12 @@ import re
 import sys
 from cadence import expected_hours
 import f5bin
-from prune import ARCHIVE_DIRECTORY, delete_keys, is_archived, manifest_urls, model_owns
+import f5tile
+from prune import bucket_keys, decode_body, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
+import rundir
+from squares import (SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, catalogue_squares, check_base,
+                     check_square_places, load_spot_data, retire, run_path)
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
 MIN_HEIGHT_METRES = -1.0
@@ -73,6 +96,8 @@ PRECONDITION_CODES = ("PreconditionFailed", "412", "ConditionalRequestConflict",
 # anything else still fails the job loudly, which is the right way round.
 UNSUPPORTED_CONDITION_CODES = ("NotImplemented", "501")
 MISSING_CODES = ("NoSuchKey", "NotFound", "404")
+# Kinds published as a run directory and a schemaVersion 2 pointer.
+RUN_KINDS = ("wind", "wave", "weather", "blend")
 
 
 def error_code(error):
@@ -126,14 +151,14 @@ def valid_time(run, hour):
 def referenced(public, url, model, depth):
     """Read an immutable object the manifest points at, refusing unsafe paths.
 
-    The run directory (or station file) must also be **named for this model**,
-    by the same rule `prune.model_owns` applies — the rule the superseded delete
-    and the bucket sweep already assume. Without it a manifest could reference an
-    object under another model's directory: the JSON frames caught that through
-    the `model` field inside the frame, but `object_root` is "weather" for every
-    wind model, so the path itself never said who owned it. Two things then go
-    wrong at once — this model uploads objects into another's namespace, and that
-    other model's next publish deletes them out from under a live pointer.
+    The station file must also be **named for this model**, by the same rule
+    `prune.model_owns` applies — the rule the bucket sweep's protection of a
+    model with no pointer already assumes. Without it a manifest could reference
+    an object of another model's: `object_root` is shared, so the path itself
+    would not say who owned it, and this model would upload into another's
+    namespace.
+    A run's files are read by `run_files`, which applies the same rule to its
+    directory.
     """
     path = PurePosixPath(url)
     root = object_root(model)
@@ -154,6 +179,93 @@ def grid_count(grid):
     return count
 
 
+def run_files(public, model, manifest):
+    """Every file of the run directory a schemaVersion 2 pointer names, checked.
+
+    The directory must sit beside the pointer, be named for this model (the rule
+    `prune.model_owns` applies, so "harmonie" never claims "harmonie-eps-…"),
+    hash to the name it carries, and hold exactly the frames (a wind run's tiles)
+    and spot squares the manifest names: nothing missing, and nothing extra that
+    would be uploaded and served under a run that never mentions it. Returns
+    {path inside the run: bytes}.
+    """
+    base = check_base(manifest.get("base"))
+    if not model_owns(model, base[:-1]):
+        raise ValueError(f"{base} is not named for {model}")
+    pointer = PurePosixPath(MANIFESTS[model]).parent
+    directory = (public / str(pointer) / base[:-1]).resolve()
+    if public not in directory.parents or not directory.is_dir():
+        raise ValueError(f"Run directory {base} is missing")
+    files = rundir.content_files(directory)
+    if rundir.digest(files) != rundir.hash_of(base):
+        raise ValueError(f"{base} does not hold the content its name claims")
+    index = manifest.get("spots") or {}
+    named = {frame.get("url") for frame in manifest.get("frames") or []
+             if "tiles" not in manifest} | {
+        str(index.get("url", "")).replace("{square}", square)
+        for square in index.get("squares") or []}
+    if "tiles" in manifest:
+        # A tiled run's frames are every tile its `tiles` block does not call absent.
+        named |= set(f5tile.run_tiles(manifest))
+    for url in named:
+        run_path(base, url)
+    if set(files) != named:
+        extra, missing = sorted(set(files) - named), sorted(named - set(files))
+        raise ValueError(f"Run directory {base} does not match its manifest: "
+                         f"unreferenced {extra[:3]}, missing {missing[:3]}")
+    return files
+
+
+def run_file(public, model, manifest, relative):
+    """One file of a published run, by its path inside the run directory.
+
+    The same guards as `run_files` without hashing the whole directory: for a
+    reader that wants one frame of a run that has already been validated.
+    Returns its published path and its bytes.
+    """
+    base = check_base(manifest.get("base"))
+    if not model_owns(model, base[:-1]):
+        raise ValueError(f"{base} is not named for {model}")
+    path = f"{PurePosixPath(MANIFESTS[model]).parent}/{run_path(base, relative)}"
+    source = (public / path).resolve()
+    if public not in source.parents:
+        raise ValueError("Object path escapes output directory")
+    return path, source.read_bytes()
+
+
+def run_bundle(public, model, manifest):
+    """A run's pointer, its files, and the manifest with its spot squares merged in."""
+    if manifest.get("schemaVersion") != RUN_SCHEMA:
+        raise ValueError(f"A {manifest.get('kind', 'wind')} manifest must be schemaVersion "
+                         f"{RUN_SCHEMA}")
+    inline = [key for key in SPOT_KEYS if key in manifest]
+    if inline:
+        raise ValueError(f"Per-spot data belongs in the spot squares, not the pointer: {inline}")
+    files = run_files(public, model, manifest)
+    base = manifest["base"]
+    where = catalogue_squares()
+
+    def read_json(path):
+        document = json.loads(files[path[len(base):]])
+        # The file's own square, as its envelope names it; check_square holds that
+        # to the square it was asked for.
+        check_square_places(str(document.get("square")) if isinstance(document, dict)
+                            else "", document if isinstance(document, dict) else {}, where)
+        return document
+
+    whole = {**manifest, **load_spot_data(manifest, read_json)}
+    pointer = PurePosixPath(MANIFESTS[model]).parent
+    objects = [(f"{pointer}/{base}{path}", data) for path, data in sorted(files.items())]
+    return whole, files, objects
+
+
+def frame_file(files, info, hour, suffix):
+    """A wave or weather frame's bytes, at the one name its hour may have inside the run."""
+    if info.get("url") != f"{rundir.FRAMES}/{hour:03d}.{suffix}":
+        raise ValueError(f"Frame +{hour}h is published as {info.get('url')!r}")
+    return files[info["url"]]
+
+
 def validate_bundle(public, model, max_age_hours=12, now=None):
     public = Path(public).resolve()
     body = (public / MANIFESTS[model]).read_bytes()
@@ -171,66 +283,36 @@ def validate_bundle(public, model, max_age_hours=12, now=None):
         raise ValueError("Run time does not match run identity")
     # Wave and weather bundles are the same shape: declared variables, optional
     # frames of one array each, and a precomputed series per riding location.
-    if kind != "wind" and manifest.get("encoding") is not None:
-        raise ValueError("Only wind frames may declare a binary encoding")
-    validator = {"wind": validate_wind_bundle, "wave": validate_variables_bundle,
-                 "weather": validate_variables_bundle, "tide": validate_tide_bundle,
-                 "observation": validate_observation_bundle, "blend": validate_blend_bundle,
+    if manifest.get("encoding") is not None:
+        raise ValueError("Whole-frame encodings are retired: wind frames are published as tiles")
+    if kind != "wind" and manifest.get("tiles") is not None:
+        raise ValueError("Only wind frames are published as tiles")
+    if kind in RUN_KINDS:
+        # The run's own checks read the spot data from its squares, merged back in
+        # exactly as the adapter held it, and every file of the run is uploaded.
+        whole, files, objects = run_bundle(public, model, manifest)
+        validator = {"wind": validate_wind_bundle, "blend": validate_blend_bundle}.get(
+            kind, validate_variables_bundle)
+        validator(files, model, whole, run, now)
+        return manifest, body, objects
+    validator = {"tide": validate_tide_bundle,
+                 "observation": validate_observation_bundle,
                  "archive": validate_archive_bundle,
                  "verification": validate_verification_bundle}[kind]
     return manifest, body, validator(public, model, manifest, run, now)
 
 
-def frame_encoding(manifest):
-    """Which frame encoding a manifest declares. Absent is the original JSON."""
-    encoding = manifest.get("encoding")
-    if encoding is not None and encoding != f5bin.ENCODING:
-        raise ValueError(f"Unknown frame encoding {encoding!r}")
-    return encoding
+def validate_wind_bundle(files, model, manifest, run, now):
+    """A wind run: `manifest` with its squares merged in, `files` its run directory.
 
-
-def wind_frame(data, encoding, model, manifest, grid, info, hour, valid):
-    """One wind frame as a dict, from JSON bytes or from an F5 int16 body.
-
-    What a binary frame proves about itself, and what it cannot:
-
-    - **run, forecast hour, grid size**: in the header, checked here.
-    - **model**: *not* in the file. It is established by the path instead —
-      `referenced()` has already required the run directory to be named for this
-      model — and by the content hash below, which proves the bytes are the ones
-      published under that name. The dict returned therefore carries the model it
-      was asked about, and the `frame.get("model") != model` check downstream is
-      a tautology for a binary frame; the path check is what stands in for it.
-    - **valid time and grid geometry**: not in the file either. The manifest
-      declares them, and `validate_bundle` has already checked the manifest's own
-      run/hour/validTime arithmetic, so they are filled in from it here.
-    - **gust window**: not in the file. Only the *presence* of the gust block is
-      checkable, and it is, immediately below and again downstream: a frame with
-      no window must carry no gust block, and one with a window must carry it.
+    Its frames are tiles (f5tile.py): the `tiles` block must match the grid,
+    every tile it does not call absent must be there for every hour (which
+    `run_files` has already required), and each tile must say in its header the
+    run, hour, level and place it is published as, carry a gust block exactly
+    where the frame has a gust window, hold only plausible values, and at level
+    0 leave no cell of the grid missing.
     """
-    if encoding is None:
-        return json.loads(data)
-    decoded = f5bin.decode_frame(data)
-    if ((decoded["run"], decoded["hour"], decoded["width"], decoded["height"])
-            != (manifest["run"], hour, grid["width"], grid["height"])):
-        raise ValueError("Mixed model/run/frame metadata")
-    # A content-addressed name is checkable in a way a JSON frame's never was:
-    # these bytes must be the ones published under this name, at this hour.
-    if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, hour, data):
-        raise ValueError(f"{info['url']} does not hold the frame its name claims")
-    # The window lives only in the manifest, so this is the one thing the two can
-    # still be made to agree about: no window means no gust block, and vice versa.
-    if (info.get("gustIntervalHours") is None) != (decoded["gust"] is None):
-        raise ValueError("Gust block does not match the published gust period")
-    return {"model": model, "run": decoded["run"], "hour": decoded["hour"],
-            "validTime": valid, "grid": grid,
-            "gustIntervalHours": info.get("gustIntervalHours"),
-            "u": decoded["u"], "v": decoded["v"], "gust": decoded["gust"]}
-
-
-def validate_wind_bundle(public, model, manifest, run, now):
     frames, grid = manifest["frames"], manifest.get("grid")
-    encoding = frame_encoding(manifest)
     ensemble = manifest.get("ensemble")
     last = validate_ensemble(manifest, ensemble, run) if ensemble is not None else None
     gust_kind = manifest.get("gustKind", "interval")
@@ -239,35 +321,47 @@ def validate_wind_bundle(public, model, manifest, run, now):
     missing_gust_hours = manifest.get("gustMissingHours", [])
     if missing_gust_hours not in ([], [0]):
         raise ValueError("Only initialization gusts may be explicitly missing")
+    if not isinstance(manifest.get("spotForecasts"), dict):
+        raise ValueError("A wind run publishes spotForecasts")
     if not frames:
         # Only an ensemble may publish spot series without map frames.
         if ensemble is None:
             raise ValueError("Empty forecast or unsupported cadence")
+        if manifest.get("tiles") is not None:
+            raise ValueError("A run without frames has no tiles")
         if last <= now:
             raise ValueError("Forecast horizon has already expired")
-        return []
+        # The pointer alone says how far a frameless run reaches (squares.py).
+        reach = [steps[-1]["hour"] for key in ("spotForecasts", "spotMembers")
+                 for steps in (manifest.get(key) or {}).values() if steps]
+        if manifest.get("horizonHours") != (max(reach) if reach else None):
+            raise ValueError("Declared horizon does not match the spot series")
+        return
     hours = expected_hours(manifest)
     if len(frames) != len(hours):
         raise ValueError("Empty forecast or unsupported cadence")
-    count = grid_count(grid)
-    objects = []
+    grid_count(grid)
+    if manifest.get("tiles") is None:
+        raise ValueError("A wind run's frames are published as tiles")
+    tiles = f5tile.check_tiles(manifest)
+    # A wind field has a value at every cell of its grid, so no native tile that
+    # owns part of the grid can be empty at every hour.
+    for x, y in tiles["levels"][0]["absent"]:
+        if f5tile.owns_domain(grid, 0, x, y, tiles["size"]):
+            raise ValueError(f"Tile 0/{x}/{y} is absent but holds part of the grid")
     for index, info in enumerate(frames):
-        path, data = referenced(public, info["url"], model, 3)
         hour = hours[index]
         valid = valid_time(run, hour)
-        if (info["hour"], info["validTime"]) != (hour, valid):
+        if (info.get("hour"), info.get("validTime")) != (hour, valid):
             raise ValueError("Incomplete or misordered forecast")
-        frame = wind_frame(data, encoding, model, manifest, grid, info, hour, valid)
-        if any(frame.get(k) != v for k, v in {"model": model, "run": manifest["run"],
-               "grid": grid, "hour": hour, "validTime": valid}.items()):
-            raise ValueError("Mixed model/run/frame metadata")
+        if "url" in info:
+            raise ValueError(f"Frame +{hour}h names a url; a wind frame is its tiles")
         gust_missing = manifest.get("gustAvailable") is False or hour in missing_gust_hours
         interval = info.get("gustIntervalHours")
         if not gust_missing:
             if (not isinstance(interval, list) or len(interval) != 2
                     or not all(whole(x) for x in interval)
-                    or interval[0] < 0 or interval[0] > interval[1] or interval[1] != hour
-                    or frame.get("gustIntervalHours") != interval):
+                    or interval[0] < 0 or interval[0] > interval[1] or interval[1] != hour):
                 raise ValueError("Invalid or mismatched gust interval")
             if gust_kind == "instantaneous":
                 # A surface gust read at the valid time, not a period maximum.
@@ -275,21 +369,18 @@ def validate_wind_bundle(public, model, manifest, run, now):
                     raise ValueError("Instantaneous gusts declare a zero-length interval")
             elif hour > 0 and interval[0] == interval[1]:
                 raise ValueError("Invalid or mismatched gust interval")
-        elif interval is not None or frame.get("gustIntervalHours") is not None:
+        elif interval is not None:
             raise ValueError("Unavailable gusts cannot declare a period")
-        for field in ("u", "v", "gust"):
-            values = frame.get(field)
-            if field == "gust" and gust_missing:
-                if values is not None:
-                    raise ValueError("Unexpected gust data")
-                continue
-            if not isinstance(values, list) or len(values) != count or not all(
-                    number(v, 150, 0 if field == "gust" else None) for v in values):
-                raise ValueError(f"Invalid {field} field")
-        objects.append((path, data))
+    for path, (level, x, y, info) in sorted(f5tile.run_tiles(manifest).items()):
+        data = files[path]
+        # The header says which run, hour, tile and gust period the bytes are;
+        # decoding refuses implausible values and a negative gust.
+        header = f5tile.check_tile(data, manifest, level, x, y, info)
+        blocks = f5tile.decode_blocks(data)
+        if level == 0 and not f5tile.covers_domain(header, blocks, grid):
+            raise ValueError(f"Tile {path} leaves part of the grid missing")
     if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
         raise ValueError("Forecast horizon has already expired")
-    return objects
 
 
 def validate_ensemble(manifest, ensemble, run):
@@ -345,8 +436,8 @@ def variable_value(value, name, codes, limit):
     return number(value, limit)
 
 
-def validate_variables_bundle(public, model, manifest, run, now):
-    """A wave or weather bundle: declared variables, optional frames, spot series."""
+def validate_variables_bundle(files, model, manifest, run, now):
+    """A wave or weather run: declared variables, optional frames, spot series."""
     kind = manifest.get("kind", "wave")
     limit = VARIABLE_LIMITS[kind]
     variables = manifest.get("variables")
@@ -374,7 +465,7 @@ def validate_variables_bundle(public, model, manifest, run, now):
         validate_spot_series(manifest.get("spotSeries"), variables, hours, run, codes, limit)
         if run + timedelta(hours=hours[-1]) <= now:
             raise ValueError(f"The {kind} horizon has already expired")
-        return []
+        return
     grid = manifest["grid"]
     if len(frames) != len(hours):
         raise ValueError(f"Empty {kind} forecast or unsupported cadence")
@@ -384,11 +475,9 @@ def validate_variables_bundle(public, model, manifest, run, now):
             or not set(gridded) <= set(variables)):
         raise ValueError("Frame variables must be a distinct subset of the declared variables")
     count = grid_count(grid)
-    objects = []
     for index, info in enumerate(frames):
-        path, data = referenced(public, info["url"], model, 3)
-        frame = json.loads(data)
         hour = hours[index]
+        frame = json.loads(frame_file(files, info, hour, "json"))
         valid = valid_time(run, hour)
         if (info["hour"], info["validTime"]) != (hour, valid):
             raise ValueError(f"Incomplete or misordered {kind} forecast")
@@ -401,11 +490,9 @@ def validate_variables_bundle(public, model, manifest, run, now):
             if not isinstance(values, list) or len(values) != count or not all(
                     variable_value(value, name, codes, limit) for value in values):
                 raise ValueError(f"Invalid {name} field")
-        objects.append((path, data))
     validate_spot_series(manifest.get("spotSeries"), variables, hours, run, codes, limit)
     if datetime.fromisoformat(frames[-1]["validTime"].replace("Z", "+00:00")) <= now:
         raise ValueError(f"The {kind} horizon has already expired")
-    return objects
 
 
 def validate_spot_series(series, variables, hours, run, codes=frozenset(), limit=1000):
@@ -517,20 +604,27 @@ def observation_value(value, label):
     return value
 
 
+BLEND_KEY = "spotBlend"  # The one per-spot key of the blend's squares (squares.SPOT_KEYS).
 BLEND_AGREEMENT = set("hml-")
 BLEND_SERIES = {"wind": (0, 2000), "gust": (0, 2000), "from": (0, 360)}
 
 
-def validate_blend_bundle(public, model, manifest, run, now):
-    """Every riding place's wind consensus (src/spotBlend.ts): one self-contained file.
+def validate_blend_bundle(files, model, manifest, run, now):
+    """Every riding place's wind consensus (src/spotBlend.ts): a run of spot squares.
 
-    `run` is the hour it was worked out, not a provider's run, so the registry's
-    freshness limit means "how long since the blend was last worked out". Speeds
-    are tenths of a knot and bearings whole degrees, one value per time.
+    `manifest` is the pointer with its squares merged back in (`run_bundle`), so
+    the places are under `spotBlend` exactly as the blend job held them. `run` is
+    the hour it was worked out, not a provider's run, so the registry's freshness
+    limit means "how long since the blend was last worked out". Speeds are tenths
+    of a knot and bearings whole degrees, one value per time. A blend has no
+    frames: its run directory holds its squares and nothing else (`run_files`).
     """
-    times, sources, spots = manifest.get("times"), manifest.get("sources"), manifest.get("spots")
-    if manifest.get("schemaVersion") != 1:
-        raise ValueError("Unknown blend schema")
+    times, sources = manifest.get("times"), manifest.get("sources")
+    spots = manifest.get(BLEND_KEY)
+    if manifest.get("frames"):
+        raise ValueError("A blend has no frames")
+    if (manifest.get("spots") or {}).get("keys") != [BLEND_KEY]:
+        raise ValueError(f"A blend's squares carry {BLEND_KEY} and nothing else")
     if not isinstance(times, list) or not times or not all(isinstance(t, str) for t in times):
         raise ValueError("A blend needs the times it covers")
     moments = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times]
@@ -561,7 +655,6 @@ def validate_blend_bundle(public, model, manifest, run, now):
         if not isinstance(agreement, str) or len(agreement) != len(times) \
                 or not set(agreement) <= BLEND_AGREEMENT:
             raise ValueError(f"The blend's agreement for {spot} is malformed")
-    return []
 
 
 def validate_observation_bundle(public, model, manifest, run, now):
@@ -911,9 +1004,7 @@ def read_current(s3, bucket, key):
         if error_code(error) in MISSING_CODES:
             return None, None
         raise
-    body = response["Body"].read()
-    if response.get("ContentEncoding") == "gzip":
-        body = gzip.decompress(body)
+    body = decode_body(response["Body"].read(), response.get("ContentEncoding"))
     try:
         return json.loads(body), response["ETag"]
     except ValueError as error:
@@ -921,49 +1012,49 @@ def read_current(s3, bucket, key):
         return None, response["ETag"]
 
 
-def superseded_objects(model, previous, manifest):
-    """Immutable objects the manifest we are replacing referenced and the new one does not.
+def pointer_body(manifest, replaced, now):
+    """The bytes of the pointer to put over `replaced`, the one the bucket serves now.
 
-    Five guards, because this is the only code in the pipeline that deletes from the
-    bucket: the source is one model's own previous pointer (never a listing, so an
-    upload in flight for another model is invisible to it); anything the new manifest
-    still references is excluded first; the path must sit under that model's object
-    root; its run directory or station file must be named for this model and for no
-    other, which every adapter satisfies (`weather/ecmwf-RUN-360h-v2/…`,
-    `marine/tides-STATION-…json`) — "harmonie" must not match "harmonie-eps", nor
-    "gfs" match "gfs-wave"; and pointer manifests, the archived manifests and the
-    forecast archive (`archive/`, archive.py) are never touched. An adapter that ever
-    stops using that naming simply stops deleting, and the bucket sweep collects its
-    leftovers instead: the safe direction to fail in.
+    A run pointer names, under `superseded`, the run directory `replaced` named,
+    if it is not this one, and what `replaced` itself still remembered
+    (squares.retire): that is how the bucket sweep knows to keep those
+    directories for their grace period. Worked out against the bucket's pointer,
+    never the work directory's, which a one-shot container does not even have.
     """
-    if not isinstance(previous, dict) or previous.get("model") != model:
-        return []
-    keep, root = manifest_urls(manifest), object_root(model)
-    pointers = set(MANIFESTS.values())
-    stale = []
-    for url in sorted(manifest_urls(previous) - keep):
-        parts = PurePosixPath(url).parts
-        if not 2 <= len(parts) <= 3 or parts[0] != root or ".." in parts or is_archived(url):
-            continue  # Not one of ours to delete; an absolute or foreign URL is left alone.
-        if url in pointers or parts[1] == ARCHIVE_DIRECTORY or not model_owns(model, parts[1]):
-            continue
-        stale.append(url)
-    return stale
+    pointer = {key: value for key, value in manifest.items() if key != "superseded"}
+    retired = retire(replaced if isinstance(replaced, dict)
+                     and replaced.get("model") == manifest["model"] else None, pointer, now)
+    if retired:
+        pointer["superseded"] = retired
+    return rundir.json_body(pointer)
 
 
-def drop_superseded_objects(s3, bucket, prefix, model, previous, manifest):
-    """Delete the replaced run's objects. Never fails the forecast that just published."""
-    stale = superseded_objects(model, previous, manifest)
-    if not stale:
+def restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding, public):
+    """Once the pointer names this run, put back any of its objects that went missing.
+
+    The case it exists for: a republish of content published before lands in the
+    same run directory, and `put_immutable` leaves the objects already there
+    untouched — so if that directory had been superseded long enough ago, the
+    bucket sweep can delete it between those uploads and this pointer swap, which
+    no read of the pointers could have stopped. One listing of the directory
+    finds out; it costs a request or two per publish. Never fails the publish:
+    the pointer is in place, and the next publish or a rerun repairs it the same way.
+    """
+    if "base" not in manifest:
         return 0
+    directory = f"{prefix}{PurePosixPath(MANIFESTS[model]).parent}/{manifest['base']}"
     try:
-        deleted = delete_keys(s3, bucket, [prefix + url for url in stale])
+        present = {key for key, _, _ in bucket_keys(s3, bucket, directory)}
+        missing = [(path, data) for path, data in objects if prefix + path not in present]
+        for path, data in missing:
+            put_immutable(s3, bucket, prefix + path, data, state, encoding, public / path)
     except Exception as error:
-        # The forecast is live; these objects are only cost. The bucket sweep gets them.
-        log_event("superseded_delete_failed", model=model, objects=len(stale), error=error)
+        log_event("run_directory_check_failed", model=model, directory=directory, error=error)
         return 0
-    log_event("superseded_deleted", model=model, run=previous.get("run"), objects=deleted)
-    return deleted
+    if missing:
+        log_event("run_directory_restored", model=model, directory=directory,
+                  objects=len(missing))
+    return len(missing)
 
 
 def already_current(current, incoming):
@@ -986,10 +1077,15 @@ def already_current(current, incoming):
     return False
 
 
+# What may differ between two pointers to the same bundle: when each was made, and
+# which run directories each happened to replace.
+INCIDENTAL_KEYS = ("generatedAt", "superseded")
+
+
 def same_manifest(current, incoming):
     """The published pointer is byte-for-byte this bundle, give or take when it was made."""
-    return bool(current) and {k: v for k, v in current.items() if k != "generatedAt"} == {
-        k: v for k, v in incoming.items() if k != "generatedAt"}
+    return bool(current) and {k: v for k, v in current.items() if k not in INCIDENTAL_KEYS} == {
+        k: v for k, v in incoming.items() if k not in INCIDENTAL_KEYS}
 
 
 def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, encoding=None):
@@ -998,6 +1094,7 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
     f5bin.brotli_quality()  # Likewise an unusable compression level.
     public = Path(public).resolve()
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
+    run_kind = "base" in manifest
     pointer = prefix + MANIFESTS[model]
     replaced, _ = read_current(s3, bucket, pointer)
     if already_current(replaced, manifest):
@@ -1013,12 +1110,13 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
             if same_manifest(current, manifest):
                 # Our own bundle is up there although we never saw the answer: a PUT
                 # that succeeded server-side and then reported PreconditionFailed on a
-                # retry. The pointer is in place, so the run it replaced is still ours
-                # to delete; without this it would leak until the next bucket sweep.
-                drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
+                # retry. The pointer is in place, so check its directory is whole.
+                restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding,
+                                public)
             return "unchanged-or-newer"
-        replaced = current  # The newest manifest we have seen that this publish replaces.
         condition = {"IfMatch": etag} if etag else {"IfNoneMatch": "*"}
+        if run_kind:
+            body = pointer_body(manifest, current, now or datetime.now(timezone.utc))
         try:
             # The only mutable object. Publish LAST using compare-and-swap.
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
@@ -1037,8 +1135,8 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
                       note="Compare-and-swap unavailable on this backend")
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
                           ContentType="application/json", CacheControl=POINTER_CACHE)
-        # The new pointer is in place. Only now is the one it replaced junk, and only
-        # now can deleting what it referenced not break a manifest anybody can read.
-        drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
+        # The new pointer is in place. The run directory it replaced stays, named
+        # under `superseded`, until the bucket sweep's grace period is over.
+        restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding, public)
         return "published"
     raise RuntimeError("Manifest changed repeatedly during publish; retry the job")

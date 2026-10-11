@@ -15,7 +15,13 @@ import {
 } from "./chartStyle";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
-import { createWindLayer, type WindLayer, type WindStyle } from "./windLayer";
+import { setMapView } from "./tiledField";
+import {
+  createWindLayer,
+  viewOf,
+  type WindLayer,
+  type WindStyle,
+} from "./windLayer";
 import type { Frame, Spot } from "./weather";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -89,6 +95,8 @@ type Props = {
   /** A tap on the open map, not a light: the point, and the nearest place's name. */
   onPick: (point: { lon: number; lat: number; place: string | null }) => void;
   onReady: (controls: MapControls | null) => void;
+  /** A tile the frame on screen needs could not be read (windLayer.ts). */
+  onTilesFailed?: (frame: Frame) => void;
 };
 
 const WORLD = [
@@ -243,6 +251,9 @@ export default function WindMap(props: Props) {
       return;
     }
     mapRef.current = map;
+    // What the map shows, before it has loaded: the first frame's tiles are
+    // asked for while the basemap is still on its way.
+    setMapView(viewOf(map));
     // The wind's canvas and the pen's sheet go inside the map, over its canvas
     // and, by z-index (src/map.css), under the lights and over them.
     const canvasBox = map.getCanvasContainer();
@@ -313,6 +324,7 @@ export default function WindMap(props: Props) {
         windRef.current = createWindLayer(map, particles.current, {
           ink: colours.ink,
           washBefore: "relief",
+          onTilesFailed: (failed) => latest.current.onTilesFailed?.(failed),
         });
       }
       // A tap on the open map reads that point's forecast, after a moment's

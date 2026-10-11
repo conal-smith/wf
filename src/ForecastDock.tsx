@@ -64,6 +64,8 @@ import { presentWeather } from "../force5/src/surface";
 import { variableValue } from "../force5/src/variables";
 import { seaTemperatureText } from "../force5/src/seaTemperature";
 import type { ModelAvailability } from "../force5/src/manifests";
+import { spotSquare } from "../force5/src/spotData";
+import { useSpotSquares } from "./useSpotSquares";
 import type { Prefs } from "../force5/src/prefs";
 import {
   SESSION_LABEL,
@@ -789,6 +791,8 @@ function TideRow({
   );
 }
 
+const NO_MODELS: readonly ModelAvailability[] = [];
+
 export default function ForecastDock(props: Props) {
   const {
     spot,
@@ -845,17 +849,28 @@ export default function ForecastDock(props: Props) {
   );
   const selectedDayIndex = selectedDay ? days.indexOf(selectedDay) : 0;
 
-  // The blend, only while it is the view: the chart reads every member.
+  // The blend, only while it is the view: the chart reads every member. The
+  // manifests carry no spot data, so each model's one square holding this spot
+  // is read for it, and for the waves and weather rows, and nothing else.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
+  const square = useMemo(
+    () => (isPoint ? null : [spotSquare(spot.lat, spot.lon)]),
+    [isPoint, spot.lat, spot.lon],
+  );
+  const blendModels = useSpotSquares(
+    view === "blend" ? models : NO_MODELS,
+    square,
+  );
+  const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
   const blend = useBlend(
-    view === "blend" && !isPoint ? models : [],
+    view === "blend" && !isPoint ? blendModels : NO_MODELS,
     prefs.blendModels,
     spot.id,
     axis,
   );
   const named = isPoint ? undefined : spot.id;
-  const waves = useSpotWaves(more ? marine : [], named, axis);
-  const weather = useSpotWeather(more ? marine : [], named, axis);
+  const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
+  const weather = useSpotWeather(more ? marineModels : NO_MODELS, named, axis);
   const sea = useSpotSeaTemperature(more ? named : undefined);
   // The top of the blend's scale, shared by the chart and its tick labels
   // in the label column (which stay put while the hours scroll).

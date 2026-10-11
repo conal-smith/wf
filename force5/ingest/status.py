@@ -17,14 +17,16 @@ worker has kept one in `.cache/jobs/`. It is informational: it never changes a
 row's state or the exit status.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
 import sys
 
-from prune import manifest_urls
+from f5tile import run_tiles
+from prune import manifest_urls, run_directory
 from registry import MANIFESTS, MODELS
+from squares import square_index, square_path, load_spot_data
 from timing import JOBS_DIRECTORY
 
 # Job outputs rather than data: their `run` is the hour the job ran.
@@ -47,19 +49,46 @@ def newest_observation(manifest):
     return max(moment(value) for value in times)
 
 
-def horizon(manifest):
-    """The last time this bundle claims to cover, whatever shape it publishes."""
+def horizon(manifest, read_json=None):
+    """The last time this bundle claims to cover, whatever shape it publishes.
+
+    A frameless run says how far it reaches in `horizonHours`; without that, its
+    spot squares are read (`read_json`, relative to the pointer's directory).
+    """
     coverage = manifest.get("coverage")
     if isinstance(coverage, dict) and coverage.get("to"):
         return moment(coverage["to"])
     frames = manifest.get("frames")
     if isinstance(frames, list) and frames:
         return moment(frames[-1]["validTime"])
+    if isinstance(manifest.get("horizonHours"), int) and manifest.get("runTime"):
+        return moment(manifest["runTime"]) + timedelta(hours=manifest["horizonHours"])
+    if "spots" in manifest and "base" in manifest and read_json is not None:
+        manifest = {**manifest, **load_spot_data(manifest, read_json)}
     series = manifest.get("spotMembers") or manifest.get("spotForecasts")
     if isinstance(series, dict) and series:
         # The publisher guarantees only the shortest spot series, so report that.
         return min(moment(steps[-1]["validTime"]) for steps in series.values() if steps)
     raise ValueError("Manifest declares no coverage, frames or spot series")
+
+
+def published_objects(manifest, pointer):
+    """Every published path a manifest names: a run's frames and squares, or its urls.
+
+    A wind run's frames are its tiles: every tile its `tiles` block does not
+    list as absent, at every hour.
+    """
+    directory = run_directory(manifest, pointer)
+    if directory is None:
+        return manifest_urls(manifest)
+    parent = Path(pointer).parent.as_posix()
+    if "tiles" in manifest:
+        frames = [f"{directory}/{path}" for path in run_tiles(manifest)]
+    else:
+        frames = [f"{directory}/{frame['url']}" for frame in manifest.get("frames") or []]
+    squares = [f"{parent}/{square_path(manifest, square)}"
+               for square in square_index(manifest)["squares"]]
+    return set(frames) | set(squares)
 
 
 def describe(public, model, now, override=None):
@@ -78,8 +107,9 @@ def describe(public, model, now, override=None):
         manifest = json.loads(path.read_text())
         run = datetime.strptime(manifest["run"], "%Y%m%d%H").replace(tzinfo=timezone.utc)
         # An observation bundle covers nothing ahead; its newest reading is the news.
-        last = newest_observation(manifest) if observed else horizon(manifest)
-        urls = manifest_urls(manifest)
+        last = newest_observation(manifest) if observed else horizon(
+            manifest, lambda relative: json.loads((path.parent / relative).read_text()))
+        urls = published_objects(manifest, published)
     except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError) as error:
         return {**row, "state": "unreadable", "error": str(error)}
     missing = sum(1 for url in urls if not (public / str(url).lstrip("/")).is_file())

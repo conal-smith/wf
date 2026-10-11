@@ -31,11 +31,19 @@
  * from the basemap's own water polygons; where those have not loaded yet the
  * land gets a fainter wash rather than none. Zoomed right in, where the
  * depths take over, the wash fades out and the coloured arrows go to ink.
+ *
+ * The field is a frame's `TiledField` (tiledField.ts). Each time the camera
+ * settles, the layer says what it shows — the wash's box, a third of the view
+ * past each edge, and the screen's scale — and the field picks its level and
+ * loads the tiles covering that box; until they arrive it samples the best
+ * tiles it already holds, and when they do, the field and the wash are drawn
+ * again. The next hour's tiles for the same box follow.
  */
 import type { ImageSource, LngLat, Map as MapLibreMap } from "maplibre-gl";
 import { rideColour, type RideStop } from "./chartStyle";
+import { setMapView, WASH_STEP, type MapView } from "./tiledField";
 import { KNOTS } from "./units";
-import { sample, type Frame } from "./weather";
+import type { Frame } from "./weather";
 
 export type WindStyle = "ink" | "arrows" | "wash";
 export const WIND_STYLES: readonly WindStyle[] = ["ink", "arrows", "wash"];
@@ -84,6 +92,12 @@ export interface WindLayerOptions {
   density?: number;
   /** Where to put the wash: the first layer it goes under. */
   washBefore: string;
+  /**
+   * A tile the frame on screen needs for the view could not be read: its run
+   * may have been replaced, and its directory deleted. The caller looks for a
+   * newer run, as it does when a frame fails.
+   */
+  onTilesFailed?: (frame: Frame) => void;
 }
 
 export interface WindLayer {
@@ -105,6 +119,33 @@ function rgbOf(colour: string): [number, number, number] {
   if (!m) return [26, 29, 33];
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/**
+ * What the map shows, for the tiles: the box the wash paints — the view and a
+ * third of it again past each edge — and CSS pixels per degree at the view's
+ * centre, measured through the map's own projection, in the pixels the wash
+ * steps in.
+ */
+export function viewOf(map: MapLibreMap): MapView {
+  const rect = map.getContainer().getBoundingClientRect();
+  const mx = rect.width / 3,
+    my = rect.height / 3;
+  const nw = map.unproject([-mx, -my]);
+  const se = map.unproject([rect.width + mx, rect.height + my]);
+  const { lng, lat } = map.getCenter();
+  const west = map.project([lng - 0.5, lat]),
+    east = map.project([lng + 0.5, lat]);
+  const north = map.project([lng, lat + 0.5]),
+    south = map.project([lng, lat - 0.5]);
+  return {
+    west: nw.lng,
+    north: nw.lat,
+    east: se.lng,
+    south: se.lat,
+    pxPerLon: Math.hypot(east.x - west.x, east.y - west.y),
+    pxPerLat: Math.hypot(south.x - north.x, south.y - north.y),
+  };
 }
 
 /** Pixels per step per m/s at this zoom, so lines move at a pace that reads. */
@@ -560,7 +601,7 @@ export function createWindLayer(
     for (let y = 0; y < fh; y++)
       for (let x = 0; x < fw; x++) {
         const ll = map.unproject([x * STEP, y * STEP]);
-        const w = sample(frame, ll.lng, ll.lat);
+        const w = frame.field.sample(ll.lat, ll.lng);
         const i = (y * fw + x) * 3;
         if (!w || !Number.isFinite(w.u + w.v)) {
           f[i] = NaN;
@@ -659,6 +700,39 @@ export function createWindLayer(
     restart();
   };
 
+  /**
+   * The tiles the view needs, for the frame on screen: the field draws from
+   * what it holds meanwhile, and once they are in, the arrows' field and the
+   * wash are drawn again and the next hour's tiles for the same view follow.
+   * A tile that fails leaves the coarser one drawn, and tells the caller
+   * (`onTilesFailed`), which looks for a newer run; the frame's own load, the
+   * next time the hour changes, is what reports an error.
+   */
+  const requestTiles = () => {
+    if (destroyed) return;
+    const view = viewOf(map);
+    setMapView(view);
+    const shown = frame;
+    if (!shown) return;
+    const loading = shown.field.request(view);
+    if (!loading) {
+      shown.field.prefetchNext(view);
+      return;
+    }
+    loading.then(
+      () => {
+        if (destroyed || frame !== shown) return;
+        resample();
+        washKey = "";
+        queueWash(0);
+        shown.field.prefetchNext(view);
+      },
+      () => {
+        if (!destroyed && frame === shown) options.onTilesFailed?.(shown);
+      },
+    );
+  };
+
   /* ---- the wash ---- */
 
   const mask = document.createElement("canvas");
@@ -720,14 +794,15 @@ export function createWindLayer(
     // Where the depths take over the wash has faded out: no image to make.
     if (zoom >= DEPTHS_ZOOM) return;
     const centre = map.getCenter();
-    const key = `${frame.model}|${frame.validTime}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}|${stops.map((s) => s.kn.toFixed(1)).join(",")}`;
+    // The field's version too: a tile arriving is a new picture of the same hour.
+    const key = `${frame.model}|${frame.validTime}|${frame.field.version}|${zoom.toFixed(3)}|${centre.lng.toFixed(4)}|${centre.lat.toFixed(4)}|${rect.width}x${rect.height}|${stops.map((s) => s.kn.toFixed(1)).join(",")}`;
     if (key === washKey) return;
     // A margin a third of the view each way, so a pan shows wash, not paper.
     const mx = rect.width / 3,
       my = rect.height / 3;
     const nw = map.unproject([-mx, -my]);
     const se = map.unproject([rect.width + mx, rect.height + my]);
-    const px = 5;
+    const px = WASH_STEP;
     const w = Math.max(2, Math.round((rect.width + 2 * mx) / px));
     const h = Math.max(2, Math.round((rect.height + 2 * my) / px));
     const merc = (lat: number) =>
@@ -764,7 +839,7 @@ export function createWindLayer(
         (180 / Math.PI);
       for (let x = 0; x < w; x++) {
         const lng = nw.lng + ((se.lng - nw.lng) * (x + 0.5)) / w;
-        const wind = sample(frame, lng, lat);
+        const wind = frame.field.sample(lat, lng);
         if (!wind) continue;
         const kn = Math.hypot(wind.u, wind.v) * KNOTS;
         const rgb = lut[Math.min(80, Math.max(0, Math.round(kn * 2)))];
@@ -844,6 +919,7 @@ export function createWindLayer(
     tick(performance.now());
   };
   const onMoveEnd = () => {
+    requestTiles();
     resample();
     queueWash();
   };
@@ -856,11 +932,15 @@ export function createWindLayer(
   map.on("resize", onMoveEnd);
   map.on("idle", onIdle);
   document.addEventListener("visibilitychange", onVisible);
+  setMapView(viewOf(map));
 
   return {
     setFrame(next) {
       frame = next;
-      // A new hour, the same lines: they follow its field from here.
+      // A new hour, the same lines: they follow its field from here. Its tiles
+      // for this view are in (loadFrame waited for them) unless the camera has
+      // moved since they were asked for.
+      requestTiles();
       resample();
       queueWash(0);
     },

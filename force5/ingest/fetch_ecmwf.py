@@ -14,9 +14,10 @@ import requests
 from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample, write_json
+from f5bin import publish_frame
+from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
@@ -215,8 +216,8 @@ def main():
         gust, interval = gusts[hour]
         payload = {"model": "ecmwf", "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": gust, "gustIntervalHours": interval, **fields}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
         for spot in spots:
             point = {field: sample(grid, values, spot["lon"], spot["lat"]) for field, values in fields.items()}
             spot_forecasts[spot["id"]].append({"hour": hour, "validTime": valid,
@@ -227,7 +228,7 @@ def main():
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": 3,
-        "stepRanges": ECMWF_RANGES, "grid": grid, "encoding": FRAME_ENCODING, "frames": frames,
+        "stepRanges": ECMWF_RANGES, "grid": grid, "frames": frames,
         "spotForecasts": spot_forecasts,
         "gustAvailable": True, "gustMissingHours": [0],
         "gustDescription": "Scalar maximum 10 m gust over the source GRIB interval ending at each forecast time. Intervals may be 1, 3 or 6 hours and need not equal the spacing between displayed columns. Initialization (+0h) has no preceding forecast gust period and is shown as unavailable, not zero.",
@@ -237,7 +238,7 @@ def main():
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "termsUrl": "https://apps.ecmwf.int/datasets/licences/general/",
     }
-    write_json(output / "ecmwf.json", manifest)
+    write_run(output, "ecmwf.json", manifest, prefix, spots)
     print(f"Published {len(frames)} ECMWF frames to {output / 'ecmwf.json'}", flush=True)
 
 

@@ -10,6 +10,9 @@
 !force5/ingest/requirements*.txt
 !force5/blend/
 !force5/blend/*.ts
+# The run layout the blend job publishes its spot squares in.
+!scripts/
+!scripts/runs.mjs
 !deploy/
 !deploy/local/
 !deploy/local/jobs.toml

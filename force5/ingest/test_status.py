@@ -17,11 +17,17 @@ def stamp(value):
     return value.isoformat().replace("+00:00", "Z")
 
 
-def wind_manifest(run="2026091606", hours=(0, 3), directory="gfs-2026091606-240h-v1"):
+SPOTS = {"squareDegrees": 2, "url": "spots/{square}.json", "squares": ["n52w012"],
+         "keys": ["spotForecasts"]}
+
+
+def wind_manifest(run="2026091606", hours=(0, 3), directory="gfs-2026091606-240h-v1-0a0b0c0d"):
     start = datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc)
-    return {"model": "gfs", "kind": "wind", "run": run, "runTime": stamp(start),
-            "frames": [{"hour": hour, "url": f"weather/{directory}/{hour:03d}-abc.json",
-                        "validTime": stamp(start + timedelta(hours=hour))} for hour in hours]}
+    return {"schemaVersion": 2, "model": "gfs", "kind": "wind", "run": run,
+            "runTime": stamp(start), "base": f"{directory}/",
+            "frames": [{"hour": hour, "url": f"frames/{hour:03d}.bin",
+                        "validTime": stamp(start + timedelta(hours=hour))} for hour in hours],
+            "spots": SPOTS}
 
 
 def tide_manifest(run="2026091606", days=7):
@@ -40,12 +46,12 @@ class Fixture(unittest.TestCase):
         (self.public / "weather").mkdir(parents=True)
         (self.public / "marine").mkdir(parents=True)
 
-    def publish(self, model, payload, objects=True):
+    def publish(self, model, payload, objects=True, contents=None):
         (self.public / MANIFESTS[model]).write_text(json.dumps(payload))
-        for url in status.manifest_urls(payload) if objects else []:
+        for url in status.published_objects(payload, MANIFESTS[model]) if objects else []:
             path = self.public / url
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("{}")
+            path.write_text(json.dumps((contents or {}).get(path.name, {})))
 
     def describe(self, model="gfs", **kwargs):
         return status.describe(self.public, model, NOW, **kwargs)
@@ -56,7 +62,8 @@ class DescribeTest(Fixture):
         self.publish("gfs", wind_manifest(hours=(0, 3, 6, 9)))
         row = self.describe()
         self.assertEqual((row["state"], row["ok"], row["missing"]), ("fresh", True, 0))
-        self.assertEqual((row["ageHours"], row["frames"], row["objects"]), (6.0, 4, 4))
+        # Four frames and one spot square.
+        self.assertEqual((row["ageHours"], row["frames"], row["objects"]), (6.0, 4, 5))
 
     def test_a_tide_manifest_reports_its_coverage(self):
         self.publish("tides", tide_manifest())
@@ -65,13 +72,27 @@ class DescribeTest(Fixture):
         self.assertEqual(row["coverageEnds"], "2026-09-23T06:00:00Z")
         self.assertEqual(row["maxAgeHours"], float(MODELS["tides"]["maxAgeHours"]))
 
-    def test_an_ensemble_without_frames_uses_its_spot_series(self):
+    def test_an_ensemble_without_frames_states_its_horizon(self):
         run = datetime(2026, 9, 16, 6, tzinfo=timezone.utc)
         self.publish("ecmwf-ens", {
-            "model": "ecmwf-ens", "kind": "wind", "run": "2026091606", "runTime": stamp(run),
-            "frames": [], "spotMembers": {
-                "brandon": [{"hour": 0, "validTime": stamp(run)},
-                            {"hour": 48, "validTime": stamp(run + timedelta(hours=48))}]}})
+            "schemaVersion": 2, "model": "ecmwf-ens", "kind": "wind", "run": "2026091606",
+            "runTime": stamp(run), "base": "ecmwf-ens-2026091606-48h-v1-0a0b0c0d/",
+            "frames": [], "horizonHours": 48, "spots": SPOTS})
+        row = self.describe("ecmwf-ens")
+        self.assertEqual((row["state"], row["frames"], row["objects"]), ("fresh", 0, 1))
+        self.assertEqual(row["coverageEnds"], "2026-09-18T06:00:00Z")
+
+    def test_an_ensemble_without_a_stated_horizon_is_timed_by_its_squares(self):
+        run = datetime(2026, 9, 16, 6, tzinfo=timezone.utc)
+        square = {"schemaVersion": 2, "model": "ecmwf-ens", "run": "2026091606",
+                  "square": "n52w012", "spotMembers": {
+                      "brandon": [{"hour": 0, "validTime": stamp(run)},
+                                  {"hour": 48, "validTime": stamp(run + timedelta(hours=48))}]}}
+        self.publish("ecmwf-ens", {
+            "schemaVersion": 2, "model": "ecmwf-ens", "kind": "wind", "run": "2026091606",
+            "runTime": stamp(run), "base": "ecmwf-ens-2026091606-48h-v1-0a0b0c0d/",
+            "frames": [], "spots": {**SPOTS, "keys": ["spotMembers"]}},
+            contents={"n52w012.json": square})
         row = self.describe("ecmwf-ens")
         self.assertEqual((row["state"], row["frames"]), ("fresh", 0))
         self.assertEqual(row["coverageEnds"], "2026-09-18T06:00:00Z")
@@ -90,7 +111,7 @@ class DescribeTest(Fixture):
     def test_missing_objects_on_disk_make_it_incomplete(self):
         self.publish("gfs", wind_manifest(hours=(0, 3, 6)), objects=False)
         row = self.describe()
-        self.assertEqual((row["state"], row["missing"], row["ok"]), ("incomplete", 3, False))
+        self.assertEqual((row["state"], row["missing"], row["ok"]), ("incomplete", 4, False))  # 3 frames and a square
 
     def test_a_passed_horizon_is_expired(self):
         self.publish("gfs", wind_manifest(run="2026091600", hours=(0, 3)))

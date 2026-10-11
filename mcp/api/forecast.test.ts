@@ -15,12 +15,19 @@ import {
   findSpot,
   hourEnsemble,
   loadSpots,
+  modelStatus,
   spotForecast,
   windowFor,
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
+import { SOURCE_CACHE_LIMIT, cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
+import {
+  squaresFor,
+  withSpotSquares,
+  type RunPointer,
+} from "../../force5/src/spotData";
 
 const HOUR = 3600000;
 const pick = (kind: string) =>
@@ -169,7 +176,14 @@ describe("spotForecast", () => {
     const valid = Date.parse("2026-09-16T18:00:00Z");
     const rows = await Promise.all(
       ["ecmwf", "gfs"].map(async (model) => {
-        const m = (await source.json(`weather/${model}.json`)) as {
+        // The pointer, and the square holding Dollymount, through the loader.
+        const path = `weather/${model}.json`;
+        const m = (await withSpotSquares(
+          (file) => source.json(file),
+          path,
+          (await source.json(path)) as RunPointer,
+          ["n52w008"],
+        )) as unknown as {
           runTime: string;
           spotForecasts: Record<
             string,
@@ -370,5 +384,138 @@ describe("findSessions", () => {
     expect(dark.searched).toBe(
       spots.filter((s) => s.county === "Dublin").length,
     );
+  });
+});
+
+describe("which spot squares are read", () => {
+  /** The fixture source, recording every spot square asked for. */
+  const counting = () => {
+    const inner = fixtureSource();
+    const squares: string[] = [];
+    return {
+      squares,
+      source: {
+        json(path: string) {
+          if (path.includes("/spots/")) squares.push(path);
+          return inner.json(path);
+        },
+      },
+    };
+  };
+
+  it("reads only the square holding the spot, of each live model", async () => {
+    const { source, squares } = counting();
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.hours[0].wind?.models).toBe(2);
+    expect(squares.length).toBeGreaterThan(0);
+    expect(squares.every((path) => path.endsWith("/spots/n52w008.json"))).toBe(
+      true,
+    );
+    // One per model that is still live and publishes a square there.
+    expect(new Set(squares).size).toBe(squares.length);
+  });
+
+  it("reads a pointer again when the run it named has gone, and the run it names now", async () => {
+    // The cached ECMWF pointer names a run directory that has since been
+    // superseded and deleted: its squares are not there.
+    const inner = fixtureSource();
+    const live = (await inner.json("weather/ecmwf.json")) as Record<
+      string,
+      unknown
+    >;
+    const stale = { ...live, base: "ecmwf-2026091500-old-v1-0f0f0f0f/" };
+    const forgotten: string[] = [];
+    const source = {
+      json: (path: string) =>
+        path === "weather/ecmwf.json" && !forgotten.includes(path)
+          ? Promise.resolve(stale)
+          : inner.json(path),
+      forget: (path: string) => void forgotten.push(path),
+    };
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forgotten).toEqual(["weather/ecmwf.json"]);
+    expect(forecast.hours[0].wind?.models).toBe(2);
+    // A source that cannot forget still answers, without that model.
+    const plain = { json: source.json };
+    forgotten.length = 0;
+    const without = await spotForecast(
+      plain,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(without.hours[0].wind?.models).toBe(1);
+  });
+
+  it("forgets a cached read when asked", async () => {
+    let reads = 0;
+    const source = cached(async () => ++reads, 60000, () => 0);
+    expect(await source.json("weather/ecmwf.json")).toBe(1);
+    expect(await source.json("weather/ecmwf.json")).toBe(1);
+    source.forget!("weather/ecmwf.json");
+    expect(await source.json("weather/ecmwf.json")).toBe(2);
+  });
+
+  it("keeps no run's files, drops what has expired, and holds at most its limit", async () => {
+    let clock = 0;
+    let reads = 0;
+    const source = cached(async () => ++reads, 60000, () => clock);
+    // Every run has new square paths: kept, they would pile up for ever.
+    for (let run = 0; run < 50; run++)
+      await source.json(
+        `weather/harmonie-20261011${String(run).padStart(2, "0")}-61h-v3-0a0b0c0d/spots/n52w008.json`,
+      );
+    expect(source.size()).toBe(0);
+    // Shared while in flight, all the same.
+    const square = "weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/n52w008.json";
+    const [a, b] = await Promise.all([source.json(square), source.json(square)]);
+    expect(a).toBe(b);
+    await source.json("weather/ecmwf.json");
+    await source.json("marine/tides/dublin-2026-10-11.json");
+    expect(source.size()).toBe(2);
+    // A day's tide station files expire, and the next read sweeps them out.
+    clock = 60000;
+    await source.json("weather/gfs.json");
+    expect(source.size()).toBe(1);
+    for (let i = 0; i < SOURCE_CACHE_LIMIT + 10; i++)
+      await source.json(`marine/tides/station-${i}.json`);
+    expect(source.size()).toBe(SOURCE_CACHE_LIMIT);
+  });
+
+  it("reads a county's squares for a county search, and none for the status", async () => {
+    const { source, squares } = counting();
+    const spots = await loadSpots(source);
+    const dublin = spots.filter((s) => s.county === "Dublin");
+    await findSessions(source, spots, windowFor(FIXTURE_NOW, { hours: 6 }), {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      county: "Dublin",
+      limit: 30,
+      now: FIXTURE_NOW,
+    });
+    const wanted = squaresFor(dublin);
+    expect(
+      squares.every((path) =>
+        wanted.some((square) => path.endsWith(`/spots/${square}.json`)),
+      ),
+    ).toBe(true);
+    squares.length = 0;
+    const status = await modelStatus(source, FIXTURE_NOW);
+    expect(status.wind.length).toBeGreaterThan(0);
+    expect(squares).toEqual([]);
   });
 });

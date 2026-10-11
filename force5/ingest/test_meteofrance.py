@@ -25,6 +25,7 @@ import meteofrance
 from meteofrance import SPECS
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
+from runfixtures import catalogue, publish_whole, read_whole, use_catalogue
 
 ARPEGE, AROME = SPECS["arpege"], SPECS["arome"]
 RUN = "2026091618"
@@ -491,21 +492,25 @@ class PublisherAcceptanceTest(unittest.TestCase):
             "gustDescription": "d", "processing": "p",
             "sourceUrl": meteofrance.SOURCE_URL, "attribution": meteofrance.ATTRIBUTION,
             "licenseUrl": meteofrance.LICENCE_URL}
-        meteofrance.write_json(output / f"{model}.json", manifest)
+        # "inside" is a made-up place on the crop; the others are real riding locations.
+        spots = catalogue() + [{"id": "inside", "lat": 53.9, "lon": -9.9}]
+        publish_whole(output, f"{model}.json", manifest, spots=spots)
+        use_catalogue(self, spots)
         return root / "public", manifest
 
     def test_an_arpege_bundle_passes_the_shared_wind_validator(self):
         public, manifest = self.bundle("arpege", list(range(0, 13, 3)))
-        _, _, objects = validate_bundle(public, "arpege", 12,
-                                        now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
-        self.assertEqual(len(objects), len(manifest["frames"]))
+        pointer, _, objects = validate_bundle(public, "arpege", 12,
+                                              now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
+        self.assertEqual(len(objects), len(manifest["frames"]) + len(pointer["spots"]["squares"]))
 
     def test_an_arome_bundle_with_uncovered_spots_passes_too(self):
         public, _ = self.bundle("arome", list(range(0, 13, 3)),
                                 outside=("fi-pollan-bay", "web-benone-strand"))
         manifest, _, objects = validate_bundle(
             public, "arome", 12, now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
-        self.assertEqual(len(objects), 5)
+        self.assertEqual(len(objects), 5 + len(manifest["spots"]["squares"]))
+        manifest = read_whole(public / "weather/arome.json")
         self.assertTrue(all(step["u"] is None
                             for step in manifest["spotForecasts"]["fi-pollan-bay"]))
         self.assertIn("note", manifest["coverageNote"])
@@ -589,7 +594,12 @@ class BundledSnapshotTest(unittest.TestCase):
         manifest, _, objects = validate_bundle(
             bundles, "arpege", 12, now=datetime(2026, 9, 16, 19, tzinfo=timezone.utc))
         self.assertEqual(manifest["stepHours"], 3)
-        self.assertEqual(len(objects), len(manifest["frames"]))
+        # Every frame is its tiles: every tile of every level that is not absent.
+        tiles = sum((level["x"][1] - level["x"][0] + 1) * (level["y"][1] - level["y"][0] + 1)
+                    - len(level["absent"]) for level in manifest["tiles"]["levels"])
+        self.assertEqual(len(objects),
+                         len(manifest["frames"]) * tiles + len(manifest["spots"]["squares"]))
+        manifest = read_whole(bundles / "weather/arpege.json")
         # The real crop is 201 x 111 cells of 0.05°; the sample bundle is coarse
         # on purpose and rectangular on purpose (dx != dy, as the real HARMONIE
         # grid is), so the shape is stated outright. Re-deriving it from the

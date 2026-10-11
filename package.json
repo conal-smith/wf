@@ -58,6 +58,7 @@
     "deploy:logs": "docker compose -f deploy/local/docker-compose.yml logs -f --tail=100",
     "deploy:status": "docker compose -f deploy/local/docker-compose.yml run --rm status",
     "deploy:schedule": "docker compose -f deploy/local/docker-compose.yml run --rm scheduler --list",
+    "deploy:once": "docker compose -f deploy/local/docker-compose.yml run --rm scheduler --once",
     "deploy:run": "docker compose -f deploy/local/docker-compose.yml run --rm worker",
     "deploy:prune": "docker compose -f deploy/local/docker-compose.yml run --rm prune"
   },

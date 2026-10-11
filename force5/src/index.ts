@@ -2,6 +2,7 @@ export { default as WindMap } from "./WindMap";
 export { SiteMenu } from "./SiteMenu";
 export * from "./siteNav";
 export * from "./weather";
+export { loadFrame, samplePoint } from "./tiledField";
 export * from "./units";
 export * from "./manifests";
 export * from "./revalidate";

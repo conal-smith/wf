@@ -33,10 +33,11 @@ from urllib.parse import quote
 import eccodes as ec
 import numpy as np
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from fetch_forecast import (ROOT, get, load_spots, messages, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 HOST = "meteofrance-pnt.s3.rbx.io.cloud.ovh.net"
@@ -673,9 +674,8 @@ def refresh(spec, args, prose):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": model, "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": interval, **fields}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "gustIntervalHours": interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
         if inside is None:
             inside, outside = coverage(spots, grid, fields["u"])
             if not inside:
@@ -701,13 +701,13 @@ def refresh(spec, args, prose):
         "resolutionKm": spec["resolutionKm"], "resolutionLabel": spec["resolutionLabel"],
         "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "grid": layout["grid"], "encoding": FRAME_ENCODING, "frames": frames,
+        "grid": layout["grid"], "frames": frames,
         "spotForecasts": series,
         "gustAvailable": True, "gustMissingHours": [0], "coverageNote": note,
         "gustDescription": prose["gustDescription"], "processing": prose["processing"],
         "sourceUrl": SOURCE_URL, "attribution": ATTRIBUTION, "licenseUrl": LICENCE_URL,
     }
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{model}.json", manifest)
+    write_run(output, f"{model}.json", manifest, prefix, spots)
     print(f"Published {len(frames)} {spec['modelName']} frames to "
           f"{output / f'{model}.json'}", flush=True)

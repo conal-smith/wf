@@ -1,7 +1,8 @@
 """The archive store, and the guards that keep every deleter out of archive/.
 
-The archive is the only record of what was forecast and observed, and three
-different pieces of code delete from the bucket. Each is tested here against an
+The archive is the only record of what was forecast and observed, and two sweeps
+delete from the store, one of them through `delete_keys`, while a pointer's
+`superseded` list decides what they may keep. Each is tested here against an
 archive that looks as deletable as anything can: old, unreferenced and named
 like the objects they normally delete.
 """
@@ -19,7 +20,7 @@ import archive
 from archive import BucketArchive, LocalArchive, archive_key, forecast_key, observation_key
 import prune
 from prune import bucket_prune, delete_keys, is_archived, prune_published
-from publish_s3 import superseded_objects
+from squares import retire
 import registry
 from test_publish_s3 import FakeS3
 
@@ -169,14 +170,17 @@ class PruneNeverTouchesTheArchive(unittest.TestCase):
         self.assertEqual(s3.delete_calls, 0)
         self.assertIn("weather/gfs-old/0.bin", s3.objects)
 
-    def test_the_superseded_delete_skips_archive_urls(self):
-        previous = {"model": "gfs", "run": "2026091300", "frames": [
-            {"url": "weather/gfs-2026091300-a/0.bin"}, {"url": "archive/forecasts/gfs/x.json"},
-            {"url": "weather/archive/gfs-x.json"}]}
-        current = {"model": "gfs", "run": "2026091306", "frames": [
-            {"url": "weather/gfs-2026091306-b/0.bin"}]}
-        self.assertEqual(superseded_objects("gfs", previous, current),
-                         ["weather/gfs-2026091300-a/0.bin"])
+    def test_a_superseded_entry_can_only_ever_name_a_run_directory_beside_its_pointer(self):
+        current = {"model": "gfs", "run": "2026091306", "base": "gfs-2026091306-6h-v1-1a1b1c1d/"}
+        self.assertEqual(retire({"model": "gfs", "base": "gfs-2026091300-6h-v1-0a0b0c0d/"},
+                                current, NOW),
+                         [{"base": "gfs-2026091300-6h-v1-0a0b0c0d/", "at": "2026-09-13T12:00:00Z"}])
+        for base in ("../archive/forecasts-0a0b0c0d/", "archive/gfs-0a0b0c0d/",
+                     "/archive-0a0b0c0d/"):
+            with self.subTest(base=base):
+                self.assertEqual(retire({"model": "gfs", "base": base,
+                                         "superseded": [{"base": base, "at": "2026-09-13T11:00:00Z"}]},
+                                        current, NOW), [])
 
 
 class OpenArchiveTests(unittest.TestCase):

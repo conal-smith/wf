@@ -1,6 +1,13 @@
 import { expect, it } from "vitest";
-import { validateManifest } from "../force5/src/weather";
+import { validateManifest, validateWindSpots } from "../force5/src/weather";
 import type { Manifest } from "../force5/src/weather";
+import { pointerOf, tilesFor } from "../force5/src/testing";
+
+/** The pointer as published, then the spot data as it arrives from its squares. */
+const validate = (m: Manifest): Manifest => {
+  validateManifest(pointerOf(m));
+  return validateWindSpots(m);
+};
 
 const runTime = "2026-09-16T12:00:00Z";
 const hours = [0, 6, 12];
@@ -9,9 +16,25 @@ const at = (hour: number) =>
     .toISOString()
     .replace(".000", "");
 
+const grid = {
+  width: 2,
+  height: 2,
+  west: -8,
+  east: -7.75,
+  north: 54.25,
+  south: 54,
+  dx: 0.25,
+  dy: 0.25,
+};
+const frames = hours.map((hour) => ({
+  hour,
+  validTime: at(hour),
+  gustIntervalHours: hour === 0 ? null : ([hour - 6, hour] as [number, number]),
+}));
+
 const ensembleManifest = () =>
   ({
-    schemaVersion: 1,
+    schemaVersion: 2,
     model: "ecmwf-ens",
     modelName: "ECMWF ENS",
     provider: "ECMWF",
@@ -23,23 +46,16 @@ const ensembleManifest = () =>
     resolutionLabel: "0.25° open-data grid",
     stepHours: 6,
     stepRanges: [{ throughHour: 12, stepHours: 6 }],
-    grid: {
-      width: 2,
-      height: 2,
-      west: -8,
-      east: -7.75,
-      north: 54.25,
-      south: 54,
-      dx: 0.25,
-      dy: 0.25,
+    grid,
+    tiles: tilesFor(grid, frames),
+    base: "ecmwf-ens-2026091612-12h-2m-v1-0a1b2c3d/",
+    spots: {
+      squareDegrees: 2,
+      url: "spots/{square}.json",
+      squares: ["n52w012"],
+      keys: ["spotForecasts", "spotMembers"],
     },
-    frames: hours.map((hour) => ({
-      hour,
-      validTime: at(hour),
-      url: `weather/ecmwf-ens-run/${hour}.json`,
-      gustIntervalHours:
-        hour === 0 ? null : ([hour - 6, hour] as [number, number]),
-    })),
+    frames: frames.map((frame) => ({ ...frame })),
     spotForecasts: {
       brandon: hours.map((hour) => ({
         hour,
@@ -73,7 +89,7 @@ const ensembleManifest = () =>
   }) as Manifest;
 
 it("accepts an ensemble manifest's extra optional keys and uniform six-hour ladder", () => {
-  const m = validateManifest(ensembleManifest());
+  const m = validate(ensembleManifest());
   expect(m.ensemble?.members).toBe(2);
   expect(m.ensemble?.control).toBeNull();
   expect(m.spotMembers?.brandon[1].u).toEqual([1, 2]);
@@ -87,19 +103,19 @@ it("ignores unknown manifest keys without rejecting the forecast", () => {
     probabilityBlend: { thresholdsKnots: [12, 18, 25] },
     unexpected: "ignored",
   } as unknown as Manifest;
-  expect(validateManifest(extended).frames).toHaveLength(3);
+  expect(validate(extended).frames).toHaveLength(3);
 });
 
 it("still enforces the declared cadence and gust rules on an ensemble manifest", () => {
   const m = ensembleManifest();
   expect(() =>
-    validateManifest({ ...m, stepRanges: [{ throughHour: 13, stepHours: 6 }] }),
+    validate({ ...m, stepRanges: [{ throughHour: 13, stepHours: 6 }] }),
   ).toThrow(/cadence/);
+  expect(() => validate({ ...m, frames: m.frames.slice(0, 2) })).toThrow(
+    /cadence/,
+  );
   expect(() =>
-    validateManifest({ ...m, frames: m.frames.slice(0, 2) }),
-  ).toThrow(/cadence/);
-  expect(() =>
-    validateManifest({
+    validate({
       ...m,
       frames: [
         { ...m.frames[0], gustIntervalHours: [0, 0] },

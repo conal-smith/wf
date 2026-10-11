@@ -21,11 +21,12 @@ import sys
 
 import eccodes as ec
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from fetch_ecmwf import SOURCE_URL, client
 from fetch_forecast import (ROOT, decode_handle, load_spots, published_in_bucket, sample,
-                            spots_file, write_json)
+                            spots_file)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "aifs"
@@ -117,7 +118,7 @@ def manifest_for(run, run_time, hours, grid, frames, spot_forecasts):
         "resolutionLabel": "0.25° open-data grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": STEP,
-        "stepRanges": ranges, "grid": grid, "encoding": FRAME_ENCODING, "frames": frames,
+        "stepRanges": ranges, "grid": grid, "frames": frames,
         "spotForecasts": spot_forecasts,
         "gustAvailable": False, "gustDescription": GUST_DESCRIPTION,
         "processing": (
@@ -199,11 +200,10 @@ def main(argv=None):
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, "gust": None, "gustIntervalHours": None, **fields}
-        name = publish_frame(output, prefix, payload)
+        publish_frame(output, prefix, payload)
         # The browser reads a null interval as a declared absence; leaving the key
         # out would read as an undeclared one and fail its contract check.
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "gustIntervalHours": None})
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": None})
         for spot in spots:
             spot_forecasts[spot["id"]].append({
                 "hour": hour, "validTime": valid, "gust": None,
@@ -211,7 +211,7 @@ def main(argv=None):
                    for field, values in fields.items()}})
     manifest = manifest_for(run, run_time, hours, grid, frames, spot_forecasts)
     # Only this final write advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     transferred = sum(path.stat().st_size for path in cache.glob("*.grib2"))
     print(f"Published {len(frames)} AIFS frames to {output / (MODEL + '.json')}; "
           f"{transferred / 1e6:.1f} MB of source GRIB cached under {cache}", flush=True)

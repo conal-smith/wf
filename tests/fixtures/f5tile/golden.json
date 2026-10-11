@@ -1,0 +1,5096 @@
+{
+  "note": "Regenerate with `.venv/bin/python force5/ingest/test_f5tile.py --write-golden`. force5/ingest/f5tile.py must build exactly these tiles from `source`, and every reader must decode `expected` from them and sample `samples` the same. See force5/ingest/test_f5tile.py and force5/src/f5tile.test.ts.",
+  "pyramids": [
+    {
+      "name": "regional",
+      "grid": {
+        "west": -9.5,
+        "north": 55.0,
+        "dx": 0.25,
+        "dy": 0.25,
+        "width": 20,
+        "height": 14,
+        "east": -4.75,
+        "south": 51.75
+      },
+      "size": 8,
+      "border": 1,
+      "hour": 42,
+      "run": "2026091712",
+      "source": {
+        "u": [null, null, null, null, null, null, 7.67, 5.78, 3.26, 1.43, -1.62, -4.51, -5.85, -7.63, -7.49, -7.57, -6.81, -4.23, -2.24, 0.0, null, null, null, null, null, null, 6.37, 5.58, 3.06, 1.23, -1.82, -4.71, -6.05, -7.83, -8.79, -7.77, -7.01, -5.53, -2.44, -0.2, null, null, null, null, null, null, 150.0, -150.0, 2.86, -0.07, -2.02, -4.91, -7.35, -8.03, -8.99, -7.97, -7.21, -5.73, -2.64, -0.4, null, null, null, null, null, null, 5.97, 4.08, 2.66, -0.27, -2.22, -5.11, -7.55, -8.23, -9.19, -9.27, -7.41, -5.93, -3.94, -0.6, -1.3, 0.92, 2.85, 5.33, 5.98, 6.86, 5.77, 3.88, 2.46, -0.47, -3.52, -5.31, -7.75, -9.53, -9.39, -9.47, -7.61, -6.13, -4.14, -0.8, 0.05, -0.05, 0.25, -0.25, 5.78, 5.56, 5.57, 3.68, 1.16, -0.67, -3.72, -5.51, -7.95, -9.73, -9.59, -9.67, -8.91, -6.33, -4.34, -2.1, -2.8, 0.52, 2.45, 3.83, 5.58, 5.36, 5.37, 3.48, 0.96, -0.87, -3.92, -6.81, -8.15, -9.93, -10.89, -9.87, -9.11, -6.53, -4.54, -2.3, -3.0, 0.32, 2.25, 3.63, 5.38, 5.16, 4.07, 3.28, 0.76, -2.17, -4.12, -7.01, -8.35, -10.13, -11.09, -10.07, -9.31, -7.83, -4.74, -2.5, -3.2, -0.98, 2.05, 3.43, 4.08, 4.96, 3.87, 3.08, 0.56, -2.37, -4.32, -7.21, -9.65, -10.33, -11.29, -11.37, -9.51, -8.03, -4.94, -2.7, -3.4, -1.18, 1.85, 3.23, 3.88, 4.76, 3.67, 1.78, 0.36, -2.57, -5.62, -7.41, -9.85, -10.53, -11.49, -11.57, -9.71, -8.23, -6.24, -2.9, -3.6, -1.38, 0.55, 3.03, 3.68, 3.46, 3.47, 1.58, null, -2.77, -5.82, -7.61, -10.05, -11.83, -11.69, -11.77, -11.01, -8.43, -6.44, -3.1, -4.9, -1.58, 0.35, 2.83, 3.48, 3.26, 3.27, 1.38, -1.14, -2.97, -6.02, -8.91, -10.25, -12.03, -11.89, -11.97, -11.21, -8.63, -6.64, -4.4, -5.1, -1.78, 0.15, 1.53, 3.28, 3.06, 1.97, 1.18, -1.34, -3.17, -6.22, -9.11, -10.45, -12.23, -13.19, -12.17, -11.41, -9.93, -6.84, -4.6, -5.3, -3.08, -0.05, 1.33, 3.08, 2.86, 1.77, 0.98, -1.54, -4.47, -6.42, -9.31, -11.75, -12.43, -13.39, -12.37, -11.61, -10.13, -7.04, -4.8],
+        "v": [null, null, null, null, null, null, -0.5, 0.05, 0.6, 0.05, 0.6, 1.15, 0.6, 1.15, 0.6, 1.15, 1.7, 1.15, 1.7, 2.25, null, null, null, null, null, null, -0.21, -0.76, -0.21, -0.76, -0.21, 0.34, -0.21, 0.34, 0.89, 0.34, 0.89, 1.44, 0.89, 1.44, null, null, null, null, null, null, -149.95, 149.95, -2.1, -1.55, -2.1, -1.55, -1.0, -1.55, -1.0, -1.55, -1.0, -0.45, -1.0, -0.45, null, null, null, null, null, null, -4.65, -4.1, -4.65, null, -4.65, -4.1, -3.55, -4.1, -3.55, -3.0, -3.55, -3.0, -2.45, -3.0, -8.38, -7.83, -7.28, -7.83, -7.28, -7.83, -7.28, -6.73, -7.28, -6.73, -6.18, -6.73, -6.18, -5.63, -6.18, -5.63, -6.18, -5.63, -5.08, -5.63, -10.51, -9.96, -9.41, -9.96, -9.41, -8.86, -9.41, -8.86, -8.31, -8.86, -8.31, -8.86, -8.31, -7.76, -8.31, -7.76, -7.21, -7.76, -7.21, -6.66, -10.55, -11.1, -10.55, -10.0, -10.55, -10.0, -10.55, -10.0, -9.45, -10.0, -9.45, -8.9, -9.45, -8.9, -8.35, -8.9, -8.35, -8.9, -8.35, -7.8, -10.48, -11.03, -10.48, -9.93, -10.48, -9.93, -9.38, -9.93, -9.38, -8.83, -9.38, -8.83, -9.38, -8.83, -8.28, -8.83, -8.28, -7.73, -8.28, -7.73, -9.27, -8.72, -9.27, -8.72, -8.17, -8.72, -8.17, -8.72, -8.17, -7.62, -8.17, -7.62, -7.07, -7.62, -7.07, -6.52, -7.07, -6.52, -7.07, -6.52, -7.25, -6.7, -7.25, -6.7, -6.15, -6.7, -6.15, -5.6, -6.15, -5.6, -5.05, -5.6, -5.05, -5.6, -5.05, -4.5, -5.05, -4.5, -3.95, -4.5, -4.98, -4.43, -3.88, -4.43, -3.88, -3.33, -3.88, -3.33, -3.88, -3.33, -2.78, -3.33, -2.78, -2.23, -2.78, -2.23, -1.68, -2.23, -1.68, -2.23, -1.96, -2.51, -1.96, -2.51, -1.96, -1.41, -1.96, -1.41, -0.86, -1.41, -0.86, -0.31, -0.86, -0.31, -0.86, -0.31, 0.24, -0.31, 0.24, 0.79, -0.9, -1.45, -0.9, -0.35, -0.9, -0.35, 0.2, -0.35, 0.2, -0.35, 0.2, 0.75, 0.2, 0.75, 1.3, 0.75, 1.3, 1.85, 1.3, 1.85, -1.02, -0.47, -1.02, -0.47, -1.02, -0.47, 0.08, -0.47, 0.08, 0.63, 0.08, 0.63, 1.18, 0.63, 1.18, 0.63, 1.18, 1.73, 1.18, 1.73],
+        "gust": [null, null, null, null, null, null, 10.49, 8.01, 4.81, 2.36, 2.75, 6.55, 8.14, 10.53, 10.27, 10.45, 9.62, 6.2, 4.16, 3.43, null, null, null, null, null, null, 8.79, 7.82, 4.49, 2.38, 2.88, 6.64, 8.37, 10.69, 11.99, 10.61, 9.69, 7.93, 3.88, 2.39, null, null, null, null, null, null, 8.97, 8.3, 5.11, 2.52, 4.29, 7.19, 10.14, 11.13, 12.26, 11.06, 9.96, 7.97, 4.17, 1.28, null, null, null, null, null, null, 10.34, 8.02, 7.46, 5.84, 7.2, 9.02, 11.35, 12.45, 13.31, 13.17, 11.18, 9.14, 6.53, 4.48, 11.52, 10.75, 10.66, 12.81, 12.75, 14.03, 12.58, 10.6, 10.49, 9.27, 9.75, 11.64, 13.39, 14.89, 15.11, 14.82, 13.24, 11.32, 9.02, 7.89, 14.3, 13.48, 13.21, 15.06, 14.86, 14.1, 14.72, 12.97, 11.41, 12.05, 12.34, 14.06, 15.45, 16.68, 17.0, 16.62, 15.4, 13.52, 11.44, 9.58, 14.69, 14.95, 14.58, 14.42, 16.02, 15.25, 15.89, 14.26, 12.85, 13.55, 13.8, 15.07, 16.72, 17.84, 18.34, 17.78, 16.57, 14.85, 12.86, 11.07, 14.67, 14.85, 14.43, 14.24, 15.81, 15.05, 13.79, 14.09, 12.73, 12.32, 13.82, 15.16, 16.83, 17.97, 18.49, 17.91, 16.7, 14.8, 12.9, 11.06, 13.25, 11.91, 12.84, 12.68, 12.37, 13.54, 12.25, 12.52, 11.15, 10.87, 12.51, 14.14, 16.05, 17.19, 17.82, 17.54, 15.91, 13.95, 11.71, 9.67, 10.91, 9.34, 10.23, 10.17, 9.95, 11.18, 9.81, 8.14, 8.51, 8.51, 10.32, 12.57, 14.89, 16.0, 16.82, 16.64, 14.73, 12.69, 10.1, 7.46, 8.49, 6.53, 5.59, 7.48, 7.45, 6.74, 7.27, 5.29, 5.55, 6.13, 8.88, 11.3, 14.06, 16.15, 16.12, 16.07, 14.98, 11.84, 9.15, 5.46, 7.36, 4.36, 3.09, 5.42, 5.69, 5.12, 5.46, 3.06, 2.36, 4.77, 8.41, 12.09, 13.87, 16.14, 16.0, 16.07, 15.08, 11.73, 9.14, 6.31, 7.23, 3.48, 1.69, 2.54, 4.92, null, 3.07, 2.1, 2.26, 4.65, 8.59, 12.38, 14.09, 16.43, 17.73, 16.35, 15.43, 13.63, 9.55, 6.95, 0.0, 4.55, 1.83, 2.33, 4.72, 4.27, 2.8, 1.91, 2.5, 6.37, 8.85, 12.63, 15.85, 16.68, 17.97, 16.6, 15.67, 13.86, 9.78, 7.13]
+      },
+      "levels": [
+        {
+          "level": 0,
+          "dx": 0.25,
+          "dy": 0.25,
+          "columns": [682, 701],
+          "rows": [140, 153],
+          "x": [85, 87],
+          "y": [17, 19]
+        },
+        {
+          "level": 1,
+          "dx": 0.5,
+          "dy": 0.5,
+          "columns": [341, 350],
+          "rows": [70, 76],
+          "x": [42, 43],
+          "y": [8, 9]
+        },
+        {
+          "level": 2,
+          "dx": 1.0,
+          "dy": 1.0,
+          "columns": [170, 175],
+          "rows": [35, 38],
+          "x": [21, 21],
+          "y": [4, 4]
+        }
+      ],
+      "tiles": [
+        {
+          "level": 0,
+          "x": 86,
+          "y": 17,
+          "path": "regional/t/0/86/17/042.bin",
+          "bytes": 624,
+          "sha256": "d2f857c9f1825f6f4fc5dfa9522fa88431d9a62cd84b9673f5c1e7f2ff0f157f",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 7.7, 5.8, 3.3, 1.4, -1.6, -4.5, -5.9, -7.6, -7.5, null, 6.4, 5.6, 3.1, 1.2, -1.8, -4.7, -6.1, -7.8, -8.8, null, 150.0, -150.0, 2.9, -0.1, -2.0, -4.9, -7.4, -8.0, -9.0, null, 6.0, 4.1, 2.7, -0.3, -2.2, -5.1, -7.6, -8.2, -9.2, 6.9, 5.8, 3.9, 2.5, -0.5, -3.5, -5.3, -7.8, -9.5, -9.4],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, -0.5, 0.1, 0.6, 0.1, 0.6, 1.2, 0.6, 1.2, 0.6, null, -0.2, -0.8, -0.2, -0.8, -0.2, 0.3, -0.2, 0.3, 0.9, null, -150.0, 150.0, -2.1, -1.6, -2.1, -1.6, -1.0, -1.6, -1.0, null, -4.7, -4.1, -4.7, null, -4.7, -4.1, -3.6, -4.1, -3.6, -7.8, -7.3, -6.7, -7.3, -6.7, -6.2, -6.7, -6.2, -5.6, -6.2],
+            "gust": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 10.5, 8.0, 4.8, 2.4, 2.8, 6.6, 8.1, 10.5, 10.3, null, 8.8, 7.8, 4.5, 2.4, 2.9, 6.6, 8.4, 10.7, 12.0, null, 9.0, 8.3, 5.1, 2.5, 4.3, 7.2, 10.1, 11.1, 12.3, null, 10.3, 8.0, 7.5, 5.8, 7.2, 9.0, 11.4, 12.5, 13.3, 14.0, 12.6, 10.6, 10.5, 9.3, 9.8, 11.6, 13.4, 14.9, 15.1]
+          }
+        },
+        {
+          "level": 0,
+          "x": 87,
+          "y": 17,
+          "path": "regional/t/0/87/17/042.bin",
+          "bytes": 624,
+          "sha256": "b4c93d9b3b8197eb05f6438f317f1bae1cc34974562727c593016d674ebd7516",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, -7.6, -7.5, -7.6, -6.8, -4.2, -2.2, 0.0, null, null, null, -7.8, -8.8, -7.8, -7.0, -5.5, -2.4, -0.2, null, null, null, -8.0, -9.0, -8.0, -7.2, -5.7, -2.6, -0.4, null, null, null, -8.2, -9.2, -9.3, -7.4, -5.9, -3.9, -0.6, null, null, null, -9.5, -9.4, -9.5, -7.6, -6.1, -4.1, -0.8, null, null, null],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 1.2, 0.6, 1.2, 1.7, 1.2, 1.7, 2.3, null, null, null, 0.3, 0.9, 0.3, 0.9, 1.4, 0.9, 1.4, null, null, null, -1.6, -1.0, -1.6, -1.0, -0.5, -1.0, -0.5, null, null, null, -4.1, -3.6, -3.0, -3.6, -3.0, -2.5, -3.0, null, null, null, -5.6, -6.2, -5.6, -6.2, -5.6, -5.1, -5.6, null, null, null],
+            "gust": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 10.5, 10.3, 10.5, 9.6, 6.2, 4.2, 3.4, null, null, null, 10.7, 12.0, 10.6, 9.7, 7.9, 3.9, 2.4, null, null, null, 11.1, 12.3, 11.1, 10.0, 8.0, 4.2, 1.3, null, null, null, 12.5, 13.3, 13.2, 11.2, 9.1, 6.5, 4.5, null, null, null, 14.9, 15.1, 14.8, 13.2, 11.3, 9.0, 7.9, null, null, null]
+          }
+        },
+        {
+          "level": 0,
+          "x": 85,
+          "y": 18,
+          "path": "regional/t/0/85/18/042.bin",
+          "bytes": 624,
+          "sha256": "78009339ee1920ff092729f6f161f8cf1ce3d3f0174b7c108dc964e9f4ff2620",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, 6.0, null, null, null, -1.3, 0.9, 2.9, 5.3, 6.0, 6.9, 5.8, null, null, null, 0.1, -0.1, 0.3, -0.3, 5.8, 5.6, 5.6, null, null, null, -2.8, 0.5, 2.5, 3.8, 5.6, 5.4, 5.4, null, null, null, -3.0, 0.3, 2.3, 3.6, 5.4, 5.2, 4.1, null, null, null, -3.2, -1.0, 2.1, 3.4, 4.1, 5.0, 3.9, null, null, null, -3.4, -1.2, 1.9, 3.2, 3.9, 4.8, 3.7, null, null, null, -3.6, -1.4, 0.6, 3.0, 3.7, 3.5, 3.5, null, null, null, -4.9, -1.6, 0.4, 2.8, 3.5, 3.3, 3.3, null, null, null, -5.1, -1.8, 0.2, 1.5, 3.3, 3.1, 2.0],
+            "v": [null, null, null, null, null, null, null, null, null, -4.7, null, null, null, -8.4, -7.8, -7.3, -7.8, -7.3, -7.8, -7.3, null, null, null, -10.5, -10.0, -9.4, -10.0, -9.4, -8.9, -9.4, null, null, null, -10.6, -11.1, -10.6, -10.0, -10.6, -10.0, -10.6, null, null, null, -10.5, -11.0, -10.5, -9.9, -10.5, -9.9, -9.4, null, null, null, -9.3, -8.7, -9.3, -8.7, -8.2, -8.7, -8.2, null, null, null, -7.3, -6.7, -7.3, -6.7, -6.2, -6.7, -6.2, null, null, null, -5.0, -4.4, -3.9, -4.4, -3.9, -3.3, -3.9, null, null, null, -2.0, -2.5, -2.0, -2.5, -2.0, -1.4, -2.0, null, null, null, -0.9, -1.5, -0.9, -0.4, -0.9, -0.4, 0.2],
+            "gust": [null, null, null, null, null, null, null, null, null, 10.3, null, null, null, 11.5, 10.8, 10.7, 12.8, 12.8, 14.0, 12.6, null, null, null, 14.3, 13.5, 13.2, 15.1, 14.9, 14.1, 14.7, null, null, null, 14.7, 15.0, 14.6, 14.4, 16.0, 15.3, 15.9, null, null, null, 14.7, 14.9, 14.4, 14.2, 15.8, 15.1, 13.8, null, null, null, 13.3, 11.9, 12.8, 12.7, 12.4, 13.5, 12.3, null, null, null, 10.9, 9.3, 10.2, 10.2, 10.0, 11.2, 9.8, null, null, null, 8.5, 6.5, 5.6, 7.5, 7.5, 6.7, 7.3, null, null, null, 7.4, 4.4, 3.1, 5.4, 5.7, 5.1, 5.5, null, null, null, 7.2, 3.5, 1.7, 2.5, 4.9, null, 3.1]
+          }
+        },
+        {
+          "level": 0,
+          "x": 86,
+          "y": 18,
+          "path": "regional/t/0/86/18/042.bin",
+          "bytes": 624,
+          "sha256": "e2913662c22eef188813dfbba3b2c84b6f0f625ac4de11ec4e980de9a2bd820f",
+          "expected": {
+            "u": [null, 6.0, 4.1, 2.7, -0.3, -2.2, -5.1, -7.6, -8.2, -9.2, 6.9, 5.8, 3.9, 2.5, -0.5, -3.5, -5.3, -7.8, -9.5, -9.4, 5.6, 5.6, 3.7, 1.2, -0.7, -3.7, -5.5, -8.0, -9.7, -9.6, 5.4, 5.4, 3.5, 1.0, -0.9, -3.9, -6.8, -8.2, -9.9, -10.9, 5.2, 4.1, 3.3, 0.8, -2.2, -4.1, -7.0, -8.4, -10.1, -11.1, 5.0, 3.9, 3.1, 0.6, -2.4, -4.3, -7.2, -9.7, -10.3, -11.3, 4.8, 3.7, 1.8, 0.4, -2.6, -5.6, -7.4, -9.9, -10.5, -11.5, 3.5, 3.5, 1.6, null, -2.8, -5.8, -7.6, -10.1, -11.8, -11.7, 3.3, 3.3, 1.4, -1.1, -3.0, -6.0, -8.9, -10.3, -12.0, -11.9, 3.1, 2.0, 1.2, -1.3, -3.2, -6.2, -9.1, -10.5, -12.2, -13.2],
+            "v": [null, -4.7, -4.1, -4.7, null, -4.7, -4.1, -3.6, -4.1, -3.6, -7.8, -7.3, -6.7, -7.3, -6.7, -6.2, -6.7, -6.2, -5.6, -6.2, -8.9, -9.4, -8.9, -8.3, -8.9, -8.3, -8.9, -8.3, -7.8, -8.3, -10.0, -10.6, -10.0, -9.5, -10.0, -9.5, -8.9, -9.5, -8.9, -8.4, -9.9, -9.4, -9.9, -9.4, -8.8, -9.4, -8.8, -9.4, -8.8, -8.3, -8.7, -8.2, -8.7, -8.2, -7.6, -8.2, -7.6, -7.1, -7.6, -7.1, -6.7, -6.2, -5.6, -6.2, -5.6, -5.1, -5.6, -5.1, -5.6, -5.1, -3.3, -3.9, -3.3, -3.9, -3.3, -2.8, -3.3, -2.8, -2.2, -2.8, -1.4, -2.0, -1.4, -0.9, -1.4, -0.9, -0.3, -0.9, -0.3, -0.9, -0.4, 0.2, -0.4, 0.2, -0.4, 0.2, 0.8, 0.2, 0.8, 1.3],
+            "gust": [null, 10.3, 8.0, 7.5, 5.8, 7.2, 9.0, 11.4, 12.5, 13.3, 14.0, 12.6, 10.6, 10.5, 9.3, 9.8, 11.6, 13.4, 14.9, 15.1, 14.1, 14.7, 13.0, 11.4, 12.1, 12.3, 14.1, 15.5, 16.7, 17.0, 15.3, 15.9, 14.3, 12.9, 13.6, 13.8, 15.1, 16.7, 17.8, 18.3, 15.1, 13.8, 14.1, 12.7, 12.3, 13.8, 15.2, 16.8, 18.0, 18.5, 13.5, 12.3, 12.5, 11.2, 10.9, 12.5, 14.1, 16.1, 17.2, 17.8, 11.2, 9.8, 8.1, 8.5, 8.5, 10.3, 12.6, 14.9, 16.0, 16.8, 6.7, 7.3, 5.3, 5.6, 6.1, 8.9, 11.3, 14.1, 16.2, 16.1, 5.1, 5.5, 3.1, 2.4, 4.8, 8.4, 12.1, 13.9, 16.1, 16.0, null, 3.1, 2.1, 2.3, 4.7, 8.6, 12.4, 14.1, 16.4, 17.7]
+          }
+        },
+        {
+          "level": 0,
+          "x": 87,
+          "y": 18,
+          "path": "regional/t/0/87/18/042.bin",
+          "bytes": 624,
+          "sha256": "0aa8e8f6ef8e8dbea145558c21d14a84bab1089557d60058d2cb637aeb08f8a3",
+          "expected": {
+            "u": [-8.2, -9.2, -9.3, -7.4, -5.9, -3.9, -0.6, null, null, null, -9.5, -9.4, -9.5, -7.6, -6.1, -4.1, -0.8, null, null, null, -9.7, -9.6, -9.7, -8.9, -6.3, -4.3, -2.1, null, null, null, -9.9, -10.9, -9.9, -9.1, -6.5, -4.5, -2.3, null, null, null, -10.1, -11.1, -10.1, -9.3, -7.8, -4.7, -2.5, null, null, null, -10.3, -11.3, -11.4, -9.5, -8.0, -4.9, -2.7, null, null, null, -10.5, -11.5, -11.6, -9.7, -8.2, -6.2, -2.9, null, null, null, -11.8, -11.7, -11.8, -11.0, -8.4, -6.4, -3.1, null, null, null, -12.0, -11.9, -12.0, -11.2, -8.6, -6.6, -4.4, null, null, null, -12.2, -13.2, -12.2, -11.4, -9.9, -6.8, -4.6, null, null, null],
+            "v": [-4.1, -3.6, -3.0, -3.6, -3.0, -2.5, -3.0, null, null, null, -5.6, -6.2, -5.6, -6.2, -5.6, -5.1, -5.6, null, null, null, -7.8, -8.3, -7.8, -7.2, -7.8, -7.2, -6.7, null, null, null, -8.9, -8.4, -8.9, -8.4, -8.9, -8.4, -7.8, null, null, null, -8.8, -8.3, -8.8, -8.3, -7.7, -8.3, -7.7, null, null, null, -7.6, -7.1, -6.5, -7.1, -6.5, -7.1, -6.5, null, null, null, -5.6, -5.1, -4.5, -5.1, -4.5, -4.0, -4.5, null, null, null, -2.2, -2.8, -2.2, -1.7, -2.2, -1.7, -2.2, null, null, null, -0.3, -0.9, -0.3, 0.2, -0.3, 0.2, 0.8, null, null, null, 0.8, 1.3, 0.8, 1.3, 1.9, 1.3, 1.9, null, null, null],
+            "gust": [12.5, 13.3, 13.2, 11.2, 9.1, 6.5, 4.5, null, null, null, 14.9, 15.1, 14.8, 13.2, 11.3, 9.0, 7.9, null, null, null, 16.7, 17.0, 16.6, 15.4, 13.5, 11.4, 9.6, null, null, null, 17.8, 18.3, 17.8, 16.6, 14.9, 12.9, 11.1, null, null, null, 18.0, 18.5, 17.9, 16.7, 14.8, 12.9, 11.1, null, null, null, 17.2, 17.8, 17.5, 15.9, 14.0, 11.7, 9.7, null, null, null, 16.0, 16.8, 16.6, 14.7, 12.7, 10.1, 7.5, null, null, null, 16.2, 16.1, 16.1, 15.0, 11.8, 9.2, 5.5, null, null, null, 16.1, 16.0, 16.1, 15.1, 11.7, 9.1, 6.3, null, null, null, 16.4, 17.7, 16.4, 15.4, 13.6, 9.6, 7.0, null, null, null]
+          }
+        },
+        {
+          "level": 0,
+          "x": 85,
+          "y": 19,
+          "path": "regional/t/0/85/19/042.bin",
+          "bytes": 624,
+          "sha256": "a62e35ab0fd1646bc3766490b02c475fd8c112f32be328830b944447008248c6",
+          "expected": {
+            "u": [null, null, null, -4.9, -1.6, 0.4, 2.8, 3.5, 3.3, 3.3, null, null, null, -5.1, -1.8, 0.2, 1.5, 3.3, 3.1, 2.0, null, null, null, -5.3, -3.1, -0.1, 1.3, 3.1, 2.9, 1.8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [null, null, null, -2.0, -2.5, -2.0, -2.5, -2.0, -1.4, -2.0, null, null, null, -0.9, -1.5, -0.9, -0.4, -0.9, -0.4, 0.2, null, null, null, -1.0, -0.5, -1.0, -0.5, -1.0, -0.5, 0.1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [null, null, null, 7.4, 4.4, 3.1, 5.4, 5.7, 5.1, 5.5, null, null, null, 7.2, 3.5, 1.7, 2.5, 4.9, null, 3.1, null, null, null, 0.0, 4.6, 1.8, 2.3, 4.7, 4.3, 2.8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 0,
+          "x": 86,
+          "y": 19,
+          "path": "regional/t/0/86/19/042.bin",
+          "bytes": 624,
+          "sha256": "94e04f1d0c6b2464a8b14556198e7c18e241db2993c54ac1e25ef6ced1a21104",
+          "expected": {
+            "u": [3.3, 3.3, 1.4, -1.1, -3.0, -6.0, -8.9, -10.3, -12.0, -11.9, 3.1, 2.0, 1.2, -1.3, -3.2, -6.2, -9.1, -10.5, -12.2, -13.2, 2.9, 1.8, 1.0, -1.5, -4.5, -6.4, -9.3, -11.8, -12.4, -13.4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [-1.4, -2.0, -1.4, -0.9, -1.4, -0.9, -0.3, -0.9, -0.3, -0.9, -0.4, 0.2, -0.4, 0.2, -0.4, 0.2, 0.8, 0.2, 0.8, 1.3, -0.5, 0.1, -0.5, 0.1, 0.6, 0.1, 0.6, 1.2, 0.6, 1.2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [5.1, 5.5, 3.1, 2.4, 4.8, 8.4, 12.1, 13.9, 16.1, 16.0, null, 3.1, 2.1, 2.3, 4.7, 8.6, 12.4, 14.1, 16.4, 17.7, 4.3, 2.8, 1.9, 2.5, 6.4, 8.9, 12.6, 15.9, 16.7, 18.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 0,
+          "x": 87,
+          "y": 19,
+          "path": "regional/t/0/87/19/042.bin",
+          "bytes": 624,
+          "sha256": "7fa67ae6350d974940b4f686859ce604830f12b78262b7d991c8a688ee35ff84",
+          "expected": {
+            "u": [-12.0, -11.9, -12.0, -11.2, -8.6, -6.6, -4.4, null, null, null, -12.2, -13.2, -12.2, -11.4, -9.9, -6.8, -4.6, null, null, null, -12.4, -13.4, -12.4, -11.6, -10.1, -7.0, -4.8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [-0.3, -0.9, -0.3, 0.2, -0.3, 0.2, 0.8, null, null, null, 0.8, 1.3, 0.8, 1.3, 1.9, 1.3, 1.9, null, null, null, 0.6, 1.2, 0.6, 1.2, 1.7, 1.2, 1.7, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [16.1, 16.0, 16.1, 15.1, 11.7, 9.1, 6.3, null, null, null, 16.4, 17.7, 16.4, 15.4, 13.6, 9.6, 7.0, null, null, null, 16.7, 18.0, 16.6, 15.7, 13.9, 9.8, 7.1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 1,
+          "x": 43,
+          "y": 8,
+          "path": "regional/t/1/43/8/042.bin",
+          "bytes": 624,
+          "sha256": "eaa01941cade6f15d75113d26cc3c223dab52384881cf235b7741897a53ed438",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 6.4, 2.3, -3.2, -6.9, -7.9, -5.9, -1.2, null, null, null, 2.5, 1.3, -3.6, -7.8, -8.9, -6.6, -1.9, null, null, 6.1, 4.8, 0.6, -4.5, -8.8, -9.6, -7.2, -2.8, null, null],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, -0.4, -0.1, 0.5, 0.5, 0.8, 1.3, 1.6, null, null, null, -2.2, -2.8, -3.1, -2.6, -2.3, -2.0, -1.8, null, null, -8.4, -8.1, -7.8, -7.5, -7.0, -7.0, -6.7, -6.2, null, null],
+            "gust": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 8.8, 3.5, 4.7, 9.4, 10.9, 8.4, 3.5, null, null, null, 8.9, 5.2, 6.9, 11.3, 12.5, 9.6, 4.1, null, null, 14.0, 12.7, 10.8, 12.0, 15.1, 15.9, 13.4, 9.5, null, null]
+          }
+        },
+        {
+          "level": 1,
+          "x": 42,
+          "y": 9,
+          "path": "regional/t/1/42/9/042.bin",
+          "bytes": 624,
+          "sha256": "90d76659bb81b4ea2231d85ca2bafad66865c0662804a6a7e45d2f3f07cded3d",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, 2.5, null, null, null, null, null, null, -0.1, 2.1, 6.1, 4.8, null, null, null, null, null, null, -1.3, 3.1, 5.4, 4.1, null, null, null, null, null, null, -2.2, 2.7, 4.5, 3.1, null, null, null, null, null, null, -2.9, 1.7, 3.5, 2.5, null, null, null, null, null, null, -3.8, 0.7, 3.1, 1.5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [null, null, null, null, null, null, null, null, null, -2.2, null, null, null, null, null, null, -9.2, -8.6, -8.4, -8.1, null, null, null, null, null, null, -10.8, -10.3, -10.3, -10.0, null, null, null, null, null, null, -8.0, -8.0, -7.5, -7.2, null, null, null, null, null, null, -3.5, -3.2, -2.7, -2.7, null, null, null, null, null, null, -1.0, -0.7, -0.7, -0.2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [null, null, null, null, null, null, null, null, null, 8.9, null, null, null, null, null, null, 12.5, 13.0, 14.0, 12.7, null, null, null, null, null, null, 14.8, 14.4, 15.6, 14.5, null, null, null, null, null, null, 11.4, 11.5, 11.8, 10.7, null, null, null, null, null, null, 6.7, 5.4, 6.3, 5.3, null, null, null, null, null, null, 3.8, 2.1, 4.6, 2.5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 1,
+          "x": 43,
+          "y": 9,
+          "path": "regional/t/1/43/9/042.bin",
+          "bytes": 624,
+          "sha256": "074cf0615fb2c6935d348df4649c09ff21b74444e9c60718ad1322c8f9ddff59",
+          "expected": {
+            "u": [null, 2.5, 1.3, -3.6, -7.8, -8.9, -6.6, -1.9, null, null, 6.1, 4.8, 0.6, -4.5, -8.8, -9.6, -7.2, -2.8, null, null, 5.4, 4.1, -0.3, -5.5, -9.2, -10.5, -8.2, -3.5, null, null, 4.5, 3.1, -1.0, -6.1, -10.1, -11.5, -8.9, -4.2, null, null, 3.5, 2.5, -2.3, -7.1, -11.1, -11.9, -9.8, -5.1, null, null, 3.1, 1.5, -2.6, -7.8, -11.7, -12.8, -10.8, -5.8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [null, -2.2, -2.8, -3.1, -2.6, -2.3, -2.0, -1.8, null, null, -8.4, -8.1, -7.8, -7.5, -7.0, -7.0, -6.7, -6.2, null, null, -10.3, -10.0, -9.4, -9.2, -9.2, -8.6, -8.3, -8.1, null, null, -7.5, -7.2, -6.9, -6.6, -6.4, -5.8, -5.8, -5.5, null, null, -2.7, -2.7, -2.4, -1.8, -1.6, -1.6, -1.0, -0.7, null, null, -0.7, -0.2, 0.1, 0.4, 0.7, 1.0, 1.5, 1.5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [null, 8.9, 5.2, 6.9, 11.3, 12.5, 9.6, 4.1, null, null, 14.0, 12.7, 10.8, 12.0, 15.1, 15.9, 13.4, 9.5, null, null, 15.6, 14.5, 12.9, 14.5, 17.3, 18.1, 15.8, 12.0, null, null, 11.8, 10.7, 9.8, 12.4, 16.1, 17.2, 14.3, 9.8, null, null, 6.3, 5.3, 4.7, 10.2, 15.1, 16.1, 13.4, 7.5, null, null, 4.6, 2.5, 4.0, 10.6, 15.8, 17.2, 14.7, 8.4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 2,
+          "x": 21,
+          "y": 4,
+          "path": "regional/t/2/21/4/042.bin",
+          "bytes": 624,
+          "sha256": "a42c1554399d9a29dfcc3babd5e87757326938866b565da9f7037cbc0913af5e",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3.1, -5.3, -7.3, -1.5, null, null, null, null, -0.7, 4.1, 2.3, -7.0, -8.9, -3.2, null, null, null, null, -2.5, 3.1, 0.8, -8.6, -10.5, -4.7, null, null, null, null, -3.8, 1.9, -0.6, -9.7, -11.8, -5.8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, -1.3, -1.2, -0.6, -0.1, null, null, null, null, -10.0, -9.4, -8.8, -8.2, -7.7, -7.1, null, null, null, null, -5.7, -5.3, -4.8, -4.1, -3.5, -3.1, null, null, null, null, -1.0, -0.7, 0.0, 0.6, 1.3, 1.5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 6.6, 8.1, 10.3, 3.8, null, null, null, null, 13.7, 14.2, 12.7, 14.7, 15.8, 10.7, null, null, null, null, 9.0, 8.7, 7.6, 13.4, 15.2, 8.6, null, null, null, null, 3.8, 3.2, 3.2, 13.2, 15.9, 8.4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        }
+      ],
+      "skipped": [
+        [0, 85, 17],
+        [1, 42, 8]
+      ],
+      "samples": [
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.1,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -9.5,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -9.4,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -8.2,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -8.0,
+          "tile": [86, 17],
+          "expected": {
+            "u": 7.7,
+            "v": -0.5,
+            "gust": 10.5
+          }
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -7.875,
+          "tile": [86, 17],
+          "expected": {
+            "u": 6.75,
+            "v": -0.2,
+            "gust": 9.25
+          }
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -6.0,
+          "tile": [87, 17],
+          "expected": {
+            "u": -7.5,
+            "v": 0.6,
+            "gust": 10.3
+          }
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -5.9,
+          "tile": [87, 17],
+          "expected": {
+            "u": -7.539999999999999,
+            "v": 0.8399999999999991,
+            "gust": 10.379999999999999
+          }
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -4.75,
+          "tile": [87, 17],
+          "expected": {
+            "u": 0.0,
+            "v": 2.3,
+            "gust": 3.4
+          }
+        },
+        {
+          "level": 0,
+          "lat": 55.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -9.5,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -9.4,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -8.2,
+          "tile": [85, 17],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -8.0,
+          "tile": [86, 17],
+          "expected": {
+            "u": 7.050000000000001,
+            "v": -0.35,
+            "gust": 9.65
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -7.875,
+          "tile": [86, 17],
+          "expected": {
+            "u": 6.375,
+            "v": -0.35,
+            "gust": 8.775
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -6.0,
+          "tile": [87, 17],
+          "expected": {
+            "u": -8.15,
+            "v": 0.75,
+            "gust": 11.15
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -5.9,
+          "tile": [87, 17],
+          "expected": {
+            "u": -7.970000000000001,
+            "v": 0.75,
+            "gust": 10.91
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -4.75,
+          "tile": [87, 17],
+          "expected": {
+            "u": -0.1,
+            "v": 1.8499999999999999,
+            "gust": 2.9
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.875,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -9.5,
+          "tile": [85, 18],
+          "expected": {
+            "u": -1.3,
+            "v": -8.4,
+            "gust": 11.5
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -9.4,
+          "tile": [85, 18],
+          "expected": {
+            "u": -0.4200000000000032,
+            "v": -8.160000000000002,
+            "gust": 11.220000000000002
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -8.2,
+          "tile": [85, 18],
+          "expected": {
+            "u": 6.679999999999997,
+            "v": -7.699999999999998,
+            "gust": 13.719999999999995
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -8.0,
+          "tile": [86, 18],
+          "expected": {
+            "u": 5.8,
+            "v": -7.3,
+            "gust": 12.6
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -7.875,
+          "tile": [86, 18],
+          "expected": {
+            "u": 4.85,
+            "v": -7.0,
+            "gust": 11.6
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -6.0,
+          "tile": [87, 18],
+          "expected": {
+            "u": -9.4,
+            "v": -6.2,
+            "gust": 15.1
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -5.9,
+          "tile": [87, 18],
+          "expected": {
+            "u": -9.440000000000001,
+            "v": -5.960000000000001,
+            "gust": 14.98
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -4.75,
+          "tile": [87, 18],
+          "expected": {
+            "u": -0.8,
+            "v": -5.6,
+            "gust": 7.9
+          }
+        },
+        {
+          "level": 0,
+          "lat": 54.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -9.5,
+          "tile": [85, 18],
+          "expected": {
+            "u": -0.739999999999992,
+            "v": -9.240000000000013,
+            "gust": 12.620000000000015
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -9.4,
+          "tile": [85, 18],
+          "expected": {
+            "u": -0.24399999999999933,
+            "v": -9.016000000000012,
+            "gust": 12.32400000000002
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -8.2,
+          "tile": [85, 18],
+          "expected": {
+            "u": 6.247999999999992,
+            "v": -8.220000000000008,
+            "gust": 13.920000000000002
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -8.0,
+          "tile": [86, 18],
+          "expected": {
+            "u": 5.719999999999999,
+            "v": -8.140000000000011,
+            "gust": 13.440000000000012
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -7.875,
+          "tile": [86, 18],
+          "expected": {
+            "u": 4.769999999999999,
+            "v": -7.860000000000012,
+            "gust": 12.500000000000012
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -6.0,
+          "tile": [87, 18],
+          "expected": {
+            "u": -9.48,
+            "v": -7.040000000000012,
+            "gust": 15.86000000000001
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -5.9,
+          "tile": [87, 18],
+          "expected": {
+            "u": -9.520000000000001,
+            "v": -6.816000000000013,
+            "gust": 15.72400000000001
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -4.75,
+          "tile": [87, 18],
+          "expected": {
+            "u": -1.3200000000000074,
+            "v": -6.040000000000006,
+            "gust": 8.580000000000009
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.9,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -9.5,
+          "tile": [85, 18],
+          "expected": {
+            "u": -3.2,
+            "v": -9.3,
+            "gust": 13.3
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -9.4,
+          "tile": [85, 18],
+          "expected": {
+            "u": -2.320000000000003,
+            "v": -9.06,
+            "gust": 12.740000000000002
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -8.2,
+          "tile": [85, 18],
+          "expected": {
+            "u": 4.779999999999997,
+            "v": -8.599999999999998,
+            "gust": 13.259999999999996
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -8.0,
+          "tile": [86, 18],
+          "expected": {
+            "u": 3.9,
+            "v": -8.2,
+            "gust": 12.3
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -7.875,
+          "tile": [86, 18],
+          "expected": {
+            "u": 3.5,
+            "v": -8.45,
+            "gust": 12.4
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -6.0,
+          "tile": [87, 18],
+          "expected": {
+            "u": -11.3,
+            "v": -7.1,
+            "gust": 17.8
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -5.9,
+          "tile": [87, 18],
+          "expected": {
+            "u": -11.34,
+            "v": -6.86,
+            "gust": 17.68
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -4.75,
+          "tile": [87, 18],
+          "expected": {
+            "u": -2.7,
+            "v": -6.5,
+            "gust": 9.7
+          }
+        },
+        {
+          "level": 0,
+          "lat": 53.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -9.5,
+          "tile": [85, 18],
+          "expected": {
+            "u": -4.640000000000015,
+            "v": -2.599999999999966,
+            "gust": 7.619999999999988
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -9.4,
+          "tile": [85, 18],
+          "expected": {
+            "u": -3.4080000000000146,
+            "v": -2.7119999999999704,
+            "gust": 6.499999999999988
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -8.2,
+          "tile": [85, 18],
+          "expected": {
+            "u": 3.3399999999999976,
+            "v": -1.89999999999998,
+            "gust": 5.507999999999982
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -8.0,
+          "tile": [86, 18],
+          "expected": {
+            "u": 3.3399999999999976,
+            "v": -2.3799999999999786,
+            "gust": 5.85999999999998
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -7.875,
+          "tile": [86, 18],
+          "expected": {
+            "u": 2.3899999999999975,
+            "v": -2.0799999999999783,
+            "gust": 4.699999999999977
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -6.0,
+          "tile": [87, 18],
+          "expected": {
+            "u": -11.860000000000003,
+            "v": -1.2799999999999785,
+            "gust": 16.02
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -5.9,
+          "tile": [87, 18],
+          "expected": {
+            "u": -11.900000000000002,
+            "v": -1.0399999999999792,
+            "gust": 16.052
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -4.75,
+          "tile": [87, 18],
+          "expected": {
+            "u": -4.140000000000015,
+            "v": 0.2000000000000341,
+            "gust": 6.140000000000009
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.3,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -9.5,
+          "tile": [85, 18],
+          "expected": {
+            "u": -5.019999999999999,
+            "v": -1.3400000000000063,
+            "gust": 7.280000000000001
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -9.4,
+          "tile": [85, 18],
+          "expected": {
+            "u": -3.7000000000000037,
+            "v": -1.5640000000000054,
+            "gust": 5.912000000000008
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -8.2,
+          "tile": [85, 18],
+          "expected": {
+            "u": 3.0480000000000005,
+            "v": -0.7760000000000067,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -8.0,
+          "tile": [86, 18],
+          "expected": {
+            "u": 2.5200000000000076,
+            "v": -0.6800000000000125,
+            "gust": 4.060000000000014
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -7.875,
+          "tile": [86, 18],
+          "expected": {
+            "u": 1.9000000000000044,
+            "v": -0.740000000000009,
+            "gust": 3.2800000000000096
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -6.0,
+          "tile": [87, 18],
+          "expected": {
+            "u": -12.679999999999993,
+            "v": 0.41999999999998744,
+            "gust": 17.01999999999999
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -5.9,
+          "tile": [87, 18],
+          "expected": {
+            "u": -12.455999999999996,
+            "v": 0.3959999999999901,
+            "gust": 16.723999999999993
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -4.75,
+          "tile": [87, 18],
+          "expected": {
+            "u": -4.519999999999999,
+            "v": 1.4599999999999937,
+            "gust": 6.719999999999995
+          }
+        },
+        {
+          "level": 0,
+          "lat": 52.1,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -9.5,
+          "tile": [85, 19],
+          "expected": {
+            "u": -5.3,
+            "v": -1.0,
+            "gust": 0.0
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -9.4,
+          "tile": [85, 19],
+          "expected": {
+            "u": -4.420000000000003,
+            "v": -0.8000000000000007,
+            "gust": 1.8399999999999934
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -8.2,
+          "tile": [85, 19],
+          "expected": {
+            "u": 2.679999999999997,
+            "v": -0.3799999999999983,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -8.0,
+          "tile": [86, 19],
+          "expected": {
+            "u": 1.8,
+            "v": 0.1,
+            "gust": 2.8
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -7.875,
+          "tile": [86, 19],
+          "expected": {
+            "u": 1.4,
+            "v": -0.2,
+            "gust": 2.3499999999999996
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -6.0,
+          "tile": [87, 19],
+          "expected": {
+            "u": -13.4,
+            "v": 1.2,
+            "gust": 18.0
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -5.9,
+          "tile": [87, 19],
+          "expected": {
+            "u": -13.0,
+            "v": 0.9600000000000007,
+            "gust": 17.44
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -4.75,
+          "tile": [87, 19],
+          "expected": {
+            "u": -4.8,
+            "v": 1.7,
+            "gust": 7.1
+          }
+        },
+        {
+          "level": 0,
+          "lat": 51.75,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 51.7,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.1,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 55.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -8.2,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -8.0,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -7.875,
+          "tile": [43, 8],
+          "expected": {
+            "u": 6.4,
+            "v": -0.4,
+            "gust": 8.8
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -6.0,
+          "tile": [43, 8],
+          "expected": {
+            "u": -7.65,
+            "v": 0.7250000000000001,
+            "gust": 10.525
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -5.9,
+          "tile": [43, 8],
+          "expected": {
+            "u": -7.85,
+            "v": 0.7849999999999998,
+            "gust": 10.825
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.875,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -8.2,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -8.0,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -7.875,
+          "tile": [43, 8],
+          "expected": {
+            "u": 4.225,
+            "v": -6.624999999999999,
+            "gust": 11.749999999999998
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -6.0,
+          "tile": [43, 8],
+          "expected": {
+            "u": -9.206249999999999,
+            "v": -5.84375,
+            "gust": 14.825
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -5.9,
+          "tile": [43, 8],
+          "expected": {
+            "u": -9.38125,
+            "v": -5.82875,
+            "gust": 15.005
+          }
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 54.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -8.2,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -8.0,
+          "tile": [42, 8],
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -7.875,
+          "tile": [43, 8],
+          "expected": {
+            "u": 4.685000000000007,
+            "v": -7.805000000000017,
+            "gust": 12.51000000000001
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -6.0,
+          "tile": [43, 8],
+          "expected": {
+            "u": -9.36125,
+            "v": -6.768750000000013,
+            "gust": 15.525000000000011
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -5.9,
+          "tile": [43, 8],
+          "expected": {
+            "u": -9.52425,
+            "v": -6.765750000000013,
+            "gust": 15.68900000000001
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.9,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -8.2,
+          "tile": [42, 9],
+          "expected": {
+            "u": 4.243749999999999,
+            "v": -8.094999999999999,
+            "gust": 12.364999999999998
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -8.0,
+          "tile": [42, 9],
+          "expected": {
+            "u": 3.6937500000000005,
+            "v": -7.9750000000000005,
+            "gust": 11.924999999999999
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -7.875,
+          "tile": [43, 9],
+          "expected": {
+            "u": 3.35,
+            "v": -7.9,
+            "gust": 11.649999999999999
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -6.0,
+          "tile": [43, 9],
+          "expected": {
+            "u": -10.90625,
+            "v": -6.6499999999999995,
+            "gust": 17.16875
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -5.9,
+          "tile": [43, 9],
+          "expected": {
+            "u": -11.181249999999999,
+            "v": -6.53,
+            "gust": 17.373749999999998
+          }
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 53.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -8.2,
+          "tile": [42, 9],
+          "expected": {
+            "u": 3.0584999999999947,
+            "v": -2.373749999999988,
+            "gust": 5.637249999999986
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -8.0,
+          "tile": [42, 9],
+          "expected": {
+            "u": 2.622499999999995,
+            "v": -2.3437499999999867,
+            "gust": 5.1712499999999855
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -7.875,
+          "tile": [43, 9],
+          "expected": {
+            "u": 2.3499999999999943,
+            "v": -2.324999999999986,
+            "gust": 4.879999999999984
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -6.0,
+          "tile": [43, 9],
+          "expected": {
+            "u": -11.823750000000006,
+            "v": -1.2212499999999857,
+            "gust": 16.000000000000007
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -5.9,
+          "tile": [43, 9],
+          "expected": {
+            "u": -11.992750000000006,
+            "v": -1.2122499999999854,
+            "gust": 16.212000000000007
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.3,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -8.2,
+          "tile": [42, 9],
+          "expected": {
+            "u": 2.8145,
+            "v": -1.503750000000006,
+            "gust": 4.803250000000004
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -8.0,
+          "tile": [42, 9],
+          "expected": {
+            "u": 2.2825000000000024,
+            "v": -1.393750000000007,
+            "gust": 4.161250000000007
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -7.875,
+          "tile": [43, 9],
+          "expected": {
+            "u": 1.9500000000000028,
+            "v": -1.3250000000000073,
+            "gust": 3.760000000000008
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -6.0,
+          "tile": [43, 9],
+          "expected": {
+            "u": -12.153749999999999,
+            "v": -0.21125000000000727,
+            "gust": 16.399999999999995
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -5.9,
+          "tile": [43, 9],
+          "expected": {
+            "u": -12.346749999999997,
+            "v": -0.17825000000000757,
+            "gust": 16.643999999999995
+          }
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 52.1,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.75,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 51.7,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.1,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 55.0,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -9.6,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -9.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -9.4,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -8.2,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -8.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -7.875,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -6.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -5.9,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -4.75,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.875,
+          "lon": -4.7,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -7.5734375,
+            "v": -5.2390625,
+            "gust": 13.1703125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -7.767187499999999,
+            "v": -5.1853125,
+            "gust": 13.321562499999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.2796875000000005,
+            "v": -4.5453125,
+            "gust": 8.815624999999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 54.0,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.992812500000001,
+            "v": -4.5171874999999995,
+            "gust": 8.534375
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": null
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -7.737187500000003,
+            "v": -5.94531250000001,
+            "gust": 13.761562500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -7.929937500000001,
+            "v": -5.89256250000001,
+            "gust": 13.901812500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.448437500000003,
+            "v": -5.24656250000001,
+            "gust": 9.488125000000009
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.9,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.1620625000000038,
+            "v": -5.21793750000001,
+            "gust": 9.213875000000009
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": {
+            "u": -1.6924999999999981,
+            "v": -7.300625,
+            "gust": 10.7625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": {
+            "u": -1.1625,
+            "v": -7.253125,
+            "gust": 10.7625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": {
+            "u": -0.6325000000000018,
+            "v": -7.2056249999999995,
+            "gust": 10.7625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": {
+            "u": 2.577187499999998,
+            "v": -6.609062499999999,
+            "gust": 10.23125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": 2.1546874999999996,
+            "v": -6.5015625,
+            "gust": 9.98125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": {
+            "u": 1.890625,
+            "v": -6.434375,
+            "gust": 9.825
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -9.1875,
+            "v": -5.285937499999999,
+            "gust": 14.8484375
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -9.3775,
+            "v": -5.229687500000001,
+            "gust": 15.002187499999998
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -4.8578125,
+            "v": -4.659375,
+            "gust": 10.142187499999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 53.0,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -4.5696875000000015,
+            "v": -4.635625,
+            "gust": 9.8403125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.7816875000000016,
+            "v": -4.163312499999987,
+            "gust": 7.300062499999985
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.218437500000004,
+            "v": -4.126562499999986,
+            "gust": 7.260312499999985
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": {
+            "u": -1.6551875000000056,
+            "v": -4.0898124999999865,
+            "gust": 7.220562499999985
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": {
+            "u": 1.7048749999999946,
+            "v": -3.5648749999999865,
+            "gust": 6.596937499999984
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": 1.231874999999996,
+            "v": -3.4518749999999865,
+            "gust": 6.448437499999986
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.9362499999999961,
+            "v": -3.3812499999999868,
+            "gust": 6.355624999999986
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.185625000000003,
+            "v": -2.1771874999999863,
+            "gust": 14.642812500000002
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.382125000000002,
+            "v": -2.1139374999999863,
+            "gust": 14.852062499999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -5.790625000000004,
+            "v": -1.6468749999999868,
+            "gust": 9.3965625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.3,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -5.497375000000005,
+            "v": -1.6301249999999872,
+            "gust": 9.051937500000001
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.041187499999996,
+            "v": -3.223812500000007,
+            "gust": 6.258562500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.475937499999998,
+            "v": -3.1890625000000066,
+            "gust": 6.212812500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": {
+            "u": -1.9106875000000003,
+            "v": -3.1543125000000067,
+            "gust": 6.167062500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": {
+            "u": 1.4478750000000002,
+            "v": -2.627875000000006,
+            "gust": 5.590437500000006
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.9668750000000019,
+            "v": -2.5068750000000066,
+            "gust": 5.485937500000007
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.6662500000000019,
+            "v": -2.431250000000007,
+            "gust": 5.4206250000000065
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.430624999999997,
+            "v": -1.2246875000000066,
+            "gust": 14.7153125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.631124999999997,
+            "v": -1.159437500000007,
+            "gust": 14.942562499999998
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -6.015624999999998,
+            "v": -0.7218750000000066,
+            "gust": 9.3790625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 52.1,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -5.720375,
+            "v": -0.7071250000000069,
+            "gust": 9.025437500000002
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.4953124999999976,
+            "v": -1.5796875,
+            "gust": 4.4359375
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.9265625,
+            "v": -1.5484375,
+            "gust": 4.379687499999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.357812500000002,
+            "v": -1.5171875000000001,
+            "gust": 4.3234375
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.9981249999999984,
+            "v": -0.9881249999999995,
+            "gust": 3.8290625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.5031249999999999,
+            "v": -0.8531249999999999,
+            "gust": 3.8015625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.19375000000000003,
+            "v": -0.7687499999999999,
+            "gust": 3.7843750000000003
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.859374999999998,
+            "v": 0.4421875000000002,
+            "gust": 14.8421875
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -11.066875,
+            "v": 0.5109374999999997,
+            "gust": 15.100937499999999
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -6.409375000000001,
+            "v": 0.8968750000000001,
+            "gust": 9.3484375
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.75,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -6.110625000000001,
+            "v": 0.9081249999999998,
+            "gust": 8.979062500000001
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -9.6,
+          "tile": [21, 4],
+          "expected": {
+            "u": -3.560187499999994,
+            "v": -1.3448125000000133,
+            "gust": 4.175562500000014
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -9.5,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.9909374999999963,
+            "v": -1.3140625000000132,
+            "gust": 4.1178125000000145
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -9.4,
+          "tile": [21, 4],
+          "expected": {
+            "u": -2.421687499999998,
+            "v": -1.2833125000000134,
+            "gust": 4.060062500000015
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -8.2,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.933875000000002,
+            "v": -0.7538750000000127,
+            "gust": 3.5774375000000145
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -8.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.4368750000000037,
+            "v": -0.6168750000000134,
+            "gust": 3.560937500000014
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -7.875,
+          "tile": [21, 4],
+          "expected": {
+            "u": 0.12625000000000386,
+            "v": -0.5312500000000135,
+            "gust": 3.5506250000000135
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -6.0,
+          "tile": [21, 4],
+          "expected": {
+            "u": -10.920624999999998,
+            "v": 0.6803124999999866,
+            "gust": 14.8603125
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -5.9,
+          "tile": [21, 4],
+          "expected": {
+            "u": -11.129124999999995,
+            "v": 0.7495624999999861,
+            "gust": 15.123562499999998
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -4.75,
+          "tile": [21, 4],
+          "expected": {
+            "u": -6.4656249999999975,
+            "v": 1.128124999999987,
+            "gust": 9.3440625
+          }
+        },
+        {
+          "level": 2,
+          "lat": 51.7,
+          "lon": -4.7,
+          "tile": [21, 4],
+          "expected": {
+            "u": -6.166374999999998,
+            "v": 1.1388749999999868,
+            "gust": 8.972437500000002
+          }
+        }
+      ]
+    },
+    {
+      "name": "global",
+      "grid": {
+        "west": -180.0,
+        "north": 60.0,
+        "dx": 45.0,
+        "dy": 30.0,
+        "width": 8,
+        "height": 5,
+        "east": 135.0,
+        "south": -60.0
+      },
+      "size": 4,
+      "border": 1,
+      "hour": 7,
+      "run": "2026101106",
+      "source": {
+        "u": [-3.0, -1.5, 0.0, 1.5, 3.0, 4.5, 6.0, 7.5, -5.25, -3.75, -2.25, -0.75, 0.75, 2.25, 3.75, 5.25, -7.5, -6.0, -4.5, -3.0, -1.5, 0.0, 1.5, 3.0, -9.75, -8.25, -6.75, -5.25, -3.75, -2.25, -0.75, null, -12.0, -10.5, -9.0, -7.5, -6.0, -4.5, -3.0, -1.5],
+        "v": [4.0, 3.15, 2.3, 1.45, 0.6, -0.25, -1.1, -1.95, 5.0, 4.15, 3.3, 2.45, 1.6, 0.75, -0.1, -0.95, 6.0, 5.15, 4.3, 3.45, 2.6, 1.75, 0.9, 0.05, 7.0, 6.15, 5.3, 4.45, 3.6, 2.75, 1.9, 1.05, 8.0, 7.15, 6.3, 5.45, 4.6, 3.75, 2.9, 2.05],
+        "gust": null
+      },
+      "levels": [
+        {
+          "level": 0,
+          "dx": 45.0,
+          "dy": 30.0,
+          "columns": [0, 7],
+          "rows": [1, 5],
+          "x": [0, 1],
+          "y": [0, 1]
+        },
+        {
+          "level": 1,
+          "dx": 90.0,
+          "dy": 60.0,
+          "columns": [0, 3],
+          "rows": [0, 2],
+          "x": [0, 0],
+          "y": [0, 0]
+        }
+      ],
+      "tiles": [
+        {
+          "level": 0,
+          "x": 0,
+          "y": 0,
+          "path": "global/t/0/0/0/007.bin",
+          "bytes": 168,
+          "sha256": "dea4be17d7983efbb892ea82b80910ad1c6b6ba825078ef46d3d3607f53a2dfd",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, 7.5, -3.0, -1.5, 0.0, 1.5, 3.0, 5.3, -5.3, -3.8, -2.3, -0.8, 0.8, 3.0, -7.5, -6.0, -4.5, -3.0, -1.5, null, -9.8, -8.3, -6.8, -5.3, -3.8],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, -2.0, 4.0, 3.2, 2.3, 1.5, 0.6, -1.0, 5.0, 4.2, 3.3, 2.5, 1.6, 0.1, 6.0, 5.2, 4.3, 3.5, 2.6, 1.1, 7.0, 6.2, 5.3, 4.5, 3.6],
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "x": 1,
+          "y": 0,
+          "path": "global/t/0/1/0/007.bin",
+          "bytes": 168,
+          "sha256": "75f42e66e134c06672e98e83ce621af7fb041743720366787cdb0c15e8c7677e",
+          "expected": {
+            "u": [null, null, null, null, null, null, null, null, null, null, null, null, 1.5, 3.0, 4.5, 6.0, 7.5, -3.0, -0.8, 0.8, 2.3, 3.8, 5.3, -5.3, -3.0, -1.5, 0.0, 1.5, 3.0, -7.5, -5.3, -3.8, -2.3, -0.8, null, -9.8],
+            "v": [null, null, null, null, null, null, null, null, null, null, null, null, 1.5, 0.6, -0.3, -1.1, -2.0, 4.0, 2.5, 1.6, 0.8, -0.1, -1.0, 5.0, 3.5, 2.6, 1.8, 0.9, 0.1, 6.0, 4.5, 3.6, 2.8, 1.9, 1.1, 7.0],
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "x": 0,
+          "y": 1,
+          "path": "global/t/0/0/1/007.bin",
+          "bytes": 168,
+          "sha256": "b7cbdd2790e00c1846b48fe95ab2a70f5ef26ba8a57f81b5aa2f4feed7126c36",
+          "expected": {
+            "u": [3.0, -7.5, -6.0, -4.5, -3.0, -1.5, null, -9.8, -8.3, -6.8, -5.3, -3.8, -1.5, -12.0, -10.5, -9.0, -7.5, -6.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [0.1, 6.0, 5.2, 4.3, 3.5, 2.6, 1.1, 7.0, 6.2, 5.3, 4.5, 3.6, 2.1, 8.0, 7.2, 6.3, 5.5, 4.6, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "x": 1,
+          "y": 1,
+          "path": "global/t/0/1/1/007.bin",
+          "bytes": 168,
+          "sha256": "bb9b41fff02784103362ed68f33a2b62a421000f35f1a91a8d601e54e79419d8",
+          "expected": {
+            "u": [-3.0, -1.5, 0.0, 1.5, 3.0, -7.5, -5.3, -3.8, -2.3, -0.8, null, -9.8, -7.5, -6.0, -4.5, -3.0, -1.5, -12.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [3.5, 2.6, 1.8, 0.9, 0.1, 6.0, 4.5, 3.6, 2.8, 1.9, 1.1, 7.0, 5.5, 4.6, 3.8, 2.9, 2.1, 8.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "x": 0,
+          "y": 0,
+          "path": "global/t/1/0/0/007.bin",
+          "bytes": 168,
+          "sha256": "870fa3f5b3d52eef9a37dfad4ddbc756cf0d1c5a7f263d68a5f94b4d2e92ca33",
+          "expected": {
+            "u": [null, null, null, null, null, null, 6.8, -2.3, 0.8, 3.8, 6.8, -2.3, 3.4, -5.7, -2.7, 0.4, 3.4, -5.7, -1.8, -10.2, -7.2, -4.2, -1.8, -10.2, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [null, null, null, null, null, null, -1.6, 3.6, 1.9, 0.2, -1.6, 3.6, 0.0, 5.1, 3.4, 1.7, 0.0, 5.1, 2.0, 7.1, 5.4, 3.7, 2.0, 7.1, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": null
+          }
+        }
+      ],
+      "skipped": [],
+      "samples": [
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": -180.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": -170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": -135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 0.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 22.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 157.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 65.0,
+          "lon": 179.999,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.0,
+            "v": 4.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.666666666666667,
+            "v": 3.8222222222222224,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.5,
+            "v": 3.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 3.0,
+            "v": 0.6,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 22.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 3.75,
+            "v": 0.15,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 135.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 7.5,
+            "v": -2.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 157.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 2.25,
+            "v": 1.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -0.6666666666666656,
+            "v": 2.666666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 60.0,
+          "lon": 179.999,
+          "tile": [1, 0],
+          "expected": {
+            "u": -2.9997666666666745,
+            "v": 3.999866666666671,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -4.15,
+            "v": 4.5,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.8166666666666664,
+            "v": 4.322222222222222,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.65,
+            "v": 3.7,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 1.9,
+            "v": 1.1,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 22.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 2.65,
+            "v": 0.675,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 135.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 6.4,
+            "v": -1.5,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 157.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 1.125,
+            "v": 1.5,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -1.8055555555555547,
+            "v": 3.166666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 45.0,
+          "lon": 179.999,
+          "tile": [1, 0],
+          "expected": {
+            "u": -4.149765555555563,
+            "v": 4.499866666666671,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -5.3,
+            "v": 5.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -4.966666666666666,
+            "v": 4.822222222222222,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.8,
+            "v": 4.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 0.8,
+            "v": 1.6,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 22.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 1.5499999999999998,
+            "v": 1.2000000000000002,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 135.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 5.3,
+            "v": -1.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 157.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": 0.0,
+            "v": 2.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -2.9444444444444438,
+            "v": 3.666666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 30.0,
+          "lon": 179.999,
+          "tile": [1, 0],
+          "expected": {
+            "u": -5.299764444444452,
+            "v": 4.999866666666671,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -7.5,
+            "v": 6.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -7.166666666666666,
+            "v": 5.822222222222223,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -6.0,
+            "v": 5.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -1.5,
+            "v": 2.6,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 22.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": -0.75,
+            "v": 2.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 135.0,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 157.5,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 179.999,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -9.033333333333333,
+            "v": 6.666666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -8.7,
+            "v": 6.488888888888889,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -7.533333333333333,
+            "v": 5.866666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -3.033333333333333,
+            "v": 3.2666666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 22.5,
+          "tile": [1, 0],
+          "expected": {
+            "u": -2.2833333333333328,
+            "v": 2.8666666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 135.0,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 157.5,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -20.0,
+          "lon": 179.999,
+          "tile": [1, 0],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": -180.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -12.0,
+            "v": 8.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": -170.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -11.666666666666668,
+            "v": 7.822222222222222,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": -135.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -10.5,
+            "v": 7.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 0.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -6.0,
+            "v": 4.6,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 22.5,
+          "tile": [1, 1],
+          "expected": {
+            "u": -5.25,
+            "v": 4.199999999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 135.0,
+          "tile": [1, 1],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 157.5,
+          "tile": [1, 1],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 170.0,
+          "tile": [1, 1],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 179.999,
+          "tile": [1, 1],
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": -180.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": -170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": -135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 0.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 22.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 157.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 0,
+          "lat": -61.0,
+          "lon": 179.999,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.5916666666666667,
+            "v": 2.5541666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.6027777777777783,
+            "v": 3.130092592592592,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.095833333333333,
+            "v": 3.4250000000000003,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.479166666666666,
+            "v": 0.875,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 3.233333333333333,
+            "v": 0.45000000000000007,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 3.9583333333333326,
+            "v": -0.03750000000000009,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.6833333333333331,
+            "v": 1.2583333333333333,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 0.4194444444444448,
+            "v": 1.9782407407407403,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 65.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.5915655555555591,
+            "v": 2.5541090740740757,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.875,
+            "v": 2.68125,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.8861111111111115,
+            "v": 3.2562499999999996,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.3812499999999996,
+            "v": 3.55,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.1937499999999996,
+            "v": 1.0,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.9499999999999997,
+            "v": 0.575,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 3.675,
+            "v": 0.09374999999999986,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.4,
+            "v": 1.3875,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 0.13611111111111152,
+            "v": 2.1062499999999997,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 60.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.8748988888888924,
+            "v": 2.6811925000000016,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.725,
+            "v": 3.0625,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.7361111111111116,
+            "v": 3.634722222222222,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.2375,
+            "v": 3.925,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.3375,
+            "v": 1.375,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.1,
+            "v": 0.95,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.8249999999999997,
+            "v": 0.4874999999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 0.5499999999999999,
+            "v": 1.775,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.7138888888888886,
+            "v": 2.490277777777777,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 45.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.7248988888888923,
+            "v": 3.0624427777777794,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.575,
+            "v": 3.44375,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.5861111111111117,
+            "v": 4.013194444444444,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -4.09375,
+            "v": 4.3,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 0.48124999999999996,
+            "v": 1.75,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.25,
+            "v": 1.325,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.9749999999999996,
+            "v": 0.8812499999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.30000000000000004,
+            "v": 2.1624999999999996,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.5638888888888887,
+            "v": 2.874305555555555,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 30.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.5748988888888924,
+            "v": 3.443693055555557,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -4.59375,
+            "v": 4.324999999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -5.585416666666667,
+            "v": 4.891666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -6.075,
+            "v": 5.174999999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.51875,
+            "v": 2.625,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.75,
+            "v": 2.2,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.1312500000000002,
+            "v": 1.775,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.3625,
+            "v": 3.05,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.602083333333333,
+            "v": 3.758333333333333,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -4.593650833333337,
+            "v": 4.324943333333335,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -6.152083333333333,
+            "v": 4.991666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": -170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -7.117824074074074,
+            "v": 5.558333333333333,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": -135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -7.574999999999999,
+            "v": 5.841666666666666,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.0437499999999997,
+            "v": 3.2916666666666665,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 22.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.283333333333333,
+            "v": 2.8666666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 135.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.8062499999999995,
+            "v": 2.4416666666666664,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 157.5,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.9791666666666665,
+            "v": 3.716666666666667,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -5.186342592592592,
+            "v": 4.424999999999999,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -20.0,
+          "lon": 179.999,
+          "tile": [0, 0],
+          "expected": {
+            "u": -6.151986759259262,
+            "v": 4.991610000000001,
+            "gust": null
+          }
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": -180.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": -170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": -135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 0.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 22.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 157.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 179.999,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": -180.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": -170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": -135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 0.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 22.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 135.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 157.5,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": -61.0,
+          "lon": 179.999,
+          "tile": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "name": "pole",
+      "grid": {
+        "west": -180.0,
+        "north": 90.0,
+        "dx": 45.0,
+        "dy": 30.0,
+        "width": 8,
+        "height": 7,
+        "east": 135.0,
+        "south": -90.0
+      },
+      "size": 4,
+      "border": 1,
+      "hour": 3,
+      "run": "2026101106",
+      "source": {
+        "u": [2.0, 2.75, 3.5, 4.25, 5.0, 5.75, 6.5, 7.25, 0.75, 1.5, 2.25, 3.0, 3.75, 4.5, 5.25, 6.0, -0.5, 0.25, 1.0, 1.75, 2.5, 3.25, 4.0, 4.75, -1.75, -1.0, -0.25, 0.5, 1.25, 2.0, 2.75, 3.5, -3.0, -2.25, -1.5, -0.75, 0.0, 0.75, 1.5, 2.25, -4.25, -3.5, -2.75, -2.0, -1.25, -0.5, 0.25, 1.0, -5.5, -4.75, -4.0, -3.25, -2.5, -1.75, -1.0, -0.25],
+        "v": [-3.0, -2.65, -2.3, -1.95, -1.6, -1.25, -0.9, -0.55, -2.5, -2.15, -1.8, -1.45, -1.1, -0.75, -0.4, -0.05, -2.0, -1.65, -1.3, -0.95, -0.6, -0.25, 0.1, 0.45, -1.5, -1.15, -0.8, -0.45, -0.1, 0.25, 0.6, 0.95, -1.0, -0.65, -0.3, 0.05, 0.4, 0.75, 1.1, 1.45, -0.5, -0.15, 0.2, 0.55, 0.9, 1.25, 1.6, 1.95, 0.0, 0.35, 0.7, 1.05, 1.4, 1.75, 2.1, 2.45],
+        "gust": [6.0, 6.4, 6.8, 7.2, 7.6, 8.0, 8.4, 8.8, 4.25, 4.65, 5.05, 5.45, 5.85, 6.25, 6.65, 7.05, 3.5, 2.9, 3.3, 3.7, 4.1, 4.5, 5.1, 6.2, 4.25, 3.15, 2.05, 1.95, 2.35, 3.25, 4.35, 5.45, 5.0, 3.9, 2.8, 1.8, 1.4, 2.5, 3.6, 4.7, 5.75, 4.65, 3.95, 3.55, 3.15, 2.75, 2.85, 3.95, 6.5, 6.1, 5.7, 5.3, 4.9, 4.5, 4.1, 3.7]
+      },
+      "levels": [
+        {
+          "level": 0,
+          "dx": 45.0,
+          "dy": 30.0,
+          "columns": [0, 7],
+          "rows": [0, 6],
+          "x": [0, 1],
+          "y": [0, 1]
+        },
+        {
+          "level": 1,
+          "dx": 90.0,
+          "dy": 60.0,
+          "columns": [0, 3],
+          "rows": [0, 3],
+          "x": [0, 0],
+          "y": [0, 0]
+        }
+      ],
+      "tiles": [
+        {
+          "level": 0,
+          "x": 0,
+          "y": 0,
+          "path": "pole/t/0/0/0/003.bin",
+          "bytes": 240,
+          "sha256": "269f937202f7d7894dce0f3d5553adff1e5a96031acea47ef2d5f1d032b99a98",
+          "expected": {
+            "u": [null, null, null, null, null, null, 7.3, 2.0, 2.8, 3.5, 4.3, 5.0, 6.0, 0.8, 1.5, 2.3, 3.0, 3.8, 4.8, -0.5, 0.3, 1.0, 1.8, 2.5, 3.5, -1.8, -1.0, -0.3, 0.5, 1.3, 2.3, -3.0, -2.3, -1.5, -0.8, 0.0],
+            "v": [null, null, null, null, null, null, -0.6, -3.0, -2.7, -2.3, -2.0, -1.6, -0.1, -2.5, -2.2, -1.8, -1.5, -1.1, 0.5, -2.0, -1.7, -1.3, -1.0, -0.6, 1.0, -1.5, -1.2, -0.8, -0.5, -0.1, 1.5, -1.0, -0.7, -0.3, 0.1, 0.4],
+            "gust": [null, null, null, null, null, null, 8.8, 6.0, 6.4, 6.8, 7.2, 7.6, 7.1, 4.3, 4.7, 5.1, 5.5, 5.9, 6.2, 3.5, 2.9, 3.3, 3.7, 4.1, 5.5, 4.3, 3.2, 2.1, 2.0, 2.4, 4.7, 5.0, 3.9, 2.8, 1.8, 1.4]
+          }
+        },
+        {
+          "level": 0,
+          "x": 1,
+          "y": 0,
+          "path": "pole/t/0/1/0/003.bin",
+          "bytes": 240,
+          "sha256": "1022e26c133213796bcb75b5dcabe63a975b76c5718b82fd553ee35da3c4a764",
+          "expected": {
+            "u": [null, null, null, null, null, null, 4.3, 5.0, 5.8, 6.5, 7.3, 2.0, 3.0, 3.8, 4.5, 5.3, 6.0, 0.8, 1.8, 2.5, 3.3, 4.0, 4.8, -0.5, 0.5, 1.3, 2.0, 2.8, 3.5, -1.8, -0.8, 0.0, 0.8, 1.5, 2.3, -3.0],
+            "v": [null, null, null, null, null, null, -2.0, -1.6, -1.3, -0.9, -0.6, -3.0, -1.5, -1.1, -0.8, -0.4, -0.1, -2.5, -1.0, -0.6, -0.3, 0.1, 0.5, -2.0, -0.5, -0.1, 0.3, 0.6, 1.0, -1.5, 0.1, 0.4, 0.8, 1.1, 1.5, -1.0],
+            "gust": [null, null, null, null, null, null, 7.2, 7.6, 8.0, 8.4, 8.8, 6.0, 5.5, 5.9, 6.3, 6.7, 7.1, 4.3, 3.7, 4.1, 4.5, 5.1, 6.2, 3.5, 2.0, 2.4, 3.3, 4.4, 5.5, 4.3, 1.8, 1.4, 2.5, 3.6, 4.7, 5.0]
+          }
+        },
+        {
+          "level": 0,
+          "x": 0,
+          "y": 1,
+          "path": "pole/t/0/0/1/003.bin",
+          "bytes": 240,
+          "sha256": "bce1cda1fdc2dba19d0f1b0aa2ce86914a4ff01002efcbb201e784b2ee856bec",
+          "expected": {
+            "u": [3.5, -1.8, -1.0, -0.3, 0.5, 1.3, 2.3, -3.0, -2.3, -1.5, -0.8, 0.0, 1.0, -4.3, -3.5, -2.8, -2.0, -1.3, -0.3, -5.5, -4.8, -4.0, -3.3, -2.5, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [1.0, -1.5, -1.2, -0.8, -0.5, -0.1, 1.5, -1.0, -0.7, -0.3, 0.1, 0.4, 2.0, -0.5, -0.2, 0.2, 0.6, 0.9, 2.5, 0.0, 0.4, 0.7, 1.1, 1.4, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [5.5, 4.3, 3.2, 2.1, 2.0, 2.4, 4.7, 5.0, 3.9, 2.8, 1.8, 1.4, 4.0, 5.8, 4.7, 4.0, 3.6, 3.2, 3.7, 6.5, 6.1, 5.7, 5.3, 4.9, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 0,
+          "x": 1,
+          "y": 1,
+          "path": "pole/t/0/1/1/003.bin",
+          "bytes": 240,
+          "sha256": "d405bf783bba0b3644f804aefc46383ffb67c400855940544ea2490fb9cf4743",
+          "expected": {
+            "u": [0.5, 1.3, 2.0, 2.8, 3.5, -1.8, -0.8, 0.0, 0.8, 1.5, 2.3, -3.0, -2.0, -1.3, -0.5, 0.3, 1.0, -4.3, -3.3, -2.5, -1.8, -1.0, -0.3, -5.5, null, null, null, null, null, null, null, null, null, null, null, null],
+            "v": [-0.5, -0.1, 0.3, 0.6, 1.0, -1.5, 0.1, 0.4, 0.8, 1.1, 1.5, -1.0, 0.6, 0.9, 1.3, 1.6, 2.0, -0.5, 1.1, 1.4, 1.8, 2.1, 2.5, 0.0, null, null, null, null, null, null, null, null, null, null, null, null],
+            "gust": [2.0, 2.4, 3.3, 4.4, 5.5, 4.3, 1.8, 1.4, 2.5, 3.6, 4.7, 5.0, 3.6, 3.2, 2.8, 2.9, 4.0, 5.8, 5.3, 4.9, 4.5, 4.1, 3.7, 6.5, null, null, null, null, null, null, null, null, null, null, null, null]
+          }
+        },
+        {
+          "level": 1,
+          "x": 0,
+          "y": 0,
+          "path": "pole/t/1/0/0/003.bin",
+          "bytes": 240,
+          "sha256": "127d3b359f7b0489478800c33983717f28673397faf7927285f2c0a01bdccc8a",
+          "expected": {
+            "u": [null, null, null, null, null, null, 6.3, 1.8, 3.3, 4.8, 6.3, 1.8, 3.8, -0.8, 0.8, 2.3, 3.8, -0.8, 1.3, -3.3, -1.8, -0.3, 1.3, -3.3, -0.7, -5.2, -3.7, -2.2, -0.7, -5.2, null, null, null, null, null, null],
+            "v": [null, null, null, null, null, null, -0.5, -2.6, -1.9, -1.2, -0.5, -2.6, 0.6, -1.6, -0.9, -0.2, 0.6, -1.6, 1.6, -0.6, 0.2, 0.9, 1.6, -0.6, 2.3, 0.2, 0.9, 1.6, 2.3, 0.2, null, null, null, null, null, null],
+            "gust": [null, null, null, null, null, null, 7.8, 5.4, 6.2, 7.0, 7.8, 5.4, 5.3, 3.5, 2.8, 3.6, 5.3, 3.5, 3.8, 4.9, 3.1, 2.5, 3.8, 4.9, 3.9, 6.3, 5.5, 4.7, 3.9, 6.3, null, null, null, null, null, null]
+          }
+        }
+      ],
+      "skipped": [],
+      "samples": [
+        {
+          "level": 0,
+          "lat": 90.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.0,
+            "v": -3.0,
+            "gust": 6.0
+          }
+        },
+        {
+          "level": 0,
+          "lat": 90.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 3.344444444444444,
+            "v": -2.388888888888889,
+            "gust": 6.71111111111111
+          }
+        },
+        {
+          "level": 0,
+          "lat": 90.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 5.0,
+            "v": -1.6,
+            "gust": 7.6
+          }
+        },
+        {
+          "level": 0,
+          "lat": 90.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 3.177777777777778,
+            "v": -2.4666666666666663,
+            "gust": 6.622222222222223
+          }
+        },
+        {
+          "level": 0,
+          "lat": 75.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.4,
+            "v": -2.75,
+            "gust": 5.15
+          }
+        },
+        {
+          "level": 0,
+          "lat": 75.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.733333333333333,
+            "v": -2.138888888888889,
+            "gust": 5.861111111111111
+          }
+        },
+        {
+          "level": 0,
+          "lat": 75.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 4.4,
+            "v": -1.35,
+            "gust": 6.75
+          }
+        },
+        {
+          "level": 0,
+          "lat": 75.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 2.5666666666666673,
+            "v": -2.2166666666666663,
+            "gust": 5.772222222222222
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.8,
+            "v": -1.5,
+            "gust": 4.3
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.4555555555555556,
+            "v": -0.8888888888888891,
+            "gust": 2.344444444444445
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 0.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": 1.3,
+            "v": -0.1,
+            "gust": 2.4
+          }
+        },
+        {
+          "level": 0,
+          "lat": 0.0,
+          "lon": 170.0,
+          "tile": [1, 0],
+          "expected": {
+            "u": -0.6222222222222218,
+            "v": -0.9444444444444442,
+            "gust": 4.566666666666666
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": -180.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -4.3,
+            "v": -0.5,
+            "gust": 5.8
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": -100.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -2.9555555555555553,
+            "v": 0.11111111111111109,
+            "gust": 4.155555555555556
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 0.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -1.3,
+            "v": 0.9,
+            "gust": 3.2
+          }
+        },
+        {
+          "level": 0,
+          "lat": -60.0,
+          "lon": 170.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -3.1222222222222213,
+            "v": 0.0555555555555558,
+            "gust": 5.3999999999999995
+          }
+        },
+        {
+          "level": 0,
+          "lat": -75.0,
+          "lon": -180.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -4.9,
+            "v": -0.25,
+            "gust": 6.15
+          }
+        },
+        {
+          "level": 0,
+          "lat": -75.0,
+          "lon": -100.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -3.5666666666666664,
+            "v": 0.3722222222222221,
+            "gust": 4.972222222222222
+          }
+        },
+        {
+          "level": 0,
+          "lat": -75.0,
+          "lon": 0.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -1.9,
+            "v": 1.15,
+            "gust": 4.050000000000001
+          }
+        },
+        {
+          "level": 0,
+          "lat": -75.0,
+          "lon": 170.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -3.7333333333333325,
+            "v": 0.3055555555555558,
+            "gust": 5.638888888888889
+          }
+        },
+        {
+          "level": 0,
+          "lat": -89.0,
+          "lon": -180.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -5.46,
+            "v": -0.016666666666666607,
+            "gust": 6.476666666666667
+          }
+        },
+        {
+          "level": 0,
+          "lat": -89.0,
+          "lon": -100.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -4.137037037037038,
+            "v": 0.6159259259259258,
+            "gust": 5.734444444444445
+          }
+        },
+        {
+          "level": 0,
+          "lat": -89.0,
+          "lon": 0.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -2.46,
+            "v": 1.3833333333333333,
+            "gust": 4.843333333333334
+          }
+        },
+        {
+          "level": 0,
+          "lat": -89.0,
+          "lon": 170.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -4.303703703703703,
+            "v": 0.5388888888888892,
+            "gust": 5.861851851851853
+          }
+        },
+        {
+          "level": 0,
+          "lat": -90.0,
+          "lon": -180.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -5.5,
+            "v": 0.0,
+            "gust": 6.5
+          }
+        },
+        {
+          "level": 0,
+          "lat": -90.0,
+          "lon": -100.0,
+          "tile": [0, 1],
+          "expected": {
+            "u": -4.177777777777778,
+            "v": 0.6333333333333332,
+            "gust": 5.788888888888889
+          }
+        },
+        {
+          "level": 0,
+          "lat": -90.0,
+          "lon": 0.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -2.5,
+            "v": 1.4,
+            "gust": 4.9
+          }
+        },
+        {
+          "level": 0,
+          "lat": -90.0,
+          "lon": 170.0,
+          "tile": [1, 1],
+          "expected": {
+            "u": -4.344444444444443,
+            "v": 0.5555555555555558,
+            "gust": 5.877777777777778
+          }
+        },
+        {
+          "level": 1,
+          "lat": 90.0,
+          "lon": -180.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 90.0,
+          "lon": -100.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 90.0,
+          "lon": 0.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 90.0,
+          "lon": 170.0,
+          "tile": null,
+          "expected": null
+        },
+        {
+          "level": 1,
+          "lat": 75.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.925,
+            "v": -2.075,
+            "gust": 6.000000000000001
+          }
+        },
+        {
+          "level": 1,
+          "lat": 75.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 2.758333333333333,
+            "v": -2.1527777777777777,
+            "gust": 5.911111111111111
+          }
+        },
+        {
+          "level": 1,
+          "lat": 75.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 4.425,
+            "v": -1.375,
+            "gust": 6.8
+          }
+        },
+        {
+          "level": 1,
+          "lat": 75.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 3.4250000000000003,
+            "v": -1.8416666666666666,
+            "gust": 6.2666666666666675
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.27499999999999997,
+            "v": -0.8000000000000002,
+            "gust": 4.11875
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -0.41875000000000007,
+            "v": -0.8868055555555555,
+            "gust": 3.2270833333333333
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 1.275,
+            "v": -0.09999999999999998,
+            "gust": 3.2125000000000004
+          }
+        },
+        {
+          "level": 1,
+          "lat": 0.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": 0.23611111111111138,
+            "v": -0.5555555555555555,
+            "gust": 4.238194444444445
+          }
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.6312499999999996,
+            "v": 0.14375000000000004,
+            "gust": 4.89375
+          }
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.816666666666667,
+            "v": 0.09513888888888883,
+            "gust": 4.259722222222222
+          }
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.1500000000000001,
+            "v": 0.9000000000000001,
+            "gust": 3.2125
+          }
+        },
+        {
+          "level": 1,
+          "lat": -60.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.1229166666666663,
+            "v": 0.38541666666666674,
+            "gust": 4.735416666666667
+          }
+        },
+        {
+          "level": 1,
+          "lat": -75.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.1125,
+            "v": 0.3375,
+            "gust": 5.1625
+          }
+        },
+        {
+          "level": 1,
+          "lat": -75.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.291666666666667,
+            "v": 0.2791666666666666,
+            "gust": 4.769444444444444
+          }
+        },
+        {
+          "level": 1,
+          "lat": -75.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -1.625,
+            "v": 1.0750000000000002,
+            "gust": 3.7750000000000004
+          }
+        },
+        {
+          "level": 1,
+          "lat": -75.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.6069444444444443,
+            "v": 0.576388888888889,
+            "gust": 4.968055555555555
+          }
+        },
+        {
+          "level": 1,
+          "lat": -89.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.5616666666666665,
+            "v": 0.5183333333333334,
+            "gust": 5.413333333333332
+          }
+        },
+        {
+          "level": 1,
+          "lat": -89.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.7350000000000003,
+            "v": 0.4509259259259259,
+            "gust": 5.245185185185186
+          }
+        },
+        {
+          "level": 1,
+          "lat": -89.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.068333333333334,
+            "v": 1.2383333333333337,
+            "gust": 4.3
+          }
+        },
+        {
+          "level": 1,
+          "lat": -89.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.0587037037037033,
+            "v": 0.7546296296296297,
+            "gust": 5.185185185185185
+          }
+        },
+        {
+          "level": 1,
+          "lat": -90.0,
+          "lon": -180.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.59375,
+            "v": 0.53125,
+            "gust": 5.4312499999999995
+          }
+        },
+        {
+          "level": 1,
+          "lat": -90.0,
+          "lon": -100.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.766666666666667,
+            "v": 0.46319444444444435,
+            "gust": 5.279166666666667
+          }
+        },
+        {
+          "level": 1,
+          "lat": -90.0,
+          "lon": 0.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -2.1,
+            "v": 1.25,
+            "gust": 4.3375
+          }
+        },
+        {
+          "level": 1,
+          "lat": -90.0,
+          "lon": 170.0,
+          "tile": [0, 0],
+          "expected": {
+            "u": -3.090972222222222,
+            "v": 0.7673611111111112,
+            "gust": 5.200694444444444
+          }
+        }
+      ]
+    }
+  ]
+}

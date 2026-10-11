@@ -14,8 +14,6 @@ resampled onto a regular 0.05° display grid; land and unresolved cells are null
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import math
 import os
 import re
@@ -28,8 +26,9 @@ from pyproj import CRS, Transformer
 
 import fetch_gfs
 from fetch_gfs import get, index_ranges, run_datetime
-from fetch_forecast import ROOT, load_spots, published_in_bucket, sample, spots_file, write_json
+from fetch_forecast import ROOT, load_spots, published_in_bucket, sample, spots_file
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "gfs-wave"
@@ -410,7 +409,7 @@ def parse_args(argv=None):
     return args
 
 
-def manifest_for(run, run_time, args, frames, series, coverage, layout):
+def manifest_for(run, run_time, args, series, coverage, layout):
     nx, ny = layout["size"]
     i0, j0 = layout["block"]
     return {
@@ -422,7 +421,10 @@ def manifest_for(run, run_time, args, frames, series, coverage, layout):
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
         "grid": GRID, "variables": {name: {key: entry[key] for key in ("units", "label", "description")}
                                     for name, entry in VARIABLES.items()},
-        "frames": frames, "spotSeries": series, "spotCoverage": coverage,
+        # No map frames: nothing reads a wave grid yet, and the spot series is the
+        # product (docs/TILING_DESIGN.md). The horizon is stated instead.
+        "frames": [], "horizonHours": args.hours,
+        "spotSeries": series, "spotCoverage": coverage,
         "directionConvention": "Wave directions are the bearing waves travel FROM, in degrees true, "
                                "like the wind direction rows: 270° is a westerly swell running east.",
         "partitionNote": "swh/pp1d/mwd describe the whole spectrum. shww/mpww/mdww are the locally "
@@ -468,7 +470,7 @@ def main(argv=None):
         print(f"GFS-Wave {SOURCE_GRID} {run} is already published; nothing to download.", flush=True)
         return UNCHANGED_EXIT
     print(f"Fetching GFS-Wave {SOURCE_GRID} {run} from {args.source}: "
-          f"{len(hours)} frames through +{args.hours}h", flush=True)
+          f"{len(hours)} steps through +{args.hours}h", flush=True)
     cache = ROOT / ".cache" / "gfswave" / run
     cache.mkdir(parents=True, exist_ok=True)
     spots = load_spots()
@@ -501,19 +503,11 @@ def main(argv=None):
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     signature = decoded[0][1]["signature"]
     series = {spot["id"]: [] for spot in spots}
-    frames = []
     for hour in hours:
         fields, layout, land = decoded[hour]
         if layout["signature"] != signature:
             raise ValueError("GFS-Wave grid changed within the run")
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-        payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
-                   "grid": GRID, **fields}
-        with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
-            write_json(output / name, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
             series[spot["id"]].append({"hour": hour, "validTime": valid, "values": {
                 name: sample_wave(GRID, values, spot["lon"], spot["lat"])
@@ -532,11 +526,11 @@ def main(argv=None):
             note = ("The 9 km cell over this location, and every cell reaching it, is land, ice or "
                     "unresolved. This model cannot say anything about waves here.")
         coverage[spot["id"]] = {"landMasked": masked, "resolved": resolved, "note": note}
-    manifest = manifest_for(run, run_time, args, frames, series, coverage, decoded[0][1])
+    manifest = manifest_for(run, run_time, args, series, coverage, decoded[0][1])
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     resolved = sum(1 for entry in coverage.values() if entry["resolved"])
-    print(f"Published {len(frames)} GFS-Wave frames to {output / (MODEL + '.json')}; "
+    print(f"Published {len(hours)} GFS-Wave steps to {output / (MODEL + '.json')}; "
           f"{resolved} of {len(spots)} spots have wave values", flush=True)
 
 

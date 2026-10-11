@@ -1,17 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { readBundle, readFrame, readWindFrame } from "./bundles";
-import { sample, validateFrame, validateManifest } from "../force5/src/weather";
+import { fixtureFetch, readBundle, readFrame, readRun } from "./bundles";
+import { validateManifest, validateWindSpots } from "../force5/src/weather";
 import type { Manifest, Spot } from "../force5/src/weather";
-import { F5_ENCODING } from "../force5/src/f5bin";
+import { clearTileCache, samplePoint } from "../force5/src/tiledField";
 import {
   validateWaveManifest,
+  validateWaveSpots,
   waveCoverageNote,
   waveHours,
   type WaveManifest,
 } from "../force5/src/waves";
 import {
   validateWeatherManifest,
+  validateWeatherSpots,
   weatherFields,
   weatherHours,
   type WeatherManifest,
@@ -30,6 +32,10 @@ import {
  * were recomputed from their own frames by `force5/ingest/backfill_spots.py`, so
  * there is no longer a partial snapshot and the blend is available everywhere
  * the map offers a spot.
+ *
+ * Each pointer is validated as published, without its spot data, and every
+ * spot square of its run is then read through the site's own loader
+ * (force5/src/spotData.ts) and checked as it arrives.
  */
 const places: Spot[] = JSON.parse(
   readFileSync("public/riding-locations.json", "utf8"),
@@ -42,21 +48,33 @@ const originalIds: string[] = JSON.parse(
 describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
   "published %s wind bundle",
   (name) => {
-    it("all files match the manifest and all spot summaries match their wind grid", () => {
-      const m = validateManifest(readBundle<Manifest>(name));
-      // A binary frame stores tenths of a metre per second while the spot series
-      // beside it is the full-precision value rounded to hundredths, so the two
-      // may differ by the quantisation (0.05) plus both roundings. See
+    // The tiles are read the way the map reads them: through TiledField, over
+    // a fetch that serves the fixtures at the URLs the site asks for.
+    const served = fixtureFetch();
+    beforeAll(() => {
+      clearTileCache();
+      vi.stubGlobal("fetch", served);
+    });
+    afterAll(() => vi.unstubAllGlobals());
+
+    it("all files match the manifest and all spot summaries match their wind grid", async () => {
+      validateManifest(readBundle<Manifest>(name));
+      const m = validateWindSpots(await readRun<Manifest>(name));
+      // A tile stores tenths of a metre per second while the spot series beside
+      // it is the full-precision value rounded to hundredths, so the two may
+      // differ by the quantisation (0.05) plus both roundings. See
       // force5/ingest/f5bin.py and backfill_spots.py, which allows the same.
-      const limit = m.encoding === F5_ENCODING ? 0.06 : 0.00501;
+      const limit = 0.06;
       // Exactly the published catalogue: no riding place missing, none invented.
-      expect(Object.keys(m.spotForecasts).sort()).toEqual([...placeIds].sort());
-      for (const id of originalIds) expect(m.spotForecasts[id]).toBeTruthy();
-      m.frames.forEach((info, i) => {
-        const frame = validateFrame(readWindFrame(m, info), m, info);
+      expect(Object.keys(m.spotForecasts!).sort()).toEqual(
+        [...placeIds].sort(),
+      );
+      for (const id of originalIds) expect(m.spotForecasts![id]).toBeTruthy();
+      for (const [i, info] of m.frames.entries()) {
         for (const spot of places) {
-          const wind = sample(frame, spot.lon, spot.lat)!;
-          const summary = m.spotForecasts[spot.id][i];
+          // The native tile holding the spot: what a bare point reads too.
+          const wind = (await samplePoint(m, i, spot.lat, spot.lon))!;
+          const summary = m.spotForecasts![spot.id][i];
           expect(summary.validTime).toBe(info.validTime);
           // Every riding place sits inside every bundled grid, so a null u or v
           // would mean the series and the frames describe different points.
@@ -78,7 +96,14 @@ describe.each(["latest", "harmonie", "ecmwf", "gfs", "arpege"])(
           }
           expect(Math.abs(wind.gust - summary.gust)).toBeLessThanOrEqual(limit);
         }
-      });
+      }
+      // Only level-0 tiles of this run were read, each from inside its directory.
+      expect(served.asked.length).toBeGreaterThan(0);
+      for (const url of served.asked)
+        expect(url).toMatch(
+          new RegExp(`/weather/${m.base}t/0/\\d+/\\d+/\\d{3}\\.bin$`),
+        );
+      served.asked.length = 0;
     });
   },
 );
@@ -121,10 +146,11 @@ function sampleWave(
 }
 
 describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
-  it("every frame matches the manifest and every spot series matches the frames", () => {
-    // The shared validator owns the contract: version, kind, the variable map,
+  it("every frame matches the manifest and every spot series matches the frames", async () => {
+    // The shared validators own the contract: version, kind, the variable map,
     // the frame list, the declared horizon and the shape of every spot series.
-    const m = validateWaveManifest(readBundle<WaveManifest>(name));
+    validateWaveManifest(readBundle<WaveManifest>(name));
+    const m = validateWaveSpots(await readRun<WaveManifest>(name));
     expect(m.model).toBe(name);
     expect([1, 3]).toContain(m.stepHours);
     expect(m.stepRanges).toBeUndefined();
@@ -150,7 +176,7 @@ describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
     }
 
     /** Wave bundles carry the same full catalogue as the wind manifests. */
-    expect(Object.keys(m.spotSeries).sort()).toEqual([...placeIds].sort());
+    expect(Object.keys(m.spotSeries!).sort()).toEqual([...placeIds].sort());
     const covered = places;
     for (const place of places) {
       const coverage = m.spotCoverage![place.id];
@@ -169,10 +195,11 @@ describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
         expect(Date.parse(info.validTime)).toBe(
           Date.parse(m.runTime) + info.hour * 3600000,
         );
-        expect(
-          info.url.startsWith("weather/") && !info.url.includes(".."),
-        ).toBe(true);
-        const frame = readFrame<Record<string, WaveValues>>(info.url);
+        // Inside the run directory, named for the hour alone.
+        expect(info.url).toBe(
+          `frames/${String(info.hour).padStart(3, "0")}.json`,
+        );
+        const frame = readFrame<Record<string, WaveValues>>(m, info.url);
         expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
           m.model,
           m.run,
@@ -193,7 +220,7 @@ describe.each(["gfs-wave"])("published %s wave bundle", (name) => {
           ).toBe(true);
         }
         for (const place of covered) {
-          const step = m.spotSeries[place.id][i];
+          const step = m.spotSeries![place.id][i];
           expect(step.validTime).toBe(info.validTime);
           expect(Object.keys(step.values).sort()).toEqual(
             [...variables].sort(),
@@ -235,12 +262,13 @@ const decimalsOf = (value: number) =>
   (String(value).split(".")[1] ?? "").length;
 
 describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
-  it("every frame matches the manifest and every spot series matches the frames", () => {
-    const m = validateWeatherManifest(readBundle<WeatherManifest>(name));
+  it("every frame matches the manifest and every spot series matches the frames", async () => {
+    validateWeatherManifest(readBundle<WeatherManifest>(name));
+    const m = validateWeatherSpots(await readRun<WeatherManifest>(name));
     expect(m.model).toBe(name);
     expect(m.provider).toBe("Synthetic sample data");
     expect(weatherHours(m)).toEqual(m.frames.map((frame) => frame.hour));
-    expect(Object.keys(m.spotSeries).sort()).toEqual([...placeIds].sort());
+    expect(Object.keys(m.spotSeries!).sort()).toEqual([...placeIds].sort());
 
     const g = m.grid!;
     expect(Math.abs(g.east - g.west - (g.width - 1) * g.dx)).toBeLessThan(1e-5);
@@ -262,7 +290,7 @@ describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
 
     expect(m.frames.length).toBeGreaterThan(0);
     m.frames.forEach((info, i) => {
-      const frame = readFrame<Record<string, (number | null)[]>>(info.url);
+      const frame = readFrame<Record<string, (number | null)[]>>(m, info.url);
       expect([frame.model, frame.run, frame.hour, frame.validTime]).toEqual([
         m.model,
         m.run,
@@ -272,7 +300,7 @@ describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
       expect(frame.grid).toEqual(g);
       for (const key of gridded) expect(frame[key]).toHaveLength(cells);
       for (const place of places) {
-        const step = m.spotSeries[place.id][i];
+        const step = m.spotSeries![place.id][i];
         expect(step.validTime).toBe(info.validTime);
         for (const key of gridded) {
           const values = frame[key];
@@ -311,7 +339,7 @@ describe.each(["icon-eu-weather"])("published %s weather bundle", (name) => {
     const cloud = weatherFields(m).cloud!;
     const rain = weatherFields(m).rain!;
     const frames = m.frames.map((info) =>
-      readFrame<Record<string, (number | null)[]>>(info.url),
+      readFrame<Record<string, (number | null)[]>>(m, info.url),
     );
     // Zero cloud is a value, not a gap: somewhere in the field the sky is clear.
     expect(frames.some((frame) => frame[cloud].includes(0))).toBe(true);

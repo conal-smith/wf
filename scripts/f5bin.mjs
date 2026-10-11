@@ -1,6 +1,9 @@
 /**
- * The "F5 int16" wind frame, for Node: the encoder the sample generator needs,
- * and a decoder beside it so a round trip can be checked without a browser.
+ * The "F5 int16" wind frame, for Node: an encoder, and a decoder beside it so a
+ * round trip can be checked without a browser. Whole frames are no longer
+ * published; the sample generator writes tiles (scripts/f5tile.mjs), which use
+ * this module's rounding, and the format stays as the reference they are
+ * tested against.
  *
  * There are three implementations of this format and they must agree byte for
  * byte: force5/ingest/f5bin.py (which documents the layout and the rules),

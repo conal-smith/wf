@@ -20,8 +20,9 @@ EventBridge Scheduler
   → ECS Fargate task (Force5 container from ECR)
     → discover/download Met Éireann or DWD model output
     → decode + validate + prepare wind frames and spot time series
-    → encode wind frames as F5 int16 (.bin) with .br/.gz sidecars
-    → upload immutable frames to private S3
+    → cut each wind frame into a tile pyramid (F5T1 .bin) with .br/.gz sidecars
+    → move the spot series into 2° spot squares, name the run directory for its content
+    → upload the immutable run directory to private S3
     → conditionally update latest manifest LAST
       → CloudFront HTTPS endpoint → website / future map clients
 ```
@@ -33,11 +34,12 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/Dockerfile`: non-root, one-shot Python worker image containing only the ingest code, the spot catalogues (`public/spots.json` and `public/riding-locations.json`, with `FORCE5_SPOTS_FILE` pointing at the latter) and the local cadence schedule. No saved forecasts, repository history, frontend dependencies or credentials. The root `.dockerignore` is one allowlist shared with the local site image, so the build context also carries the frontend sources; this image does not.
 - `force5/ingest/registry.py`: the single model table — script, published manifest path, bundle kind and default freshness limit. `worker.py` derives its `--models` choices and age limits from it and `publish_s3.py` takes manifest paths and the immutable object root from the same entry, so onboarding a model is one registry line plus its fetch script.
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
-- `force5/ingest/f5bin.py`: the binary wind frame ("F5 int16"). Every wind adapter publishes its map frames through `publish_frame`, which encodes the u/v/gust grids as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run and the forecast hour, names the file after the sha256 of its own bytes, and writes it with precompressed `.bin.br` and `.bin.gz` sidecars beside it. A HARMONIE step is about 71 KB over the wire instead of the 225 KB its gzipped JSON cost. The manifest says so with `"encoding": "f5-int16-v1"`; wave and weather frames are still JSON, and a manifest without `encoding` still means JSON frames. The format, the rounding rule and the wrapping delta arithmetic are documented in that module; `force5/src/f5bin.ts` and `scripts/f5bin.mjs` are the other two implementations, pinned to it by a shared golden file.
-- `force5/ingest/publish_s3.py`: validates every referenced frame before uploading anything. A binary frame is decoded and gets every value, cadence, grid-size and gust-availability check the JSON frames always got, but it carries no model and no gust window of its own, so two of those checks are made differently: the **model** comes from the path — every referenced object must sit under a run directory named for this model, by the same rule the superseded delete uses — together with the file name, which must be the sha256 of the bytes it holds; and the **gust window** is only in the manifest, so what is checked against the frame is whether the gust block is there at all. What is therefore _not_ checked for a binary frame: that its numbers are this model's rather than another's, if someone puts one model's frame in another's directory under its own correct name. It uploads one encoding per immutable object: a `.bin` frame brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same frame twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
+- `force5/ingest/f5tile.py` and `f5bin.py`: the wind frame as tiles ("F5T1", docs/TILING_DESIGN.md). Every wind adapter publishes its map frames through `f5bin.publish_frame`, which cuts the u/v/gust grids into 128 × 128-cell tiles on a global lattice, with overview levels averaged 2 × 2 until one tile holds the whole domain, each tile stored with a one-cell border as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run, the forecast hour, the level and the tile's place. It writes every tile of every level for the hour at `t/{level}/{x}/{y}/<HHH>.bin` inside the run's directory, with precompressed `.bin.br` and `.bin.gz` sidecars beside each. `rundir.write_run` then lists the tiles that are empty at every hour as absent and drops them, and gives the pointer a `tiles` block (below). On the real HARMONIE run of 7 October 2026 a frame's nine native tiles are about 85 KB brotli in all (largest 30 KB), its four level-1 tiles 32 KB and its one level-2 tile 10 KB, against 74 KB for the same frame as one whole file. The rounding rule and the wrapping delta arithmetic are f5bin's; `force5/src/f5tile.ts` reads the tiles in the browser and `scripts/f5tile.mjs` writes them for the sample bundles, both pinned to the Python writer by the golden pyramids in `tests/fixtures/f5tile`. Whole frames (`f5-int16-v1`) are no longer published; the format stays as the reference the tiles' level 0 is tested against.
+- `force5/ingest/rundir.py` and `squares.py`: the run directory and the spot squares (see "Object layout" below). Every forecast adapter writes its frames into a staging directory as it goes and finishes with one call, `write_run`, instead of writing its pointer itself: it moves the per-spot data into one file per 2° square, drops anything the run does not reference, names the directory for the hash of what is in it, renames it and only then writes the pointer. `squares.load_spot_data` is the one Python reader of the squares, and `force5/src/spotData.ts` the one TypeScript reader.
+- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the tiles, frames and squares the pointer names — for a wind run every tile its `tiles` block does not call absent, at every hour. The `tiles` block must match the grid (`f5tile.check_tiles`: the grid on the global lattice, exactly the levels and cell sizes the grid gives, absent tiles inside their ranges, gust blocks exactly when some frame has a gust window). Then every tile is checked: its header must name the run, the hour, the level and the place it is published as, carry a gust block exactly where the frame has a gust window, and hold only plausible values, and a native tile may leave no cell of the grid missing; the spot data read back from the squares is checked as the whole manifest used to be. A tile carries no model, so the **model** comes from the path — the run directory must be named for this model, by the same rule the bucket sweep's protection of a model with no pointer uses — and the directory's hash proves the bytes are the ones published under that name. What is therefore _not_ checked: that a tile's numbers are this model's rather than another's, if someone builds one model's run directory out of another's tiles, nor that an overview tile is the mean of the native ones. It uploads one encoding per immutable object: a `.bin` tile brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same tile twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
-**Published sizes recorded per model below predate the binary frames** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for the file on disk plus its sidecars, or by three against what a browser was actually sent; wave and weather figures are unchanged, because those frames are still JSON.
+**Published sizes recorded per model below predate the binary frames and the tiles** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for one whole binary frame on disk plus its sidecars, or by three against what a browser was sent for one; a frame's tiles at every level are about 1.7 times its whole binary frame on disk (127 KB brotli against 74 KB for HARMONIE), and a browser fetches one level of them for its view. Wave and weather runs no longer publish frames at all.
 
 The worker defaults to **hourly HARMONIE**, with the importer's full 60-hour horizon: 61 frames including hour zero. ICON-EU uses its full 72-hour horizon when selected. The existing bundled website snapshots remain three-hourly until a new snapshot is generated and served. Hourly output is genuine source data, not temporal interpolation. On 13 September 2026 the live Met Éireann inventory was checked and contained all control files from +000 through +060 at one-hour intervals.
 
@@ -258,12 +260,12 @@ concurrent connections and a 0.56 MB manifest, so this job is far cheaper than a
 GRIB model.
 GFS-Wave is the first **wave** bundle: `--models gfs-wave` imports NOAA's
 WAVEWATCH III `arctic.9km` output, nine wave variables on a 0.05° Ireland display
-grid, and publishes `weather/gfs-wave.json` with immutable frames beside it. The
+grid, and publishes `weather/gfs-wave.json` with its spot squares beside it. The
 worker only passes `--step`/`--run` to wind models, so a wave task takes the
-importer's defaults: 0–240 h at three-hour steps, 81 frames. A measured live run
+importer's defaults: 0–240 h at three-hour steps, 81 steps. A measured live run
 took 75 seconds, downloading 5.3 MB through the NOMADS wave filter (about 70 KB a
-step) and publishing 45 MB of frames plus a 372 KB manifest — an order of
-magnitude more output than a wind model, so size the volume and CDN accordingly.
+step). It used to publish 45 MB of map frames as well, an order of magnitude more
+output than a wind model; nothing read them, so it no longer does.
 Run `fetch_gfswave.py --source s3` directly if the filter service is down; that
 path reads whole-grid messages, roughly 3.5 MB per step. The importer refuses to
 publish when the cut-out does not land on the source lattice, which is the check
@@ -273,10 +275,11 @@ ICON-EU surface weather is the first **weather** bundle: `--models icon-eu-weath
 runs `fetch_icon_weather.py`, which reads thirteen ICON-EU single-level parameters
 (temperature, dew point, humidity, accumulated precipitation, four cloud layers,
 mean-sea-level pressure, visibility, mean-layer CAPE, WMO present weather and ground
-temperature) from one cycle and publishes `weather/icon-eu-weather.json` with
-immutable frames beside it. The worker passes `--step`/`--run` only to wind models, so
-this task takes the importer's defaults: 0–72 h at three-hour steps, 25 frames. Its
-registry age limit is 12 hours, the same as ICON-EU wind.
+temperature) from one cycle and publishes `weather/icon-eu-weather.json` with its
+spot squares beside it, and no map frames: nothing reads them. The worker passes
+`--step`/`--run` only to wind models, so this task takes the importer's defaults:
+0–72 h at three-hour steps, 25 steps. Its registry age limit is 12 hours, the same as
+ICON-EU wind.
 
 Bandwidth is the operational constraint. DWD publishes one whole-Europe file per
 parameter per step with no server-side subsetting, so a default run transfers **301 MB
@@ -440,7 +443,7 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
 2. Create a CloudFront distribution using S3 Origin Access Control. Use HTTPS, for example `forecast.wingfoil.ie`, with a suitable certificate/DNS record. Enable compression.
-3. Give the **task role** only the required bucket access. Adapt `force5/deploy/s3-task-policy.example.json`; if using `S3_PREFIX`, include it in the object ARN. `GetObject` supports manifest reads and collision checks; `ListBucket` allows missing-key reads to return 404 instead of ambiguous 403. No delete permission is needed. Configure separate execution-role permissions for ECR pulls and CloudWatch logs. KMS-encrypted buckets require additional scoped KMS permissions.
+3. Give the **task role** only the required bucket access. Adapt `force5/deploy/s3-task-policy.example.json`; if using `S3_PREFIX`, include it in the object ARN. `GetObject` supports manifest reads and collision checks; `ListBucket` allows missing-key reads to return 404 instead of ambiguous 403, and lets the publisher check its run directory is whole after the swap. The publisher needs no delete permission; the bucket sweep (`prune.py --bucket`), which deletes superseded runs after their grace period, does. Configure separate execution-role permissions for ECR pulls and CloudWatch logs. KMS-encrypted buckets require additional scoped KMS permissions.
 4. Configure CORS on S3/CloudFront for the actual website origins. `s3-cors.example.json` is a starting point. Allow GET/HEAD; expose ETag if needed. Ensure CloudFront forwards `Origin` and caches responses consistently, or use a response-headers policy with the intended allowed origins. Do not put AWS credentials in the browser.
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
@@ -513,15 +516,16 @@ explicit endpoint URL; nothing else differs from S3.
 | `FORCE5_WORK_DIR`                             | Scratch directory, `/data` in the image. Discarded when the container exits.                                                                                                                                                                                                                                                                     |
 | `FORCE5_SPOTS_FILE`                           | `/app/public/riding-locations.json`, baked into the image. Adding a spot means rebuilding the image.                                                                                                                                                                                                                                             |
 | `FORCE5_SWEEP_MIN_AGE_HOURS`                  | Bucket sweep only. Default for `--min-age-hours`; 6 unless you have a reason.                                                                                                                                                                                                                                                                    |
-| `FORCE5_SIDECARS`                             | `0` to stop writing `.bin.br`/`.bin.gz` beside every wind frame. **A job that only uploads to the bucket should set this**: the bucket stores one encoding per object and serves no sidecar, so writing them spends a brotli and a gzip per frame on bytes nothing will read. Default `1`, which is what the local Caddy deployment serves from. |
+| `FORCE5_SIDECARS`                             | `0` to stop writing `.bin.br`/`.bin.gz` beside every wind tile. **A job that only uploads to the bucket should set this**: the bucket stores one encoding per object and serves no sidecar, so writing them spends a brotli and a gzip per tile on bytes nothing will read. Default `1`, which is what the local Caddy deployment serves from.   |
 | `FORCE5_BUCKET_ENCODING`                      | `br` (default) or `gzip`: how a `.bin` frame is stored in the bucket, and the `Content-Encoding` it is served with. One encoding per object either way. The way back if a CDN ever mangles brotli.                                                                                                                                               |
 | `FORCE5_BROTLI_QUALITY`                       | 0–11, default 9. Raising it shrinks frames a little and costs a lot of ingest time — see the table in docs/FORECAST_DATA_PLAN.md. A value outside that range fails the job with a sentence naming this variable.                                                                                                                                 |
 
 `FORCE5_PUBLISHED_RUN` is set **by** the worker for the adapters that read it and must
 not be set in a job's environment; the worker clears any inherited value.
 
-Unlike the AWS design, the token **does** need `DeleteObject`: the publisher removes
-the run it supersedes, and the sweep removes failed uploads.
+Unlike the AWS design, the token **does** need `DeleteObject`, for the sweep: it removes
+superseded runs once their grace period is over, and failed uploads. The publisher itself
+deletes nothing.
 
 ### One-shot invocations, as Home Compute runs them
 
@@ -564,12 +568,12 @@ docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models blend $R2
 
 # Verification (docs/VERIFICATION.md): observed wind hourly; the archive hourly after
-# the blend, before the next runs delete what it copies; the scores once a day
+# the blend, before the sweep deletes what it copies; the scores once a day
 docker run --rm --env-file r2.env force5-forecast:latest --models wind-obs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models forecast-archive $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models verify $R2
 
-# Retention: the bucket sweep, a few times a day, any machine. --dry-run first.
+# Retention: the bucket sweep, hourly at :10, any machine. --dry-run first.
 docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
   /app/force5/ingest/prune.py --bucket wingfoil-forecast \
   --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com --dry-run
@@ -577,6 +581,29 @@ docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
 
 Cadence and publication lags are unchanged; see the per-model sections above and
 `deploy/local/jobs.toml`, which remains the reference schedule.
+
+### After upgrading, run every enabled job once
+
+An upgrade that changes what is published leaves the old pointers in place until each
+model's next run replaces them. The move to run directories and spot squares
+(schemaVersion 2, docs/TILING_DESIGN.md) is one: the new site refuses a version 1
+pointer and shows that model as unavailable, and HARMONIE, the map's own model, is
+scheduled at 06 and 12 UTC only, so the map could stay closed for up to 18 hours. The
+blend leaves out a pointer it cannot use and names it (`blend_input_refused` from
+`fetch_blend.read_bucket`, "left out …, whose pointer will not validate" from
+`force5/blend/build.ts`) rather than failing; the other readers already skip one
+model's unreadable run. So, once the new image is deployed, run every enabled job once,
+wind models first and the blend after them:
+
+- **The local deployment:** stop the scheduler, `npm run deploy:once`
+  (`scheduler.py --once`: every enabled job in `jobs.toml`, in file order), start it
+  again; see "Updating" in [deploy/local/README.md](../deploy/local/README.md).
+- **Home Compute or Cloudflare:** run each enabled job's command above once, in the
+  order `jobs.toml` lists them (`.venv/bin/python deploy/schedules.py --list` prints
+  it), or trigger each job from the Home Compute Bar app.
+
+Afterwards every model's pointer should name a run directory (`"base"`) and carry
+`"schemaVersion": 2`; `status.py` reports a model's run and age, not its format.
 
 ### Nothing new costs nothing
 
@@ -640,18 +667,27 @@ re-import of the run already published: the new objects land with the source's n
 cycle (within 12 hours for ECMWF, a day for SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
 
-### The blend: every spot's stars in one file
+### The blend: every spot's stars, by spot square
 
 The map rates all 146 riding places at once, and before this it did so in the browser
 from every wind model's manifest: about 2.4 MB compressed, which on a slow phone kept
 the lights pending for some 20 seconds. The `blend` job works that consensus out once
-an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed):
+an hour instead and publishes it as a run, the way the models are published: the
+pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside it,
+`weather/blend-RUN-HOURSh-v2-HASH8/spots/<square>.json`, one file per 2° spot square
+(about 81 kB compressed between Ireland's ten, the largest, around Dublin, 22 kB):
 
 - **What it holds.** Each place's weighted median wind and gust (tenths of a knot),
   mean bearing (whole degrees) and agreement letter, on every time a deterministic
   model publishes, plus a summary of each model's run so the dock can build its
   columns without the manifests. No stars: those depend on the reader's weight, level
   and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).
+  The pointer (`schemaVersion` 2) holds the times, the models and the square index,
+  `"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...],
+  "keys": ["spotBlend"]}`; each square holds its places under `spotBlend`, in the same
+  envelope as a model's squares. Each place goes in the square the riding-place
+  catalogue puts it in, the catalogue the models were split by; a place the catalogue
+  no longer lists is left out and named in the job's log.
 - **The weighting.** Each model counts by how well it verified against Irish stations
   that far into its run (`MODEL_WEIGHTS` in `force5/src/weights.ts`; the backtest is in
   docs/VERIFICATION.md, "Blend weights"): HARMONIE 4 for as long as it runs, AROME and
@@ -665,15 +701,27 @@ an hour instead and publishes it as `weather/blend.json` (about 80 kB compressed
   serves into a scratch directory (never over a persistent work directory's own) and
   runs `force5/blend/build.ts`, the site's own TypeScript bundled into the image with
   esbuild, so there is one implementation of the blend. Without a bucket it reads
-  `public/weather`; `npm run blend` does the same in a checkout. The worker then
-  validates (`validate_blend_bundle`) and publishes it as one self-contained file.
+  `public/weather`; `npm run blend` does the same in a checkout. `build.ts` writes the
+  run directory with `scripts/runs.mjs`, the JavaScript twin of `rundir.py` held to
+  the same hash fixture, and the pointer last. The worker then validates it as it
+  validates a model's run (the directory's hash, exactly the squares the pointer
+  lists, then `validate_blend_bundle` over the places merged back in), uploads the
+  squares and swaps the pointer, which names the run directory it replaced under
+  `superseded`; the pruners keep the blend's directory by its `base`, and the one it
+  replaced for the grace period, like any model's.
 - **Its run** is the hour it was worked out, so the hourly job (`:05`, after HARMONIE's
   `:45` slot) publishes a new one each hour; `maxAgeHours` is 3.
-- **The browser** reads it when the map mounts and revalidates it every five minutes.
-  It falls back to the old path, every manifest and the blend worked out in the
-  browser, when the reader has picked their own models, when the file is missing or
-  malformed, or when it is more than six hours old. The blend chart and the model list
-  still fetch the manifests, but only once they are opened.
+- **The browser** reads the pointer when the map mounts and revalidates it every five
+  minutes. The lights read only the squares in view — the map's bounds grown by a
+  third on every side, recomputed when the camera settles, at most 36 squares, the
+  nearest the centre — plus the squares of the open spot and of the reader's starred
+  and frequent spots wherever they are, which the dock and the panel of their spots
+  read. A place whose square has not been read keeps a pending light rather than a
+  wrong one. It falls back to the old path, the blend worked out in the browser from
+  the models' squares for the same places, when the reader has picked their own
+  models, when the pointer is missing or malformed, when it is more than six hours
+  old, or when none of the squares asked for can be read. The blend chart and the
+  model list still fetch the manifests, but only once they are opened.
 
 ### Verification: what we forecast, against what blew
 
@@ -689,27 +737,58 @@ they cannot say — is in [VERIFICATION.md](VERIFICATION.md).
 
 ### Deleting what is superseded
 
-`publish()` used to only add objects, so the bucket grew for ever. It now deletes, and
-the rules are deliberately narrow:
+A run directory is deleted once nothing can still want it, and not at the moment its
+pointer moves on. Readers hold a pointer for a while after a swap: the browser
+revalidates every five minutes (`MANIFEST_REVALIDATE_MS`), the CDN caches a pointer for
+a minute (`s-maxage=60`), the forecast server for five (`SOURCE_TTL_MS`), and a thread's
+spot card for five. Deleting the old directory right after the swap, as the publisher
+used to, sent each of them to 404s for minutes, and the model read as unavailable. So,
+as MET Norway keeps an old tileset at least 45 minutes:
 
-- The set is computed from **one model's own previous pointer manifest** — the one
-  this publish has just replaced, which the publisher had already read for its
-  compare-and-swap. There is **no bucket listing**, so an upload in flight on another
-  machine for another model cannot be seen, let alone deleted.
-- Anything the **new** manifest still references is removed from the set first.
-- A path must sit under that model's own object root (`weather/` or `marine/`), be two
-  or three segments long, and have its run directory or station file named for **this**
-  model and no other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
-  `gfs-wave-…`. Pointer manifests, anything under `manifests/` and anything under the
-  forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted; an
-  absolute, `..`-bearing or `https://` URL is left alone. An adapter that ever stopped
-  naming its objects `<model>-…` would simply stop deleting, and the sweep would collect
-  its leftovers — the safe direction to fail in.
-- It happens **after** the new pointer is successfully in place, never before. A
-  failed or racing publish deletes nothing at all.
-- Deletes are batched (`delete_objects`, 1000 keys a request). A failure is logged as
-  `superseded_delete_failed` and **does not fail the forecast that just published** —
-  the data is live, the leftovers are only cost, and the sweep collects them.
+- **The pointer remembers what it replaced.** A pointer whose `base` replaces another
+  names the old one under `superseded`, with the time of the swap:
+  `"superseded": [{"base": "harmonie-2026101106-61h-v3-1a2b3c4d/", "at": "2026-10-11T08:52:00Z"}]`.
+  The publisher works the list out from the pointer **in the bucket** it is replacing,
+  inside the same compare-and-swap, so the record and the swap are one write
+  (`publish_s3.pointer_body`, `squares.retire`); `rundir.write_run` does the same from
+  the pointer on disk for the local deployment. Entries are kept for six hours, at most
+  24 of them, and a directory the new pointer names again is dropped from the list.
+  Readers ignore the field.
+- **The grace period** is 60 minutes by default: `prune.py --grace-minutes`, or
+  `FORCE5_SUPERSEDED_GRACE_MINUTES`, for both the local prune and the bucket sweep, at
+  most the six hours a pointer remembers. A directory any pointer superseded less than
+  that long ago is kept whatever its age. An entry's time is read only as written,
+  `YYYY-MM-DDTHH:MM:SS`, an optional fraction (dropped) and `Z` or `±HH:MM`, and only
+  for a date that exists; anything else cannot be read and counts as just now, by the
+  pruners and by the next swap, which writes the swap's own time for it, so it leaves
+  the list six hours later (`squares.superseded_time`, `supersededTime` in
+  scripts/runs.mjs, held to tests/fixtures/superseded.json).
+- **The publisher deletes nothing.** The bucket sweep below deletes a superseded run
+  directory once its grace is over and it has passed the sweep's own age guard, so it
+  runs every hour (at :10 in the generated Home Compute and Cloudflare schedules,
+  `deploy/schedules.py`): a superseded run leaves the bucket six to seven hours after it
+  was published. Run once a day, as it was while the publisher still deleted at the
+  swap, it left each one there for up to 30 hours. Locally,
+  the worker's prune after each publish keeps the replaced run for the grace period and
+  the hourly prune job collects it.
+- **A reused directory is put back.** The same content always lands in the same
+  directory, and `put_immutable` leaves an object that is already there alone, so a
+  republish of content superseded long ago reuses a directory the sweep may be deleting
+  at that very moment. The sweep reads the pointers again just before each directory it
+  deletes, which catches a pointer that already names it; the publisher, once its own
+  pointer is in place, lists its run directory once and puts back anything missing
+  (`publish_s3.restore_missing`, logged `run_directory_restored`), which catches the
+  rest.
+- The guards on what may be deleted at all are unchanged: a path must sit directly under
+  a data root, pointer manifests, anything under `manifests/` and anything under the
+  forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted,
+  and a `superseded` entry can only name a run directory beside its own pointer
+  (`squares.check_base`).
+- **Tide station files** are not run directories and have no grace list: a station file
+  the tide pointer no longer names is deleted by the next sweep once it is past the age
+  guard. Their names change once a day, so a reader holding yesterday's tide pointer for
+  the minutes after the swap can miss its curve; the forecast server says the tides
+  could not be read just now and the next read recovers.
 
 **Manifests are not archived.** Earlier versions also wrote every published manifest to
 `<root>/manifests/<model>/RUN-HASH.json`. Nothing read them, and because only the newest
@@ -719,9 +798,10 @@ copies from before the change stay until they are deleted by hand.
 
 ### The bucket sweep
 
-A failed or interrupted upload leaves objects nothing references. `prune.py --bucket`
-is the bucket-side equivalent of the local `prune_published`, sharing its
-`manifest_urls`/`referenced` logic:
+The sweep deletes superseded run directories once their grace is over, and the objects
+a failed or interrupted upload left that nothing references. `prune.py --bucket` is the
+bucket-side equivalent of the local `prune_published`, sharing its
+`manifest_urls`/`referenced`/`retiring` logic:
 
 1. Read **every** registry pointer manifest from the bucket. A manifest that is present
    but unreadable **aborts the sweep without deleting anything**, because everything it
@@ -731,22 +811,28 @@ is the bucket-side equivalent of the local `prune_published`, sharing its
    under `noPointer`/`protectedModels`. That covers a first run, a model being
    onboarded and a pointer deleted by hand.
 2. List every object under each data root, **paginated**.
-3. Delete an object only when it is unreferenced, is not a pointer or an archived
-   manifest, and its `LastModified` is **older than `--min-age-hours` (default 6, or
-   `FORCE5_SWEEP_MIN_AGE_HOURS`)**. That guard is the important one: jobs run on
-   different machines, a run's frames go up before its manifest does, and six hours is
-   longer than any job timeout, so a run another machine is still uploading is never
-   mistaken for wreckage.
+3. Keep anything referenced, a pointer or an archived manifest, and any run directory a
+   pointer superseded within the grace period (counted as `withinGrace`). A run
+   directory is judged whole, by its newest object: it is deleted only when every object
+   in it is **older than `--min-age-hours` (default 6, or
+   `FORCE5_SWEEP_MIN_AGE_HOURS`)**, so the sweep never takes half a run. That guard is
+   what protects an upload in flight: jobs run on different machines, a run's files go
+   up before its pointer does, and six hours is longer than any job timeout, so a run
+   another machine is still uploading is never mistaken for wreckage.
 4. A two-segment `.json` object that reads like a pointer manifest is kept even for a
    model the registry has not adopted yet, exactly as on disk. So is anything that
    cannot be read: the sweep never deletes on a guess.
 5. **Read the pointer manifests again, after the listing**, and delete only what is
-   unreferenced in both reads. The listing is slow and paginated, and the age guard
-   cannot cover everything: `put_immutable` leaves an object that is already there
-   untouched, so a stable key a new run re-references — a tide station file, whose name
-   only changes with the day — keeps its old `LastModified` and would look both
-   unreferenced and long past the guard. Both reads abort on an unreadable manifest and
-   both contribute to `noPointer`.
+   unreferenced, and past its grace, in both reads. Then, **immediately before deleting
+   each run directory, read them once more** and skip it if any pointer now names or
+   has just superseded it. The listing is slow and paginated, and the age guard cannot
+   cover everything: `put_immutable` leaves an object that is already there untouched,
+   so a stable key a new run re-references — a tide station file, whose name only
+   changes with the day, or a run directory a republish of the same content reuses —
+   keeps its old `LastModified` and would look both unreferenced and long past the
+   guard. Every read aborts on an unreadable manifest and contributes to `noPointer`.
+   The last read costs a GET per pointer per directory deleted; the sweep runs hourly
+   and deletes a few directories each time.
 
 `--bucket` must be given **explicitly**; it is deliberately not defaulted from
 `S3_BUCKET`, because the scheduler's environment carries that for the worker and
@@ -756,11 +842,11 @@ error rather than a silent no-op, for the same reason.
 
 `--dry-run` reports without deleting and is worth running first. The command logs
 `sweep_complete` (or `sweep_failed`, exit 1) with `removed`, `keptObjects`,
-`withinGuard`, `protectedObjects`, `protectedModels`, `noPointer` and `freedBytes` —
-note that the **local** sweep's `kept` is a list of reasons while the bucket sweep's
-`keptObjects` is a count, hence the different key. `prune` is already in the
-scheduler's `KNOWN_COMMANDS`, so the local deployment can schedule it with
-`args = ["--bucket", "..."]` and no scheduler change.
+`withinGuard`, `withinGrace`, `graceMinutes`, `protectedObjects`, `protectedModels`,
+`noPointer` and `freedBytes` — note that the **local** sweep's `kept` is a list of
+reasons while the bucket sweep's `keptObjects` is a count, hence the different key.
+`prune` is already in the scheduler's `KNOWN_COMMANDS`, so the local deployment can
+schedule it with `args = ["--bucket", "..."]` and no scheduler change.
 
 ### CORS and cache headers
 
@@ -774,7 +860,7 @@ Cache headers are set by the uploader and unchanged from the AWS design:
 
 | Objects                                               | Header                                            |
 | ----------------------------------------------------- | ------------------------------------------------- |
-| Hashed frames and station files                       | `public, max-age=31536000, immutable`             |
+| Run directories (frames, spot squares), station files | `public, max-age=31536000, immutable`             |
 | Pointer manifests (`weather/*.json`, `marine/*.json`) | `public, max-age=0, s-maxage=60, must-revalidate` |
 
 Cloudflare cache rules can override origin headers, so verify the served response, not
@@ -847,35 +933,44 @@ Audited against every entry in `registry.py`:
 ### Still to verify against a live bucket
 
 No R2 credentials exist, so **none of this has been run against real R2**. Everything
-above is covered by unit tests against a fake S3 (superseded deletes, a tolerated
-delete failure, the sweep's age guard, unreadable-manifest abort and pagination, the
+above is covered by unit tests against a fake S3 (superseded runs kept for their
+grace, a reused directory put back, the sweep's age guard and its reads before each
+delete, unreadable-manifest abort and pagination, the
 conditional-put fallback and collision detection without it, and the unchanged-run
 skip path), and no test makes a network call. Before this is called live: create the
 bucket and token, confirm whether R2 accepts `If-None-Match: *` (and remove the
 fallback if it does), check the CORS and cache-rule behaviour through the CDN, run one
-job of each model end to end, confirm a second run really deletes the first run's
-objects, and run the sweep with `--dry-run` and read its output before letting it
-delete.
+job of each model end to end, confirm the sweep deletes the first run's objects once a
+second run has been live past the grace period, and run the sweep with `--dry-run` and
+read its output before letting it delete.
 
 ## Object layout and publication safety
 
+Every forecast run (wind, wave, weather) is one **run directory** beside its pointer,
+named `<model>-<run>-<hours>h-v<N>-<hash8>`: the adapter's own prefix and the first 8
+hex digits of a sha256 over the sorted lines `<path> <sha256 of the file's bytes>`, one
+per file inside it, sidecars left out (`force5/ingest/rundir.py`). The same content
+always lands in the same directory, so republishing a run is a no-op; changed content
+lands in a new one; nothing inside a directory is ever rewritten, which is why all of
+it is cached as `immutable`. Files inside need no hash of their own:
+
 ```text
-weather/harmonie-RUN-60h-v1/HOUR-HASH.json  immutable HARMONIE frames
-weather/RUN.../HOUR-HASH.json              immutable ICON-EU frames
-weather/harmonie.json                     current HARMONIE pointer + metadata
-weather/latest.json                       current ICON-EU pointer + metadata
-weather/ecmwf.json                        current ECMWF pointer + metadata
-weather/ecmwf-RUN-360h-v2/HOUR-HASH.json    immutable ECMWF wind + gust frames
-weather/gfs.json                          current GFS pointer + metadata
-weather/gfs-RUN-240h-v1/HOUR-HASH.json      immutable GFS wind + instantaneous gust frames
-weather/gefs.json                         current GEFS ensemble pointer + member series
-weather/gefs-RUN-240h-v1/HOUR-HASH.json     immutable GEFS ensemble-mean frames
-weather/mi-swan.json                      current Irish Shelf SWAN wave pointer + spot series
-weather/mi-swan-RUN-144h-v1/HOUR-HASH.json  immutable SWAN wave frames, only with --frames
-weather/icon-eu-weather.json               current ICON-EU surface weather pointer + spot series
-weather/icon-eu-weather-RUN-72h-v1/HOUR-HASH.json  immutable surface variable grids
-weather/gfs-wave.json                      current GFS-Wave pointer + metadata
-weather/gfs-wave-RUN-240h-v1/HOUR-HASH.json immutable GFS-Wave variable grids
+weather/harmonie.json                                        the pointer (schemaVersion 2), a few KB
+weather/harmonie-RUN-60h-v2-HASH8/t/0/53/14/000.bin          one native wind tile (and .br/.gz on disk)
+weather/harmonie-RUN-60h-v2-HASH8/t/1/26/6/000.bin           an overview tile, 2 × 2 cells averaged
+weather/harmonie-RUN-60h-v2-HASH8/spots/n52w008.json         every spot's series in one 2° square
+weather/latest.json                                         ICON-EU's pointer
+weather/icon-eu-RUN-72h-v1-HASH8/t/LEVEL/X/Y/HOUR.bin       ICON-EU's tiles
+weather/ecmwf.json, weather/ecmwf-RUN-360h-v2-HASH8/        ECMWF wind + gust
+weather/gfs.json, weather/gfs-RUN-240h-v1-HASH8/            GFS wind + instantaneous gust
+weather/gefs.json, weather/gefs-RUN-240h-v1-HASH8/          GEFS: mean frames, members in the squares
+weather/ecmwf-ens.json, weather/ecmwf-ens-RUN-144h-25m-v1-HASH8/  ECMWF ENS, likewise
+weather/harmonie-eps.json, weather/harmonie-eps-RUN-48h-v1-HASH8/ HARMONIE EPS, likewise
+weather/mi-swan.json, weather/mi-swan-RUN-144h-v1-HASH8/    Irish Shelf SWAN: squares, frames only with --frames
+weather/icon-eu-weather.json, weather/icon-eu-weather-RUN-72h-v1-HASH8/  surface weather: squares only
+weather/gfs-wave.json, weather/gfs-wave-RUN-240h-v1-HASH8/  GFS-Wave: squares only
+weather/ecmwf-wave.json, weather/ecmwf-wave-RUN-360h-10v-v1-HASH8/  ECMWF Wave: squares only
+weather/blend.json, weather/blend-RUN-HOURSh-v2-HASH8/spots/SQUARE.json   every place's blend, by square; no frames
 marine/tides-STATION-FROM-TO-HASH.json     immutable tide curves + high/low events
 marine/tides.json                          current tide pointer + metadata
 marine/sea-temperature.json                current sea temperature pointer, readings inline
@@ -885,28 +980,79 @@ verify/scores.json                         current verification scores
 archive/forecasts/MODEL/RUN.json           every wind run, sampled at stations; never deleted
 archive/observations/YYYY-MM-DD.json       every wind observation, by UTC day; never deleted
 archive/verify/sums/YYYY-MM-DD.json        one day's verification sums; never deleted
-weather/harmonie-eps.json                 current HARMONIE ensemble pointer + member series
-weather/harmonie-eps-RUN-48h-v1/HOUR-HASH.json  immutable ensemble-mean frames
 ```
+
+A forecast pointer is `schemaVersion` 2 and carries everything a reader needs to
+choose a run and draw it — run, grid, cadence, gust rules, ensemble size — with its
+files relative to `"base": "<run directory>/"`, which is itself relative to the
+pointer's directory. A wind run's frames name no file: they are its tiles, and the
+pointer says where they are in a `tiles` block:
+
+```jsonc
+"tiles": {
+  "size": 128, "border": 1, "encoding": "f5-tile-v1",
+  "blocks": ["u", "v", "gust"],               // the most a tile carries; a frame whose
+                                              // gustIntervalHours is null has u and v
+  "url": "t/{level}/{x}/{y}/{hour}.bin",      // {hour} zero-padded to three digits
+  "levels": [                                 // exactly what f5tile.levels(grid) gives
+    {"level": 0, "dx": 0.025, "dy": 0.02, "x": [52, 54], "y": [13, 15], "absent": []},
+    {"level": 1, "dx": 0.05,  "dy": 0.04, "x": [26, 27], "y": [6, 7],   "absent": []},
+    {"level": 2, "dx": 0.1,   "dy": 0.08, "x": [13, 13], "y": [3, 3],   "absent": []}
+  ]
+},
+"frames": [{"hour": 0, "validTime": "…", "gustIntervalHours": null}, …]
+```
+
+`x` and `y` are inclusive tile ranges on the global lattice at that level. `absent`
+lists, as `[x, y]` pairs in order, the tiles inside the ranges whose every owned cell
+is missing at every hour (all land, or all outside a cropped domain): they are never
+written and never requested. Absence is per run, not per hour, so every other tile
+exists for every frame hour and a 404 for one is an error. A run without frames (a
+frameless ensemble) has no `tiles`. Wave and weather runs no longer publish map
+frames at all — nothing reads them — and state their reach in `horizonHours`; their
+validator still accepts JSON frames for the day a map layer needs them. Its per-spot data (`spotForecasts`, `spotSeries`, `spotCoverage`,
+`spotMembers`, and SWAN's `spotCells`) is **not** in it but in
+`spots/<square>.json` inside the run directory, one file per 2° × 2° spot square named
+by its south-west corner (`n52w010` covers 52–54° N, 10–8° W):
+`{schemaVersion: 2, model, run, square, …the same per-spot keys, for the spots in that square}`.
+The pointer lists them:
+`"spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": [...], "keys": [...]}`,
+`keys` naming the per-spot keys the squares carry. A run with no frames states its
+reach in `horizonHours`, so freshness never needs a square. A spot page, the dock and
+the forecast server read the one square holding the spot; the browser's own blend reads
+the squares in view and the reader's own spots'; the blend job reads them all. Ireland's
+146 riding places fall in ten squares. The blend is published the same way, its places
+under `spotBlend` (see "The blend" above).
+
+The split happens in one place, `rundir.write_run`, as the adapter finishes: adapters
+still build the whole manifest in memory and none of them knows squares exist.
+`backfill_spots.py`, which recomputes spot series for a run already on disk (sampling
+the one native tile holding each spot), publishes the result the same way, as a new
+run directory with the tiles linked in unchanged. Without wave frames it can no longer
+recompute a wave run's series, and says so.
 
 Each model's immutable objects sit under the first segment of its
 registry manifest path, so a non-`weather/` kind needs no publisher change. Optional
 `S3_PREFIX` still goes before that segment.
 
-Bundle kinds are all `schemaVersion` 1 and every added field is optional; see the README
-contract section for the field list. `validate_bundle` dispatches on `kind`:
+Forecast bundles (`wind`, `wave`, `weather`) and the blend are `schemaVersion` 2 run
+pointers as above; the others are `schemaVersion` 1. Every added field is optional; see the README
+contract section for the field list. `validate_bundle` dispatches on `kind`, and for a
+forecast checks its per-spot data as read back from its squares:
 
 - `wind` (default when `kind` is absent) keeps the existing frame, grid and gust rules,
-  and adds `gustKind: "instantaneous"` for sources publishing a surface gust at the valid
-  time (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
+  checks the `tiles` block and every tile as above, and adds `gustKind:
+  "instantaneous"` for sources publishing a surface gust at the valid time
+  (`gustIntervalHours: [hour, hour]` on every frame, hour 0 included), plus optional
   `ensemble`/`spotMembers`. An ensemble manifest holds the **mean** in `spotForecasts`
-  and may publish an empty `frames` list — only an ensemble may.
+  and may publish an empty `frames` list — only an ensemble may. A manifest declaring
+  a whole-frame `encoding` is refused: that format is retired.
 - `wave` validates a `variables` map and a `spotSeries` per riding location, plus
   optional frames holding one array per gridded variable with `null` for land. `frames`
   may be empty when `spotSeries` is present, and `horizonHours` then declares the last
-  published hour; `frameVariables` may narrow frames to a subset of `variables`.
-  Marine Institute Irish Shelf SWAN (`mi-swan`) is the first wave adapter and publishes
-  no frames by default.
+  published hour; `frameVariables` may narrow frames to a subset of `variables`. No
+  adapter publishes wave frames any more (GFS-Wave and ECMWF Wave stopped; Irish Shelf
+  SWAN only with its opt-in `--frames`), because nothing reads them.
 - `weather` runs the same validator as `wave` for surface variables. It allows
   measurements up to 100,000 (hectopascals, millimetres, J/kg) instead of 1,000, and a
   variable may declare `"kind": "code"` for a whole code-table entry such as WMO present
@@ -928,29 +1074,33 @@ contract section for the field list. `validate_bundle` dispatches on `kind`:
   verification jobs publish (`verify/forecast-archive.json`, `verify/scores.json`). Both
   are self-contained, must have been generated in the hour their `run` names, and carry
   no `url` for the pruner to follow. See [VERIFICATION.md](VERIFICATION.md).
+- `blend` is a run of spot squares with no frames: its times in order, its coverage
+  their first and last, each source's columns inside them, and for every place under
+  `spotBlend` a wind, gust and bearing per time within range and an agreement letter
+  per time (`h`, `m`, `l` or `-`). Its squares carry `spotBlend` and nothing else.
 
-All adapters precompute `spotForecasts` for the 25 ids in `public/riding-locations.json`,
-so a browser chart never has to download grid frames. Regenerate that file with
-`npm run spots:export`.
-weather/ecmwf-ens.json current ECMWF ENS pointer + member series
-weather/ecmwf-ens-RUN-144h-25m-v1/HOUR-HASH.json immutable ensemble-mean frames
+All adapters precompute their spot series for every place in
+`public/riding-locations.json`, so a browser chart never has to download grid frames.
+Regenerate that file with `npm run spots:export`. The same catalogue gives each spot
+its square; a spot a manifest names that the catalogue does not is refused. The
+publisher checks it again: it reads the catalogue by the adapters' rule
+(`squares.catalogue_file`: `FORCE5_SPOTS_FILE`, else `public/riding-locations.json`,
+else `public/spots.json`) and refuses a run whose square files hold a spot the
+catalogue does not have, or puts in another square, since a reader looks for a spot in
+the one square its own coordinates name and would never find it.
 
-````
-
-The ENS prefix records the horizon and member count, so changing either publishes
-a new immutable frame set instead of colliding with the previous one. The ENS
-manifest is larger than the others because it carries every member: a measured
-114 kB for 8 spots × 25 steps × 25 members, so roughly 350 kB for a 25-location
-catalogue. It is served with the short-lived pointer cache policy and benefits
-from compression; a per-spot series endpoint would be the next optimisation.
+The ENS prefix records the horizon and member count, so changing either publishes a
+new run directory instead of colliding with the previous one. Its members, which made
+the ENS manifest the largest of all (588 KB gzipped for 146 spots), are in the squares
+now: the pointer is under 2 KB and the square holding a spot about 4–170 KB gzipped.
 
 Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weather/`, and the frontend CDN base must include that same prefix.
 
 The publisher:
 
-1. Rejects missing files, nonfinite/invalid vectors, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
-2. Uploads immutable objects with `If-None-Match: *`, gzip encoding and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
-3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication.
+1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, a spot filed in a square the catalogue does not give it, mixed model/run/time/grid identities, unsafe paths (a path inside a run is segments of `A–Z a–z 0–9 _ . -` only, never `.` or `..`, so no percent-encoding, whitespace, `?`, `#` or `\` a browser would read as something else; the browser's `checkRunPath` holds the same rule) and stale/expired runs.
+2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` tiles and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
+3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. The pointer it writes names the run directory the replaced pointer named, if it is not this one, under `superseded` with the time of the swap; nothing is deleted. Then it lists its own run directory once and puts back anything a sweep removed between its uploads and the swap (a republish that reused a directory superseded long ago).
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
 
 These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html). A failed upload can leave unreferenced frame objects, but never an intentionally published half-complete forecast. The last successfully published model remains available. Models are independent transactions, not a simultaneous cross-model switch.
@@ -959,7 +1109,7 @@ These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/us
 
 | Objects                                        | Worker cache header                               | CloudFront behaviour                                          |
 | ---------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| Immutable frames                               | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
+| Run directories (frames, spot squares)         | `public, max-age=31536000, immutable`             | Long-lived cache; compression enabled                         |
 | `weather/harmonie.json`, `weather/latest.json` | `public, max-age=0, s-maxage=60, must-revalidate` | Minimum TTL **0**, cap latest-pointer freshness appropriately |
 
 No whole-distribution invalidation is needed after a normal forecast job. CloudFront's minimum TTL can override origin cache headers, so verify the actual policies, not just the uploaded metadata. See [CloudFront cache settings](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesCacheBehavior.html).
@@ -970,7 +1120,7 @@ Set the frontend environment before building:
 VITE_FORECAST_BASE_URL=https://forecast.wingfoil.ie/
 ````
 
-The browser fetches the manifest on page load and model changes, then reads its immutable frame URLs. It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A tab that is still reading the previous run when its frames are deleted does the same thing on the failed frame request: it loads the newest run at the selected time (`loadNewerRun`), so superseded runs do not need to be kept for open tabs.
+The browser fetches the manifest on page load and model changes, then reads the immutable tiles the view needs, at the level the screen can show (force5/src/tiledField.ts). It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A superseded run directory is kept for an hour after its pointer stopped naming it (see "Deleting what is superseded"), well past the five minutes a tab, the CDN (one) or the forecast server (five) holds a pointer, so a tab that has not yet seen the swap still reads the run it shows. Should a tile or a square fail anyway, the reader re-reads that model's pointer and tries once more against the run it names now: a failed frame request loads the newest run at the selected time (`loadNewerRun`).
 
 ## Monitoring, retries and recovery
 
@@ -979,8 +1129,8 @@ The browser fetches the manifest on page load and model changes, then reads its 
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
-- Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's frames are deleted as soon as the newer run is live, so there is nothing to roll back to.
-- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
+- Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's directory is deleted once its hour of grace is over, so there is nothing to roll back to after that.
+- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. In the bucket the publisher deletes nothing: its new pointer names the run directory it replaced under `superseded`, and `prune.py --bucket` deletes that once the grace period is over, along with objects that failed uploads left behind, guarded by age. Locally the worker's prune keeps the replaced run for the same grace period and the hourly job collects it. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
 ### Where a job's time goes
@@ -998,7 +1148,7 @@ the file the worker names in `FORCE5_TIMINGS_FILE`, and the worker adds its own 
 | `decode` | adapter | GRIB decode, validation, crop, regrid and spot sampling |
 | `write` | adapter | encoding frames, their sidecars and the manifest, on local disk |
 | `validate` | worker | `validate_bundle`: every referenced object re-read and checked |
-| `publish` | worker | the bucket upload (nothing without one) and the superseded-run delete |
+| `publish` | worker | the bucket upload (nothing without one), the pointer swap and the check that its run directory is whole |
 
 `archive` and `score` are the forecast archive's and the verification's single stages.
 Each phase has `seconds` of wall time, and may have `requests`, `bytes`, `workers` (the
@@ -1041,6 +1191,6 @@ event in the log is the record.
 
 ## Validation status / remaining launch work
 
-The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded-object deletion, a tolerated delete failure, the conditional-put fallback, the bucket sweep (age guard, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
+The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded runs named and kept, a reused directory put back, the conditional-put fallback, the bucket sweep (grace period, age guard, the reads before each delete, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
 
 Open-tab refresh is implemented in the browser and covered by unit and end-to-end tests; what remains untested is its behaviour against a **real** CDN, where a manifest served from a cache with a minimum TTL above zero can hide a new run from a tab for as long as that TTL. Also required before calling the site continuously live: provision the cloud resources, test IAM/CORS/cache policies (including that the latest-pointer TTL is short enough for the five-minute revalidation to see a new run), configure alerts/retries, benchmark hourly processing, and review provider licensing/attribution for the intended service. The current website is still a saved-snapshot prototype until those pieces are deployed.

@@ -48,7 +48,10 @@ export interface ColumnModel {
   ensemble?: boolean;
 }
 
-/** The times a run publishes: its map frames, or its longest spot series. */
+/**
+ * The times a run publishes: its map frames, or the longest spot series of
+ * whichever squares have been merged into it (a run with no frames).
+ */
 export function modelTimes(manifest: RunTimes): string[] {
   if (manifest.frames?.length)
     return manifest.frames.map((frame) => frame.validTime);

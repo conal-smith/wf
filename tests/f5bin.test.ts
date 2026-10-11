@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   F5_ENCODING,
@@ -7,7 +7,6 @@ import {
   readHeader,
 } from "../force5/src/f5bin";
 import {
-  loadFrame,
   validateFrame,
   type FrameInfo,
   type Manifest,
@@ -54,7 +53,6 @@ const grid = gridOf(golden.width, golden.height);
 const info: FrameInfo = {
   hour: golden.hour,
   validTime: "2026-09-19T06:00:00Z",
-  url: "weather/run/042-abc.bin",
   gustIntervalHours: [golden.hour - 1, golden.hour],
 };
 // A frame with no gust block must be asked for with no gust window.
@@ -312,84 +310,5 @@ describe("a frame that is not the one that was asked for", () => {
     expect(() => decodeFrame(bytes(negativeGust), manifest, info)).toThrow(
       /Invalid gust data/,
     );
-  });
-});
-
-describe("loadFrame reads whichever encoding the manifest declares", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  // A complete frame, unlike the golden, which carries deliberate holes that a
-  // wind frame is never allowed to publish.
-  const cells = 4;
-  const whole = {
-    ...source,
-    grid: { width: 2, height: 2 },
-    u: [3, 3.5, -4, 0],
-    v: [-4, -4, 1, 2],
-    gust: [9, 9.5, 10, 11],
-  };
-  const small = { ...manifest, grid: gridOf(2, 2) } as Manifest;
-  const binary = {
-    ...small,
-    frames: [{ ...info, url: "weather/run/042-binary.bin" }],
-  } as Manifest;
-  const asJson = {
-    ...small,
-    encoding: undefined,
-    frames: [{ ...info, url: "weather/run/042-legacy.json" }],
-  } as Manifest;
-
-  it("decodes a binary frame into the shape the map already draws", async () => {
-    const data = encodeFrame(whole);
-    vi.stubGlobal(
-      "fetch",
-      async () => new Response(new Uint8Array(data), { status: 200 }),
-    );
-    const frame = await loadFrame(binary, 0);
-    expect(frame.model).toBe("golden");
-    expect(frame.run).toBe(golden.run);
-    expect(frame.validTime).toBe(info.validTime);
-    expect(frame.u).toEqual(whole.u);
-    expect(frame.gust).toEqual(whole.gust);
-    expect(frame.u.length).toBe(cells);
-    expect(frame.gustIntervalHours).toEqual(info.gustIntervalHours);
-  });
-
-  it("still reads a JSON frame when no encoding is declared", async () => {
-    const body = {
-      model: "golden",
-      run: golden.run,
-      hour: golden.hour,
-      validTime: info.validTime,
-      grid: gridOf(2, 2),
-      gustIntervalHours: info.gustIntervalHours,
-      u: new Array(cells).fill(3),
-      v: new Array(cells).fill(-4),
-      gust: new Array(cells).fill(9),
-    };
-    vi.stubGlobal(
-      "fetch",
-      async () => new Response(JSON.stringify(body), { status: 200 }),
-    );
-    const frame = await loadFrame(asJson, 0);
-    expect(frame.u[0]).toBe(3);
-    expect(frame.gust![0]).toBe(9);
-  });
-
-  it("refuses a binary frame served where a JSON one was declared", async () => {
-    vi.stubGlobal(
-      "fetch",
-      async () =>
-        new Response(new Uint8Array(encodeFrame(whole)), { status: 200 }),
-    );
-    await expect(
-      loadFrame(
-        {
-          ...asJson,
-          frames: [{ ...info, url: "weather/run/042-other.json" }],
-        } as Manifest,
-        0,
-      ),
-    ).rejects.toThrow();
   });
 });

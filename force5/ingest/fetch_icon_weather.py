@@ -3,12 +3,13 @@
 No API key (DWD open data, CC BY 4.0). Thirteen single-level parameters are read
 from the same four ICON-EU cycles as the wind importer, cropped to the same
 Ireland/Atlantic 0.0625° grid, and published as a `kind: "weather"` bundle: a
-declared `variables` map, one array per gridded variable in every frame, and a
-precomputed series per riding location carrying every variable.
+declared `variables` map and a precomputed series per riding location carrying
+every variable. No map frames are published: nothing reads a weather grid yet
+(docs/TILING_DESIGN.md), and the pointer states its horizon instead.
 
 Units are converted and rounded once, here, so nothing downstream has to guess:
 °C, mm, %, hPa, km, J/kg. `tp` is DWD's precipitation accumulated since
-initialization and `precip` the amount in the interval ending at the frame,
+initialization and `precip` the amount in the interval ending at the step,
 differenced from it and null at hour 0. `ww` is a WMO present-weather code, not
 a measurement: it is sampled nearest-neighbour and never interpolated or
 averaged. `tg` is the model's ground/skin temperature, which over sea only
@@ -18,8 +19,6 @@ import argparse
 import bz2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import sys
 
@@ -27,8 +26,9 @@ import eccodes as ec
 import numpy as np
 
 from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
-                            published_in_bucket, sample, spots_file, write_json)
+                            published_in_bucket, sample, spots_file)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "icon-eu-weather"
@@ -122,12 +122,9 @@ VARIABLES = {
                           "this is the model's own sea-surface temperature and only a proxy for a "
                           "measured SST; over land it is the skin temperature, not an air temperature"},
 }
-# What is downloaded, and the subset the frames carry by default. Thirteen arrays
-# over 56,817 cells would be about 3 MB of JSON per frame, so the map fields are a
-# declared subset and `spotSeries` carries every variable at every hour.
+# What is downloaded. `spotSeries` carries every variable at every hour.
 DIRECTORIES = {name: entry["directory"] for name, entry in VARIABLES.items() if entry["directory"]}
 DERIVED = tuple(name for name, entry in VARIABLES.items() if not entry["directory"])
-FRAME_DEFAULT = ("t2m", "precip", "clct", "pmsl", "ww")
 
 
 def validate_metadata(metadata, field, run, hour):
@@ -245,22 +242,15 @@ def parse_args(argv=None):
     parser.add_argument("--hours", type=int, default=72, help=f"3–{MAX_HOURS}, divisible by --step")
     parser.add_argument("--step", type=int, choices=[1, 3], default=3)
     parser.add_argument("--run", help="Optional specific YYYYMMDDHH run (00/06/12/18)")
-    parser.add_argument("--frame-variables", default=",".join(FRAME_DEFAULT),
-                        help="Gridded variables, comma separated, or 'all' for much larger frames. "
-                             "The spot series always carries every variable.")
     args = parser.parse_args(argv)
     if not 3 <= args.hours <= MAX_HOURS or args.hours % args.step:
         parser.error(f"Use 3–{MAX_HOURS} hours divisible by the step")
     if args.run and (len(args.run) != 10 or not args.run.isdigit() or args.run[-2:] not in CYCLES):
         parser.error("A run is YYYYMMDDHH on a 00/06/12/18 cycle")
-    names = list(VARIABLES) if args.frame_variables == "all" else args.frame_variables.split(",")
-    if not names or len(set(names)) != len(names) or not set(names) <= set(VARIABLES):
-        parser.error(f"Frame variables must be distinct names from: {', '.join(VARIABLES)}")
-    args.frame_variables = names
     return args
 
 
-def manifest_for(run, run_time, args, grid, frames, series):
+def manifest_for(run, run_time, args, grid, series):
     return {
         "schemaVersion": 1, "kind": "weather", "model": MODEL,
         "modelName": "ICON-EU surface weather", "provider": "DWD",
@@ -272,13 +262,14 @@ def manifest_for(run, run_time, args, grid, frames, series):
         "variables": {name: {key: entry[key] for key in ("units", "label", "description")}
                               | ({"kind": CODE} if entry.get("kind") == CODE else {})
                       for name, entry in VARIABLES.items()},
-        "frameVariables": list(args.frame_variables),
-        "frames": frames, "spotSeries": series,
+        # No map frames: nothing reads a weather grid yet, and the spot series is the
+        # product (docs/TILING_DESIGN.md). The horizon is stated instead.
+        "frames": [], "horizonHours": args.hours, "spotSeries": series,
         "precipitationNote": (
             "tp is the model's own accumulation since initialization; precip is the amount in the "
-            f"{args.step}-hour interval ending at each frame, obtained by differencing it, clamped at "
-            "zero and null at initialization, which has no interval. Each frame and series step "
-            "declares that interval in precipIntervalHours."),
+            f"{args.step}-hour interval ending at each step, obtained by differencing it, clamped at "
+            "zero and null at initialization, which has no interval. Each series step declares "
+            "that interval in precipIntervalHours."),
         "seaTemperatureNote": (
             "tg is the model's ground/skin temperature. Over sea it is ICON's own sea-surface "
             "temperature field and a proxy for a measured SST, not an observation; over land it is "
@@ -294,9 +285,8 @@ def manifest_for(run, run_time, args, grid, frames, series):
             "grid, rows north-to-south and columns west-to-east. Values are converted to the published "
             "units and rounded once (0.1 °C, whole per cent, 0.1 hPa, 0.1 km, 0.1 mm, whole J/kg) and "
             "clipped into their plausible range; a value outside it fails the run. precip is derived by "
-            "differencing tot_prec. Only the declared frameVariables are gridded, because thirteen "
-            "arrays per frame would be about 3 MB of JSON; spotSeries carries every variable at every "
-            "published hour, bilinearly sampled except ww, which is read from the containing cell. "
+            "differencing tot_prec. spotSeries carries every variable at every published hour, "
+            "bilinearly sampled except ww, which is read from the containing cell. "
             "No hour is interpolated: only native forecast steps are published."),
         "sourceUrl": BASE + "/",
         "attribution": "Weather data: Deutscher Wetterdienst (DWD) ICON-EU open data, licensed CC BY "
@@ -318,8 +308,8 @@ def main(argv=None):
         print(f"ICON-EU surface weather {run} is already published; nothing to download.",
               flush=True)
         return UNCHANGED_EXIT
-    print(f"Fetching ICON-EU surface weather {run}: {len(hours)} frames, "
-          f"{len(urls)} files, frame variables {', '.join(args.frame_variables)}", flush=True)
+    print(f"Fetching ICON-EU surface weather {run}: {len(hours)} steps, "
+          f"{len(urls)} files", flush=True)
     # The same cache root as the wind importer; the parameter names never collide.
     cache = ROOT / ".cache" / "grib" / run
     cache.mkdir(parents=True, exist_ok=True)
@@ -351,7 +341,7 @@ def main(argv=None):
     output = ROOT / "public" / "weather"
     prefix = f"{MODEL}-{run}-{args.hours}h-v1"
     layout, grid, previous_tp = None, None, None
-    frames, series, published = [], {spot["id"]: [] for spot in spots}, 0
+    series = {spot["id"]: [] for spot in spots}
     for hour in hours:
         fields = {}
         for field in DIRECTORIES:
@@ -363,33 +353,18 @@ def main(argv=None):
         fields["precip"] = None if previous_tp is None else derive_precip(fields["tp"], previous_tp)
         previous_tp = fields["tp"]
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-        cells = grid["width"] * grid["height"]
-        payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid, "grid": grid,
-                   "precipIntervalHours": interval,
-                   # An hour with no interval publishes nulls, never a zeroed field.
-                   **{name: fields[name] if fields[name] is not None else [None] * cells
-                      for name in args.frame_variables}}
-        with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
-            write_json(output / name, payload)
-        size = (output / name).stat().st_size
-        published += size
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "precipIntervalHours": interval})
         for spot in spots:
             series[spot["id"]].append({"hour": hour, "validTime": valid,
                                        "precipIntervalHours": interval,
                                        "values": {name: None if values is None else sample_variable(
                                            grid, values, spot["lon"], spot["lat"], name)
                                            for name, values in fields.items()}})
-        print(f"  +{hour:03d}h — {grid['width']} × {grid['height']}, "
-              f"{len(args.frame_variables)} arrays, {size / 1e6:.2f} MB", flush=True)
-    manifest = manifest_for(run, run_time, args, grid, frames, series)
+        print(f"  +{hour:03d}h — {grid['width']} × {grid['height']} sampled", flush=True)
+    manifest = manifest_for(run, run_time, args, grid, series)
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
-    print(f"Published {len(frames)} ICON-EU weather frames ({published / 1e6:.1f} MB) and "
-          f"{len(spots)} spot series to {output / (MODEL + '.json')}", flush=True)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
+    print(f"Published {len(hours)} ICON-EU weather steps for {len(spots)} spots to "
+          f"{output / (MODEL + '.json')}", flush=True)
 
 
 if __name__ == "__main__":

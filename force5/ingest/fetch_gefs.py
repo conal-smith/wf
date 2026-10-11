@@ -33,10 +33,11 @@ import requests
 import fetch_gfs
 from cadence import ladder_hours
 from fetch_gfs import FIELDS, contiguous, index_ranges, validate_metadata
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
-                            spots_file, write_json)
+                            spots_file)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
@@ -360,9 +361,8 @@ def main():
                 for field in ("u", "v", "gust")}
         payload = {"model": "gefs", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": interval, **mean}
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
-                       "gustIntervalHours": interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": interval})
         if member_spots is None:
             # A member series of nulls is unpublishable and useless: the ensemble
             # contract requires a number per member. The grid never moves within a
@@ -393,7 +393,7 @@ def main():
         "resolutionKm": None, "resolutionLabel": "0.25° global grid", "run": run,
         "runTime": run_time.isoformat().replace("+00:00", "Z"),
         "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-        "stepRanges": ranges, "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+        "stepRanges": ranges, "grid": layout[2], "frames": frames,
         "spotForecasts": spot_forecasts, "spotMembers": spot_members,
         "ensemble": {"members": len(members), "control": 0,
                      "description": f"NOAA GEFS members 0–{len(members) - 1}: index 0 is the "
@@ -433,7 +433,7 @@ def main():
         "licenseUrl": "https://www.weather.gov/disclaimer",
     }
     # Only this final operation advances the published snapshot.
-    write_json(output / "gefs.json", manifest)
+    write_run(output, "gefs.json", manifest, prefix, spots)
     print(f"Published {len(frames)} GEFS mean frames and {len(spot_members)} member series to "
           f"{output / 'gefs.json'}", flush=True)
     cached = sum(path.stat().st_size for path in cache.glob("*.grib2"))

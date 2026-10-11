@@ -19,8 +19,9 @@ from urllib.request import Request, urlopen
 import eccodes as ec
 import numpy as np
 
-from f5bin import ENCODING as FRAME_ENCODING, publish_frame
+from f5bin import publish_frame
 from registry import PUBLISHED_RUN_ENV, UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 # The two answers `already_published` can give, which mean different things: the
@@ -248,9 +249,12 @@ def already_published(manifest, run, prefix):
         value = json.loads(manifest.read_text())
     except (OSError, ValueError):
         return False
-    frames = value.get("frames") or []
-    on_disk = (value.get("run") == run and bool(frames) and (manifest.parent / prefix).is_dir()
-               and all(str(frame.get("url", "")).startswith(f"weather/{prefix}/") for frame in frames))
+    # The run directory is the adapter's prefix and the hash of its content
+    # (rundir.py), so the prefix is what identifies "this exact bundle".
+    base = str(value.get("base", ""))
+    on_disk = (value.get("run") == run and bool(value.get("frames"))
+               and re.fullmatch(re.escape(prefix) + r"-[0-9a-f]{8}/", base) is not None
+               and (manifest.parent / base).is_dir())
     return PUBLISHED_ON_DISK if on_disk else False
 
 
@@ -319,8 +323,8 @@ def main():
         payload = {"model": "icon-eu", "run": run, "hour": hour, "validTime": valid, "grid": grid,
                    "gustIntervalHours": gust_interval, **fields}
         # Hash makes every published frame immutable, including after a code correction.
-        name = publish_frame(output, prefix, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}", "gustIntervalHours": gust_interval})
+        publish_frame(output, prefix, payload)
+        frames.append({"hour": hour, "validTime": valid, "gustIntervalHours": gust_interval})
         for spot in spots:
             point = {field: sample(grid, fields[field], spot["lon"], spot["lat"]) for field in PARAMS}
             spot_forecasts[spot["id"]].append({"hour": hour, "validTime": valid, **point})
@@ -328,12 +332,12 @@ def main():
     manifest = {"schemaVersion": 1, "model": "icon-eu", "modelName": "ICON-EU", "provider": "DWD",
                 "resolutionKm": 6.5, "run": run, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                 "generatedAt": datetime.now(timezone.utc).isoformat(), "stepHours": args.step,
-                "grid": layout[2], "encoding": FRAME_ENCODING, "frames": frames,
+                "grid": layout[2], "frames": frames,
                 "spotForecasts": spot_forecasts,
                 "sourceUrl": BASE + "/", "attribution": "Weather data: Deutscher Wetterdienst (DWD), modified and cropped by wingfoil.ie",
                 "licenseUrl": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"}
     # Only this final operation advances the published snapshot.
-    write_json(output / "latest.json", manifest)
+    write_run(output, "latest.json", manifest, prefix, spots)
     print(f"Published {len(frames)} real forecast frames to {output / 'latest.json'}", flush=True)
 
 

@@ -26,8 +26,6 @@ is read from the nearest cell the model did solve, with the offset recorded.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import math
 import os
 import sys
@@ -37,8 +35,9 @@ import numpy as np
 
 from cadence import ECMWF_HOURS, ecmwf_ladder
 from fetch_ecmwf import SOURCE_URL, client
-from fetch_forecast import ROOT, decode_handle, load_spots, published_in_bucket, spots_file, write_json
+from fetch_forecast import ROOT, decode_handle, load_spots, published_in_bucket, spots_file
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "ecmwf-wave"
@@ -321,7 +320,7 @@ def cadence_for(hours):
     return [{"throughHour": last, "stepHours": 3}]
 
 
-def manifest_for(run, run_time, hours, variables, grid, frames, series, coverage):
+def manifest_for(run, run_time, hours, variables, grid, series, coverage):
     ranges = cadence_for(hours)
     if ecmwf_ladder(ranges) != tuple(hours):
         raise ValueError("Published hours are not the ladder the manifest declares")
@@ -334,7 +333,10 @@ def manifest_for(run, run_time, hours, variables, grid, frames, series, coverage
         "stepHours": ranges[0]["stepHours"], "stepRanges": ranges, "grid": grid,
         "variables": {name: {key: ALL_VARIABLES[name][key] for key in PUBLISHED}
                       for name in variables},
-        "frames": frames, "spotSeries": series, "spotCoverage": coverage,
+        # No map frames: nothing reads a wave grid yet, and the spot series is the
+        # product (docs/TILING_DESIGN.md). The horizon is stated instead.
+        "frames": [], "horizonHours": hours[-1],
+        "spotSeries": series, "spotCoverage": coverage,
         "directionConvention": DIRECTION_CONVENTION, "partitionNote": BAND_NOTE,
         "processing": (
             "ECMWF's open-data wave stream (the WAM model coupled to IFS), cropped from the "
@@ -383,7 +385,7 @@ def main(argv=None):
     if published_in_bucket(run, args.run):
         print(f"ECMWF IFS wave {run} is already published; nothing to download.", flush=True)
         return UNCHANGED_EXIT
-    print(f"Fetching ECMWF IFS wave {run} from {args.source}: {len(hours)} frames through "
+    print(f"Fetching ECMWF IFS wave {run} from {args.source}: {len(hours)} steps through "
           f"+{args.hours}h, {len(variables)} variables"
           f"{'' if args.bands else ' (no period bands)'}", flush=True)
     cache = ROOT / ".cache" / MODEL / run
@@ -416,19 +418,11 @@ def main(argv=None):
     signature, grid = decoded[0][2][0], decoded[0][2][2]
     plans = spot_plans(grid, decoded[0][1]["swh"], spots)
     series = {spot["id"]: [] for spot in spots}
-    frames = []
     for hour in hours:
         fields, masks, layout = decoded[hour]
         if layout[0] != signature or layout[2] != grid:
             raise ValueError("ECMWF wave grid changed within the run")
         valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
-        payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
-                   "grid": grid, **fields}
-        with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
-            write_json(output / name, payload)
-        frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
             plan = plans[spot["id"]]
             series[spot["id"]].append({"hour": hour, "validTime": valid, "values": {
@@ -438,12 +432,12 @@ def main(argv=None):
     coverage = {spot["id"]: coverage_for(
         plans[spot["id"]], series[spot["id"]][0]["values"]["swh"] is not None)
         for spot in spots}
-    manifest = manifest_for(run, run_time, hours, variables, grid, frames, series, coverage)
+    manifest = manifest_for(run, run_time, hours, variables, grid, series, coverage)
     # Only this final write advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     modes = [plans[spot["id"]]["mode"] for spot in spots]
     transferred = sum(path.stat().st_size for path in cache.glob("*.grib2"))
-    print(f"Published {len(frames)} ECMWF wave frames to {output / (MODEL + '.json')}; "
+    print(f"Published {len(hours)} ECMWF wave steps to {output / (MODEL + '.json')}; "
           f"{modes.count('bilinear')} of {len(spots)} spots read directly, "
           f"{modes.count('nearest')} from the nearest solved cell, "
           f"{modes.count('none')} with no wave data; "

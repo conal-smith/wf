@@ -9,6 +9,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,11 +46,22 @@ import MapControls, { type MapPanel } from "./MapControls";
 import MapHead from "./MapHead";
 import SidePanel from "./SidePanel";
 import { InfoPop } from "./InfoPop";
-import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
+import useRunRefresh, {
+  loadNewerRun,
+  RunRecovery,
+  type RunSwap,
+} from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
-import { blendColumnModels, staleSpotBlend } from "./spotBlend";
-import { useSpotBlend } from "./useSpotBlend";
+import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
+import {
+  blendColumnModels,
+  ownBlendModels,
+  trustedSpotBlend,
+} from "./spotBlend";
+import { useBlendSquares, useSpotBlend } from "./useSpotBlend";
+import { useViewBounds } from "./useViewBounds";
+import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
   offshoreMark,
@@ -307,9 +319,22 @@ export default function App() {
         setManifest(validated);
         const places = ridingLocations(s) as Spot[];
         setSpots(places);
-        setSelectedTime(
-          validated.frames[nearestFrame(validated.frames)].validTime,
-        );
+        // The opening time is the strip's (the layout effect below), worked out
+        // before the first frame is asked for, so that frame is the one shown.
+        // Only a run with no daylight hour in the strip opens on the nearest frame.
+        const now = Date.now();
+        if (
+          !stripColumns(
+            dockColumns(
+              [{ id: validated.model, manifest: validated, ensemble: false }],
+              now,
+            ),
+            now,
+          ).length
+        )
+          setSelectedTime(
+            validated.frames[nearestFrame(validated.frames)].validTime,
+          );
         const linked = spotFromSearch(location.search, places) as
           Spot | undefined;
         setPoint(
@@ -355,13 +380,35 @@ export default function App() {
   const spotBlend = useSpotBlend(!!pendingModel);
   // The blend is published for every wind model; a reader who has left some
   // out gets theirs worked out here, from the manifests, as before.
-  const ownBlend = !windModels().every((model) =>
-    prefs.blendModels.includes(model.id),
+  const ownBlend = ownBlendModels(
+    prefs.blendModels,
+    windModels().map((model) => model.id),
   );
-  const published =
-    ownBlend || !spotBlend.blend || staleSpotBlend(spotBlend.blend, clockNow)
-      ? null
-      : spotBlend.blend;
+  const pointer = trustedSpotBlend(spotBlend.blend, ownBlend, clockNow);
+  // The lights read the spot squares in view, once the camera settles, and
+  // the open spot's and the reader's own wherever they are: never every place.
+  const mapView = useViewBounds(mapReady ? controls.current?.map : null);
+  const ownPlaces = useMemo(() => {
+    const ids = new Set([
+      point?.id ?? FIRST_SPOT,
+      ...starred,
+      ...frequent.map((v) => v.id),
+    ]);
+    return spots.filter((spot) => ids.has(spot.id));
+  }, [spots, point?.id, starred, frequent]);
+  const blendSquares = useBlendSquares(
+    pointer,
+    useMemo(
+      () =>
+        pointer
+          ? squaresToRead(mapView, pointer.spots.squares, ownPlaces)
+          : null,
+      [pointer, mapView, ownPlaces],
+    ),
+    spotBlend.recheck,
+  );
+  // Squares that cannot be read are as good as no blend at all.
+  const published = blendSquares.failed ? null : pointer;
   const [wantModels, setWantModels] = useState(false);
   // The display options list every wind model, and say which answered.
   useEffect(() => {
@@ -412,8 +459,10 @@ export default function App() {
   stripRef.current = strip;
 
   // The page opens on now, or first light when it is dark; after that the
-  // time is the reader's.
-  useEffect(() => {
+  // time is the reader's. A layout effect, so the opening time is in before
+  // the first paint and before any frame is asked for: until it is, there is
+  // no map time, and no frame is loaded (the frame effect below).
+  useLayoutEffect(() => {
     if (chosenTime.current || !strip.length) return;
     setSelectedTime(strip[openingColumn(strip, Date.now())].validTime);
   }, [strip]);
@@ -451,7 +500,8 @@ export default function App() {
   }, []);
 
   /* ---- the map's frame follows the time, a little behind a fast scrub ---- */
-  const mapTime = useThrottled(selectedTime, 200);
+  // The first time set goes to the map at once; a scrub after it is throttled.
+  const mapTime = useThrottled(selectedTime, 200) ?? selectedTime;
   const commitRun = ({ manifest: next, frame: nextFrame }: RunSwap) => {
     modelEpoch.current++;
     setManifest(next);
@@ -476,7 +526,9 @@ export default function App() {
           : nearestFrame(manifest.frames, Date.parse(mapTime))))
       : 0;
   useEffect(() => {
-    if (!manifest || pendingModel) return;
+    // No frame before the page knows its opening time: one asked for sooner
+    // (the run's first, and its prefetch) would only be thrown away.
+    if (!manifest || pendingModel || !mapTime) return;
     const controller = new AbortController();
     const epoch = modelEpoch.current;
     const current = () =>
@@ -487,7 +539,9 @@ export default function App() {
         if (!current()) return;
         setFrame(data);
         if (requestedIndex + 1 < manifest.frames.length)
-          void loadFrame(manifest, requestedIndex + 1).catch(() => {});
+          void loadFrame(manifest, requestedIndex + 1, { base: false }).catch(
+            () => {},
+          );
       })
       .catch(async (e) => {
         if (!current()) return;
@@ -501,7 +555,7 @@ export default function App() {
         setFrameError(e.message);
       });
     return () => controller.abort();
-  }, [manifest, requestedIndex, retry, pendingModel]);
+  }, [manifest, requestedIndex, retry, pendingModel, !mapTime]);
 
   const activeIndex = paintedIndex >= 0 ? paintedIndex : requestedIndex;
   const loading = !frame || activeIndex !== requestedIndex;
@@ -540,6 +594,30 @@ export default function App() {
       if (modelRequest.current === controller) setPendingModel(null);
     }
   };
+  /**
+   * A tile of the run on screen could not be read — one the map needs for the
+   * view, or one of a bare point's hours: the run may have been replaced and
+   * its directory deleted. Look for a newer run, as a failed frame does, until
+   * the pointer has been compared once for the run on screen (`RunRecovery`);
+   * a tile that fails for any other reason leaves the coarser tiles drawn, or
+   * the point's retry, as before.
+   */
+  const [recovery] = useState(() => new RunRecovery());
+  const recoverRun = (model: string, run: string) => {
+    if (!manifest || pendingModel || model !== manifest.model) return;
+    if (run !== manifest.run) return;
+    const epoch = modelEpoch.current;
+    const time = selectedTime ?? frame?.validTime;
+    if (!time) return;
+    const shown = manifest;
+    recovery.attempt(
+      shown.base,
+      () => loadNewerRun(shown, time, new AbortController().signal),
+      (swap) => {
+        if (epoch === modelEpoch.current) commitRun(swap);
+      },
+    );
+  };
   useRunRefresh({
     manifest,
     validTime: selectedTime ?? frame?.validTime ?? null,
@@ -563,14 +641,39 @@ export default function App() {
     () => [point?.id ?? FIRST_SPOT, ...starred, ...frequent.map((v) => v.id)],
     [point?.id, starred, frequent],
   );
+  // The reader's own blend reads the same squares from every wind model; the
+  // published blend needs none of them.
+  const windOnly = useMemo(
+    () => models.filter((model) => model.wind !== null),
+    [models],
+  );
+  const ownSquares = useMemo(
+    () =>
+      published
+        ? null
+        : squaresToRead(
+            mapView,
+            windOnly.flatMap((model) => model.wind!.spots.squares),
+            ownPlaces,
+          ),
+    [published, mapView, windOnly, ownPlaces],
+  );
+  // `rated.squares` is what was read, not what was asked: a square some model
+  // could not read keeps its places pending, and the rest are rated.
+  const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const { hours, version } = useRatings(
-    models,
+    rated.models,
     prefs.blendModels,
     places,
     axis,
     rider,
     first,
-    published,
+    published ? blendSquares.blend : null,
+    published
+      ? (blendSquares.blend?.loaded ?? [])
+      : rated.squares === ALL_SQUARES
+        ? null
+        : (rated.squares ?? []),
   );
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
@@ -856,6 +959,10 @@ export default function App() {
     [picked],
   );
   const series = usePointSeries(picked ? manifest : null, pickedPoint);
+  const seriesFailed = !series.named && !series.pending && series.failures > 0;
+  useEffect(() => {
+    if (seriesFailed && manifest) recoverRun(manifest.model, manifest.run);
+  }, [seriesFailed]);
   const pickedHours = useMemo<PlaceHour[] | undefined>(
     () =>
       picked && manifest
@@ -1083,6 +1190,7 @@ export default function App() {
                 controls.current = c;
                 setMapReady(!!c);
               }}
+              onTilesFailed={(failed) => recoverRun(failed.model, failed.run)}
             />
             {(status || (loading && frame)) && (
               <div
