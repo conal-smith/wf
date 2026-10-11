@@ -13,6 +13,7 @@ import {
   registerPmtiles,
   type RideStop,
 } from "./chartStyle";
+import { archiveUrl } from "./archives";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
 import { setMapView } from "./tiledField";
@@ -466,7 +467,7 @@ export default function WindMap(props: Props) {
       if (!map.getSource(id))
         map.addSource(id, {
           type: "raster-dem",
-          url: `pmtiles://${area.url}`,
+          url: archiveUrl(area.url),
           encoding: "terrarium",
           tileSize: area.tileSize,
           bounds: area.bounds,

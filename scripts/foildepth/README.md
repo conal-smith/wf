@@ -48,6 +48,16 @@ from the sea), drawn as nothing; **40 m** is water of unsurveyed depth.
   basin's box overlaps its area's, `areasAt` tries each, and the first with
   water under the point is the side of the weir it is on).
 - The colours are `--map-foil-*` in `ui/theme.css`.
+- `force5/src/archives.ts`: how the map and the probe read every archive
+  (these and `public/bathy`). Byte ranges where the host serves them (vite,
+  Caddy, R2); where it answers a range with a 200 and the whole file, as
+  Cloudflare Pages does for staging and production, the file is kept and read
+  from memory. pmtiles' own reader refuses that answer, and the map takes its
+  own errors, so before this the layer and the depth tints were silently
+  blank on Pages. The whole file is the price there (dublin-north 3 MB,
+  brandon 5 MB, the bathymetry 11.5 MB): serving the archives from a host
+  with ranges (the data bucket) would cost only the tiles in view.
+  `e2e/foil-depth.spec.ts` draws the layer from both kinds of host.
 
 ## Sources (all CC BY 4.0)
 

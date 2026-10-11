@@ -54,6 +54,8 @@ change the format. Afterwards it would be a migration on a live site.
   range. We already use this for bathymetry and foil depth. Protomaps
   recommends R2 for it, but range reads are harder for a CDN to cache than
   whole files ([Protomaps](https://docs.protomaps.com/pmtiles/cloud-storage)).
+  Not every host serves ranges: Cloudflare Pages answers each with the whole
+  file, which `force5/src/archives.ts` takes and keeps.
 
 ## The decisions
 

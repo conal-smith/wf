@@ -4,15 +4,13 @@
  * The map does not keep its DEM tiles where the page can reach them, and a
  * tap is rare, so one small request per tap is the simpler price.
  */
-import { PMTiles } from "pmtiles";
+import { archive } from "./archives";
 import {
   terrariumHeight,
   tilePixel,
   type FoilArea,
   type FoilManifest,
 } from "./foilDepth";
-
-const archives = new Map<string, PMTiles>();
 
 /**
  * Metres above LAT under a point; "unsurveyed" where the water is there at
@@ -26,10 +24,9 @@ export async function elevationAt(
   lat: number,
   manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres">,
 ): Promise<number | "unsurveyed" | null> {
-  let archive = archives.get(url);
-  if (!archive) archives.set(url, (archive = new PMTiles(url)));
   const at = tilePixel(lon, lat, area.maxzoom, area.tileSize);
-  const tile = await archive.getZxy(at.z, at.x, at.y);
+  // The map's own archive: on a host without ranges, the file it already has.
+  const tile = await archive(url).getZxy(at.z, at.x, at.y);
   if (!tile?.data) return null;
   const bitmap = await createImageBitmap(
     new Blob([tile.data], { type: "image/webp" }),

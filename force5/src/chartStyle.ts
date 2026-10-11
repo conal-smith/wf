@@ -16,14 +16,14 @@ import type {
   LayerSpecification,
   StyleSpecification,
 } from "maplibre-gl";
-import { Protocol } from "pmtiles";
+import { archiveUrl, pmtilesTile } from "./archives";
 import { basemapColours } from "./basemap";
 import { windBand, type Rider } from "./stars";
 
 export const OPENFREEMAP = "https://tiles.openfreemap.org";
 export const TILES_URL = `${OPENFREEMAP}/planet`;
 export const GLYPHS_URL = `${OPENFREEMAP}/fonts/{fontstack}/{range}.pbf`;
-/** The depth tiles, served from public/ by range requests. */
+/** The depth tiles, served from public/ and read by range (archives.ts). */
 export const BATHY_PATH = "bathy/ireland.pmtiles";
 
 const FONT = ["Noto Sans Italic"];
@@ -68,10 +68,13 @@ export function chartColours(
 }
 
 let registered = false;
-/** MapLibre reads `pmtiles://` URLs through the pmtiles package, once a page. */
+/**
+ * MapLibre reads `pmtiles://` URLs through the pmtiles package, once a page,
+ * over the archives archives.ts opens (whether or not the host serves ranges).
+ */
 export function registerPmtiles() {
   if (registered) return;
-  maplibregl.addProtocol("pmtiles", new Protocol().tile);
+  maplibregl.addProtocol("pmtiles", pmtilesTile);
   registered = true;
 }
 
@@ -147,7 +150,7 @@ export function chartStyle(
       omt: { type: "vector", url: TILES_URL },
       bathy: {
         type: "vector",
-        url: `pmtiles://${bathyUrl}`,
+        url: archiveUrl(bathyUrl),
         minzoom: 5,
         maxzoom: 12,
         attribution: "EMODnet Bathymetry",
