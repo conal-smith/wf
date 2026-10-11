@@ -80,8 +80,9 @@ export const sampleColumn = (validTime: string, columns = sampleColumns) => {
 };
 
 /**
- * The dock's strip at `SAMPLE_CLOCK`: the columns above, the next seven Irish
- * days of them, 07:00 to 20:00 (src/strip.ts). The slider indexes these.
+ * The dock's strip at `SAMPLE_CLOCK`: the columns above, the next fifteen
+ * Irish days of them, every hour day and night (src/strip.ts). The slider
+ * indexes these.
  */
 export const stripAt = (now: number, columns = sampleColumns) =>
   stripColumns(

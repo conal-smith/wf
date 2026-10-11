@@ -1,8 +1,10 @@
 /**
- * The dock's fortnight: the forecast's own columns for the next fifteen Irish days,
- * 07:00 to 20:00, as one strip of hours under a fixed cursor. Night columns
- * are left out, as the chart's dock leaves them out: nobody rides them, and a
- * strip of dark hours between every two days is a lot of swiping for nothing.
+ * The dock's fortnight: the forecast's own columns for the next fifteen Irish
+ * days, round the clock, as one strip of hours under a fixed cursor. The night
+ * is in it: its hours are hatched and carry no stars (nobody is rated for a
+ * session they cannot see, force5/src/stars.ts), but the wind still blows
+ * through them, and a strip that cut them out put Monday 20:00 beside Tuesday
+ * 07:00 and had nowhere to stand when the time was in between.
  *
  * The columns keep their model's cadence: hourly where the fine runs reach,
  * three- and six-hourly further out. Everything here is pure; times are UTC
@@ -13,8 +15,6 @@ import type { DockColumn } from "../force5/src/timeline";
 export const TIME_ZONE = "Europe/Dublin";
 /** The old dock's range: as far as the longest run reaches. */
 export const STRIP_DAYS = 15;
-export const FIRST_HOUR = 7;
-export const LAST_HOUR = 20;
 
 const dateFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: TIME_ZONE,
@@ -55,7 +55,7 @@ export interface StripColumn extends DockColumn {
   time: number;
   /** Irish calendar day. */
   date: string;
-  /** Irish hour, 7–20. */
+  /** Irish hour, 0–23. */
   hour: number;
   /** Which of the strip's days it falls in. */
   day: number;
@@ -70,7 +70,10 @@ export interface StripDay {
   count: number;
 }
 
-/** The next seven Irish days of the dock's columns, 07:00–20:00. */
+/**
+ * The dock's columns that fall in the next `days` Irish days, every one of
+ * them: day and night, at whatever cadence their run publishes.
+ */
 export function stripColumns(
   columns: readonly DockColumn[],
   now: number,
@@ -87,9 +90,7 @@ export function stripColumns(
     const date = irishDate(time);
     const day = dates.indexOf(date);
     if (day < 0) continue;
-    const hour = irishHour(time);
-    if (hour < FIRST_HOUR || hour > LAST_HOUR) continue;
-    out.push({ ...column, time, date, hour, day });
+    out.push({ ...column, time, date, hour: irishHour(time), day });
   }
   return out;
 }
@@ -129,8 +130,9 @@ export function nearestColumn(
 }
 
 /**
- * The column a page opens on: the hour now if it is in the strip, else the
- * next one that is (first light tomorrow, at night), else the last.
+ * The column a page opens on: the hour now, night or day, if the strip has a
+ * column within its cadence of it; else the next one it has (a strip whose
+ * first run has not started yet), else the last.
  */
 export function openingColumn(
   columns: readonly { time: number }[],
@@ -143,6 +145,31 @@ export function openingColumn(
   return next < 0 ? columns.length - 1 : next;
 }
 
+/**
+ * Page Up and Page Down: the same hour of the day after (`step` 1) or before
+ * (-1), or the nearest hour to it that day has, since a day of hourly columns
+ * and a day of three-hourly ones do not line up column for column. At either
+ * end of the strip the time stays in the first or the last day.
+ */
+export function dayStep(
+  columns: readonly { hour: number }[],
+  days: readonly StripDay[],
+  selected: number,
+  step: number,
+): number {
+  const from = days.findIndex(
+    (d) => selected >= d.start && selected < d.start + d.count,
+  );
+  if (from < 0 || !columns[selected]) return selected;
+  const to = days[Math.max(0, Math.min(days.length - 1, from + step))];
+  const hour = columns[selected].hour;
+  let best = to.start;
+  for (let i = to.start; i < to.start + to.count; i++)
+    if (Math.abs(columns[i].hour - hour) < Math.abs(columns[best].hour - hour))
+      best = i;
+  return best;
+}
+
 /** A day's best stretch: the longest run of its best-rated hours. */
 export interface DayBest {
   /** Columns, inclusive. */
@@ -153,7 +180,9 @@ export interface DayBest {
 
 /**
  * The best stretch of one day: the longest run of the hours that carry its
- * highest rating, as the chart's dock and its pen loop read it. A day whose
+ * highest rating, as the chart's dock and its pen loop read it. Only the
+ * daylight counts: a night hour has no rating, so it is neither a day's best
+ * nor part of one, and a stretch never runs through a night. A day whose
  * best is no stars has a best of zero and no stretch worth a loop; a day with
  * nothing rated (all dark, or not reached) has none. `after` drops the hours
  * already gone, so "best today" never sells this morning.

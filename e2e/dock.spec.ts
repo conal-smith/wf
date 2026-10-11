@@ -96,7 +96,7 @@ async function offCursor(page: Page) {
   });
 }
 
-test("the week is one strip of hours, 07:00 to 20:00, with no day slider over it", async ({
+test("the week is one strip of hours round the clock, with no day slider over it", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -104,11 +104,17 @@ test("the week is one strip of hours, 07:00 to 20:00, with no day slider over it
   await openDock(page);
   const hours = page.locator(".dock tr.tt-hour td[data-i]");
   await expect(hours).toHaveCount(sampleStrip.length);
-  expect(
-    (await hours.allTextContents()).map((h) => Number(h)).every(
-      (h) => h >= 7 && h <= 20,
-    ),
-  ).toBe(true);
+  // Every hour, the night's as well: the labels are the strip's own hours,
+  // and no two neighbours on one day are further apart than the run's step.
+  expect((await hours.allTextContents()).map(Number)).toEqual(
+    sampleStrip.map((c) => c.hour),
+  );
+  expect(sampleStrip.some((c) => c.hour < 6)).toBe(true);
+  expect(sampleStrip.some((c) => c.hour > 21)).toBe(true);
+  for (let i = 1; i < sampleStrip.length; i++)
+    expect(sampleStrip[i].time - sampleStrip[i - 1].time).toBeLessThanOrEqual(
+      6 * 3600000,
+    );
   // Each day once, as a heading on the strip: no row of day blocks above
   // it, and no spacer cells either side, so the table starts at the labels.
   const days = new Set(sampleStrip.map((c) => c.date)).size;
@@ -124,13 +130,24 @@ test("the week is one strip of hours, 07:00 to 20:00, with no day slider over it
     /Stars|Wind|From|Wing|Tide|More|Less/,
   );
   await expect(page.locator(".dock .help-q")).toHaveCount(0);
-  // Stars only where it is light; a dark hour is left empty, not rated zero.
+  // Stars only where it is light; a dark hour is left empty, not rated zero,
+  // but it still reads its wind, its gust and where the wind goes.
   expect(
     await page.locator(".dock tr.tt-stars td[data-i] .hour-stars").count(),
   ).toBeGreaterThan(0);
   expect(
     await page.locator(".dock tr.tt-stars td.night:not(:has(.hour-stars))").count(),
   ).toBeGreaterThan(0);
+  await expect(page.locator(".dock tr.tt-stars td.night .hour-stars")).toHaveCount(0);
+  await expect(page.locator(".dock tr.tt-wind td.night .kn").first()).toHaveText(
+    /^\d+$/,
+  );
+  await expect(page.locator(".dock tr.tt-wind td.night .gu").first()).toHaveText(
+    /g\d+$/,
+  );
+  await expect(
+    page.locator(".dock tr.tt-from td.night .from-cell").first(),
+  ).toBeAttached();
   // Every hour reads its wind and gust, and one arrow for where it goes.
   await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(/^\d+$/);
   await expect(
@@ -222,9 +239,58 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   // before it, and the cursor comes out to the first hour instead.
   await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // The same hour the next day, not as many columns into it: the first day
+  // starts in the afternoon and the next at midnight.
   await slider(page).press("PageUp");
-  const day = sampleStrip.findIndex((c) => c.date !== sampleStrip[0].date);
+  const day = sampleStrip.findIndex(
+    (c) => c.date !== sampleStrip[0].date && c.hour === sampleStrip[0].hour,
+  );
   await expect(slider(page)).toHaveValue(String(day));
+  await slider(page).press("PageDown");
+  await expect(slider(page)).toHaveValue("0");
+});
+
+test("a night hour is a column of its own: tapped, keyed and under the line", async ({
+  page,
+}) => {
+  await openDock(page);
+  // The sample clock stands at 22:00 on the Sunday, in the dark: the strip
+  // opens on that hour, not on Monday's first light.
+  const now = sampleStrip.findIndex((c) => c.time === SAMPLE_CLOCK.getTime());
+  expect(sampleStrip[now].hour).toBe(22);
+  await expect(slider(page)).toHaveValue(String(now));
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // The small hours of Monday: a tap on one selects it, the slider says so,
+  // and the red line stands on that column, not on the morning's.
+  const small = sampleStrip.findIndex(
+    (c) => c.date !== sampleStrip[0].date && c.hour === 3,
+  );
+  const cell = page.locator(`.dock tr.tt-wind td[data-i="${small}"]`);
+  await expect(cell).toHaveClass(/\bnight\b/);
+  await cell.click();
+  await expect(slider(page)).toHaveValue(String(small));
+  await expect(slider(page)).toHaveAttribute("aria-valuetext", "Monday 03:00");
+  await expect(
+    page.locator(`.dock tr.tt-hour td[data-i="${small}"]`),
+  ).toHaveClass(/\bc-sel\b/);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // The keys step through the night an hour at a time.
+  await slider(page).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(slider(page)).toHaveAttribute("aria-valuetext", "Monday 04:00");
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // The tide under it is hatched across the same dark columns.
+  const hatched = await page.evaluate((i) => {
+    const td = document.querySelector(`.dock tr.tt-hour td[data-i="${i}"]`)!;
+    const box = td.getBoundingClientRect();
+    return [...document.querySelectorAll(".dock .tide-night rect")].some(
+      (rect) => {
+        const r = rect.getBoundingClientRect();
+        return r.left <= box.left + 1 && r.right >= box.right - 1;
+      },
+    );
+  }, small);
+  expect(hatched).toBe(true);
 });
 
 test("a tap on an hour selects it", async ({ page }) => {

@@ -217,7 +217,8 @@ test("a light shows the selected hour's stars, as the dock does, and follows the
   await findSpot(page, "Brandon");
   const light = page.locator('[data-spot-id="brandon"]');
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  // Through a few daylight hours: the light's figure is the dock's stars.
+  // Through a few hours, day and night: the light's figure is the dock's
+  // stars, and a dark hour's light is dark.
   for (const at of [2, 5, 9, 16, 30]) {
     if (at >= sampleStrip.length) continue;
     await slider.fill(String(at));

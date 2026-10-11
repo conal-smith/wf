@@ -38,13 +38,22 @@ test("the strip opens on now and fades the hours gone, whatever is selected", as
   await expect.poll(async () => (await past()).length).toBeGreaterThan(gone);
 });
 
-test("at night the strip opens on first light", async ({ page }) => {
-  // 22:00 Irish time.
+test("at night the strip opens on the hour now, a night column of its own", async ({
+  page,
+}) => {
+  // 22:00 Irish time on the Sunday. The strip used to cut the night out and
+  // open on Monday 07:00, with the selected line drawn there.
   const night = Date.parse(harmonie.runTime) + 8 * 3600000;
   await page.clock.setFixedTime(new Date(night));
   await page.goto("/");
   const slider = page.getByRole("slider", { name: "Forecast time" });
-  await expect(slider).toHaveAttribute("aria-valuetext", /^\w+ 07:00$/, {
+  await expect(slider).toHaveAttribute("aria-valuetext", "Sunday 22:00", {
     timeout: 30000,
   });
+  const at = await slider.inputValue();
+  expect(stripAt(night)[Number(at)].time).toBe(night);
+  const hour = page.locator(`.dock tr.tt-hour td[data-i="${at}"]`);
+  await expect(hour).toHaveText("22");
+  await expect(hour).toHaveClass(/\bnight\b/);
+  await expect(hour).toHaveClass(/\bc-sel\b/);
 });

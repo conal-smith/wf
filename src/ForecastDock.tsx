@@ -41,6 +41,7 @@ import {
   columnAtX,
   dayBest,
   dayLong,
+  dayStep,
   dayShort,
   hourLabel,
   rainColumns,
@@ -74,6 +75,7 @@ import {
   starsText,
 } from "../force5/src/stars";
 import { dayNights } from "../force5/src/sun";
+import { daylightOn } from "./ratings";
 import { eventsBetween, tideAt, type SpotTide } from "../force5/src/tides";
 import { convert, type Units } from "../force5/src/units";
 import { compass, type Spot } from "../force5/src/weather";
@@ -214,6 +216,7 @@ const StripTable = memo(function StripTable({
   columns,
   days,
   hours,
+  daylight,
   units,
   tide,
   g,
@@ -229,6 +232,8 @@ const StripTable = memo(function StripTable({
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
+  /** Whether each column is in daylight at the place: its hatching. */
+  daylight: readonly boolean[];
   units: Units;
   tide: SpotTide | null;
   g: StripGeometry;
@@ -252,7 +257,9 @@ const StripTable = memo(function StripTable({
   ) =>
     columns.map((column, at) => {
       const hour = hours?.[at];
-      const night = !hour || !hour.daylight;
+      // The sun's, not the ratings': a night column is hatched from the
+      // first paint, before (and whether or not) its hours are worked out.
+      const night = !daylight[at];
       const first = at === 0 || columns[at - 1].date !== column.date;
       return (
         <td
@@ -405,7 +412,13 @@ const StripTable = memo(function StripTable({
         )}
         <tr className="tt-tide">
           <td colSpan={columns.length} className="d0">
-            <TideRow tide={tide} columns={columns} days={days} g={g} />
+            <TideRow
+              tide={tide}
+              columns={columns}
+              days={days}
+              g={g}
+              daylight={daylight}
+            />
           </td>
         </tr>
         {more && (
@@ -642,28 +655,68 @@ function MoreRows({
  * The tide under the hours: a curve per day, its turns named. Each turn gets
  * a dot on the curve and a short label, "High 17:35", in a band of its own:
  * the highs along the top of the row and the lows along the foot, so the two
- * never meet however close the curve brings them. The strip skips the night,
- * so the evening's turn and the next morning's can stand a column apart; a
- * label that would run into the one before it in its band tries the other
- * side of its dot, and failing that is left out. The dot stays, and its title
- * (and the row's) carries the time and the height in full.
+ * never meet however close the curve brings them. Where the three- and
+ * six-hourly columns narrow, two turns can stand a column apart; a label that
+ * would run into the one before it in its band tries the other side of its
+ * dot, and failing that is left out. The dot stays, and its title (and the
+ * row's) carries the time and the height in full.
+ *
+ * Behind it, the night's columns are hatched as the cells over them are, so
+ * the dark hours run down the dock as one band from the hours to the foot.
  */
 function TideRow({
   tide,
   columns,
   days,
   g,
+  daylight,
 }: {
   tide: SpotTide | null;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   g: StripGeometry;
+  daylight: readonly boolean[];
 }) {
   const H = ROWS.tide;
   const width = g.total;
+  const hatch = `tide-hatch-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  // One rect per run of dark columns, edge to edge, as the cells above it.
+  const dark: { x: number; w: number }[] = [];
+  columns.forEach((_, at) => {
+    if (daylight[at]) return;
+    const last = dark[dark.length - 1];
+    if (last && last.x + last.w === g.x[at]) last.w += g.w[at];
+    else dark.push({ x: g.x[at], w: g.w[at] });
+  });
+  const night = dark.length > 0 && (
+    <g className="tide-night" aria-hidden="true">
+      <defs>
+        <pattern
+          id={hatch}
+          width="4"
+          height="4"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <rect className="tide-hatch" width="1" height="4" />
+        </pattern>
+      </defs>
+      {dark.map((run) => (
+        <rect
+          key={run.x}
+          x={run.x}
+          y="0"
+          width={run.w}
+          height={H}
+          fill={`url(#${hatch})`}
+        />
+      ))}
+    </g>
+  );
   if (!tide)
     return (
       <svg width={width} height={H} className="tide-row" aria-hidden="true">
+        {night}
         <text className="tide-none" x="8" y="24">
           No tide station near
         </text>
@@ -712,6 +765,8 @@ function TideRow({
       </g>,
     );
     for (const event of eventsBetween(curve, a, b)) {
+      // A turn on the stroke of a day's edge falls in both days' spans.
+      if (turns.some((turn) => turn.key === event.time)) continue;
       const t = Date.parse(event.time);
       const high = event.kind === "high";
       const word = high ? "High" : "Low";
@@ -762,6 +817,7 @@ function TideRow({
       role="img"
       aria-label={`Tide at ${tide.station.name}, metres above chart datum`}
     >
+      {night}
       {paths}
       {turns.map((turn) => {
         const label = placed.get(turn.key);
@@ -844,10 +900,6 @@ export default function ForecastDock(props: Props) {
       cursor.current.style.left = `${label + track.cursorAt(el.scrollLeft)}px`;
   };
   const column = columns[selected];
-  const selectedDay = days.find(
-    (d) => selected >= d.start && selected < d.start + d.count,
-  );
-  const selectedDayIndex = selectedDay ? days.indexOf(selectedDay) : 0;
 
   // The blend, only while it is the view: the chart reads every member. The
   // manifests carry no spot data, so each model's one square holding this spot
@@ -867,6 +919,11 @@ export default function ForecastDock(props: Props) {
     prefs.blendModels,
     spot.id,
     axis,
+  );
+  // Which columns are dark at this place, by the same sun the stars go by.
+  const daylight = useMemo(
+    () => daylightOn(spot, axis),
+    [spot.lat, spot.lon, axis],
   );
   const named = isPoint ? undefined : spot.id;
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
@@ -1166,21 +1223,13 @@ export default function ForecastDock(props: Props) {
         }
         onChange={(event) => onSelect(Number(event.target.value), true)}
         onKeyDown={(event) => {
-          // A day at a time with Page Up and Page Down.
+          // A day at a time with Page Up and Page Down, to the same hour.
           if (event.key !== "PageUp" && event.key !== "PageDown") return;
           event.preventDefault();
-          const to =
-            days[
-              Math.max(
-                0,
-                Math.min(
-                  days.length - 1,
-                  selectedDayIndex + (event.key === "PageUp" ? 1 : -1),
-                ),
-              )
-            ];
-          const offset = selected - (selectedDay?.start ?? 0);
-          onSelect(to.start + Math.min(offset, to.count - 1), true);
+          onSelect(
+            dayStep(columns, days, selected, event.key === "PageUp" ? 1 : -1),
+            true,
+          );
         }}
       />
 
@@ -1291,6 +1340,7 @@ export default function ForecastDock(props: Props) {
               columns={columns}
               days={days}
               hours={hours}
+              daylight={daylight}
               units={prefs.units}
               tide={tide}
               g={g}

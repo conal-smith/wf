@@ -321,7 +321,7 @@ export default function App() {
         setSpots(places);
         // The opening time is the strip's (the layout effect below), worked out
         // before the first frame is asked for, so that frame is the one shown.
-        // Only a run with no daylight hour in the strip opens on the nearest frame.
+        // Only a run with no hour in the strip opens on the nearest frame.
         const now = Date.now();
         if (
           !stripColumns(
@@ -458,7 +458,7 @@ export default function App() {
   const stripRef = useRef(strip);
   stripRef.current = strip;
 
-  // The page opens on now, or first light when it is dark; after that the
+  // The page opens on now, night or day; after that the
   // time is the reader's. A layout effect, so the opening time is in before
   // the first paint and before any frame is asked for: until it is, there is
   // no map time, and no frame is loaded (the frame effect below).
