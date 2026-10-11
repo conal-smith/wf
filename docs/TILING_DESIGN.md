@@ -632,6 +632,15 @@ Yr keeps an old tileset at least 45 minutes for the same reason.
     directories, not run times, so the same run republished with new content counts.
   - The forecast server and the spot page (`loadCatalog` in mcp/api/forecast.ts,
     through the source's new `forget`) and a thread's spot card (`readSpotSeries`).
+- **Hardening.** A path inside a run is segments of `A–Z a–z 0–9 _ . -` only, in
+  both languages (`checkRunPath`, `squares.run_path`): a browser resolves `%2e%2e`
+  as `..` and drops tabs and newlines, so the old check, which only refused `..`,
+  a leading `/` and a backslash, let an encoded path climb out of `base`. The square loaders merge
+  into records with no prototype and refuse a spot found in two squares
+  (`mergeSpots`), the blend's loader included, which used to keep whichever square
+  came last; a place called `constructor` or `__proto__` is a place like any
+  other. The publisher reads the riding-place catalogue by the adapters' own rule
+  and refuses a square holding a spot the catalogue does not put in it.
 - **A new run does not blank the dock.** `useSpotSquares` keeps the last answer for
   the same squares on screen while a new run's squares are read (`shownAnswer`);
   before, the blend chart and the waves and weather rows went empty each time a run

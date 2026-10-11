@@ -25,7 +25,7 @@ import meteofrance
 from meteofrance import SPECS
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
-from runfixtures import catalogue, publish_whole, read_whole
+from runfixtures import catalogue, publish_whole, read_whole, use_catalogue
 
 ARPEGE, AROME = SPECS["arpege"], SPECS["arome"]
 RUN = "2026091618"
@@ -495,6 +495,7 @@ class PublisherAcceptanceTest(unittest.TestCase):
         # "inside" is a made-up place on the crop; the others are real riding locations.
         spots = catalogue() + [{"id": "inside", "lat": 53.9, "lon": -9.9}]
         publish_whole(output, f"{model}.json", manifest, spots=spots)
+        use_catalogue(self, spots)
         return root / "public", manifest
 
     def test_an_arpege_bundle_passes_the_shared_wind_validator(self):

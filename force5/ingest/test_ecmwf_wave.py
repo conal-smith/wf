@@ -18,7 +18,7 @@ from fetch_ecmwf_wave import (ALL_VARIABLES, BANDS, DIRECTION, MODEL, NEAREST_LI
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
-from runfixtures import publish_whole
+from runfixtures import publish_whole, use_catalogue
 
 # The identity the live 0.25° wave stream carries, read on 17 September 2026.
 WAVE_HEADERS = {"centre": "ecmf", "marsClass": "od", "marsStream": "wave", "dataType": "fc"}
@@ -277,6 +277,7 @@ class WaveBundleTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.run_time = datetime(2026, 9, 16, tzinfo=timezone.utc)
+        use_catalogue(self, SPOTS)
 
     def bundle(self, hours=(0, 3, 6), variables=None):
         variables = variables if variables is not None else list(ALL_VARIABLES)

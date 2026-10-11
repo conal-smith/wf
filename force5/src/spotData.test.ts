@@ -134,6 +134,48 @@ describe("the spot square loader", () => {
       /two spot squares/,
     );
   });
+  it("treats spots named like an object's own properties as spots", async () => {
+    // Parsed from JSON, as every square is: `__proto__` is then an own key.
+    const named: ReadJson = async (path) => {
+      const square = path.match(/([ns]\d\d[ew]\d{3})\.json$/)![1];
+      return JSON.parse(
+        JSON.stringify({
+          schemaVersion: 2,
+          model: run.model,
+          run: run.run,
+          square,
+        }).replace(
+          /}$/,
+          square === "n52w008"
+            ? ',"spotForecasts":{"constructor":[1],"__proto__":[2]}}'
+            : ',"spotForecasts":{"toString":[3]}}',
+        ),
+      );
+    };
+    const data = await loadSpotSquares(named, POINTER, run);
+    const spots = data.spotForecasts!;
+    expect(Object.keys(spots).sort()).toEqual([
+      "__proto__",
+      "constructor",
+      "toString",
+    ]);
+    expect(Object.hasOwn(spots, "__proto__")).toBe(true);
+    expect(spots["__proto__"]).toEqual([2]);
+    expect(spots.constructor).toEqual([1]);
+    // And a spot in two squares is refused whatever it is called.
+    const twice: ReadJson = async (path) =>
+      JSON.parse(
+        JSON.stringify({
+          schemaVersion: 2,
+          model: run.model,
+          run: run.run,
+          square: path.match(/([ns]\d\d[ew]\d{3})\.json$/)![1],
+        }).replace(/}$/, ',"spotForecasts":{"__proto__":[1]}}'),
+      );
+    await expect(loadSpotSquares(twice, POINTER, run)).rejects.toThrow(
+      /__proto__ appears in two spot squares/,
+    );
+  });
   it("never reads outside the run directory", async () => {
     for (const base of [
       "../harmonie-2026091400-test-v1-0a0b0c0d/",
@@ -151,10 +193,27 @@ describe("the spot square loader", () => {
       "/x",
       "frames//x",
       "a\\b",
+      // What a URL parser reads as something else: an encoded `..` or `/`, a
+      // tab or newline it drops, a query or a fragment.
+      "%2e%2e/x",
+      "frames/%2E%2E/%2e%2e/x",
+      "frames%2F000.bin",
+      "frames/.\t./x",
+      "frames/.\n./x",
+      "frames/000.bin?x",
+      "frames/000.bin#x",
+      "frames/0 0.bin",
     ])
       expect(() =>
         runPath(POINTER, "harmonie-2026091400-test-v1-0a0b0c0d/", relative),
       ).toThrow();
+    // Each of those, as a browser would have fetched it, leaves the run.
+    const base =
+      "https://forecast.example/weather/harmonie-2026091400-test-v1-0a0b0c0d/";
+    for (const escape of ["%2e%2e/x", "frames/.\t./.\n./x"])
+      expect(new URL(escape, base).pathname).not.toContain(
+        "harmonie-2026091400-test-v1-0a0b0c0d",
+      );
     expect(squarePath("weather/latest.json", pointerOf(whole), "n52w010")).toBe(
       "weather/harmonie-2026091400-test-v1-0a0b0c0d/spots/n52w010.json",
     );

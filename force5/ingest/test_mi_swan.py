@@ -14,7 +14,7 @@ from fetch_mi_swan import NEST, SHELF, discover, main, wind_sea
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
-from runfixtures import read_whole
+from runfixtures import read_whole, use_catalogue
 
 HINDCAST_HOURS = 192  # Eight days of hindcast precede the run hour in the aggregate.
 FORECAST_HOURS = 144
@@ -165,6 +165,7 @@ class SwanTests(unittest.TestCase):
 
     def run_main(self, *argv, erddap=None, spots=SPOTS):
         self.erddap = erddap or FakeErddap(self.day)
+        use_catalogue(self, spots)
         with patch("fetch_mi_swan.ROOT", self.root), \
              patch("fetch_mi_swan.load_spots", return_value=spots), \
              patch.object(fetch_mi_swan.SESSION, "get", side_effect=self.erddap.get):

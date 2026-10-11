@@ -52,6 +52,7 @@ import gzip
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
 import sys
 
@@ -159,7 +160,9 @@ def referenced(manifests):
         directory = run_directory(manifest, path)
         if directory is not None:
             for url in manifest_urls(manifest):
-                run_path(manifest["base"], url.replace("{square}", "n00e000"))
+                # A template (`spots/{square}.json`, `t/{level}/{x}/{y}/{hour}.bin`)
+                # is checked as the paths it makes would be.
+                run_path(manifest["base"], re.sub(r"\{[a-z]+\}", "0", url))
             directories.add(directory)
             continue
         urls = manifest_urls(manifest)

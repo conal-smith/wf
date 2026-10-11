@@ -27,6 +27,7 @@ import {
   checkBase,
   checkSpotIndex,
   loadSpotSquares,
+  mergeSpots,
   SPOT_KEYS,
   type ReadJson,
   type SpotIndex,
@@ -317,6 +318,9 @@ export function checkBlendSpots(
  * A square the blend does not list holds no places and is not asked for. Each
  * square stands alone: one that cannot be read, or does not hold together,
  * is named in `failed` and its places stay unknown, while the others are used.
+ * A place in two squares is a run that does not hold together as a whole, as
+ * `loadSpotSquares` has it, and rejects. The places have no prototype, so a
+ * place called `__proto__` is a place like any other.
  */
 export async function loadBlendSquares(
   read: ReadJson,
@@ -333,7 +337,7 @@ export async function loadBlendSquares(
       return checkBlendSpots(blend, data.spotBlend);
     }),
   );
-  const spotBlend: BlendSpots = {};
+  const spotBlend: BlendSpots = Object.create(null);
   const loaded: string[] = [];
   const failed: string[] = [];
   results.forEach((result, i) => {
@@ -342,7 +346,7 @@ export async function loadBlendSquares(
       return;
     }
     loaded.push(wanted[i]);
-    Object.assign(spotBlend, result.value);
+    mergeSpots(spotBlend, result.value, BLEND_KEY);
   });
   return { ...blend, spotBlend, loaded, failed };
 }

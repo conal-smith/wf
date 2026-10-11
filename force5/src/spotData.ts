@@ -82,14 +82,24 @@ export function checkBase(base: unknown): string {
   return base;
 }
 
+/**
+ * One segment of a path inside a run: what the publisher writes (`t`, `0`,
+ * `000.bin`, `spots`, `n52w010.json`) and nothing a URL parser would read as
+ * something else. A browser resolves `%2e%2e` as `..`, drops tabs and newlines,
+ * reads `\` as `/` and stops a path at `?` or `#`; none of them is allowed in.
+ */
+const RUN_PATH_SEGMENT = /^[A-Za-z0-9_.-]+$/;
+
 /** A path inside a run directory: relative, and never leaving it. */
 export function checkRunPath(relative: unknown): string {
   if (
     typeof relative !== "string" ||
     !relative ||
-    relative.startsWith("/") ||
-    relative.includes("\\") ||
-    relative.split("/").some((part) => !part || part === "." || part === "..")
+    relative
+      .split("/")
+      .some(
+        (part) => !RUN_PATH_SEGMENT.test(part) || part === "." || part === "..",
+      )
   )
     throw new Error(
       `Unusable path ${JSON.stringify(relative)} inside a run directory.`,
@@ -242,7 +252,9 @@ function readSquare(
  * read, which is what a reader that needs every spot (the browser's own blend,
  * the blend job) asks for. Reads are shared while in flight and kept after, per
  * `read` function. Every key the run declares is present in the answer, empty
- * when no square read carries it; a spot found in two squares is refused.
+ * when no square read carries it; a spot found in two squares is refused. The
+ * answer's records have no prototype, so a spot called `constructor` or
+ * `__proto__` is a spot like any other.
  */
 export async function loadSpotSquares<T extends SpotData = SpotData>(
   read: ReadJson,
@@ -260,20 +272,32 @@ export async function loadSpotSquares<T extends SpotData = SpotData>(
   const files = await Promise.all(
     wanted.map((square) => readSquare(read, pointerPath, manifest, square)),
   );
-  const merged: SpotData = {};
-  for (const key of index.keys) merged[key] = {};
+  const merged: SpotData = Object.create(null);
+  for (const key of index.keys) merged[key] = Object.create(null);
   for (const file of files)
     for (const key of index.keys) {
       const values = file[key];
       if (!values) continue;
-      const into = merged[key]!;
-      for (const [spot, value] of Object.entries(values)) {
-        if (spot in into)
-          throw new Error(`${spot} appears in two spot squares of ${key}.`);
-        into[spot] = value;
-      }
+      mergeSpots(merged[key]!, values, key);
     }
   return merged as T;
+}
+
+/**
+ * One square's records for a key added to those of the squares before it, in
+ * place. `into` must have no prototype (`Object.create(null)`); a spot already
+ * there is a run that does not hold together, and is refused.
+ */
+export function mergeSpots(
+  into: Record<string, unknown>,
+  values: Record<string, unknown>,
+  key: string,
+): void {
+  for (const [spot, value] of Object.entries(values)) {
+    if (Object.hasOwn(into, spot))
+      throw new Error(`${spot} appears in two spot squares of ${key}.`);
+    into[spot] = value;
+  }
 }
 
 /** The pointer with its spot data merged back in: the shape adapters build. */

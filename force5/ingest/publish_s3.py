@@ -66,8 +66,8 @@ import f5tile
 from prune import bucket_keys, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 import rundir
-from squares import (SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, check_base, load_spot_data, retire,
-                     run_path)
+from squares import (SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, catalogue_squares, check_base,
+                     check_square_places, load_spot_data, retire, run_path)
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
 MIN_HEIGHT_METRES = -1.0
@@ -243,9 +243,15 @@ def run_bundle(public, model, manifest):
         raise ValueError(f"Per-spot data belongs in the spot squares, not the pointer: {inline}")
     files = run_files(public, model, manifest)
     base = manifest["base"]
+    where = catalogue_squares()
 
     def read_json(path):
-        return json.loads(files[path[len(base):]])
+        document = json.loads(files[path[len(base):]])
+        # The file's own square, as its envelope names it; check_square holds that
+        # to the square it was asked for.
+        check_square_places(str(document.get("square")) if isinstance(document, dict)
+                            else "", document if isinstance(document, dict) else {}, where)
+        return document
 
     whole = {**manifest, **load_spot_data(manifest, read_json)}
     pointer = PurePosixPath(MANIFESTS[model]).parent

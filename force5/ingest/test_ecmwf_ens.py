@@ -13,7 +13,7 @@ import fetch_ecmwf_ens as ens
 from fetch_ecmwf_ens import average, decode_step, load_spots, main, parameter_sets, run_datetime
 from publish_s3 import publish, validate_ensemble
 from test_publish_s3 import FakeS3
-from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole
+from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole, use_catalogue
 
 PARAM_IDS = {"10u": 165, "10v": 166, "10fg": 49, "10fg3": 49, "10fg6": 49}
 
@@ -272,6 +272,7 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(asked[6]["param"], ["10u", "10v", "10fg"])
 
     def test_a_later_start_publishes_member_series_only(self):
+        use_catalogue(self, self.spots)
         manifest, client = self.refresh("--from-hour", "6")
         self.assertEqual(manifest["frames"], [])
         self.assertNotIn("stepRanges", manifest)

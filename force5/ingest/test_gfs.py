@@ -15,7 +15,7 @@ from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory,
                        main, object_key, run_datetime, validate_metadata)
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
-from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole
+from runfixtures import TINY_GRID, publish_whole, published_frame, read_whole, use_catalogue
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
 RUN = "2026091612"
@@ -308,6 +308,7 @@ class GfsTests(unittest.TestCase):
     def test_publishes_the_full_wind_contract_and_passes_the_publisher(self):
         spots = self.root / "spots.json"
         spots.write_text(json.dumps([{"id": "brandon", "lat": 54.1, "lon": -17.9}]))
+        use_catalogue(self, spots)
         now = datetime.now(timezone.utc)
         run = now.replace(minute=0, second=0, microsecond=0,
                           hour=now.hour // 6 * 6).strftime("%Y%m%d%H")

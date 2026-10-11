@@ -10,8 +10,11 @@ rather than by a second copy of it here. The frames stay where the test wrote
 them, so a test can spoil one and publish again.
 """
 import json
+import os
 from pathlib import Path
 import shutil
+import tempfile
+from unittest.mock import patch
 
 import f5bin
 import rundir
@@ -26,6 +29,25 @@ TINY_GRID = {"west": -11.0, "east": -10.5, "north": 56.0, "south": 55.6,
 def catalogue():
     """The committed riding locations: the coordinates most suites' spot ids have."""
     return json.loads(CATALOGUE.read_text())
+
+
+def use_catalogue(test, spots):
+    """Have the publisher place spots by a test's own catalogue, for the rest of the test.
+
+    The publisher checks every spot a square holds against the catalogue the
+    adapters sample (squares.catalogue_file, `FORCE5_SPOTS_FILE`), so a suite
+    that published with spots of its own validates with them too. `spots` is
+    the catalogue file, or the list of places to write to one.
+    """
+    if not isinstance(spots, (str, Path)):
+        directory = tempfile.TemporaryDirectory()
+        test.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "spots.json"
+        path.write_text(json.dumps(spots))
+        spots = path
+    patcher = patch.dict(os.environ, {"FORCE5_SPOTS_FILE": str(spots)})
+    patcher.start()
+    test.addCleanup(patcher.stop)
 
 
 def publish_whole(weather, pointer_name, manifest, spots=None, prefix=None):

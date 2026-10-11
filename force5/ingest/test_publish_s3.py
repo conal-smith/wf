@@ -149,8 +149,9 @@ class BundleFixture:
         self.build("2026091312")
         self.s3 = FakeS3()
 
-    def build(self, run, frame=None, whole=None, gusts=False):
-        """Write a run of this hour: `frame` and `whole` may change a frame or the manifest."""
+    def build(self, run, frame=None, whole=None, gusts=False, spots=SPOTS):
+        """Write a run of this hour: `frame` and `whole` may change a frame or the manifest,
+        and `spots` is the catalogue it is split into squares by."""
         prefix = f"harmonie-{run}-2h-v1"
         grid = dict(TINY_GRID)
         start = int(run[-2:])
@@ -176,7 +177,7 @@ class BundleFixture:
             manifest["gustAvailable"] = False
         manifest = whole(manifest) if whole else manifest
         self.manifest = rundir.write_run(self.root / "weather", "harmonie.json", manifest,
-                                         prefix, SPOTS)
+                                         prefix, spots)
         return self.manifest
 
     def save(self):
@@ -319,6 +320,19 @@ class PublishTests(BundleFixture, unittest.TestCase):
                 self.save()
                 with self.assertRaises(ValueError):
                     validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_spot_filed_in_a_square_the_catalogue_does_not_give_it_is_refused(self):
+        # Split by a catalogue that had Dollymount elsewhere: a reader looks in the
+        # square the catalogue names, and would never find it.
+        moved = [dict(SPOTS[0], lat=55.1), SPOTS[1]]
+        self.build("2026091312", spots=moved)
+        with self.assertRaisesRegex(ValueError, "catalogue puts in n52w008"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+        # By that catalogue it publishes.
+        catalogue = self.root / "moved.json"
+        catalogue.write_text(json.dumps(moved))
+        with patch.dict(os.environ, {"FORCE5_SPOTS_FILE": str(catalogue)}):
+            self.assertTrue(validate_bundle(self.root, "harmonie", now=self.now))
 
     def test_a_directory_whose_content_does_not_match_its_name_is_refused(self):
         path = self.root / "weather" / self.manifest["base"] / TILE.format(hour=1)

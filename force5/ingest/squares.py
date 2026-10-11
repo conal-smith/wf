@@ -23,10 +23,13 @@ Two halves, one per direction:
   reads a work directory, a bucket or a scratch copy.
 """
 from datetime import datetime, timedelta, timezone
+import json
 import math
-from pathlib import PurePosixPath
+import os
+from pathlib import Path, PurePosixPath
 import re
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SQUARE_DEGREES = 2
 SCHEMA_VERSION = 2
 # Every per-spot key a run manifest may carry. `spotCells` is Irish Shelf SWAN's
@@ -40,6 +43,8 @@ SQUARE_URL = "spots/{square}.json"
 SQUARE_NAME = re.compile(r"[ns]\d{2}[ew]\d{3}")
 # `<model>-<run>-<hours>h-v<N>-<hash8>/`, one path segment. rundir.py names it.
 RUN_DIRECTORY = re.compile(r"[a-z0-9][a-z0-9.-]*-[0-9a-f]{8}")
+# One segment of a path inside a run (`run_path`).
+RUN_PATH_SEGMENT = re.compile(r"[A-Za-z0-9_.-]+")
 # How long a pointer remembers the run directories it replaced (`superseded`),
 # and how many it names at most: longer than any grace the pruners are given, and
 # few enough that an hourly model's pointer grows by a few hundred bytes.
@@ -76,10 +81,17 @@ def check_base(base):
 
 
 def run_path(base, relative):
-    """A file of the run, relative to the pointer's directory. Never leaves `base`."""
+    """A file of the run, relative to the pointer's directory. Never leaves `base`.
+
+    Each segment is what the publisher writes (`t`, `000.bin`, `n52w010.json`)
+    and nothing a URL parser would read as something else: a browser resolves
+    `%2e%2e` as `..`, drops tabs and newlines, reads `\\` as `/` and stops at `?`
+    or `#`. The same rule as `checkRunPath` in force5/src/spotData.ts.
+    """
     path = PurePosixPath(str(relative))
     if not relative or path.is_absolute() or ".." in path.parts or "." in path.parts \
-            or str(relative) != str(path) or "\\" in str(relative):
+            or str(relative) != str(path) \
+            or not all(RUN_PATH_SEGMENT.fullmatch(part) for part in str(relative).split("/")):
         raise ValueError(f"Unusable path {relative!r} inside a run directory")
     return check_base(base) + str(path)
 
@@ -205,6 +217,56 @@ def split_spot_data(manifest, spots):
     pointer["spots"] = {"squareDegrees": SQUARE_DEGREES, "url": SQUARE_URL,
                         "squares": sorted(documents), "keys": keys}
     return pointer, documents
+
+
+def catalogue_file():
+    """The riding-place catalogue the adapters sample, by fetch_forecast.spots_file's rule.
+
+    `FORCE5_SPOTS_FILE`, else public/riding-locations.json, else the original
+    eight spots in public/spots.json. Here, without the adapters' imports, so
+    the publisher can place every spot it publishes (`check_square_places`).
+    """
+    configured = os.environ.get("FORCE5_SPOTS_FILE")
+    if configured:
+        return Path(configured)
+    preferred = PROJECT_ROOT / "public" / "riding-locations.json"
+    return preferred if preferred.exists() else PROJECT_ROOT / "public" / "spots.json"
+
+
+def catalogue_squares(path=None):
+    """{spot id: its square} for every place in the catalogue with coordinates.
+
+    Either catalogue shape is read: a list of places, or an object holding one
+    under `spots`, `locations` or `riding`, as fetch_ecmwf_ens.load_spots does.
+    """
+    data = json.loads(Path(path or catalogue_file()).read_text())
+    if isinstance(data, dict):
+        data = next((data[key] for key in ("spots", "locations", "riding")
+                     if isinstance(data.get(key), list)), [])
+    where = {}
+    for spot in data if isinstance(data, list) else []:
+        try:
+            where[str(spot["id"])] = spot_square(float(spot["lat"]), float(spot["lon"]))
+        except (KeyError, TypeError, ValueError):
+            continue  # A place that cannot be placed holds no spot data either.
+    return where
+
+
+def check_square_places(square, document, where):
+    """Every spot a square file holds is one the catalogue puts in that square.
+
+    A reader looks for a spot in the one square its own coordinates name, so a
+    spot filed under another square would be published and never found.
+    """
+    for key in SPOT_KEYS:
+        for spot in document.get(key) or {}:
+            placed = where.get(spot)
+            if placed is None:
+                raise ValueError(f"Spot square {square} holds {spot!r}, which the spot "
+                                 "catalogue does not have")
+            if placed != square:
+                raise ValueError(f"Spot square {square} holds {spot!r}, which the spot "
+                                 f"catalogue puts in {placed}")
 
 
 def check_square(manifest, square, document, keys):

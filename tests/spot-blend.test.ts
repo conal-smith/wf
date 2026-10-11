@@ -142,6 +142,38 @@ describe("the blend as a run of spot squares", () => {
     expect(loaded.spotBlend).toEqual({});
   });
 
+  it("refuses a place found in two squares, rather than keeping either", async () => {
+    // The loader reads a square at a time, so this is the only place the two
+    // could meet; it used to keep whichever square came last.
+    const [first, second] = squares;
+    const extra = files.get(`weather/${pointer.base}spots/${first}.json`).spotBlend;
+    const [place] = Object.keys(extra);
+    const read = async (path: string) => {
+      const file = structuredClone(files.get(path));
+      if (path.endsWith(`/${second}.json`))
+        file.spotBlend[place] = extra[place];
+      return file;
+    };
+    await expect(
+      loadBlendSquares(read, pointer, [first, second]),
+    ).rejects.toThrow(`${place} appears in two spot squares`);
+  });
+
+  it("keeps a place called __proto__ as a place", async () => {
+    const square = squares[0];
+    const path = `weather/${pointer.base}spots/${square}.json`;
+    const file = files.get(path);
+    const [place] = Object.keys(file.spotBlend);
+    const read = async () =>
+      JSON.parse(
+        JSON.stringify(file).replace(`"${place}":`, '"__proto__":'),
+      );
+    const loaded = await loadBlendSquares(read, pointer, [square]);
+    expect(Object.hasOwn(loaded.spotBlend, "__proto__")).toBe(true);
+    expect(loaded.spotBlend["__proto__"]).toEqual(file.spotBlend[place]);
+    expect(Object.getPrototypeOf(loaded.spotBlend)).toBeNull();
+  });
+
   it("lives where the site reads it", () => {
     expect(SPOT_BLEND_PATH).toBe("weather/blend.json");
   });

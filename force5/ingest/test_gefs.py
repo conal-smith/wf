@@ -20,7 +20,7 @@ from fetch_gfs import index_ranges
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
-from runfixtures import published_frame, read_whole
+from runfixtures import published_frame, read_whole, use_catalogue
 
 NOW = datetime(2026, 9, 16, 23, 40, tzinfo=timezone.utc)
 RUN = "2026091618"
@@ -52,6 +52,7 @@ class GefsTests(unittest.TestCase):
         self.spots.write_text(json.dumps([
             {"id": "brandon", "name": "Brandon Bay", "lat": 54.1, "lon": -17.9},
             {"id": "offgrid", "name": "Elsewhere", "lat": 10.0, "lon": 10.0}]))
+        use_catalogue(self, self.spots)
 
     def message(self, member, hour, field, run=RUN, changes=None):
         """One GEFS member message shaped like the cropped pgrb2sp25 product."""

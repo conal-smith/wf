@@ -23,7 +23,7 @@ from fetch_icon_weather import (DIRECTORIES, VARIABLES, convert, decode, derive_
                                main, parse_args, sample_variable, validate_metadata)
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
-from runfixtures import read_whole
+from runfixtures import read_whole, use_catalogue
 
 RUN = "2026091618"
 HOUR = 3
@@ -293,6 +293,7 @@ class BundleTests(unittest.TestCase):
         # brandon sits in the north-west cell of the fake crop; faraway is off it.
         self.spots.write_text(json.dumps([{"id": "brandon", "lat": 54.24, "lon": -17.99},
                                           {"id": "faraway", "lat": 40.0, "lon": 20.0}]))
+        use_catalogue(self, self.spots)
         now = datetime.now(timezone.utc)
         self.run = now.replace(minute=0, second=0, microsecond=0,
                                hour=now.hour // 6 * 6).strftime("%Y%m%d%H")

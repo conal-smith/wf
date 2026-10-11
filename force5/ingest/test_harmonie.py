@@ -15,7 +15,7 @@ from fetch_harmonie import extract, has_gust, gust_window, main, GUST_FIELDS, PA
 from fetch_forecast import write_json
 from registry import UNCHANGED_EXIT
 from publish_s3 import validate_bundle
-from runfixtures import published_frame, read_whole
+from runfixtures import published_frame, read_whole, use_catalogue
 
 # Recorded from the live control run 2026091620 +3h, whose full-domain export
 # carries the scalar gust (parameter 22) beside its components (23/24):
@@ -210,6 +210,7 @@ class HarmonieTests(unittest.TestCase):
         root = Path(directory.name)
         write_json(root / "public/spots.json",
                    [{"id": "brandon", "lon": -10.0, "lat": 52.25}])
+        use_catalogue(self, root / "public/spots.json")
         names = {h: f"fc2026091312+{h:03d}CONTROL_grib2_ieIoI" for h in (0, 3, 6)}
         for name in names.values():
             (root / name).write_bytes(name.encode())

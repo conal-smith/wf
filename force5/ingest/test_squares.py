@@ -8,9 +8,11 @@ the `superseded` list a pointer carries to both writers of pointers likewise.
 import copy
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import f5bin
 import f5tile
@@ -178,9 +180,34 @@ class SplitTests(unittest.TestCase):
         base = "harmonie-2026091312-2h-v1-0a0b0c0d/"
         self.assertEqual(squares.run_path(base, "frames/000.bin"), base + "frames/000.bin")
         for relative in ("", "../x", "frames/../../x", "/etc/passwd", "./frames/000.bin",
-                         "frames//000.bin", "frames\\000.bin"):
+                         "frames//000.bin", "frames\\000.bin",
+                         # What a browser would read as something else: an encoded
+                         # `..` or `/`, a tab or newline it drops, a query, a fragment.
+                         "%2e%2e/x", "frames/%2E%2E/%2e%2e/x", "frames%2F000.bin",
+                         "frames/.\t./x", "frames/000.bin?x", "frames/000.bin#x",
+                         "frames/0 0.bin", "frames/ü.bin"):
             with self.subTest(relative=relative), self.assertRaises(ValueError):
                 squares.run_path(base, relative)
+
+    def test_the_catalogue_is_found_as_the_adapters_find_it(self):
+        import fetch_forecast
+        self.assertEqual(squares.catalogue_file(), fetch_forecast.spots_file())
+        with patch.dict(os.environ, {"FORCE5_SPOTS_FILE": "/somewhere/else.json"}):
+            self.assertEqual(squares.catalogue_file(), fetch_forecast.spots_file())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "spots.json"
+            path.write_text(json.dumps({"spots": SPOTS + [{"id": "nowhere", "lat": None}]}))
+            self.assertEqual(squares.catalogue_squares(path),
+                             {spot["id"]: spot_square(spot["lat"], spot["lon"])
+                              for spot in SPOTS})
+
+    def test_a_square_may_hold_only_the_spots_the_catalogue_puts_in_it(self):
+        where = {spot["id"]: spot_square(spot["lat"], spot["lon"]) for spot in SPOTS}
+        squares.check_square_places("n52w008", {"spotForecasts": {"dollymount": []}}, where)
+        for document, message in (({"spotForecasts": {"brandon": []}}, "puts in n52w012"),
+                                  ({"spotMembers": {"nowhere": []}}, "does not have")):
+            with self.subTest(message), self.assertRaisesRegex(ValueError, message):
+                squares.check_square_places("n52w008", document, where)
 
 
 # A small grid on the lattice whose native level straddles two tiles (global

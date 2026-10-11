@@ -153,25 +153,26 @@ export function useBlendSquares(
     if (!blend || key === null) return;
     let current = true;
     let timer = 0;
-    void loadBlendSquares(
-      readForecastJson,
-      blend,
-      key ? key.split(",") : [],
-    ).then((loaded) => {
-      if (!current) return;
-      setState({ pointer: blend, key, loaded });
-      if (!loaded.failed.length) return;
-      if (rechecked.current !== blend) {
-        rechecked.current = blend;
-        recheckNow.current();
-      }
-      const wait = SQUARE_RETRY_MS[attempt];
-      if (wait !== undefined)
-        timer = window.setTimeout(
-          () => setRetry({ pointer: blend, key, attempt: attempt + 1 }),
-          wait,
-        );
-    });
+    const wanted = key ? key.split(",") : [];
+    void loadBlendSquares(readForecastJson, blend, wanted)
+      // A blend whose squares do not hold together (a place in two of them) is
+      // as good as none: every square failed, and the browser works it out.
+      .catch(() => ({ ...blend, spotBlend: {}, loaded: [], failed: wanted }))
+      .then((loaded) => {
+        if (!current) return;
+        setState({ pointer: blend, key, loaded });
+        if (!loaded.failed.length) return;
+        if (rechecked.current !== blend) {
+          rechecked.current = blend;
+          recheckNow.current();
+        }
+        const wait = SQUARE_RETRY_MS[attempt];
+        if (wait !== undefined)
+          timer = window.setTimeout(
+            () => setRetry({ pointer: blend, key, attempt: attempt + 1 }),
+            wait,
+          );
+      });
     return () => {
       current = false;
       window.clearTimeout(timer);

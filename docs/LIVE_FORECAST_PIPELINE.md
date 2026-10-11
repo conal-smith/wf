@@ -1051,7 +1051,12 @@ forecast checks its per-spot data as read back from its squares:
 All adapters precompute their spot series for every place in
 `public/riding-locations.json`, so a browser chart never has to download grid frames.
 Regenerate that file with `npm run spots:export`. The same catalogue gives each spot
-its square; a spot a manifest names that the catalogue does not is refused.
+its square; a spot a manifest names that the catalogue does not is refused. The
+publisher checks it again: it reads the catalogue by the adapters' rule
+(`squares.catalogue_file`: `FORCE5_SPOTS_FILE`, else `public/riding-locations.json`,
+else `public/spots.json`) and refuses a run whose square files hold a spot the
+catalogue does not have, or puts in another square, since a reader looks for a spot in
+the one square its own coordinates name and would never find it.
 
 The ENS prefix records the horizon and member count, so changing either publishes a
 new run directory instead of colliding with the previous one. Its members, which made
@@ -1062,7 +1067,7 @@ Keep the importer-generated paths intact. Optional `S3_PREFIX` goes before `weat
 
 The publisher:
 
-1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
+1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, a spot filed in a square the catalogue does not give it, mixed model/run/time/grid identities, unsafe paths (a path inside a run is segments of `A–Z a–z 0–9 _ . -` only, never `.` or `..`, so no percent-encoding, whitespace, `?`, `#` or `\` a browser would read as something else; the browser's `checkRunPath` holds the same rule) and stale/expired runs.
 2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` tiles and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
 3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. The pointer it writes names the run directory the replaced pointer named, if it is not this one, under `superseded` with the time of the swap; nothing is deleted. Then it lists its own run directory once and puts back anything a sweep removed between its uploads and the swap (a republish that reused a directory superseded long ago).
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
