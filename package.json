@@ -33,6 +33,8 @@
     "market:db": "docker compose -f market/docker-compose.yml up -d",
     "market:shots": "MARKET_SHOTS=1 playwright test --project=market-shots",
     "test:weather": ".venv/bin/python -m unittest discover -s force5/ingest -p 'test_*.py'",
+    "test:monitor": "python3 -m unittest discover -s scripts/release -p 'test_*.py'",
+    "monitor": "python3 scripts/release/monitor.py check --base https://data.wingfoil.ie/",
     "weather:sample": "node scripts/sample-weather.mjs --all",
     "weather:fixtures": "node scripts/sample-weather.mjs --out tests/fixtures/weather --force",
     "weather:refresh": ".venv/bin/python force5/ingest/fetch_forecast.py",

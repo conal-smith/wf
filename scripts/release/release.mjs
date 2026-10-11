@@ -6,14 +6,19 @@
  *   notes OUT                  release notes: the commits since the last of its kind
  *   configure-site DIR URL     point a built site at an environment's forecast data
  *   prune-nightlies [KEEP]     delete all but the newest KEEP nightly releases
+ *   record-staged OUT          staged.json: what staging tested, for a later promote
+ *   verify-staged              the downloaded staged build is exactly what staging tested
  *
- * Main feeds a nightly; a release promotes what a nightly already built. Both
- * are tags on this repository:
+ * Main feeds a nightly; a release stages what a nightly already built, and a
+ * promote puts what staging tested into production. All three are tags on this
+ * repository:
  *
  *   v2026.10.10-nightly.42     a nightly of main's head, built and accepted
- *   v2026.10.10                a release: the same commit and the same image
- *                              digests as the nightly it promoted, through
- *                              staging and into production
+ *   v2026.10.11-rc.57          a nightly that passed staging (the workflow run's
+ *                              number): its commit, digests and site, waiting for
+ *                              someone to look at staging and promote it
+ *   v2026.10.11                a release: the same commit, image digests and site
+ *                              build as the staged candidate it promoted
  *
  * Versions are dates (UTC), not semver: the forecast is a service, not a library,
  * and its commits are not Conventional Commits. A second release on one day is
@@ -21,14 +26,20 @@
  * tests/release.test.ts; the commands below only read git and the environment.
  */
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 export const NIGHTLY_TAG = /^v(\d{4})\.(\d{2})\.(\d{2})-nightly\.(\d+)$/;
+export const STAGED_TAG = /^v(\d{4})\.(\d{2})\.(\d{2})-rc\.(\d+)$/;
 export const RELEASE_TAG = /^v(\d{4})\.(\d{2})\.(\d{2})(?:\.(\d+))?$/;
 export const FORECAST_BASE_META = "wingfoil:forecast-base";
+/** The job in release.yml that stages a build; promote asks GitHub how it ended. */
+export const STAGING_JOB = "Staging";
+/** The files a staged candidate carries, and the release after it. */
+export const STAGED_FILES = ["images.json", "site.tar.gz"];
 
 /** 2026.10.10, in UTC: the date a run starts is the date it is named for. */
 export function dateStamp(now) {
@@ -41,6 +52,16 @@ export function nightlyVersion(now, runNumber) {
   return `${dateStamp(now)}-nightly.${runNumber}`;
 }
 
+/**
+ * A staged candidate is named for the day and the workflow run that staged it.
+ * The run number, not a daily counter: a staging that fails leaves no tag, and a
+ * counter would hand its number -- and its image tag -- to the next attempt.
+ */
+export function stagedVersion(now, runNumber) {
+  if (!/^\d+$/.test(String(runNumber))) throw new Error(`Not a run number: ${runNumber}`);
+  return `${dateStamp(now)}-rc.${runNumber}`;
+}
+
 /** Today's date, or today's date and the next free counter if today already shipped. */
 export function releaseVersion(now, tags) {
   const day = dateStamp(now);
@@ -49,10 +70,12 @@ export function releaseVersion(now, tags) {
   for (let n = 2; ; n += 1) if (!taken.has(`v${day}.${n}`)) return `${day}.${n}`;
 }
 
-function nightlyKey(tag) {
-  const [, y, m, d, run] = tag.match(NIGHTLY_TAG);
+const runKey = (pattern) => (tag) => {
+  const [, y, m, d, run] = tag.match(pattern);
   return [Number(`${y}${m}${d}`), Number(run)];
-}
+};
+const nightlyKey = runKey(NIGHTLY_TAG);
+const stagedKey = runKey(STAGED_TAG);
 
 function releaseKey(tag) {
   const [, y, m, d, n] = tag.match(RELEASE_TAG);
@@ -71,6 +94,8 @@ function newest(tags, pattern, key) {
 
 /** Nightly tags, newest first. */
 export const nightliesNewestFirst = (tags) => newest(tags, NIGHTLY_TAG, nightlyKey);
+/** Staged candidates, newest first. */
+export const stagedNewestFirst = (tags) => newest(tags, STAGED_TAG, stagedKey);
 /** Release tags, newest first. */
 export const releasesNewestFirst = (tags) => newest(tags, RELEASE_TAG, releaseKey);
 
@@ -98,6 +123,102 @@ export function promotionCheck({ nightly, releasedAt }) {
   if (!nightly) throw new Error("There is no nightly to promote: run a nightly first.");
   if (releasedAt)
     throw new Error(`${nightly.tag}'s commit ${nightly.commit.slice(0, 12)} is already released as ${releasedAt}.`);
+}
+
+/**
+ * Production only moves forward: what it runs must be part of what replaces it.
+ *
+ * The rule is ancestry, not dates. Production's commit must be an ancestor of
+ * the candidate's, so every change production has is still in the candidate.
+ * A date test would let through an older nightly staged after a newer one
+ * shipped, or a nightly of a main rewritten since, and both take changes back
+ * out of production. Rolling back is a revert through the train (or re-tagging
+ * an earlier digest by hand), never a promote. No release yet: anything goes.
+ */
+export function aheadOfProduction({ candidate, production, containsProduction }) {
+  if (!production) return;
+  if (!containsProduction)
+    throw new Error(
+      `${candidate.tag} (${candidate.commit.slice(0, 12)}) does not contain ${production.tag} ` +
+        `(${production.commit.slice(0, 12)}), which production runs: it is older, or from history ` +
+        "rewritten since. Production only moves forward; ship a revert through the train to go back.",
+    );
+}
+
+/** How the job that staged a candidate ended, as GitHub's jobs API reports it. */
+export function stagingPassed(job) {
+  return Boolean(job && job.status === "completed" && job.conclusion === "success");
+}
+
+/**
+ * Whether a staged candidate may go to production. Refused: nothing staged; a
+ * record that does not match its tag; a staging job that did not pass (or has
+ * not finished); a commit already released; a candidate that does not contain
+ * what production runs; and a site that would be deployed to production
+ * without ever having been deployed to staging.
+ */
+export function promoteCheck({ candidate, staged, stagingJob, releasedAt, production, containsProduction, pagesProject }) {
+  if (!candidate) throw new Error("Nothing has been staged: dispatch a release first.");
+  if (!staged || staged.tag !== candidate.tag || staged.commit !== candidate.commit)
+    throw new Error(
+      `${candidate.tag}'s staged.json does not describe it (tag ${staged?.tag}, commit ${staged?.commit}); ` +
+        `the tag is on ${candidate.commit.slice(0, 12)}.`,
+    );
+  if (!stagingJob)
+    throw new Error(`${candidate.tag}: run ${staged.staging?.runId} has no ${STAGING_JOB} job to vouch for it.`);
+  if (!stagingPassed(stagingJob))
+    throw new Error(
+      `${candidate.tag} did not pass staging: its ${STAGING_JOB} job in run ${staged.staging?.runId} is ` +
+        `${stagingJob.status}${stagingJob.conclusion ? ` (${stagingJob.conclusion})` : ""}.`,
+    );
+  if (releasedAt)
+    throw new Error(`${candidate.tag}'s commit ${candidate.commit.slice(0, 12)} is already released as ${releasedAt}.`);
+  aheadOfProduction({ candidate, production, containsProduction });
+  if (pagesProject && !staged.staging?.siteDeployed)
+    throw new Error(
+      `${candidate.tag} was staged without a site deployment, so nobody has looked at its site on staging. ` +
+        "Stage it again now that Cloudflare Pages is set up.",
+    );
+}
+
+/** staged.json: everything promote needs to put exactly this build in production. */
+export function stagedRecord({ tag, version, nightlyTag, commit, images, sha256, runId, runAttempt, siteDeployed, siteUrl, forecastBase, at }) {
+  if (!STAGED_TAG.test(tag)) throw new Error(`Not a staged tag: ${tag}`);
+  if (images?.commit !== commit) throw new Error(`images.json is for ${images?.commit}, not ${commit}`);
+  for (const file of STAGED_FILES)
+    if (!/^[0-9a-f]{64}$/.test(sha256?.[file] ?? "")) throw new Error(`No sha256 for ${file}`);
+  return {
+    schemaVersion: 1,
+    tag,
+    version,
+    nightly: nightlyTag,
+    commit,
+    images: images.images,
+    sha256,
+    staging: {
+      job: STAGING_JOB,
+      runId: String(runId),
+      runAttempt: Number(runAttempt || 1),
+      siteDeployed: Boolean(siteDeployed),
+      siteUrl: siteDeployed ? siteUrl || "" : "",
+      forecastBase: siteDeployed ? forecastBase || "" : "",
+    },
+    stagedAt: at,
+  };
+}
+
+/** The files downloaded from a staged candidate are byte for byte what staging tested. */
+export function verifyStaged({ staged, tag, ref, images, sha256 }) {
+  const problems = [];
+  if (staged.tag !== tag) problems.push(`staged.json is for ${staged.tag}, not ${tag}`);
+  if (staged.commit !== ref) problems.push(`staged.json is for commit ${staged.commit}, not ${ref}`);
+  if (images.commit !== ref) problems.push(`images.json is for commit ${images.commit}, not ${ref}`);
+  for (const file of STAGED_FILES)
+    if (staged.sha256?.[file] !== sha256[file])
+      problems.push(`${file} is not the file staging tested (sha256 ${sha256[file]}, staged ${staged.sha256?.[file]})`);
+  for (const [name, digest] of Object.entries(staged.images ?? {}))
+    if (images.images?.[name] !== digest) problems.push(`the ${name} image is not the digest staging tested`);
+  if (problems.length) throw new Error(`Refusing to promote ${tag}: ${problems.join("; ")}.`);
 }
 
 /** The same build, pointed at one environment's data: a meta tag in index.html. */
@@ -168,17 +289,24 @@ function resolve() {
     });
   }
 
+  const released = releasesNewestFirst(tags);
+  const production = released[0] ? { tag: released[0], commit: commitOf(released[0]) } : null;
+  const releasedAt = (commit) => released.find((t) => commitOf(t) === commit);
+  const containsProduction = (commit) =>
+    production ? gitOk("merge-base", "--is-ancestor", production.commit, commit) : true;
+
+  // Stage a nightly: staging only. What it tested becomes a candidate to promote.
   if (channel === "release") {
     const wanted = (env.DISPATCH_NIGHTLY || "").trim();
     if (wanted && !NIGHTLY_TAG.test(wanted)) throw new Error(`Not a nightly tag: ${wanted}`);
     const tag = wanted || nightliesNewestFirst(tags)[0];
     if (wanted && !tags.includes(wanted)) throw new Error(`No such nightly: ${wanted}`);
     const nightly = tag ? { tag, commit: commitOf(tag) } : null;
-    const released = releasesNewestFirst(tags);
-    const releasedAt = nightly ? released.find((t) => commitOf(t) === nightly.commit) : undefined;
-    promotionCheck({ nightly, releasedAt });
-    const version = releaseVersion(now, tags);
-    console.error(`Promoting ${nightly.tag} (${nightly.commit.slice(0, 12)}) as v${version}.`);
+    promotionCheck({ nightly, releasedAt: nightly ? releasedAt(nightly.commit) : undefined });
+    // Refused now rather than at promote, after half an hour of staging.
+    aheadOfProduction({ candidate: nightly, production, containsProduction: containsProduction(nightly.commit) });
+    const version = stagedVersion(now, env.RUN_NUMBER);
+    console.error(`Staging ${nightly.tag} (${nightly.commit.slice(0, 12)}) as v${version}.`);
     return output({
       should_build: true,
       channel,
@@ -186,6 +314,57 @@ function resolve() {
       tag: `v${version}`,
       ref: nightly.commit,
       nightly_tag: nightly.tag,
+      staged_tag: "",
+      previous_tag: released[0] ?? "",
+    });
+  }
+
+  // Promote what staging tested: production only.
+  if (channel === "promote") {
+    const wanted = (env.DISPATCH_STAGED || "").trim();
+    if (wanted && !STAGED_TAG.test(wanted)) throw new Error(`Not a staged tag: ${wanted}`);
+    if (wanted && !tags.includes(wanted)) throw new Error(`No such staged candidate: ${wanted}`);
+    let chosen = null;
+    if (wanted) chosen = describeStaged(wanted);
+    else {
+      // The newest candidate whose staging passed. A candidate only exists once
+      // its staging job reached its last step, so skipping one is rare and said.
+      const skipped = [];
+      for (const tag of stagedNewestFirst(tags).slice(0, 10)) {
+        const described = describeStaged(tag);
+        if (stagingPassed(described.stagingJob)) {
+          chosen = described;
+          break;
+        }
+        skipped.push(tag);
+        console.error(`Skipping ${tag}: ${described.error ?? "its staging job did not pass"}.`);
+      }
+      if (!chosen && skipped.length)
+        throw new Error(`No staged candidate passed staging (tried ${skipped.join(", ")}): dispatch a release.`);
+    }
+    if (chosen?.error) throw new Error(`${chosen.candidate.tag}: ${chosen.error}`);
+    const candidate = chosen?.candidate ?? null;
+    promoteCheck({
+      candidate,
+      staged: chosen?.staged,
+      stagingJob: chosen?.stagingJob,
+      releasedAt: candidate ? releasedAt(candidate.commit) : undefined,
+      production,
+      containsProduction: candidate ? containsProduction(candidate.commit) : false,
+      pagesProject: env.PAGES_PROJECT || "",
+    });
+    const version = releaseVersion(now, tags);
+    console.error(
+      `Promoting ${candidate.tag} (${candidate.commit.slice(0, 12)}, staged from ${chosen.staged.nightly}) as v${version}.`,
+    );
+    return output({
+      should_build: true,
+      channel,
+      version,
+      tag: `v${version}`,
+      ref: candidate.commit,
+      nightly_tag: chosen.staged.nightly ?? "",
+      staged_tag: candidate.tag,
       previous_tag: released[0] ?? "",
     });
   }
@@ -193,13 +372,51 @@ function resolve() {
   throw new Error(`Unknown channel: ${channel}`);
 }
 
+// --- GitHub: a staged candidate's record and the job that staged it -------------
+
+const gh = (...args) => execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+/** A candidate, its staged.json and its staging job, or the reason one is missing. */
+function describeStaged(tag) {
+  const candidate = { tag, commit: commitOf(tag) };
+  const repo = process.env.GITHUB_REPOSITORY;
+  let staged;
+  try {
+    staged = JSON.parse(gh("release", "download", tag, "--repo", repo, "-p", "staged.json", "-O", "-"));
+  } catch (error) {
+    return { candidate, error: `no readable staged.json on its release (${String(error.message).split("\n")[0]})` };
+  }
+  const { runId, runAttempt } = staged.staging ?? {};
+  if (!/^\d+$/.test(String(runId ?? "")))
+    return { candidate, staged, error: "its staged.json names no staging run" };
+  let jobs;
+  try {
+    jobs = JSON.parse(
+      gh("api", `repos/${repo}/actions/runs/${runId}/attempts/${Number(runAttempt) || 1}/jobs?per_page=100`),
+    ).jobs;
+  } catch (error) {
+    return { candidate, staged, error: `could not read staging run ${runId} (${String(error.message).split("\n")[0]})` };
+  }
+  return { candidate, staged, stagingJob: jobs.find((job) => job.name === STAGING_JOB) };
+}
+
 function notes(out) {
-  const { REF: ref, PREVIOUS_TAG: previous, NIGHTLY_TAG: nightly, IMAGES_JSON: images } = process.env;
+  const { REF: ref, PREVIOUS_TAG: previous, NIGHTLY_TAG: nightly, STAGED_TAG: staged, IMAGES_JSON: images } = process.env;
   const range = previous ? `${previous}..${ref}` : ref;
   const limit = previous ? [] : ["-n", "30"];
   const commits = git("log", "--no-merges", "--format=- %s (%h)", ...limit, range);
   const lines = [];
-  if (nightly) lines.push(`Promotes ${nightly}: the same commit and the same image digests.`, "");
+  if (staged)
+    lines.push(
+      `Promotes ${staged}${nightly ? `, staged from ${nightly}` : ""}: the same commit, image digests and site build staging tested.`,
+      "",
+    );
+  else if (nightly)
+    lines.push(
+      `Stages ${nightly}: the same commit and the same image digests, tested on staging. ` +
+        "Look at staging, then *Run workflow → promote* puts exactly this in production.",
+      "",
+    );
   if (images) {
     const { images: built } = JSON.parse(readFileSync(images, "utf8"));
     lines.push("## Images", "", ...Object.entries(built).map(([name, ref]) => `- ${name}: \`${ref}\``), "");
@@ -233,13 +450,55 @@ async function pruneNightlies(keep) {
   }
 }
 
+const sha256Of = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
+const readJson = (file) => JSON.parse(readFileSync(file, "utf8"));
+
+/** Run beside images.json and site.tar.gz, at the end of a staging that passed. */
+function recordStaged(out) {
+  const env = process.env;
+  const record = stagedRecord({
+    tag: env.TAG,
+    version: env.VERSION,
+    nightlyTag: env.NIGHTLY_TAG,
+    commit: env.REF,
+    images: readJson("images.json"),
+    sha256: Object.fromEntries(STAGED_FILES.map((file) => [file, sha256Of(file)])),
+    runId: env.GITHUB_RUN_ID,
+    runAttempt: env.GITHUB_RUN_ATTEMPT,
+    siteDeployed: env.SITE_DEPLOYED === "true",
+    siteUrl: env.SITE_URL,
+    forecastBase: env.FORECAST_BASE,
+    at: new Date().toISOString(),
+  });
+  writeFileSync(out, `${JSON.stringify(record, null, 2)}\n`);
+  console.log(JSON.stringify(record, null, 2));
+}
+
+/** Run beside the files downloaded from a staged candidate, before anything moves. */
+function verifyStagedFiles() {
+  const { STAGED_TAG: tag, REF: ref } = process.env;
+  verifyStaged({
+    staged: readJson("staged.json"),
+    tag,
+    ref,
+    images: readJson("images.json"),
+    sha256: Object.fromEntries(STAGED_FILES.map((file) => [file, sha256Of(file)])),
+  });
+  console.log(`${tag}: images.json and site.tar.gz are the files staging tested, for ${ref}.`);
+}
+
 async function main(argv) {
   const [command, ...args] = argv;
   if (command === "resolve") return resolve();
   if (command === "notes") return notes(args[0] ?? "release-notes.md");
   if (command === "configure-site") return configureSite(args[0], args[1]);
   if (command === "prune-nightlies") return pruneNightlies(Number(args[0] ?? 7));
-  throw new Error(`Usage: release.mjs resolve | notes OUT | configure-site DIR URL | prune-nightlies [KEEP]`);
+  if (command === "record-staged") return recordStaged(args[0] ?? "staged.json");
+  if (command === "verify-staged") return verifyStagedFiles();
+  throw new Error(
+    "Usage: release.mjs resolve | notes OUT | configure-site DIR URL | prune-nightlies [KEEP] | " +
+      "record-staged OUT | verify-staged",
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url))

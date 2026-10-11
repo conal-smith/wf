@@ -1,0 +1,61 @@
+name: Production monitor
+
+# Every two hours: is what production serves at PRODUCTION_FORECAST_BASE_URL
+# fresh and whole? scripts/release/monitor.py checks each live model's pointer
+# (schema, age against registry.py's limit, coverage), HEADs the spot squares and
+# a sample of tiles it names, checks cache and encoding headers, and -- once
+# MONITOR_SITE_URL is set -- that the site names this data domain and may read it.
+#
+# A problem fails the run and opens (or, when the problems change, comments on)
+# the one "Production monitor: forecast data problem" issue, labelled `monitor`;
+# the first clean run closes it. docs/RELEASES.md, "The production monitor".
+#
+# One job, the runner's own python3, no installs: a few seconds of work, one
+# billed minute a run, about 360 a month.
+on:
+  schedule:
+    - cron: "41 */2 * * *"
+  workflow_dispatch:
+
+# A dispatched run and a scheduled one queue rather than both touch the issue.
+concurrency:
+  group: production-monitor
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  monitor:
+    name: Forecast data
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # Only what the monitor reads: itself, the registry, the timetable and the
+      # site's model catalogue.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/release/monitor.py
+            force5/ingest/registry.py
+            force5/ingest/squares.py
+            force5/src/catalog.ts
+            deploy/local/jobs.toml
+      - name: Check production
+        env:
+          DATA_BASE_URL: ${{ vars.PRODUCTION_FORECAST_BASE_URL }}
+          SITE_URL: ${{ vars.MONITOR_SITE_URL }}
+        run: |
+          python3 scripts/release/monitor.py check --base "$DATA_BASE_URL" --site "$SITE_URL" \
+            --json "$RUNNER_TEMP/monitor.json" --summary "$GITHUB_STEP_SUMMARY"
+      # Also after a failed check: that is when there is something to say. With
+      # no result at all (the check crashed) it reports that instead.
+      - name: Open, update or close the issue
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/monitor.py issue "$RUNNER_TEMP/monitor.json"
