@@ -4,7 +4,13 @@
 // instead of hiding future work.
 import { takeEarly } from "./boot";
 import { liveModels, requireModel, type ModelEntry } from "./catalog";
-import { loadSpotSquares, type ReadJson } from "./spotData";
+import {
+  checkSpotIndex,
+  loadSpotSquares,
+  mergeSpots,
+  type ReadJson,
+  type SpotData,
+} from "./spotData";
 import { forecastUrl } from "./urls";
 import {
   validateWeatherManifest,
@@ -227,6 +233,11 @@ export interface ModelAvailability {
   available: boolean;
   /** Why it is unavailable, for a tooltip; never thrown at the caller. */
   error: string | null;
+  /**
+   * Set by `withSpots`: squares asked for, and listed by the run, whose spot
+   * data could not be read. A place in one of them is unknown for this model.
+   */
+  unread?: readonly string[];
 }
 
 /**
@@ -285,45 +296,120 @@ export const readForecastJson: ReadJson = async (path) => {
   return response.json();
 };
 
-/** Each manifest's spot data per set of squares, read and checked once. */
-const withSquares = new WeakMap<object, Map<string, Promise<AnyManifest>>>();
+/** A manifest with the spot data of the squares that could be read merged in. */
+export interface SpotsRead<M> {
+  manifest: M;
+  /** Squares asked for, and listed by the run, that were read. */
+  loaded: string[];
+  /** Squares asked for, and listed by the run, that could not be read. */
+  unread: string[];
+  /** Why, one per unread square, in the same order. */
+  errors: unknown[];
+}
+
+/**
+ * How many sets of squares each manifest keeps merged. A reader asks for a
+ * handful (the lights in view, the dock's spot, the panel's), and each pan
+ * asks for another: the oldest set read goes first.
+ */
+export const SPOT_SETS_PER_RUN = 8;
+const withSquares = new WeakMap<
+  object,
+  Map<string, Promise<SpotsRead<AnyManifest>>>
+>();
+
+/** The run's spot data for `squares`, each square on its own: none fails another. */
+async function readSpots<M extends AnyManifest>(
+  manifest: M,
+  squares?: readonly string[],
+): Promise<SpotsRead<M>> {
+  const index = checkSpotIndex(manifest.spots);
+  const listed = new Set(index.squares);
+  const wanted =
+    squares === undefined
+      ? index.squares
+      : [...new Set(squares)].filter((square) => listed.has(square)).sort();
+  const results = await Promise.allSettled(
+    wanted.map((square) =>
+      loadSpotSquares(readForecastJson, manifestPath(manifest), manifest, [
+        square,
+      ]),
+    ),
+  );
+  const data: SpotData = Object.create(null);
+  for (const key of index.keys) data[key] = Object.create(null);
+  const loaded: string[] = [];
+  const unread: string[] = [];
+  const errors: unknown[] = [];
+  results.forEach((result, at) => {
+    if (result.status === "rejected") {
+      unread.push(wanted[at]);
+      errors.push(result.reason);
+      return;
+    }
+    loaded.push(wanted[at]);
+    // A spot in two squares is a run that does not hold together: it rejects.
+    for (const key of index.keys)
+      if (result.value[key]) mergeSpots(data[key]!, result.value[key]!, key);
+  });
+  const whole = { ...manifest, ...data } as AnyManifest;
+  const checked = (
+    isWaveManifest(whole)
+      ? validateWaveSpots(whole)
+      : isWeatherManifest(whole)
+        ? validateWeatherSpots(whole)
+        : validateWindSpots(whole)
+  ) as M;
+  return { manifest: checked, loaded, unread, errors };
+}
 
 /**
  * A manifest with the spot data of `squares` merged in — every square the run
  * lists when `squares` is omitted — and checked by its kind, as the whole
- * manifest used to be checked when it carried every spot itself. The squares
- * come through the shared loader, so a square two readers want is read once.
+ * manifest used to be checked when it carried every spot itself, with the
+ * squares that could not be read named rather than failing the rest. The
+ * squares come through the shared loader, so a square two readers want is read
+ * once. An answer with every square in is kept, for the last
+ * `SPOT_SETS_PER_RUN` sets asked of the manifest; one with a square missing is
+ * not, so the next ask reads that square again.
  */
-export function loadSpots<M extends AnyManifest>(
+export function loadSpotsSettled<M extends AnyManifest>(
   manifest: M,
   squares?: readonly string[],
-): Promise<M> {
+): Promise<SpotsRead<M>> {
   const key = squares === undefined ? "*" : [...squares].sort().join(",");
   let byManifest = withSquares.get(manifest);
   if (!byManifest) withSquares.set(manifest, (byManifest = new Map()));
-  const hit = byManifest.get(key);
-  if (hit) return hit as Promise<M>;
-  const loading = loadSpotSquares(
-    readForecastJson,
-    manifestPath(manifest),
-    manifest,
-    squares,
-  ).then((data) => {
-    const whole = { ...manifest, ...data } as AnyManifest;
-    return (
-      isWaveManifest(whole)
-        ? validateWaveSpots(whole)
-        : isWeatherManifest(whole)
-          ? validateWeatherSpots(whole)
-          : validateWindSpots(whole)
-    ) as M;
-  });
   const kept = byManifest;
+  const hit = kept.get(key);
+  if (hit) {
+    kept.delete(key);
+    kept.set(key, hit);
+    return hit as Promise<SpotsRead<M>>;
+  }
+  const loading = readSpots(manifest, squares);
   kept.set(key, loading);
-  loading.catch(() => {
+  while (kept.size > SPOT_SETS_PER_RUN) kept.delete(kept.keys().next().value!);
+  const forget = () => {
     if (kept.get(key) === loading) kept.delete(key);
-  });
+  };
+  loading.then((read) => {
+    if (read.unread.length) forget();
+  }, forget);
   return loading;
+}
+
+/**
+ * `loadSpotsSettled`, all or nothing: the manifest with every square asked for
+ * merged in, or the first square's failure.
+ */
+export async function loadSpots<M extends AnyManifest>(
+  manifest: M,
+  squares?: readonly string[],
+): Promise<M> {
+  const read = await loadSpotsSettled(manifest, squares);
+  if (read.unread.length) throw read.errors[0];
+  return read.manifest;
 }
 
 /**
@@ -348,11 +434,50 @@ export async function newerPointer(
 }
 
 /**
+ * The run each superseded run directory was found replaced by, per model:
+ * `withSpots` callers keep the pointer they were given, so without this every
+ * later read of a deleted run would pay its 404s and a pointer read again
+ * before reaching the run that replaced it. A few dozen at most; the oldest
+ * goes first.
+ */
+const MOVED_LIMIT = 32;
+const moved = new Map<string, AnyManifest>();
+const movedKey = (id: string, base: string) => `${id} ${base}`;
+
+/** The newest run known to have replaced this one, or the run itself. */
+export function currentRun<M extends AnyManifest>(id: string, manifest: M): M {
+  let run: AnyManifest = manifest;
+  // Each step names a different directory; the bound only guards a cycle.
+  for (let step = 0; step < MOVED_LIMIT; step++) {
+    const next = moved.get(movedKey(id, run.base));
+    if (!next || next.base === run.base) break;
+    run = next;
+  }
+  return run as M;
+}
+
+function rememberMove(id: string, from: string, to: AnyManifest) {
+  const key = movedKey(id, from);
+  moved.delete(key);
+  moved.set(key, to);
+  while (moved.size > MOVED_LIMIT) moved.delete(moved.keys().next().value!);
+}
+
+/** Forget every run found replaced (for tests). */
+export function clearMovedRuns(): void {
+  moved.clear();
+}
+
+/**
  * The same models with the spot data of `squares` merged into each manifest
- * (every listed square when omitted). A model whose squares cannot be read has
- * its pointer read again, and is read once more from the run that names now
- * (`newerPointer`); one that still cannot be read is reported unavailable, as
- * one whose manifest could not be read is, and never fails the others.
+ * (every listed square when omitted). Each square stands alone: a model with
+ * some squares read comes back with those, and names the rest in `unread`, so
+ * one far square that fails does not take the model out of every place. When
+ * a square cannot be read the model's pointer is read again, and when it names
+ * another run every square is read from that run instead (`newerPointer`),
+ * which is remembered, so the next read goes straight there. A model none of
+ * whose squares can be read is reported unavailable, as one whose manifest
+ * could not be read is, and never fails the others.
  */
 export function withSpots(
   models: readonly ModelAvailability[],
@@ -361,21 +486,25 @@ export function withSpots(
   return Promise.all(
     models.map(async (model): Promise<ModelAvailability> => {
       if (!model.manifest) return model;
-      const shown = model.manifest;
+      const shown = currentRun(model.id, model.manifest);
       try {
-        const manifest = await loadSpots(shown, squares).catch(
-          async (error) => {
-            const fresh = await newerPointer(model.id, shown);
-            if (!fresh) throw error;
-            return loadSpots(fresh, squares);
-          },
-        );
+        let read = await loadSpotsSettled(shown, squares);
+        if (read.unread.length) {
+          const fresh = await newerPointer(model.id, shown);
+          if (fresh) {
+            rememberMove(model.id, shown.base, fresh);
+            read = await loadSpotsSettled(fresh, squares);
+          }
+        }
+        if (read.unread.length && !read.loaded.length) throw read.errors[0];
+        const manifest = read.manifest;
         return {
           ...model,
           manifest,
           wind: model.wind ? (manifest as Manifest) : null,
           wave: model.wave ? (manifest as WaveManifest) : null,
           weather: model.weather ? (manifest as WeatherManifest) : null,
+          unread: read.unread,
         };
       } catch (error) {
         return {

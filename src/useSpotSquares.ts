@@ -32,11 +32,41 @@ const squaresOf = (key: string): readonly string[] | typeof ALL_SQUARES =>
  */
 export const SQUARE_RETRY_MS = [5000, 30000, 120000] as const;
 
-/** Whether an answer lost a model the question had: its squares could not be read. */
+/**
+ * Whether an answer lost something the question had: a model none of whose
+ * squares could be read, or some squares of a model that could be.
+ */
 export const lostModels = (
   asked: readonly ModelAvailability[],
   answer: readonly ModelAvailability[],
-) => answer.some((model, at) => !!asked[at]?.manifest && !model.manifest);
+) =>
+  answer.some(
+    (model, at) =>
+      (!!asked[at]?.manifest && !model.manifest) || !!model.unread?.length,
+  );
+
+/**
+ * The squares an answer really carries: those asked for, less any square some
+ * model could not read (`unread`). A place in such a square is unknown, and
+ * keeps its pending light, rather than rated from the models that happened to
+ * answer for it; every other place is rated from every model.
+ */
+export function readSquares(
+  asked: readonly string[] | typeof ALL_SQUARES,
+  answer: readonly ModelAvailability[],
+): readonly string[] | typeof ALL_SQUARES {
+  const unread = new Set(answer.flatMap((model) => model.unread ?? []));
+  if (!unread.size) return asked;
+  const squares =
+    asked === ALL_SQUARES
+      ? [
+          ...new Set(
+            answer.flatMap((model) => model.manifest?.spots.squares ?? []),
+          ),
+        ].sort()
+      : asked;
+  return squares.filter((square) => !unread.has(square));
+}
 
 /**
  * The models with the spot data of `squares` merged into their manifests, once
@@ -56,10 +86,11 @@ export const lostModels = (
  * right for a reader that only adds places (the lights, as the map moves) and
  * wrong for one about a single place, which would be shown another place's.
  *
- * A model whose squares could not be read comes back unavailable (`withSpots`
- * has already tried the run its pointer names now); the squares are then read
- * again after `SQUARE_RETRY_MS`, rather than the model staying unavailable
- * until the next sweep of the manifests.
+ * Each square stands alone (`withSpots`): one a model could not read is left
+ * out of the answer's `squares`, and only a model with none read comes back
+ * unavailable (`withSpots` has already tried the run its pointer names now).
+ * The squares are then read again after `SQUARE_RETRY_MS`, rather than staying
+ * unread until the next sweep of the manifests.
  */
 export function useSpotSquaresState(
   models: readonly ModelAvailability[],
@@ -89,7 +120,11 @@ export function useSpotSquaresState(
       squares === ALL_SQUARES ? undefined : squares,
     ).then((merged) => {
       if (!current) return;
-      setState({ models, key, answer: { models: merged, squares } });
+      setState({
+        models,
+        key,
+        answer: { models: merged, squares: readSquares(squares, merged) },
+      });
       const wait = SQUARE_RETRY_MS[attempt];
       if (wait !== undefined && lostModels(models, merged))
         timer = window.setTimeout(

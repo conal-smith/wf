@@ -16,7 +16,14 @@ import {
 import { loadManifest } from "./manifests";
 import { MODELS } from "./models";
 import { pointerOf, squareReader, windManifest, waveManifest } from "./testing";
-import { loadSpots, readForecastJson, withSpots } from "./manifests";
+import {
+  SPOT_SETS_PER_RUN,
+  clearMovedRuns,
+  loadSpots,
+  loadSpotsSettled,
+  readForecastJson,
+  withSpots,
+} from "./manifests";
 import { clearSpotSquares } from "./spotData";
 
 /** A wind run's pointer, as published: no spot data inline. */
@@ -297,7 +304,10 @@ describe("availability sweep", () => {
 });
 
 describe("spot squares", () => {
-  afterEach(() => clearSpotSquares(readForecastJson));
+  afterEach(() => {
+    clearSpotSquares(readForecastJson);
+    clearMovedRuns();
+  });
   /** A fetch serving the squares of these runs and recording every path asked. */
   const serve = (...runs: Parameters<typeof squareReader>) => {
     const read = squareReader(...runs);
@@ -404,6 +414,99 @@ describe("spot squares", () => {
     expect(
       fetcher.mock.calls.filter(([url]) => url.endsWith("harmonie.json")),
     ).toHaveLength(1);
+  });
+  it("keeps the squares it could read when one of them fails", async () => {
+    // A far square that will not load must not take the model out of every
+    // place: the squares that did load are merged, and the other is named.
+    const read = squareReader(whole);
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("weather/harmonie.json")) return ok(pointerOf(whole));
+      if (url.endsWith("/spots/n52w008.json")) return missing();
+      const body = await read(url.replace(/^.*?\/weather\//, "weather/"));
+      return body === null ? missing() : ok(body);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const shown = pointerOf(whole);
+    const [model] = await withSpots(
+      [
+        {
+          id: "harmonie",
+          entry: requireModel("harmonie"),
+          manifest: shown,
+          wind: shown,
+          wave: null,
+          weather: null,
+          available: true,
+          error: null,
+        },
+      ],
+      ["n52w008", "n52w012"],
+    );
+    expect(model.available).toBe(true);
+    expect(model.unread).toEqual(["n52w008"]);
+    expect(Object.keys(model.wind!.spotForecasts!)).toEqual(["brandon"]);
+    // Not kept: the next ask reads the failed square again, and only it.
+    fetcher.mockClear();
+    const again = await loadSpotsSettled(shown, ["n52w008", "n52w012"]);
+    expect(again.unread).toEqual(["n52w008"]);
+    expect(
+      fetcher.mock.calls.map(([url]) => url.replace(/^.*\/spots\//, "")),
+    ).toEqual(["n52w008.json"]);
+  });
+  it("keeps only the last few sets of squares merged per run", async () => {
+    serve(whole);
+    const run = pointerOf(whole);
+    const sets = Array.from({ length: SPOT_SETS_PER_RUN + 1 }, (_, i) => [
+      "n52w012",
+      ...Array.from({ length: i }, () => "n52w008"),
+      `n6${i}e000`,
+    ]);
+    const first = await loadSpotsSettled(run, sets[0]);
+    expect(await loadSpotsSettled(run, sets[0])).toBe(first);
+    for (const set of sets.slice(1)) await loadSpotsSettled(run, set);
+    // The oldest set went to make room; reading it again merges it afresh.
+    expect(await loadSpotsSettled(run, sets[0])).not.toBe(first);
+  });
+  it("goes straight to the run that replaced a deleted one, after the first time", async () => {
+    const newer = windManifest({
+      model: "harmonie",
+      runTime: "2026-09-14T03:00:00Z",
+      extra: { spotForecasts: whole.spotForecasts },
+    });
+    const read = squareReader(newer);
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("weather/harmonie.json")) return ok(pointerOf(newer));
+      const body = await read(url.replace(/^.*?\/weather\//, "weather/"));
+      return body === null ? missing() : ok(body);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const shown = pointerOf(whole);
+    const model = {
+      id: "harmonie",
+      entry: requireModel("harmonie"),
+      manifest: shown,
+      wind: shown,
+      wave: null,
+      weather: null,
+      available: true,
+      error: null,
+    };
+    expect((await withSpots([model], ["n52w012"]))[0].wind?.base).toBe(
+      newer.base,
+    );
+    fetcher.mockClear();
+    // The caller still holds the old pointer: another spot's square is read
+    // from the new run at once, with no 404 and no pointer read first.
+    const [next] = await withSpots([model], ["n52w008"]);
+    expect(next.wind?.base).toBe(newer.base);
+    expect(next.wind?.spotForecasts?.dollymount).toEqual(
+      newer.spotForecasts!.dollymount,
+    );
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      expect.stringMatching(
+        new RegExp(`weather/${newer.base}spots/n52w008\\.json$`),
+      ),
+    ]);
   });
   it("still reports a model unavailable when its pointer names the same run", async () => {
     const fetcher = vi.fn(async (url: string) =>

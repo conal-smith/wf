@@ -652,6 +652,8 @@ export default function App() {
           ),
     [published, mapView, windOnly, ownPlaces],
   );
+  // `rated.squares` is what was read, not what was asked: a square some model
+  // could not read keeps its places pending, and the rest are rated.
   const rated = useSpotSquaresState(windOnly, ownSquares, true);
   const { hours, version } = useRatings(
     rated.models,

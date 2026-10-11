@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { requireModel, type ModelAvailability } from "../force5/src/manifests";
 import { pointerOf, windManifest } from "../force5/src/testing";
-import { SQUARE_RETRY_MS, lostModels, shownAnswer } from "./useSpotSquares";
+import {
+  ALL_SQUARES,
+  SQUARE_RETRY_MS,
+  lostModels,
+  readSquares,
+  shownAnswer,
+} from "./useSpotSquares";
 
 const model = (manifest: ModelAvailability["manifest"]): ModelAvailability => ({
   id: "harmonie",
@@ -21,6 +27,26 @@ describe("spot squares that could not be read", () => {
     expect(lostModels([model(run)], [model(run)])).toBe(false);
     expect(lostModels([model(run)], [model(null)])).toBe(true);
     expect(lostModels([model(null)], [model(null)])).toBe(false);
+    // A model that read some of its squares is still there, and is read again.
+    expect(
+      lostModels([model(run)], [{ ...model(run), unread: ["n52w008"] }]),
+    ).toBe(true);
+  });
+
+  it("are left out of the squares the answer carries, so their places stay pending", () => {
+    const partial = { ...model(run), unread: ["n52w008"] };
+    expect(readSquares(["n52w008", "n52w012"], [model(run), partial])).toEqual(
+      ["n52w012"],
+    );
+    expect(readSquares(["n52w008", "n52w012"], [model(run)])).toEqual([
+      "n52w008",
+      "n52w012",
+    ]);
+    // Every square: what the runs list, less the one that failed.
+    expect(readSquares(ALL_SQUARES, [model(run)])).toBe(ALL_SQUARES);
+    expect(readSquares(ALL_SQUARES, [partial])).toEqual(
+      run.spots.squares.filter((square) => square !== "n52w008"),
+    );
   });
 
   it("are read again a few times, sooner first, then left", () => {
