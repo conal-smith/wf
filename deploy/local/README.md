@@ -201,6 +201,30 @@ npm run deploy:up             # recreates the containers; the volume is untouche
 Published data lives in the volume, not in the images, so rebuilding never discards a
 forecast. A new frontend build changes only `dist/` inside `force5-web:local`.
 
+**After an upgrade that changes the published format, run every enabled job once.**
+The upgrade to run directories and spot squares (schemaVersion 2,
+[docs/TILING_DESIGN.md](../../docs/TILING_DESIGN.md)) is one: the new site refuses the
+old version 1 pointers still in the volume, so each model reads as unavailable until its
+next run replaces its pointer — for HARMONIE, scheduled at 06 and 12 UTC, that is up to
+18 hours of a map that will not open. The blend leaves an old pointer out and names it
+(`blend_input_refused` in the log) rather than failing. Run everything at once instead,
+with the scheduler stopped so a slot cannot collide with a manual job over the worker's
+lock:
+
+```sh
+docker compose -f deploy/local/docker-compose.yml stop scheduler
+npm run deploy:once            # every enabled job in jobs.toml, in file order, then exits
+docker compose -f deploy/local/docker-compose.yml start scheduler
+```
+
+`deploy:once` is `scheduler.py --once`: the wind models first, then the blend, the
+archive, verification and the prune, as the file orders them. It takes as long as all
+the downloads (HARMONIE alone is about 810 MB) and exits nonzero if any job failed; the
+log names it. Afterwards every pointer in the volume (`weather/*.json`) should carry
+`"schemaVersion": 2` and a `"base"`. Setting
+`FORCE5_RUN_AT_START=1` in `deploy/local/.env` does the same each time the scheduler
+starts.
+
 ## 7. Back up (and restore) the volume
 
 ```sh

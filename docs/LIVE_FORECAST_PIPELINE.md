@@ -582,6 +582,29 @@ docker run --rm --env-file r2.env --entrypoint python force5-forecast:latest \
 Cadence and publication lags are unchanged; see the per-model sections above and
 `deploy/local/jobs.toml`, which remains the reference schedule.
 
+### After upgrading, run every enabled job once
+
+An upgrade that changes what is published leaves the old pointers in place until each
+model's next run replaces them. The move to run directories and spot squares
+(schemaVersion 2, docs/TILING_DESIGN.md) is one: the new site refuses a version 1
+pointer and shows that model as unavailable, and HARMONIE, the map's own model, is
+scheduled at 06 and 12 UTC only, so the map could stay closed for up to 18 hours. The
+blend leaves out a pointer it cannot use and names it (`blend_input_refused` from
+`fetch_blend.read_bucket`, "left out …, whose pointer will not validate" from
+`force5/blend/build.ts`) rather than failing; the other readers already skip one
+model's unreadable run. So, once the new image is deployed, run every enabled job once,
+wind models first and the blend after them:
+
+- **The local deployment:** stop the scheduler, `npm run deploy:once`
+  (`scheduler.py --once`: every enabled job in `jobs.toml`, in file order), start it
+  again; see "Updating" in [deploy/local/README.md](../deploy/local/README.md).
+- **Home Compute or Cloudflare:** run each enabled job's command above once, in the
+  order `jobs.toml` lists them (`.venv/bin/python deploy/schedules.py --list` prints
+  it), or trigger each job from the Home Compute Bar app.
+
+Afterwards every model's pointer should name a run directory (`"base"`) and carry
+`"schemaVersion": 2`; `status.py` reports a model's run and age, not its format.
+
 ### Nothing new costs nothing
 
 `ecmwf` is scheduled hourly against a twice-daily source (about 250 MB a run) and

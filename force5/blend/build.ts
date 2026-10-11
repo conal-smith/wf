@@ -10,8 +10,9 @@
  * of the run it names, through the site's own loader (force5/src/spotData.ts).
  * Locally that is `public/`, and in the forecast image the directory
  * force5/ingest/fetch_blend.py has just filled from the bucket. A model with no
- * manifest is left out and named; with none at all there is nothing to blend
- * and it fails.
+ * manifest, or one whose manifest will not validate (an old version 1 pointer
+ * left from before an upgrade), is left out and named (./inputs.ts); with none
+ * at all there is nothing to blend and it fails.
  *
  * It writes a run, as every model does (docs/TILING_DESIGN.md, decisions 4–6):
  * beside `--out`, a directory named for its content holding each place's
@@ -32,13 +33,7 @@ import { dirname, join } from "node:path";
 // carries no types of its own.
 // @ts-expect-error -- scripts/runs.mjs has no declaration file.
 import { publishRun, retire } from "../../scripts/runs.mjs";
-import { windModels } from "../src/manifests";
-import { withSpotSquares, type ReadJson } from "../src/spotData";
-import {
-  validateManifest,
-  validateWindSpots,
-  type Manifest,
-} from "../src/weather";
+import { readWindRuns } from "./inputs";
 import {
   blendPrefix,
   buildSpotBlend,
@@ -117,30 +112,13 @@ async function main() {
   const root = option("root", "public");
   const out = option("out", join(root, SPOT_BLEND_PATH));
   const catalogue = option("spots", join(root, "riding-locations.json"));
-  const manifests: Manifest[] = [];
-  const missing: string[] = [];
-  const read: ReadJson = async (path) =>
-    JSON.parse(await readFile(join(root, path), "utf8"));
-  for (const entry of windModels()) {
-    let body: string;
-    try {
-      body = await readFile(join(root, entry.manifestUrl), "utf8");
-    } catch {
-      missing.push(entry.id);
-      continue;
-    }
-    const manifest = validateManifest(JSON.parse(body) as Manifest);
-    if (manifest.model !== entry.id)
-      throw new Error(`${entry.manifestUrl} holds ${manifest.model}, not ${entry.id}.`);
-    // Every place, so every square the run lists.
-    manifests.push(
-      validateWindSpots(
-        await withSpotSquares<Manifest, Manifest>(read, entry.manifestUrl, manifest),
-      ),
-    );
-  }
+  const { manifests, missing, refused } = await readWindRuns(root);
+  // Named before anything else can fail, so a job that ends with nothing to
+  // blend still says which pointers it could not use.
+  for (const { id, reason } of refused)
+    console.log(`Blend: left out ${id}, whose pointer will not validate: ${reason}`);
   if (!manifests.length)
-    throw new Error(`No wind manifests under ${root}: nothing to blend.`);
+    throw new Error(`No usable wind manifests under ${root}: nothing to blend.`);
   const { places, unplaced, blend } = await placed(
     buildSpotBlend(manifests),
     catalogue,
@@ -162,6 +140,9 @@ async function main() {
       `${Object.keys(blend.spotBlend).length} places in ${checked.spots.squares.length} squares, ` +
       `${blend.times.length} times, ${Math.round(bytes / 1024)} kB in ${base}` +
       (missing.length ? `. Not published, left out: ${missing.join(", ")}` : "") +
+      (refused.length
+        ? `. Pointer refused, left out: ${refused.map(({ id }) => id).join(", ")}`
+        : "") +
       (unplaced.length
         ? `. Not in the catalogue, left out: ${unplaced.join(", ")}`
         : ""),

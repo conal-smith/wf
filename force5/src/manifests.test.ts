@@ -266,6 +266,34 @@ describe("availability sweep", () => {
     expect(availability.every((model) => !model.available)).toBe(true);
     expect(availability[0].error).toMatch(/Invalid forecast manifest/);
   });
+  it("reports a version 1 pointer left from before an upgrade as unavailable, and only that model", async () => {
+    // A persistent volume keeps each model's old pointer until its next run.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const id = url.includes("latest")
+          ? "icon-eu"
+          : url.replace(/^.*weather\//, "").replace(/\.json$/, "");
+        if (id !== "ecmwf") return ok(pointer({ model: id }));
+        const { base: _base, spots: _spots, tiles: _tiles, ...old } = pointer({
+          model: "ecmwf",
+        });
+        return ok({ ...old, schemaVersion: 1, spotForecasts: {} });
+      }),
+    );
+    const availability = await availableModels();
+    const old = availability.find((model) => model.id === "ecmwf")!;
+    expect(old.available).toBe(false);
+    expect(old.error).toMatch(/old format/);
+    expect(
+      availability
+        .filter((model) => model.wind && model.available)
+        .map((model) => model.id),
+    ).toEqual(["harmonie", "icon-eu", "gfs"]);
+    // The lights' square loader leaves it alone rather than failing the rest.
+    const loaded = await withSpots(availability, []);
+    expect(loaded.find((model) => model.id === "ecmwf")).toBe(old);
+  });
 });
 
 describe("spot squares", () => {

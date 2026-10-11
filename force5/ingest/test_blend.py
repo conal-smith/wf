@@ -7,7 +7,9 @@ square of a run directory named for its content. In production the run is
 written by force5/blend/build.ts through scripts/runs.mjs; here by rundir.py,
 which both are held to (tests/fixtures/run-digest.json).
 """
+import contextlib
 import gzip
+import io
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -165,7 +167,7 @@ class BlendRunTests(unittest.TestCase):
 
 
 def pointer(model, squares):
-    return {"model": model, "base": f"{model}-2026091312-6h-v1-0a0b0c0d/",
+    return {"schemaVersion": 2, "model": model, "base": f"{model}-2026091312-6h-v1-0a0b0c0d/",
             "spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": squares,
                       "keys": ["spotForecasts"]}}
 
@@ -192,6 +194,26 @@ class ReadBucketTests(unittest.TestCase):
             self.assertEqual(json.loads(square.read_text()), {"square": "n54w008"})
             self.assertFalse((Path(directory) / MANIFESTS["tides"]).exists())
             self.assertFalse((Path(directory) / MANIFESTS["blend"]).exists())
+
+    def test_skips_and_names_a_pointer_from_before_the_upgrade(self):
+        # A version 1 pointer carries its spot series inline and names no run
+        # directory: it is left out, and the other models still blend.
+        s3 = FakeS3()
+        s3.seed("forecast/" + MANIFESTS["harmonie"],
+                json.dumps(pointer("harmonie", ["n52w010"])).encode())
+        s3.objects["forecast/weather/harmonie-2026091312-6h-v1-0a0b0c0d/spots/n52w010.json"] = {
+            "Body": json.dumps({"square": "n52w010"}).encode(), "ETag": '"x"'}
+        s3.seed("forecast/" + MANIFESTS["ecmwf"], json.dumps(
+            {"schemaVersion": 1, "model": "ecmwf", "frames": [], "spotForecasts": {}}).encode())
+        with tempfile.TemporaryDirectory() as directory, \
+                contextlib.redirect_stdout(io.StringIO()) as log:
+            found = fetch_blend.read_bucket(s3, "bucket", "forecast", Path(directory))
+            self.assertEqual(found, ["harmonie"])
+            self.assertFalse((Path(directory) / MANIFESTS["ecmwf"]).exists())
+        refused = [json.loads(line) for line in log.getvalue().splitlines()]
+        self.assertEqual([(event["event"], event["model"]) for event in refused],
+                         [("blend_input_refused", "ecmwf")])
+        self.assertIn("schemaVersion 1", refused[0]["error"])
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ from fetch_forecast import PROJECT_ROOT, ROOT, spots_file
 from prune import read_object
 from publish_s3 import make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
-from squares import square_index, square_path
+from squares import SCHEMA_VERSION, square_index, square_path
 import timing
 
 # The bundle force5/Dockerfile builds; in a checkout the source runs through tsx.
@@ -47,6 +47,12 @@ def read_bucket(s3, bucket, prefix, directory):
 
     Returns the models found. The squares go first and the pointer last, so a
     pointer in the scratch directory always has the squares it names beside it.
+
+    A model with no pointer is skipped, and so is one whose pointer is not a
+    run pointer (an old version 1 pointer from before an upgrade, until that
+    model's next run replaces it), named in the log: one model's stale pointer
+    must not stop every other model's blend. force5/blend/build.ts leaves out
+    the same pointers (force5/blend/inputs.ts).
     """
     found = []
     prefix = object_prefix(prefix)
@@ -54,9 +60,18 @@ def read_bucket(s3, bucket, prefix, directory):
         manifest, _ = read_current(s3, bucket, prefix + MANIFESTS[model])
         if manifest is None:
             continue
+        try:
+            version = manifest.get("schemaVersion") if isinstance(manifest, dict) else None
+            if version != SCHEMA_VERSION:
+                raise ValueError(f"Not a run pointer (schemaVersion {version!r})")
+            relatives = [square_path(manifest, square)
+                         for square in square_index(manifest)["squares"]]
+        except ValueError as error:
+            print(json.dumps({"event": "blend_input_refused", "model": model,
+                              "error": str(error)}), flush=True)
+            continue
         path = directory / MANIFESTS[model]
-        for square in square_index(manifest)["squares"]:
-            relative = square_path(manifest, square)
+        for relative in relatives:
             target = path.parent / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             published = f"{Path(MANIFESTS[model]).parent.as_posix()}/{relative}"
