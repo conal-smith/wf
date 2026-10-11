@@ -62,6 +62,10 @@
       "id": "ecmwf",
       "enabled": true,
       "description": "ECMWF IFS 15-day",
+      "hours": [
+        8,
+        10
+      ],
       "minutes": [
         20
       ],
@@ -69,7 +73,9 @@
       "timeoutSeconds": 3300,
       "args": [
         "--models",
-        "ecmwf"
+        "ecmwf",
+        "--ecmwf-cycle",
+        "00"
       ]
     },
     {

@@ -35,8 +35,8 @@ PUBLISHED_RUN_ENV = "FORCE5_PUBLISHED_RUN"
 # `readsPublishedRun` marks an adapter that implements the FORCE5_PUBLISHED_RUN
 # contract: it is what makes the worker send the bucket's run and what makes
 # UNCHANGED_EXIT mean something from the adapter's exit status. Every forecast does,
-# because every slot that fires before its source has a newer run (ECMWF hourly
-# against a twice-daily run, a fallback to the previous Météo-France or GEFS cycle,
+# because every slot that fires before its source has a newer run (ECMWF's retry
+# slot after the morning one has published, a fallback to the previous Météo-France or GEFS cycle,
 # SWAN's one run a day checked three times) would otherwise download, process and
 # re-upload a run the site already serves. Tides and sea temperature do not: see
 # their entries.
@@ -48,8 +48,11 @@ MODELS = {
     "icon-eu-weather": {"script": "fetch_icon_weather.py", "manifest": "weather/icon-eu-weather.json",
                         "kind": "weather", "maxAgeHours": 30, "cache": "grib",
                         "readsPublishedRun": True},
+    # Fetched once a day, the 00 UTC run (complete on open data at about 07:35 UTC)
+    # at 08:20 with a 10:20 retry: the run it replaces is 32-36 h old by then, and
+    # a day with neither slot succeeding is stale from 16 UTC.
     "ecmwf": {"script": "fetch_ecmwf.py", "manifest": "weather/ecmwf.json",
-              "kind": "wind", "maxAgeHours": 24, "cache": "ecmwf", "readsPublishedRun": True},
+              "kind": "wind", "maxAgeHours": 40, "cache": "ecmwf", "readsPublishedRun": True},
     "ecmwf-ens": {"script": "fetch_ecmwf_ens.py", "manifest": "weather/ecmwf-ens.json",
                   "kind": "wind", "maxAgeHours": 36, "cache": "ecmwf-ens",
                   "readsPublishedRun": True},

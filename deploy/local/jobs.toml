@@ -41,8 +41,10 @@ timeout_seconds = 3300
 [[jobs]]
 id = "ecmwf"
 models = ["ecmwf"]
-minutes = [20]              # Hourly check; the importer picks the newest full run.
-timeout_seconds = 3300
+args = ["--ecmwf-cycle", "00"]
+hours = [8, 10]             # Once a day: the 00 UTC run, complete on open data at
+minutes = [20]              # ~07:35 UTC. 10:20 is a retry that downloads nothing once
+timeout_seconds = 3300      # 08:20 has published. ~250 MB a day; 40 h age limit.
 
 [[jobs]]
 id = "harmonie-eps"

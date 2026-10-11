@@ -16,11 +16,15 @@ from ecmwf.opendata import Client
 from cadence import ECMWF_HOURS, ECMWF_RANGES
 from f5bin import publish_frame
 from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample
-from registry import UNCHANGED_EXIT
+from registry import MODELS, UNCHANGED_EXIT
 from rundir import write_run
 import timing
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
+# The oldest run this imports: the limit the worker validates it against and
+# status.py reads. Fetched once a day, a 00 UTC run is the newest for about 33 h
+# before the next morning's replaces it, so 24 would refuse a run still in service.
+MAX_AGE_HOURS = MODELS["ecmwf"]["maxAgeHours"]
 
 
 class ForecastSession(requests.Session):
@@ -151,22 +155,32 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", help="Optional YYYYMMDDHH, cycle 00 or 12")
     parser.add_argument("--source", choices=["ecmwf", "aws", "google"], default="ecmwf")
+    parser.add_argument("--cycle", choices=["00", "12"],
+                        help="Only this cycle's runs; by default the newer of 00 and 12 UTC")
     args = parser.parse_args()
+    if args.run and args.cycle and args.run[-2:] != args.cycle:
+        parser.error(f"--run {args.run} is not a {args.cycle} UTC run")
     timing.start("discover")
     # Probing +360 avoids selecting the shorter 06/18 UTC products. Individual
     # fields/steps are still validated below: existence of the last file alone
-    # is not sufficient to publish a snapshot.
-    run = args.run or client(args.source).latest(step=360, stream="oper", type="fc").strftime("%Y%m%d%H")
+    # is not sufficient to publish a snapshot. Given a cycle, the probe walks back
+    # a day at a time, so a morning slot that finds today's 00 UTC run unfinished
+    # meets yesterday's 00 UTC run (the one already served), never yesterday's 12.
+    cycle = {"time": int(args.cycle)} if args.cycle else {}
+    run = args.run or client(args.source).latest(step=360, stream="oper", type="fc",
+                                                 **cycle).strftime("%Y%m%d%H")
     run_time = run_datetime(run)
-    age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
-    if not -1 <= age <= 24:
-        raise ValueError("Refusing a stale/future ECMWF run (maximum age 24 hours)")
     output = ROOT / "public" / "weather"
     prefix = f"ecmwf-{run}-360h-v2"
     published = already_published(output / "ecmwf.json", run, prefix) if not args.run else False
     if published == PUBLISHED_IN_BUCKET:
+        # Before the age check: the run the site already serves is never news,
+        # however old, so a slot that finds nothing newer is a quiet no-op.
         print(f"ECMWF IFS {run} is already published; nothing to download.", flush=True)
         return UNCHANGED_EXIT
+    age = (datetime.now(timezone.utc) - run_time).total_seconds() / 3600
+    if not -1 <= age <= MAX_AGE_HOURS:
+        raise ValueError(f"Refusing a stale/future ECMWF run (maximum age {MAX_AGE_HOURS} hours)")
     if published == PUBLISHED_ON_DISK:
         # An earlier attempt wrote it but may never have published it. Skip the
         # download, and let the worker validate and publish what is on disk.

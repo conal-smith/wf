@@ -65,13 +65,14 @@ docker run --rm -v force5-work:/data force5-forecast:local --models harmonie --p
 
 For S3 publishing, set `S3_BUCKET` (and optionally `S3_PREFIX`) or supply `--bucket` / `--prefix`. In ECS, provide credentials through the task IAM role; never bake keys into the image or frontend. `AWS_REGION=eu-west-1` is an example region, not a requirement. The default AWS credential chain must be configured separately when testing uploads outside ECS.
 
-Use `--run YYYYMMDDHH` only for an available provider run. `--max-age-hours` defaults to 12 for regional models and 24 for ECMWF's twice-daily full-horizon runs; stale/future-dated runs and expired horizons are rejected. `--publish-only` never bypasses validation or freshness checks.
+Use `--run YYYYMMDDHH` only for an available provider run. `--max-age-hours` defaults to the registry's `maxAgeHours`: 12 for most regional models and 40 for ECMWF's IFS control, which is fetched once a day; stale/future-dated runs and expired horizons are rejected. `--publish-only` never bypasses validation or freshness checks.
 
 ECMWF is also supported: `--models ecmwf` imports its full 15-day IFS control
 forecast (85 frames). It always retains 3-hour steps through +144h, then 6-hour
-steps through +360h; `--step` only affects the regional models. Schedule checks
-hourly to discover the two full-length 00/12 UTC products when they are published.
-The 06/18 cycles are shorter and cannot replace this snapshot. See the
+steps through +360h; `--step` only affects the regional models. Only the 00/12 UTC
+products reach +360h; the 06/18 cycles are shorter and cannot replace this snapshot.
+The shipped timetable takes the 00 UTC run once a day, `--ecmwf-cycle 00` at 08:20
+UTC with a 10:20 retry, because open data publishes the whole run at about 07:35 UTC. See the
 [ECMWF specification](ECMWF_15_DAY_PLAN.md) for source, contract and acceptance tests.
 
 GFS is supported the same way: `--models gfs` imports NOAA's public-domain 0.25°
@@ -543,9 +544,9 @@ against 37.7 ms without.
 ```sh
 R2="--bucket wingfoil-forecast --endpoint-url https://ACCOUNT.r2.cloudflarestorage.com"
 
-# Hourly
+# Twice a day (HARMONIE), once a day (ECMWF's 00 UTC run, 08:20 and a 10:20 retry)
 docker run --rm --env-file r2.env force5-forecast:latest --models harmonie --step 1 $R2
-docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf $R2
+docker run --rm --env-file r2.env force5-forecast:latest --models ecmwf --ecmwf-cycle 00 $R2
 
 # Four cycles a day
 docker run --rm --env-file r2.env force5-forecast:latest --models icon-eu --step 1 $R2
@@ -607,8 +608,8 @@ Afterwards every model's pointer should name a run directory (`"base"`) and carr
 
 ### Nothing new costs nothing
 
-`ecmwf` is scheduled hourly against a twice-daily source (about 250 MB a run) and
-`ecmwf-ens` twice per run (about 2 GB). The others meet the same run more than once in
+`ecmwf` has a retry slot two hours after its morning slot (about 250 MB a run), and
+`ecmwf-ens` was scheduled twice per run (about 2 GB). The others meet the same run more than once in
 quieter ways: `harmonie` runs hourly and the newest complete cycle in the portal's
 window is often the one the last slot published, `gefs`, `arpege` and `arome` fall back
 to the previous cycle while the newest is still publishing, and `mi-swan` checks its one
@@ -664,7 +665,7 @@ adapter's code disagree.
 The bucket answer compares the **run id** only. So a change to an adapter's object
 prefix (`ecmwf-RUN-360h-v2` → `v3`), member count or horizon does not force an immediate
 re-import of the run already published: the new objects land with the source's next
-cycle (within 12 hours for ECMWF, a day for SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
+cycle (within a day for ECMWF and SWAN). Pass `--run YYYYMMDDHH` to re-import the current one at once —
 an explicit `--run` always skips the check.
 
 ### The blend: every spot's stars, by spot square

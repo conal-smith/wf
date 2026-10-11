@@ -45,6 +45,9 @@ deploy/home-compute/macmini.sh stop
 
 After changing the importer code, `macmini.sh image` rebuilds `wingfoil-forecast:local`;
 the next submission uses it. No registry is involved: Bacalhau runs the local image.
+Rebuild before restarting the scheduler on a timetable that passes the worker a flag
+the old image lacks: the ECMWF job's `--ecmwf-cycle 00` (October 2026) fails at once
+on an older image, with argparse's "unrecognized arguments", until it is rebuilt.
 
 Colima has to be running for any job to start. `start` starts it if it is not, but
 after a reboot it only comes back by itself with `brew services start colima`.
@@ -53,8 +56,9 @@ after a reboot it only comes back by itself with `brew services start colima`.
 
 Every forecast importer except tides and sea temperature first reads the run the
 bucket already serves and exits at once if its source has nothing newer
-(`readsPublishedRun` in `force5/ingest/registry.py`), so the hourly ECMWF check or a
-Météo-France slot that finds the previous cycle costs a listing, not an import.
+(`readsPublishedRun` in `force5/ingest/registry.py`), so ECMWF's 10:20 retry after
+its 08:20 slot has published, or a SWAN slot that finds the same day's run, costs a
+listing, not an import.
 
 Bacalhau is told the Colima VM's size (4 CPUs, 5.5 GB of its 6 GiB), and each job's
 memory is a hard ceiling: 4 GB for a model, 1-2 GB for the station feeds. So one

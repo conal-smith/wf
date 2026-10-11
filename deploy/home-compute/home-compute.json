@@ -192,6 +192,10 @@
       "description": "ECMWF IFS 15-day",
       "schedule": {
         "at": {
+          "hours": [
+            8,
+            10
+          ],
           "minutes": [
             20
           ]
@@ -231,7 +235,9 @@
         },
         "parameters": [
           "--models",
-          "ecmwf"
+          "ecmwf",
+          "--ecmwf-cycle",
+          "00"
         ],
         "report": {
           "format": "json-lines",

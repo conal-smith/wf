@@ -64,6 +64,9 @@ def main():
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
                         default=os.environ.get("ECMWF_SOURCE", "ecmwf"),
                         help="ECMWF-hosted by default; the AWS mirror throttles with 503 SlowDown")
+    parser.add_argument("--ecmwf-cycle", choices=["00", "12"],
+                        help="ECMWF IFS: only this cycle's runs, for a once-a-day slot that must "
+                        "not fall back to the other cycle; by default the newer of the two")
     parser.add_argument("--noaa-source", choices=["nomads", "s3"],
                         default=os.environ.get("NOAA_SOURCE", "nomads"),
                         help="GEFS: NOMADS's subregion filter (about 19 MB, but two connections "
@@ -76,7 +79,8 @@ def main():
                         help="Defaults to 'auto' when an endpoint URL is given, as R2 wants")
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
     parser.add_argument("--max-age-hours", type=float,
-                        help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides, 48 observations)")
+                        help="Default: the registry limit per model (12 regional, 24 HARMONIE, "
+                        "30 ICON-EU and tides, 40 ECMWF, 48 observations)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:
@@ -107,8 +111,8 @@ def published_run(s3, bucket, prefix, model):
 
     A one-shot container starts on an empty disk, so the bucket is the only record
     of what has already been imported. Every forecast adapter is scheduled at least
-    sometimes before its source has a newer run (ECMWF hourly against a twice-daily
-    run, a fallback to the previous cycle that is still the published one), so they
+    sometimes before its source has a newer run (ECMWF's retry slot once the morning
+    slot has published, a fallback to the previous cycle that is still the published one), so they
     read this and download nothing when it matches. Not knowing is never fatal:
     the adapter then does what it always did and simply fetches the run.
     """
@@ -156,6 +160,9 @@ def run_models(args, root, s3):
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
                 if model in ECMWF_MODELS:
                     command += ["--source", args.ecmwf_source]
+                    # Only the IFS control takes a cycle: it is the one fetched once a day.
+                    if model == "ecmwf" and args.ecmwf_cycle:
+                        command += ["--cycle", args.ecmwf_cycle]
                 elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
                 if model in NOAA_MODELS:

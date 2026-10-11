@@ -119,6 +119,57 @@ class ECMWFTests(unittest.TestCase):
                 main()
         self.assertEqual(json.loads(output.read_text()), {"run": "last-good"})
 
+    def discover(self, found, published=None, cycle=None):
+        """main() with `latest` answering `found`; returns its exit code and the probe."""
+        environment = {"FORCE5_PUBLISHED_RUN": published} if published else {}
+        argv = ["fetch_ecmwf.py", *(["--cycle", cycle] if cycle else [])]
+        with patch("sys.argv", argv), patch("fetch_ecmwf.ROOT", self.root), \
+                patch.dict("os.environ", environment), patch("fetch_ecmwf.client") as factory:
+            factory.return_value.latest.return_value = found
+            factory.return_value.retrieve.side_effect = OSError("no download in this test")
+            try:
+                code = main()
+            except OSError:
+                code = "downloaded"
+        return code, factory.return_value.latest.call_args.kwargs
+
+    def test_a_cycle_restricts_the_probe_and_nothing_else_does(self):
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        _, probe = self.discover(today, cycle="00")
+        self.assertEqual(probe, {"step": 360, "stream": "oper", "type": "fc", "time": 0})
+        _, probe = self.discover(today)
+        self.assertNotIn("time", probe)
+
+    def test_the_run_already_served_is_unchanged_however_old(self):
+        # A morning slot before today's 00 UTC run is complete: the 00-only probe
+        # finds yesterday's, which the site serves. That is a no-op, not a stale run.
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1, hours=8)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        run = yesterday.strftime("%Y%m%d%H")
+        code, _ = self.discover(yesterday, published=run, cycle="00")
+        self.assertEqual(code, 3)
+
+    def test_a_day_old_run_not_yet_served_is_still_imported(self):
+        # The age limit is the registry's, which a once-a-day 00 UTC run must fit.
+        from fetch_ecmwf import MAX_AGE_HOURS
+        from registry import MODELS
+        self.assertEqual(MAX_AGE_HOURS, MODELS["ecmwf"]["maxAgeHours"])
+        self.assertGreaterEqual(MAX_AGE_HOURS, 36)
+        def run_before(hours):
+            """The 00 or 12 UTC run at least `hours` and under `hours` + 12 old."""
+            moment = datetime.now(timezone.utc) - timedelta(hours=hours)
+            return moment.replace(hour=moment.hour // 12 * 12, minute=0, second=0, microsecond=0)
+
+        code, _ = self.discover(run_before(25))
+        self.assertEqual(code, "downloaded")
+        with self.assertRaisesRegex(ValueError, "stale"):
+            self.discover(run_before(MAX_AGE_HOURS + 1))
+
+    def test_a_run_from_the_other_cycle_is_refused(self):
+        with patch("sys.argv", ["fetch_ecmwf.py", "--run", "2026091312", "--cycle", "00"]), \
+                patch("sys.stderr"), self.assertRaises(SystemExit):
+            main()
+
     def bundle(self):
         directory = self.root / "weather/ecmwf-run"
         directory.mkdir(parents=True)
