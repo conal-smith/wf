@@ -92,6 +92,12 @@ export interface WindLayerOptions {
   density?: number;
   /** Where to put the wash: the first layer it goes under. */
   washBefore: string;
+  /**
+   * A tile the frame on screen needs for the view could not be read: its run
+   * may have been replaced, and its directory deleted. The caller looks for a
+   * newer run, as it does when a frame fails.
+   */
+  onTilesFailed?: (frame: Frame) => void;
 }
 
 export interface WindLayer {
@@ -698,7 +704,8 @@ export function createWindLayer(
    * The tiles the view needs, for the frame on screen: the field draws from
    * what it holds meanwhile, and once they are in, the arrows' field and the
    * wash are drawn again and the next hour's tiles for the same view follow.
-   * A tile that fails leaves the coarser one drawn; the frame's own load, the
+   * A tile that fails leaves the coarser one drawn, and tells the caller
+   * (`onTilesFailed`), which looks for a newer run; the frame's own load, the
    * next time the hour changes, is what reports an error.
    */
   const requestTiles = () => {
@@ -720,7 +727,9 @@ export function createWindLayer(
         queueWash(0);
         shown.field.prefetchNext(view);
       },
-      () => {},
+      () => {
+        if (!destroyed && frame === shown) options.onTilesFailed?.(shown);
+      },
     );
   };
 

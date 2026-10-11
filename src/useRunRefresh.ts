@@ -33,8 +33,11 @@ const isMapModel = (id: string): id is ModelId =>
 
 /**
  * The newest run of the model on screen, loaded whole at the frame nearest
- * `time`, or null when the run on screen is still the newest. Refetches the
- * manifest past the five-minute manifest cache, and past the HTTP cache with it.
+ * `time`, or null when the pointer still names the run directory on screen.
+ * Refetches the manifest past the five-minute manifest cache, and past the
+ * HTTP cache with it. The same run republished with other content (its spot
+ * series recomputed) is a new run directory, and the old one is deleted after
+ * its grace period like any other, so it counts as newer.
  */
 export async function loadNewerRun(
   current: Manifest,
@@ -46,7 +49,7 @@ export async function loadNewerRun(
   if (!isMapModel(id)) return null;
   expireManifest(id);
   const fresh = await loadManifest(id, signal);
-  if (signal.aborted || fresh.runTime === current.runTime) return null;
+  if (signal.aborted || fresh.base === current.base) return null;
   return loadModel(id, time, signal);
 }
 

@@ -606,4 +606,22 @@ Yr keeps an old tileset at least 45 minutes for the same reason.
   sweep is deleting; once its pointer is in place the publisher lists the directory and
   uploads anything missing.
 
+- **Recovering when one is gone anyway** (a pointer cached past the grace, a sweep run
+  by hand). Every reader of a run's files treats a failure as "the run may have been
+  replaced": it reads the model's pointer again past its cache and, when that names
+  another run directory, tries once more from there.
+  - Squares in the browser: `withSpots` (force5/src/manifests.ts, `newerPointer`).
+    `useSpotSquares` and `useBlendSquares` also read again a square that still fails,
+    after 5 s, 30 s and 2 min, instead of keeping the model unavailable until the
+    next sweep of the manifests; the blend's first failed square asks for its pointer
+    again out of turn (`useSpotBlend`'s `recheck`).
+  - Tiles: a frame that fails to load already looked for a newer run
+    (`loadNewerRun`); now a tile the map needs for a pan or a zoom, or one hour of a
+    bare point's series, does the same, once per run on screen (`onTilesFailed` in
+    windLayer.ts, `recoverRun` in App.tsx). Before, the map kept drawing the coarser
+    tile, or blank, until the hour changed. `loadNewerRun` compares run
+    directories, not run times, so the same run republished with new content counts.
+  - The forecast server and the spot page (`loadCatalog` in mcp/api/forecast.ts,
+    through the source's new `forget`) and a thread's spot card (`readSpotSeries`).
+
 docs/LIVE_FORECAST_PIPELINE.md, "Deleting what is superseded", has the details.

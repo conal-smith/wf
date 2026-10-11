@@ -360,21 +360,66 @@ const HARMONIE = "weather/harmonie.json";
  * card: a thread list or a long thread can name the same spot many times.
  */
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
-let harmonie: { at: number; manifest: Promise<Manifest | null> } | null = null;
-function harmonieManifest(): Promise<Manifest | null> {
-  if (harmonie && Date.now() - harmonie.at < MANIFEST_TTL_MS)
+let harmonie: {
+  at: number;
+  manifest: Promise<Manifest | null>;
+  /** The manifest once it is in, so a card can tell whether it is the one it read. */
+  value?: Manifest | null;
+} | null = null;
+/**
+ * The manifest, cached for the page. `gone` is one whose run's square could
+ * not be read: that run may have been replaced and its directory deleted, so it
+ * is asked for again — once, however many cards held it.
+ */
+function harmonieManifest(gone?: Manifest): Promise<Manifest | null> {
+  if (
+    harmonie &&
+    Date.now() - harmonie.at < MANIFEST_TTL_MS &&
+    !(gone && harmonie.value === gone)
+  )
     return harmonie.manifest;
   const manifest = fetch(forecastUrl(HARMONIE), {
     cache: "no-cache",
   })
     .then((reply) => (reply.ok ? (reply.json() as Promise<Manifest>) : null))
     .catch(() => null);
-  harmonie = { at: Date.now(), manifest };
+  const entry: NonNullable<typeof harmonie> = { at: Date.now(), manifest };
+  harmonie = entry;
   // A failure is not kept: the next card asks again.
   void manifest.then((m) => {
-    if (!m && harmonie?.manifest === manifest) harmonie = null;
+    entry.value = m;
+    if (!m && harmonie === entry) harmonie = null;
   });
   return manifest;
+}
+
+/** For tests: forget the page's manifest. */
+export const forgetSpotCardManifest = () => {
+  harmonie = null;
+};
+
+/**
+ * One spot's hours from the map's model, from the square holding it, or null
+ * when the model cannot be had. A square that cannot be read is tried once
+ * more from the run the manifest, read again, names now.
+ */
+export async function readSpotSeries(
+  spotId: string,
+  square: string,
+): Promise<SpotSeries | null> {
+  const manifest = await harmonieManifest();
+  if (!manifest) return null;
+  const read = (run: Manifest) =>
+    loadSpotSquares<WindSpotData>(readForecastJson, HARMONIE, run, [square]);
+  let data: WindSpotData;
+  try {
+    data = await read(manifest);
+  } catch (error) {
+    const fresh = await harmonieManifest(manifest);
+    if (!fresh || fresh.base === manifest.base) throw error;
+    data = await read(fresh);
+  }
+  return data.spotForecasts?.[spotId] ?? null;
 }
 
 export function useSpotCard(
@@ -418,23 +463,12 @@ export function useSpotCard(
     setSeries(null);
     if (!knownId || !square) return;
     let current = true;
-    harmonieManifest()
-      .then((manifest) =>
-        manifest
-          ? loadSpotSquares<WindSpotData>(
-              readForecastJson,
-              HARMONIE,
-              manifest,
-              [square],
-            )
-          : null,
-      )
-      .then(
-        (data) => {
-          if (current && data) setSeries(data.spotForecasts?.[knownId] ?? null);
-        },
-        () => {},
-      );
+    readSpotSeries(knownId, square).then(
+      (found) => {
+        if (current && found) setSeries(found);
+      },
+      () => {},
+    );
     return () => {
       current = false;
     };

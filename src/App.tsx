@@ -387,6 +387,7 @@ export default function App() {
           : null,
       [pointer, mapView, ownPlaces],
     ),
+    spotBlend.recheck,
   );
   // Squares that cannot be read are as good as no blend at all.
   const published = blendSquares.failed ? null : pointer;
@@ -567,6 +568,28 @@ export default function App() {
     } finally {
       if (modelRequest.current === controller) setPendingModel(null);
     }
+  };
+  /**
+   * A tile of the run on screen could not be read — one the map needs for the
+   * view, or one of a bare point's hours: the run may have been replaced and
+   * its directory deleted. Look for a newer run, as a failed frame does, once
+   * per run on screen; a tile that fails for any other reason leaves the
+   * coarser tiles drawn, or the point's retry, as before.
+   */
+  const recovered = useRef<string | null>(null);
+  const recoverRun = (model: string, run: string) => {
+    if (!manifest || pendingModel || model !== manifest.model) return;
+    if (run !== manifest.run || recovered.current === manifest.base) return;
+    recovered.current = manifest.base;
+    const epoch = modelEpoch.current;
+    const time = selectedTime ?? frame?.validTime;
+    if (!time) return;
+    loadNewerRun(manifest, time, new AbortController().signal).then(
+      (swap) => {
+        if (swap && epoch === modelEpoch.current) commitRun(swap);
+      },
+      () => {},
+    );
   };
   useRunRefresh({
     manifest,
@@ -907,6 +930,10 @@ export default function App() {
     [picked],
   );
   const series = usePointSeries(picked ? manifest : null, pickedPoint);
+  const seriesFailed = !series.named && !series.pending && series.failures > 0;
+  useEffect(() => {
+    if (seriesFailed && manifest) recoverRun(manifest.model, manifest.run);
+  }, [seriesFailed]);
   const pickedHours = useMemo<PlaceHour[] | undefined>(
     () =>
       picked && manifest
@@ -1134,6 +1161,7 @@ export default function App() {
                 controls.current = c;
                 setMapReady(!!c);
               }}
+              onTilesFailed={(failed) => recoverRun(failed.model, failed.run)}
             />
             {(status || (loading && frame)) && (
               <div

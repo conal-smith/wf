@@ -684,6 +684,46 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   expect(errors).toEqual([]);
 });
 
+test("a tab whose run's tiles have gone moves to the run its pointer names now", async ({
+  page,
+}) => {
+  // The run on screen is superseded and, past its grace period, deleted while
+  // the tab still shows it: the next tiles it needs answer 404. The tab finds
+  // the newer run then, not at its next five-minute check.
+  let published = harmonie;
+  let deleted = false;
+  await withTides(page);
+  await withNewerRunFrames(page);
+  await page.route("**/weather/harmonie.json", (route) =>
+    route.fulfill({ json: published }),
+  );
+  await page.route(`**/weather/${harmonie.base}t/**`, (route) =>
+    deleted
+      ? route.fulfill({ status: 404, body: "Not found" })
+      : route.fallback(),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install({ time: SAMPLE_CLOCK });
+  await page.goto("/");
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  // An hour of the reader's own, so nothing but the map's view asks for tiles.
+  const ahead =
+    sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;
+  await page.locator(`.dock tr.tt-wing td[data-i="${ahead}"]`).click();
+  await expect(slider(page)).toHaveValue(String(ahead));
+  await expect(page.locator(".frame-status")).toHaveCount(0, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  // All of Ireland on a phone is drawn from overview tiles; a bay needs native
+  // ones, which nothing has read yet.
+  published = newerHarmonie;
+  deleted = true;
+  await page.locator('[data-spot-id="dollymount"]').dispatchEvent("click");
+  await expect(page.locator(".frame-status")).toContainText(
+    "Updated to the 16:00 UTC run",
+    { timeout: 20000 },
+  );
+});
+
 test("a tab coming back lands on now, unless the reader chose a later hour", async ({
   page,
 }) => {

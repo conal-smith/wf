@@ -12,6 +12,12 @@
 export interface ForecastSource {
   /** Parsed JSON at a published path, or null when nothing is published there. */
   json(path: string): Promise<unknown | null>;
+  /**
+   * Forget what was read at a path, so the next `json` reads it again: for a
+   * pointer whose run's files could not be read, because that run may have
+   * been replaced since the pointer was cached.
+   */
+  forget?(path: string): void;
 }
 
 /** Pointer manifests are replaced in place; the map revalidates them this often too. */
@@ -27,7 +33,8 @@ export function safePath(path: string): string {
 
 /**
  * Cache and de-duplicate reads for `ttlMs`, so a burst of agent calls costs
- * one fetch per manifest. A failed read is not cached.
+ * one fetch per manifest. A failed read is not cached, and `forget` drops a
+ * path's read early.
  */
 export function cached(
   read: (path: string) => Promise<unknown | null>,
@@ -51,6 +58,9 @@ export function cached(
           .finally(() => inflight.delete(key));
       inflight.set(key, pending);
       return pending;
+    },
+    forget(path) {
+      hits.delete(safePath(path));
     },
   };
 }

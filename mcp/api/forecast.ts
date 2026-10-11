@@ -328,35 +328,63 @@ async function loadCatalog<T>(
       const miss = (reason: string) => ({
         unavailable: { id: entry.id, name: entry.name, reason },
       });
-      let body: unknown;
-      try {
-        body = await source.json(entry.manifestUrl);
-      } catch {
-        return miss("Could not be read just now.");
-      }
-      if (body === null) return miss("Not published.");
-      if (
-        !isObject(body) ||
-        body.model !== entry.id ||
-        !Number.isFinite(Date.parse(body.runTime as string)) ||
-        !runPointer(body, seriesKey)
-      )
-        return miss("The published file is not a forecast this server reads.");
-      const until = lastTime(body);
-      if (until === null || until < now)
-        return miss("The latest published run has already ended.");
+      const pointer = async (): Promise<
+        { body: Json; until: number } | { unavailable: Unavailable }
+      > => {
+        let body: unknown;
+        try {
+          body = await source.json(entry.manifestUrl);
+        } catch {
+          return miss("Could not be read just now.");
+        }
+        if (body === null) return miss("Not published.");
+        if (
+          !isObject(body) ||
+          body.model !== entry.id ||
+          !Number.isFinite(Date.parse(body.runTime as string)) ||
+          !runPointer(body, seriesKey)
+        )
+          return miss(
+            "The published file is not a forecast this server reads.",
+          );
+        const until = lastTime(body);
+        if (until === null || until < now)
+          return miss("The latest published run has already ended.");
+        return { body, until };
+      };
+      let found = await pointer();
+      if ("unavailable" in found) return found;
       let spots: Json = {};
       if (squares !== null)
         try {
           spots = await loadSpotSquares(
             read,
             entry.manifestUrl,
-            body as never,
+            found.body as never,
             squares,
           );
         } catch {
-          return miss("Its spot data could not be read just now.");
+          // The cached pointer may name a run since replaced, whose directory
+          // has gone: read the pointer again and try once more from the run it
+          // names now.
+          const shown = found.body.base;
+          source.forget?.(entry.manifestUrl);
+          found = await pointer();
+          if ("unavailable" in found) return found;
+          if (found.body.base === shown)
+            return miss("Its spot data could not be read just now.");
+          try {
+            spots = await loadSpotSquares(
+              read,
+              entry.manifestUrl,
+              found.body as never,
+              squares,
+            );
+          } catch {
+            return miss("Its spot data could not be read just now.");
+          }
         }
+      const { body, until } = found;
       return {
         loaded: {
           entry,

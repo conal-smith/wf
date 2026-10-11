@@ -25,6 +25,20 @@ const squaresOf = (key: string): readonly string[] | typeof ALL_SQUARES =>
   key === ALL_SQUARES ? ALL_SQUARES : key ? key.split(",") : [];
 
 /**
+ * How long to wait before reading again squares that could not be read, by
+ * attempt, then give up until the models or the squares change. `withSpots`
+ * has already read the model's pointer again and tried the run it names now, so
+ * what is left is a network that failed, or a run being replaced right then.
+ */
+export const SQUARE_RETRY_MS = [5000, 30000, 120000] as const;
+
+/** Whether an answer lost a model the question had: its squares could not be read. */
+export const lostModels = (
+  asked: readonly ModelAvailability[],
+  answer: readonly ModelAvailability[],
+) => answer.some((model, at) => !!asked[at]?.manifest && !model.manifest);
+
+/**
  * The models with the spot data of `squares` merged into their manifests, once
  * it has been read (force5/src/spotData.ts through `withSpots`). A manifest
  * carries no spot data of its own, so this is how the dock, the browser's own
@@ -38,6 +52,11 @@ const squaresOf = (key: string): readonly string[] | typeof ALL_SQUARES =>
  * set: then, for the same models, the last answer stays while the next set of
  * squares is read, which is right for a reader that only adds places (the
  * lights, as the map moves) and wrong for one about a single place.
+ *
+ * A model whose squares could not be read comes back unavailable (`withSpots`
+ * has already tried the run its pointer names now); the squares are then read
+ * again after `SQUARE_RETRY_MS`, rather than the model staying unavailable
+ * until the next sweep of the manifests.
  */
 export function useSpotSquaresState(
   models: readonly ModelAvailability[],
@@ -50,21 +69,36 @@ export function useSpotSquaresState(
     key: string;
     answer: SquaresState;
   } | null>(null);
+  const [retry, setRetry] = useState<{
+    models: readonly ModelAvailability[];
+    key: string | null;
+    attempt: number;
+  } | null>(null);
+  const attempt =
+    retry && retry.models === models && retry.key === key ? retry.attempt : 0;
   useEffect(() => {
     if (key === null || !models.length) return;
     let current = true;
+    let timer = 0;
     const squares = squaresOf(key);
     void withSpots(
       models,
       squares === ALL_SQUARES ? undefined : squares,
     ).then((merged) => {
-      if (current)
-        setState({ models, key, answer: { models: merged, squares } });
+      if (!current) return;
+      setState({ models, key, answer: { models: merged, squares } });
+      const wait = SQUARE_RETRY_MS[attempt];
+      if (wait !== undefined && lostModels(models, merged))
+        timer = window.setTimeout(
+          () => setRetry({ models, key, attempt: attempt + 1 }),
+          wait,
+        );
     });
     return () => {
       current = false;
+      window.clearTimeout(timer);
     };
-  }, [models, key]);
+  }, [models, key, attempt]);
   return state &&
     state.models === models &&
     key !== null &&

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readForecastJson } from "../force5/src/manifests";
 import { shouldRevalidate } from "../force5/src/revalidate";
 import { forecastUrl } from "../force5/src/urls";
+import { SQUARE_RETRY_MS } from "./useSpotSquares";
 import {
   loadBlendSquares,
   parseSpotBlend,
@@ -21,10 +22,14 @@ export const spotBlendUrl = () => forecastUrl(SPOT_BLEND_PATH);
  * blend is a normal state (a fresh checkout has none until `npm run blend` is
  * run) and only means the map works the blend out from the manifests itself,
  * as it always did.
+ *
+ * `recheck` reads the pointer again now, out of turn: for a reader whose squares
+ * could not be read, because the run it names may have been replaced.
  */
 export function useSpotBlend(busy = false): {
   blend: SpotBlend | null;
   resolved: boolean;
+  recheck: () => void;
 } {
   const [blend, setBlend] = useState<SpotBlend | null>(null);
   const [resolved, setResolved] = useState(false);
@@ -32,6 +37,7 @@ export function useSpotBlend(busy = false): {
   const lastCheck = useRef(Date.now());
   const busyNow = useRef(busy);
   busyNow.current = busy;
+  const again = useRef(() => {});
   useEffect(() => {
     const controller = new AbortController();
     const url = spotBlendUrl();
@@ -72,6 +78,10 @@ export function useSpotBlend(busy = false): {
       }
     };
     void load(true);
+    again.current = () => {
+      lastCheck.current = Date.now();
+      void load(false);
+    };
     const tick = () => {
       if (
         !shouldRevalidate(
@@ -95,7 +105,8 @@ export function useSpotBlend(busy = false): {
       window.removeEventListener("focus", tick);
     };
   }, []);
-  return { blend, resolved };
+  const recheck = useCallback(() => again.current(), []);
+  return { blend, resolved, recheck };
 }
 
 /**
@@ -112,10 +123,15 @@ export function useSpotBlend(busy = false): {
  * `failed` is true when every square asked for could not be read: then the
  * blend is as good as missing, and the caller works it out itself, as it does
  * when there is no blend at all.
+ *
+ * A square that cannot be read may belong to a run already replaced, so the
+ * first failure for a pointer asks for the pointer again (`recheck`, from
+ * `useSpotBlend`), and the squares are read again after `SQUARE_RETRY_MS`.
  */
 export function useBlendSquares(
   blend: SpotBlend | null,
   squares: readonly string[] | null,
+  recheck: () => void = () => {},
 ): { blend: LoadedBlend | null; failed: boolean } {
   const key = squares === null ? null : [...squares].sort().join(",");
   const [state, setState] = useState<{
@@ -123,20 +139,44 @@ export function useBlendSquares(
     key: string;
     loaded: LoadedBlend;
   } | null>(null);
+  const [retry, setRetry] = useState<{
+    pointer: SpotBlend | null;
+    key: string | null;
+    attempt: number;
+  } | null>(null);
+  const attempt =
+    retry && retry.pointer === blend && retry.key === key ? retry.attempt : 0;
+  const rechecked = useRef<SpotBlend | null>(null);
+  const recheckNow = useRef(recheck);
+  recheckNow.current = recheck;
   useEffect(() => {
     if (!blend || key === null) return;
     let current = true;
+    let timer = 0;
     void loadBlendSquares(
       readForecastJson,
       blend,
       key ? key.split(",") : [],
     ).then((loaded) => {
-      if (current) setState({ pointer: blend, key, loaded });
+      if (!current) return;
+      setState({ pointer: blend, key, loaded });
+      if (!loaded.failed.length) return;
+      if (rechecked.current !== blend) {
+        rechecked.current = blend;
+        recheckNow.current();
+      }
+      const wait = SQUARE_RETRY_MS[attempt];
+      if (wait !== undefined)
+        timer = window.setTimeout(
+          () => setRetry({ pointer: blend, key, attempt: attempt + 1 }),
+          wait,
+        );
     });
     return () => {
       current = false;
+      window.clearTimeout(timer);
     };
-  }, [blend, key]);
+  }, [blend, key, attempt]);
   if (!blend || !state) return { blend: null, failed: false };
   const settled = state.pointer === blend && state.key === key;
   return {

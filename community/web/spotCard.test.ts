@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   KNOTS,
   PALETTE,
@@ -17,7 +17,9 @@ import {
   SpotCardView,
   WIND_STOPS,
   clock,
+  forgetSpotCardManifest,
   mapSpotHref,
+  readSpotSeries,
   readingLine,
   readingNow,
   spotCardStyles,
@@ -27,6 +29,16 @@ import {
   type SpotReading,
 } from "./components/SpotCard";
 import { readRun } from "../../tests/bundles";
+import {
+  clearManifestCache,
+  readForecastJson,
+} from "../../force5/src/manifests";
+import { clearSpotSquares, spotSquare } from "../../force5/src/spotData";
+import {
+  pointerOf,
+  squareReader,
+  windManifest,
+} from "../../force5/src/testing";
 
 /**
  * The spot card, rendered to markup, and the arithmetic behind its reading.
@@ -406,5 +418,40 @@ describe("a thread with a spot shows the card; one without shows nothing", () =>
     const markup = opening(card, 0, "removed");
     expect(markup).toContain("This message was removed.");
     expect(markup).not.toContain("?spot=");
+  });
+});
+
+describe("the card's forecast", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    forgetSpotCardManifest();
+    clearManifestCache();
+    clearSpotSquares(readForecastJson);
+  });
+
+  it("reads the manifest again when the run it named has gone, and the run it names now", async () => {
+    const run = (runTime: string) =>
+      windManifest({ model: "harmonie", runTime, spotId: "dollymount" });
+    const gone = run("2026-09-19T00:00:00Z");
+    const now = run("2026-09-19T03:00:00Z");
+    const read = squareReader(now);
+    const pointers = [pointerOf(gone), pointerOf(now)];
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("weather/harmonie.json"))
+        return new Response(JSON.stringify(pointers.shift() ?? null));
+      const body = await read(url.replace(/^.*?\/weather\//, "weather/"));
+      return body === null
+        ? new Response("", { status: 404 })
+        : new Response(JSON.stringify(body));
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const square = spotSquare(dollymount.lat!, dollymount.lon!);
+    expect(await readSpotSeries("dollymount", square)).toEqual(
+      now.spotForecasts!.dollymount,
+    );
+    // The manifest was read once more, and the newer run's square once.
+    expect(
+      fetcher.mock.calls.filter(([url]) => url.endsWith("harmonie.json")),
+    ).toHaveLength(2);
   });
 });

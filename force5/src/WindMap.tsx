@@ -95,6 +95,8 @@ type Props = {
   /** A tap on the open map, not a light: the point, and the nearest place's name. */
   onPick: (point: { lon: number; lat: number; place: string | null }) => void;
   onReady: (controls: MapControls | null) => void;
+  /** A tile the frame on screen needs could not be read (windLayer.ts). */
+  onTilesFailed?: (frame: Frame) => void;
 };
 
 const WORLD = [
@@ -322,6 +324,7 @@ export default function WindMap(props: Props) {
         windRef.current = createWindLayer(map, particles.current, {
           ink: colours.ink,
           washBefore: "relief",
+          onTilesFailed: (failed) => latest.current.onTilesFailed?.(failed),
         });
       }
       // A tap on the open map reads that point's forecast, after a moment's

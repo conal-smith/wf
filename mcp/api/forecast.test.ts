@@ -21,6 +21,7 @@ import {
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
+import { cached } from "./httpSource";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 import {
   squaresFor,
@@ -418,6 +419,53 @@ describe("which spot squares are read", () => {
     );
     // One per model that is still live and publishes a square there.
     expect(new Set(squares).size).toBe(squares.length);
+  });
+
+  it("reads a pointer again when the run it named has gone, and the run it names now", async () => {
+    // The cached ECMWF pointer names a run directory that has since been
+    // superseded and deleted: its squares are not there.
+    const inner = fixtureSource();
+    const live = (await inner.json("weather/ecmwf.json")) as Record<
+      string,
+      unknown
+    >;
+    const stale = { ...live, base: "ecmwf-2026091500-old-v1-0f0f0f0f/" };
+    const forgotten: string[] = [];
+    const source = {
+      json: (path: string) =>
+        path === "weather/ecmwf.json" && !forgotten.includes(path)
+          ? Promise.resolve(stale)
+          : inner.json(path),
+      forget: (path: string) => void forgotten.push(path),
+    };
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forgotten).toEqual(["weather/ecmwf.json"]);
+    expect(forecast.hours[0].wind?.models).toBe(2);
+    // A source that cannot forget still answers, without that model.
+    const plain = { json: source.json };
+    forgotten.length = 0;
+    const without = await spotForecast(
+      plain,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(without.hours[0].wind?.models).toBe(1);
+  });
+
+  it("forgets a cached read when asked", async () => {
+    let reads = 0;
+    const source = cached(async () => ++reads, 60000, () => 0);
+    expect(await source.json("weather/ecmwf.json")).toBe(1);
+    expect(await source.json("weather/ecmwf.json")).toBe(1);
+    source.forget!("weather/ecmwf.json");
+    expect(await source.json("weather/ecmwf.json")).toBe(2);
   });
 
   it("reads a county's squares for a county search, and none for the status", async () => {

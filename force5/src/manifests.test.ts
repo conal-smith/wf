@@ -335,6 +335,68 @@ describe("spot squares", () => {
     expect(models[0].error).toMatch(/answered 404/);
     expect(models[1].wave?.spotSeries).toEqual(wave.spotSeries);
   });
+  it("reads a model's pointer again when its squares are gone, and the run it names now", async () => {
+    // The run on screen was superseded and its directory deleted: its squares
+    // answer 404, and the pointer now names a newer run whose squares are there.
+    const newer = windManifest({
+      model: "harmonie",
+      runTime: "2026-09-14T03:00:00Z",
+      extra: { spotForecasts: whole.spotForecasts },
+    });
+    const read = squareReader(newer);
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("weather/harmonie.json")) return ok(pointerOf(newer));
+      const body = await read(url.replace(/^.*?\/weather\//, "weather/"));
+      return body === null ? missing() : ok(body);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const shown = pointerOf(whole);
+    const [model] = await withSpots(
+      [
+        {
+          id: "harmonie",
+          entry: requireModel("harmonie"),
+          manifest: shown,
+          wind: shown,
+          wave: null,
+          weather: null,
+          available: true,
+          error: null,
+        },
+      ],
+      ["n52w012"],
+    );
+    expect(model.available).toBe(true);
+    expect(model.wind?.run).toBe(newer.run);
+    expect(model.wind?.base).toBe(newer.base);
+    expect(model.wind?.spotForecasts?.brandon).toEqual(
+      newer.spotForecasts!.brandon,
+    );
+    // One pointer read, and one square from each run.
+    expect(
+      fetcher.mock.calls.filter(([url]) => url.endsWith("harmonie.json")),
+    ).toHaveLength(1);
+  });
+  it("still reports a model unavailable when its pointer names the same run", async () => {
+    const fetcher = vi.fn(async (url: string) =>
+      url.endsWith("weather/harmonie.json") ? ok(pointerOf(whole)) : missing(),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const [model] = await withSpots([
+      {
+        id: "harmonie",
+        entry: requireModel("harmonie"),
+        manifest: pointerOf(whole),
+        wind: pointerOf(whole),
+        wave: null,
+        weather: null,
+        available: true,
+        error: null,
+      },
+    ]);
+    expect(model.available).toBe(false);
+    expect(model.error).toMatch(/answered 404/);
+  });
   it("refuses a square whose series break the bundle's own contract", async () => {
     const broken = waveManifest({ hours: [0, 3, 6] });
     const shifted = {

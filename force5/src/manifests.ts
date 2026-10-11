@@ -327,10 +327,32 @@ export function loadSpots<M extends AnyManifest>(
 }
 
 /**
+ * A model's pointer read again, past the five-minute cache, after a file of the
+ * run it names could not be read: that run may have been superseded, and its
+ * directory deleted once its grace period was over. The new pointer when it
+ * names another run directory; null when it cannot be read or names the same
+ * one, which a second try would not help.
+ */
+export async function newerPointer(
+  id: string,
+  manifest: Pick<AnyManifest, "base">,
+  signal?: AbortSignal,
+): Promise<AnyManifest | null> {
+  expireManifest(id);
+  try {
+    const fresh = await loadAnyManifest(id, signal);
+    return fresh.base !== manifest.base ? fresh : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The same models with the spot data of `squares` merged into each manifest
- * (every listed square when omitted). A model whose squares cannot be read is
- * reported unavailable, as one whose manifest could not be read is, and never
- * fails the others.
+ * (every listed square when omitted). A model whose squares cannot be read has
+ * its pointer read again, and is read once more from the run that names now
+ * (`newerPointer`); one that still cannot be read is reported unavailable, as
+ * one whose manifest could not be read is, and never fails the others.
  */
 export function withSpots(
   models: readonly ModelAvailability[],
@@ -339,8 +361,15 @@ export function withSpots(
   return Promise.all(
     models.map(async (model): Promise<ModelAvailability> => {
       if (!model.manifest) return model;
+      const shown = model.manifest;
       try {
-        const manifest = await loadSpots(model.manifest, squares);
+        const manifest = await loadSpots(shown, squares).catch(
+          async (error) => {
+            const fresh = await newerPointer(model.id, shown);
+            if (!fresh) throw error;
+            return loadSpots(fresh, squares);
+          },
+        );
         return {
           ...model,
           manifest,
