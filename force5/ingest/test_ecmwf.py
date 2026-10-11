@@ -11,6 +11,7 @@ from cadence import ECMWF_HOURS, ECMWF_RANGES, expected_hours
 from fetch_ecmwf import decode_wind, decode_gust, download_gust, gust_parameter, run_datetime, main, ForecastSession
 from publish_s3 import publish
 from test_publish_s3 import FakeS3
+from runfixtures import publish_whole
 
 
 class ECMWFTests(unittest.TestCase):
@@ -124,14 +125,15 @@ class ECMWFTests(unittest.TestCase):
         run = datetime(2026, 9, 13, tzinfo=timezone.utc)
         manifest = {"model": "ecmwf", "run": "2026091300", "runTime": run.isoformat(),
                     "stepHours": 3, "stepRanges": ECMWF_RANGES, "gustAvailable": False,
-                    "grid": {"width": 2, "height": 2}, "frames": []}
+                    "grid": {"width": 2, "height": 2}, "frames": [],
+                    "spotForecasts": {"brandon": []}}
         for hour in ECMWF_HOURS:
             valid = (run + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
             info = {"hour": hour, "validTime": valid, "url": f"weather/ecmwf-run/{hour}.json"}
             manifest["frames"].append(info)
             (self.root / info["url"]).write_text(json.dumps({"model": "ecmwf", "run": manifest["run"],
                 "hour": hour, "validTime": valid, "grid": manifest["grid"], "u": [1]*4, "v": [2]*4, "gust": None}))
-        (self.root / "weather/ecmwf.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", "ecmwf.json", manifest)
         return manifest, run + timedelta(hours=18)
 
     def test_publisher_accepts_mixed_cadence_pointer_last(self):
@@ -140,13 +142,13 @@ class ECMWFTests(unittest.TestCase):
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "ecmwf", "test", max_age_hours=24, now=now), "published")
         self.assertEqual(s3.writes[-1], "weather/ecmwf.json")
-        self.assertEqual(len(s3.writes), 86)  # 85 frames + pointer
+        self.assertEqual(len(s3.writes), 87)  # 85 frames, a spot square, the pointer
 
     def test_publisher_rejects_missing_or_invented_hours_before_upload(self):
         manifest, now = self.bundle()
         for frames in [manifest["frames"][:-1], manifest["frames"][:49] + manifest["frames"][50:],
                        [{**f, "hour": 147} if i == 49 else f for i, f in enumerate(manifest["frames"])]]:
-            (self.root / "weather/ecmwf.json").write_text(json.dumps({**manifest, "frames": frames}))
+            publish_whole(self.root / "weather", "ecmwf.json", {**manifest, "frames": frames})
             s3 = FakeS3()
             with self.assertRaises(ValueError):
                 publish(s3, self.root, "ecmwf", "test", max_age_hours=24, now=now)

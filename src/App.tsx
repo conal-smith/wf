@@ -48,6 +48,7 @@ import { InfoPop } from "./InfoPop";
 import useRunRefresh, { loadNewerRun, type RunSwap } from "./useRunRefresh";
 import { useMarineModels, useModelAvailability, useSpotTide } from "./useBlend";
 import { useRatings } from "./useRatings";
+import { ALL_SQUARES, useSpotSquares } from "./useSpotSquares";
 import { blendColumnModels, staleSpotBlend } from "./spotBlend";
 import { useSpotBlend } from "./useSpotBlend";
 import { usePointSeries } from "./usePointSeries";
@@ -563,8 +564,11 @@ export default function App() {
     () => [point?.id ?? FIRST_SPOT, ...starred, ...frequent.map((v) => v.id)],
     [point?.id, starred, frequent],
   );
+  // The reader's own blend rates every place, so it reads every spot square
+  // of every model; the published blend needs none of them.
+  const rated = useSpotSquares(models, published ? null : ALL_SQUARES);
   const { hours, version } = useRatings(
-    models,
+    rated,
     prefs.blendModels,
     places,
     axis,

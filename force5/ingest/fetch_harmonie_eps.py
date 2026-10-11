@@ -35,11 +35,12 @@ import eccodes as ec
 import numpy as np
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, published_in_bucket, sample, write_json
+from fetch_forecast import ROOT, get, published_in_bucket, sample
 from fetch_forecast import load_spots, spots_file
 from fetch_harmonie import (GEOMETRY, GRID, PORTAL, earth_vectors, inventory,
                             make_layout, messages, resample)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 MODEL = "harmonie-eps"
@@ -317,7 +318,7 @@ def main():
                                "successive cycles, CC BY 4.0; lag-assembled, rotated, resampled and "
                                "cropped by Force5 / wingfoil.ie.",
                 "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"}
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     print(f"Published {len(frames)} ensemble-mean frames and {len(members)}-member spot series in "
           f"{time.monotonic() - started:.0f}s; {TRANSFER['bytes'] / 1e6:.0f} MB downloaded"
           + (f" ({TRANSFER['bytes'] / TRANSFER['files'] / 1e6:.1f} MB per member-step)"

@@ -4,7 +4,7 @@
 // times, cadences and gust availability are the ones the adapters publish, which
 // is what the axis, the gap bridging and the per-hour statistics are about.
 import { describe, expect, it } from "vitest";
-import { readBundle } from "./bundles";
+import { readWindRun } from "./bundles";
 import {
   blendInputs,
   blendStats,
@@ -14,13 +14,14 @@ import {
   interpolateSeries,
 } from "../force5/src/blend";
 import { memberSeries, spotSeries } from "../force5/src/series";
-import { validateManifest, type Manifest } from "../force5/src/weather";
+import type { Manifest } from "../force5/src/weather";
 
-const bundled = (name: string): Manifest =>
-  validateManifest(readBundle<Manifest>(name));
-const harmonie = bundled("harmonie");
-const iconEu = bundled("latest");
-const ecmwf = bundled("ecmwf");
+// Each run with every one of its spot squares merged in, as the browser's own
+// blend reads them (force5/src/spotData.ts).
+const bundled = (name: string): Promise<Manifest> => readWindRun(name);
+const harmonie = await bundled("harmonie");
+const iconEu = await bundled("latest");
+const ecmwf = await bundled("ecmwf");
 const all = [harmonie, iconEu, ecmwf];
 
 describe("bundled spot series", () => {

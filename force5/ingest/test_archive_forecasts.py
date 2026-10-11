@@ -15,6 +15,7 @@ import archive_forecasts as job
 from archive import BucketArchive, LocalArchive, forecast_key, observation_key
 import f5bin
 from publish_s3 import validate_bundle
+from runfixtures import publish_whole, read_whole
 from test_publish_s3 import FakeS3
 
 RUN = datetime(2026, 10, 10, 0, tzinfo=timezone.utc)
@@ -35,14 +36,17 @@ def field(hour, base):
 
 
 def write_bundle(public, model="harmonie", run=RUN, hours=(0, 1, 2), ensemble=False):
-    """A binary wind bundle exactly as the adapters publish one, plus spot series."""
+    """A binary wind run exactly as the adapters publish one, spot squares and all.
+
+    Returns the published pointer with its squares merged back in.
+    """
     run_id = run.strftime("%Y%m%d%H")
-    directory = f"weather/{model}-{run_id}-test"
+    directory = f"source/{model}"
     frames = []
     for hour in hours:
         data = f5bin.encode_frame({"run": run_id, "hour": hour, "grid": GRID,
                                    "u": field(hour, 1.0), "v": [-2.0] * 80, "gust": field(hour, 6.0)})
-        url = f"{directory}/{f5bin.basename(hour, data)}"
+        url = f"{directory}/{hour:03d}.bin"
         (public / url).parent.mkdir(parents=True, exist_ok=True)
         (public / url).write_bytes(data)
         frames.append({"hour": hour, "validTime": iso(run + timedelta(hours=hour)), "url": url,
@@ -61,8 +65,11 @@ def write_bundle(public, model="harmonie", run=RUN, hours=(0, 1, 2), ensemble=Fa
             for h in hours]}
     path = public / f"weather/{model}.json" if model != "icon-eu" else public / "weather/latest.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(manifest))
-    return manifest
+    # Frame urls are read relative to the directory above weather/, which is public/.
+    for info in frames:
+        info["url"] = f"weather/../{info['url']}"
+    publish_whole(public / "weather", path.name, manifest)
+    return read_whole(path)
 
 
 def observations(public, readings=None):
@@ -196,19 +203,24 @@ class JobTests(unittest.TestCase):
 
     def test_bucket_run_reads_what_the_bucket_serves_and_writes_only_the_archive(self):
         staging = Path(self.temp.name).resolve() / "staging"
-        manifest = write_bundle(staging)
+        write_bundle(staging)
+        manifest = json.loads((staging / "weather/harmonie.json").read_text())
         obs = observations(staging)
         s3 = FakeS3()
         s3.seed("weather/harmonie.json", json.dumps(manifest).encode())
         s3.seed("marine/wind-observations.json", json.dumps(obs).encode())
         for index, info in enumerate(manifest["frames"]):
-            data = (staging / info["url"]).read_bytes()
+            key = f"weather/{manifest['base']}{info['url']}"
+            data = (staging / key).read_bytes()
             # One frame stored brotli-encoded, one gzip, one plain: each must be read back.
             body, encoding = [(brotli.compress(data), "br"), (gzip.compress(data), "gzip"),
                               (data, None)][index]
-            s3.objects[info["url"]] = {"Body": body, "ETag": f'"f{index}"',
-                                       "LastModified": s3.clock,
-                                       **({"ContentEncoding": encoding} if encoding else {})}
+            s3.objects[key] = {"Body": body, "ETag": f'"f{index}"', "LastModified": s3.clock,
+                               **({"ContentEncoding": encoding} if encoding else {})}
+        for square in manifest["spots"]["squares"]:
+            key = f"weather/{manifest['base']}spots/{square}.json"
+            s3.objects[key] = {"Body": gzip.compress((staging / key).read_bytes()),
+                               "ContentEncoding": "gzip", "ETag": '"s"', "LastModified": s3.clock}
         before = set(s3.objects)
         with tempfile.TemporaryDirectory() as scratch:
             summary = self.quietly(job.BucketSource(s3, "bucket", "", scratch),
@@ -220,12 +232,15 @@ class JobTests(unittest.TestCase):
         record = json.loads(gzip.decompress(s3.objects[forecast_key("harmonie", "2026101000")]["Body"]))
         self.assertEqual(list(record["stations"]), ["ME_03980"])
         self.assertEqual(len(record["stations"]["ME_03980"]["u"]), 3)
+        # The spots came from the run's square, read through the bucket.
+        self.assertEqual(record["spots"]["brandon"]["u"], [3.1, 3.1, 3.1])
 
     def test_a_corrupt_frame_fails_that_run_only(self):
         harmonie = write_bundle(self.public)
         write_bundle(self.public, model="gfs")
-        target = self.public / harmonie["frames"][1]["url"]
-        target.write_bytes(target.read_bytes()[:-2] + b"\x00\x00")
+        target = self.public / "weather" / harmonie["base"] / harmonie["frames"][1]["url"]
+        # Truncated, which the frame's own header gives away.
+        target.write_bytes(target.read_bytes()[:-2])
         summary = self.quietly(job.LocalSource(self.public), LocalArchive(self.public), NOW, self.out)
         self.assertEqual([entry["model"] for entry in summary["archived"]], ["gfs"])
         self.assertEqual([entry["model"] for entry in summary["failed"]], ["harmonie"])

@@ -15,12 +15,18 @@ import {
   findSpot,
   hourEnsemble,
   loadSpots,
+  modelStatus,
   spotForecast,
   windowFor,
   type RidingSpot,
 } from "./forecast";
 import { FIXTURE_NOW, fixtureSource } from "./testing";
 import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
+import {
+  squaresFor,
+  withSpotSquares,
+  type RunPointer,
+} from "../../force5/src/spotData";
 
 const HOUR = 3600000;
 const pick = (kind: string) =>
@@ -169,7 +175,14 @@ describe("spotForecast", () => {
     const valid = Date.parse("2026-09-16T18:00:00Z");
     const rows = await Promise.all(
       ["ecmwf", "gfs"].map(async (model) => {
-        const m = (await source.json(`weather/${model}.json`)) as {
+        // The pointer, and the square holding Dollymount, through the loader.
+        const path = `weather/${model}.json`;
+        const m = (await withSpotSquares(
+          (file) => source.json(file),
+          path,
+          (await source.json(path)) as RunPointer,
+          ["n52w008"],
+        )) as unknown as {
           runTime: string;
           spotForecasts: Record<
             string,
@@ -370,5 +383,65 @@ describe("findSessions", () => {
     expect(dark.searched).toBe(
       spots.filter((s) => s.county === "Dublin").length,
     );
+  });
+});
+
+describe("which spot squares are read", () => {
+  /** The fixture source, recording every spot square asked for. */
+  const counting = () => {
+    const inner = fixtureSource();
+    const squares: string[] = [];
+    return {
+      squares,
+      source: {
+        json(path: string) {
+          if (path.includes("/spots/")) squares.push(path);
+          return inner.json(path);
+        },
+      },
+    };
+  };
+
+  it("reads only the square holding the spot, of each live model", async () => {
+    const { source, squares } = counting();
+    const spot = findSpot(await loadSpots(source), "dollymount").spot!;
+    const forecast = await spotForecast(
+      source,
+      spot,
+      windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
+      { now: FIXTURE_NOW },
+    );
+    expect(forecast.hours[0].wind?.models).toBe(2);
+    expect(squares.length).toBeGreaterThan(0);
+    expect(squares.every((path) => path.endsWith("/spots/n52w008.json"))).toBe(
+      true,
+    );
+    // One per model that is still live and publishes a square there.
+    expect(new Set(squares).size).toBe(squares.length);
+  });
+
+  it("reads a county's squares for a county search, and none for the status", async () => {
+    const { source, squares } = counting();
+    const spots = await loadSpots(source);
+    const dublin = spots.filter((s) => s.county === "Dublin");
+    await findSessions(source, spots, windowFor(FIXTURE_NOW, { hours: 6 }), {
+      minKnots: 0,
+      maxKnots: 80,
+      daylightOnly: false,
+      minSessionHours: 1,
+      county: "Dublin",
+      limit: 30,
+      now: FIXTURE_NOW,
+    });
+    const wanted = squaresFor(dublin);
+    expect(
+      squares.every((path) =>
+        wanted.some((square) => path.endsWith(`/spots/${square}.json`)),
+      ),
+    ).toBe(true);
+    squares.length = 0;
+    const status = await modelStatus(source, FIXTURE_NOW);
+    expect(status.wind.length).toBeGreaterThan(0);
+    expect(squares).toEqual([]);
   });
 });

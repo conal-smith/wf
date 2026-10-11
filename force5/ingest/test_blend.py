@@ -1,4 +1,5 @@
 """The blend job: what it reads from the bucket, and what the publisher accepts of it."""
+import gzip
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,17 +64,30 @@ class BlendBundleTests(unittest.TestCase):
                 self.check(manifest)
 
 
+def pointer(model, squares):
+    return {"model": model, "base": f"{model}-2026091312-6h-v1-0a0b0c0d/",
+            "spots": {"squareDegrees": 2, "url": "spots/{square}.json", "squares": squares,
+                      "keys": ["spotForecasts"]}}
+
+
 class ReadBucketTests(unittest.TestCase):
-    def test_copies_every_wind_pointer_the_bucket_serves_and_nothing_else(self):
+    def test_copies_every_wind_pointer_the_bucket_serves_and_its_squares(self):
         s3 = FakeS3()
-        s3.seed("forecast/" + MANIFESTS["harmonie"], json.dumps({"model": "harmonie"}).encode())
-        s3.seed("forecast/" + MANIFESTS["ecmwf"], json.dumps({"model": "ecmwf"}).encode())
+        for model, squares in (("harmonie", ["n52w010", "n54w008"]), ("ecmwf", ["n52w010"])):
+            s3.seed("forecast/" + MANIFESTS[model], json.dumps(pointer(model, squares)).encode())
+            for square in squares:
+                key = f"forecast/weather/{model}-2026091312-6h-v1-0a0b0c0d/spots/{square}.json"
+                s3.objects[key] = {"Body": gzip.compress(json.dumps({"square": square}).encode()),
+                                   "ContentEncoding": "gzip", "ETag": '"x"'}
         s3.seed("forecast/" + MANIFESTS["tides"], json.dumps({"model": "tides"}).encode())
         with tempfile.TemporaryDirectory() as directory:
             found = fetch_blend.read_bucket(s3, "bucket", "forecast", Path(directory))
             self.assertEqual(sorted(found), ["ecmwf", "harmonie"])
             self.assertEqual(json.loads((Path(directory) / MANIFESTS["ecmwf"]).read_text()),
-                             {"model": "ecmwf"})
+                             pointer("ecmwf", ["n52w010"]))
+            square = (Path(directory) / "weather/harmonie-2026091312-6h-v1-0a0b0c0d"
+                      / "spots/n54w008.json")
+            self.assertEqual(json.loads(square.read_text()), {"square": "n54w008"})
             self.assertFalse((Path(directory) / MANIFESTS["tides"]).exists())
 
 

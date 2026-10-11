@@ -35,8 +35,9 @@ from cadence import ladder_hours
 from fetch_gfs import FIELDS, contiguous, index_ranges, validate_metadata
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
-                            spots_file, write_json)
+                            spots_file)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
@@ -433,7 +434,7 @@ def main():
         "licenseUrl": "https://www.weather.gov/disclaimer",
     }
     # Only this final operation advances the published snapshot.
-    write_json(output / "gefs.json", manifest)
+    write_run(output, "gefs.json", manifest, prefix, spots)
     print(f"Published {len(frames)} GEFS mean frames and {len(spot_members)} member series to "
           f"{output / 'gefs.json'}", flush=True)
     cached = sum(path.stat().st_size for path in cache.glob("*.grib2"))

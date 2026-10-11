@@ -33,7 +33,10 @@ export interface AxisOptions {
   coverage?: "union" | "intersection";
 }
 
-/** First and last time a manifest covers, from frames or from its spot series. */
+/**
+ * First and last time a manifest covers: its frames or its stated horizon, and
+ * the spot series of whichever squares have been merged into it.
+ */
 export function manifestRange(
   manifest: Manifest,
 ): { from: number; to: number } | null {
@@ -43,6 +46,11 @@ export function manifestRange(
     ends.push(
       Date.parse(frames[0].validTime),
       Date.parse(frames[frames.length - 1].validTime),
+    );
+  else if (Number.isFinite(manifest.horizonHours))
+    ends.push(
+      Date.parse(manifest.runTime),
+      Date.parse(manifest.runTime) + manifest.horizonHours! * HOUR,
     );
   for (const group of [manifest.spotForecasts, manifest.spotMembers])
     for (const series of Object.values(group ?? {}))

@@ -14,6 +14,7 @@ import fetch_ecmwf_ens as ens
 from fetch_ecmwf_ens import average, decode_step, load_spots, main, parameter_sets, run_datetime
 from publish_s3 import publish, validate_ensemble
 from test_publish_s3 import FakeS3
+from runfixtures import publish_whole, read_whole
 
 PARAM_IDS = {"10u": 165, "10v": 166, "10fg": 49, "10fg3": 49, "10fg6": 49}
 
@@ -225,7 +226,7 @@ class ENSTests(unittest.TestCase):
              patch.dict("os.environ", {"FORCE5_SPOTS_FILE": str(self.spots)}), \
              patch.object(ens, "ens_client", return_value=client):
             main()
-        return json.loads((self.root / "public/weather/ecmwf-ens.json").read_text()), client
+        return read_whole(self.root / "public/weather/ecmwf-ens.json"), client
 
     def test_publishes_mean_frames_and_per_spot_member_series(self):
         manifest, client = self.refresh()
@@ -241,7 +242,7 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(expected_hours(manifest), (0, 6, 12))
         # Members 1..4 hold u = member, v = -member, gust = 10 + member.
         frame = f5bin.decode_frame(
-            (self.root / "public" / manifest["frames"][1]["url"]).read_bytes())
+            (self.root / "public/weather" / manifest["base"] / manifest["frames"][1]["url"]).read_bytes())
         self.assertEqual(frame["u"], [2.5] * 4)
         self.assertEqual(frame["v"], [-2.5] * 4)
         self.assertEqual(frame["gust"], [12.5] * 4)
@@ -282,12 +283,16 @@ class ENSTests(unittest.TestCase):
         self.assertEqual([entry["hour"] for entry in series], [6, 12])
         self.assertEqual(series[0]["gust"], [11, 12, 13, 14])
         self.assertEqual([entry["hour"] for entry in manifest["spotForecasts"]["brandon"]], [6, 12])
-        self.assertFalse(any((self.root / "public/weather").glob("ecmwf-ens-*/*")))
+        # No frames: the run directory holds its spot squares and nothing else.
+        self.assertFalse(any((self.root / "public/weather").glob("ecmwf-ens-*/frames/*")))
         s3 = FakeS3()
         now = datetime.strptime(self.run, "%Y%m%d%H").replace(tzinfo=timezone.utc) + timedelta(hours=1)
         self.assertEqual(publish(s3, self.root / "public", "ecmwf-ens", "test",
                                  max_age_hours=36, now=now), "published")
-        self.assertEqual(s3.writes, ["weather/ecmwf-ens.json"])
+        self.assertEqual(s3.writes[-1], "weather/ecmwf-ens.json")
+        self.assertEqual(sorted(s3.writes[:-1]), sorted(
+            f"weather/{manifest['base']}spots/{square}.json"
+            for square in manifest["spots"]["squares"]))
 
     def test_discovers_only_the_requested_daily_cycle(self):
         client = FakeClient(self.run)
@@ -357,7 +362,7 @@ class ENSTests(unittest.TestCase):
         return manifest, run + timedelta(hours=6, minutes=30)
 
     def write_bundle(self, manifest):
-        (self.root / "weather/ecmwf-ens.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", "ecmwf-ens.json", manifest)
 
     def test_publisher_accepts_an_ensemble_bundle_pointer_last(self):
         manifest, now = self.bundle()
@@ -366,7 +371,7 @@ class ENSTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, "ecmwf-ens", "test", max_age_hours=24, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], "weather/ecmwf-ens.json")
-        self.assertEqual(len(s3.writes), 4)  # 3 frames + pointer
+        self.assertEqual(len(s3.writes), 5)  # 3 frames, a spot square, then the pointer
 
     def test_publisher_rejects_broken_member_series_before_upload(self):
         manifest, now = self.bundle()
@@ -392,7 +397,8 @@ class ENSTests(unittest.TestCase):
             m["spotMembers"] = {}
 
         def extra_spot(m):
-            m["spotMembers"]["ghost"] = m["spotMembers"]["brandon"]
+            # A real place, so it has a square, but one with no mean series.
+            m["spotMembers"]["dollymount"] = m["spotMembers"]["brandon"]
 
         def misaligned(m):
             m["spotMembers"]["brandon"][1]["hour"] = 9

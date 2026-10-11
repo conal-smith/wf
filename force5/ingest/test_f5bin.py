@@ -5,7 +5,6 @@
 `scripts/f5bin.mjs`. Three implementations of one format cannot drift without
 one of those two suites failing.
 """
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -184,14 +183,13 @@ class SidecarTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in path.parent.iterdir()),
                              ["000-abc.bin", "000-abc.bin.br", "000-abc.bin.gz"])
 
-    def test_publish_frame_names_a_file_after_the_bytes_it_wrote(self):
+    def test_publish_frame_names_a_file_after_its_hour_inside_the_run(self):
+        """The run directory is named for its content (rundir.py), so the file need not be."""
         payload = frame()
         with tempfile.TemporaryDirectory() as temp:
             name = f5bin.publish_frame(Path(temp), "model-2026091712-30h-v1", payload)
-            data = f5bin.encode_frame(payload)
-            digest = hashlib.sha256(data).hexdigest()[:12]
-            self.assertEqual(name, f"model-2026091712-30h-v1/030-{digest}.bin")
-            self.assertEqual((Path(temp) / name).read_bytes(), data)
+            self.assertEqual(name, "model-2026091712-30h-v1/frames/030.bin")
+            self.assertEqual((Path(temp) / name).read_bytes(), f5bin.encode_frame(payload))
 
     def test_sidecars_can_be_turned_off_for_a_job_that_only_uploads(self):
         """A bucket-only run serves no sidecar, so it should not spend one per frame."""
@@ -222,22 +220,16 @@ class SidecarTests(unittest.TestCase):
                     f5bin.brotli_quality()
                 self.assertIn(f5bin.QUALITY_ENV, str(caught.exception))
 
-    def test_a_name_says_which_bytes_it_holds(self):
-        data = f5bin.encode_frame(frame(hour=30))
-        name = f5bin.basename(30, data)
-        self.assertTrue(f5bin.names_these_bytes(name, 30, data))
-        # Another hour, or another frame of the same shape, is a different name.
-        self.assertFalse(f5bin.names_these_bytes(name, 31, data))
-        self.assertFalse(f5bin.names_these_bytes(
-            name, 30, f5bin.encode_frame(frame(hour=30, u=[9.0] * 12))))
-
-    def test_a_changed_value_changes_the_published_name(self):
-        """The name is the content hash, which is what makes an object immutable."""
+    def test_a_changed_value_changes_the_run_directory_it_is_published_in(self):
+        """The directory's name is the content hash, which is what makes it immutable."""
+        import rundir
         with tempfile.TemporaryDirectory() as temp:
-            first = f5bin.publish_frame(Path(temp), "p", frame())
-            second = f5bin.publish_frame(Path(temp), "p", frame(hour=31))
-            third = f5bin.publish_frame(Path(temp), "p", frame(run="2026091713"))
-            self.assertEqual(len({first, second, third}), 3)
+            names = set()
+            for payload in (frame(), frame(u=[9.0] * 12), frame(run="2026091713")):
+                directory = Path(temp) / payload["run"] / str(len(names))
+                f5bin.publish_frame(directory, "p", payload)
+                names.add(rundir.directory_name("p", rundir.content_files(directory / "p")))
+            self.assertEqual(len(names), 3)
 
 
 if __name__ == "__main__":

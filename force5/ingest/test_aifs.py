@@ -15,6 +15,7 @@ from fetch_aifs import MODEL, STEP, decode_wind, main, parse_args, run_datetime
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
+from runfixtures import publish_whole
 
 # The identity the live 0.25° AIFS product carries, read on 17 September 2026.
 # `dataType` is ecCodes' alias for `marsType`, so it is set once, not twice.
@@ -150,7 +151,7 @@ class AIFSBundleTests(unittest.TestCase):
                 "model": MODEL, "run": "2026091600", "hour": hour, "validTime": valid,
                 "grid": manifest["grid"], "u": [1] * 4, "v": [2] * 4, "gust": None,
                 "gustIntervalHours": None}))
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         return manifest, run + timedelta(hours=1)
 
     def test_uniform_six_hour_cadence_reaches_fifteen_days(self):
@@ -166,7 +167,7 @@ class AIFSBundleTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, MODEL, "test", max_age_hours=12, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], f"weather/{MODEL}.json")
-        self.assertEqual(len(s3.writes), 62)  # 61 frames + pointer
+        self.assertEqual(len(s3.writes), 63)  # 61 frames, a spot square, the pointer
 
     def test_refuses_a_missing_or_invented_hour_before_uploading_anything(self):
         manifest, now = self.bundle()
@@ -174,8 +175,7 @@ class AIFSBundleTests(unittest.TestCase):
                        manifest["frames"][:5] + manifest["frames"][6:],
                        [{**f, "hour": 7} if i == 1 else f
                         for i, f in enumerate(manifest["frames"])]]:
-            (self.root / f"weather/{MODEL}.json").write_text(
-                json.dumps({**manifest, "frames": frames}))
+            publish_whole(self.root / "weather", f"{MODEL}.json", {**manifest, "frames": frames})
             s3 = FakeS3()
             with self.assertRaises(ValueError):
                 publish(s3, self.root, MODEL, "test", max_age_hours=12, now=now)
@@ -186,6 +186,7 @@ class AIFSBundleTests(unittest.TestCase):
         for change in ({"gust": [1] * 4}, {"gustIntervalHours": [0, 6]}):
             path = self.root / "weather/aifs-run/6.json"
             path.write_text(json.dumps({**json.loads(path.read_text()), **change}))
+            publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
             with self.assertRaises(ValueError):
                 validate_bundle(self.root, MODEL, 12, now)
             path.write_text(json.dumps({
@@ -193,12 +194,13 @@ class AIFSBundleTests(unittest.TestCase):
                 "validTime": manifest["frames"][1]["validTime"],
                 "grid": manifest["grid"], "u": [1] * 4, "v": [2] * 4, "gust": None,
                 "gustIntervalHours": None}))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         self.assertTrue(validate_bundle(self.root, MODEL, 12, now))
 
     def test_a_declared_gust_interval_is_refused_on_the_frame_list(self):
         manifest, now = self.bundle(hours=[0, 6])
         manifest["frames"][1]["gustIntervalHours"] = [0, 6]
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest)
         with self.assertRaises(ValueError):
             validate_bundle(self.root, MODEL, 12, now)
 

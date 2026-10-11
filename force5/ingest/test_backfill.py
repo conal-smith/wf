@@ -2,7 +2,9 @@
 from datetime import datetime, timedelta, timezone
 import io
 import json
+import os
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,6 +13,8 @@ import backfill_spots
 from backfill_spots import backfill, main
 import f5bin
 from fetch_forecast import sample, write_json
+import rundir
+from squares import with_spot_data
 
 RUN = "2026091612"
 RUN_TIME = datetime.strptime(RUN, "%Y%m%d%H").replace(tzinfo=timezone.utc)
@@ -40,29 +44,67 @@ def wind_point(values, spot, order=("u", "v", "gust")):
             else sample(GRID, values[name], spot["lon"], spot["lat"]) for name in order}
 
 
-class Bundle:
+class Published:
+    """A run published as an adapter publishes one, from frames kept aside.
+
+    The frames are written once into `source/`, outside public/, so a test can
+    change the manifest and publish it again: each `write` copies them into a
+    staging directory and `rundir.write_run` names the run for its content and
+    moves the spot data into squares, exactly as for a real run.
+    """
+
+    def publish(self):
+        prefix = f"{self.model}-{RUN}-3h-v1"
+        output = self.public / "weather"
+        shutil.rmtree(output / prefix, ignore_errors=True)
+        frames = []
+        for info in self.manifest.get("frames") or []:
+            name = rundir.frame_name(prefix, info["hour"], Path(info["url"]).suffix[1:])
+            (output / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.source / info["url"], output / name)
+            frames.append({**info, "url": f"weather/{name}"})
+        self.pointer = rundir.write_run(output, self.path.name,
+                                        {**self.manifest, "frames": frames}, prefix, SPOTS)
+
+    def write(self):
+        self.publish()
+
+    def bytes(self):
+        return self.path.read_bytes()
+
+    def read_pointer(self):
+        return json.loads(self.path.read_text())
+
+    def read(self):
+        """The pointer with its squares merged back in: the manifest as the adapter held it."""
+        return with_spot_data(self.read_pointer(), lambda relative: json.loads(
+            (self.path.parent / relative).read_text()))
+
+    def frame(self, index):
+        """Where one frame of the run the pointer names is published."""
+        pointer = self.read_pointer()
+        return self.path.parent / pointer["base"] / pointer["frames"][index]["url"]
+
+
+class Bundle(Published):
     """A published wind snapshot on disk: a manifest and the frames it references."""
 
     def __init__(self, root, model="gfs", gust_available=True, missing_gust_hours=(),
                  published=("kept",), encoding=None, **extra):
         self.public = Path(root) / "public"
+        self.source = Path(root) / "source"
         self.model = model
         self.path = self.public / "weather" / f"{model}.json"
         self.values = {}
         frames = []
-        for index, hour in enumerate(HOURS):
+        for hour in HOURS:
             gust = None if not gust_available or hour in missing_gust_hours else field(hour + 2)
             self.values[hour] = {"u": field(hour), "v": field(hour + 1), "gust": gust}
             interval = None if gust is None else [hour, hour]
             frame = {"model": model, "run": RUN, "hour": hour, "validTime": valid_time(hour),
                      "grid": GRID, "gustIntervalHours": interval, **self.values[hour]}
-            # A binary frame is content-addressed, exactly as publish_frame names
-            # it: the reader checks the name against the bytes, so a fixture that
-            # invented a name would be refused.
-            name = (f5bin.basename(hour, f5bin.encode_frame(frame)) if encoding
-                    else f"{hour:03d}-frame{index}.json")
-            url = f"weather/{model}-{RUN}-3h-v1/{name}"
-            self.write_frame(self.public / url, frame, encoding)
+            url = f"{model}/{hour:03d}.{'bin' if encoding else 'json'}"
+            self.write_frame(self.source / url, frame, encoding)
             frames.append({"hour": hour, "validTime": valid_time(hour), "url": url,
                            "gustIntervalHours": interval})
         if encoding:
@@ -87,25 +129,17 @@ class Bundle:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(f5bin.encode_frame(frame))
 
-    def write(self):
-        write_json(self.path, self.manifest)
 
-    def bytes(self):
-        return self.path.read_bytes()
-
-    def read(self):
-        return json.loads(self.path.read_text())
-
-
-class WaveBundle:
+class WaveBundle(Published):
     """A published wave snapshot: `spotSeries` over frames of one array per variable."""
 
     def __init__(self, root, published=("kept",), frames=True, hole=False, **extra):
         self.public = Path(root) / "public"
+        self.source = Path(root) / "source"
         self.model = "gfs-wave"
         self.path = self.public / "weather" / "gfs-wave.json"
         self.values, listed = {}, []
-        for index, hour in enumerate(HOURS):
+        for hour in HOURS:
             values = {name: field(hour + seed) for seed, name in enumerate(VARIABLES)}
             if hole:
                 # A land cell reaching `added`: every variable is null there, and a
@@ -113,9 +147,10 @@ class WaveBundle:
                 for name in VARIABLES:
                     values[name][2 * GRID["width"] + 2] = None
             self.values[hour] = values
-            url = f"weather/gfs-wave-{RUN}-3h-v1/{hour:03d}-frame{index}.json"
-            write_json(self.public / url, {"model": "gfs-wave", "run": RUN, "hour": hour,
-                                          "validTime": valid_time(hour), "grid": WAVE_GRID, **values})
+            url = f"gfs-wave/{hour:03d}.json"
+            write_json(self.source / url, {"model": "gfs-wave", "run": RUN, "hour": hour,
+                                           "validTime": valid_time(hour), "grid": WAVE_GRID,
+                                           **values})
             listed.append({"hour": hour, "validTime": valid_time(hour), "url": url})
         self.manifest = {
             "schemaVersion": 1, "kind": "wave", "model": "gfs-wave", "modelName": "GFS-Wave",
@@ -130,14 +165,11 @@ class WaveBundle:
             "spotCoverage": {spot["id"]: {"landMasked": False, "resolved": True, "note": "Water."}
                              for spot in SPOTS},
             "attribution": "Test data", **extra}
-        write_json(self.path, self.manifest)
+        self.write()
 
     def sampled(self, hour, name, spot):
         from fetch_gfswave import sample_wave
         return sample_wave(WAVE_GRID, self.values[hour][name], spot["lon"], spot["lat"])
-
-    def read(self):
-        return json.loads(self.path.read_text())
 
 
 class BackfillTests(unittest.TestCase):
@@ -154,7 +186,8 @@ class BackfillTests(unittest.TestCase):
         bundle = Bundle(self.root)
         self.assertEqual(self.backfill(bundle), ["added", "offgrid"])
         series = bundle.read()["spotForecasts"]
-        self.assertEqual(list(series), [spot["id"] for spot in SPOTS])
+        # Merged square by square, so in square order rather than catalogue order.
+        self.assertEqual(sorted(series), sorted(spot["id"] for spot in SPOTS))
         for spot in SPOTS:
             for index, hour in enumerate(HOURS):
                 entry = series[spot["id"]][index]
@@ -168,15 +201,32 @@ class BackfillTests(unittest.TestCase):
     def test_published_series_survive_byte_for_byte(self):
         bundle = Bundle(self.root)
         before = json.dumps(bundle.read()["spotForecasts"]["kept"])
+        pointer = bundle.read_pointer()
         self.backfill(bundle)
-        after = bundle.read()
-        self.assertEqual(json.dumps(after["spotForecasts"]["kept"]), before)
-        # Nothing else about the manifest moves, including the key order.
-        self.assertEqual([key for key in after if key != "spotForecasts"],
-                         [key for key in bundle.manifest if key != "spotForecasts"])
-        self.assertEqual({key: value for key, value in after.items() if key != "spotForecasts"},
-                         {key: value for key, value in bundle.manifest.items()
-                          if key != "spotForecasts"})
+        after = bundle.read_pointer()
+        self.assertEqual(json.dumps(bundle.read()["spotForecasts"]["kept"]), before)
+        # Nothing else about the pointer moves, including the key order, except the
+        # run directory it names and the squares that now hold every spot.
+        moved = ("base", "spots")
+        self.assertEqual([key for key in after], [key for key in pointer])
+        self.assertEqual({key: value for key, value in after.items() if key not in moved},
+                         {key: value for key, value in pointer.items() if key not in moved})
+
+    def test_the_series_are_published_as_a_new_run_directory(self):
+        """A run directory is never rewritten: the old one stays whole for its readers."""
+        bundle = Bundle(self.root)
+        old = bundle.read_pointer()
+        self.backfill(bundle)
+        new = bundle.read_pointer()
+        self.assertNotEqual(new["base"], old["base"])
+        weather = bundle.public / "weather"
+        self.assertEqual(rundir.digest(rundir.content_files(weather / new["base"])),
+                         rundir.hash_of(new["base"]))
+        self.assertTrue((weather / old["base"]).is_dir())
+        self.assertEqual(rundir.content_files(weather / old["base"])["frames/000.json"],
+                         rundir.content_files(weather / new["base"])["frames/000.json"])
+        self.assertEqual(old["spots"]["squares"], ["n54w010"])
+        self.assertEqual(new["spots"]["squares"], ["n52w010", "n54w002", "n54w010"])
 
     def test_a_new_series_keeps_the_published_key_order(self):
         # ECMWF and GFS write gust before u/v; ICON-EU and HARMONIE write it last.
@@ -252,10 +302,9 @@ class BackfillTests(unittest.TestCase):
 
     def test_a_frame_missing_a_wind_component_is_a_fault(self):
         bundle = Bundle(self.root)
-        url = bundle.manifest["frames"][1]["url"]
-        frame = json.loads((bundle.public / url).read_text())
+        frame = json.loads(bundle.frame(1).read_text())
         frame["v"] = None
-        write_json(bundle.public / url, frame)
+        write_json(bundle.frame(1), frame)
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
         self.assertIn("missing its v field", str(caught.exception))
@@ -270,11 +319,14 @@ class BackfillTests(unittest.TestCase):
 
     def test_an_unsafe_frame_url_is_refused(self):
         bundle = Bundle(self.root)
-        bundle.manifest["frames"][0]["url"] = "weather/../../etc/passwd"
-        bundle.write()
-        with self.assertRaises(ValueError) as caught:
-            self.backfill(bundle)
-        self.assertIn("Unsafe object path", str(caught.exception))
+        for url in ("../../etc/passwd", "frames/../../../etc/passwd", "frames/003.json"):
+            with self.subTest(url=url):
+                pointer = bundle.read_pointer()
+                pointer["frames"][0]["url"] = url
+                bundle.path.write_text(json.dumps(pointer))
+                with self.assertRaises(ValueError) as caught:
+                    self.backfill(bundle)
+                self.assertIn("is not where the frame at +0h belongs", str(caught.exception))
 
     def test_an_ensemble_is_refused_because_members_are_not_in_the_mean(self):
         for extra in [{"spotMembers": {"kept": []}},
@@ -367,10 +419,9 @@ class BinaryBackfillTests(unittest.TestCase):
         for change in ({"run": "2026091600"}, {"hour": 9}):
             with self.subTest(**change):
                 bundle = self.bundle()
-                url = bundle.manifest["frames"][1]["url"]
                 frame = {"model": bundle.model, "run": RUN, "hour": HOURS[1],
                          "grid": GRID, **bundle.values[HOURS[1]], **change}
-                (bundle.public / url).write_bytes(f5bin.encode_frame(frame))
+                bundle.frame(1).write_bytes(f5bin.encode_frame(frame))
                 with self.assertRaises(ValueError) as caught:
                     self.backfill(bundle)
                 self.assertIn("is not the frame the manifest lists", str(caught.exception))
@@ -378,26 +429,13 @@ class BinaryBackfillTests(unittest.TestCase):
     def test_a_frame_under_another_models_directory_is_a_fault(self):
         """A binary frame carries no model, so the run directory has to say who owns it."""
         bundle = self.bundle()
-        info = bundle.manifest["frames"][1]
-        moved = f"weather/icon-eu-{RUN}-3h-v1/{Path(info['url']).name}"
-        (bundle.public / moved).parent.mkdir(parents=True, exist_ok=True)
-        (bundle.public / moved).write_bytes((bundle.public / info["url"]).read_bytes())
-        info["url"] = moved
-        bundle.write()
+        pointer = bundle.read_pointer()
+        theirs = "icon-eu" + pointer["base"][len(bundle.model):]
+        os.replace(bundle.path.parent / pointer["base"], bundle.path.parent / theirs)
+        bundle.path.write_text(json.dumps({**pointer, "base": theirs}))
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
         self.assertIn(f"is not named for {bundle.model}", str(caught.exception))
-
-    def test_a_frame_whose_bytes_are_not_its_name_is_a_fault(self):
-        """The name is the hash, so a frame swapped for another of the same shape shows."""
-        bundle = self.bundle()
-        info = bundle.manifest["frames"][1]
-        swapped = dict(bundle.values[HOURS[1]], u=[9.0] * (GRID["width"] * GRID["height"]))
-        (bundle.public / info["url"]).write_bytes(f5bin.encode_frame(
-            {"model": bundle.model, "run": RUN, "hour": HOURS[1], "grid": GRID, **swapped}))
-        with self.assertRaises(ValueError) as caught:
-            self.backfill(bundle)
-        self.assertIn("does not hold the frame its name claims", str(caught.exception))
 
     def test_an_unreadable_encoding_is_refused(self):
         bundle = self.bundle()
@@ -429,7 +467,8 @@ class WaveBackfillTests(unittest.TestCase):
         self.assertEqual(self.backfill(bundle), ["added", "offgrid"])
         series = bundle.read()["spotSeries"]
         self.assertEqual(json.dumps(series["kept"]), before)
-        self.assertEqual(list(series), [spot["id"] for spot in SPOTS])
+        # Merged square by square, so in square order rather than catalogue order.
+        self.assertEqual(sorted(series), sorted(spot["id"] for spot in SPOTS))
         for spot in SPOTS:
             for index, hour in enumerate(HOURS):
                 entry = series[spot["id"]][index]
@@ -448,7 +487,7 @@ class WaveBackfillTests(unittest.TestCase):
     def test_a_wave_manifest_that_disagrees_with_its_frames_is_refused(self):
         bundle = WaveBundle(self.root)
         bundle.manifest["spotSeries"]["kept"][0]["values"]["swh"] += 0.02
-        write_json(bundle.path, bundle.manifest)
+        bundle.write()
         with self.assertRaises(ValueError) as caught:
             self.backfill(bundle)
         self.assertIn("kept +0h swh", str(caught.exception))
@@ -461,7 +500,7 @@ class WaveBackfillTests(unittest.TestCase):
     def test_a_location_with_no_published_coverage_is_skipped(self):
         bundle = WaveBundle(self.root)
         del bundle.manifest["spotCoverage"]["added"]
-        write_json(bundle.path, bundle.manifest)
+        bundle.write()
         self.assertEqual(self.backfill(bundle), [])
         self.assertIn("native land mask", " ".join(self.log))
         self.assertNotIn("added", bundle.read()["spotSeries"])

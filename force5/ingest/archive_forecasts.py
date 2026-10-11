@@ -12,7 +12,8 @@ for each run the archive does not hold yet, writes `archive/forecasts/<model>/<r
   spot (`fetch_forecast.sample`). The stations come from the published wind
   observations; with none published, from the committed wind_stations.json. A
   station outside the model's grid is left out, never clamped to the edge.
-- **at every riding spot**: the run's own `spotForecasts`, copied.
+- **at every riding spot**: the run's own `spotForecasts`, copied from its spot
+  squares (squares.load_spot_data).
 - **for an ensemble**: each spot's members, summarised per step as the 10th, 50th
   and 90th percentile and mean of the member speeds, and the mean member gust.
   An ensemble publishes only mean frames, so at a station it is the mean wind.
@@ -45,8 +46,10 @@ import tempfile
 
 from archive import forecast_key, observation_key, open_archive
 from fetch_forecast import ROOT, write_json
+from prune import read_object
 from publish_s3 import log_event, make_client, object_prefix, read_current
 from registry import MANIFESTS, MODELS
+from squares import run_path, with_spot_data
 import timing
 
 SUMMARY = MANIFESTS["forecast-archive"]
@@ -263,8 +266,13 @@ def archive_observations(store, manifest, now):
 
 # --- where manifests and frames come from ------------------------------------------
 
+def run_file(model, manifest, relative):
+    """A file of a published run, as its published path (`weather/<base><relative>`)."""
+    return f"{Path(MANIFESTS[model]).parent.as_posix()}/{run_path(manifest['base'], relative)}"
+
+
 class LocalSource:
-    """The work directory's own published manifests and frames."""
+    """The work directory's own published manifests, spot squares and frames."""
 
     def __init__(self, public):
         self.public = Path(public).resolve()
@@ -272,6 +280,11 @@ class LocalSource:
     def manifest(self, model):
         path = self.public / MANIFESTS[model]
         return json.loads(path.read_text()) if path.is_file() else None
+
+    def with_spots(self, model, manifest):
+        """The pointer with every spot square of its run merged back in."""
+        directory = (self.public / MANIFESTS[model]).parent
+        return with_spot_data(manifest, lambda path: json.loads((directory / path).read_text()))
 
     def frames(self, model, manifest):
         from backfill_spots import read_frame
@@ -295,6 +308,11 @@ class BucketSource:
         manifest, _ = read_current(self.s3, self.bucket, self.prefix + MANIFESTS[model])
         return manifest
 
+    def with_spots(self, model, manifest):
+        directory = Path(MANIFESTS[model]).parent.as_posix()
+        return with_spot_data(manifest, lambda path: json.loads(read_object(
+            self.s3, self.bucket, f"{self.prefix}{directory}/{path}")))
+
     def body(self, url):
         response = self.s3.get_object(Bucket=self.bucket, Key=self.prefix + url)
         data = response["Body"].read()
@@ -309,9 +327,10 @@ class BucketSource:
     def frames(self, model, manifest):
         from backfill_spots import read_frame
         for info in manifest.get("frames") or []:
-            target = self.scratch / info["url"]
+            published = run_file(model, manifest, info["url"])
+            target = self.scratch / published
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(self.body(info["url"]))
+            target.write_bytes(self.body(published))
             try:
                 yield read_frame(self.scratch, model, manifest, info)
             finally:
@@ -335,6 +354,9 @@ def archive_runs(source, store, points, station_source, now, models=None):
         try:
             if store.exists(key):
                 continue
+            # The spot squares only once the run is known to be new: an hour in which
+            # nothing has changed reads the pointers and nothing else.
+            manifest = source.with_spots(model, manifest)
             record = forecast_record(manifest, source.frames(model, manifest), points,
                                      station_source, now)
             if store.create(key, record):

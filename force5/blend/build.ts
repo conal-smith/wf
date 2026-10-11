@@ -5,10 +5,12 @@
  *   npx tsx force5/blend/build.ts [--root public] [--out public/weather/blend.json]
  *
  * It reads every live wind model's pointer manifest under `--root`, at the
- * path the site reads it from (force5/src/manifests.ts), so locally that is
- * `public/` and in the forecast image the directory force5/ingest/fetch_blend.py
- * has just filled from the bucket. A model with no manifest is left out and
- * named; with none at all there is nothing to blend and it fails.
+ * path the site reads it from (force5/src/manifests.ts), and every spot square
+ * of the run it names, through the site's own loader (force5/src/spotData.ts).
+ * Locally that is `public/`, and in the forecast image the directory
+ * force5/ingest/fetch_blend.py has just filled from the bucket. A model with no
+ * manifest is left out and named; with none at all there is nothing to blend
+ * and it fails.
  *
  * In the image it runs as one bundled file (force5/Dockerfile), so it imports
  * the site's own blend rather than a second copy of it.
@@ -16,7 +18,12 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { windModels } from "../src/manifests";
-import { validateManifest, type Manifest } from "../src/weather";
+import { withSpotSquares, type ReadJson } from "../src/spotData";
+import {
+  validateManifest,
+  validateWindSpots,
+  type Manifest,
+} from "../src/weather";
 import { buildSpotBlend, SPOT_BLEND_PATH } from "../../src/spotBlend";
 
 function option(name: string, fallback: string): string {
@@ -29,6 +36,8 @@ async function main() {
   const out = option("out", join(root, SPOT_BLEND_PATH));
   const manifests: Manifest[] = [];
   const missing: string[] = [];
+  const read: ReadJson = async (path) =>
+    JSON.parse(await readFile(join(root, path), "utf8"));
   for (const entry of windModels()) {
     let body: string;
     try {
@@ -40,7 +49,12 @@ async function main() {
     const manifest = validateManifest(JSON.parse(body) as Manifest);
     if (manifest.model !== entry.id)
       throw new Error(`${entry.manifestUrl} holds ${manifest.model}, not ${entry.id}.`);
-    manifests.push(manifest);
+    // Every place, so every square the run lists.
+    manifests.push(
+      validateWindSpots(
+        await withSpotSquares<Manifest, Manifest>(read, entry.manifestUrl, manifest),
+      ),
+    );
   }
   if (!manifests.length)
     throw new Error(`No wind manifests under ${root}: nothing to blend.`);

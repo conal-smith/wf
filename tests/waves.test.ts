@@ -4,20 +4,19 @@
 // published format, written by scripts/sample-weather.mjs.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { readBundle } from "./bundles";
+import { readWaveRun } from "./bundles";
 import {
   preferredWaveSource,
-  validateWaveManifest,
   waveAtAxis,
   waveCoverageNote,
   waveFields,
   waveHours,
   waveSeries,
   waveSeriesHasData,
-  type WaveManifest,
 } from "../force5/src/waves";
 
-const manifest = validateWaveManifest(readBundle<WaveManifest>("gfs-wave"));
+// The run with every spot square merged in, read through the site's loader.
+const manifest = await readWaveRun("gfs-wave");
 
 describe("the sample GFS-Wave bundle", () => {
   it("validates as published", () => {

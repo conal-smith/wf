@@ -7,6 +7,7 @@ import {
   VARIABLE_MATCH_HOURS,
   VARIABLE_VALUE_LIMITS,
   pickVariable,
+  validateVariableSpots,
   validateVariablesManifest,
   variableAtAxis,
   variableSeries,
@@ -46,6 +47,9 @@ export const weatherHours = (manifest: WeatherManifest): number[] =>
  */
 export const validateWeatherManifest =
   validateVariablesManifest<WeatherManifest>("weather");
+/** A weather run's spot series, once read from its squares. */
+export const validateWeatherSpots =
+  validateVariableSpots<WeatherManifest>("weather");
 
 /** The precomputed series for a named spot, or null when this model omits it. */
 export const weatherSeries = (

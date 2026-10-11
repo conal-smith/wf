@@ -328,24 +328,33 @@ describe("loadFrame reads whichever encoding the manifest declares", () => {
     v: [-4, -4, 1, 2],
     gust: [9, 9.5, 10, 11],
   };
+  // Each its own run directory, so the frame cache never answers for another.
   const small = { ...manifest, grid: gridOf(2, 2) } as Manifest;
   const binary = {
     ...small,
-    frames: [{ ...info, url: "weather/run/042-binary.bin" }],
+    base: "golden-binary-0a1b2c3d/",
+    frames: [{ ...info, url: "frames/042.bin" }],
   } as Manifest;
   const asJson = {
     ...small,
+    base: "golden-legacy-0a1b2c3d/",
     encoding: undefined,
-    frames: [{ ...info, url: "weather/run/042-legacy.json" }],
+    frames: [{ ...info, url: "frames/042.json" }],
   } as Manifest;
 
   it("decodes a binary frame into the shape the map already draws", async () => {
     const data = encodeFrame(whole);
-    vi.stubGlobal(
-      "fetch",
-      async () => new Response(new Uint8Array(data), { status: 200 }),
-    );
+    const asked: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      asked.push(url);
+      return new Response(new Uint8Array(data), { status: 200 });
+    });
     const frame = await loadFrame(binary, 0);
+    // The frame url is inside the run directory `base` names, beside the pointer.
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(
+      /\/weather\/golden-binary-0a1b2c3d\/frames\/042\.bin$/,
+    );
     expect(frame.model).toBe("golden");
     expect(frame.run).toBe(golden.run);
     expect(frame.validTime).toBe(info.validTime);
@@ -386,7 +395,7 @@ describe("loadFrame reads whichever encoding the manifest declares", () => {
       loadFrame(
         {
           ...asJson,
-          frames: [{ ...info, url: "weather/run/042-other.json" }],
+          base: "golden-other-0a1b2c3d/",
         } as Manifest,
         0,
       ),

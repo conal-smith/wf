@@ -14,6 +14,7 @@ import fetch_harmonie
 from cadence import ECMWF_HOURS
 from fetch_forecast import (ORIGINAL_SPOTS_FILE, RIDING_LOCATIONS_FILE, load_spots,
                             sample, spots_file)
+from runfixtures import read_whole
 
 # A coarse stand-in for the real Ireland/Atlantic crop: every riding place is inside it.
 GRID = {"width": 21, "height": 12, "west": -18.0, "east": 2.0, "north": 59.0, "south": 48.0,
@@ -71,7 +72,7 @@ class AdapterSeriesTests(unittest.TestCase):
         self.spots = load_spots()
 
     def check(self, manifest_path, hours, fields):
-        manifest = json.loads((self.root / manifest_path).read_text())
+        manifest = read_whole(self.root / manifest_path)
         series = manifest["spotForecasts"]
         self.assertEqual(sorted(series), sorted(spot["id"] for spot in self.spots))
         self.assertEqual(len(series), 146)
@@ -117,7 +118,7 @@ class AdapterSeriesTests(unittest.TestCase):
              patch("fetch_harmonie.decode", side_effect=lambda path, run, hour, layout, gusts=False: ({**values[hour], "gust": None, "gustIntervalHours": None}, None)):
             (self.root / "unused").write_bytes(b"fake")
             fetch_harmonie.main()
-        manifest = json.loads((self.root / "public/weather/harmonie.json").read_text())
+        manifest = read_whole(self.root / "public/weather/harmonie.json")
         self.assertEqual(len(manifest["spotForecasts"]), 146)
         for spot in self.spots:
             for index, hour in enumerate(hours):

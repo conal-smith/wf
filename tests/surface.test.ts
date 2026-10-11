@@ -4,23 +4,20 @@
 // bundle, in the published format, written by scripts/sample-weather.mjs.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { readBundle } from "./bundles";
+import { readWeatherRun } from "./bundles";
 import {
   precipIntervalHours,
   presentWeather,
   preferredWeatherSource,
-  validateWeatherManifest,
   weatherAtAxis,
   weatherFields,
   weatherHours,
   weatherSeries,
   weatherSeriesHasData,
-  type WeatherManifest,
 } from "../force5/src/surface";
 
-const manifest = validateWeatherManifest(
-  readBundle<WeatherManifest>("icon-eu-weather"),
-);
+// The run with every spot square merged in, read through the site's loader.
+const manifest = await readWeatherRun("icon-eu-weather");
 const axis = manifest.frames.map((frame) => frame.validTime);
 
 describe("the sample ICON-EU surface weather bundle", () => {

@@ -170,13 +170,16 @@ class PruneNeverTouchesTheArchive(unittest.TestCase):
         self.assertIn("weather/gfs-old/0.bin", s3.objects)
 
     def test_the_superseded_delete_skips_archive_urls(self):
-        previous = {"model": "gfs", "run": "2026091300", "frames": [
-            {"url": "weather/gfs-2026091300-a/0.bin"}, {"url": "archive/forecasts/gfs/x.json"},
-            {"url": "weather/archive/gfs-x.json"}]}
-        current = {"model": "gfs", "run": "2026091306", "frames": [
-            {"url": "weather/gfs-2026091306-b/0.bin"}]}
+        previous = {"model": "gfs", "run": "2026091300", "base": "gfs-2026091300-6h-v1-0a0b0c0d/"}
+        current = {"model": "gfs", "run": "2026091306", "base": "gfs-2026091306-6h-v1-1a1b1c1d/"}
         self.assertEqual(superseded_objects("gfs", previous, current),
-                         ["weather/gfs-2026091300-a/0.bin"])
+                         (["weather/gfs-2026091300-6h-v1-0a0b0c0d"], []))
+        stations = {"model": "tides", "run": "2026091300", "stations": {
+            "A": {"url": "archive/forecasts/tides/x.json"},
+            "B": {"url": "marine/archive/tides-x.json"},
+            "C": {"url": "marine/tides-C-1.json"}}}
+        self.assertEqual(superseded_objects("tides", stations, {"model": "tides", "stations": {}}),
+                         ([], ["marine/tides-C-1.json"]))
 
 
 class OpenArchiveTests(unittest.TestCase):

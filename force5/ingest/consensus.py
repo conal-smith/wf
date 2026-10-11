@@ -231,9 +231,11 @@ def member_lines(manifest, spot):
 def place_consensus(manifests, blend_ids, spot, axis):
     """ratings.ts `placeConsensus` without the agreement: median, gust and bearing.
 
-    `manifests` are dicts shaped like the published wind manifests (only `model`,
-    `runTime`, `resolutionKm`, `spotForecasts`, and for an ensemble `ensemble`/`spotMembers`,
-    are read); `axis` is a list of ISO times. Speeds come back in m/s, and None
+    `manifests` are dicts shaped like the published wind manifests with their
+    spot squares merged back in (squares.with_spot_data); only `model`,
+    `runTime`, `resolutionKm`, `spotForecasts`, and for an ensemble
+    `ensemble`/`spotMembers`, are read. verify.py builds them from the archive
+    instead. `axis` is a list of ISO times. Speeds come back in m/s, and None
     where no model has a value.
     """
     axis_times = [parse_ms(value) for value in axis]

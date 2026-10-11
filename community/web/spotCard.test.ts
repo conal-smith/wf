@@ -26,6 +26,7 @@ import {
   type SpotOutlook,
   type SpotReading,
 } from "./components/SpotCard";
+import { readRun } from "../../tests/bundles";
 
 /**
  * The spot card, rendered to markup, and the arithmetic behind its reading.
@@ -175,10 +176,9 @@ describe("S2: the wind now, from the series the map already publishes", () => {
     ).toBeNull();
   });
 
-  it("reads a manifest as the ingest writes one, for every riding location", () => {
-    const manifest: Manifest = JSON.parse(
-      readFileSync("tests/fixtures/weather/harmonie.json", "utf8"),
-    );
+  it("reads a run as the ingest writes one, for every riding location", async () => {
+    // The pointer with its spot squares merged in, through the map's own loader.
+    const manifest = await readRun<Manifest>("harmonie");
     const listed: Spot[] = JSON.parse(
       readFileSync("public/riding-locations.json", "utf8"),
     );

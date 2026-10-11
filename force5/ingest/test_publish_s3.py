@@ -6,6 +6,7 @@ from io import BytesIO, StringIO
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ from unittest.mock import patch
 
 import f5bin
 import publish_s3
+import rundir
 from publish_s3 import publish, superseded_objects, validate_bundle, already_current
 from registry import MANIFESTS, MODELS, UNCHANGED_EXIT
 
@@ -120,43 +122,68 @@ class FakeS3:
                 **({"NextContinuationToken": following[0]} if following else {})}
 
 
+SPOTS = [{"id": "dollymount", "lat": 53.365, "lon": -6.135},
+         {"id": "brandon", "lat": 52.276, "lon": -10.024}]
+
+
 class BundleFixture:
-    """A validated three-frame HARMONIE bundle on disk and an empty fake bucket."""
+    """A validated three-frame HARMONIE run on disk and an empty fake bucket.
+
+    The run is written as an adapter writes one: frames into a staging
+    directory, then `rundir.write_run`, which moves the spot series into squares
+    and names the run directory for its content.
+    """
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root / "weather/harmonie-a").mkdir(parents=True)
         self.now = datetime(2026, 9, 13, 12, 30, tzinfo=timezone.utc)
-        grid = {"width": 2, "height": 2}
-        self.manifest = {"model": "harmonie", "run": "2026091312", "runTime": "2026-09-13T12:00:00Z",
-                         "stepHours": 1, "gustAvailable": False, "grid": grid, "frames": []}
-        for i in range(3):
-            valid = f"2026-09-13T{12+i}:00:00Z"
-            path = f"weather/harmonie-a/{i}.json"
-            self.manifest["frames"].append({"hour": i, "validTime": valid, "url": path})
-            (self.root / path).write_text(json.dumps({"model": "harmonie", "run": "2026091312",
-                "hour": i, "validTime": valid, "grid": grid, "u": [1]*4, "v": [2]*4, "gust": None}))
-        self.save()
+        self.build("2026091312")
         self.s3 = FakeS3()
+
+    def build(self, run, frame=None, whole=None, gusts=False):
+        """Write a run of this hour: `frame` and `whole` may change a frame or the manifest."""
+        prefix = f"harmonie-{run}-2h-v1"
+        grid = {"width": 2, "height": 2}
+        start = int(run[-2:])
+        frames, forecasts = [], {spot["id"]: [] for spot in SPOTS}
+        for hour in range(3):
+            valid = f"2026-09-13T{start + hour}:00:00Z"
+            interval = ([hour - 1, hour] if hour else None) if gusts else None
+            payload = {"model": "harmonie", "run": run, "hour": hour, "validTime": valid,
+                       "grid": grid, "gustIntervalHours": interval, "u": [1] * 4, "v": [2] * 4,
+                       "gust": [4] * 4 if interval else None}
+            payload = frame(hour, payload) if frame else payload
+            name = rundir.frame_name(prefix, hour, "json")
+            target = self.root / "weather" / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(payload))
+            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
+                           "gustIntervalHours": interval})
+            for spot in forecasts.values():
+                spot.append({"hour": hour, "validTime": valid, "u": 1, "v": 2, "gust": None})
+        manifest = {"schemaVersion": 1, "model": "harmonie", "run": run,
+                    "runTime": f"2026-09-13T{start}:00:00Z", "stepHours": 1,
+                    "grid": grid, "frames": frames, "spotForecasts": forecasts}
+        if gusts:
+            manifest["gustMissingHours"] = [0]
+        else:
+            manifest["gustAvailable"] = False
+        manifest = whole(manifest) if whole else manifest
+        self.manifest = rundir.write_run(self.root / "weather", "harmonie.json", manifest,
+                                         prefix, SPOTS)
+        return self.manifest
 
     def save(self):
         (self.root / "weather/harmonie.json").write_text(json.dumps(self.manifest))
 
-    def rerun(self, run, directory):
-        """Replace the bundle on disk with a newer run in its own object directory."""
-        grid, frames = self.manifest["grid"], []
-        (self.root / "weather" / directory).mkdir(parents=True, exist_ok=True)
-        for i in range(3):
-            valid = f"2026-09-13T{int(run[-2:]) + i}:00:00Z"
-            path = f"weather/{directory}/{i}.json"
-            frames.append({"hour": i, "validTime": valid, "url": path})
-            (self.root / path).write_text(json.dumps({"model": "harmonie", "run": run, "hour": i,
-                "validTime": valid, "grid": grid, "u": [1]*4, "v": [2]*4, "gust": None}))
-        self.manifest.update(run=run, runTime=f"2026-09-13T{run[-2:]}:00:00Z", frames=frames)
-        self.save()
-        return frames
+    def keys(self, manifest=None):
+        """Every object key of a run: its frames and its squares."""
+        manifest = manifest or self.manifest
+        directory = f"weather/{manifest['base']}"
+        return ([directory + frame["url"] for frame in manifest["frames"]]
+                + [f"{directory}spots/{square}.json" for square in manifest["spots"]["squares"]])
 
     def run_publish(self):
         return publish(self.s3, self.root, "harmonie", "test", now=self.now)
@@ -173,20 +200,39 @@ class PublishTests(BundleFixture, unittest.TestCase):
     def test_pointer_last_and_retry_is_idempotent(self):
         self.assertEqual(self.run_publish(), "published")
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
-        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["ContentEncoding"], "gzip")
+        self.assertEqual(sorted(self.s3.writes[:-1]), sorted(self.keys()))
+        for key in self.keys():
+            self.assertEqual(self.s3.objects[key]["ContentEncoding"], "gzip")
+            self.assertEqual(self.s3.objects[key]["CacheControl"], publish_s3.IMMUTABLE_CACHE)
         before = list(self.s3.writes)
         self.assertEqual(self.run_publish(), "unchanged-or-newer")
         self.assertEqual(before, self.s3.writes)
 
+    def test_the_pointer_is_small_and_the_squares_carry_the_spots(self):
+        self.run_publish()
+        pointer = json.loads(self.s3.objects["weather/harmonie.json"]["Body"])
+        self.assertEqual(pointer["schemaVersion"], 2)
+        self.assertNotIn("spotForecasts", pointer)
+        self.assertEqual(pointer["spots"]["squares"], ["n52w008", "n52w012"])
+        square = json.loads(gzip.decompress(self.s3.objects[
+            f"weather/{pointer['base']}spots/n52w008.json"]["Body"]))
+        self.assertEqual(list(square["spotForecasts"]), ["dollymount"])
+
+    def test_republishing_the_same_content_lands_in_the_same_directory(self):
+        first = self.manifest["base"]
+        self.assertEqual(self.build("2026091312")["base"], first)
+        self.assertEqual(sorted(p.name for p in (self.root / "weather").iterdir()
+                                if p.is_dir()), [first[:-1]])
+
     def test_upload_failure_does_not_publish_pointer(self):
-        self.s3.fail_frame = True
+        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-2026091312-"
         with self.assertRaises(S3Error):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
 
     def test_existing_pointer_is_preserved_on_upload_failure(self):
         self.s3.objects["weather/harmonie.json"] = {"Body": json.dumps({**self.manifest, "run": "2026091311"}).encode(), "ETag": '"old"'}
-        self.s3.fail_frame = True
+        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-2026091312-"
         before = self.s3.objects["weather/harmonie.json"]["Body"]
         with self.assertRaises(S3Error):
             self.run_publish()
@@ -198,25 +244,106 @@ class PublishTests(BundleFixture, unittest.TestCase):
         self.assertEqual(json.loads(self.s3.objects["weather/harmonie.json"]["Body"])["run"], "2026091313")
 
     def test_invalid_frame_or_path_rejected_before_any_upload(self):
-        self.manifest["frames"][1]["url"] = "../outside.json"
+        for url in ("../outside.json", "frames/../../outside.json", "/etc/passwd",
+                    "frames/001.bin"):
+            with self.subTest(url=url):
+                self.manifest["frames"][1]["url"] = url
+                self.save()
+                with self.assertRaises(ValueError):
+                    self.run_publish()
+        self.assertEqual(self.s3.writes, [])
+
+    def test_a_base_outside_its_own_directory_is_refused(self):
+        good = self.manifest["base"]
+        for base in ("../weather/" + good, good[:-1], "harmonie/" + good, "/" + good,
+                     "harmonie-eps-2026091312-2h-v1-00000000/", "harmonie-2026091312-x/",
+                     "./" + good):
+            with self.subTest(base=base):
+                self.manifest["base"] = base
+                self.save()
+                with self.assertRaises(ValueError):
+                    self.run_publish()
+        self.assertEqual(self.s3.writes, [])
+
+    def test_spot_data_inline_in_the_pointer_is_refused(self):
+        square = json.loads((self.root / "weather" / self.manifest["base"]
+                             / "spots/n52w008.json").read_text())
+        self.manifest["spotForecasts"] = square["spotForecasts"]
         self.save()
+        with self.assertRaisesRegex(ValueError, "spot squares"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_missing_or_unlisted_square_is_refused(self):
+        directory = self.root / "weather" / self.manifest["base"]
+        listed = list(self.manifest["spots"]["squares"])
+        self.manifest["spots"]["squares"] = listed[:1]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "unreferenced"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+        self.manifest["spots"]["squares"] = listed + ["n54w010"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "missing"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+        self.manifest["spots"]["squares"] = listed
+        self.save()
+        validate_bundle(self.root, "harmonie", now=self.now)
+        (directory / "spots/n52w012.json").unlink()
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_square_of_another_run_or_a_spot_in_two_squares_is_refused(self):
+        for change in ({"run": "2026091311"}, {"square": "n52w012"}, {"model": "gfs"},
+                       {"schemaVersion": 1}, {"spotForecasts": {"brandon": []}},
+                       {"spotMembers": {}}):
+            with self.subTest(change=change):
+                self.build("2026091312")
+                path = self.root / "weather" / self.manifest["base"] / "spots/n52w008.json"
+                square = json.loads(path.read_text())
+                if "spotForecasts" in change:
+                    square["spotForecasts"].update(change["spotForecasts"])
+                else:
+                    square.update(change)
+                path.write_text(json.dumps(square))
+                # Re-hash, so the directory's name is not what refuses it.
+                files = rundir.content_files(path.parents[1])
+                name = rundir.directory_name("harmonie-2026091312-2h-v1", files)
+                shutil.rmtree(self.root / "weather" / name, ignore_errors=True)
+                os.replace(path.parents[1], self.root / "weather" / name)
+                self.manifest["base"] = f"{name}/"
+                self.save()
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_directory_whose_content_does_not_match_its_name_is_refused(self):
+        path = self.root / "weather" / self.manifest["base"] / "frames/001.json"
+        path.write_text(json.dumps({**json.loads(path.read_text()), "u": [1, 1, 1, 2]}))
+        with self.assertRaisesRegex(ValueError, "content its name claims"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_stray_file_in_the_run_directory_is_refused(self):
+        (self.root / "weather" / self.manifest["base"] / "frames/099.json").write_text("{}")
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_a_version_1_pointer_is_refused(self):
+        self.manifest["schemaVersion"] = 1
+        self.save()
+        with self.assertRaisesRegex(ValueError, "schemaVersion 2"):
+            validate_bundle(self.root, "harmonie", now=self.now)
+
+    def test_missing_frame_rejected_before_any_upload(self):
+        (self.root / "weather" / self.manifest["base"] / "frames/001.json").unlink()
         with self.assertRaises(ValueError):
             self.run_publish()
         self.assertEqual(self.s3.writes, [])
 
-    def test_missing_frame_rejected_before_any_upload(self):
-        (self.root / "weather/harmonie-a/1.json").unlink()
-        with self.assertRaises(FileNotFoundError):
-            self.run_publish()
-        self.assertEqual(self.s3.writes, [])
-
     def test_bad_vectors_and_mixed_run_rejected(self):
-        target = self.root / "weather/harmonie-a/1.json"
-        original = json.loads(target.read_text())
-        for change in [{"u": [float("nan")]*4}, {"run": "2026091311"}, {"gust": [1]*4}]:
-            target.write_text(json.dumps({**original, **change}))
-            with self.assertRaises(ValueError):
-                self.run_publish()
+        for change in [{"u": [float("nan")] * 4}, {"run": "2026091311"}, {"gust": [1] * 4}]:
+            with self.subTest(change=change):
+                self.build("2026091312",
+                           frame=lambda hour, payload: {**payload, **change} if hour == 1 else payload)
+                with self.assertRaises(ValueError):
+                    self.run_publish()
         self.assertEqual(self.s3.writes, [])
 
     def test_stale_run_rejected(self):
@@ -229,28 +356,24 @@ class PublishTests(BundleFixture, unittest.TestCase):
     def test_old_worker_cannot_remove_gusts_from_the_same_run(self):
         self.assertTrue(already_current({**self.manifest, "gustAvailable": True}, self.manifest))
 
+    def test_a_smaller_ensemble_cannot_replace_a_fuller_one(self):
+        fuller = {**self.manifest, "ensemble": {"members": 30}}
+        self.assertTrue(already_current(fuller, {**self.manifest, "ensemble": {"members": 2}}))
+
     def test_gusts_require_matching_periods_and_only_initialization_can_be_missing(self):
-        self.manifest.update(gustAvailable=True, gustMissingHours=[0])
-        for info in self.manifest["frames"]:
-            hour = info["hour"]
-            info["gustIntervalHours"] = [hour-1, hour] if hour else None
-            path = self.root / info["url"]
-            data = json.loads(path.read_text())
-            data.update(gust=[4]*4 if hour else None, gustIntervalHours=info["gustIntervalHours"])
-            path.write_text(json.dumps(data))
-        self.save()
+        self.build("2026091312", gusts=True)
         self.assertEqual(self.run_publish(), "published")
         self.manifest["frames"][1]["gustIntervalHours"] = [0, 2]
         self.save()
         with self.assertRaises(ValueError):
             self.run_publish()
-        self.manifest["gustMissingHours"] = [0, 1]
-        self.save()
+        self.build("2026091312", gusts=True, whole=lambda m: {**m, "gustMissingHours": [0, 1]})
         with self.assertRaises(ValueError):
             self.run_publish()
 
     def test_immutable_collision_cannot_publish(self):
-        self.s3.objects["weather/harmonie-a/0.json"] = {"Body": b"wrong", "Metadata": {"sha256": "wrong"}, "ETag": '"old"'}
+        key = self.keys()[0]
+        self.s3.objects[key] = {"Body": b"wrong", "Metadata": {"sha256": "wrong"}, "ETag": '"old"'}
         with self.assertRaises(ValueError):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
@@ -259,33 +382,45 @@ class PublishTests(BundleFixture, unittest.TestCase):
 class SupersededDeleteTest(BundleFixture, unittest.TestCase):
     """The bucket must not grow for ever, and must never lose a live object."""
 
-    def test_a_publish_deletes_exactly_what_the_manifest_it_replaced_referenced(self):
+    def test_a_publish_deletes_exactly_the_run_directory_it_replaced(self):
         self.assertEqual(self.run_publish(), "published")
-        replaced = [info["url"] for info in self.manifest["frames"]]
-        frames = self.rerun("2026091313", "harmonie-b")
+        replaced = self.keys()
+        self.build("2026091313")
         self.assertEqual(self.quietly(self.run_publish)[0], "published")
-        for url in replaced:
-            self.assertNotIn(url, self.s3.objects)
-        for info in frames:
-            self.assertIn(info["url"], self.s3.objects)
+        self.assertEqual(sorted(self.s3.deleted), sorted(replaced))
+        for key in self.keys():
+            self.assertIn(key, self.s3.objects)
         self.assertIn("weather/harmonie.json", self.s3.objects)
+
+    def test_the_delete_lists_only_its_own_directory(self):
+        """A longer name that starts the same, and another model's run, are not listed."""
+        self.assertEqual(self.run_publish(), "published")
+        old = self.manifest["base"]
+        lookalike = self.s3.seed(f"weather/{old[:-1]}0/frames/000.json", b"x")
+        eps = self.s3.seed("weather/harmonie-eps-2026091312-2h-v1-0a0b0c0d/frames/000.bin", b"x")
+        self.build("2026091313")
+        self.quietly(self.run_publish)
+        self.assertIn(lookalike, self.s3.objects)
+        self.assertIn(eps, self.s3.objects)
+        self.assertFalse([key for key in self.s3.objects if key.startswith(f"weather/{old}")])
 
     def test_deletes_happen_only_after_the_new_pointer_is_in_place(self):
         self.assertEqual(self.run_publish(), "published")
-        self.rerun("2026091313", "harmonie-b")
-        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-b/"
+        self.build("2026091313")
+        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-2026091313-"
         with self.assertRaises(S3Error):
             publish(self.s3, self.root, "harmonie", "test", now=self.now)
         self.assertEqual(self.s3.deleted, [])
 
     def test_a_delete_failure_never_fails_the_forecast_that_just_published(self):
         self.assertEqual(self.run_publish(), "published")
-        self.rerun("2026091313", "harmonie-b")
+        replaced = self.keys()
+        self.build("2026091313")
         self.s3.fail_delete = True
         status, log = self.quietly(self.run_publish)
         self.assertEqual(status, "published")
         self.assertIn("superseded_delete_failed", log)
-        self.assertIn("weather/harmonie-a/0.json", self.s3.objects)
+        self.assertIn(replaced[0], self.s3.objects)
         self.assertEqual(json.loads(self.s3.objects["weather/harmonie.json"]["Body"])["run"],
                          "2026091313")
 
@@ -294,22 +429,22 @@ class SupersededDeleteTest(BundleFixture, unittest.TestCase):
         # finds our own manifest already published, which is success, not a reason
         # to leak the run it replaced until the next sweep.
         self.assertEqual(self.run_publish(), "published")
-        replaced = [info["url"] for info in self.manifest["frames"]]
-        frames = self.rerun("2026091313", "harmonie-b")
+        replaced = self.keys()
+        self.build("2026091313")
         self.s3.lost_ack = True
         status, log = self.quietly(self.run_publish)
         self.assertEqual(status, "unchanged-or-newer")
         self.assertIn("superseded_deleted", log)
-        for url in replaced:
-            self.assertNotIn(url, self.s3.objects)
-        for info in frames:
-            self.assertIn(info["url"], self.s3.objects)
+        for key in replaced:
+            self.assertNotIn(key, self.s3.objects)
+        for key in self.keys():
+            self.assertIn(key, self.s3.objects)
 
     def test_a_newer_run_arriving_mid_publish_deletes_nothing_of_ours(self):
         # already_current for a reason other than "this is our manifest": another
         # machine won, so we published nothing and must delete nothing.
         self.assertEqual(self.run_publish(), "published")
-        self.rerun("2026091313", "harmonie-b")
+        self.build("2026091313")
         self.s3.race = {**self.manifest, "run": "2026091314"}
         status, _ = self.quietly(self.run_publish)
         self.assertEqual(status, "unchanged-or-newer")
@@ -322,35 +457,37 @@ class SupersededDeleteTest(BundleFixture, unittest.TestCase):
         self.assertIn("unreadable_pointer", log)
         self.assertEqual(self.s3.deleted, [])
 
-    def test_nothing_the_new_manifest_still_references_is_ever_deleted(self):
-        previous = {"model": "harmonie", "frames": [{"url": "weather/harmonie-a/0.json"},
-                                                    {"url": "weather/harmonie-a/1.json"}]}
-        incoming = {"model": "harmonie", "frames": [{"url": "weather/harmonie-a/1.json"}]}
-        self.assertEqual(superseded_objects("harmonie", previous, incoming), ["weather/harmonie-a/0.json"])
+    def test_republishing_the_same_directory_deletes_nothing(self):
+        previous = {"model": "harmonie", "base": "harmonie-2026091312-2h-v1-0a0b0c0d/"}
+        self.assertEqual(superseded_objects("harmonie", previous, dict(previous)), ([], []))
 
-    def test_pointers_archives_and_foreign_paths_are_never_deleted(self):
-        previous = {"model": "harmonie", "frames": [
-            {"url": "weather/harmonie.json"}, {"url": "weather/manifests/harmonie/x.json"},
-            {"url": "marine/tides-DUBLIN.json"}, {"url": "https://example.invalid/x.json"},
-            {"url": "/etc/passwd"}, {"url": "weather/../escape.json"},
-            {"url": "weather/harmonie-a/0.json"}]}
-        self.assertEqual(superseded_objects("harmonie", previous, {"frames": []}),
-                         ["weather/harmonie-a/0.json"])
+    def test_only_a_run_directory_named_for_this_model_is_ever_deleted(self):
+        incoming = {"model": "harmonie", "base": "harmonie-2026091313-2h-v1-0a0b0c0d/"}
+        for base, expected in [
+                ("harmonie-2026091312-2h-v1-1a2b3c4d/", ["weather/harmonie-2026091312-2h-v1-1a2b3c4d"]),
+                ("harmonie-eps-2026091312-2h-v1-1a2b3c4d/", []),
+                ("gfs-2026091312-2h-v1-1a2b3c4d/", []),
+                ("manifests-2026091312-2h-v1-1a2b3c4d/", []),
+                ("../harmonie-2026091312-2h-v1-1a2b3c4d/", []),
+                ("harmonie-2026091312-2h-v1/", []),
+                (None, [])]:
+            with self.subTest(base=base):
+                previous = {"model": "harmonie", "base": base}
+                self.assertEqual(superseded_objects("harmonie", previous, incoming),
+                                 (expected, []))
 
-    def test_an_object_named_for_another_model_is_left_to_the_sweep(self):
-        # Same object root, another model's run directory: a corrupt or hand-edited
-        # manifest must not be able to delete a live forecast that is not its own.
-        previous = {"model": "harmonie", "frames": [
-            {"url": "weather/gfs-2026091600-240h-v1/000.json"},
-            {"url": "weather/harmonie-eps-2026091600-48h-v1/000.json"},
-            {"url": "weather/harmonie-2026091600-60h-v2/000.json"}]}
-        self.assertEqual(superseded_objects("harmonie", previous, {"frames": []}),
-                         ["weather/harmonie-2026091600-60h-v2/000.json"])
+    def test_a_tide_pointer_still_deletes_only_its_superseded_station_files(self):
+        previous = {"model": "tides", "stations": {
+            "A": {"url": "marine/tides-A-1.json"}, "B": {"url": "marine/tides-B-1.json"},
+            "C": {"url": "marine/sea-temperature-C.json"}, "D": {"url": "archive/tides-D.json"}}}
+        incoming = {"model": "tides", "stations": {"B": {"url": "marine/tides-B-1.json"}}}
+        self.assertEqual(superseded_objects("tides", previous, incoming),
+                         ([], ["marine/tides-A-1.json"]))
 
     def test_a_missing_or_foreign_previous_manifest_deletes_nothing(self):
-        other = {"model": "gfs", "frames": [{"url": "weather/gfs-2026091600-240h-v1/0.json"}]}
+        other = {"model": "gfs", "base": "gfs-2026091600-240h-v1-0a0b0c0d/"}
         for previous in (None, "", {}, other):
-            self.assertEqual(superseded_objects("harmonie", previous, self.manifest), [])
+            self.assertEqual(superseded_objects("harmonie", previous, self.manifest), ([], []))
 
 
 class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
@@ -361,15 +498,16 @@ class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
         status, log = self.quietly(self.run_publish)
         self.assertEqual(status, "published")
         self.assertEqual(self.s3.writes[-1], "weather/harmonie.json")
-        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["ContentEncoding"], "gzip")
-        self.assertEqual(self.s3.objects["weather/harmonie-a/0.json"]["CacheControl"],
+        key = self.keys()[0]
+        self.assertEqual(self.s3.objects[key]["ContentEncoding"], "gzip")
+        self.assertEqual(self.s3.objects[key]["CacheControl"],
                          "public, max-age=31536000, immutable")
         # Asked once for the immutable objects and once for the pointer, not per object.
         self.assertEqual(log.count("conditional_put_unsupported"), 2)
 
     def test_a_collision_is_still_detected_without_conditional_puts(self):
         self.s3.reject_conditional = True
-        self.s3.seed("weather/harmonie-a/0.json", b"wrong", metadata={"sha256": "wrong"})
+        self.s3.seed(self.keys()[0], b"wrong", metadata={"sha256": "wrong"})
         with contextlib.redirect_stdout(StringIO()), self.assertRaises(ValueError):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
@@ -382,7 +520,7 @@ class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):
         self.assertEqual(before, self.s3.writes)
 
     def test_an_unrelated_error_is_never_mistaken_for_a_missing_feature(self):
-        self.s3.fail_frame = True
+        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-2026091312-"
         with self.assertRaises(S3Error):
             self.run_publish()
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
@@ -503,34 +641,41 @@ class BinaryUploadTests(unittest.TestCase):
 
     The `.br`/`.gz` sidecars the ingest worker writes beside a frame exist only on
     the local Caddy deployment's disk. Nothing here ever uploads them, because the
-    uploader only ever sees the paths a manifest references.
+    run directory's content leaves them out (rundir.content_files).
     """
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root / "weather/harmonie-bin").mkdir(parents=True)
         self.now = datetime(2026, 9, 13, 12, 30, tzinfo=timezone.utc)
         grid = {"width": 2, "height": 2}
-        frames = []
-        self.bodies = {}
+        frames, bodies = [], {}
+        prefix = "harmonie-2026091312-2h-v1"
         for hour in range(3):
             valid = f"2026-09-13T{12 + hour}:00:00Z"
             payload = {"model": "harmonie", "run": "2026091312", "hour": hour,
                        "grid": grid, "u": [1.5] * 4, "v": [-2.5] * 4, "gust": None}
             data = f5bin.encode_frame(payload)
-            name = f5bin.frame_name("harmonie-bin", hour, data)
+            name = f5bin.frame_name(prefix, hour)
             # Written exactly as an adapter writes it, sidecars and all. Asked for
             # explicitly so the suite does not depend on FORCE5_SIDECARS.
             f5bin.write_with_sidecars(self.root / "weather" / name, data, sidecars=True)
-            self.bodies[f"weather/{name}"] = data
-            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
-        self.manifest = {"model": "harmonie", "run": "2026091312",
-                         "runTime": "2026-09-13T12:00:00Z", "stepHours": 1,
-                         "gustAvailable": False, "grid": grid,
-                         "encoding": f5bin.ENCODING, "frames": frames}
-        (self.root / "weather/harmonie.json").write_text(json.dumps(self.manifest))
+            bodies[name.split("/", 1)[1]] = data
+            frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}",
+                           "gustIntervalHours": None})
+        whole = {"schemaVersion": 1, "model": "harmonie", "run": "2026091312",
+                 "runTime": "2026-09-13T12:00:00Z", "stepHours": 1,
+                 "gustAvailable": False, "grid": grid,
+                 "encoding": f5bin.ENCODING, "frames": frames,
+                 "spotForecasts": {"dollymount": [
+                     {"hour": hour, "validTime": f"2026-09-13T{12 + hour}:00:00Z",
+                      "u": 1.5, "v": -2.5, "gust": None} for hour in range(3)]}}
+        with patch.dict(os.environ, {"FORCE5_SIDECARS": "1"}):
+            self.manifest = rundir.write_run(self.root / "weather", "harmonie.json", whole,
+                                             prefix, SPOTS)
+        self.directory = f"weather/{self.manifest['base']}"
+        self.bodies = {self.directory + name: data for name, data in bodies.items()}
         self.s3 = FakeS3()
 
     def stored(self, key):
@@ -553,6 +698,10 @@ class BinaryUploadTests(unittest.TestCase):
         # No sidecar ever becomes an object of its own.
         self.assertFalse([key for key in self.s3.objects
                           if key.endswith(".br") or key.endswith(".gz")])
+        # The square is JSON, gzip-encoded as every JSON object is.
+        square = self.stored(f"{self.directory}spots/n52w008.json")
+        self.assertEqual((square["ContentType"], square["ContentEncoding"]),
+                         ("application/json", "gzip"))
 
     def test_gzip_is_available_as_a_fallback_by_option_and_by_environment(self):
         self.assertEqual(publish(self.s3, self.root, "harmonie", "test",
@@ -630,25 +779,20 @@ class BinaryUploadTests(unittest.TestCase):
                              Path(str(self.root / key) + ".gz").read_bytes())
             self.assertEqual(gzip.decompress(self.stored(key)["Body"]), body)
 
-    def test_the_superseded_delete_can_never_name_a_sidecar(self):
-        """It works from the replaced manifest's urls, and no manifest lists a sidecar.
+    def test_sidecars_are_neither_hashed_nor_uploaded_nor_left_after_a_delete(self):
+        """The run directory's content leaves them out, so its hash and its upload do.
 
         The bucket has no sidecars to delete, and the local sweep removes a run
-        directory whole, so neither path can be confused by one. This pins the
-        reason: the only names that reach `delete_keys` are frame urls.
+        directory whole, so neither path can be confused by one.
         """
-        previous = json.loads(json.dumps(self.manifest))
-        newer = {**self.manifest, "run": "2026091313",
-                 "frames": [{**frame, "url": frame["url"].replace("harmonie-bin",
-                                                                  "harmonie-bin2")}
-                            for frame in self.manifest["frames"]]}
-        stale = superseded_objects("harmonie", previous, newer)
-        self.assertEqual(sorted(stale), sorted(self.bodies))
-        self.assertTrue(all(url.endswith(".bin") for url in stale))
-        # The sidecars are on disk beside the frames and still are not named.
-        written = sorted(p.name for p in (self.root / "weather/harmonie-bin").iterdir())
+        written = sorted(p.name for p in (self.root / self.directory / "frames").iterdir())
         self.assertEqual(len(written), 9)
         self.assertTrue(any(name.endswith(".br") for name in written))
+        files = rundir.content_files(self.root / self.directory)
+        self.assertFalse([name for name in files if name.endswith((".br", ".gz"))])
+        _, _, objects = validate_bundle(self.root, "harmonie", now=self.now)
+        self.assertEqual(sorted(path for path, _ in objects),
+                         sorted([*self.bodies, f"{self.directory}spots/n52w008.json"]))
 
     def test_republishing_the_same_frame_bytes_is_not_a_collision(self):
         publish(self.s3, self.root, "harmonie", "test", now=self.now)

@@ -15,7 +15,13 @@ import {
 } from "./manifests";
 import { loadManifest } from "./manifests";
 import { MODELS } from "./models";
-import { windManifest } from "./testing";
+import { pointerOf, squareReader, windManifest, waveManifest } from "./testing";
+import { loadSpots, readForecastJson, withSpots } from "./manifests";
+import { clearSpotSquares } from "./spotData";
+
+/** A wind run's pointer, as published: no spot data inline. */
+const pointer = (options: Parameters<typeof windManifest>[0]) =>
+  pointerOf(windManifest(options));
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200 });
@@ -106,7 +112,7 @@ describe("model registry", () => {
 
 describe("manifest cache", () => {
   it("validates once, then serves the cache until it goes stale", async () => {
-    const fetcher = vi.fn(async () => ok(windManifest({ model: "gfs" })));
+    const fetcher = vi.fn(async () => ok(pointer({ model: "gfs" })));
     vi.stubGlobal("fetch", fetcher);
     const first = await loadManifest("gfs");
     expect(first.model).toBe("gfs");
@@ -120,7 +126,7 @@ describe("manifest cache", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
   it("dedupes concurrent requests for the same URL", async () => {
-    const fetcher = vi.fn(async () => ok(windManifest({ model: "gfs" })));
+    const fetcher = vi.fn(async () => ok(pointer({ model: "gfs" })));
     vi.stubGlobal("fetch", fetcher);
     const [a, b] = await Promise.all([
       loadManifest("gfs"),
@@ -143,7 +149,7 @@ describe("manifest cache", () => {
   it("refuses a manifest whose model does not match the request", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ok(windManifest({ model: "icon-eu" }))),
+      vi.fn(async () => ok(pointer({ model: "icon-eu" }))),
     );
     await expect(loadManifest("gfs")).rejects.toThrow(/does not match/);
   });
@@ -154,7 +160,7 @@ describe("manifest cache", () => {
       vi.fn(
         () =>
           new Promise<Response>((resolve) =>
-            setTimeout(() => resolve(ok(windManifest({ model: "gfs" }))), 50),
+            setTimeout(() => resolve(ok(pointer({ model: "gfs" }))), 50),
           ),
       ),
     );
@@ -166,7 +172,7 @@ describe("manifest cache", () => {
   it("does not parse a revalidated manifest again when its ETag has not moved", async () => {
     const tagged = (body: string, etag: string) =>
       new Response(body, { status: 200, headers: { ETag: etag } });
-    const json = JSON.stringify(windManifest({ model: "gfs" }));
+    const json = JSON.stringify(pointer({ model: "gfs" }));
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(tagged(json, '"a"'))
@@ -176,7 +182,7 @@ describe("manifest cache", () => {
       .mockResolvedValueOnce(
         tagged(
           JSON.stringify(
-            windManifest({ model: "gfs", runTime: "2026-09-14T06:00:00Z" }),
+            pointer({ model: "gfs", runTime: "2026-09-14T06:00:00Z" }),
           ),
           '"b"',
         ),
@@ -192,18 +198,18 @@ describe("manifest cache", () => {
   });
   it("revalidates rather than trusting a cached copy", async () => {
     const fetcher = vi.fn(async (_url: string, _init: RequestInit) =>
-      ok(windManifest({ model: "gefs" })),
+      ok(pointer({ model: "gefs" })),
     );
     vi.stubGlobal("fetch", fetcher);
     await loadManifest("gefs");
     expect(fetcher.mock.calls[0][1]).toMatchObject({ cache: "no-cache" });
   });
   it("takes the response the page's head already asked for, once", async () => {
-    const early = Promise.resolve(ok(windManifest({ model: "harmonie" })));
+    const early = Promise.resolve(ok(pointer({ model: "harmonie" })));
     vi.stubGlobal("window", {
       __f5early: { "/weather/harmonie.json": early },
     });
-    const fetcher = vi.fn(async () => ok(windManifest({ model: "harmonie" })));
+    const fetcher = vi.fn(async () => ok(pointer({ model: "harmonie" })));
     vi.stubGlobal("fetch", fetcher);
     expect((await loadManifest("harmonie")).model).toBe("harmonie");
     expect(fetcher).not.toHaveBeenCalled();
@@ -214,7 +220,7 @@ describe("manifest cache", () => {
   it("loads a planned model as soon as its adapter publishes one", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ok(windManifest({ model: "ukv" }))),
+      vi.fn(async () => ok(pointer({ model: "ukv" }))),
     );
     expect((await loadManifest("ukv")).model).toBe("ukv");
   });
@@ -231,7 +237,7 @@ describe("availability sweep", () => {
           ? "icon-eu"
           : url.replace(/^.*weather\//, "").replace(/\.json$/, "");
         if (id === "gfs") return missing();
-        return ok(windManifest({ model: id }));
+        return ok(pointer({ model: id }));
       }),
     );
     const availability = await availableModels();
@@ -261,3 +267,88 @@ describe("availability sweep", () => {
     expect(availability[0].error).toMatch(/Invalid forecast manifest/);
   });
 });
+
+describe("spot squares", () => {
+  afterEach(() => clearSpotSquares(readForecastJson));
+  /** A fetch serving the squares of these runs and recording every path asked. */
+  const serve = (...runs: Parameters<typeof squareReader>) => {
+    const read = squareReader(...runs);
+    const fetcher = vi.fn(async (url: string) => {
+      const body = await read(url.replace(/^.*?\/weather\//, "weather/"));
+      return body === null ? missing() : ok(body);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    return fetcher;
+  };
+  const whole = windManifest({
+    model: "harmonie",
+    extra: {
+      spotForecasts: {
+        brandon: windManifest().spotForecasts!.brandon,
+        dollymount: windManifest().spotForecasts!.brandon,
+      },
+    },
+  });
+
+  it("reads only the squares asked for, once, and checks what it merges", async () => {
+    const fetcher = serve(whole);
+    const run = pointerOf({ ...whole, spots: { ...whole.spots } });
+    expect(run.spots.squares).toEqual(["n52w008", "n52w012"]);
+    const one = await loadSpots(run, ["n52w012"]);
+    expect(Object.keys(one.spotForecasts!)).toEqual(["brandon"]);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][0]).toMatch(
+      /weather\/harmonie-2026091400-test-v1-0a0b0c0d\/spots\/n52w012\.json$/,
+    );
+    const all = await loadSpots(run);
+    expect(all.spotForecasts).toEqual(whole.spotForecasts);
+    // The square already read is not fetched again.
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(await loadSpots(run)).toBe(all);
+  });
+  it("marks a model whose squares cannot be read unavailable, and only that one", async () => {
+    const wave = waveManifest();
+    serve(wave);
+    const models = await withSpots([
+      {
+        id: "harmonie",
+        entry: requireModel("harmonie"),
+        manifest: pointerOf(whole),
+        wind: pointerOf(whole),
+        wave: null,
+        weather: null,
+        available: true,
+        error: null,
+      },
+      {
+        id: "gfs-wave",
+        entry: requireModel("gfs-wave"),
+        manifest: pointerOf(wave),
+        wind: null,
+        wave: pointerOf(wave),
+        weather: null,
+        available: true,
+        error: null,
+      },
+    ]);
+    expect(models[0].available).toBe(false);
+    expect(models[0].error).toMatch(/answered 404/);
+    expect(models[1].wave?.spotSeries).toEqual(wave.spotSeries);
+  });
+  it("refuses a square whose series break the bundle's own contract", async () => {
+    const broken = waveManifest({ hours: [0, 3, 6] });
+    const shifted = {
+      ...broken,
+      spotSeries: {
+        brandon: broken.spotSeries!.brandon.map((step, index) =>
+          index === 1 ? { ...step, hour: 4 } : step,
+        ),
+      },
+    };
+    serve(shifted);
+    await expect(loadSpots(pointerOf(shifted))).rejects.toThrow(
+      /Invalid wave forecast manifest/,
+    );
+  });
+});
+

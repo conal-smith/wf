@@ -333,7 +333,7 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
     .getByRole("slider", { name: "Forecast time" })
     .fill(String(noon));
   await expect(page.locator(".frame-status")).toHaveCount(0);
-  await page.route("**/weather/harmonie-*/*", (route) =>
+  await page.route("**/weather/harmonie-*/frames/*", (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
   await chooseModel(page, "harmonie");
@@ -341,8 +341,8 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
     "ICON-EU is still shown",
   );
   await expectModel(page, "icon-eu");
-  await page.unroute("**/weather/harmonie-*/*");
-  await page.route("**/weather/harmonie-*/*", async (route) => {
+  await page.unroute("**/weather/harmonie-*/frames/*");
+  await page.route("**/weather/harmonie-*/frames/*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 900));
     await route.continue();
   });
@@ -351,7 +351,7 @@ test("a model switch that fails or is cancelled cannot relabel what is drawn", a
   await page.waitForTimeout(1100);
   await expectModel(page, "icon-eu");
   await expect(page.locator(".map-model")).toContainText("ICON-EU");
-  await page.unroute("**/weather/harmonie-*/*");
+  await page.unroute("**/weather/harmonie-*/frames/*");
   await chooseModel(page, "harmonie");
   await expectModel(page, "harmonie");
 });

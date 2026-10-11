@@ -1,6 +1,6 @@
 import { SAMPLE_CLOCK } from "./columns";
 import { expect, test, type Page } from "./fixtures";
-import { readSample } from "./sample";
+import { readSampleRun } from "./sample";
 
 /**
  * A spot on a thread: the card under the opening post, its wind from the map's
@@ -113,7 +113,7 @@ test("a thread with a spot shows its name, its wind now and the way to the map",
   await expect(card(page)).toHaveAttribute("href", "/?spot=dollymount");
 
   // The fixture pins the clock on one of the sample run's hours: that hour's wind.
-  const harmonie = readSample("harmonie");
+  const harmonie = await readSampleRun("harmonie");
   const hour = harmonie.spotForecasts.dollymount.find(
     (entry: { validTime: string }) =>
       Date.parse(entry.validTime) === SAMPLE_CLOCK.getTime(),
@@ -222,9 +222,34 @@ test("the reading keeps up with the clock on a thread left open, and stands down
   // Two hours of a run, three hours apart: a westerly that builds, with its gust.
   const at = (hours: number) =>
     new Date(SAMPLE_CLOCK.getTime() + hours * 3600000).toISOString();
+  // The pointer names a run directory, and the card reads the one square of it
+  // that holds Dollymount.
+  const run = "2026091313";
+  const base = "harmonie-2026091313-3h-v1-0a1b2c3d/";
   await page.route("**/weather/harmonie.json", (route) =>
     route.fulfill({
       json: {
+        schemaVersion: 2,
+        model: "harmonie",
+        run,
+        base,
+        frames: [],
+        spots: {
+          squareDegrees: 2,
+          url: "spots/{square}.json",
+          squares: ["n52w008"],
+          keys: ["spotForecasts"],
+        },
+      },
+    }),
+  );
+  await page.route(`**/weather/${base}spots/n52w008.json`, (route) =>
+    route.fulfill({
+      json: {
+        schemaVersion: 2,
+        model: "harmonie",
+        run,
+        square: "n52w008",
         spotForecasts: {
           dollymount: [
             {

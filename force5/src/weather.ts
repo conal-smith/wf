@@ -1,5 +1,15 @@
 // Force5's provider-neutral forecast contract and sampling utilities.
+import { modelEntry } from "./catalog";
 import { F5_ENCODING, decodeFrame } from "./f5bin";
+import {
+  RUN_SCHEMA_VERSION,
+  SPOT_KEYS,
+  checkBase,
+  checkRunPath,
+  checkSpotIndex,
+  runPath,
+  type SpotIndex,
+} from "./spotData";
 import { forecastUrl } from "./urls";
 // Units live in units.ts; re-exported so existing weather imports keep working.
 export {
@@ -29,6 +39,7 @@ export interface Wind {
 export interface FrameInfo {
   hour: number;
   validTime: string;
+  /** Inside the run directory the manifest's `base` names: `frames/000.bin`. */
   url: string;
   gustIntervalHours: [number, number] | null;
 }
@@ -98,7 +109,23 @@ export interface MemberFrame {
   v: number[];
   gust: (number | null)[];
 }
-export interface Manifest {
+/** The per-spot data of a wind run, read from its spot squares (spotData.ts). */
+export interface WindSpotData {
+  /**
+   * One precomputed series per riding location. A model whose domain does not
+   * reach a location still lists it, with null values and a `coverageNote`
+   * naming it, so the catalogue never looks as though it changed.
+   */
+  spotForecasts: Record<string, (Wind & { hour: number; validTime: string })[]>;
+  spotMembers?: Record<string, MemberFrame[]>;
+}
+/**
+ * A wind run's pointer (schemaVersion 2). Its frames and its spot squares live
+ * in the run directory `base` names, beside the pointer; `spotForecasts` and
+ * `spotMembers` are present only once the squares a reader asked for have been
+ * merged in (`loadSpotSquares`), and then only for the spots in them.
+ */
+export interface Manifest extends Partial<WindSpotData> {
   schemaVersion: number;
   model: string;
   modelName: string;
@@ -116,13 +143,13 @@ export interface Manifest {
    * "f5-int16-v1" means the binary frames force5/src/f5bin.ts reads.
    */
   encoding?: string;
+  /** The run directory, relative to the pointer's own directory. */
+  base: string;
   frames: FrameInfo[];
-  /**
-   * One precomputed series per riding location. A model whose domain does not
-   * reach a location still lists it, with null values and a `coverageNote`
-   * naming it, so the catalogue never looks as though it changed.
-   */
-  spotForecasts: Record<string, (Wind & { hour: number; validTime: string })[]>;
+  /** The spot squares the run publishes (spotData.ts). */
+  spots: SpotIndex;
+  /** The last published hour of a run with no map frames. */
+  horizonHours?: number;
   sourceUrl: string;
   attribution: string;
   licenseUrl: string;
@@ -139,7 +166,6 @@ export interface Manifest {
   /** Why a spot may carry a null series: a crop edge or a model domain edge. */
   coverageNote?: string;
   spotForecastsDescription?: string;
-  spotMembers?: Record<string, MemberFrame[]>;
 }
 export const speed = (wind: Pick<Wind, "u" | "v">) =>
   Math.hypot(wind.u, wind.v);
@@ -257,7 +283,7 @@ function validateEnsemble(e: Ensemble): void {
   )
     throw new Error("Invalid ensemble description.");
 }
-function validateSpotMembers(m: Manifest): void {
+function validateSpotMembers(m: Manifest & WindSpotData): void {
   const members = m.ensemble?.members;
   if (!members)
     throw new Error("Member series require an ensemble description.");
@@ -293,16 +319,53 @@ function validateSpotMembers(m: Manifest): void {
     }
   }
 }
+/**
+ * A wind run's spot data, read from its squares, checked against its pointer:
+ * every member series as long as the ensemble says, on the run's own clock.
+ * Returns the manifest it was given, so a merged run can be checked in place.
+ */
+export function validateWindSpots<M extends Manifest>(m: M): M {
+  if (m.spotForecasts !== undefined && !isRecord(m.spotForecasts))
+    throw new Error("Invalid spot forecasts.");
+  if (m.spotMembers) validateSpotMembers(m as M & WindSpotData);
+  return m;
+}
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * A run pointer's own shape: schemaVersion 2, a run directory beside it, no
+ * spot data inline. Shared with the wave and weather validators (variables.ts).
+ */
+export function validateRunPointer(m: {
+  schemaVersion: number;
+  base: string;
+  spots: unknown;
+}): void {
+  if (m.schemaVersion !== RUN_SCHEMA_VERSION)
+    throw new Error("This forecast is an old format. Refresh the forecast.");
+  checkBase(m.base);
+  checkSpotIndex(m.spots);
+  const inline = SPOT_KEYS.filter((key) => key in m);
+  if (inline.length)
+    throw new Error(
+      `Spot data belongs in the spot squares, not the forecast: ${inline.join(", ")}.`,
+    );
+}
 export function validateManifest(m: Manifest): Manifest {
   if (
     !m ||
-    m.schemaVersion !== 1 ||
     !Array.isArray(m.frames) ||
     // Chart-only ensembles publish member series without map frames.
     (!m.frames.length && !m.ensemble) ||
     !Number.isFinite(Date.parse(m.runTime))
   )
     throw new Error("Invalid forecast manifest. Run npm run weather:refresh.");
+  validateRunPointer(m);
+  if (
+    !m.frames.length &&
+    (!Number.isInteger(m.horizonHours) || m.horizonHours! <= 0)
+  )
+    throw new Error("A forecast without map frames must state its horizon.");
   if (m.kind !== undefined && !KINDS.includes(m.kind))
     throw new Error("Unknown forecast kind.");
   if (m.encoding !== undefined && m.encoding !== F5_ENCODING)
@@ -316,7 +379,6 @@ export function validateManifest(m: Manifest): Manifest {
   if (m.gustKind === "instantaneous" && m.gustMissingHours)
     throw new Error("Instantaneous gusts have no missing hours.");
   if (m.ensemble !== undefined) validateEnsemble(m.ensemble);
-  if (m.spotMembers) validateSpotMembers(m);
   if (m.grid || m.frames.length) validateGrid(m.grid);
   if (
     m.gustMissingHours &&
@@ -363,9 +425,7 @@ export function validateManifest(m: Manifest): Manifest {
       f.hour <= previous ||
       !Number.isFinite(Date.parse(f.validTime)) ||
       Date.parse(f.validTime) !== Date.parse(m.runTime) + f.hour * 3600000 ||
-      typeof f.url !== "string" ||
-      !f.url.startsWith("weather/") ||
-      f.url.includes("..")
+      !usableRunPath(f.url)
     )
       throw new Error("Forecast timeline is invalid.");
     if (m.gustAvailable === false || m.gustMissingHours?.includes(f.hour)) {
@@ -395,6 +455,29 @@ export function validateManifest(m: Manifest): Manifest {
   }
   return m;
 }
+/** A url inside the run directory, which is all a frame url may be. */
+export function usableRunPath(url: unknown): boolean {
+  try {
+    checkRunPath(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/**
+ * Where a manifest is published: its catalogue path, which its run directory is
+ * relative to. A model the catalogue does not know is read from beside the
+ * others, under `weather/`.
+ */
+export const manifestPath = (manifest: Pick<Manifest, "model">): string =>
+  modelEntry(manifest.model)?.manifestUrl ?? `weather/${manifest.model}.json`;
+/** The URL of one of a run's own files: `base` and the path, from the pointer. */
+export const runFileUrl = (
+  manifest: Pick<Manifest, "model" | "base">,
+  relative: string,
+): string =>
+  forecastUrl(runPath(manifestPath(manifest), manifest.base, relative));
+
 export function validateFrame(
   f: Frame,
   manifest: Manifest,
@@ -469,7 +552,7 @@ export function loadFrame(
   { keep = true }: { keep?: boolean } = {},
 ): Promise<Frame> {
   const info = manifest.frames[index],
-    url = forecastUrl(info.url);
+    url = runFileUrl(manifest, info.url);
   const found = cache.get(url);
   if (found) {
     cache.delete(url);
@@ -518,28 +601,33 @@ export function nearestFrame(
     0,
   );
 }
-/** Last time the manifest covers, from map frames or from its spot series. */
 /**
  * What a run's age and reach are read from: when it started and the times it
  * publishes. A whole manifest is one; so is the blend's summary of a run
- * (src/spotBlend.ts), which carries the times and nothing else.
+ * (src/spotBlend.ts), which carries the times and nothing else. A run with no
+ * map frames states how far it reaches in `horizonHours`; its spot series, when
+ * they have been read, say the same.
  */
 export interface RunTimes {
   runTime: string;
   frames: readonly Pick<FrameInfo, "validTime">[];
+  horizonHours?: number;
   spotForecasts?: Readonly<Record<string, readonly { validTime: string }[]>>;
   spotMembers?: Readonly<Record<string, readonly { validTime: string }[]>>;
 }
 
+/** Last time the manifest covers: its last frame, or its stated horizon. */
 export function lastValidTime(m: RunTimes): number | null {
-  const times = m.frames.length
-    ? [Date.parse(m.frames[m.frames.length - 1].validTime)]
-    : [
-        ...Object.values(m.spotForecasts ?? {}),
-        ...Object.values(m.spotMembers ?? {}),
-      ].flatMap((series) =>
-        series.length ? [Date.parse(series[series.length - 1].validTime)] : [],
-      );
+  if (m.frames.length)
+    return Date.parse(m.frames[m.frames.length - 1].validTime);
+  if (Number.isFinite(m.horizonHours) && Number.isFinite(Date.parse(m.runTime)))
+    return Date.parse(m.runTime) + m.horizonHours! * 3600000;
+  const times = [
+    ...Object.values(m.spotForecasts ?? {}),
+    ...Object.values(m.spotMembers ?? {}),
+  ].flatMap((series) =>
+    series.length ? [Date.parse(series[series.length - 1].validTime)] : [],
+  );
   return times.length ? Math.max(...times) : null;
 }
 export function freshness(

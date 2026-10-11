@@ -15,8 +15,9 @@ from ecmwf.opendata import Client
 
 from cadence import ECMWF_HOURS, ECMWF_RANGES
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample, write_json
+from fetch_forecast import ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, load_spots, sample
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 SOURCE_URL = "https://www.ecmwf.int/en/forecasts/datasets/open-data"
@@ -237,7 +238,7 @@ def main():
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "termsUrl": "https://apps.ecmwf.int/datasets/licences/general/",
     }
-    write_json(output / "ecmwf.json", manifest)
+    write_run(output, "ecmwf.json", manifest, prefix, spots)
     print(f"Published {len(frames)} ECMWF frames to {output / 'ecmwf.json'}", flush=True)
 
 

@@ -14,6 +14,7 @@ from fetch_mi_swan import NEST, SHELF, discover, main, wind_sea
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
+from runfixtures import read_whole
 
 HINDCAST_HOURS = 192  # Eight days of hindcast precede the run hour in the aggregate.
 FORECAST_HOURS = 144
@@ -168,7 +169,7 @@ class SwanTests(unittest.TestCase):
              patch("fetch_mi_swan.load_spots", return_value=spots), \
              patch.object(fetch_mi_swan.SESSION, "get", side_effect=self.erddap.get):
             manifest = main(list(argv))
-        published = json.loads((self.root / "public/weather/mi-swan.json").read_text())
+        published = read_whole(self.root / "public/weather/mi-swan.json")
         self.assertEqual(published, manifest)
         return manifest
 
@@ -208,7 +209,7 @@ class SwanTests(unittest.TestCase):
 
     # --- nearest valid point ---------------------------------------------
     def test_a_dry_home_cell_falls_back_to_the_nearest_wet_neighbour(self):
-        record = self.run_main("--hours", "3")["spots"]["brandon"]
+        record = self.run_main("--hours", "3")["spotCells"]["brandon"]
         self.assertTrue(record["neighbourSearch"])
         self.assertEqual(record["dataset"], SHELF)
         # The cell containing the spot is dry; the closest wet cell is one step west.
@@ -217,12 +218,12 @@ class SwanTests(unittest.TestCase):
         self.assertLess(record["nearestOffsetKm"], record["searched"][SHELF]["searchKm"])
 
     def test_a_wet_home_cell_records_no_neighbour_search(self):
-        record = self.run_main("--hours", "3")["spots"]["rusheen"]
+        record = self.run_main("--hours", "3")["spotCells"]["rusheen"]
         self.assertFalse(record["neighbourSearch"])
 
     def test_a_location_with_no_wet_cell_is_published_as_nulls_with_a_reason(self):
         manifest = self.run_main("--hours", "3")
-        record = manifest["spots"]["inland"]
+        record = manifest["spotCells"]["inland"]
         self.assertIsNone(record["dataset"])
         self.assertIsNone(record["nearestOffsetKm"])
         self.assertIn("No wet Irish Shelf SWAN cell within 8 km", record["reason"])
@@ -243,7 +244,7 @@ class SwanTests(unittest.TestCase):
 
     # --- nest preference --------------------------------------------------
     def test_the_connemara_nest_wins_for_a_spot_inside_it(self):
-        record = self.run_main("--hours", "3")["spots"]["rusheen"]
+        record = self.run_main("--hours", "3")["spotCells"]["rusheen"]
         self.assertEqual(record["dataset"], NEST)
         self.assertTrue(record["nest"])
         self.assertLess(record["nearestOffsetKm"], 0.3)
@@ -252,14 +253,14 @@ class SwanTests(unittest.TestCase):
         self.assertGreater(record["comparedWith"]["offsetKm"], record["nearestOffsetKm"])
 
     def test_outside_the_nest_only_the_shelf_grid_is_queried(self):
-        record = self.run_main("--hours", "3")["spots"]["brandon"]
+        record = self.run_main("--hours", "3")["spotCells"]["brandon"]
         self.assertEqual(list(record["searched"]), [SHELF])
         self.assertNotIn("comparedWith", record)
 
     def test_no_nest_uses_the_shelf_grid_everywhere(self):
         manifest = self.run_main("--hours", "3", "--no-nest")
-        self.assertEqual(manifest["spots"]["rusheen"]["dataset"], SHELF)
-        self.assertFalse(manifest["spots"]["rusheen"]["nest"])
+        self.assertEqual(manifest["spotCells"]["rusheen"]["dataset"], SHELF)
+        self.assertFalse(manifest["spotCells"]["rusheen"]["nest"])
         self.assertIsNone(manifest["nest"])
         self.assertNotIn(NEST, manifest["source"])
         self.assertTrue(all(NEST not in url for url in self.erddap.requests))
@@ -320,12 +321,14 @@ class SwanTests(unittest.TestCase):
         self.assertEqual(manifest["attribution"], fetch_mi_swan.ATTRIBUTION)
         self.assertEqual(manifest["licenseUrl"], "https://creativecommons.org/licenses/by/4.0/")
         _, _, objects = validate_bundle(self.root / "public", "mi-swan", max_age_hours=36)
-        self.assertEqual(objects, [])
+        squares = [f"weather/{manifest['base']}spots/{square}.json"
+                   for square in manifest["spots"]["squares"]]
+        self.assertEqual([path for path, _ in objects], squares)
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root / "public", "mi-swan", "test", max_age_hours=36),
                          "published")
-        self.assertEqual(s3.writes[-1], "weather/mi-swan.json")
-        self.assertEqual(s3.writes, ["weather/mi-swan.json"])  # Only the pointer.
+        # Only the spot squares, then the pointer.
+        self.assertEqual(s3.writes, squares + ["weather/mi-swan.json"])
 
     def test_frames_are_optional_and_published_north_to_south(self):
         with patch("fetch_mi_swan.FRAME_BOX", (-10.0, 53.0, -9.9, 53.1)):
@@ -335,14 +338,16 @@ class SwanTests(unittest.TestCase):
         self.assertEqual((grid["north"], grid["south"]), (53.0875, 53.0125))
         self.assertEqual(len(manifest["frames"]), 17)
         self.assertEqual(manifest["frameVariables"], ["swh", "mwp", "mwd"])
-        frame = json.loads((self.root / "public" / manifest["frames"][0]["url"]).read_text())
+        frame = json.loads((self.root / "public/weather" / manifest["base"]
+                            / manifest["frames"][0]["url"]).read_text())
         self.assertEqual(sorted(k for k in frame if isinstance(frame[k], list)),
                          ["mwd", "mwp", "swh"])
         self.assertEqual(len(frame["swh"]), 16)
         # Row 0 is the northern edge, so its heights exceed the southern row's.
         self.assertGreater(frame["swh"][0], frame["swh"][12])
         _, _, objects = validate_bundle(self.root / "public", "mi-swan", max_age_hours=36)
-        self.assertEqual(len(objects), 17)
+        # Every frame, and one file per spot square.
+        self.assertEqual(len(objects), 17 + len(manifest["spots"]["squares"]))
 
     def test_every_riding_location_gets_a_series_of_every_variable(self):
         manifest = self.run_main("--hours", "24", "--step", "3")

@@ -1,0 +1,24 @@
+{
+  "description": "Spot squares (force5/ingest/squares.py, force5/src/squares.ts): the 2-degree square holding a point, named by its south-west corner on even degrees. Both languages are tested against these cases.",
+  "squareDegrees": 2,
+  "cases": [
+    { "name": "Dollymount", "lat": 53.37, "lon": -6.17, "square": "n52w008" },
+    { "name": "Brandon Bay", "lat": 52.276, "lon": -10.024, "square": "n52w012" },
+    { "name": "a corner exactly", "lat": 52.0, "lon": -10.0, "square": "n52w010" },
+    { "name": "just below a corner", "lat": 51.999999, "lon": -10.000001, "square": "n50w012" },
+    { "name": "just inside the north-east", "lat": 53.999999, "lon": -8.000001, "square": "n52w010" },
+    { "name": "the origin", "lat": 0, "lon": 0, "square": "n00e000" },
+    { "name": "just south-west of the origin", "lat": -0.5, "lon": -0.5, "square": "s02w002" },
+    { "name": "on the equator, west", "lat": 0, "lon": -0.5, "square": "n00w002" },
+    { "name": "just south of the equator, east", "lat": -0.5, "lon": 0.5, "square": "s02e000" },
+    { "name": "an odd negative degree", "lat": -33.0, "lon": -71.0, "square": "s34w072" },
+    { "name": "an even negative degree", "lat": -34.0, "lon": -72.0, "square": "s34w072" },
+    { "name": "east of Greenwich", "lat": 51.5, "lon": 1.0, "square": "n50e000" },
+    { "name": "three-digit east", "lat": 35.6, "lon": 139.7, "square": "n34e138" },
+    { "name": "the antimeridian from the east", "lat": 10, "lon": 180, "square": "n10w180" },
+    { "name": "the antimeridian from the west", "lat": 10, "lon": -180, "square": "n10w180" },
+    { "name": "just short of the antimeridian", "lat": 10, "lon": 179.5, "square": "n10e178" },
+    { "name": "the north pole", "lat": 90, "lon": 0, "square": "n88e000" },
+    { "name": "the south pole", "lat": -90, "lon": 0, "square": "s90e000" }
+  ]
+}

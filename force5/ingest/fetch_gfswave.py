@@ -14,8 +14,6 @@ resampled onto a regular 0.05° display grid; land and unresolved cells are null
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import math
 import os
 import re
@@ -30,6 +28,7 @@ import fetch_gfs
 from fetch_gfs import get, index_ranges, run_datetime
 from fetch_forecast import ROOT, load_spots, published_in_bucket, sample, spots_file, write_json
 from registry import UNCHANGED_EXIT
+from rundir import frame_name, write_run
 import timing
 
 MODEL = "gfs-wave"
@@ -510,8 +509,7 @@ def main(argv=None):
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": GRID, **fields}
         with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
+            name = frame_name(prefix, hour, "json")
             write_json(output / name, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
@@ -534,7 +532,7 @@ def main(argv=None):
         coverage[spot["id"]] = {"landMasked": masked, "resolved": resolved, "note": note}
     manifest = manifest_for(run, run_time, args, frames, series, coverage, decoded[0][1])
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     resolved = sum(1 for entry in coverage.values() if entry["resolved"])
     print(f"Published {len(frames)} GFS-Wave frames to {output / (MODEL + '.json')}; "
           f"{resolved} of {len(spots)} spots have wave values", flush=True)
