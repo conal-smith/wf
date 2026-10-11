@@ -16,6 +16,7 @@ from fetch_gfs import (decode, discover, filter_url, index_ranges, inventory,
                        main, object_key, run_datetime, validate_metadata)
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
+from runfixtures import publish_whole, read_whole
 
 NOW = datetime(2026, 9, 16, 21, 40, tzinfo=timezone.utc)
 RUN = "2026091612"
@@ -198,7 +199,7 @@ class GfsTests(unittest.TestCase):
         directory.mkdir(parents=True)
         manifest = {"model": "gfs", "run": RUN, "runTime": run_time.isoformat().replace("+00:00", "Z"),
                     "stepHours": 3, "grid": {"width": 2, "height": 2}, "frames": [],
-                    "gustAvailable": True, "gustKind": gust_kind}
+                    "gustAvailable": True, "gustKind": gust_kind, "spotForecasts": {"brandon": []}}
         for hour in hours:
             valid = (run_time + timedelta(hours=hour)).isoformat().replace("+00:00", "Z")
             info = {"hour": hour, "validTime": valid, "url": f"weather/gfs-run/{hour}.json",
@@ -208,7 +209,7 @@ class GfsTests(unittest.TestCase):
                 {"model": "gfs", "run": RUN, "hour": hour, "validTime": valid,
                  "grid": manifest["grid"], "gustIntervalHours": [hour, hour],
                  "u": [1] * 4, "v": [2] * 4, "gust": [3] * 4}))
-        (self.root / "weather/gfs.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", "gfs.json", manifest)
         return manifest, run_time + timedelta(hours=1)
 
     def test_publisher_accepts_instantaneous_gusts_at_every_hour(self):
@@ -216,7 +217,7 @@ class GfsTests(unittest.TestCase):
         manifest, _, objects = validate_bundle(self.root, "gfs", 24, now)
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]],
                          [[0, 0], [3, 3], [6, 6]])
-        self.assertEqual(len(objects), 3)
+        self.assertEqual(len(objects), 4)  # Three frames and a spot square.
 
     def test_publisher_still_rejects_zero_length_maximum_intervals(self):
         manifest, now = self.bundle(gust_kind="maximum")
@@ -318,7 +319,7 @@ class GfsTests(unittest.TestCase):
              patch("fetch_gfs.download", return_value=b"GRIB-stub"), \
              patch("fetch_gfs.decode", side_effect=self.restamped(run)):
             main()
-        manifest = json.loads((self.root / "public/weather/gfs.json").read_text())
+        manifest = read_whole(self.root / "public/weather/gfs.json")
         self.assertEqual((manifest["model"], manifest["modelName"], manifest["provider"]),
                          ("gfs", "GFS", "NOAA NCEP"))
         self.assertEqual(manifest["gustKind"], "instantaneous")
@@ -334,7 +335,7 @@ class GfsTests(unittest.TestCase):
         self.assertEqual(manifest["encoding"], f5bin.ENCODING)
         self.assertEqual(manifest["grid"]["order"], "north-to-south, west-to-east")
         frame = f5bin.decode_frame(
-            (self.root / "public" / manifest["frames"][0]["url"]).read_bytes())
+            (self.root / "public/weather" / manifest["base"] / manifest["frames"][0]["url"]).read_bytes())
         self.assertEqual((frame["run"], frame["hour"]), (run, 0))
         self.assertEqual((frame["width"], frame["height"]),
                          (manifest["grid"]["width"], manifest["grid"]["height"]))
@@ -343,7 +344,8 @@ class GfsTests(unittest.TestCase):
         published, _, objects = validate_bundle(
             self.root / "public", "gfs",
             24, datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc) + timedelta(hours=1))
-        self.assertEqual((published["run"], len(objects)), (run, 2))
+        self.assertEqual((published["run"], len(objects)),
+                         (run, 2 + len(published["spots"]["squares"])))
 
 
 if __name__ == "__main__":

@@ -1,10 +1,123 @@
 // Synthetic manifests for unit tests. Not exported from index.ts and never
 // bundled into the app; the bundled snapshots in public/weather remain the
 // acceptance data.
+//
+// Each builder returns a run as a reader holds it once its spot squares have
+// been merged in: a schemaVersion 2 pointer (`base`, `spots`, frame urls inside
+// the run directory) with its per-spot keys inline. `pointerOf` strips those
+// keys again, which is what a validator or the loader is handed, and
+// `squareReader` serves the squares the loader would read.
+import locations from "../../public/riding-locations.json";
+import {
+  RUN_SCHEMA_VERSION,
+  SPOT_KEYS,
+  SQUARE_URL,
+  runPath,
+  spotSquare,
+  type ReadJson,
+  type SpotIndex,
+  type SpotKey,
+} from "./spotData";
 import type { WeatherManifest, WeatherStep } from "./surface";
 import type { BundleVariable } from "./variables";
 import type { WaveManifest, WaveStep, WaveVariable } from "./waves";
-import type { Manifest, MemberFrame, Wind } from "./weather";
+import {
+  manifestPath,
+  type Manifest,
+  type MemberFrame,
+  type Wind,
+} from "./weather";
+
+/** Where a test spot is: the riding location of that id, or the middle of Ireland. */
+const coordinates = new Map(
+  (locations as { id: string; lat: number; lon: number }[]).map((spot) => [
+    spot.id,
+    spot,
+  ]),
+);
+export const testSquare = (spotId: string): string => {
+  const spot = coordinates.get(spotId);
+  return spot ? spotSquare(spot.lat, spot.lon) : "n52w010";
+};
+
+/** A run directory name for a synthetic run, as the publisher names one. */
+export const testBase = (model: string, runTime: string) =>
+  `${model}-${runTime.replace(/\D/g, "").slice(0, 10)}-test-v1-0a0b0c0d/`;
+
+/** The `spots` index a run with this spot data publishes. */
+export function spotIndexOf(manifest: object): SpotIndex {
+  const keys = SPOT_KEYS.filter((key) => key in manifest);
+  const squares = new Set<string>();
+  for (const key of keys)
+    for (const spot of Object.keys(
+      (manifest as Record<string, Record<string, unknown>>)[key] ?? {},
+    ))
+      squares.add(testSquare(spot));
+  return {
+    squareDegrees: 2,
+    url: SQUARE_URL,
+    squares: [...squares].sort(),
+    keys,
+  };
+}
+
+/** Recompute a merged fixture's `spots` index after its spot data changed. */
+export const indexed = <M extends object>(manifest: M): M => ({
+  ...manifest,
+  spots: spotIndexOf(manifest),
+});
+
+/** The pointer a merged fixture was split from: no per-spot keys. */
+export function pointerOf<M extends object>(manifest: M): M {
+  const pointer = { ...manifest } as Record<string, unknown>;
+  for (const key of SPOT_KEYS) delete pointer[key];
+  return pointer as M;
+}
+
+/**
+ * A reader serving the spot squares of merged fixtures at the paths the loader
+ * asks for, and recording every path asked. Anything else is not there.
+ */
+export function squareReader(
+  ...manifests: (Manifest | WaveManifest | WeatherManifest)[]
+): ReadJson & { asked: string[] } {
+  const files = new Map<string, unknown>();
+  for (const manifest of manifests) {
+    const index = spotIndexOf(manifest);
+    for (const square of index.squares) {
+      const file: Record<string, unknown> = {
+        schemaVersion: RUN_SCHEMA_VERSION,
+        model: manifest.model,
+        run: manifest.run,
+        square,
+      };
+      for (const key of index.keys as SpotKey[]) {
+        const values = Object.entries(
+          (manifest as unknown as Record<string, Record<string, unknown>>)[key],
+        ).filter(([spot]) => testSquare(spot) === square);
+        if (values.length) file[key] = Object.fromEntries(values);
+      }
+      files.set(
+        runPath(
+          manifestPath(manifest),
+          manifest.base,
+          SQUARE_URL.replace("{square}", square),
+        ),
+        file,
+      );
+    }
+  }
+  const asked: string[] = [];
+  const read = (async (path: string) => {
+    asked.push(path);
+    return files.has(path) ? structuredClone(files.get(path)) : null;
+  }) as ReadJson & { asked: string[] };
+  read.asked = asked;
+  return read;
+}
+
+const frameUrl = (hour: number, suffix = "json") =>
+  `frames/${String(hour).padStart(3, "0")}.${suffix}`;
 
 export const testGrid = {
   width: 2,
@@ -21,7 +134,7 @@ const validTime = (runTime: string, hour: number) =>
   new Date(Date.parse(runTime) + hour * 3600000).toISOString();
 
 const base = (model: string, runTime: string): Manifest => ({
-  schemaVersion: 1,
+  schemaVersion: RUN_SCHEMA_VERSION,
   model,
   modelName: model,
   provider: "test",
@@ -31,7 +144,9 @@ const base = (model: string, runTime: string): Manifest => ({
   resolutionKm: 2,
   stepHours: 3,
   grid: testGrid,
+  base: testBase(model, runTime),
   frames: [],
+  spots: spotIndexOf({}),
   spotForecasts: {},
   sourceUrl: "https://example.test/source",
   attribution: "Test data",
@@ -62,13 +177,13 @@ export function windManifest(options: WindFixture = {}): Manifest {
   } = options;
   const interval = (hour: number): [number, number] =>
     gustKind === "instantaneous" ? [hour, hour] : [Math.max(0, hour - 3), hour];
-  return {
+  return indexed({
     ...base(model, runTime),
     ...(gustKind ? { gustKind } : {}),
     frames: hours.map((hour) => ({
       hour,
       validTime: validTime(runTime, hour),
-      url: `weather/${model}-${hour}.json`,
+      url: frameUrl(hour),
       gustIntervalHours: interval(hour),
     })),
     spotForecasts: {
@@ -79,7 +194,7 @@ export function windManifest(options: WindFixture = {}): Manifest {
       })),
     },
     ...extra,
-  };
+  });
 }
 
 export interface EnsembleFixture extends WindFixture {
@@ -117,8 +232,9 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
       ? null
       : (values as number[]).reduce((sum, value) => sum + value, 0) /
         values.length;
-  return {
+  return indexed({
     ...base(model, runTime),
+    ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
     ensemble: {
       members,
       control: 0,
@@ -128,7 +244,7 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
       ? hours.map((hour) => ({
           hour,
           validTime: validTime(runTime, hour),
-          url: `weather/${model}-${hour}.json`,
+          url: frameUrl(hour),
           gustIntervalHours: [Math.max(0, hour - 3), hour] as [number, number],
         }))
       : [],
@@ -143,7 +259,7 @@ export function ensembleManifest(options: EnsembleFixture = {}): Manifest {
       })),
     },
     ...extra,
-  };
+  });
 }
 
 /** The nine GFS-Wave variables, partitions included, as the importer names them. */
@@ -249,8 +365,8 @@ export function waveManifest(options: WaveFixture = {}): WaveManifest {
       ]),
     ),
   }));
-  return {
-    schemaVersion: 1,
+  return indexed({
+    schemaVersion: RUN_SCHEMA_VERSION,
     kind: "wave",
     model,
     modelName: model,
@@ -262,21 +378,23 @@ export function waveManifest(options: WaveFixture = {}): WaveManifest {
     ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
     resolutionKm: 9,
     variables,
+    base: testBase(model, runTime),
     frames: withFrames
       ? hours.map((hour) => ({
           hour,
           validTime: validTime(runTime, hour),
-          url: `weather/${model}-${hour}.json`,
+          url: frameUrl(hour),
           gustIntervalHours: null,
         }))
       : [],
+    spots: spotIndexOf({}),
     ...(withFrames ? { grid: testGrid } : {}),
     spotSeries: { [spotId]: series },
     sourceUrl: "https://example.test/waves",
     attribution: "Test wave data",
     licenseUrl: "https://example.test/licence",
     ...extra,
-  };
+  });
 }
 
 /** ICON-EU's own surface variables, including the present-weather code table. */
@@ -371,8 +489,8 @@ export function weatherManifest(options: WeatherFixture = {}): WeatherManifest {
       ]),
     ),
   }));
-  return {
-    schemaVersion: 1,
+  return indexed({
+    schemaVersion: RUN_SCHEMA_VERSION,
     kind: "weather",
     model,
     modelName: model,
@@ -384,14 +502,16 @@ export function weatherManifest(options: WeatherFixture = {}): WeatherManifest {
     ...(withFrames ? {} : { horizonHours: hours[hours.length - 1] }),
     resolutionKm: 6.5,
     variables,
+    base: testBase(model, runTime),
     frames: withFrames
       ? hours.map((hour) => ({
           hour,
           validTime: validTime(runTime, hour),
-          url: `weather/${model}-${hour}.json`,
+          url: frameUrl(hour),
           precipIntervalHours: interval(hour),
         }))
       : [],
+    spots: spotIndexOf({}),
     ...(withFrames ? { grid: testGrid } : {}),
     frameVariables: withFrames
       ? ["t2m", "precip", "clct", "pmsl", "ww"]
@@ -401,5 +521,5 @@ export function weatherManifest(options: WeatherFixture = {}): WeatherManifest {
     attribution: "Test surface weather",
     licenseUrl: "https://example.test/licence",
     ...extra,
-  };
+  });
 }

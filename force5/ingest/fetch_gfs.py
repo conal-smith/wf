@@ -22,8 +22,9 @@ import eccodes as ec
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (BBOX, ROOT, decode_handle, load_spots, published_in_bucket, sample,
-                            spots_file, write_json)
+                            spots_file)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 FILTER = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
@@ -334,7 +335,7 @@ def main():
         "licenseUrl": "https://www.weather.gov/disclaimer",
     }
     # Only this final operation advances the published snapshot.
-    write_json(output / "gfs.json", manifest)
+    write_run(output, "gfs.json", manifest, prefix, spots)
     print(f"Published {len(frames)} GFS frames to {output / 'gfs.json'}", flush=True)
 
 

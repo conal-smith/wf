@@ -16,6 +16,7 @@ from fetch_harmonie import extract, has_gust, gust_window, main, GUST_FIELDS, PA
 from fetch_forecast import write_json
 from registry import UNCHANGED_EXIT
 from publish_s3 import validate_bundle
+from runfixtures import read_whole
 
 # Recorded from the live control run 2026091620 +3h, whose full-domain export
 # carries the scalar gust (parameter 22) beside its components (23/24):
@@ -222,7 +223,7 @@ class HarmonieTests(unittest.TestCase):
              patch("fetch_harmonie.has_gust", return_value=gusts), \
              patch("fetch_harmonie.decode", side_effect=fake_decode):
             main()
-        return root, json.loads((root / "public/weather/harmonie.json").read_text())
+        return root, read_whole(root / "public/weather/harmonie.json")
 
     def test_published_gust_run_declares_hourly_maxima_and_satisfies_the_publisher(self):
         root, manifest = self.publish_run(gusts=True)
@@ -235,8 +236,8 @@ class HarmonieTests(unittest.TestCase):
                          [None, 14.5, 14.5])
         self.assertEqual(manifest["encoding"], f5bin.ENCODING)
         self.assertTrue(all(f["url"].endswith(".bin") for f in manifest["frames"]))
-        frames = [f5bin.decode_frame((root / "public" / f["url"]).read_bytes())
-                  for f in manifest["frames"]]
+        frames = [f5bin.decode_frame((root / "public/weather" / manifest["base"] / f["url"])
+                                     .read_bytes()) for f in manifest["frames"]]
         self.assertEqual([frame["run"] for frame in frames], [manifest["run"]] * 3)
         self.assertIsNone(frames[0]["gust"])
         self.assertEqual(len(frames[2]["gust"]), GRID["width"] * GRID["height"])
@@ -251,7 +252,8 @@ class HarmonieTests(unittest.TestCase):
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [None, None, None])
         self.assertEqual([s["gust"] for s in manifest["spotForecasts"]["brandon"]], [None] * 3)
         for frame in manifest["frames"]:
-            decoded = f5bin.decode_frame((root / "public" / frame["url"]).read_bytes())
+            decoded = f5bin.decode_frame((root / "public/weather" / manifest["base"]
+                                          / frame["url"]).read_bytes())
             self.assertIsNone(decoded["gust"])
             self.assertEqual(decoded["blockCount"], 2)
         validate_bundle(root / "public", "harmonie", max_age_hours=10**6,
@@ -282,10 +284,12 @@ class HarmonieTests(unittest.TestCase):
                 manifest = json.loads((root / "public/weather/harmonie.json").read_text())
                 self.assertIs(manifest["gustAvailable"], expected)
 
-    def test_gust_and_wind_only_runs_use_distinct_immutable_frame_paths(self):
+    def test_gust_and_wind_only_runs_use_distinct_immutable_run_directories(self):
         _, with_gusts = self.publish_run(gusts=True)
         _, without = self.publish_run(gusts=False)
-        self.assertNotEqual(with_gusts["frames"][1]["url"], without["frames"][1]["url"])
+        self.assertNotEqual(with_gusts["base"], without["base"])
+        self.assertTrue(with_gusts["base"].startswith("harmonie-2026091312-6h-v2-"))
+        self.assertTrue(without["base"].startswith("harmonie-2026091312-6h-v1-"))
 
     def test_crop_contract_is_regular(self):
         self.assertAlmostEqual(GRID["east"] - GRID["west"], (GRID["width"]-1)*GRID["dx"])

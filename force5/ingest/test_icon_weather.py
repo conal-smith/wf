@@ -23,6 +23,7 @@ from fetch_icon_weather import (DIRECTORIES, VARIABLES, convert, decode, derive_
                                main, parse_args, sample_variable, validate_metadata)
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
+from runfixtures import read_whole
 
 RUN = "2026091618"
 HOUR = 3
@@ -325,7 +326,7 @@ class BundleTests(unittest.TestCase):
              patch("fetch_icon_weather.decode", side_effect=decode or self.fake_decode), \
              patch("sys.stdout", io.StringIO()):
             main()
-        return json.loads((self.root / "public/weather/icon-eu-weather.json").read_text())
+        return read_whole(self.root / "public/weather/icon-eu-weather.json")
 
     def test_publishes_the_variables_contract_and_passes_the_publisher(self):
         manifest = self.run_main()
@@ -344,7 +345,8 @@ class BundleTests(unittest.TestCase):
                          [None, [0, 3], [3, 6]])
         published, _, objects = validate_bundle(self.root / "public", "icon-eu-weather", 12,
                                                 self.run_time + timedelta(hours=1))
-        self.assertEqual((published["run"], len(objects)), (self.run, 3))
+        self.assertEqual((published["run"], len(objects)),
+                         (self.run, 3 + len(published["spots"]["squares"])))
 
     def test_precipitation_is_null_at_initialization_and_differenced_after_it(self):
         manifest = self.run_main()
@@ -353,7 +355,7 @@ class BundleTests(unittest.TestCase):
         self.assertEqual([step["values"]["tp"] for step in series], [0.0, 1.5, 3.0])
         self.assertEqual([step["precipIntervalHours"] for step in series],
                          [None, [0, 3], [3, 6]])
-        first, second = (json.loads((self.root / "public" / info["url"]).read_text())
+        first, second = (json.loads((self.root / "public/weather" / manifest["base"] / info["url"]).read_text())
                          for info in manifest["frames"][:2])
         self.assertEqual(first["precip"], [None] * 4)      # Nulls, never a zeroed field.
         self.assertEqual(second["precip"], [1.5] * 4)
@@ -373,7 +375,7 @@ class BundleTests(unittest.TestCase):
     def test_frames_may_carry_every_variable_when_asked(self):
         manifest = self.run_main(["--frame-variables", "all"])
         self.assertEqual(manifest["frameVariables"], list(VARIABLES))
-        frame = json.loads((self.root / "public" / manifest["frames"][2]["url"]).read_text())
+        frame = json.loads((self.root / "public/weather" / manifest["base"] / manifest["frames"][2]["url"]).read_text())
         for name in VARIABLES:
             self.assertEqual(len(frame[name]), 4, name)
         validate_bundle(self.root / "public", "icon-eu-weather", 12,

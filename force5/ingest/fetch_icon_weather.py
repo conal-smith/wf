@@ -18,8 +18,6 @@ import argparse
 import bz2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import os
 import sys
 
@@ -29,6 +27,7 @@ import numpy as np
 from fetch_forecast import (BASE, ROOT, decode_handle, get, listing, load_spots,
                             published_in_bucket, sample, spots_file, write_json)
 from registry import UNCHANGED_EXIT
+from rundir import frame_name, write_run
 import timing
 
 MODEL = "icon-eu-weather"
@@ -370,8 +369,7 @@ def main(argv=None):
                    **{name: fields[name] if fields[name] is not None else [None] * cells
                       for name in args.frame_variables}}
         with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
+            name = frame_name(prefix, hour, "json")
             write_json(output / name, payload)
         size = (output / name).stat().st_size
         published += size
@@ -387,7 +385,7 @@ def main(argv=None):
               f"{len(args.frame_variables)} arrays, {size / 1e6:.2f} MB", flush=True)
     manifest = manifest_for(run, run_time, args, grid, frames, series)
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     print(f"Published {len(frames)} ICON-EU weather frames ({published / 1e6:.1f} MB) and "
           f"{len(spots)} spot series to {output / (MODEL + '.json')}", flush=True)
 

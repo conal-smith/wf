@@ -27,8 +27,9 @@ import numpy as np
 from pyproj import Proj
 
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
-from fetch_forecast import ROOT, get, load_spots, messages, published_in_bucket, sample, write_json
+from fetch_forecast import ROOT, get, load_spots, messages, published_in_bucket, sample
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 PORTAL = "https://opendata.met.ie"
@@ -309,7 +310,7 @@ def main():
                 "sourceFiles": sources, "sourceUrl": PORTAL + "/nwp/near-realtime",
                 "attribution": "Weather data: Met Éireann, HARMONIE-AROME DINI control, CC BY 4.0; rotated, resampled and cropped by Force5 / wingfoil.ie.",
                 "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"}
-    write_json(output / "harmonie.json", manifest)
+    write_run(output, "harmonie.json", manifest, prefix, spots)
     print(f"Published {len(frames)} HARMONIE frames; ICON-EU snapshot unchanged.", flush=True)
 
 

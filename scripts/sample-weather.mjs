@@ -4,10 +4,12 @@
  *
  * Real forecast output is never committed (see .gitignore: public/weather/), so
  * the test suites need data of their own. This writes small bundles that are
- * byte-for-byte in the published contract — the same manifest keys, the same
- * immutable frame layout, the same per-spot series — carrying a smooth analytic
- * field instead of a forecast. Every manifest says so in its provider and
- * attribution, so a bundle can never be mistaken for model output.
+ * byte-for-byte in the published contract — the same schemaVersion 2 pointer,
+ * the same run directory named for its content, the same frames and per-spot
+ * series in their spot squares (scripts/runs.mjs, after force5/ingest/rundir.py)
+ * — carrying a smooth analytic field instead of a forecast. Every manifest says
+ * so in its provider and attribution, so a bundle can never be mistaken for
+ * model output.
  *
  * Wind frames are written in the published binary encoding ("f5-int16-v1",
  * scripts/f5bin.mjs) for every model but ARPEGE, which stays on JSON frames so
@@ -61,7 +63,6 @@
  * dy. Present weather is the exception to the affine rule: it is a code table,
  * read from the cell containing a location and never interpolated.
  */
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -74,6 +75,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { F5_ENCODING, encodeFrame } from "./f5bin.mjs";
+import { publishRun } from "./runs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HOUR = 3600000;
@@ -223,12 +225,6 @@ function bounded(values, limit, minimum, what) {
   }
   return values;
 }
-
-const digestOf = (payload) =>
-  createHash("sha256")
-    .update(Buffer.isBuffer(payload) ? payload : JSON.stringify(payload))
-    .digest("hex")
-    .slice(0, 12);
 
 // ---------------------------------------------------------------------------
 // Field shapes. Amplitudes and gradients are chosen so that every value stays
@@ -576,7 +572,7 @@ function windBundle(model, spots, runMs, grid) {
     const body =
       model.encoding === F5_ENCODING ? encodeFrame(payload) : payload;
     const suffix = model.encoding === F5_ENCODING ? "bin" : "json";
-    const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(body)}.${suffix}`;
+    const url = `weather/${prefix}/${pad(hour, 3)}.${suffix}`;
     files.push([url, body]);
     frames.push({ hour, validTime: valid, url, gustIntervalHours: interval });
     for (const spot of spots) {
@@ -617,7 +613,7 @@ function windBundle(model, spots, runMs, grid) {
         : "Sample gusts: a smooth analytic field, not a forecast.",
     ...provenance(),
   };
-  return { manifest, files };
+  return { manifest, files, prefix };
 }
 
 function waveBundle(model, spots, runMs, grid) {
@@ -688,7 +684,7 @@ function waveBundle(model, spots, runMs, grid) {
       grid,
       ...fields,
     };
-    const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(payload)}.json`;
+    const url = `weather/${prefix}/${pad(hour, 3)}.json`;
     files.push([url, payload]);
     frames.push({ hour, validTime: valid, url });
     for (const spot of spots) {
@@ -762,7 +758,7 @@ function waveBundle(model, spots, runMs, grid) {
       "swh/pp1d/mwd describe the whole spectrum; shww/mpww/mdww are the wind sea and swell1_* the first swell partition. These are sample values, not a sea state.",
     ...provenance(),
   };
-  return { manifest, files };
+  return { manifest, files, prefix };
 }
 
 function weatherBundle(model, spots, runMs, grid) {
@@ -835,7 +831,7 @@ function weatherBundle(model, spots, runMs, grid) {
       precipIntervalHours: interval,
       ...fields,
     };
-    const url = `weather/${prefix}/${pad(hour, 3)}-${digestOf(payload)}.json`;
+    const url = `weather/${prefix}/${pad(hour, 3)}.json`;
     files.push([url, payload]);
     frames.push({ hour, validTime: valid, url, precipIntervalHours: interval });
     for (const spot of spots) {
@@ -899,7 +895,7 @@ function weatherBundle(model, spots, runMs, grid) {
       "ww is a WMO present-weather code, not a measurement: it belongs to the cell containing a location and is never interpolated, averaged or blended between models.",
     ...provenance(),
   };
-  return { manifest, files };
+  return { manifest, files, prefix };
 }
 
 // ---------------------------------------------------------------------------
@@ -1092,13 +1088,29 @@ function build({ profile, now, spacing, all }) {
         ? Date.parse(FIXTURE_RUNS[model.id])
         : liveRun(now, model.stepHours === 6 ? 6 : 3, 3);
     const grid = gridAt(spacing ?? model.spacing[profile]);
-    const { manifest, files } = BUILDERS[model.kind](
+    const { manifest, files, prefix } = BUILDERS[model.kind](
       shaped,
       spots,
       runMs,
       grid,
     );
-    bundles.push({ model: shaped, manifest, files });
+    // Published as the pipeline publishes a run: frames and spot squares in a
+    // directory named for their content, and a small pointer beside it.
+    const published = publishRun(
+      manifest,
+      prefix,
+      files.map(([url, body], index) => [
+        manifest.frames[index].hour,
+        url.endsWith(".bin") ? "bin" : "json",
+        body,
+      ]),
+      spots,
+    );
+    bundles.push({
+      model: shaped,
+      manifest: published.pointer,
+      files: published.files,
+    });
   }
   return bundles;
 }
@@ -1126,9 +1138,10 @@ function forecastData(out) {
 
 /** Whether a run directory's own manifest says this script wrote it. */
 function syntheticRun(out, name) {
-  // A run directory is named `<model>-<run>-<horizon>h-v1`; its manifest is the
-  // bundle file for that model, which says in plain words what the data is.
-  const model = /^(.+)-\d{10}-\d+h-v\d+$/.exec(name)?.[1];
+  // A run directory is named `<model>-<run>-<horizon>h-v1-<hash>`; its manifest
+  // is the bundle file for that model, which says in plain words what the data
+  // is, and names the directory as its `base`.
+  const model = /^(.+)-\d{10}-\d+h-v\d+-[0-9a-f]{8}$/.exec(name)?.[1];
   if (!model) return false;
   for (const file of readdirSync(out)) {
     if (!file.endsWith(".json")) continue;
@@ -1140,10 +1153,7 @@ function syntheticRun(out, name) {
     }
     if (manifest?.model !== model) continue;
     return (
-      manifest.provider === SYNTHETIC.provider &&
-      Boolean(
-        manifest.frames?.some((frame) => frame.url?.includes(`/${name}/`)),
-      )
+      manifest.provider === SYNTHETIC.provider && manifest.base === `${name}/`
     );
   }
   return false;
@@ -1184,6 +1194,26 @@ function write(bundles, out, { force }) {
     writeFileSync(path, body);
     bytes += Buffer.byteLength(body);
   };
+  // The run directory a synthetic pointer being replaced named, when it names
+  // another one: its content changed, so its name did too, and nothing else
+  // will ever claim it. Real runs are never named by a synthetic pointer.
+  const superseded = bundles.flatMap((bundle) => {
+    let previous;
+    try {
+      previous = JSON.parse(readFileSync(join(out, bundle.model.file), "utf8"));
+    } catch {
+      return [];
+    }
+    const name = String(previous?.base ?? "").replace(/\/$/, "");
+    return previous?.provider === SYNTHETIC.provider &&
+      name &&
+      `${name}/` !== bundle.manifest.base &&
+      syntheticRun(out, name)
+      ? [join(root, "weather", name)]
+      : [];
+  });
+  for (const directory of superseded)
+    if (existsSync(directory)) rmSync(directory, { recursive: true });
   for (const bundle of bundles) {
     const prefix = runDirectory(bundle);
     if (prefix && existsSync(prefix)) rmSync(prefix, { recursive: true });

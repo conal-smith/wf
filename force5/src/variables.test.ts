@@ -5,10 +5,15 @@
 import { describe, expect, it } from "vitest";
 import {
   ICON_WEATHER_VARIABLES,
+  pointerOf,
   waveManifest,
   weatherManifest,
 } from "./testing";
-import { validateWaveManifest, type WaveManifest } from "./waves";
+import {
+  validateWaveManifest,
+  validateWaveSpots,
+  type WaveManifest,
+} from "./waves";
 import {
   MAX_VARIABLE_CODE,
   VARIABLE_MATCH_HOURS,
@@ -25,9 +30,25 @@ import {
 } from "./variables";
 import {
   validateWeatherManifest,
+  validateWeatherSpots,
   weatherHours,
   type WeatherManifest,
 } from "./surface";
+
+/**
+ * A wave run as the site reads it: the pointer validated as published, without
+ * its spot data, and the series as they arrive from the squares.
+ */
+const checkWave = (m: WaveManifest): WaveManifest => {
+  validateWaveManifest(pointerOf(m));
+  return validateWaveSpots(m);
+};
+
+/** The same for a weather run. */
+const checkWeather = (m: WeatherManifest): WeatherManifest => {
+  validateWeatherManifest(pointerOf(m));
+  return validateWeatherSpots(m);
+};
 
 /** A weather fixture with one manifest-level field replaced. */
 const broken = (extra: Partial<WeatherManifest>) =>
@@ -35,7 +56,7 @@ const broken = (extra: Partial<WeatherManifest>) =>
 /** The same fixture with one spot value replaced at the last hour. */
 function withValue(name: string, value: number | null): WeatherManifest {
   const manifest = weatherManifest();
-  const series = manifest.spotSeries.brandon;
+  const series = manifest.spotSeries!.brandon;
   series[series.length - 1].values[name] = value;
   return manifest;
 }
@@ -45,49 +66,47 @@ describe("the shared variables reader", () => {
     // The wave door and a hand-built wave validator are the same function
     // applied to the same rules, so nothing can drift between them.
     const wave = waveManifest();
-    expect(validateWaveManifest(wave)).toBe(wave);
-    expect(validateVariablesManifest<WaveManifest>("wave")(wave)).toBe(wave);
+    expect(checkWave(wave)).toBe(wave);
+    const pointer = pointerOf(wave);
+    expect(validateVariablesManifest<WaveManifest>("wave")(pointer)).toBe(
+      pointer,
+    );
     const weather = weatherManifest();
-    expect(validateWeatherManifest(weather)).toBe(weather);
+    expect(checkWeather(weather)).toBe(weather);
   });
   it("names the kind it refused in the message it throws", () => {
-    expect(() => validateWeatherManifest(broken({ provider: "" }))).toThrow(
+    expect(() => checkWeather(broken({ provider: "" }))).toThrow(
       /Invalid weather forecast manifest\. Refresh the weather forecast\./,
     );
-    expect(() =>
-      validateWaveManifest(waveManifest({ extra: { provider: "" } })),
-    ).toThrow(/Invalid wave forecast manifest/);
+    expect(() => checkWave(waveManifest({ extra: { provider: "" } }))).toThrow(
+      /Invalid wave forecast manifest/,
+    );
   });
   it("holds a weather bundle to the wider value bound", () => {
     expect(VARIABLE_VALUE_LIMITS).toEqual({ wave: 1000, weather: 100_000 });
     // 1016.8 hPa is an ordinary reading and would break the wave bound.
     expect(
-      validateWeatherManifest(weatherManifest()).spotSeries.brandon[0].values
-        .pmsl,
+      checkWeather(weatherManifest()).spotSeries!.brandon[0].values.pmsl,
     ).toBe(1016.8);
-    expect(() =>
-      validateWeatherManifest(withValue("cape", 99_999)),
-    ).not.toThrow();
-    expect(() => validateWeatherManifest(withValue("cape", 100_001))).toThrow(
+    expect(() => checkWeather(withValue("cape", 99_999))).not.toThrow();
+    expect(() => checkWeather(withValue("cape", 100_001))).toThrow(
       /Invalid weather forecast manifest/,
     );
   });
   it("checks a code variable for being a small whole number, not a range", () => {
     expect(MAX_VARIABLE_CODE).toBe(1000);
     for (const code of [0, 3, 61, 95, 999])
-      expect(() =>
-        validateWeatherManifest(withValue("ww", code)),
-      ).not.toThrow();
+      expect(() => checkWeather(withValue("ww", code))).not.toThrow();
     for (const code of [-1, 1000, 61.5])
-      expect(() => validateWeatherManifest(withValue("ww", code))).toThrow(
+      expect(() => checkWeather(withValue("ww", code))).toThrow(
         /Invalid weather forecast manifest/,
       );
     // A code is still allowed to be absent, which is what a dash renders from.
-    expect(() => validateWeatherManifest(withValue("ww", null))).not.toThrow();
+    expect(() => checkWeather(withValue("ww", null))).not.toThrow();
   });
   it("refuses a variable declaring a kind it does not know", () => {
     expect(() =>
-      validateWeatherManifest(
+      checkWeather(
         weatherManifest({
           variables: {
             ...ICON_WEATHER_VARIABLES,
@@ -104,16 +123,16 @@ describe("the shared variables reader", () => {
   });
   it("refuses a bundle whose kind is not the one asked for", () => {
     expect(() =>
-      validateWeatherManifest(waveManifest() as unknown as WeatherManifest),
+      checkWeather(waveManifest() as unknown as WeatherManifest),
     ).toThrow(/Invalid weather forecast manifest/);
     expect(() =>
-      validateWaveManifest(weatherManifest() as unknown as WaveManifest),
+      checkWave(weatherManifest() as unknown as WaveManifest),
     ).toThrow(/Invalid wave forecast manifest/);
   });
   it("demands every declared variable at every step", () => {
     const manifest = weatherManifest();
-    delete manifest.spotSeries.brandon[1].values.clch;
-    expect(() => validateWeatherManifest(manifest)).toThrow(
+    delete manifest.spotSeries!.brandon[1].values.clch;
+    expect(() => checkWeather(manifest)).toThrow(
       /Invalid weather forecast manifest/,
     );
   });
@@ -132,9 +151,7 @@ describe("the shared variables reader", () => {
     ).toThrow(/Invalid wave forecast manifest/);
   });
   it("accepts a frame subset narrower than the variable map", () => {
-    const manifest = validateWeatherManifest(
-      weatherManifest({ withFrames: true }),
-    );
+    const manifest = checkWeather(weatherManifest({ withFrames: true }));
     expect(manifest.frameVariables).toEqual([
       "t2m",
       "precip",
@@ -146,7 +163,7 @@ describe("the shared variables reader", () => {
       manifest.frameVariables!.length,
     );
     expect(() =>
-      validateWeatherManifest(
+      checkWeather(
         weatherManifest({
           withFrames: true,
           extra: { frameVariables: ["t2m", "nope"] },
@@ -199,14 +216,14 @@ describe("the shared variables reader", () => {
   });
   it("refuses a series step that is misordered or off its valid time", () => {
     const shifted = weatherManifest();
-    (shifted.spotSeries.brandon[1] as VariableStep).validTime =
+    (shifted.spotSeries!.brandon[1] as VariableStep).validTime =
       "2026-09-16T22:00:00Z";
-    expect(() => validateWeatherManifest(shifted)).toThrow(
+    expect(() => checkWeather(shifted)).toThrow(
       /Invalid weather forecast manifest/,
     );
     const short = weatherManifest();
-    short.spotSeries.brandon.pop();
-    expect(() => validateWeatherManifest(short)).toThrow(
+    short.spotSeries!.brandon.pop();
+    expect(() => checkWeather(short)).toThrow(
       /Invalid weather forecast manifest/,
     );
   });

@@ -26,8 +26,6 @@ is read from the nearest cell the model did solve, with the offset recorded.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
 import math
 import os
 import sys
@@ -39,6 +37,7 @@ from cadence import ECMWF_HOURS, ecmwf_ladder
 from fetch_ecmwf import SOURCE_URL, client
 from fetch_forecast import ROOT, decode_handle, load_spots, published_in_bucket, spots_file, write_json
 from registry import UNCHANGED_EXIT
+from rundir import frame_name, write_run
 import timing
 
 MODEL = "ecmwf-wave"
@@ -425,8 +424,7 @@ def main(argv=None):
         payload = {"model": MODEL, "run": run, "hour": hour, "validTime": valid,
                    "grid": grid, **fields}
         with timing.phase("write"):
-            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
-            name = f"{prefix}/{hour:03d}-{digest}.json"
+            name = frame_name(prefix, hour, "json")
             write_json(output / name, payload)
         frames.append({"hour": hour, "validTime": valid, "url": f"weather/{name}"})
         for spot in spots:
@@ -440,7 +438,7 @@ def main(argv=None):
         for spot in spots}
     manifest = manifest_for(run, run_time, hours, variables, grid, frames, series, coverage)
     # Only this final write advances the published snapshot.
-    write_json(output / f"{MODEL}.json", manifest)
+    write_run(output, f"{MODEL}.json", manifest, prefix, spots)
     modes = [plans[spot["id"]]["mode"] for spot in spots]
     transferred = sum(path.stat().st_size for path in cache.glob("*.grib2"))
     print(f"Published {len(frames)} ECMWF wave frames to {output / (MODEL + '.json')}; "

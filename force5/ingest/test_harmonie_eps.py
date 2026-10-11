@@ -13,6 +13,7 @@ from fetch_harmonie import GRID
 from fetch_harmonie_eps import assemble, cache_path, catalogue, main, source_name, validate
 from publish_s3 import validate_bundle
 from registry import UNCHANGED_EXIT
+from runfixtures import read_whole
 
 SPOTS = [{"id": "brandon", "lat": 52.276, "lon": -10.024},
          {"id": "dollymount", "lat": 53.365, "lon": -6.135}]
@@ -122,7 +123,7 @@ class PublicationTests(unittest.TestCase):
              patch("fetch_harmonie_eps.load_spots", return_value=spots), \
              patch("fetch_harmonie_eps.decode", side_effect=decode or self.fake_decode):
             main()
-        return json.loads((self.root / "public/weather/harmonie-eps.json").read_text())
+        return read_whole(self.root / "public/weather/harmonie-eps.json")
 
     def test_publishes_member_series_mean_frames_and_ensemble_metadata(self):
         manifest = self.run_importer()
@@ -149,7 +150,7 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual([(e["u"], e["v"], e["gust"]) for e in manifest["spotForecasts"]["brandon"]],
                          [(6.0, -3.0, None), (9.0, -3.0, None), (12.0, -3.0, None)])
         frame = f5bin.decode_frame(
-            (self.root / "public" / manifest["frames"][2]["url"]).read_bytes())
+            (self.root / "public/weather" / manifest["base"] / manifest["frames"][2]["url"]).read_bytes())
         self.assertEqual((frame["u"][0], frame["v"][0], frame["gust"]), (12.0, -3.0, None))
         self.assertEqual((frame["width"], frame["height"]), (GRID["width"], GRID["height"]))
         self.assertEqual(manifest["grid"], GRID)
@@ -162,7 +163,7 @@ class PublicationTests(unittest.TestCase):
         now = datetime(2026, 9, 16, 19, 30, tzinfo=timezone.utc)
         checked, _, objects = validate_bundle(self.root / "public", "harmonie-eps", 12, now)
         self.assertEqual(checked["run"], manifest["run"])
-        self.assertEqual(len(objects), 3)
+        self.assertEqual(len(objects), 3 + len(checked["spots"]["squares"]))
 
     def test_a_source_failure_keeps_the_previously_published_manifest(self):
         target = self.root / "public/weather/harmonie-eps.json"

@@ -13,7 +13,7 @@ import {
   weatherSeriesHasData,
   type WeatherIcon,
 } from "./surface";
-import { weatherManifest, windManifest } from "./testing";
+import { pointerOf, weatherManifest, windManifest } from "./testing";
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200 });
@@ -97,7 +97,7 @@ describe("the preferred weather source", () => {
   it("loads a weather manifest through the shared cache", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ok(weatherManifest())),
+      vi.fn(async () => ok(pointerOf(weatherManifest()))),
     );
     const manifest = await loadWeatherManifest("icon-eu-weather");
     expect(manifest.kind).toBe("weather");
@@ -106,7 +106,7 @@ describe("the preferred weather source", () => {
   it("refuses to hand a wind model out through the weather door", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ok(windManifest({ model: "gfs" }))),
+      vi.fn(async () => ok(pointerOf(windManifest({ model: "gfs" })))),
     );
     await expect(loadWeatherManifest("gfs")).rejects.toThrow(
       /GFS is a wind model, not a weather model/,

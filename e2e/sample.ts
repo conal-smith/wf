@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { withSpotSquares } from "../force5/src/spotData";
 
 /**
  * Where a spec reads the data the site under test is serving.
@@ -13,8 +14,21 @@ import { readFileSync } from "node:fs";
 export const SAMPLE_WEATHER = ".e2e/public/weather";
 
 /**
- * One staged manifest, by the file name the model registry gives it. Untyped by
- * default, as `JSON.parse` was where these reads used to be written out.
+ * One staged pointer, by the file name the model registry gives it. Untyped by
+ * default, as `JSON.parse` was where these reads used to be written out. It
+ * carries no spot data: see `readSampleRun`.
  */
 export const readSample = <T = any>(model: string): T =>
   JSON.parse(readFileSync(`${SAMPLE_WEATHER}/${model}.json`, "utf8"));
+
+/**
+ * One staged run with every one of its spot squares merged in, read through
+ * the site's own loader (force5/src/spotData.ts), as the page reads them.
+ */
+export const readSampleRun = async <T = any>(model: string): Promise<T> =>
+  (await withSpotSquares(
+    async (path) =>
+      JSON.parse(readFileSync(`${SAMPLE_WEATHER}/../${path}`, "utf8")),
+    `weather/${model}.json`,
+    readSample(model),
+  )) as T;

@@ -3,9 +3,11 @@
  * a riding location, reduced to one consensus line per hour, beside the waves,
  * surface weather, tides, sea temperature and daylight the dock shows.
  *
- * It reads the published bundles (see source.ts) and nothing else. Speeds are
- * stored in m/s and answered in knots; directions are degrees the wind or the
- * sea comes FROM, as everywhere on the site.
+ * It reads the published bundles (see source.ts) and nothing else: each model's
+ * pointer, and the spot squares of its run that hold the places asked about,
+ * through the site's own loader (force5/src/spotData.ts). Speeds are stored in
+ * m/s and answered in knots; directions are degrees the wind or the sea comes
+ * FROM, as everywhere on the site.
  *
  * The consensus is deliberately simple and says so: one line per model — an
  * ensemble's member mean counts once, like any other model — reduced to the
@@ -19,6 +21,15 @@
  * ENS and GEFS, each member its own run). Both ensembles are retired for now
  * (force5/src/manifests.ts), so no forecast carries it until one is switched back on.
  */
+import {
+  RUN_SCHEMA_VERSION,
+  checkBase,
+  checkSpotIndex,
+  loadSpotSquares,
+  spotSquare,
+  squaresFor,
+  type ReadJson,
+} from "../../force5/src/spotData.js";
 import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
@@ -257,34 +268,61 @@ function runOf(
   };
 }
 
-/** The latest valid time any series in a group reaches. */
-function lastTime(groups: unknown[]): number | null {
-  let last: number | null = null;
-  for (const group of groups) {
-    if (!isObject(group)) continue;
-    for (const series of Object.values(group)) {
-      if (!Array.isArray(series) || !series.length) continue;
-      const end = Date.parse(
-        (series[series.length - 1] as Json)?.validTime as string,
-      );
-      if (Number.isFinite(end))
-        last = last === null ? end : Math.max(last, end);
-    }
+/** The last time a run reaches: its last frame, or the horizon it states. */
+function lastTime(body: Json): number | null {
+  const frames = Array.isArray(body.frames) ? (body.frames as Json[]) : [];
+  if (frames.length) {
+    const end = Date.parse(frames[frames.length - 1]?.validTime as string);
+    return Number.isFinite(end) ? end : null;
   }
-  return last;
+  const horizon = body.horizonHours;
+  return finite(horizon)
+    ? Date.parse(body.runTime as string) + horizon * HOUR
+    : null;
+}
+
+/** A run pointer this server reads: schemaVersion 2, its run directory beside it. */
+function runPointer(body: Json, seriesKey: string): boolean {
+  try {
+    checkBase(body.base);
+    return (
+      body.schemaVersion === RUN_SCHEMA_VERSION &&
+      (checkSpotIndex(body.spots).keys as string[]).includes(seriesKey)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** One reader per source, so the loader's cache of squares is per source too. */
+const readers = new WeakMap<ForecastSource, ReadJson>();
+function readerOf(source: ForecastSource): ReadJson {
+  let read = readers.get(source);
+  if (!read) readers.set(source, (read = (path) => source.json(path)));
+  return read;
 }
 
 /**
- * Every manifest in a catalogue that is published, sound and not yet expired.
- * A model that is missing, broken or over is reported, never thrown: the
- * answer is still worth giving with the models that are there.
+ * Which spot squares to read: the squares of these places, every square the
+ * run lists (`undefined`), or none (`null`, for a caller that only wants to
+ * know which runs are published).
+ */
+export type Squares = readonly string[] | undefined | null;
+
+/**
+ * Every manifest in a catalogue that is published, sound and not yet expired,
+ * with the spot data of `squares` merged in. A model that is missing, broken or
+ * over is reported, never thrown: the answer is still worth giving with the
+ * models that are there.
  */
 async function loadCatalog<T>(
   source: ForecastSource,
   entries: readonly CatalogEntry[],
   seriesKey: "spotForecasts" | "spotSeries",
   now: number,
+  squares: Squares,
 ): Promise<{ loaded: Loaded<T>[]; unavailable: Unavailable[] }> {
+  const read = readerOf(source);
   const results = await Promise.all(
     entries.map(async (entry) => {
       const miss = (reason: string) => ({
@@ -299,20 +337,31 @@ async function loadCatalog<T>(
       if (body === null) return miss("Not published.");
       if (
         !isObject(body) ||
-        body.schemaVersion !== 1 ||
         body.model !== entry.id ||
         !Number.isFinite(Date.parse(body.runTime as string)) ||
-        !isObject(body[seriesKey])
+        !runPointer(body, seriesKey)
       )
         return miss("The published file is not a forecast this server reads.");
-      const until = lastTime([body[seriesKey], body.spotMembers]);
+      const until = lastTime(body);
       if (until === null || until < now)
         return miss("The latest published run has already ended.");
+      let spots: Json = {};
+      if (squares !== null)
+        try {
+          spots = await loadSpotSquares(
+            read,
+            entry.manifestUrl,
+            body as never,
+            squares,
+          );
+        } catch {
+          return miss("Its spot data could not be read just now.");
+        }
       return {
         loaded: {
           entry,
           run: runOf(entry, body, until, now),
-          manifest: body as unknown as T,
+          manifest: { ...body, [seriesKey]: {}, ...spots } as unknown as T,
         },
       };
     }),
@@ -325,12 +374,36 @@ async function loadCatalog<T>(
   };
 }
 
-export const loadWind = (source: ForecastSource, now: number) =>
-  loadCatalog<WindManifest>(source, WIND_MODELS, "spotForecasts", now);
-export const loadWaves = (source: ForecastSource, now: number) =>
-  loadCatalog<VariablesManifest>(source, WAVE_MODELS, "spotSeries", now);
-export const loadWeather = (source: ForecastSource, now: number) =>
-  loadCatalog<VariablesManifest>(source, WEATHER_MODELS, "spotSeries", now);
+export const loadWind = (
+  source: ForecastSource,
+  now: number,
+  squares?: Squares,
+) =>
+  loadCatalog<WindManifest>(source, WIND_MODELS, "spotForecasts", now, squares);
+export const loadWaves = (
+  source: ForecastSource,
+  now: number,
+  squares?: Squares,
+) =>
+  loadCatalog<VariablesManifest>(
+    source,
+    WAVE_MODELS,
+    "spotSeries",
+    now,
+    squares,
+  );
+export const loadWeather = (
+  source: ForecastSource,
+  now: number,
+  squares?: Squares,
+) =>
+  loadCatalog<VariablesManifest>(
+    source,
+    WEATHER_MODELS,
+    "spotSeries",
+    now,
+    squares,
+  );
 
 /**
  * One model's series for one spot, or null when the model cannot see it. A
@@ -943,10 +1016,12 @@ export async function spotForecast(
     now: number;
   },
 ): Promise<SpotForecast> {
+  // Only the one square that holds the spot is read, of each model.
+  const square = [spotSquare(spot.lat, spot.lon)];
   const [wind, waves, weather, tides, sea] = await Promise.all([
-    loadWind(source, options.now),
-    loadWaves(source, options.now),
-    loadWeather(source, options.now),
+    loadWind(source, options.now, square),
+    loadWaves(source, options.now, square),
+    loadWeather(source, options.now, square),
     spotTides(source, spot.id, window),
     spotSea(source, spot.id),
   ]);
@@ -1051,11 +1126,13 @@ export async function findSessions(
   sources: ModelRun[];
   unavailable: Unavailable[];
 }> {
-  const wind = await loadWind(source, options.now);
   const county = options.county ? fold(options.county) : null;
   const pool = county
     ? spots.filter((s) => fold(s.county) === county)
     : [...spots];
+  // The squares of the places searched: every square for all of Ireland, the
+  // county's own for a county.
+  const wind = await loadWind(source, options.now, squaresFor(pool));
   const times = axis({ ...window, stepHours: 1 });
   const results: SpotSessions[] = [];
   for (const spot of pool) {
@@ -1136,10 +1213,11 @@ function session(run: { time: number; hour: HourWind }[]): Session {
 }
 
 export async function modelStatus(source: ForecastSource, now: number) {
+  // Which runs are published, and how far they reach: no spot data needed.
   const [wind, waves, weather] = await Promise.all([
-    loadWind(source, now),
-    loadWaves(source, now),
-    loadWeather(source, now),
+    loadWind(source, now, null),
+    loadWaves(source, now, null),
+    loadWeather(source, now, null),
   ]);
   return {
     wind: wind.loaded.map((l) => l.run),

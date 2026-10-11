@@ -301,7 +301,7 @@ for (const { width, height } of [
 
     test("model switch loading", async ({ page }) => {
       await openMap(page);
-      await page.route("**/weather/icon-eu-*/*", () => {});
+      await page.route("**/weather/icon-eu-*/frames/*", () => {});
       await page.getByRole("button", { name: "Layers", exact: true }).click();
       await page.locator('[data-model="icon-eu"]').click();
       await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();

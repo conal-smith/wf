@@ -37,6 +37,7 @@ from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_forecast import (ROOT, get, load_spots, messages, published_in_bucket, sample,
                             spots_file, write_json)
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 HOST = "meteofrance-pnt.s3.rbx.io.cloud.ovh.net"
@@ -708,6 +709,6 @@ def refresh(spec, args, prose):
         "sourceUrl": SOURCE_URL, "attribution": ATTRIBUTION, "licenseUrl": LICENCE_URL,
     }
     # Only this final operation advances the published snapshot.
-    write_json(output / f"{model}.json", manifest)
+    write_run(output, f"{model}.json", manifest, prefix, spots)
     print(f"Published {len(frames)} {spec['modelName']} frames to "
           f"{output / f'{model}.json'}", flush=True)

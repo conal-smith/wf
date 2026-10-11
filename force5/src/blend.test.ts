@@ -78,7 +78,7 @@ describe("common axis", () => {
     });
     expect(commonAxis([offset])[0]).toBe("2026-09-14T01:00:00.000Z");
   });
-  it("reads an ensemble's range from its member series when it has no frames", () => {
+  it("reads an ensemble's range from its horizon and member series when it has no frames", () => {
     const chartOnly = ensembleManifest({
       runTime: "2026-09-14T00:00:00Z",
       hours: [0, 6],
@@ -88,8 +88,17 @@ describe("common axis", () => {
       to: Date.parse("2026-09-14T06:00:00Z"),
     });
     expect(commonAxis([chartOnly])).toHaveLength(7);
+    // The pointer alone, before any square is read, says the same.
     expect(
       manifestRange({ ...chartOnly, spotMembers: {}, spotForecasts: {} }),
+    ).toEqual(manifestRange(chartOnly));
+    expect(
+      manifestRange({
+        ...chartOnly,
+        horizonHours: undefined,
+        spotMembers: {},
+        spotForecasts: {},
+      }),
     ).toBeNull();
   });
 });

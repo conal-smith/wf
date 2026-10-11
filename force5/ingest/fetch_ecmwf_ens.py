@@ -22,8 +22,9 @@ import eccodes as ec
 from cadence import ladder_hours
 from f5bin import ENCODING as FRAME_ENCODING, publish_frame
 from fetch_ecmwf import SOURCE_URL, ForecastSession, client, gust_parameter
-from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample, write_json
+from fetch_forecast import PROJECT_ROOT, ROOT, PUBLISHED_IN_BUCKET, PUBLISHED_ON_DISK, already_published, decode_handle, sample
 from registry import UNCHANGED_EXIT
+from rundir import write_run
 import timing
 
 # Measured 2026-09-16 on the 0.25° enfo index: one member-message is about
@@ -343,7 +344,7 @@ def main():
     if not with_frames:
         # A cadence ladder and a missing +0h gust both describe frames from +0h.
         del manifest["stepRanges"], manifest["gustMissingHours"]
-    write_json(output / "ecmwf-ens.json", manifest)
+    write_run(output, "ecmwf-ens.json", manifest, prefix, spots)
     cached = sum(path.stat().st_size for path in paths)
     print(f"Published {len(frames)} ECMWF ENS mean frames and {len(spots)} member series to "
           f"{output / 'ecmwf-ens.json'}", flush=True)

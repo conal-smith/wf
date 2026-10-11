@@ -46,6 +46,7 @@ import {
   type Window,
 } from "../../mcp/api/forecast.js";
 import type { ForecastSource } from "../../mcp/api/source.js";
+import { squaresFor } from "../../force5/src/spotData.js";
 import {
   SKILL_LABEL,
   riderSummary,
@@ -633,7 +634,7 @@ const findSessions = tool({
       return failed(
         `No spots in ${county}. Counties: ${[...new Set(all.map((s) => s.county))].sort().join(", ")}.`,
       );
-    const wind = await loadWind(ctx.source, ctx.now);
+    const wind = await loadWind(ctx.source, ctx.now, squaresFor(pool));
     if (!wind.loaded.length)
       return failed("No wind forecast is published right now.");
     const times = axis(window);

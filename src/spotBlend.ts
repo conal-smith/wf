@@ -106,8 +106,10 @@ const isEnsemble = (manifest: Manifest) =>
   !!manifest.ensemble || !!manifest.spotMembers;
 
 /**
- * The blend of `manifests` for every place any of them publishes. `now` names
- * the run: the hour it was worked out, so each hourly job is a new run.
+ * The blend of `manifests` for every place any of them publishes. Each must
+ * have every one of its spot squares merged in (`loadSpotSquares`): a place in
+ * a square that was not read is a place this blend leaves out. `now` names the
+ * run: the hour it was worked out, so each hourly job is a new run.
  */
 export function buildSpotBlend(
   manifests: readonly Manifest[],
@@ -126,7 +128,9 @@ export function buildSpotBlend(
   const ids = manifests.map((manifest) => manifest.model);
   const places = [
     ...new Set(
-      manifests.flatMap((manifest) => Object.keys(manifest.spotForecasts)),
+      manifests.flatMap((manifest) =>
+        Object.keys(manifest.spotForecasts ?? {}),
+      ),
     ),
   ].sort();
   const spots: Record<string, BlendSpot> = {};

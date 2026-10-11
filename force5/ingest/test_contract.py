@@ -6,7 +6,9 @@ adapter that publishes one can rely on a settled contract.
 import ast
 from datetime import datetime, timedelta, timezone
 import json
-from pathlib import Path, PurePosixPath
+import os
+from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,10 +17,12 @@ import f5bin
 import publish_s3
 from publish_s3 import publish, validate_bundle
 from registry import MANIFESTS, MODELS
+import rundir
 from test_publish_s3 import FakeS3
 
 RUN = datetime(2026, 9, 13, 12, tzinfo=timezone.utc)
 NOW = RUN + timedelta(hours=1)
+SPOTS = [{"id": "brandon", "lat": 52.276, "lon": -10.024}]
 
 
 def valid(hour):
@@ -34,10 +38,10 @@ class ContractTests(unittest.TestCase):
     def register(self, model, manifest_path, kind):
         """A later agent adds one registry line; the tests add the same line temporarily.
 
-        Registering also makes the run directory, named for the model: the
-        publisher requires every referenced object to sit under a directory its
-        own model owns, exactly as every real adapter names them, so a shared
-        `weather/run/` would now be refused as belonging to nobody.
+        The tests write their frames into `weather/<model>-run/`, where they can
+        spoil them, and `save` publishes them as an adapter would: copied into a
+        run directory named for the model (the publisher refuses any other) and
+        finished by `rundir.write_run`.
         """
         entry = {"script": "unused.py", "manifest": manifest_path, "kind": kind, "maxAgeHours": 12}
         for target, value in [(MODELS, entry), (MANIFESTS, manifest_path)]:
@@ -45,11 +49,23 @@ class ContractTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.run_directory = f"weather/{model}-run"
+        self.prefix = f"{model}-2026091312-2h-v1"
         (self.root / self.run_directory).mkdir(parents=True, exist_ok=True)
         return self.run_directory
 
     def save(self, model, manifest):
-        (self.root / MANIFESTS[model]).write_text(json.dumps(manifest))
+        """Publish a whole manifest, as an adapter holds it, from the tests' own frames."""
+        staging = self.root / "weather" / self.prefix
+        shutil.rmtree(staging, ignore_errors=True)
+        suffix = "bin" if manifest.get("encoding") else "json"
+        frames = []
+        for info in manifest.get("frames") or []:
+            name = rundir.frame_name(self.prefix, info["hour"], suffix)
+            (staging / "frames").mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.root / info["url"], self.root / "weather" / name)
+            frames.append({**info, "url": f"weather/{name}"})
+        self.pointer = rundir.write_run(self.root / "weather", Path(MANIFESTS[model]).name,
+                                        {**manifest, "frames": frames}, self.prefix, SPOTS)
         return manifest
 
     def identity(self, model, kind):
@@ -81,11 +97,12 @@ class ContractTests(unittest.TestCase):
     def test_wave_bundle_validates_and_publishes_frames_before_the_pointer(self):
         self.wave_bundle()
         manifest, _, objects = validate_bundle(self.root, "fake-wave", now=NOW)
-        self.assertEqual(len(objects), 3)
+        self.assertEqual(len(objects), 4)  # Three frames and one spot square.
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-wave", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-wave.json")
         self.assertEqual(manifest["kind"], "wave")
+        self.assertNotIn("spotSeries", manifest)
 
     def test_wave_rejects_undescribed_variables_and_bad_fields(self):
         manifest = self.wave_bundle()
@@ -102,8 +119,8 @@ class ContractTests(unittest.TestCase):
         ]
         for change, frame_change in cases:
             with self.subTest(change=change, frame=frame_change):
-                self.save("fake-wave", {**manifest, **change})
                 frame.write_text(json.dumps({**original, **(frame_change or {})}))
+                self.save("fake-wave", {**manifest, **change})
                 s3 = FakeS3()
                 with self.assertRaises(ValueError):
                     publish(s3, self.root, "fake-wave", "test", now=NOW)
@@ -114,11 +131,14 @@ class ContractTests(unittest.TestCase):
         manifest = self.wave_bundle()
         self.save("fake-wave", {**manifest, "frames": [], "horizonHours": 2})
         published, _, objects = validate_bundle(self.root, "fake-wave", now=NOW)
-        self.assertEqual(objects, [])
-        self.assertEqual(len(published["spotSeries"]["brandon"]), 3)
+        self.assertEqual([path.rsplit("/", 2)[1:] for path, _ in objects],
+                         [["spots", "n52w012.json"]])
+        self.assertEqual(published["spots"]["squares"], ["n52w012"])
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-wave", "test", now=NOW), "published")
-        self.assertEqual(s3.writes, ["weather/fake-wave.json"])  # Only the pointer.
+        # The square, then the pointer.
+        self.assertEqual(s3.writes, [f"weather/{self.pointer['base']}spots/n52w012.json",
+                                     "weather/fake-wave.json"])
 
     def test_a_frameless_wave_bundle_declares_a_horizon_its_series_covers(self):
         manifest = self.wave_bundle()
@@ -136,10 +156,11 @@ class ContractTests(unittest.TestCase):
         for path in sorted((self.root / self.run_directory).glob("*.json")):
             frame = json.loads(path.read_text())
             path.write_text(json.dumps({k: v for k, v in frame.items() if k != "mwp"}))
+        self.save("fake-wave", manifest)
         with self.assertRaises(ValueError):  # Every declared variable is gridded by default.
             validate_bundle(self.root, "fake-wave", now=NOW)
         self.save("fake-wave", {**manifest, "frameVariables": ["swh"]})
-        self.assertEqual(len(validate_bundle(self.root, "fake-wave", now=NOW)[2]), 3)
+        self.assertEqual(len(validate_bundle(self.root, "fake-wave", now=NOW)[2]), 4)
         for narrowing in ([], ["swh", "swh"], ["swh", "gust"], "swh"):
             with self.subTest(narrowing=narrowing), self.assertRaises(ValueError):
                 self.save("fake-wave", {**manifest, "frameVariables": narrowing})
@@ -181,7 +202,7 @@ class ContractTests(unittest.TestCase):
     def test_weather_bundles_carry_hectopascals_and_whole_weather_codes(self):
         self.weather_bundle()
         manifest, _, objects = validate_bundle(self.root, "fake-weather", now=NOW)
-        self.assertEqual(len(objects), 3)
+        self.assertEqual(len(objects), 4)
         self.assertEqual(manifest["kind"], "weather")
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-weather", "test", now=NOW), "published")
@@ -205,8 +226,8 @@ class ContractTests(unittest.TestCase):
         ]
         for change, frame_change in cases:
             with self.subTest(change=sorted(change), frame=frame_change):
-                self.save("fake-weather", {**manifest, **change})
                 frame.write_text(json.dumps({**original, **(frame_change or {})}))
+                self.save("fake-weather", {**manifest, **change})
                 with self.assertRaises(ValueError):
                     validate_bundle(self.root, "fake-weather", now=NOW)
         frame.write_text(json.dumps(original))
@@ -231,14 +252,14 @@ class ContractTests(unittest.TestCase):
                 "hour": hour, "validTime": valid(hour), "grid": grid, "gustIntervalHours": window,
                 "u": [1] * 4, "v": [2] * 4, "gust": [9] * 4}))
         manifest = {**self.identity("fake-gfs", "wind"), "grid": grid, "frames": frames,
-                    "gustAvailable": True, "spotForecasts": {}}
+                    "gustAvailable": True, "spotForecasts": {"brandon": []}}
         if kind:
             manifest["gustKind"] = kind
         return self.save("fake-gfs", manifest)
 
     def test_instantaneous_gusts_carry_a_zero_length_window_at_every_hour(self):
         self.gust_bundle("instantaneous", lambda hour: [hour, hour])
-        self.assertEqual(len(validate_bundle(self.root, "fake-gfs", now=NOW)[2]), 3)
+        self.assertEqual(len(validate_bundle(self.root, "fake-gfs", now=NOW)[2]), 4)
 
     def test_zero_length_windows_need_the_instantaneous_declaration(self):
         for kind in (None, "interval", "period-maximum"):
@@ -253,7 +274,7 @@ class ContractTests(unittest.TestCase):
 
     def test_interval_gusts_are_unchanged_by_default(self):
         self.gust_bundle(None, lambda hour: [max(hour - 1, 0), hour])
-        self.assertEqual(len(validate_bundle(self.root, "fake-gfs", now=NOW)[2]), 3)
+        self.assertEqual(len(validate_bundle(self.root, "fake-gfs", now=NOW)[2]), 4)
 
     # --- ensembles --------------------------------------------------------
     def ensemble_bundle(self, members=3, **changes):
@@ -271,15 +292,22 @@ class ContractTests(unittest.TestCase):
                     "spotMembers": spot_members, "spotForecasts": means}
         return self.save("fake-eps", {**manifest, **changes})
 
-    def test_ensemble_without_frames_publishes_only_the_manifest(self):
+    def test_ensemble_without_frames_publishes_only_its_squares_and_the_pointer(self):
         self.ensemble_bundle()
         manifest, _, objects = validate_bundle(self.root, "fake-eps", now=NOW)
-        self.assertEqual(objects, [])
-        self.assertEqual(len(manifest["spotForecasts"]["brandon"]), 3)
+        self.assertEqual(len(objects), 1)
+        self.assertEqual(manifest["horizonHours"], 2)  # The pointer says how far it reaches.
+        self.assertEqual(manifest["spots"]["keys"], ["spotForecasts", "spotMembers"])
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-eps", "test", now=NOW), "published")
-        self.assertEqual(s3.writes[-1], "weather/fake-eps.json")
-        self.assertEqual(s3.writes, ["weather/fake-eps.json"])  # Only the pointer.
+        self.assertEqual(s3.writes, [f"weather/{self.pointer['base']}spots/n52w012.json",
+                                     "weather/fake-eps.json"])
+
+    def test_a_frameless_ensemble_must_state_the_horizon_its_series_reach(self):
+        manifest = self.ensemble_bundle()
+        self.save("fake-eps", {**manifest, "horizonHours": 5})
+        with self.assertRaisesRegex(ValueError, "horizon"):
+            validate_bundle(self.root, "fake-eps", now=NOW)
 
     def test_frames_may_only_be_empty_for_an_ensemble(self):
         manifest = self.ensemble_bundle()
@@ -324,36 +352,29 @@ class ContractTests(unittest.TestCase):
         return f5bin.encode_frame(payload)
 
     def binary_bundle(self, gusts=True, **changes):
-        """A wind bundle whose frames are F5 int16 rather than JSON.
-
-        Frames are content-addressed, exactly as `publish_frame` writes them, so
-        that the validator's name check is exercised by the ordinary case as well
-        as by the test that attacks it.
-        """
+        """A wind bundle whose frames are F5 int16 rather than JSON."""
         self.register("fake-bin", "weather/fake-bin.json", "wind")
         frames = []
         for hour in (0, 1, 2):
             data = self.binary_frame(hour, **({} if gusts else {"gust": None}))
-            url = f"{self.run_directory}/{f5bin.basename(hour, data)}"
+            url = f"{self.run_directory}/{hour}.bin"
             frames.append({"hour": hour, "validTime": valid(hour), "url": url,
                            "gustIntervalHours": [max(hour - 1, 0), hour] if gusts else None})
             (self.root / url).write_bytes(data)
         manifest = {**self.identity("fake-bin", "wind"), "grid": self.GRID,
                     "encoding": f5bin.ENCODING, "frames": frames,
-                    "gustAvailable": gusts, "spotForecasts": {}}
+                    "gustAvailable": gusts, "spotForecasts": {"brandon": []}}
         self.manifest = self.save("fake-bin", {**manifest, **changes})
         return self.manifest
 
     def rewrite(self, index, data):
-        """Replace one published frame, keeping the name content-addressed.
+        """Replace one frame and publish the run again, in a directory named for it.
 
-        The manifest is updated to the new name, so the validator's name check is
-        satisfied and whatever the test is really attacking is what fails. A test
-        that wants the name check itself keeps the old name instead.
+        The directory's hash then matches, so whatever the test is really
+        attacking is what fails. A test that wants the hash check itself
+        changes the published file in place instead.
         """
         info = self.manifest["frames"][index]
-        (self.root / info["url"]).unlink()
-        info["url"] = f"{self.run_directory}/{f5bin.basename(info['hour'], data)}"
         (self.root / info["url"]).write_bytes(data)
         self.save("fake-bin", self.manifest)
         return self.root / info["url"]
@@ -362,15 +383,17 @@ class ContractTests(unittest.TestCase):
         manifest = self.binary_bundle()
         published, _, objects = validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertEqual(published["encoding"], f5bin.ENCODING)
+        directory = f"weather/{published['base']}"
         self.assertEqual([path for path, _ in objects],
-                         [frame["url"] for frame in manifest["frames"]])
+                         [f"{directory}frames/{hour:03d}.bin" for hour in (0, 1, 2)]
+                         + [f"{directory}spots/n52w012.json"])
         # The bytes uploaded are the frame's own, uncompressed: compression is the
         # uploader's business and the sidecars are never objects of their own.
         self.assertEqual(objects[0][1], (self.root / manifest["frames"][0]["url"]).read_bytes())
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root, "fake-bin", "test", now=NOW), "published")
         self.assertEqual(s3.writes[-1], "weather/fake-bin.json")
-        self.assertEqual(len(s3.writes), 4)  # three frames, then the pointer
+        self.assertEqual(len(s3.writes), 5)  # three frames, a square, then the pointer
 
     def test_a_binary_frame_from_the_wrong_run_or_hour_is_refused(self):
         """The header is what makes this catchable; the file name alone is not."""
@@ -391,32 +414,29 @@ class ContractTests(unittest.TestCase):
         hour and grid and be accepted — and GFS's next publish would then delete
         objects a live HARMONIE pointer still pointed at.
         """
-        manifest = self.binary_bundle()
-        foreign = self.root / "weather/fake-other-run"
-        foreign.mkdir(parents=True)
-        for frame in manifest["frames"]:
-            moved = f"weather/fake-other-run/{PurePosixPath(frame['url']).name}"
-            (self.root / moved).write_bytes((self.root / frame["url"]).read_bytes())
-            frame["url"] = moved
-        self.save("fake-bin", manifest)
+        self.binary_bundle()
+        pointer = dict(self.pointer)
+        theirs = "fake-other" + pointer["base"][len("fake-bin"):]
+        os.replace(self.root / "weather" / pointer["base"], self.root / "weather" / theirs)
+        (self.root / "weather/fake-bin.json").write_text(json.dumps({**pointer, "base": theirs}))
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
         self.assertIn("is not named for fake-bin", str(caught.exception))
 
-    def test_a_frame_whose_name_is_not_its_content_hash_is_refused(self):
-        """A content-addressed name is checkable; a JSON frame's never was.
+    def test_a_frame_swapped_inside_a_published_run_is_refused(self):
+        """The run directory is named for its content, so a swapped frame is noticed.
 
         The substituted frame carries the right run, hour and grid, so every
-        header check passes and only the name is left to catch it — which is the
-        case that matters, because a frame silently swapped for another of the
-        same shape is exactly what a hash is supposed to notice.
+        header check passes and only the directory's hash is left to catch it —
+        which is the case that matters, because a frame silently swapped for
+        another of the same shape is exactly what a hash is supposed to notice.
         """
-        manifest = self.binary_bundle()
-        published = self.root / manifest["frames"][1]["url"]
+        self.binary_bundle()
+        published = self.root / "weather" / self.pointer["base"] / "frames/001.bin"
         published.write_bytes(self.binary_frame(1, u=[7.5] * 4))
         with self.assertRaises(ValueError) as caught:
             validate_bundle(self.root, "fake-bin", now=NOW)
-        self.assertIn("does not hold the frame its name claims", str(caught.exception))
+        self.assertIn("does not hold the content its name claims", str(caught.exception))
 
     def test_a_binary_frame_of_the_wrong_size_or_shape_is_refused(self):
         whole = self.binary_frame(1)
@@ -448,7 +468,7 @@ class ContractTests(unittest.TestCase):
         self.assertIn("Gust block does not match", str(caught.exception))
         # The same bundle with the gust block actually absent is fine.
         self.binary_bundle(gusts=False)
-        self.assertEqual(len(validate_bundle(self.root, "fake-bin", now=NOW)[2]), 3)
+        self.assertEqual(len(validate_bundle(self.root, "fake-bin", now=NOW)[2]), 4)
         # And a missing gust block where the manifest promises one is refused.
         self.binary_bundle()
         self.rewrite(1, self.binary_frame(1, gust=None))

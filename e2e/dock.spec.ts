@@ -2,6 +2,8 @@ import { expect, test, type Page } from "./fixtures";
 import { readSample } from "./sample";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { encodeFrame } from "../scripts/f5bin.mjs";
+import { readFileSync } from "node:fs";
+import { spotSquare } from "../force5/src/squares";
 
 const harmonie = readSample("harmonie");
 
@@ -552,19 +554,21 @@ test("an hour past the map's model offers the run that reaches it", async ({
 });
 
 /**
- * A newer HARMONIE run, 16 UTC to the bundled 13 UTC, with frames of its own:
- * a frame carries its run and hour and is checked against the manifest that
- * named it, which is what makes an atomic swap safe.
+ * A newer HARMONIE run, 16 UTC to the bundled 13 UTC, in a run directory of its
+ * own with frames and spot squares of its own: a frame carries its run and hour
+ * and is checked against the manifest that named it, and a square names its
+ * run, which is what makes an atomic swap safe.
  */
 const NEWER_RUN = "2026091316";
 const NEWER_RUN_TIME = "2026-09-13T16:00:00Z";
-const NEWER_RUN_DIR = `weather/harmonie-${NEWER_RUN}-24h-test`;
+const NEWER_BASE = `harmonie-${NEWER_RUN}-24h-v1-0a1b2c3d/`;
+const NEWER_RUN_DIR = `weather/${NEWER_BASE}`.slice(0, -1);
 const newerValidTime = (hour: number) =>
   new Date(Date.parse(NEWER_RUN_TIME) + hour * 3600000).toISOString();
 const newerFrames = Array.from({ length: 25 }, (_, hour) => ({
   hour,
   validTime: newerValidTime(hour),
-  url: `${NEWER_RUN_DIR}/${String(hour).padStart(3, "0")}.bin`,
+  url: `frames/${String(hour).padStart(3, "0")}.bin`,
   gustIntervalHours: null,
 }));
 const newerHarmonie = {
@@ -572,11 +576,23 @@ const newerHarmonie = {
   run: NEWER_RUN,
   runTime: NEWER_RUN_TIME,
   generatedAt: NEWER_RUN_TIME,
+  base: NEWER_BASE,
   frames: newerFrames,
+};
+/** One square of the newer run: every riding location in it, a steady wind. */
+const places: { id: string; lat: number; lon: number }[] = JSON.parse(
+  readFileSync("public/riding-locations.json", "utf8"),
+);
+const newerSquare = (square: string) => ({
+  schemaVersion: 2,
+  model: "harmonie",
+  run: NEWER_RUN,
+  square,
   spotForecasts: Object.fromEntries(
-    Object.keys(harmonie.spotForecasts as Record<string, unknown>).map(
-      (spot) => [
-        spot,
+    places
+      .filter((place) => spotSquare(place.lat, place.lon) === square)
+      .map((place) => [
+        place.id,
         newerFrames.map((frame, column) => ({
           hour: frame.hour,
           validTime: frame.validTime,
@@ -584,10 +600,9 @@ const newerHarmonie = {
           v: -4,
           gust: null,
         })),
-      ],
-    ),
+      ]),
   ),
-};
+});
 const CELLS = harmonie.grid.width * harmonie.grid.height;
 const newerFrame = (hour: number) => ({
   model: "harmonie",
@@ -601,7 +616,7 @@ const newerFrame = (hour: number) => ({
   gust: null,
 });
 async function withNewerRunFrames(page: Page) {
-  await page.route(`**/${NEWER_RUN_DIR}/*`, (route) => {
+  await page.route(`**/${NEWER_RUN_DIR}/frames/*`, (route) => {
     const hour = Number(
       /(\d+)\.bin$/.exec(new URL(route.request().url()).pathname)?.[1] ?? -1,
     );
@@ -609,6 +624,12 @@ async function withNewerRunFrames(page: Page) {
       body: encodeFrame(newerFrame(hour)),
       contentType: "application/octet-stream",
     });
+  });
+  await page.route(`**/${NEWER_RUN_DIR}/spots/*`, (route) => {
+    const square = /([ns]\d{2}[ew]\d{3})\.json$/.exec(
+      new URL(route.request().url()).pathname,
+    )?.[1];
+    return route.fulfill({ json: newerSquare(square ?? "") });
   });
 }
 

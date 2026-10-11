@@ -8,12 +8,18 @@ runs is bundled, and the adapters derive each spot series from nothing except th
 frame grids and `sample()`. So the missing series are recoverable exactly, with no
 new source data and no change to any immutable frame.
 
-This tool reads a manifest, re-derives every spot's series from the frames it
-already references, and rewrites only `spotForecasts` (wind) or `spotSeries`
-(wave). Spots that are already published are checked against the recomputation
-and then kept byte-for-byte: a disagreement means the frames and the manifest
-describe different data, which is a corrupt bundle rather than something to
-paper over, so the run aborts without writing.
+This tool reads a manifest and its spot squares, re-derives every spot's series
+from the frames it already references, and rewrites only `spotForecasts` (wind)
+or `spotSeries` (wave). Spots that are already published are checked against
+the recomputation and then kept byte-for-byte: a disagreement means the frames
+and the manifest describe different data, which is a corrupt bundle rather than
+something to paper over, so the run aborts without writing.
+
+A run directory is never rewritten (rundir.py), so the new series are published
+as a new one: the frames are linked into it unchanged, the squares are written
+afresh, it is named for its new content, and the pointer moves to it. The old
+directory is left whole for the pruner, so a reader holding the old pointer can
+still read everything it names.
 
     .venv/bin/python force5/ingest/backfill_spots.py --all --check
     .venv/bin/python force5/ingest/backfill_spots.py harmonie icon-eu ecmwf gfs
@@ -41,9 +47,11 @@ from pathlib import Path, PurePosixPath
 import sys
 
 import f5bin
-from fetch_forecast import ROOT, load_spots, sample, spots_file, write_json
-from publish_s3 import frame_encoding, referenced
+from fetch_forecast import ROOT, load_spots, sample, spots_file
+from publish_s3 import frame_encoding, run_file
 from registry import MANIFESTS, MODELS
+from rundir import FRAMES, rewrite_run
+from squares import with_spot_data
 
 WIND_FIELDS = ("u", "v", "gust")
 # The manifest's own agreement limit: recomputation is deterministic, so anything
@@ -66,20 +74,21 @@ def tolerance(manifest):
 def read_frame(public, model, manifest, info):
     """One referenced frame, through the publisher's own unsafe-path guard.
 
-    `referenced` requires the run directory to be named for this model, which is
+    `run_file` requires the run directory to be named for this model, which is
     what establishes a binary frame's model — the file itself does not carry one.
-    Its header carries the run, the hour and the grid size, and its name is the
-    hash of its own bytes, so a file from the wrong step or with the wrong
-    contents is refused. The valid time is the manifest's, as it is for JSON.
+    Its header carries the run, the hour and the grid size, and its name is its
+    hour, so a file from the wrong step is refused; the run directory's name is
+    the hash of its content. The valid time is the manifest's, as it is for JSON.
     """
-    _, data = referenced(public, info["url"], model, 3)
+    suffix = "bin" if frame_encoding(manifest) else "json"
+    if PurePosixPath(info["url"]) != PurePosixPath(FRAMES, f"{info['hour']:03d}.{suffix}"):
+        raise ValueError(f"{info['url']} is not where the frame at +{info['hour']}h belongs")
+    _, data = run_file(public, model, manifest, info["url"])
     if frame_encoding(manifest):
         decoded = f5bin.decode_frame(data)
         if (decoded["run"], decoded["hour"]) != (manifest["run"], info["hour"]):
             raise ValueError(f"{info['url']} is not the frame the manifest lists at "
                              f"+{info['hour']}h of run {manifest['run']}")
-        if not f5bin.names_these_bytes(PurePosixPath(info["url"]).name, info["hour"], data):
-            raise ValueError(f"{info['url']} does not hold the frame its name claims")
         grid = manifest["grid"]
         if (decoded["width"], decoded["height"]) != (grid["width"], grid["height"]):
             raise ValueError(f"{info['url']} does not match the published grid")
@@ -200,7 +209,7 @@ def backfill(public, model, spots=None, check=False, log=print):
     """
     public = Path(public).resolve()
     path = public / MANIFESTS[model]
-    manifest = json.loads(path.read_text())
+    manifest = read_run(path)
     kind = manifest.get("kind", "wind")
     if kind != MODELS[model]["kind"]:
         raise ValueError(f"{model} manifest declares kind {kind!r}, "
@@ -260,10 +269,18 @@ def backfill(public, model, spots=None, check=False, log=print):
     if check or not added:
         return added
     # Assigning an existing key keeps its position, so the manifest's shape is
-    # unchanged apart from the series themselves.
+    # unchanged apart from the series themselves; the run is then published again
+    # as a new run directory, named for its new content.
     manifest[key] = series
-    write_json(path, manifest)
+    rewrite_run(path.parent, path.name, manifest, spots)
     return added
+
+
+def read_run(path):
+    """A local pointer with its spot squares merged back in."""
+    pointer = json.loads(Path(path).read_text())
+    return with_spot_data(pointer, lambda relative: json.loads(
+        (Path(path).parent / relative).read_text()))
 
 
 def backfillable_models(public, log=print):
@@ -279,7 +296,8 @@ def backfillable_models(public, log=print):
         if entry["kind"] not in ("wind", "wave") or not path.exists():
             continue
         manifest = json.loads(path.read_text())
-        if manifest.get("spotMembers") is not None or manifest.get("ensemble") is not None:
+        keys = (manifest.get("spots") or {}).get("keys") or []
+        if "spotMembers" in keys or manifest.get("ensemble") is not None:
             log(f"{model}: an ensemble's members cannot be recomputed from mean frames. Skipped.")
             continue
         models.append(model)

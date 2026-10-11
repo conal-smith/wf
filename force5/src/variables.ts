@@ -13,7 +13,8 @@
 // values whole code-table entries (WMO present weather) that are checked for
 // being small integers instead of range-checked — and that nothing downstream
 // may interpolate, average or blend.
-import type { Grid } from "./weather";
+import type { SpotIndex } from "./spotData";
+import { usableRunPath, validateRunPointer, type Grid } from "./weather";
 
 /** The two bundle kinds built on a declared variable map. */
 export type VariablesKind = "wave" | "weather";
@@ -75,7 +76,11 @@ export interface VariableStep {
   /** As on the frame: the interval `precip` covers, null at initialization. */
   precipIntervalHours?: [number, number] | null;
 }
-/** Everything both kinds declare. `waves.ts` and `surface.ts` narrow `kind`. */
+/**
+ * Everything both kinds declare. `waves.ts` and `surface.ts` narrow `kind`.
+ * A run pointer (schemaVersion 2): `spotSeries` is present only once the spot
+ * squares a reader asked for have been merged in (spotData.ts).
+ */
 export interface VariablesManifest {
   schemaVersion: number;
   kind: VariablesKind;
@@ -95,11 +100,15 @@ export interface VariablesManifest {
   /** Present only when frames are; a frameless bundle needs no grid. */
   grid?: Grid;
   variables: Record<string, BundleVariable>;
+  /** The run directory, relative to the pointer's own directory. */
+  base: string;
   /** May be empty: the spot series is the product, a grid is a luxury. */
   frames: BundleFrame[];
   /** The subset of `variables` the frames carry, when it is narrower. */
   frameVariables?: string[];
-  spotSeries: Record<string, VariableStep[]>;
+  /** The spot squares the run publishes. */
+  spots: SpotIndex;
+  spotSeries?: Record<string, VariableStep[]>;
   processing?: string;
   sourceUrl: string;
   attribution: string;
@@ -178,22 +187,21 @@ export function variablesHours(
 }
 
 /**
- * A validator for one bundle kind, checking the manifest-level rules the
- * importer checks: the variable map and its code declarations, the optional
- * frame list, the declared horizon and the shape of every spot series. Frame
- * *contents* are not checked here — the dock reads series and never downloads a
- * variables frame.
+ * A validator for one bundle kind's pointer, checking the manifest-level rules
+ * the importer checks: the run directory and its spot squares, the variable map
+ * and its code declarations, the optional frame list and the declared horizon.
+ * The spot series are checked as they are read, by `validateVariableSpots`.
+ * Frame *contents* are not checked here — the dock reads series and never
+ * downloads a variables frame.
  */
 export function validateVariablesManifest<M extends VariablesManifest>(
   kind: VariablesKind,
 ): (manifest: M) => M {
-  const limit = VARIABLE_VALUE_LIMITS[kind];
   const fail = (): never => failWith(kind);
   return (m: M): M => {
     if (
       !m ||
       typeof m !== "object" ||
-      m.schemaVersion !== 1 ||
       m.kind !== kind ||
       !filled(m.model) ||
       !filled(m.modelName) ||
@@ -202,6 +210,11 @@ export function validateVariablesManifest<M extends VariablesManifest>(
       !Number.isFinite(Date.parse(m.runTime))
     )
       fail();
+    try {
+      validateRunPointer(m);
+    } catch {
+      fail();
+    }
     const variables = m.variables;
     if (
       !variables ||
@@ -238,9 +251,7 @@ export function validateVariablesManifest<M extends VariablesManifest>(
           frame &&
           frame.hour === hours[index] &&
           Date.parse(frame.validTime) === at(hours[index]) &&
-          filled(frame.url) &&
-          frame.url.startsWith("weather/") &&
-          !frame.url.includes(".."),
+          usableRunPath(frame.url),
       )
     )
       fail();
@@ -253,14 +264,30 @@ export function validateVariablesManifest<M extends VariablesManifest>(
         !gridded.every((name) => name in variables))
     )
       fail();
+    if (!m.spots.keys.includes("spotSeries")) fail();
+    return m;
+  };
+}
+
+/**
+ * A validator for the spot series of one bundle kind, once they have been read
+ * from the run's squares (spotData.ts): every series on the run's own hours,
+ * every declared variable at every step, and every value inside the kind's
+ * bounds. Returns the manifest it was given, so a merged run is checked in
+ * place.
+ */
+export function validateVariableSpots<M extends VariablesManifest>(
+  kind: VariablesKind,
+): (manifest: M) => M {
+  const limit = VARIABLE_VALUE_LIMITS[kind];
+  const fail = (): never => failWith(kind);
+  return (m: M): M => {
+    const variables = m.variables;
+    const hours = variablesHours(m, kind);
+    const runTime = Date.parse(m.runTime);
+    const at = (hour: number) => runTime + hour * 3600000;
     const series = m.spotSeries;
-    if (
-      !series ||
-      typeof series !== "object" ||
-      Array.isArray(series) ||
-      !Object.keys(series).length
-    )
-      fail();
+    if (!series || typeof series !== "object" || Array.isArray(series)) fail();
     // A code variable is an index into a code table, so it is checked for being
     // a small whole number rather than for a physical range.
     const codes = new Set(
@@ -274,7 +301,7 @@ export function validateVariablesManifest<M extends VariablesManifest>(
       (codes.has(name)
         ? whole(value) && value >= 0 && value < MAX_VARIABLE_CODE
         : bounded(value, limit));
-    for (const steps of Object.values(series)) {
+    for (const steps of Object.values(series!)) {
       if (!Array.isArray(steps) || steps.length !== hours.length) fail();
       steps.forEach((step, index) => {
         if (

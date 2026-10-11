@@ -1,0 +1,15 @@
+{
+  "description": "The run directory hash (force5/ingest/rundir.py, scripts/runs.mjs): the first 8 hex digits of a sha256 over the sorted lines '<path> <sha256 of the file's bytes>\\n'. Files are UTF-8 text here so both languages read the same bytes. Tested by force5/ingest/test_squares.py and tests/squares.test.ts.",
+  "files": {
+    "frames/000.bin": "F5F1 hour zero",
+    "frames/003.bin": "F5F1 hour three",
+    "spots/n52w010.json": "{\"schemaVersion\":2,\"model\":\"harmonie\",\"run\":\"2026101106\",\"square\":\"n52w010\"}",
+    "spots/n54w008.json": "{\"schemaVersion\":2,\"model\":\"harmonie\",\"run\":\"2026101106\",\"square\":\"n54w008\"}"
+  },
+  "digest": "a171227f",
+  "oneByteChanged": {
+    "path": "frames/003.bin",
+    "content": "F5F1 hour thref",
+    "digest": "595319eb"
+  }
+}

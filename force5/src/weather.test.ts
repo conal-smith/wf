@@ -35,25 +35,32 @@ const frame: Frame = {
   gustIntervalHours: [0, 0],
 };
 const manifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   model: "icon-eu",
   run: frame.run,
   runTime: frame.validTime,
   grid,
+  base: "icon-eu-2026091306-3h-v1-0a1b2c3d/",
   frames: [
     {
       hour: 0,
       validTime: frame.validTime,
-      url: "weather/a.json",
+      url: "frames/000.bin",
       gustIntervalHours: [0, 0],
     },
     {
       hour: 3,
       validTime: "2026-09-13T09:00:00Z",
-      url: "weather/b.json",
+      url: "frames/003.bin",
       gustIntervalHours: [0, 3],
     },
   ],
+  spots: {
+    squareDegrees: 2,
+    url: "spots/{square}.json",
+    squares: ["n52w010"],
+    keys: ["spotForecasts"],
+  },
 } as Manifest;
 
 describe("geographic interpolation", () => {
@@ -228,16 +235,79 @@ describe("forecast integrity and freshness", () => {
       ),
     ).toThrow();
   });
-  it("rejects non-sequential times and external paths", () => {
+  it("rejects non-sequential times and paths outside the run directory", () => {
     expect(() =>
       validateManifest({ ...manifest, frames: [...manifest.frames].reverse() }),
     ).toThrow();
+    for (const url of [
+      "https://bad.example/frame",
+      "../harmonie.json",
+      "frames/../../latest.json",
+      "/weather/a.bin",
+      "weather/a.bin/",
+    ])
+      expect(() =>
+        validateManifest({
+          ...manifest,
+          frames: [{ ...manifest.frames[0], url }],
+        }),
+      ).toThrow();
+  });
+  it("is a schemaVersion 2 pointer: a run directory beside it, no spot data inline", () => {
+    expect(() => validateManifest({ ...manifest, schemaVersion: 1 })).toThrow(
+      /old format/,
+    );
+    for (const base of [
+      "../icon-eu-2026091306-3h-v1-0a1b2c3d/",
+      "icon-eu-2026091306-3h-v1-0a1b2c3d",
+      "weather/icon-eu-2026091306-3h-v1-0a1b2c3d/",
+      "icon-eu-2026091306-3h-v1/",
+      "/icon-eu-2026091306-3h-v1-0a1b2c3d/",
+    ])
+      expect(() => validateManifest({ ...manifest, base })).toThrow(
+        /run directory/,
+      );
     expect(() =>
-      validateManifest({
-        ...manifest,
-        frames: [{ ...manifest.frames[0], url: "https://bad.example/frame" }],
-      }),
-    ).toThrow();
+      validateManifest({ ...manifest, spotForecasts: { brandon: [] } }),
+    ).toThrow(/spot squares/);
+    expect(() => validateManifest({ ...manifest, spotMembers: {} })).toThrow(
+      /spot squares/,
+    );
+    for (const spots of [
+      undefined,
+      { ...manifest.spots, squareDegrees: 1 },
+      { ...manifest.spots, url: "../{square}.json" },
+      { ...manifest.spots, squares: ["n54w010", "n52w010"] },
+      { ...manifest.spots, squares: ["../x"] },
+      { ...manifest.spots, keys: ["frames"] },
+    ])
+      expect(() =>
+        validateManifest({ ...manifest, spots } as Manifest),
+      ).toThrow();
+  });
+  it("needs a stated horizon for a run with no map frames", () => {
+    const frameless = {
+      ...manifest,
+      frames: [],
+      ensemble: { members: 2, control: null, description: "Two." },
+    };
+    expect(() => validateManifest(frameless)).toThrow(/horizon/);
+    expect(validateManifest({ ...frameless, horizonHours: 48 }).frames).toEqual(
+      [],
+    );
+    // The pointer alone says how far it reaches: 48 h from 06 UTC on the 13th.
+    expect(
+      freshness(
+        { ...frameless, horizonHours: 48 },
+        Date.parse("2026-09-13T12:00Z"),
+      ),
+    ).toBe("fresh");
+    expect(
+      freshness(
+        { ...frameless, horizonHours: 48 },
+        Date.parse("2026-09-15T07:00Z"),
+      ),
+    ).toBe("expired");
   });
   it("selects the nearest available time and clamps to the forecast period", () => {
     expect(nearestFrame(manifest.frames, Date.parse("2026-09-13T08:00Z"))).toBe(

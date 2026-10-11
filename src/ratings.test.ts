@@ -1,4 +1,3 @@
-import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   blendInputs,
@@ -19,6 +18,12 @@ import {
   placeHours,
   pointHours,
 } from "./ratings";
+import { readWindRun } from "../tests/bundles";
+
+/** The bundled sample wind runs, each with every spot square merged in. */
+const real: Manifest[] = await Promise.all(
+  ["latest", "harmonie", "ecmwf", "gfs", "arpege"].map(readWindRun),
+);
 
 /** The dock's own path, verbatim: what the fast one has to match. */
 function slow(manifests: Manifest[], ids: string[], id: string, axis: string[]) {
@@ -164,20 +169,10 @@ describe("placeConsensus", () => {
     expect(out.median).toEqual([null, null, null]);
   });
 
-  // The real thing, where a checkout has the bundled sample runs.
-  const dir = "tests/fixtures/weather";
-  let real: Manifest[] = [];
-  try {
-    real = readdirSync(dir)
-      .filter((f) => /^[a-z-]+\.json$/.test(f))
-      .map((f) => JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as Manifest)
-      .filter((m) => m.spotForecasts);
-  } catch {
-    real = [];
-  }
+  // The real thing: the bundled sample wind runs, every spot square merged in.
   it.runIf(real.length > 0)("matches the blend on the bundled runs", () => {
     const ids = real.map((m) => m.model);
-    const spots = Object.keys(real[0].spotForecasts).slice(0, 12);
+    const spots = Object.keys(real[0].spotForecasts!).slice(0, 12);
     const first = real[0].frames[0].validTime;
     const axis = hourly(first, 30);
     for (const id of spots) same(real, ids, id, axis);

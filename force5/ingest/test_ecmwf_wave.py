@@ -18,6 +18,7 @@ from fetch_ecmwf_wave import (ALL_VARIABLES, BANDS, DIRECTION, MODEL, NEAREST_LI
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
+from runfixtures import publish_whole
 
 # The identity the live 0.25° wave stream carries, read on 17 September 2026.
 WAVE_HEADERS = {"centre": "ecmf", "marsClass": "od", "marsStream": "wave", "dataType": "fc"}
@@ -301,7 +302,7 @@ class WaveBundleTests(unittest.TestCase):
                     "dry": coverage_for({"mode": "none", "offsetKm": None}, False)}
         manifest = manifest_for("2026091600", self.run_time, list(hours), variables,
                                 grid, frames, series, coverage)
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest, spots=SPOTS)
         return manifest, self.run_time + timedelta(hours=1)
 
     def test_the_manifest_declares_ten_variables_and_the_wave_contract(self):
@@ -319,7 +320,7 @@ class WaveBundleTests(unittest.TestCase):
         self.assertEqual(publish(s3, self.root, MODEL, "test", max_age_hours=24, now=now),
                          "published")
         self.assertEqual(s3.writes[-1], f"weather/{MODEL}.json")
-        self.assertEqual(len(s3.writes), 4)  # 3 frames + pointer
+        self.assertEqual(len(s3.writes), 6)  # 3 frames, a square per spot, the pointer
 
     def test_a_band_only_manifest_still_validates(self):
         _, now = self.bundle(variables=list(SEA))
@@ -330,8 +331,7 @@ class WaveBundleTests(unittest.TestCase):
         for frames in [manifest["frames"][:-1],
                        [{**f, "hour": 4} if i == 1 else f
                         for i, f in enumerate(manifest["frames"])]]:
-            (self.root / f"weather/{MODEL}.json").write_text(
-                json.dumps({**manifest, "frames": frames}))
+            publish_whole(self.root / "weather", f"{MODEL}.json", {**manifest, "frames": frames}, spots=SPOTS)
             s3 = FakeS3()
             with self.assertRaises(ValueError):
                 publish(s3, self.root, MODEL, "test", max_age_hours=24, now=now)
@@ -340,7 +340,7 @@ class WaveBundleTests(unittest.TestCase):
     def test_a_spot_series_missing_a_variable_is_refused(self):
         manifest, now = self.bundle()
         del manifest["spotSeries"]["wet"][1]["values"]["h1721"]
-        (self.root / f"weather/{MODEL}.json").write_text(json.dumps(manifest))
+        publish_whole(self.root / "weather", f"{MODEL}.json", manifest, spots=SPOTS)
         with self.assertRaises(ValueError):
             validate_bundle(self.root, MODEL, 24, now)
 

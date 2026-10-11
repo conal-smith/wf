@@ -21,6 +21,7 @@ from fetch_gfs import index_ranges
 from publish_s3 import publish, validate_bundle
 from registry import UNCHANGED_EXIT
 from test_publish_s3 import FakeS3
+from runfixtures import read_whole
 
 NOW = datetime(2026, 9, 16, 23, 40, tzinfo=timezone.utc)
 RUN = "2026091618"
@@ -350,7 +351,7 @@ class GefsTests(unittest.TestCase):
              patch.object(gefs, "download",
                           side_effect=lambda source, r, member, hour: bodies[(member, hour)]):
             main()
-        return json.loads((self.root / "public/weather/gefs.json").read_text()), run
+        return read_whole(self.root / "public/weather/gefs.json"), run
 
     def fresh_run(self):
         now = datetime.now(timezone.utc)
@@ -361,7 +362,7 @@ class GefsTests(unittest.TestCase):
         manifest, run = self.refresh()
         self.assertEqual((manifest["model"], manifest["modelName"], manifest["provider"]),
                          ("gefs", "GEFS", "NOAA NCEP"))
-        self.assertEqual(manifest["schemaVersion"], 1)
+        self.assertEqual(manifest["schemaVersion"], 2)
         self.assertEqual(manifest["ensemble"]["members"], 3)
         self.assertEqual(manifest["ensemble"]["control"], 0)
         self.assertIn("gec00", manifest["ensemble"]["description"])
@@ -376,7 +377,7 @@ class GefsTests(unittest.TestCase):
         self.assertEqual([f["gustIntervalHours"] for f in manifest["frames"]], [[0, 0], [6, 6]])
         # Members 0..2 hold u = member, v = -member, gust = 10 + member.
         frame = f5bin.decode_frame(
-            (self.root / "public" / manifest["frames"][1]["url"]).read_bytes())
+            (self.root / "public/weather" / manifest["base"] / manifest["frames"][1]["url"]).read_bytes())
         self.assertEqual((frame["u"], frame["v"], frame["gust"]),
                          ([1.0] * 4, [-1.0] * 4, [11.0] * 4))
         self.assertEqual((frame["run"], frame["hour"]), (run, 6))
@@ -401,18 +402,19 @@ class GefsTests(unittest.TestCase):
         run_time = datetime.strptime(run, "%Y%m%d%H").replace(tzinfo=timezone.utc)
         published, _, objects = validate_bundle(
             self.root / "public", "gefs", 24, run_time + timedelta(hours=1))
-        self.assertEqual((published["run"], len(objects)), (run, 2))
+        squares = len(published["spots"]["squares"])
+        self.assertEqual((published["run"], len(objects)), (run, 2 + squares))
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root / "public", "gefs", "test", max_age_hours=24,
                                  now=run_time + timedelta(hours=1)), "published")
         self.assertEqual(s3.writes[-1], "weather/gefs.json")
-        self.assertEqual(len(s3.writes), 3)  # 2 frames + pointer
+        self.assertEqual(len(s3.writes), 3 + squares)  # 2 frames, the squares, the pointer
 
     def test_frames_live_under_a_run_and_horizon_specific_prefix(self):
         manifest, run = self.refresh()
-        self.assertTrue(all(f["url"].startswith(f"weather/gefs-{run}-6h-v1/")
-                            for f in manifest["frames"]))
-        self.assertRegex(manifest["frames"][1]["url"], r"/006-[0-9a-f]{12}\.bin$")
+        self.assertRegex(manifest["base"], rf"^gefs-{run}-6h-v1-[0-9a-f]{{8}}/$")
+        self.assertEqual([f["url"] for f in manifest["frames"]],
+                         ["frames/000.bin", "frames/006.bin"])
 
     def test_a_broken_member_preserves_the_previous_manifest(self):
         published = self.root / "public/weather/gefs.json"

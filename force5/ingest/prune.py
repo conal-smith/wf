@@ -1,7 +1,10 @@
 """Delete published objects no current manifest references, and aged raw cache.
 
 Only the newest run of a model is ever served, so a run directory or station
-file is junk as soon as no pointer manifest references it. The worker calls
+file is junk as soon as no pointer manifest references it. A forecast pointer
+(schemaVersion 2) references exactly one run directory, its `base`, and every
+file inside it — frames and spot squares alike — lives or goes with it; a tide
+pointer references its station files one by one. The worker calls
 `prune_published` itself the moment a new run is published; this script is the
 scheduled backstop that also ages out the raw cache. It takes the workspace lock
 and skips the sweep while an import holds it, because a run that is still being
@@ -39,6 +42,7 @@ import shutil
 import sys
 
 from registry import MANIFESTS, MODELS
+from squares import check_base, run_path
 from workspace import workspace_lock
 
 DATA_ROOTS = sorted({PurePosixPath(path).parts[0] for path in MANIFESTS.values()})
@@ -108,10 +112,37 @@ def manifest_urls(value):
     return urls
 
 
+def run_directory(manifest, pointer):
+    """The run directory a schemaVersion 2 pointer names, as a published path, or None.
+
+    `base` is relative to the pointer's own directory and is a single segment
+    ending in '/' (squares.check_base), so the answer is always
+    `<pointer directory>/<run directory>`; anything else is refused.
+    """
+    if "base" not in manifest:
+        return None
+    base = check_base(manifest["base"])
+    parent = PurePosixPath(pointer).parent
+    if len(parent.parts) != 1 or parent.parts[0] not in DATA_ROOTS:
+        raise ValueError(f"Pointer {pointer} is not directly under a data root")
+    return f"{parent}/{base[:-1]}"
+
+
 def referenced(manifests):
-    """Published paths, and the run directories holding them, that must survive."""
+    """Published paths, and the run directories holding them, that must survive.
+
+    A forecast pointer keeps its whole run directory, and the urls inside it are
+    relative to that directory, so they are checked for staying inside it rather
+    than read as published paths. Any other manifest keeps the files it names.
+    """
     files, directories = set(), set()
     for path, manifest in manifests.items():
+        directory = run_directory(manifest, path)
+        if directory is not None:
+            for url in manifest_urls(manifest):
+                run_path(manifest["base"], url.replace("{square}", "n00e000"))
+            directories.add(directory)
+            continue
         urls = manifest_urls(manifest)
         if not urls and manifest.get("kind") not in SELF_CONTAINED_KINDS:
             raise ValueError(f"Manifest {path} references no published objects")
@@ -129,7 +160,7 @@ def model_owns(model, name):
     """Does this run directory or station file belong to `model`, and to no other?
 
     Every adapter names its immutable objects for its own model id —
-    `weather/ecmwf-RUN-360h-v2/…`, `marine/tides-STATION-…json` — and model ids
+    `weather/ecmwf-RUN-360h-v2-1a2b3c4d/…`, `marine/tides-STATION-…json` — and model ids
     nest, so "harmonie" must not claim "harmonie-eps-…" nor "gfs" claim
     "gfs-wave-…". Both the publisher's superseded delete and the bucket sweep's
     protection of a model that has published no pointer yet turn on this.
@@ -311,19 +342,23 @@ def keep_sets(s3, bucket, prefix):
     return files, directories, missing
 
 
+def bucket_keys(s3, bucket, prefix):
+    """Every object under one key prefix, one page at a time. The publisher uses this too."""
+    token = None
+    while True:
+        page = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=LIST_PAGE,
+                                  **({"ContinuationToken": token} if token else {}))
+        for item in page.get("Contents") or []:
+            yield item["Key"], item["LastModified"], item.get("Size", 0)
+        token = page.get("NextContinuationToken")
+        if not token or not page.get("IsTruncated"):
+            break
+
+
 def bucket_objects(s3, bucket, prefix):
-    """Every object under each data root, one page at a time."""
+    """Every object under each data root."""
     for root in DATA_ROOTS:
-        token = None
-        while True:
-            page = s3.list_objects_v2(Bucket=bucket, Prefix=f"{prefix}{root}/",
-                                      MaxKeys=LIST_PAGE,
-                                      **({"ContinuationToken": token} if token else {}))
-            for item in page.get("Contents") or []:
-                yield item["Key"], item["LastModified"], item.get("Size", 0)
-            token = page.get("NextContinuationToken")
-            if not token or not page.get("IsTruncated"):
-                break
+        yield from bucket_keys(s3, bucket, f"{prefix}{root}/")
 
 
 def bucket_manifest_shaped(s3, bucket, key):

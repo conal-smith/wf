@@ -22,8 +22,9 @@ export interface PointSeries {
 const EMPTY: (Wind | null | undefined)[] = [];
 
 /**
- * The selected position's series: the manifest's precomputed one for a named
- * spot, otherwise sampled from the map frames progressively, two requests at a
+ * The selected position's series: the precomputed one for a named spot whose
+ * square is merged into the manifest, otherwise sampled from the map frames
+ * progressively, two requests at a
  * time, with a retry. Lifted out of `ForecastSheet` so every dock view — and
  * the scrubber's colours — read the same values.
  *
@@ -47,8 +48,11 @@ export function usePointSeries(
     manifest && point
       ? `${manifest.model}/${manifest.run}/${point.lon}/${point.lat}`
       : "";
+  // Only from a manifest the caller has merged the spot's square into
+  // (`loadSpots`); the map's own pointer carries no spot data, so a bare point
+  // and a spot whose square was not read are both sampled from the frames.
   const named =
-    manifest && point?.id ? manifest.spotForecasts[point.id] : undefined;
+    manifest && point?.id ? manifest.spotForecasts?.[point.id] : undefined;
   /** The hours already read for a key, so a retry asks only for the rest. */
   const read = useRef<{
     key: string;
