@@ -1,8 +1,9 @@
 # Builds and releases
 
 How a commit on main becomes what wingfoil.ie runs. It is the shape SprintEngine
-Studio's release train has: main feeds a nightly, and a release promotes what a
-nightly already built rather than building again.
+Studio's release train has: main feeds a nightly, a release stages what a nightly
+already built rather than building again, and a promote puts exactly what staging
+tested into production.
 
 ```text
 pull request / push to main ──► CI ──────────────────────────────── (gate only)
@@ -11,10 +12,18 @@ pull request / push to main ──► CI ─────────────
                              build 3 images + the site once            images :nightly
                              CI gate, image smoke, real-data acceptance
 
-dispatch "release" ──► staging ──► approval ──► production ──► v2026.10.10 (release)
-                       same digests :staging     same digests :production, :latest
-                       smoke + acceptance again  site to Cloudflare Pages (once set up)
-                       site to Pages staging     Mac mini pulls :production
+dispatch "release" ──► staging ──► v2026.10.11-rc.57 (prerelease: images.json,
+                       same digests :staging        site.tar.gz, staged.json)
+                       smoke + acceptance again
+                       site to Pages staging, smoke-tested
+
+          you look at staging (STAGING_SITE_URL)
+
+dispatch "promote" ──► production ──► v2026.10.11 (release)
+                       the staged files, checked byte for byte
+                       same digests :production, :latest
+                       the same site build to Pages production, smoke-tested
+                       Mac mini pulls :production
 ```
 
 ## The artifacts
@@ -38,9 +47,10 @@ One build serves every environment: at deploy time
 data address into `index.html` (`<meta name="wingfoil:forecast-base">`, read by
 `force5/src/urls.ts`).
 
-Tags: `:<version>` and `:sha-<commit>` for every nightly, then `:nightly`,
-`:staging`, `:production` and `:latest` moved onto digests as a build passes
-each stage. A tag only ever moves to a digest that has passed everything before it.
+Tags: `:<version>` and `:sha-<commit>` for every nightly, `:<date>-rc.<run>` for
+a staged candidate and `:<date>` for a release, then `:nightly`, `:staging`,
+`:production` and `:latest` moved onto digests as a build passes each stage. A
+tag only ever moves to a digest that has passed everything before it.
 
 ## What tests what
 
@@ -70,24 +80,66 @@ stay.
 
 ## A release
 
-*Actions → Release → Run workflow → release* (optionally naming a nightly tag;
-the default is the newest). It promotes that nightly's commit and digests as
-`v<date>` (`v<date>.2` for a second the same day):
+Two buttons, with you in between. Both are *Actions → Release → Run workflow*.
 
-1. **Staging** (environment `staging`): the digests get `:staging` and the
-   release version; every image smoke test and the real-data acceptance run again,
-   against today's providers. If Cloudflare is set up, the site goes to the Pages
-   project's `staging` branch, pointed at `STAGING_FORECAST_BASE_URL`, and the
-   smoke suite runs against `STAGING_SITE_URL`.
-2. **Approval**: the run waits at the `production` environment for its required
-   reviewer. Look at staging, then *Review deployments → Approve*.
-3. **Production**: the digests get `:production` and `:latest`; the site goes to
-   the Pages production branch, pointed at `PRODUCTION_FORECAST_BASE_URL`, and is
-   smoke-tested at `PRODUCTION_SITE_URL`; then the `v<date>` release and tag are
-   created on the commit.
+1. **Stage: channel `release`** (optionally naming a nightly tag; the default is
+   the newest). Staging only; nothing in production moves.
+   - The nightly's digests get `:staging` and `:<date>-rc.<run>`; every image
+     smoke test and the real-data acceptance run again, against today's
+     providers.
+   - If Cloudflare is set up, the nightly's `site.tar.gz` goes to the Pages
+     project's `staging` branch, pointed at `STAGING_FORECAST_BASE_URL`, and the
+     smoke suite runs against `STAGING_SITE_URL`.
+   - Then, and only then, what passed is recorded as the prerelease
+     `v<date>-rc.<run>` (the workflow run's number), tagged on the commit and
+     carrying `images.json`, `site.tar.gz` and `staged.json`: the digests, the
+     sha256 of both files, the nightly it came from, the commit, and the
+     workflow run and attempt that staged it. A staging that fails records
+     nothing. The run's summary names the candidate.
+2. **Look at staging.** `STAGING_SITE_URL` reads production's forecast data with
+   the candidate's site: click about, on a phone too.
+3. **Promote: channel `promote`** (optionally naming a candidate in `staged`;
+   the default is the newest one whose staging passed). Production only.
+   - Before anything moves, the candidate is vetted: its `staged.json` must
+     describe its own tag and commit; GitHub must say the *Staging* job of the
+     run it names completed successfully; its commit must not be released
+     already; it must contain what production runs; and if a site is to be
+     deployed, staging must have deployed one.
+   - The candidate's `images.json` and `site.tar.gz` are downloaded and checked
+     against the hashes and digests in `staged.json`.
+   - The digests get `:production`, `:latest` and `:<date>`; the same
+     `site.tar.gz` goes to the Pages production branch, pointed at
+     `PRODUCTION_FORECAST_BASE_URL`, and is smoke-tested at
+     `PRODUCTION_SITE_URL`; then the `v<date>` release (`v<date>.2` for a second
+     the same day) and its tag are created on the commit.
 
-A commit is released once; promoting a nightly whose commit already shipped is
-refused.
+What is refused, and why:
+
+| Refused | At | Why |
+| --- | --- | --- |
+| A nightly or candidate whose commit is already released | release, promote | a commit is released once |
+| A candidate whose staging job failed, or has not finished | promote | only what passed staging reaches production |
+| A nightly or candidate that does not contain the commit production runs | release, promote | production only moves forward |
+| A site staging never deployed, once Pages is set up | promote | nobody has looked at it |
+| Files that differ from what staging recorded | promote (production job) | production gets exactly what staging tested |
+
+"Older than production" is decided by ancestry, not by date: production's commit
+must be an ancestor of the candidate's. A date test would let through an older
+nightly staged after a newer one shipped, or a nightly of a main rewritten since,
+and both would take changes back out of production. To go back, ship a revert
+through the train (or, in an emergency, move `:production` onto an earlier
+release's digest by hand: `docker buildx imagetools create -t …:production <digest>`).
+
+Staging and production run the train's own logic (`scripts/release/release.mjs`)
+from the workflow's commit, and the tests from the commit being shipped, so a
+candidate staged before a change to the train can still be promoted by it.
+
+Why two dispatches and not one run that waits for an approval: an environment's
+**required reviewers** are what would make the run wait, and on a private
+repository they need a paid plan (GitHub refuses the setting on the free plan).
+The production job keeps `environment: production`, so if the repository is ever
+public — where required reviewers are free — adding yourself as one makes every
+promote wait for a click as well.
 
 ### The Mac mini
 
@@ -96,7 +148,7 @@ released image instead of one built from the checkout:
 
 ```sh
 deploy/home-compute/macmini.sh pull          # ghcr.io/sprintengine/wingfoil-forecast:production
-deploy/home-compute/macmini.sh pull ghcr.io/sprintengine/wingfoil-forecast:v2026.10.10
+deploy/home-compute/macmini.sh pull ghcr.io/sprintengine/wingfoil-forecast:2026.10.10   # a release (image tags have no v)
 ```
 
 `pull` tags it as `wingfoil-forecast:local`, so Home Compute and the menu bar
@@ -108,14 +160,17 @@ Docker does, so moving the jobs to Cloudflare Containers later means pointing
 ## One-time setup
 
 Nothing here is needed for CI or the nightly; they work as soon as the workflows
-are on main. A release needs the two environments; the site deployment needs
-Cloudflare. Until the Cloudflare variables exist, a release promotes and tests
-the images and says, in a notice, that no site was deployed.
+are on main. A release and a promote need the two environments; the site
+deployment needs Cloudflare. Until the Cloudflare variables exist, a release
+stages and tests the images and says, in a notice, that no site was deployed, and
+a promote moves the image tags only.
 
-1. **Environments** (*Settings → Environments*): create `staging`, and
-   `production` with yourself as a **required reviewer** — that is the one click.
-   Required reviewers on a private repository need a paid plan; on a public one
-   they are free.
+1. **Environments** (*Settings → Environments*): create `staging` and
+   `production`. Neither needs protection rules: the gate is that production
+   only moves when someone dispatches a promote. Required reviewers on a private
+   repository need a paid plan (the API refuses them on the free one); if the
+   repository goes public they are free, and adding yourself to `production`
+   makes each promote wait for your click too.
 2. **Packages**: after the first nightly, open each of the three packages
    (*Your profile → Packages*), set them **public**, and check *Manage Actions
    access* lists this repository with write access. Public packages are what let

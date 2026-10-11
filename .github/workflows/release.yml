@@ -1,16 +1,28 @@
 name: Release
 
-# Main feeds a nightly train; a release promotes what a nightly already built,
-# through staging and then production. docs/RELEASES.md walks through it.
+# Main feeds a nightly train; a release stages what a nightly already built, and
+# a promote puts exactly what staging tested into production. docs/RELEASES.md
+# walks through it.
 #
 #   schedule (02:17 UTC)   a nightly of main's head, but only when main has commits
 #                          the last nightly did not build. A main that no longer
 #                          contains the last nightly (history rewritten) FAILS the
 #                          resolve step rather than skipping quietly.
 #   dispatch nightly       a nightly of main's head now, gate skipped
-#   dispatch release       promote the latest nightly (or the one named):
-#                          the SAME image digests and the SAME site build, never
-#                          a rebuild -- staging, its tests, an approval, production
+#   dispatch release       STAGING ONLY: the latest nightly (or the one named) --
+#                          the SAME image digests and the SAME site build, never a
+#                          rebuild -- tagged :staging, tested again, the site
+#                          deployed to staging; then recorded as the prerelease
+#                          v<date>-rc.<run> (images.json, site.tar.gz, staged.json)
+#   dispatch promote       PRODUCTION ONLY: the newest staged candidate that passed
+#                          (or the one named), byte for byte -- its digests get
+#                          :production and :latest, its site goes to production,
+#                          and the v<date> release is created
+#
+# The gap between release and promote is the human gate: look at staging, then
+# promote. (An environment's required reviewers would do it in one run, but they
+# need a paid plan on a private repository; `environment: production` stays on
+# the production job, so they work the day the repository is public.)
 #
 # A nightly builds the three images (forecast worker, site, marketplace API) and
 # the static site once, runs the whole CI gate against the commit, smoke-tests
@@ -19,30 +31,44 @@ name: Release
 # in a browser. Only then is anything published: a prerelease v<date>-nightly.<run>
 # carrying images.json (the digests) and the site, and the images' :nightly tag.
 #
-# Nothing else here deploys. Production today is the forecast worker, which the
-# Mac mini runs by pulling :production (deploy/home-compute/macmini.sh pull); the
-# site goes to Cloudflare Pages too once the repository variables in
-# docs/RELEASES.md exist, and is skipped with a notice until then.
+# Production today is the forecast worker, which the Mac mini runs by pulling
+# :production (deploy/home-compute/macmini.sh pull), and the site on Cloudflare
+# Pages once the repository variables in docs/RELEASES.md exist (skipped with a
+# notice until then).
+#
+# Staging and production run the train's own logic (scripts/release/release.mjs)
+# from this workflow's commit, checked out under .train, and the tests from the
+# commit being shipped: a candidate staged before a change to the train can
+# still be promoted by the train as it is now.
+run-name: "${{ github.event_name == 'schedule' && 'nightly (scheduled)' || format('{0} {1}{2}', inputs.channel, inputs.nightly, inputs.staged) }}"
+
 on:
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:
       channel:
-        description: "nightly builds main now; release promotes a nightly through staging to production"
+        description: "nightly builds main now; release stages a nightly on staging; promote puts a staged build in production"
         required: true
         default: nightly
         type: choice
         options:
           - nightly
           - release
+          - promote
       nightly:
-        description: "release only: the nightly tag to promote (default: the newest)"
+        description: "release only: the nightly tag to stage (default: the newest)"
+        required: false
+        default: ""
+        type: string
+      staged:
+        description: "promote only: the staged v<date>-rc.<run> to promote (default: the newest that passed staging)"
         required: false
         default: ""
         type: string
 
 # Two queues, neither cancelling: a cancelled release can leave a half-moved tag.
+# Release and promote share one, so a promote never runs beside a staging.
 concurrency:
   group: release-${{ (github.event_name == 'schedule' || inputs.channel == 'nightly') && 'nightly' || 'release' }}
   cancel-in-progress: false
@@ -58,6 +84,11 @@ jobs:
     name: Resolve
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # actions: read is how a promote asks whether the run that staged a
+    # candidate passed its Staging job.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       should_build: ${{ steps.resolve.outputs.should_build }}
       channel: ${{ steps.resolve.outputs.channel }}
@@ -66,6 +97,7 @@ jobs:
       ref: ${{ steps.resolve.outputs.ref }}
       previous_tag: ${{ steps.resolve.outputs.previous_tag }}
       nightly_tag: ${{ steps.resolve.outputs.nightly_tag }}
+      staged_tag: ${{ steps.resolve.outputs.staged_tag }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -74,7 +106,8 @@ jobs:
         with:
           node-version-file: .nvmrc
       # A shut gate ends the run here, green, with should_build=false; a refusal
-      # (main rewritten under the last nightly, a commit already released) exits
+      # (main rewritten under the last nightly, a commit already released, a
+      # candidate that did not pass staging or is behind production) exits
       # non-zero, so it is seen. scripts/release/release.mjs has the rules.
       - id: resolve
         name: Channel, version and commit
@@ -82,8 +115,11 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DISPATCH_CHANNEL: ${{ inputs.channel }}
           DISPATCH_NIGHTLY: ${{ inputs.nightly }}
+          DISPATCH_STAGED: ${{ inputs.staged }}
           SHA: ${{ github.sha }}
           RUN_NUMBER: ${{ github.run_number }}
+          PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/release/release.mjs resolve
 
   # ---------------------------------------------------------------- nightly ---
@@ -297,10 +333,12 @@ jobs:
 
   # ---------------------------------------------------------------- release ---
 
-  # The promoted digests get :staging, and the tests run against exactly them:
-  # every image smoke and the real-forecast acceptance again (today's providers,
-  # not the night's), then -- once Cloudflare is configured -- the site deployed
-  # to the staging branch and the smoke suite against it.
+  # Staging only. The nightly's digests get :staging, and the tests run against
+  # exactly them: every image smoke and the real-forecast acceptance again
+  # (today's providers, not the night's), then -- once Cloudflare is configured --
+  # the site deployed to the staging branch and the smoke suite against it. Its
+  # last step records what passed as the prerelease v<date>-rc.<run>, which is
+  # what a promote reads: nothing is recorded for a staging that failed.
   staging:
     name: Staging
     needs: resolve
@@ -311,17 +349,26 @@ jobs:
       name: staging
       url: ${{ vars.STAGING_SITE_URL }}
     permissions:
-      contents: read
+      contents: write
       packages: write
     env:
       VERSION: ${{ needs.resolve.outputs.version }}
+      TAG: ${{ needs.resolve.outputs.tag }}
+      REF: ${{ needs.resolve.outputs.ref }}
       NIGHTLY_TAG: ${{ needs.resolve.outputs.nightly_tag }}
+      PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
       GH_TOKEN: ${{ github.token }}
       PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.ref }}
+          fetch-depth: 0
+      # The train's logic as this workflow has it (see the header).
+      - uses: actions/checkout@v7
+        with:
+          path: .train
+          sparse-checkout: scripts/release
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -332,14 +379,14 @@ jobs:
         run: |
           gh release download "$NIGHTLY_TAG" --repo "$GITHUB_REPOSITORY" -p images.json -p site.tar.gz
           jq . images.json
-          test "$(jq -r .commit images.json)" = "${{ needs.resolve.outputs.ref }}"
+          test "$(jq -r .commit images.json)" = "$REF"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Tag the digests :staging and the release version
+      - name: Tag the digests :staging and the staged version
         run: |
           for name in forecast web market; do
             digest="$(jq -r ".images.$name" images.json)"
@@ -361,9 +408,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           mkdir site && tar -xzf site.tar.gz -C site
-          node scripts/release/release.mjs configure-site site "${{ vars.STAGING_FORECAST_BASE_URL }}"
+          node .train/scripts/release/release.mjs configure-site site "${{ vars.STAGING_FORECAST_BASE_URL }}"
           npx --yes wrangler@4 pages deploy site --project-name "$PAGES_PROJECT" --branch staging \
-            --commit-hash "${{ needs.resolve.outputs.ref }}" --commit-message "${VERSION} (staging)"
+            --commit-hash "$REF" --commit-message "${VERSION} (staging)"
       - name: Smoke the staging site
         if: env.PAGES_PROJECT != ''
         env:
@@ -373,6 +420,36 @@ jobs:
       - name: No site deployment configured
         if: env.PAGES_PROJECT == ''
         run: echo "::notice::CLOUDFLARE_PAGES_PROJECT is not set, so no site was deployed to staging. docs/RELEASES.md says how to set it up."
+      # Everything above passed: record it. staged.json carries the digests, the
+      # sha256 of images.json and site.tar.gz, the nightly, the commit and this
+      # run, which is what a promote checks before it moves anything.
+      - name: Record what was staged
+        env:
+          SITE_DEPLOYED: ${{ env.PAGES_PROJECT != '' }}
+          SITE_URL: ${{ vars.STAGING_SITE_URL }}
+          FORECAST_BASE: ${{ vars.STAGING_FORECAST_BASE_URL }}
+        run: node .train/scripts/release/release.mjs record-staged staged.json
+      - name: Release notes
+        env:
+          IMAGES_JSON: images.json
+        run: node .train/scripts/release/release.mjs notes release-notes.md
+      # --target tags the commit that was staged, not wherever main has moved since.
+      # This is the job's last real step, so a candidate exists only for a
+      # staging that passed; promote still asks GitHub how this job ended.
+      - name: Publish the staged candidate
+        env:
+          STAGING_SITE_URL: ${{ vars.STAGING_SITE_URL }}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$REF" --prerelease --latest=false \
+            --title "Staged ${VERSION}" --notes-file release-notes.md images.json site.tar.gz staged.json
+          {
+            echo "### Staged as \`$TAG\`"
+            echo
+            echo "From \`$NIGHTLY_TAG\`, commit \`${REF:0:12}\`."
+            if [ -n "$PAGES_PROJECT" ]; then echo "Look at the site on staging: $STAGING_SITE_URL"; fi
+            echo
+            echo "When it is right: *Actions → Release → Run workflow → promote* (staged: \`$TAG\`, or empty for the newest that passed)."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the report
         if: failure()
         uses: actions/upload-artifact@v7
@@ -383,10 +460,21 @@ jobs:
             playwright-report
             test-results
 
-  # Waits for the production environment's required reviewer: the one click.
+  # ---------------------------------------------------------------- promote ---
+
+  # Production only, from a staged candidate resolve has already vetted (its
+  # Staging job passed, its commit is unreleased and contains what production
+  # runs). The files are checked against staged.json before anything moves, so
+  # production gets byte for byte what staging tested: the same digests, the
+  # same site.tar.gz, pointed at production's data.
+  #
+  # `environment: production` has no protection rules while the repository is
+  # private (required reviewers need a paid plan there); the separate promote
+  # dispatch is the gate. Made public, the environment can add a reviewer too.
   production:
     name: Production
-    needs: [resolve, staging]
+    needs: resolve
+    if: needs.resolve.outputs.channel == 'promote'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -399,6 +487,7 @@ jobs:
       VERSION: ${{ needs.resolve.outputs.version }}
       TAG: ${{ needs.resolve.outputs.tag }}
       REF: ${{ needs.resolve.outputs.ref }}
+      STAGED_TAG: ${{ needs.resolve.outputs.staged_tag }}
       NIGHTLY_TAG: ${{ needs.resolve.outputs.nightly_tag }}
       PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
       GH_TOKEN: ${{ github.token }}
@@ -408,12 +497,19 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.ref }}
           fetch-depth: 0
+      - uses: actions/checkout@v7
+        with:
+          path: .train
+          sparse-checkout: scripts/release
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: The nightly's images and site
-        run: gh release download "$NIGHTLY_TAG" --repo "$GITHUB_REPOSITORY" -p images.json -p site.tar.gz
+      - name: The staged build, checked against what staging tested
+        run: |
+          gh release download "$STAGED_TAG" --repo "$GITHUB_REPOSITORY" -p images.json -p site.tar.gz -p staged.json
+          jq . staged.json
+          node .train/scripts/release/release.mjs verify-staged
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -422,11 +518,11 @@ jobs:
           password: ${{ github.token }}
       # :production is what the Mac mini pulls (macmini.sh pull): moving it is
       # the forecast worker's deployment.
-      - name: Tag the digests :production and :latest
+      - name: Tag the digests :production, :latest and the release version
         run: |
           for name in forecast web market; do
             docker buildx imagetools create -t "${IMAGES}-${name}:production" -t "${IMAGES}-${name}:latest" \
-              "$(jq -r ".images.$name" images.json)"
+              -t "${IMAGES}-${name}:${VERSION}" "$(jq -r ".images.$name" images.json)"
           done
       - name: Deploy the site to production
         if: env.PAGES_PROJECT != ''
@@ -435,7 +531,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           mkdir site && tar -xzf site.tar.gz -C site
-          node scripts/release/release.mjs configure-site site "${{ vars.PRODUCTION_FORECAST_BASE_URL }}"
+          node .train/scripts/release/release.mjs configure-site site "${{ vars.PRODUCTION_FORECAST_BASE_URL }}"
           npx --yes wrangler@4 pages deploy site --project-name "$PAGES_PROJECT" --branch main \
             --commit-hash "$REF" --commit-message "${VERSION}"
       - name: Smoke the production site
@@ -450,8 +546,17 @@ jobs:
       - name: Release notes
         env:
           IMAGES_JSON: images.json
-        run: node scripts/release/release.mjs notes release-notes.md
+        run: node .train/scripts/release/release.mjs notes release-notes.md
       - name: Publish the release
         run: |
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$REF" --latest \
-            --title "wingfoil.ie ${VERSION}" --notes-file release-notes.md images.json site.tar.gz
+            --title "wingfoil.ie ${VERSION}" --notes-file release-notes.md images.json site.tar.gz staged.json
+      - name: Keep the report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-report-${{ github.run_id }}
+          retention-days: 7
+          path: |
+            playwright-report
+            test-results
