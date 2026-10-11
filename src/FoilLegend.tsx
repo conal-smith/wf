@@ -22,6 +22,7 @@ export default function FoilLegend({
   readout,
   error,
   clearance = FOIL_CLEARANCE_METRES,
+  floor = -5,
 }: {
   /** The layer is drawn; off, there is no tide or survey to report. */
   on: boolean;
@@ -36,13 +37,15 @@ export default function FoilLegend({
   readout: string | null;
   error: string | null;
   clearance?: number;
+  /** The depth cut, metres above LAT (the index's floorMetres, −5). */
+  floor?: number;
 }) {
   return (
     <div className="foil-key">
       {!on ? (
         <p className="foil-at">
           Off. Turn it on in Layers, under Chart: &ldquo;Foilable depth at the
-          tide (pilot)&rdquo;.
+          tide&rdquo;.
         </p>
       ) : error ? (
         <p className="foil-at is-error" role="status">
@@ -91,8 +94,10 @@ export default function FoilLegend({
         ))}
       <p className="foil-small">
         Approximate: astronomical tide, no surge or waves
-        {on && area ? `; survey ${surveyLine(area)}` : ""}. Pilot areas only.
-        Not for navigation.
+        {on && area ? `; survey ${surveyLine(area)}` : ""}. Each stretch of
+        coast follows its nearest tide station. Water more than {-floor} m deep
+        at the lowest tide is not drawn: it is deep enough at any tide. Not for
+        navigation.
       </p>
     </div>
   );

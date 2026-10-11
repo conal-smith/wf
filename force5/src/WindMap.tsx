@@ -14,6 +14,7 @@ import {
   type RideStop,
 } from "./chartStyle";
 import { archiveUrl } from "./archives";
+import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
 import { setMapView } from "./tiledField";
@@ -40,11 +41,11 @@ export interface ChartLayers {
   soundings: boolean;
   relief: boolean;
   names: boolean;
-  /** Foilable depth at the selected tide, in the pilot areas. */
+  /** Foilable depth at the selected tide, round the coast. */
   foil: boolean;
 }
 
-/** One pilot area's foilable-depth layer, as the map draws it. */
+/** One area's foilable-depth layer (a region or a pilot), as the map draws it. */
 export interface FoilView {
   id: string;
   /** The archive's absolute URL. */
@@ -218,10 +219,9 @@ export default function WindMap(props: Props) {
       console.warn(
         "The chart has no colours to draw in: ui/theme.css is not on the document.",
       );
-    const bathy = new URL(
-      `${import.meta.env.BASE_URL}${BATHY_PATH}`,
-      window.location.href,
-    ).href;
+    // On the data host, as the forecast is (urls.ts): a versioned, immutable
+    // file read by range, not one the site serves whole.
+    const bathy = new URL(forecastUrl(BATHY_PATH), window.location.href).href;
     let map: maplibregl.Map;
     try {
       map = new maplibregl.Map({
@@ -453,10 +453,13 @@ export default function WindMap(props: Props) {
     map.getContainer().classList.toggle("no-names", !layers.names);
   }, [ready, layers]);
 
-  // Foilable depth: one raster-dem source and color-relief layer per pilot
-  // area, made the first time it is asked for and kept; the tide moves only
-  // the ramp's stops. Over the depth tints and the contours, under the rivers,
-  // the coast's ink and every name.
+  // Foilable depth: one raster-dem source and color-relief layer per area
+  // (a tide station's region, or a pilot), made the first time it comes into
+  // view and kept, hidden when out of it; the tide moves only the ramp's
+  // stops. Over the depth tints and the contours, under the rivers, the
+  // coast's ink and every name. A layer shows from half a zoom under its
+  // archive's min zoom: MapLibre rounds a raster's zoom, so that is where its
+  // tiles start, and where a region's cut-out for a pilot's box starts too.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -481,7 +484,7 @@ export default function WindMap(props: Props) {
             id,
             type: "color-relief",
             source: id,
-            minzoom: area.minzoom,
+            minzoom: Math.max(0, area.minzoom - 0.5),
             paint: {
               "color-relief-color": area.color,
               "color-relief-opacity": 0.82,

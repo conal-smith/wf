@@ -1,4 +1,7 @@
-import { defineConfig, type Plugin, type Rollup } from "vite";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig, type Connect, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { OWN_BUNDLE_PATHS } from "./force5/src/siteNav";
@@ -99,10 +102,82 @@ function preloadTheMap(): Plugin {
   };
 }
 
+/**
+ * The chart's static archives, which deployments read from the data host
+ * (scripts/foildepth/publish.py: bathy/v…/, foildepth/v…/), served by the dev
+ * and preview servers at the same paths from `public-data/`, by range, so the
+ * map works offline. They are not in `public/`, so no build ships them to
+ * Pages. An archive that is not on disk (the national foilable-depth regions,
+ * too large to commit) is fetched from the data host in dev, range and all,
+ * when it is reachable; the e2e site stages its own (scripts/e2e-site.mjs).
+ */
+function staticData(): Plugin {
+  const root = fileURLToPath(new URL("./public-data/", import.meta.url));
+  const upstream =
+    process.env.STATIC_DATA_UPSTREAM ?? "https://data.wingfoil.ie/";
+  const middleware =
+    (proxy: boolean): Connect.NextHandleFunction =>
+    (req, res, next) => {
+      const path = decodeURIComponent((req.url ?? "").split("?")[0]);
+      const match = /^\/((?:foildepth|bathy)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
+        path,
+      );
+      if (!match || (req.method !== "GET" && req.method !== "HEAD"))
+        return next();
+      const file = join(root, match[1]);
+      if (!existsSync(file)) {
+        if (!proxy || e2e) return next();
+        const range = req.headers.range;
+        fetch(upstream + match[1], { headers: range ? { range } : {} })
+          .then(async (r) => {
+            res.statusCode = r.status;
+            for (const h of ["content-type", "content-range", "etag"]) {
+              const v = r.headers.get(h);
+              if (v) res.setHeader(h, v);
+            }
+            res.end(Buffer.from(await r.arrayBuffer()));
+          })
+          .catch(() => {
+            res.statusCode = 504;
+            res.end();
+          });
+        return;
+      }
+      const size = statSync(file).size;
+      const ranged = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range ?? "");
+      const start = ranged ? Number(ranged[1]) : 0;
+      const end = ranged?.[2] ? Math.min(Number(ranged[2]), size - 1) : size - 1;
+      if (start > end) {
+        res.statusCode = 416;
+        res.setHeader("content-range", `bytes */${size}`);
+        return res.end();
+      }
+      res.statusCode = ranged ? 206 : 200;
+      res.setHeader(
+        "content-type",
+        file.endsWith(".json") ? "application/json" : "application/octet-stream",
+      );
+      res.setHeader("accept-ranges", "bytes");
+      res.setHeader("content-length", String(end - start + 1));
+      if (ranged) res.setHeader("content-range", `bytes ${start}-${end}/${size}`);
+      if (req.method === "HEAD") return res.end();
+      createReadStream(file, { start, end }).pipe(res);
+    };
+  return {
+    name: "wingfoil:static-data",
+    configureServer(server) {
+      server.middlewares.use(middleware(true));
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware(false));
+    },
+  };
+}
+
 // Tailwind is configured in CSS, not here: ui/theme.css is the theme and the
 // list of directories scanned for class names. There is no tailwind.config.js.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), preloadTheMap()],
+  plugins: [react(), tailwindcss(), preloadTheMap(), staticData()],
   publicDir: e2e ? ".e2e/public" : "public",
   build: {
     outDir: e2e ? ".e2e/dist" : "dist",

@@ -4,6 +4,7 @@ import {
   FOIL_CLEARANCE_METRES,
   areaAt,
   areasAt,
+  areasInView,
   basinLevel,
   foilClass,
   foilColours,
@@ -368,6 +369,131 @@ describe("a basin behind a weir", () => {
     );
     expect(foilReadout(1.2, 3.06, "17:40", "Howth", 1, 0.8)).toMatch(
       /^~1\.9 m of water at 17:40 \(water 3\.1 m/,
+    );
+  });
+});
+
+describe("the national regions", () => {
+  // Two tide stations' regions whose boxes overlap, and a pilot inside one.
+  const howth = area({
+    id: "tide-howth",
+    kind: "region",
+    url: "tide-howth.pmtiles",
+    bounds: [-6.4, 53.2, -5.9, 53.7],
+    minzoom: 7,
+    maxzoom: 13,
+    station: "Howth",
+    stationLonLat: [-6.0683, 53.3915],
+  });
+  const skerries = area({
+    id: "tide-skerries",
+    kind: "region",
+    url: "tide-skerries.pmtiles",
+    bounds: [-6.4, 53.45, -5.9, 53.9],
+    minzoom: 7,
+    maxzoom: 13,
+    station: "Skerries",
+    stationLonLat: [-6.1081, 53.585],
+  });
+  const pilot = area({ kind: "pilot", url: "dublin-north.pmtiles" });
+  const national = (): FoilManifest => ({
+    ...manifest(),
+    schemaVersion: 2,
+    base: "foildepth/v0123456789ab/",
+    floorMetres: -5,
+    deepMetres: -20,
+    areas: [pilot, howth, skerries],
+  });
+
+  it("puts a point in the region whose station is nearest, where no pilot is", () => {
+    // In both boxes, nearer Skerries.
+    expect(areasAt([howth, skerries], -6.15, 53.55).map((a) => a.id)).toEqual(
+      ["tide-skerries"],
+    );
+    // In both boxes, nearer Howth.
+    expect(areasAt([howth, skerries], -6.1, 53.46).map((a) => a.id)).toEqual([
+      "tide-howth",
+    ]);
+    expect(areasAt([howth, skerries], -8, 53)).toEqual([]);
+  });
+
+  it("lets a pilot win inside its box", () => {
+    const areas = [pilot, howth, skerries];
+    expect(areasAt(areas, -6.15, 53.45).map((a) => a.id)).toEqual([
+      "dublin-north",
+    ]);
+    expect(areaAt(areas, -6.15, 53.45)?.id).toBe("dublin-north");
+    expect(nearestArea(areas, -6.3, 53.8)?.id).toBe("tide-skerries");
+  });
+
+  it("draws only the areas over the view, from half a zoom under their own", () => {
+    const view = { west: -6.3, south: 53.25, east: -6.0, north: 53.4 };
+    const areas = [pilot, howth, skerries];
+    expect(areasInView(areas, view, 6).map((a) => a.id)).toEqual([]);
+    expect(areasInView(areas, view, 6.5).map((a) => a.id)).toEqual([
+      "tide-howth",
+    ]);
+    expect(areasInView(areas, view, 9.5).map((a) => a.id)).toEqual([
+      "dublin-north",
+      "tide-howth",
+    ]);
+  });
+
+  it("validates a schema 2 index with its base and deep value", () => {
+    expect(validateFoilManifest(national()).areas).toHaveLength(3);
+    for (const bad of [
+      { base: undefined },
+      { base: "https://elsewhere/" },
+      { base: "foildepth/../" },
+      { deepMetres: undefined },
+      { deepMetres: -5.5 },
+    ])
+      expect(() =>
+        validateFoilManifest({ ...national(), ...bad } as FoilManifest),
+      ).toThrow();
+    const odd = national();
+    odd.areas[1] = {
+      ...howth,
+      stationLonLat: [1] as unknown as [number, number],
+    };
+    expect(() => validateFoilManifest(odd)).toThrow();
+  });
+
+  it("fades the deep colour out over the last metre above the floor", () => {
+    const m = national();
+    const ramp = foilRamp(2, colours, {
+      dryCeiling: 5,
+      floor: m.floorMetres,
+      deep: m.deepMetres,
+      noSurvey: m.noSurveyMetres,
+    });
+    const stops = stopsOf(ramp);
+    for (let i = 1; i < stops.length; i++)
+      expect(stops[i][0]).toBeGreaterThan(stops[i - 1][0]);
+    // Nothing at the deep value or down to the floor; deep from a metre up.
+    expect(colourAt(ramp, -20)).toBe(CLEAR);
+    expect(colourAt(ramp, -5)).toBe(CLEAR);
+    expect(colourAt(ramp, -4.5)).toBeNull(); // in the fade
+    expect(colourAt(ramp, -4)).toBe(colours.deep);
+    expect(colourAt(ramp, 0.5)).toBe(colours.deep);
+    expect(colourAt(ramp, 1.5)).toBe(colours.shallow);
+    expect(colourAt(ramp, 3)).toBe(colours.dry);
+    expect(colourAt(ramp, 40)).toBe(colours.unsurveyed);
+    expect(colourAt(ramp, 50)).toBe(CLEAR);
+    // A clean edge when asked, and still rising at the lowest tide.
+    const clean = stopsOf(
+      foilRamp(-0.1, colours, { dryCeiling: 5, floor: -5, deep: -20, fade: 0 }),
+    );
+    for (let i = 1; i < clean.length; i++)
+      expect(clean[i][0]).toBeGreaterThan(clean[i - 1][0]);
+  });
+
+  it("says a tapped point is deep enough, or that nothing is drawn there", () => {
+    expect(foilReadout("deep", 0.6, "06:00", "Howth", 1, undefined, -5)).toBe(
+      "More than 5 m deep at the lowest tide: deep enough at any tide at 06:00 (tide 0.6 m at Howth).",
+    );
+    expect(foilReadout("none", 0.6, "06:00", "Howth")).toMatch(
+      /^Nothing drawn here: dry land, or more than 5 m deep/,
     );
   });
 });

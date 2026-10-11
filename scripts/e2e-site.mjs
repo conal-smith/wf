@@ -21,7 +21,15 @@
  * and marine are both git-ignored ingest output, and a suite that silently
  * depended on whichever of them a machine happened to have would not be a test.
  */
-import { cpSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
@@ -49,6 +57,7 @@ function main() {
       recursive: true,
     });
   }
+  stageStaticData();
   const generated = spawnSync(
     process.execPath,
     [
@@ -72,6 +81,32 @@ function main() {
   if (blended.status !== 0)
     throw new Error("The blend failed for the e2e site");
   console.log(`Staged the e2e site in ${E2E_ROOT}`);
+}
+
+/**
+ * The chart's static archives live on the data host, not the site
+ * (scripts/foildepth/publish.py); with no data base set, the e2e site is its
+ * own data host. So the committed offline copies in public-data/ (the
+ * bathymetry and the foilable-depth pilots) are staged beside the site, and
+ * the foil index is cut to the archives that are there: the national regions
+ * are too large to commit, and an e2e run reads nothing from the network.
+ */
+function stageStaticData() {
+  const data = join(ROOT, "public-data");
+  // Never a region a developer built or copied there: the committed files only.
+  const region = /\/tide-[^/]*\.pmtiles$/;
+  cpSync(data, E2E_PUBLIC, {
+    recursive: true,
+    filter: (path) => !region.test(path),
+  });
+  const indexPath = join(E2E_PUBLIC, "foildepth", "index.json");
+  const index = JSON.parse(readFileSync(indexPath, "utf8"));
+  if (!index.base) return;
+  index.areas = index.areas.filter(
+    (area) =>
+      area.kind !== "region" && existsSync(join(data, index.base, area.url)),
+  );
+  writeFileSync(indexPath, JSON.stringify(index, null, 1) + "\n");
 }
 
 main();
