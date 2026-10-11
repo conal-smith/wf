@@ -55,27 +55,20 @@ describe("model registry", () => {
       expect(model.manifestUrl.startsWith("weather/")).toBe(true);
     }
   });
-  it("flags planned models and marks the ensembles", () => {
+  it("flags planned and retired models and marks the ensembles", () => {
     expect(liveModels().map((model) => model.id)).toEqual([
       "harmonie",
       "icon-eu",
       "ecmwf",
       "gfs",
-      "ecmwf-ens",
-      "gefs",
-      "arpege",
-      "arome",
-      "aifs",
       "gfs-wave",
       "mi-swan",
       "icon-eu-weather",
-      "ecmwf-wave",
     ]);
     expect(windModels().every((model) => model.kind === "wind")).toBe(true);
     expect(waveModels().map((model) => model.id)).toEqual([
       "gfs-wave",
       "mi-swan",
-      "ecmwf-wave",
     ]);
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
@@ -84,23 +77,17 @@ describe("model registry", () => {
     expect(requireModel("icon-eu-weather").mapCapable).toBe(false);
     expect(requireModel("icon-eu-weather").planned).toBeUndefined();
     expect(requireModel("harmonie-eps").planned).toBe(true);
-    // Both Météo-France models publish now, and the map draws their frames.
-    for (const id of ["arpege", "arome"]) {
+    // Retired to save downloads: still known, never fetched nor listed, and
+    // distinct from a planned model, which the display options grey out.
+    for (const id of ["ecmwf-ens", "gefs", "arpege", "arome", "aifs", "ecmwf-wave"]) {
+      expect(requireModel(id).retired).toBe(true);
       expect(requireModel(id).planned).toBeUndefined();
-      expect(requireModel(id).mapCapable).toBe(true);
-      expect(requireModel(id).ensemble).toBeUndefined();
     }
     expect(requireModel("ecmwf-ens").ensemble).toBe(true);
-    expect(requireModel("ecmwf-ens").mapCapable).toBe(false);
-    // GEFS is the ensemble whose mean the map can draw.
     expect(requireModel("gefs").ensemble).toBe(true);
-    expect(requireModel("gefs").mapCapable).toBe(true);
-    expect(requireModel("gefs").planned).toBeUndefined();
-    // AIFS shipped: its adapter publishes frames, so it is live and map-capable.
-    expect(requireModel("aifs").planned).toBeUndefined();
-    expect(requireModel("aifs").mapCapable).toBe(true);
     expect(requireModel("ecmwf-wave").kind).toBe("wave");
-    expect(requireModel("ecmwf-wave").planned).toBeUndefined();
+    for (const id of ["harmonie", "icon-eu", "ecmwf", "gfs"])
+      expect(requireModel(id).retired).toBeUndefined();
     expect(modelEntry("nope")).toBeUndefined();
     expect(() => requireModel("nope")).toThrow(/Unknown forecast model/);
     expect(modelHue("nope").wind).toMatch(/^#/);
@@ -112,10 +99,6 @@ describe("model registry", () => {
         ["icon-eu", "ICON-EU", "6.5 km"],
         ["ecmwf", "ECMWF", "25 km · 15 days"],
         ["gfs", "GFS", "25 km · 16 days"],
-        ["gefs", "GEFS", "25 km · 31 members"],
-        ["arpege", "ARPEGE", "11 km"],
-        ["arome", "AROME", "2.5 km"],
-        ["aifs", "AIFS", "25 km · 15 days"],
       ],
     );
   });
@@ -247,7 +230,7 @@ describe("availability sweep", () => {
         const id = url.includes("latest")
           ? "icon-eu"
           : url.replace(/^.*weather\//, "").replace(/\.json$/, "");
-        if (id === "gfs" || id === "ecmwf-ens") return missing();
+        if (id === "gfs") return missing();
         return ok(windManifest({ model: id }));
       }),
     );
@@ -259,15 +242,9 @@ describe("availability sweep", () => {
       availability.filter((model) => model.available).map((model) => model.id),
       // The wave ids answer with a wind bundle here, which is a fault, not a
       // conversion: the registry decides the contract, so they come back unavailable.
-    ).toEqual([
-      "harmonie",
-      "icon-eu",
-      "ecmwf",
-      "gefs",
-      "arpege",
-      "arome",
-      "aifs",
-    ]);
+    ).toEqual(["harmonie", "icon-eu", "ecmwf"]);
+    for (const id of ["gefs", "arpege", "arome", "aifs", "ecmwf-ens", "ecmwf-wave"])
+      expect(urls.some((url) => url.endsWith(`/${id}.json`))).toBe(false);
     const absent = availability.find((model) => model.id === "gfs")!;
     expect(absent.manifest).toBeNull();
     expect(absent.error).toContain("unavailable");

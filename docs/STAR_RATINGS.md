@@ -187,7 +187,7 @@ dock's blend uses a different set of models (Display options) or columns.
   equals; one row will do. The pen loops it in the table.
 - **A row per daylight hour**, the dark folded either side and never rated:
   the stars, the wind with its gust raised (in the pen's red when it jumps),
-  where it comes from, the sky, and **the chance it rides**. Rows are hourly
+  where it comes from, the waves and the sky. Rows are hourly
   for the first 72 hours and every third Irish hour after, where the models
   themselves step three-hourly. Hover or tap the stars for why
   (`ui/RatingTip.tsx`); tap the row for its second line: the session, the
@@ -202,24 +202,18 @@ dock's blend uses a different set of models (Display options) or columns.
   options, through the same `parseRider` validation, and re-rates the page
   live.
 
-### The chance it rides
+### The members' spread
 
-The stars are the consensus's verdict; the chance is the ensembles' own
-spread. Where an ensemble publishes its members for the spot (`spotMembers`:
-ECMWF ENS and GEFS), every member is read as its own run, and for each hour the
-chance is the share of members whose rideable wind reaches the rider's floor:
-the member's mean lifted toward its own gust exactly as the stars read an
-hour (`rideableWind`), against `windBand(rider).min` (`rideChance` in
-`mcp/api/forecast.ts`). The ensembles' members are pooled; one that does not
-reach the hour adds none. It is shown as a whole per cent, washed in behind
-the figure, and as a dash where no member reaches the hour.
+There is no "chance it rides" column. It was the share of ensemble members
+(ECMWF ENS and GEFS) windy enough for the rider; it was removed on 11 October
+2026, with both ensembles retired to save downloads, since the stars and the
+pen's window already say when to go.
 
-The page asks for the members themselves (`members: true`), so a change of
-rider re-rates the chance in the browser (`hourChance` in `spot/web/spot.ts`)
-without asking again; an agent's `get_spot_forecast` answers `chance_pct` for
-the skill and weight it is given. The hour's second line gives the members'
-10th to 90th percentile wind beside the models' range, and the members' middle
-80% is the sea-blue bar on its range bar.
+Where an ensemble does publish its members for the spot (`spotMembers`), the
+hour's second line gives the members' 10th to 90th percentile wind beside the
+models' range, and the members' middle 80% is the sea-blue bar on its range
+bar (`hourEnsemble` in `mcp/api/forecast.ts`). With both ensembles retired,
+neither shows.
 
 ## What would make it better next
 

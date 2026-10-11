@@ -26,6 +26,11 @@ export interface ModelEntry {
   mapCapable: boolean;
   /** No adapter publishes this yet; show it, do not fetch it. */
   planned?: boolean;
+  /**
+   * Switched off to save downloads: its job no longer runs, so the site neither
+   * fetches nor lists it. The adapter stays, and clearing this brings it back.
+   */
+  retired?: boolean;
 }
 
 // Hues are provisional: a design ruling on model identity colours is pending.
@@ -81,6 +86,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     ensemble: true,
     hue: { wind: "#6e5bd6", gust: "#c9497c" },
     mapCapable: false,
+    retired: true,
   },
   {
     id: "harmonie-eps",
@@ -102,6 +108,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     ensemble: true,
     hue: { wind: "#4aa3b8", gust: "#e07b3a" },
     mapCapable: true,
+    retired: true,
   },
   {
     id: "arpege",
@@ -111,6 +118,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     hue: { wind: "#2f7fb5", gust: "#e28a3d" },
     mapCapable: true,
+    retired: true,
   },
   {
     id: "arome",
@@ -120,6 +128,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     hue: { wind: "#16a3d0", gust: "#e2703c" },
     mapCapable: true,
+    retired: true,
   },
   {
     id: "icon",
@@ -149,6 +158,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     hue: { wind: "#a05fd6", gust: "#d4653f" },
     mapCapable: true,
+    retired: true,
   },
   {
     id: "gfs-wave",
@@ -189,6 +199,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wave",
     hue: { wind: "#4a5bc0", gust: "#c96f33" },
     mapCapable: true,
+    retired: true,
   },
 ];
 
@@ -199,13 +210,14 @@ export function requireModel(id: string): ModelEntry {
   if (!entry) throw new Error(`Unknown forecast model ${id}.`);
   return entry;
 }
-export const liveModels = () => MODEL_CATALOG.filter((m) => !m.planned);
+const published = (m: ModelEntry) => !m.planned && !m.retired;
+export const liveModels = () => MODEL_CATALOG.filter(published);
 export const windModels = () =>
-  MODEL_CATALOG.filter((m) => m.kind === "wind" && !m.planned);
+  MODEL_CATALOG.filter((m) => m.kind === "wind" && published(m));
 export const waveModels = () =>
-  MODEL_CATALOG.filter((m) => m.kind === "wave" && !m.planned);
+  MODEL_CATALOG.filter((m) => m.kind === "wave" && published(m));
 export const weatherModels = () =>
-  MODEL_CATALOG.filter((m) => m.kind === "weather" && !m.planned);
+  MODEL_CATALOG.filter((m) => m.kind === "weather" && published(m));
 export const modelHue = (id: string) =>
   modelEntry(id)?.hue ?? { wind: "#7d8b91", gust: "#b9a06a" };
 

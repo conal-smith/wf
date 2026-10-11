@@ -44,8 +44,8 @@ export const sellerStyles = tv({
     ],
     statValue: "m-0 flex flex-wrap items-center gap-2",
 
-    // ---- the rating breakdown, as the chart sets the chance it rides: a
-    // hairline box filled from the left in magenta's wash.
+    // ---- the rating breakdown: a hairline box filled from the left in
+    // magenta's wash.
     breakdown: "flex min-w-0 flex-col gap-3",
     histogram: "grid grid-cols-meter items-center gap-x-3 gap-y-2",
     bar: "h-3 overflow-hidden border border-line",

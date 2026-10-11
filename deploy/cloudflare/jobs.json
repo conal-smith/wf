@@ -27,10 +27,7 @@
       "enabled": true,
       "description": "ICON-EU wind (DWD)",
       "hours": [
-        3,
-        9,
-        15,
-        21
+        3
       ],
       "minutes": [
         30
@@ -91,8 +88,8 @@
     },
     {
       "id": "ecmwf-ens",
-      "enabled": true,
-      "description": "ECMWF ensemble (chance it rides)",
+      "enabled": false,
+      "description": "ECMWF ensemble (beyond HARMONIE)",
       "hours": [
         8,
         10
@@ -109,7 +106,7 @@
     },
     {
       "id": "aifs",
-      "enabled": true,
+      "enabled": false,
       "description": "ECMWF AIFS (machine-learned)",
       "hours": [
         0,
@@ -153,7 +150,7 @@
     },
     {
       "id": "gefs",
-      "enabled": true,
+      "enabled": false,
       "description": "GEFS ensemble (NOAA)",
       "hours": [
         5,
@@ -173,7 +170,7 @@
     },
     {
       "id": "arpege",
-      "enabled": true,
+      "enabled": false,
       "description": "ARPEGE (Météo-France)",
       "hours": [
         4,
@@ -195,7 +192,7 @@
     },
     {
       "id": "arome",
-      "enabled": true,
+      "enabled": false,
       "description": "AROME (Météo-France)",
       "hours": [
         1,
@@ -260,7 +257,7 @@
     },
     {
       "id": "ecmwf-wave",
-      "enabled": true,
+      "enabled": false,
       "description": "ECMWF waves",
       "hours": [
         8,

@@ -16,7 +16,6 @@ import {
   goodWindArcs,
   groupDays,
   gustJumps,
-  hourChance,
   meanBearing,
   nextMidnight,
   rowHours,
@@ -414,38 +413,5 @@ describe("the day's window and the pen's note", () => {
     expect(gustJumps(20, 29)).toBe(false);
     expect(gustJumps(20, 30)).toBe(true);
     expect(gustJumps(12, null)).toBe(false);
-  });
-});
-
-describe("the chance it rides", () => {
-  const rider: Rider = { ...DEFAULT_RIDER, wings: [] };
-  const base = hour("2026-10-09T12:00:00Z", 12);
-
-  it("re-rates the members for the rider when the forecast kept them", () => {
-    const ensemble = {
-      members: 4,
-      models: ["GEFS"],
-      p10_kn: 6,
-      p50_kn: 11,
-      p90_kn: 15,
-      chance_pct: 75,
-      samples: [
-        [6, null],
-        [9.7, 15.6],
-        [11.7, null],
-        [15.6, null],
-      ] as [number, number | null][],
-    };
-    expect(hourChance({ ...base, ensemble }, rider)).toBe(75);
-    expect(
-      hourChance({ ...base, ensemble }, { ...rider, skill: "beginner" }),
-    ).toBe(25);
-    expect(
-      hourChance(
-        { ...base, ensemble: { ...ensemble, samples: undefined } },
-        { ...rider, skill: "beginner" },
-      ),
-    ).toBe(75);
-    expect(hourChance(base, rider)).toBeNull();
   });
 });

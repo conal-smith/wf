@@ -86,6 +86,10 @@ intervals at every hour.
 
 ### GEFS (ensemble)
 
+**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+disabled and the site does not fetch it. The adapter below is unchanged; see
+`deploy/local/README.md` to bring it back.
+
 `--models gefs` runs `fetch_gefs.py`, which imports NOAA's public-domain 0.25°
 Global Ensemble Forecast System and publishes `weather/gefs.json`. It is the second
 ensemble bundle and the first one whose **mean is drawn on the map**
@@ -167,6 +171,10 @@ slot finds neither cycle complete it publishes nothing and the next slot retries
 hours later. Widen `maxAgeHours` before moving the slot later.
 
 ### ECMWF ENS (ensemble)
+
+**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+disabled and the site does not fetch it. The adapter below is unchanged; see
+`deploy/local/README.md` to bring it back.
 
 `--models ecmwf-ens` runs `fetch_ecmwf_ens.py`, which imports ECMWF's open-data
 ensemble (stream `enfo`, type `pf`) and publishes `weather/ecmwf-ens.json`. It
@@ -291,6 +299,10 @@ so the two never share the worker lock), and alarm on the same 12-hour threshold
 
 ### ARPEGE and AROME (Météo-France)
 
+**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+disabled and the site does not fetch it. The adapter below is unchanged; see
+`deploy/local/README.md` to bring it back.
+
 `--models arpege arome` runs `fetch_arpege.py` and `fetch_arome.py`, which share
 `meteofrance.py` and publish `weather/arpege.json` and `weather/arome.json`. Both are
 ordinary deterministic wind bundles: map frames, a series for all 25 riding locations,
@@ -355,6 +367,10 @@ must not be compared with the instantaneous gusts GFS and GEFS publish.
 
 ### AIFS Single (ECMWF's AI model)
 
+**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+disabled and the site does not fetch it. The adapter below is unchanged; see
+`deploy/local/README.md` to bring it back.
+
 `--models aifs` runs `fetch_aifs.py`, which imports ECMWF's operational machine-learned
 deterministic forecast (`model="aifs-single"`, MARS class `ai`) from the same public
 0.25° open data as the IFS control, with no API key. It publishes
@@ -386,6 +402,10 @@ the other's error term. Present it as its own row, and do not fold it into an IF
 average.
 
 ### ECMWF wave stream
+
+**Retired** (10 October 2026) to keep downloads near 80 GB a month: the job ships
+disabled and the site does not fetch it. The adapter below is unchanged; see
+`deploy/local/README.md` to bring it back.
 
 `--models ecmwf-wave` runs `fetch_ecmwf_wave.py`, which imports the `wave` stream of the
 same open data — the WAM ocean wave model coupled to IFS — and publishes the

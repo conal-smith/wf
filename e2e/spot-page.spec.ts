@@ -8,8 +8,6 @@ import { SAMPLE_CLOCK } from "./columns";
  * 2026, so the page opens on a night — today's rows are all dark — and the
  * daylight days follow. Tides are a fixture routed in, as in dock.spec.ts:
  * `public/marine` is git-ignored ingest output and never part of the e2e site.
- * So is an ensemble with its members (the sample site publishes none), for
- * the chance it rides.
  */
 
 const HOUR = 3600000;
@@ -52,45 +50,6 @@ async function withTides(page: Page) {
   );
 }
 
-/**
- * A four-member GEFS whose members sit at 3, 5, 6 and 8 m/s through the sample
- * days: steady, so the chance it rides is the same every hour and moves only
- * with the rider.
- */
-const members = Array.from({ length: 24 }, (_, i) => ({
-  hour: i * 6,
-  validTime: new Date(clock - 12 * HOUR + i * 6 * HOUR)
-    .toISOString()
-    .replace(".000", ""),
-  u: [0, 0, 0, 0],
-  v: [-3, -5, -6, -8],
-  gust: [null, 8, null, null],
-}));
-const gefs = {
-  schemaVersion: 1,
-  model: "gefs",
-  modelName: "GEFS",
-  runTime: members[0].validTime,
-  gustAvailable: true,
-  ensemble: { members: 4, control: 0, description: "e2e" },
-  spotForecasts: {
-    brandon: members.map((m) => ({
-      hour: m.hour,
-      validTime: m.validTime,
-      u: 0,
-      v: -5.5,
-      gust: 7,
-    })),
-  },
-  spotMembers: { brandon: members },
-};
-
-async function withEnsemble(page: Page) {
-  await page.route("**/weather/gefs.json", (route) =>
-    route.fulfill({ json: gefs }),
-  );
-}
-
 /** Every rated cell's solid stars, in order: the page's rating, as a string. */
 const ratings = (page: Page) =>
   page
@@ -108,7 +67,6 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await withTides(page);
-  await withEnsemble(page);
   await page.goto("/spot/brandon");
 
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
@@ -139,7 +97,7 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   await expect(today.locator("[data-stars]")).toHaveCount(0);
 
   // Tomorrow is daylight, hour by hour, every row rated in stars a screen
-  // reader can read, with the chance it rides from the ensemble's members.
+  // reader can read.
   const tomorrow = page.locator("[data-day]").nth(1);
   await expect(tomorrow.getByRole("heading", { level: 2 })).toContainText(
     "Tomorrow",
@@ -152,8 +110,8 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   await expect(
     tomorrow.getByRole("img", { name: /of 5 stars/ }).first(),
   ).toBeAttached();
-  // 15.6, 11.7 and (with its gust) 9.7 kn reach an intermediate's 10 kn.
-  await expect(light.first().locator("[data-chance]")).toHaveText("75%");
+  // No "chance it rides" column: the stars and the pen say when to go.
+  await expect(tomorrow.locator("[data-chance]")).toHaveCount(0);
 
   // The stars explain themselves: hovering them opens the chart's box with
   // the verdict, the reasons and who it is rated for; Escape closes it.
@@ -172,11 +130,12 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
 
   // A tap on the row opens its second line: the spread and the reasons.
   const row = light.nth(2);
-  await row.locator("[data-chance]").click();
+  // The last cell, the sky: the stars are a button of their own.
+  await row.locator("td").last().click();
   await expect(row).toHaveAttribute("aria-expanded", "true");
   const more = tomorrow.locator("[data-hour-detail]");
   await expect(more).toHaveCount(1);
-  await expect(more.locator("[data-spread]")).toContainText("4 members");
+  await expect(more.locator("[data-spread]")).toContainText("models");
   await expect(more.locator("[data-range-bar]")).toBeAttached();
   await row.press("Enter");
   await expect(more).toHaveCount(0);
@@ -211,15 +170,13 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   // Sources, the way to how the stars work, and the line every forecast
   // here ends on.
   await expect(page.locator("[data-sources]")).toContainText("HARMONIE");
-  await expect(page.locator("[data-sources]")).toContainText("GEFS members");
   await expect(page.getByText("not a safety statement")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("the rider switch re-rates every hour and its chance, and is the map's rider too", async ({
+test("the rider switch re-rates every hour, and is the map's rider too", async ({
   page,
 }) => {
-  await withEnsemble(page);
   await page.goto("/spot/brandon");
   await expect(page.locator("[data-stars]").first()).toBeAttached({
     timeout: 30000,
@@ -231,14 +188,9 @@ test("the rider switch re-rates every hour and its chance, and is the map's ride
     "aria-pressed",
     "true",
   );
-  const chance = page.locator("tr[data-daylight] [data-chance]").first();
-  await expect(chance).toHaveText("75%");
-
   const riding = await ratings(page);
   await level.getByRole("button", { name: "Learning" }).click();
   await expect.poll(() => ratings(page)).not.toBe(riding);
-  // A learner's floor is 12 kn: only the 15.6 kn member reaches it.
-  await expect(chance).toHaveText("25%");
   const learning = await ratings(page);
   await level.getByRole("button", { name: "Advanced" }).click();
   await expect.poll(() => ratings(page)).not.toBe(learning);

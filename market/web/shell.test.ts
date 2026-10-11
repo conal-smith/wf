@@ -642,9 +642,8 @@ describe("S3: a rating is the chart's star, and the shape says it", () => {
     );
   });
 
-  // The histogram's bars are a quantity, so they are magenta's wash, as the
-  // chart draws the chance an hour rides; nothing on these pages fills in
-  // the accent but the kit's one primary.
+  // The histogram's bars are a quantity, so they are magenta's wash; nothing
+  // on these pages fills in the accent but the kit's one primary.
   it("fills the histogram in the wash, and leaves the accent fill to the action", () => {
     expect(sellerStyles().fill().split(" ")).toContain("bg-wash/25");
     expect(classesOf(listingStyles)).not.toContain("bg-accent");

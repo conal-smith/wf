@@ -25,11 +25,6 @@ import {
   type RidingSpot,
 } from "./forecast.js";
 import type { ForecastSource } from "./source.js";
-import {
-  DEFAULT_RIDER,
-  MAX_WEIGHT_KG,
-  MIN_WEIGHT_KG,
-} from "../../force5/src/stars.js";
 
 export const MCP_SERVER_NAME = "wingfoil-ie";
 export const MCP_SERVER_TITLE = "wingfoil.ie wind forecast";
@@ -44,7 +39,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
-- The forecast is a consensus of several numerical weather models (HARMONIE, ECMWF, ICON-EU, GFS, ARPEGE, AROME, AIFS and ensembles). \`agreement\` says how closely they agree; say so when it is low, and use by_model to explain a disagreement.
+- The forecast is a consensus of several numerical weather models (HARMONIE, ICON-EU, ECMWF and GFS). \`agreement\` says how closely they agree; say so when it is low, and use by_model to explain a disagreement.
 - ${METHOD}
 - Never tell anyone conditions are safe. Wing foiling depends on the launch, offshore winds, tides, water users and ability, which a forecast cannot know. When wind blows offshore at a spot, point it out.
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;
@@ -107,7 +102,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     {
       title: "Spot forecast",
       description:
-        "Hour-by-hour forecast for one spot: consensus wind speed, gusts and direction across every weather model with how well they agree, the chance it rides (the share of ensemble members windy enough for the rider), plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
+        "Hour-by-hour forecast for one spot: consensus wind speed, gusts and direction across every weather model with how well they agree, plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
       inputSchema: {
         spot: z
           .string()
@@ -142,24 +137,10 @@ export function createMcpServer(deps: McpDeps): McpServer {
           .describe(
             "Also give each model's own wind at every hour, to explain disagreement.",
           ),
-        skill: z
-          .enum(["beginner", "intermediate", "advanced"])
-          .optional()
-          .describe(
-            "The rider the chance it rides is for (default intermediate). Beginners need more wind, advanced riders less.",
-          ),
-        weight_kg: z
-          .number()
-          .min(MIN_WEIGHT_KG)
-          .max(MAX_WEIGHT_KG)
-          .optional()
-          .describe(
-            "The rider's weight (default 80 kg): heavier needs more wind.",
-          ),
       },
       annotations: READ_ONLY,
     },
-    async ({ spot, from, hours, step_hours, per_model, skill, weight_kg }) => {
+    async ({ spot, from, hours, step_hours, per_model }) => {
       const spots = await loadSpots(deps.source);
       const match = findSpot(spots, spot);
       if (!match.spot)
@@ -173,11 +154,6 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const forecast = await spotForecast(deps.source, match.spot, window, {
         perModel: per_model,
         now: at,
-        rider: {
-          ...DEFAULT_RIDER,
-          skill: skill ?? DEFAULT_RIDER.skill,
-          weightKg: weight_kg ?? null,
-        },
       });
       if (!forecast.sources.wind.length)
         return failure(

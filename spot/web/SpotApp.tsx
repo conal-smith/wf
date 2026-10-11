@@ -533,12 +533,6 @@ function SourcesFooter({ forecast }: { forecast: SpotForecast }) {
             : "no live model reaches this spot"}
           .
         </li>
-        {forecast.ride_chance && (
-          <li>
-            Rides: the share of {forecast.ride_chance.ensembles.join(" and ")}{" "}
-            members whose wind, lifted toward its gusts, reaches your floor.
-          </li>
-        )}
         {sources.waves && <li>Waves: {sources.waves.name}.</li>}
         {sources.weather && <li>Sky, air and rain: {sources.weather.name}.</li>}
         {tides && (

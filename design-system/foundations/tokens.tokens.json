@@ -950,7 +950,7 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "data",
-            "use": "The bar a forecast cell paints behind its number; the rides-chance bar.",
+            "use": "The bar a forecast cell paints behind its number.",
             "doNotUse": "At full strength as a fill: it is a quantity, drawn faint.",
             "modes": {
               "light": "{ref.color.magenta.600}",
@@ -2841,7 +2841,7 @@
         "$extensions": {
           "com.sprintengine": {
             "role": "data",
-            "use": "The bar behind a forecast number; the rides-chance bar."
+            "use": "The bar behind a forecast number."
           }
         }
       },

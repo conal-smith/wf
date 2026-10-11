@@ -13,8 +13,8 @@ import {
   WIND_MODELS,
   findSessions,
   findSpot,
+  hourEnsemble,
   loadSpots,
-  rideChance,
   spotForecast,
   windowFor,
   type RidingSpot,
@@ -24,7 +24,9 @@ import { WAVE_SOURCE_PREFERENCE } from "../../force5/src/waves";
 
 const HOUR = 3600000;
 const pick = (kind: string) =>
-  MODEL_CATALOG.filter((m) => m.kind === kind && !m.planned).map((m) => ({
+  MODEL_CATALOG.filter(
+    (m) => m.kind === kind && !m.planned && !m.retired,
+  ).map((m) => ({
     id: m.id,
     manifestUrl: m.manifestUrl,
   }));
@@ -35,7 +37,12 @@ describe("the model catalogue", () => {
   it("matches the map's live wind, wave and weather models", () => {
     expect(strip(WIND_MODELS)).toEqual(pick("wind"));
     expect(strip(WEATHER_MODELS)).toEqual(pick("weather"));
-    expect(WAVE_MODELS.map((m) => m.id)).toEqual(WAVE_SOURCE_PREFERENCE);
+    // Finest first, as the dock prefers them, less any retired source.
+    expect(WAVE_MODELS.map((m) => m.id)).toEqual(
+      WAVE_SOURCE_PREFERENCE.filter((id) =>
+        pick("wave").some((m) => m.id === id),
+      ),
+    );
     expect(
       [...strip(WAVE_MODELS)].sort((a, b) => a.id.localeCompare(b.id)),
     ).toEqual(pick("wave").sort((a, b) => a.id.localeCompare(b.id)));
@@ -135,8 +142,8 @@ describe("spotForecast", () => {
 
   it("reads only the runs that are still live", async () => {
     const forecast = await dollymount();
+    // ARPEGE is in the fixtures but retired, so it is not read.
     expect(forecast.sources.wind.map((r) => r.id).sort()).toEqual([
-      "arpege",
       "ecmwf",
       "gfs",
     ]);
@@ -146,7 +153,7 @@ describe("spotForecast", () => {
     expect(gone).toContain(
       "harmonie: The latest published run has already ended.",
     );
-    expect(gone).toContain("aifs: Not published.");
+    expect(gone.some((reason) => reason.startsWith("arpege"))).toBe(false);
     expect(forecast.sources.wind.find((r) => r.id === "ecmwf")?.stale).toBe(
       true,
     );
@@ -161,7 +168,7 @@ describe("spotForecast", () => {
     // The same hour straight from the fixture files, one model at a time.
     const valid = Date.parse("2026-09-16T18:00:00Z");
     const rows = await Promise.all(
-      ["ecmwf", "gfs", "arpege"].map(async (model) => {
+      ["ecmwf", "gfs"].map(async (model) => {
         const m = (await source.json(`weather/${model}.json`)) as {
           runTime: string;
           spotForecasts: Record<
@@ -182,7 +189,7 @@ describe("spotForecast", () => {
     );
     const speeds = rows.map((r) => r.speed).sort((a, b) => a - b);
     const wind = first.wind!;
-    expect(wind.models).toBe(3);
+    expect(wind.models).toBe(2);
     expect(wind.wind_kn).toBeCloseTo(
       weightedMedian(
         rows.map((r) => r.speed),
@@ -191,12 +198,11 @@ describe("spotForecast", () => {
       1,
     );
     expect(wind.min_kn).toBeCloseTo(speeds[0], 1);
-    expect(wind.max_kn).toBeCloseTo(speeds[2], 1);
+    expect(wind.max_kn).toBeCloseTo(speeds[1], 1);
     expect(wind.agreement).toBe(
       agreementFrom(speeds, Math.min(...rows.map((r) => r.lead))),
     );
     expect(Object.keys(wind.by_model!).sort()).toEqual([
-      "arpege",
       "ecmwf",
       "gfs",
     ]);
@@ -260,7 +266,7 @@ describe("spotForecast", () => {
   });
 });
 
-describe("the chance it rides", () => {
+describe("the ensembles' members", () => {
   // Four members, steady from 12:00 to 00:00 UTC: 3, 5, 6 and 8 m/s (5.8, 9.7,
   // 11.7 and 15.6 kn), the second gusting 8 m/s (15.6 kn).
   const frames = ["12", "18"].map((h, i) => ({
@@ -289,69 +295,37 @@ describe("the chance it rides", () => {
     },
     spotMembers: { dollymount: frames },
   };
-  const source = fixtureSource({ "weather/gefs.json": gefs });
 
-  async function forecastFor(
-    options: Partial<Parameters<typeof spotForecast>[3]> = {},
-  ) {
+  // Both ensembles are retired, so a forecast never carries the spread now;
+  // the reduction is kept, and tested on the members a re-enabled one would give.
+  it("spreads the members' wind into percentiles", () => {
+    const at = Date.parse("2026-09-16T12:00:00Z");
+    const members = [3, 5, 6, 8].map((speed) => [
+      { time: at, u: 0, v: -speed, gust: null },
+      { time: at + 6 * HOUR, u: 0, v: -speed, gust: null },
+    ]);
+    const run = { name: "GEFS" } as Parameters<typeof hourEnsemble>[0][0]["run"];
+    const hour = hourEnsemble([{ run, members, gap: 12 * HOUR }], at)!;
+    expect(hour.members).toBe(4);
+    expect(hour.models).toEqual(["GEFS"]);
+    expect(hour.p50_kn).toBeCloseTo(5.5 * KNOTS, 0);
+    expect(hour.p10_kn).toBeLessThan(hour.p50_kn);
+    expect(hour.p90_kn).toBeGreaterThan(hour.p50_kn);
+    expect(hourEnsemble([{ run, members, gap: 12 * HOUR }], at - HOUR))
+      .toBeNull();
+  });
+
+  it("ignores a retired ensemble's file, even when one is published", async () => {
+    const source = fixtureSource({ "weather/gefs.json": gefs });
     const spot = findSpot(await loadSpots(source), "dollymount").spot!;
-    return spotForecast(
+    const forecast = await spotForecast(
       source,
       spot,
       windowFor(FIXTURE_NOW, { hours: 3, stepHours: 3 }),
-      { now: FIXTURE_NOW, ...options },
-    );
-  }
-
-  it("is the share of members whose rideable wind reaches the rider's floor", async () => {
-    const forecast = await forecastFor();
-    const hour = forecast.hours[0].ensemble!;
-    // 15.6 and 11.7 reach an intermediate's 10 kn; 9.7 does too once its
-    // gust lifts it to 11.4; 5.8 does not.
-    expect(hour.chance_pct).toBe(75);
-    expect(hour.members).toBe(4);
-    expect(hour.models).toEqual(["GEFS"]);
-    expect(hour.p50_kn).toBeCloseTo(10.7, 1);
-    expect(hour.p10_kn).toBeLessThan(hour.p90_kn);
-    expect(hour.samples).toBeUndefined();
-    expect(forecast.ride_chance).toEqual({
-      skill: "intermediate",
-      weight_kg: 80,
-      floor_kn: 10,
-      ensembles: ["GEFS"],
-    });
-    // Interpolated between frames, like any model's wind.
-    expect(forecast.hours[1].ensemble!.chance_pct).toBe(75);
-  });
-
-  it("asks more of a learner, and keeps the members to re-rate when asked", async () => {
-    const forecast = await forecastFor({
-      rider: { weightKg: null, skill: "beginner", wings: [] },
-      members: true,
-    });
-    const hour = forecast.hours[0].ensemble!;
-    expect(hour.chance_pct).toBe(25);
-    expect(forecast.ride_chance?.floor_kn).toBe(12);
-    expect(hour.samples).toHaveLength(4);
-    expect(
-      rideChance(hour.samples!, {
-        weightKg: null,
-        skill: "intermediate",
-        wings: [],
-      }),
-    ).toBe(75);
-  });
-
-  it("is left out where no ensemble publishes its members", async () => {
-    const spot = findSpot(await loadSpots(fixtureSource()), "dollymount").spot!;
-    const forecast = await spotForecast(
-      fixtureSource(),
-      spot,
-      windowFor(FIXTURE_NOW, { hours: 3 }),
       { now: FIXTURE_NOW },
     );
-    expect(forecast.ride_chance).toBeNull();
     expect(forecast.hours[0].ensemble).toBeUndefined();
+    expect(forecast).not.toHaveProperty("ride_chance");
   });
 });
 

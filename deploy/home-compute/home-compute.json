@@ -79,10 +79,7 @@
       "schedule": {
         "at": {
           "hours": [
-            3,
-            9,
-            15,
-            21
+            3
           ],
           "minutes": [
             30
@@ -299,7 +296,8 @@
     },
     {
       "id": "ecmwf-ens",
-      "description": "ECMWF ensemble (chance it rides)",
+      "enabled": false,
+      "description": "ECMWF ensemble (beyond HARMONIE)",
       "schedule": {
         "at": {
           "hours": [
@@ -356,6 +354,7 @@
     },
     {
       "id": "aifs",
+      "enabled": false,
       "description": "ECMWF AIFS (machine-learned)",
       "schedule": {
         "at": {
@@ -478,6 +477,7 @@
     },
     {
       "id": "gefs",
+      "enabled": false,
       "description": "GEFS ensemble (NOAA)",
       "schedule": {
         "at": {
@@ -537,6 +537,7 @@
     },
     {
       "id": "arpege",
+      "enabled": false,
       "description": "ARPEGE (Météo-France)",
       "schedule": {
         "at": {
@@ -598,6 +599,7 @@
     },
     {
       "id": "arome",
+      "enabled": false,
       "description": "AROME (Météo-France)",
       "schedule": {
         "at": {
@@ -780,6 +782,7 @@
     },
     {
       "id": "ecmwf-wave",
+      "enabled": false,
       "description": "ECMWF waves",
       "schedule": {
         "at": {
