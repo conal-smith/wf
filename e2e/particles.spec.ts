@@ -59,16 +59,18 @@ async function firstStrokes(page: Page) {
 }
 
 /**
- * Waits for the camera to come to rest after a move the test has just set
- * off. The field is resampled for the view once the camera is still, and
- * never while it moves (windLayer.ts), so a rebuild counted after the move
- * began is one made where it stopped.
+ * Sets the camera off and waits for it to come to rest. The field is
+ * resampled for the view once the camera is still, and never while it moves
+ * (windLayer.ts), so a rebuild counted after the move began is one made where
+ * it stopped. The count is taken before the move: read after it, a short zoom
+ * could already have stopped and rebuilt, and no rebuild would follow.
  */
-async function cameraAtRest(page: Page) {
-  const moving = await page.evaluate(() => window.particleWork.fields);
+async function cameraAtRest(page: Page, move: () => Promise<void>) {
+  const before = await page.evaluate(() => window.particleWork.fields);
+  await move();
   await expect
     .poll(() => page.evaluate(() => window.particleWork.fields))
-    .toBeGreaterThan(moving);
+    .toBeGreaterThan(before);
 }
 
 async function expectIdle(page: Page) {
@@ -227,8 +229,7 @@ test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
   // 400 ms apart ended anywhere from 10.4 to 11.4, still moving: coloured.
   const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
   for (let i = 0; i < 7; i++) {
-    await zoomIn.click();
-    await cameraAtRest(page);
+    await cameraAtRest(page, () => zoomIn.click());
   }
   await expectResumed(page);
   await expect.poll(() => inked(page)).toBeGreaterThan(100);
