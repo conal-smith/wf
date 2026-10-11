@@ -1227,20 +1227,22 @@ export default function App() {
                 )}
               </div>
             )}
-            <div className="map-print">
-              <InfoPop label="Sources and small print" wide>
-                {sources}
-              </InfoPop>
-              <span className="map-model" data-run-state={staleness}>
-                {manifest?.modelName ?? ""}
-                {staleness === "expired"
-                  ? " · archived"
-                  : staleness === "stale"
-                    ? " · older run"
-                    : ""}
-              </span>
-            </div>
             <div className="map-footer" ref={dock}>
+              {/* The small print rides on the dock's top edge, in the dock's
+                  own layout: never a frame behind it (map.css). */}
+              <div className="map-print">
+                <InfoPop label="Sources and small print" wide>
+                  {sources}
+                </InfoPop>
+                <span className="map-model" data-run-state={staleness}>
+                  {manifest?.modelName ?? ""}
+                  {staleness === "expired"
+                    ? " · archived"
+                    : staleness === "stale"
+                      ? " · older run"
+                      : ""}
+                </span>
+              </div>
               {dockSpot && strip.length > 0 && (
                 <ForecastDock
                   spot={dockSpot}
