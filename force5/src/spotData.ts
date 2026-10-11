@@ -19,13 +19,18 @@ export { SQUARE_DEGREES, spotSquare, squaresFor } from "./squares.js";
 
 /** The schema every run pointer and every square file is published at. */
 export const RUN_SCHEMA_VERSION = 2;
-/** Every per-spot key a run may carry, in the order the publisher writes them. */
+/**
+ * Every per-spot key a run may carry, in the order the publisher writes them.
+ * `spotBlend` is the blend's (src/spotBlend.ts), a run of squares of its own
+ * read through this same loader; no model carries it.
+ */
 export const SPOT_KEYS = [
   "spotForecasts",
   "spotSeries",
   "spotCoverage",
   "spotMembers",
   "spotCells",
+  "spotBlend",
 ] as const;
 export type SpotKey = (typeof SPOT_KEYS)[number];
 /** Where a square file sits inside its run directory. */

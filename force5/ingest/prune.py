@@ -66,10 +66,10 @@ LIST_PAGE = 1000
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
 # An observation bundle is one small self-contained file: it carries its readings
 # inline and points at nothing, so having no object URLs is correct, not a fault.
-# So is the blend, every riding place's wind consensus in one file, and so are the
-# archive job's summary and the verification scores. Each manifest is protected
-# from deletion by being a registered pointer path.
-SELF_CONTAINED_KINDS = {"observation", "blend", "archive", "verification"}
+# So are the archive job's summary and the verification scores. Each manifest is
+# protected from deletion by being a registered pointer path. (The blend is a run
+# directory of spot squares, like a model's, and is kept by its `base`.)
+SELF_CONTAINED_KINDS = {"observation", "archive", "verification"}
 
 
 def is_archived(path):

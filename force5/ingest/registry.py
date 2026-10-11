@@ -99,7 +99,8 @@ MODELS = {
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
     # Not a model: every riding place's consensus of the wind models above, worked
     # out from what they have published (src/spotBlend.ts), so the map's stars need
-    # one small file instead of every manifest. `run` is the hour it was worked out,
+    # a few small files instead of every manifest: a run directory of 2° spot squares,
+    # of which the map reads those in view. `run` is the hour it was worked out,
     # so an hourly job publishes a new one each hour and three missed hours is stale.
     "blend": {"script": "fetch_blend.py", "manifest": "weather/blend.json",
               "kind": "blend", "maxAgeHours": 3, "readsBucket": True},
