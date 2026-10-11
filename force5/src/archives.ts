@@ -1,6 +1,7 @@
 /**
- * The chart's PMTiles archives (the seabed's, public/bathy, and the foilable
- * depth's, public/foildepth), as MapLibre and the foil probe read them.
+ * The chart's PMTiles archives (the seabed's and the foilable depth's, on the
+ * data host under versioned folders: scripts/foildepth/publish.py), as
+ * MapLibre and the foil probe read them.
  *
  * An archive is one static file read by HTTP range. Not every host serves
  * ranges: Cloudflare Pages, where staging and production are deployed, answers

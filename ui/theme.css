@@ -550,19 +550,21 @@
   --map-tide: #3f6e7e;
   /* The paper a label is haloed in over the chart. */
   --map-halo: #f1efe6;
-  /* Foilable depth at the selected tide (force5/src/foilDepth.ts): a deep
-     blue where a mast has room, a pale blue where there is water but not
-     quite enough (it is still water: ochre read as sand), and the grey-brown
-     of a drying flat where there is none. Apart from each other and from the
-     depth tints in lightness. */
-  --map-foil-deep: #3b7ea1;
-  --map-foil-shallow: #9ccbe0;
+  /* Foilable depth at the selected tide (force5/src/foilDepth.ts). The
+     layer is about the shallows, so they carry the colour: a strong blue
+     where there is water but not enough for a mast (still water: ochre read
+     as sand), and the grey-brown of a drying flat where there is none. Where
+     a mast has room it is only a faint wash of the same blue, so the chart's
+     own depth tints and soundings read through it and the edge where the
+     water becomes rideable is the strong blue giving way to the wash. */
+  --map-foil-deep: rgba(59, 126, 161, 0.16);
+  --map-foil-shallow: #3f8fbf;
   --map-foil-dry: #9a8c70;
-  /* Wet at every tide but no survey says how deep: drawn as deep water. Two
-     blues are enough to read (room for a mast, or not quite), and the one
-     place this covers, Malahide's inner lagoon, is about 1.8 m at low water
-     and 2.5 m at high by a rider who sails it. */
-  --map-foil-unsurveyed: var(--map-foil-deep);
+  /* Wet at every tide but no survey says how deep: a grey slate, plainly
+     not a depth, a shade over the wash. Malahide's inner lagoon is the
+     place riders meet it: about 1.8 m at low water and 2.5 m at high by a
+     rider who sails it. */
+  --map-foil-unsurveyed: rgba(96, 120, 140, 0.38);
 
   /* The wind as a rider reads it: the wash and the coloured arrows. Blue is
      too light, greens deepen through the sweet spot, yellow is the top of it,

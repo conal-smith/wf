@@ -3,7 +3,8 @@ import { SAMPLE_CLOCK, sampleStrip } from "./columns";
 
 /**
  * The foilable-depth layer draws, and moves with the tide, in the Malahide
- * estuary: the committed archives (public/foildepth) under a routed Howth tide.
+ * estuary: the committed pilot archives (public-data/foildepth/v…, the data
+ * host's copy the e2e site serves) under a routed Howth tide.
  *
  * Twice: from a host that serves byte ranges (vite preview, Caddy, R2), and
  * from one that answers every range with a 200 and the whole file, as
@@ -60,7 +61,7 @@ const day = sampleStrip.slice(0, 24).map((c, i) => ({ i, t: height(c.time) }));
 const high = day.reduce((a, b) => (b.t > a.t ? b : a));
 const low = day.reduce((a, b) => (b.t < a.t ? b : a));
 
-const ARCHIVE = /\/(foildepth|bathy)\/[^/]+\.pmtiles$/;
+const ARCHIVE = /\/(foildepth|bathy)\/(v[0-9a-f]+\/)?[^/]+\.pmtiles$/;
 
 async function open(page: Page, ranges: boolean) {
   trackArchives(page);
@@ -144,10 +145,14 @@ async function photograph(page: Page) {
   return last;
 }
 
-/** The share of pixels two photographs disagree on, plainly (not noise). */
-async function differs(page: Page, a: Buffer, b: Buffer) {
+/**
+ * The share of pixels two photographs disagree on by more than `by` in a
+ * channel: plainly (40, not noise), or for the faint wash "deep enough" is
+ * drawn in (10: ui/theme.css keeps it light so the chart reads through).
+ */
+async function differs(page: Page, a: Buffer, b: Buffer, by = 40) {
   return page.evaluate(
-    async ([a, b]) => {
+    async ([a, b, by]) => {
       const pixels = async (png: string) => {
         const blob = await (await fetch(`data:image/png;base64,${png}`)).blob();
         const bitmap = await createImageBitmap(blob);
@@ -164,11 +169,11 @@ async function differs(page: Page, a: Buffer, b: Buffer) {
           Math.abs(x[i + 1] - y[i + 1]),
           Math.abs(x[i + 2] - y[i + 2]),
         );
-        if (d > 40) changed++;
+        if (d > by) changed++;
       }
       return changed / (x.length / 4);
     },
-    [a.toString("base64"), b.toString("base64")] as const,
+    [a.toString("base64"), b.toString("base64"), by] as const,
   );
 }
 
@@ -198,21 +203,27 @@ for (const ranges of [true, false])
     await page.getByRole("button", { name: "Layers", exact: true }).click();
     await page
       .getByRole("group", { name: "Layers" })
-      .getByRole("checkbox", { name: "Foilable depth at the tide (pilot)" })
+      .getByRole("checkbox", { name: "Foilable depth at the tide" })
       .uncheck();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("group", { name: "Layers" })).toHaveCount(0);
     const off = await photograph(page);
 
     // The tints are over the estuary at both tides, and the tide moves them.
-    expect(await differs(page, atHigh, off)).toBeGreaterThan(0.05);
+    // At high water the estuary is mostly deep enough: the faint wash.
+    expect(await differs(page, atHigh, off, 10)).toBeGreaterThan(0.05);
     expect(await differs(page, atLow, off)).toBeGreaterThan(0.05);
     expect(await differs(page, atHigh, atLow)).toBeGreaterThan(0.02);
 
     // Every archive the estuary needs was read, and read as the host serves:
     // by range, or once as a whole file kept for every later read.
     for (const name of ["malahide-lagoon", "dublin-north"]) {
-      const statuses = reads.get(`/foildepth/${name}.pmtiles`) ?? [];
+      // Under the index's versioned folder (scripts/foildepth/publish.py).
+      const statuses = [...reads]
+        .filter(([path]) =>
+          new RegExp(`^/foildepth/v[0-9a-f]+/${name}\\.pmtiles$`).test(path),
+        )
+        .flatMap(([, s]) => s);
       if (ranges) {
         expect(statuses.length, name).toBeGreaterThan(1);
         expect(new Set(statuses), name).toEqual(new Set([206]));

@@ -9,25 +9,28 @@ import {
   terrariumHeight,
   tilePixel,
   type FoilArea,
+  type FoilPoint,
   type FoilManifest,
 } from "./foilDepth";
 
 /**
- * Metres above LAT under a point; "unsurveyed" where the water is there at
- * every tide but its depth is not known; null where there is no water (land)
- * or no tile.
+ * What the archive says under a point (FoilPoint): metres above LAT;
+ * "unsurveyed" where the water is there at every tide but its depth is not
+ * known; "deep" where it is deeper than the index's floor; null where there
+ * is no water (land); "none" where the archive has no tile there (it leaves
+ * out the tiles with nothing to draw: land, or deep water).
  */
 export async function elevationAt(
   area: FoilArea,
   url: string,
   lon: number,
   lat: number,
-  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres">,
-): Promise<number | "unsurveyed" | null> {
+  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres" | "deepMetres">,
+): Promise<FoilPoint> {
   const at = tilePixel(lon, lat, area.maxzoom, area.tileSize);
   // The map's own archive: on a host without ranges, the file it already has.
   const tile = await archive(url).getZxy(at.z, at.x, at.y);
-  if (!tile?.data) return null;
+  if (!tile?.data) return manifest.deepMetres === undefined ? null : "none";
   const bitmap = await createImageBitmap(
     new Blob([tile.data], { type: "image/webp" }),
     // The bytes are heights, not a picture: no colour management.
@@ -42,5 +45,10 @@ export async function elevationAt(
   const z = terrariumHeight(r, g, b);
   if (z >= manifest.landMetres - 1) return null;
   if (Math.abs(z - manifest.noSurveyMetres) < 1) return "unsurveyed";
+  if (
+    manifest.deepMetres !== undefined &&
+    Math.abs(z - manifest.deepMetres) < 1
+  )
+    return "deep";
   return z;
 }

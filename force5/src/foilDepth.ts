@@ -1,13 +1,17 @@
 /**
  * Foilable depth: where the water over the bottom is deep enough for a foil's
- * mast at a given tide, in the pilot areas built by scripts/foildepth.
+ * mast at a given tide, round the coast of Ireland (scripts/foildepth).
  *
  * The seabed and foreshore are a static elevation model, metres above Lowest
  * Astronomical Tide (LAT), served as Terrarium-encoded raster-dem tiles in one
- * PMTiles archive per area (public/foildepth/). The tide is the Marine
- * Institute's prediction at the area's station, also above LAT. So the water
- * over a point is simply `tide − z`, and the map colours every pixel by
- * rebuilding a `color-relief` ramp whose stops move with the tide.
+ * PMTiles archive per area: the coast is cut into one region per tide station
+ * (the station's Voronoi cell), and a few pilot areas with finer surveys win
+ * where they are. Only the water a rider needs is kept: from the dry ceiling
+ * down to 5 m under LAT; deeper is deep enough at every tide and is drawn as
+ * nothing (the chart's tints carry it). The tide is the Marine Institute's
+ * prediction at the area's station, also above LAT. So the water over a point
+ * is simply `tide − z`, and the map colours every pixel by rebuilding a
+ * `color-relief` ramp whose stops move with the tide.
  *
  * Approximate: astronomical tide only (no surge, no waves), and the survey is
  * as old as it is. Not for navigation.
@@ -21,8 +25,19 @@ import type { ExpressionSpecification } from "maplibre-gl";
  */
 export const FOIL_CLEARANCE_METRES = 1;
 
-/** Where the elevation index for the pilot areas is served from, under BASE_URL. */
+/**
+ * Where the index is served from, under the site's BASE_URL: it ships with
+ * the site. The archives it names are under its `base`, on the data host
+ * (force5/src/urls.ts), in an immutable versioned folder.
+ */
 export const FOIL_INDEX_PATH = "foildepth/index.json";
+
+/**
+ * How far above the floor the deep colour fades in, in metres: the edge of
+ * what is drawn (5 m under LAT) is a short fade into the chart's own tints,
+ * not a hard line that reads as a feature of the seabed.
+ */
+export const FOIL_FADE_METRES = 1;
 
 export type FoilClass = "deep" | "shallow" | "dry";
 
@@ -39,8 +54,17 @@ export interface FoilSource {
 
 export interface FoilArea {
   id: string;
+  /**
+   * "region": one tide station's stretch of the national coast; "pilot": a
+   * finer area (or a basin of one) that wins where it is. Absent in an index
+   * of pilots only.
+   */
+  kind?: "pilot" | "region";
   name: string;
-  /** Archive path under BASE_URL, e.g. "foildepth/dublin-north.pmtiles". */
+  /**
+   * The archive: under the index's `base` (e.g. "tide-howth.pmtiles"), or in
+   * an index without one, a path under BASE_URL.
+   */
   url: string;
   /** West, south, east, north in degrees. */
   bounds: [number, number, number, number];
@@ -49,6 +73,11 @@ export interface FoilArea {
   tileSize: number;
   /** The Marine Institute station whose predictions drive the colours. */
   station: string;
+  /**
+   * A region's station, lon/lat: a region's box overlaps its neighbours',
+   * and a point belongs to the region whose station is nearest.
+   */
+  stationLonLat?: [number, number];
   /**
    * Heights above this are not intertidal: land, drawn as nothing. Highest
    * Astronomical Tide at the station plus a margin.
@@ -76,16 +105,27 @@ export interface FoilLevel {
 }
 
 export interface FoilManifest {
-  schemaVersion: 1;
+  /** 1: pilots only, beside the index; 2: under `base`, with `deepMetres`. */
+  schemaVersion: 1 | 2;
   kind: "foildepth";
   generatedAt: string;
   datum: "LAT";
   encoding: "terrarium";
   /**
-   * The archives clamp anything deeper than this to it: always deep enough
-   * for any sensible clearance, and far smaller to store.
+   * Schema 2: the archives' folder on the data host, e.g.
+   * "foildepth/v0123456789ab/" (force5/src/urls.ts's forecastUrl).
+   */
+  base?: string;
+  /**
+   * Heights are kept from this up (5 m under LAT). Schema 1 clamped anything
+   * deeper to it; schema 2 writes it as `deepMetres`.
    */
   floorMetres: number;
+  /**
+   * Schema 2: water deeper than the floor, deep enough at every tide, drawn
+   * as nothing (a tap still tells it from land).
+   */
+  deepMetres?: number;
   /** Height written where there is no water (land, or ground cut off from the sea). */
   landMetres: number;
   /**
@@ -103,7 +143,12 @@ const finite = (v: unknown): v is number =>
 export function validateFoilManifest(m: FoilManifest): FoilManifest {
   const ok =
     !!m &&
-    m.schemaVersion === 1 &&
+    (m.schemaVersion === 1 ||
+      (m.schemaVersion === 2 &&
+        typeof m.base === "string" &&
+        /^[a-z0-9-]+\/(v[0-9a-f]+\/)?$/.test(m.base) &&
+        finite(m.deepMetres) &&
+        m.deepMetres < m.floorMetres - 1)) &&
     m.kind === "foildepth" &&
     m.datum === "LAT" &&
     m.encoding === "terrarium" &&
@@ -119,6 +164,11 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
         /^[a-z0-9-]+$/.test(a.id) &&
         typeof a.url === "string" &&
         typeof a.station === "string" &&
+        (a.kind === undefined || a.kind === "pilot" || a.kind === "region") &&
+        (a.stationLonLat === undefined ||
+          (Array.isArray(a.stationLonLat) &&
+            a.stationLonLat.length === 2 &&
+            a.stationLonLat.every(finite))) &&
         Array.isArray(a.bounds) &&
         a.bounds.length === 4 &&
         a.bounds.every(finite) &&
@@ -233,10 +283,16 @@ const EDGE = 0.02;
  * ramp is rebuilt (and set with setPaintProperty) as the tide moves; that is a
  * small texture upload, not a re-tile.
  *
- * Stops, rising: deep from the floor up to tide − clearance; shallow from just
+ * Stops, rising: with a `deep` value (schema 2), nothing from it up to the
+ * floor, then the deep colour fading in over `fade` metres; without one, deep
+ * from below the floor. Then deep up to tide − clearance; shallow from just
  * above that to the tide; dry from just above the tide to the dry ceiling;
  * nothing above it (land, and the archive's no-water value); and, apart,
  * the archive's no-survey value in its own colour, whatever the tide.
+ *
+ * The map interpolates heights between pixels, so between the last height
+ * kept and a deep pixel the values run down through the fade: the edge of
+ * what is drawn is soft, and passes through no colour that is not there.
  */
 export function foilRamp(
   tide: number,
@@ -247,6 +303,10 @@ export function foilRamp(
     floor: number;
     /** The archive's no-survey height, drawn as `unsurveyed`; none if absent. */
     noSurvey?: number;
+    /** The archive's deeper-than-the-floor value, drawn as nothing. */
+    deep?: number;
+    /** The deep colour's fade above the floor, metres (0: a clean edge). */
+    fade?: number;
   },
 ): ExpressionSpecification {
   const clearance = Math.max(opts.clearance ?? FOIL_CLEARANCE_METRES, EDGE * 2);
@@ -259,7 +319,13 @@ export function foilRamp(
     if (last && z <= last[0]) return;
     stops.push([z, colour]);
   };
-  push(Math.min(opts.floor, deepTop) - 1, colours.deep);
+  if (opts.deep !== undefined) {
+    const fade = Math.max(opts.fade ?? FOIL_FADE_METRES, EDGE);
+    push(opts.deep - 1, CLEAR);
+    push(opts.floor, CLEAR);
+    // The fade ends short of the deep colour's top, however low the tide.
+    push(Math.min(opts.floor + fade, deepTop - EDGE), colours.deep);
+  } else push(Math.min(opts.floor, deepTop) - 1, colours.deep);
   push(deepTop, colours.deep);
   push(deepTop + EDGE, colours.shallow);
   if (opts.dryCeiling > tide + EDGE) {
@@ -295,29 +361,91 @@ export const inBounds = (
   lat: number,
 ) => lon >= b[0] && lon <= b[2] && lat >= b[1] && lat <= b[3];
 
-/** The area under a point, or null. */
+/** Kilometres between two points, on a sphere. */
+export function distanceKm(
+  lon1: number,
+  lat1: number,
+  lon2: number,
+  lat2: number,
+) {
+  const r = Math.PI / 180;
+  const a =
+    Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) *
+      Math.cos(lat2 * r) *
+      Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.min(1, a)));
+}
+
+/**
+ * The archives that may hold a point, in the order to read them. A pilot
+ * wins where it is: if one's box holds the point, only the pilots' boxes are
+ * tried, in the index's order (a basin's box lies inside its area's and comes
+ * first; each archive has water only on its own side of the weir, so the
+ * first one with water under the point is it). Else the one region whose
+ * station is nearest, as the regions were cut (scripts/foildepth/national.py).
+ */
+export function areasAt(
+  areas: readonly FoilArea[],
+  lon: number,
+  lat: number,
+): FoilArea[] {
+  const boxes = areas.filter((a) => inBounds(a.bounds, lon, lat));
+  const pilots = boxes.filter((a) => a.kind !== "region");
+  if (pilots.length) return pilots;
+  let best: FoilArea | null = null;
+  let distance = Infinity;
+  for (const a of boxes) {
+    const at = a.stationLonLat;
+    const d = at ? distanceKm(lon, lat, at[0], at[1]) : Infinity;
+    if (!best || d < distance) {
+      best = a;
+      distance = d;
+    }
+  }
+  return best ? [best] : [];
+}
+
+/** The area under a point (areasAt's first), or null. */
 export function areaAt(
   areas: readonly FoilArea[],
   lon: number,
   lat: number,
 ): FoilArea | null {
-  return areas.find((a) => inBounds(a.bounds, lon, lat)) ?? null;
+  return areasAt(areas, lon, lat)[0] ?? null;
 }
 
 /**
- * Every area whose box holds a point, in the index's order. A basin's box
- * lies inside its area's and comes first; each archive has water only on its
- * own side of the weir, so the first one with water under the point is it.
+ * The areas worth drawing over a view: those whose box meets it, from half a
+ * zoom under their min zoom (MapLibre rounds a raster's zoom to the nearest
+ * whole one, so that is where their tiles start).
  */
-export const areasAt = (areas: readonly FoilArea[], lon: number, lat: number) =>
-  areas.filter((a) => inBounds(a.bounds, lon, lat));
+export function areasInView(
+  areas: readonly FoilArea[],
+  view: { west: number; south: number; east: number; north: number },
+  zoom: number,
+): FoilArea[] {
+  return areas.filter(
+    (a) =>
+      zoom >= a.minzoom - 0.5 &&
+      a.bounds[0] <= view.east &&
+      a.bounds[2] >= view.west &&
+      a.bounds[1] <= view.north &&
+      a.bounds[3] >= view.south,
+  );
+}
 
-/** The area whose box is nearest a point (zero inside it), for the legend. */
+/**
+ * The area under a point (areasAt's first), else the one whose box is
+ * nearest it, for the legend.
+ */
 export function nearestArea(
   areas: readonly FoilArea[],
   lon: number,
   lat: number,
 ): FoilArea | null {
+  const under = areaAt(areas, lon, lat);
+  if (under) return under;
   let best: FoilArea | null = null;
   let distance = Infinity;
   for (const a of areas) {
@@ -380,23 +508,36 @@ export function levelLine(tide: number, station: string, sea?: number) {
 }
 
 /**
+ * What a tapped point's archive says is there: a height above LAT; water of
+ * unsurveyed depth; water deeper than the floor ("deep"); land (null); or,
+ * where the archive has no tile at all, nothing drawn ("none": land, or deep).
+ */
+export type FoilPoint = number | "unsurveyed" | "deep" | "none" | null;
+
+/**
  * A tapped point, as the legend says it: "~2.3 m of water at 18:00 (tide
- * 3.1 m at Howth)", or that it is dry, land, or water no survey has sounded.
- * Behind a weir `tide` is the basin's level and `sea` the station's tide.
+ * 3.1 m at Howth)", or that it is dry, land, deep at any tide, or water no
+ * survey has sounded. Behind a weir `tide` is the basin's level and `sea`
+ * the station's tide. `floor` is the depth cut (the index's floorMetres).
  */
 export function foilReadout(
-  z: number | "unsurveyed" | null,
+  z: FoilPoint,
   tide: number,
   clock: string,
   station: string,
   clearance = FOIL_CLEARANCE_METRES,
   sea?: number,
+  floor = -5,
 ): string {
   const at =
     sea === undefined
       ? `at ${clock} (tide ${one(tide)} m at ${station})`
       : `at ${clock} (water ${one(tide)} m above LAT behind the weir; tide ${one(sea)} m at ${station})`;
   if (z === null) return `Not in the water at any tide ${at}.`;
+  if (z === "deep")
+    return `More than ${-floor} m deep at the lowest tide: deep enough at any tide ${at}.`;
+  if (z === "none")
+    return `Nothing drawn here: dry land, or more than ${-floor} m deep at the lowest tide ${at}.`;
   if (z === "unsurveyed") return `Wet at every tide, depth not surveyed ${at}.`;
   const water = waterOver(z, tide);
   const cls = foilClass(z, tide, clearance);

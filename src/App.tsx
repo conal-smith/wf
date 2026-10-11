@@ -25,18 +25,20 @@ import type {
 import {
   areaAt,
   areasAt,
+  areasInView,
   foilColours,
   foilRamp,
   foilReadout,
   nearestArea,
   waterLevelAt,
   type FoilArea,
+  type FoilPoint,
 } from "../force5/src/foilDepth";
 import { elevationAt } from "../force5/src/foilProbe";
 import FoilLegend from "./FoilLegend";
 import MapInfo from "./MapInfo";
 import { MapInfoOpen, type InfoSection } from "./mapInfoContext";
-import { useFoilDepth } from "./useFoilDepth";
+import { foilArchiveUrl, useFoilDepth } from "./useFoilDepth";
 import { rideStops as rideStopsFor } from "../force5/src/chartStyle";
 import type { LightState } from "../force5/src/lights";
 import { rideWedge } from "../force5/src/rideWedge";
@@ -264,6 +266,15 @@ export default function App() {
   // and only looked up once the layer has loaded its areas.
   const foilAreas = useRef<readonly FoilArea[] | null>(null);
   const [foilNearId, setFoilNearId] = useState<string | null>(null);
+  // The chart's view after each move: which foil areas are drawn, and whose
+  // tide curves are fetched (only theirs).
+  const [chartView, setChartView] = useState<{
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+    zoom: number;
+  } | null>(null);
   // Gust comes once the chart is drawn and the page has a moment to spare.
   const [gustDue, setGustDue] = useState(false);
   useEffect(() => {
@@ -750,7 +761,11 @@ export default function App() {
   );
 
   /* ---- foilable depth at the selected tide ---- */
-  const foilState = useFoilDepth(layers.foil);
+  // The stations whose curves are wanted: those of the areas in view, of the
+  // key's area and of a tapped point's. Set after each render that changes
+  // them (they depend on the index the hook loads).
+  const [foilStations, setFoilStations] = useState<string[]>([]);
+  const foilState = useFoilDepth(layers.foil, foilStations);
   // Read from the stylesheet only once the layer is wanted.
   const foilPalette = useMemo(
     () =>
@@ -783,19 +798,24 @@ export default function App() {
     }
     return out;
   }, [foilState, foilTime]);
+  // Only the areas over the chart's view are drawn, and only theirs fetched.
+  const foilInView = useMemo(
+    () =>
+      foilState.manifest && chartView
+        ? areasInView(foilState.manifest.areas, chartView, chartView.zoom)
+        : [],
+    [foilState.manifest, chartView],
+  );
   const foilViews = useMemo<FoilView[] | null>(() => {
     const m = foilState.manifest;
     if (!layers.foil || !m || !foilPalette) return null;
-    return m.areas.flatMap((area) => {
+    return foilInView.flatMap((area) => {
       const tide = foilTides[area.id]?.water;
       if (tide === undefined) return [];
       return [
         {
           id: area.id,
-          url: new URL(
-            `${import.meta.env.BASE_URL}${area.url}`,
-            window.location.href,
-          ).href,
+          url: foilArchiveUrl(m, area),
           bounds: area.bounds,
           minzoom: area.minzoom,
           maxzoom: area.maxzoom,
@@ -804,18 +824,19 @@ export default function App() {
             dryCeiling: area.dryCeilingMetres,
             floor: m.floorMetres,
             noSurvey: m.noSurveyMetres,
+            deep: m.deepMetres,
           }),
           attribution: m.attribution,
         },
       ];
     });
-  }, [layers.foil, foilState.manifest, foilTides, foilPalette]);
+  }, [layers.foil, foilState.manifest, foilInView, foilTides, foilPalette]);
   /** The seabed under the last point tapped while the layer was on. */
   const [foilProbe, setFoilProbe] = useState<{
     lon: number;
     lat: number;
     area: string;
-    z: number | "unsurveyed" | null;
+    z: FoilPoint;
   } | null>(null);
   const probed =
     foilProbe &&
@@ -833,25 +854,36 @@ export default function App() {
   const foilStation = foilArea
     ? (foilState.tides[foilArea.station]?.station.name ?? foilArea.station)
     : null;
+  const stationsKey = layers.foil
+    ? [
+        ...new Set(
+          [...foilInView, foilArea].flatMap((a) => (a ? [a.station] : [])),
+        ),
+      ]
+        .sort()
+        .join("|")
+    : "";
+  useEffect(() => {
+    setFoilStations(stationsKey ? stationsKey.split("|") : []);
+  }, [stationsKey]);
   const probeFoil = (lon: number, lat: number) => {
     const m = foilState.manifest;
-    // A basin's box overlaps its area's: the first archive with water under
-    // the point is the side of the weir it is on.
+    // A pilot wins where it is, and a basin's box overlaps its area's: the
+    // first archive with water under the point is the side of the weir it is
+    // on. Elsewhere it is the one region whose station is nearest.
     const candidates = layers.foil && m ? areasAt(m.areas, lon, lat) : [];
     if (!m || !candidates.length) {
       setFoilProbe(null);
       return;
     }
     (async () => {
+      let last: FoilPoint = null;
       for (const area of candidates) {
-        const url = new URL(
-          `${import.meta.env.BASE_URL}${area.url}`,
-          window.location.href,
-        ).href;
-        const z = await elevationAt(area, url, lon, lat, m);
-        if (z !== null) return { area: area.id, z };
+        const z = await elevationAt(area, foilArchiveUrl(m, area), lon, lat, m);
+        if (z !== null && z !== "none") return { area: area.id, z };
+        last = z;
       }
-      return { area: candidates[candidates.length - 1].id, z: null };
+      return { area: candidates[candidates.length - 1].id, z: last };
     })()
       .then((found) => setFoilProbe({ lon, lat, ...found }))
       .catch(() => setFoilProbe(null));
@@ -870,6 +902,7 @@ export default function App() {
           foilStation,
           undefined,
           foilArea.level ? probedLevel.sea : undefined,
+          foilState.manifest?.floorMetres,
         )
       : null;
 
@@ -915,6 +948,14 @@ export default function App() {
       setScale(`SCALE 1 : ${n.toLocaleString("en-IE").replace(/,/g, " ")}`);
       const areas = foilAreas.current;
       if (areas) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
+      const b = map.getBounds();
+      setChartView({
+        west: b.getWest(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        north: b.getNorth(),
+        zoom: map.getZoom(),
+      });
     };
     update();
     map.on("moveend", update);
@@ -1068,7 +1109,7 @@ export default function App() {
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (
           <li>
-            Foilable depth (pilot areas): {foilState.manifest.attribution}{" "}
+            Foilable depth: {foilState.manifest.attribution}{" "}
             Heights above LAT against Marine Institute tide predictions.
           </li>
         )}
@@ -1342,6 +1383,7 @@ export default function App() {
               }
               readout={foilProbeText}
               error={foilState.error}
+              floor={foilState.manifest?.floorMetres}
             />
           }
           sources={sources}
