@@ -46,6 +46,43 @@ export function spotSquare(lat, lon) {
   return `${lat0 >= 0 ? "n" : "s"}${pad(lat0, 2)}${lon0 >= 0 ? "e" : "w"}${pad(lon0, 3)}`;
 }
 
+/** squares.SUPERSEDED_KEEP_HOURS and SUPERSEDED_LIMIT. */
+export const SUPERSEDED_KEEP_HOURS = 6;
+export const SUPERSEDED_LIMIT = 24;
+const RUN_BASE = /^[a-z0-9][a-z0-9.-]*-[0-9a-f]{8}\/$/;
+const isoSecond = (time) =>
+  new Date(time).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+/**
+ * The `superseded` list for `pointer`, about to replace `previous` (or null):
+ * squares.retire, so the pruners keep the run directory `previous` named for
+ * readers still holding it. What `previous` remembered, younger than six
+ * hours, and its own `base` at `now` when that is not `pointer`'s.
+ */
+export function retire(previous, pointer, now = Date.now()) {
+  const live = pointer.base;
+  const cutoff = now - SUPERSEDED_KEEP_HOURS * 3600000;
+  const retired = new Map();
+  const entries = Array.isArray(previous?.superseded) ? previous.superseded : [];
+  for (const entry of entries) {
+    if (!entry || typeof entry.base !== "string" || !RUN_BASE.test(entry.base))
+      continue;
+    const parsed = /(Z|[+-]\d\d:\d\d)$/.test(String(entry.at))
+      ? Date.parse(entry.at)
+      : NaN;
+    const when = Number.isFinite(parsed) ? parsed : now;
+    if (entry.base !== live && when > cutoff)
+      retired.set(entry.base, Math.max(when, retired.get(entry.base) ?? when));
+  }
+  const old = previous?.base;
+  if (typeof old === "string" && old !== live && RUN_BASE.test(old))
+    retired.set(old, now);
+  return [...retired]
+    .sort(([a, x], [b, y]) => x - y || (a < b ? -1 : a > b ? 1 : 0))
+    .slice(-SUPERSEDED_LIMIT)
+    .map(([base, when]) => ({ base, at: isoSecond(when) }));
+}
+
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 /** A run directory's content hash, from [path inside the run, bytes] pairs. */
@@ -112,8 +149,11 @@ export function publishRun(whole, prefix, frameBodies, spots, tileFiles = []) {
       }),
     ]);
   const base = `${prefix}-${runDigest(inside)}/`;
+  // `superseded` belongs to the pointer this run replaces: see `retire`.
   const pointer = Object.fromEntries(
-    Object.entries(whole).filter(([key]) => !SPOT_KEYS.includes(key)),
+    Object.entries(whole).filter(
+      ([key]) => !SPOT_KEYS.includes(key) && key !== "superseded",
+    ),
   );
   pointer.schemaVersion = RUN_SCHEMA_VERSION;
   if ("frames" in whole) pointer.frames = frames;

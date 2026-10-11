@@ -17,7 +17,7 @@ import f5bin
 import f5tile
 import publish_s3
 import rundir
-from publish_s3 import publish, superseded_objects, validate_bundle, already_current
+from publish_s3 import publish, validate_bundle, already_current
 from registry import MANIFESTS, MODELS, UNCHANGED_EXIT
 from runfixtures import TINY_GRID
 
@@ -386,115 +386,104 @@ class PublishTests(BundleFixture, unittest.TestCase):
         self.assertNotIn("weather/harmonie.json", self.s3.objects)
 
 
-class SupersededDeleteTest(BundleFixture, unittest.TestCase):
-    """The bucket must not grow for ever, and must never lose a live object."""
+class SupersededRunTest(BundleFixture, unittest.TestCase):
+    """The run a publish replaces stays for readers holding the old pointer."""
 
-    def test_a_publish_deletes_exactly_the_run_directory_it_replaced(self):
+    def served(self):
+        return json.loads(self.s3.objects["weather/harmonie.json"]["Body"])
+
+    def test_a_publish_keeps_the_run_directory_it_replaced_and_names_it(self):
         self.assertEqual(self.run_publish(), "published")
-        replaced = self.keys()
+        replaced, old = self.keys(), self.manifest["base"]
+        self.assertNotIn("superseded", self.served())
         self.build("2026091313")
         self.assertEqual(self.quietly(self.run_publish)[0], "published")
-        self.assertEqual(sorted(self.s3.deleted), sorted(replaced))
-        for key in self.keys():
+        self.assertEqual(self.s3.deleted, [])
+        for key in replaced + self.keys():
             self.assertIn(key, self.s3.objects)
-        self.assertIn("weather/harmonie.json", self.s3.objects)
+        self.assertEqual(self.served()["superseded"],
+                         [{"base": old, "at": "2026-09-13T12:30:00Z"}])
 
-    def test_the_delete_lists_only_its_own_directory(self):
-        """A longer name that starts the same, and another model's run, are not listed."""
+    def test_the_list_is_the_buckets_not_the_work_directorys(self):
+        # The work directory replaced a run of its own; the bucket never saw it.
+        self.build("2026091313")
+        self.assertTrue(self.manifest["superseded"])
         self.assertEqual(self.run_publish(), "published")
-        old = self.manifest["base"]
-        lookalike = self.s3.seed(f"weather/{old[:-1]}0/frames/000.json", b"x")
-        eps = self.s3.seed("weather/harmonie-eps-2026091312-2h-v1-0a0b0c0d/frames/000.bin", b"x")
+        self.assertNotIn("superseded", self.served())
+
+    def test_a_pointer_remembers_what_it_superseded_for_six_hours_only(self):
+        a, b, c, d = (f"harmonie-2026091312-2h-v1-{n}a0b0c0d/" for n in "0123")
+        previous = {"model": "harmonie", "base": c, "superseded": [
+            {"base": a, "at": "2026-09-13T12:00:00Z"}, {"base": b, "at": "2026-09-13T13:00:00Z"},
+            {"base": "../escape-0a0b0c0d/", "at": "2026-09-13T13:00:00Z"}, "junk"]}
+        later = datetime(2026, 9, 13, 18, 30, tzinfo=timezone.utc)
+        self.assertEqual(publish_s3.retire(previous, {"base": d}, later),
+                         [{"base": b, "at": "2026-09-13T13:00:00Z"},
+                          {"base": c, "at": "2026-09-13T18:30:00Z"}])
+
+    def test_a_directory_named_again_is_live_not_superseded(self):
+        a, b = "harmonie-2026091312-2h-v1-0a0b0c0d/", "harmonie-2026091312-2h-v1-1a1b1c1d/"
+        previous = {"model": "harmonie", "base": b,
+                    "superseded": [{"base": a, "at": "2026-09-13T12:00:00Z"}]}
+        self.assertEqual(publish_s3.retire(previous, {"base": a}, self.now),
+                         [{"base": b, "at": "2026-09-13T12:30:00Z"}])
+        self.assertEqual(publish_s3.retire({"model": "harmonie", "base": a}, {"base": a},
+                                           self.now), [])
+
+    def test_republishing_the_same_content_is_still_a_no_op(self):
+        self.assertEqual(self.run_publish(), "published")
         self.build("2026091313")
         self.quietly(self.run_publish)
-        self.assertIn(lookalike, self.s3.objects)
-        self.assertIn(eps, self.s3.objects)
-        self.assertFalse([key for key in self.s3.objects if key.startswith(f"weather/{old}")])
+        writes = list(self.s3.writes)
+        # The work directory's own list differs from the bucket's; that is not a change.
+        self.assertEqual(self.run_publish(), "unchanged-or-newer")
+        self.assertEqual(writes, self.s3.writes)
 
-    def test_deletes_happen_only_after_the_new_pointer_is_in_place(self):
+    def test_a_reused_directory_the_sweep_emptied_meanwhile_is_put_back(self):
+        # The same content again lands in the same directory, and put_immutable
+        # leaves what is already there alone. Should a bucket sweep delete that
+        # directory between those uploads and the pointer swap, the publisher puts
+        # it back once its pointer is in place.
         self.assertEqual(self.run_publish(), "published")
-        self.build("2026091313")
-        self.s3.fail_frame, self.s3.fail_key = True, "/harmonie-2026091313-"
-        with self.assertRaises(S3Error):
-            publish(self.s3, self.root, "harmonie", "test", now=self.now)
-        self.assertEqual(self.s3.deleted, [])
+        del self.s3.objects["weather/harmonie.json"]
+        swept = self.keys()[:2]
+        original = self.s3.put_object
 
-    def test_a_delete_failure_never_fails_the_forecast_that_just_published(self):
-        self.assertEqual(self.run_publish(), "published")
-        replaced = self.keys()
-        self.build("2026091313")
-        self.s3.fail_delete = True
+        def sweep_then_put(**args):
+            if args["Key"] == "weather/harmonie.json":
+                for key in swept:
+                    self.s3.objects.pop(key, None)
+            return original(**args)
+
+        self.s3.put_object = sweep_then_put
         status, log = self.quietly(self.run_publish)
         self.assertEqual(status, "published")
-        self.assertIn("superseded_delete_failed", log)
-        self.assertIn(replaced[0], self.s3.objects)
-        self.assertEqual(json.loads(self.s3.objects["weather/harmonie.json"]["Body"])["run"],
-                         "2026091313")
+        self.assertIn("run_directory_restored", log)
+        for key in self.keys():
+            self.assertIn(key, self.s3.objects)
 
-    def test_a_pointer_put_whose_answer_was_lost_still_deletes_the_previous_run(self):
-        # The PUT succeeded server-side; only its response went missing. The retry
-        # finds our own manifest already published, which is success, not a reason
-        # to leak the run it replaced until the next sweep.
+    def test_a_pointer_put_whose_answer_was_lost_is_success_and_deletes_nothing(self):
         self.assertEqual(self.run_publish(), "published")
         replaced = self.keys()
         self.build("2026091313")
         self.s3.lost_ack = True
-        status, log = self.quietly(self.run_publish)
-        self.assertEqual(status, "unchanged-or-newer")
-        self.assertIn("superseded_deleted", log)
-        for key in replaced:
-            self.assertNotIn(key, self.s3.objects)
-        for key in self.keys():
-            self.assertIn(key, self.s3.objects)
-
-    def test_a_newer_run_arriving_mid_publish_deletes_nothing_of_ours(self):
-        # already_current for a reason other than "this is our manifest": another
-        # machine won, so we published nothing and must delete nothing.
-        self.assertEqual(self.run_publish(), "published")
-        self.build("2026091313")
-        self.s3.race = {**self.manifest, "run": "2026091314"}
         status, _ = self.quietly(self.run_publish)
         self.assertEqual(status, "unchanged-or-newer")
+        for key in replaced + self.keys():
+            self.assertIn(key, self.s3.objects)
         self.assertEqual(self.s3.deleted, [])
 
-    def test_an_unreadable_previous_pointer_publishes_and_deletes_nothing(self):
+    def test_an_unreadable_previous_pointer_publishes_and_names_nothing(self):
         self.s3.seed("weather/harmonie.json", b"{not json")
         status, log = self.quietly(self.run_publish)
         self.assertEqual(status, "published")
         self.assertIn("unreadable_pointer", log)
-        self.assertEqual(self.s3.deleted, [])
+        self.assertNotIn("superseded", self.served())
 
-    def test_republishing_the_same_directory_deletes_nothing(self):
-        previous = {"model": "harmonie", "base": "harmonie-2026091312-2h-v1-0a0b0c0d/"}
-        self.assertEqual(superseded_objects("harmonie", previous, dict(previous)), ([], []))
-
-    def test_only_a_run_directory_named_for_this_model_is_ever_deleted(self):
-        incoming = {"model": "harmonie", "base": "harmonie-2026091313-2h-v1-0a0b0c0d/"}
-        for base, expected in [
-                ("harmonie-2026091312-2h-v1-1a2b3c4d/", ["weather/harmonie-2026091312-2h-v1-1a2b3c4d"]),
-                ("harmonie-eps-2026091312-2h-v1-1a2b3c4d/", []),
-                ("gfs-2026091312-2h-v1-1a2b3c4d/", []),
-                ("manifests-2026091312-2h-v1-1a2b3c4d/", []),
-                ("../harmonie-2026091312-2h-v1-1a2b3c4d/", []),
-                ("harmonie-2026091312-2h-v1/", []),
-                (None, [])]:
-            with self.subTest(base=base):
-                previous = {"model": "harmonie", "base": base}
-                self.assertEqual(superseded_objects("harmonie", previous, incoming),
-                                 (expected, []))
-
-    def test_a_tide_pointer_still_deletes_only_its_superseded_station_files(self):
-        previous = {"model": "tides", "stations": {
-            "A": {"url": "marine/tides-A-1.json"}, "B": {"url": "marine/tides-B-1.json"},
-            "C": {"url": "marine/sea-temperature-C.json"}, "D": {"url": "archive/tides-D.json"}}}
-        incoming = {"model": "tides", "stations": {"B": {"url": "marine/tides-B-1.json"}}}
-        self.assertEqual(superseded_objects("tides", previous, incoming),
-                         ([], ["marine/tides-A-1.json"]))
-
-    def test_a_missing_or_foreign_previous_manifest_deletes_nothing(self):
+    def test_a_foreign_previous_pointer_names_nothing(self):
         other = {"model": "gfs", "base": "gfs-2026091600-240h-v1-0a0b0c0d/"}
-        for previous in (None, "", {}, other):
-            self.assertEqual(superseded_objects("harmonie", previous, self.manifest), ([], []))
+        body = json.loads(publish_s3.pointer_body(self.manifest, other, self.now))
+        self.assertNotIn("superseded", body)
 
 
 class ConditionalPutFallbackTest(BundleFixture, unittest.TestCase):

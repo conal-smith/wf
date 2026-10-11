@@ -22,6 +22,7 @@ Two halves, one per direction:
   reads a JSON file relative to the pointer's own directory, so the same code
   reads a work directory, a bucket or a scratch copy.
 """
+from datetime import datetime, timedelta, timezone
 import math
 from pathlib import PurePosixPath
 import re
@@ -39,6 +40,11 @@ SQUARE_URL = "spots/{square}.json"
 SQUARE_NAME = re.compile(r"[ns]\d{2}[ew]\d{3}")
 # `<model>-<run>-<hours>h-v<N>-<hash8>/`, one path segment. rundir.py names it.
 RUN_DIRECTORY = re.compile(r"[a-z0-9][a-z0-9.-]*-[0-9a-f]{8}")
+# How long a pointer remembers the run directories it replaced (`superseded`),
+# and how many it names at most: longer than any grace the pruners are given, and
+# few enough that an hourly model's pointer grows by a few hundred bytes.
+SUPERSEDED_KEEP_HOURS = 6
+SUPERSEDED_LIMIT = 24
 
 
 def spot_square(lat, lon):
@@ -78,6 +84,61 @@ def run_path(base, relative):
     return check_base(base) + str(path)
 
 
+def iso_time(moment):
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def superseded_entries(manifest):
+    """The run directories a pointer says it replaced, as `(base, when)` pairs.
+
+    A pointer that swapped its run directory for another names the old one under
+    `superseded`, `[{"base": "harmonie-…-1a2b3c4d/", "at": "2026-10-11T12:00:00Z"}]`,
+    so the pruners can leave it for readers still holding the old pointer. An
+    entry whose base is unusable names nothing and is skipped; one whose time
+    cannot be read gives `when` None, which the pruners read as "just now".
+    """
+    entries = manifest.get("superseded") if isinstance(manifest, dict) else None
+    out = []
+    for entry in entries if isinstance(entries, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            base = check_base(entry.get("base"))
+        except ValueError:
+            continue
+        try:
+            when = datetime.fromisoformat(str(entry.get("at")).replace("Z", "+00:00"))
+            when = when if when.tzinfo else None
+        except ValueError:
+            when = None
+        out.append((base, when))
+    return out
+
+
+def retire(previous, manifest, now):
+    """The `superseded` list for `manifest`, the pointer about to replace `previous`.
+
+    What `previous` already remembered, younger than `SUPERSEDED_KEEP_HOURS`, and
+    `previous`'s own run directory at `now` when it is not the one `manifest`
+    names. A directory the new pointer names again is dropped from the list: it
+    is live, not superseded. Oldest first, at most `SUPERSEDED_LIMIT`.
+    """
+    live = manifest.get("base")
+    cutoff = now - timedelta(hours=SUPERSEDED_KEEP_HOURS)
+    retired = {}
+    for base, when in superseded_entries(previous):
+        when = when or now
+        if base != live and when > cutoff:
+            retired[base] = max(when, retired.get(base, when))
+    if isinstance(previous, dict) and previous.get("base") not in (None, live):
+        try:
+            retired[check_base(previous["base"])] = now
+        except ValueError:
+            pass  # An unusable base names nothing worth keeping.
+    ordered = sorted(retired.items(), key=lambda item: (item[1], item[0]))[-SUPERSEDED_LIMIT:]
+    return [{"base": base, "at": iso_time(when)} for base, when in ordered]
+
+
 def square_index(manifest):
     """The manifest's `spots` block, checked: the squares it lists, in order."""
     index = manifest.get("spots")
@@ -115,7 +176,10 @@ def split_spot_data(manifest, spots):
     if "spots" in manifest:
         raise ValueError("A run manifest's `spots` is the square index; per-spot records "
                          "belong in a spot key such as `spotCells`")
-    pointer = {key: value for key, value in manifest.items() if key not in SPOT_KEYS}
+    # `superseded` belongs to the pointer a run replaces, never to the run itself:
+    # whoever writes the pointer works it out afresh (rundir.write_run, publish_s3).
+    pointer = {key: value for key, value in manifest.items()
+               if key not in SPOT_KEYS and key != "superseded"}
     pointer["schemaVersion"] = SCHEMA_VERSION
     keys = [key for key in SPOT_KEYS if key in manifest]
     squares = {}

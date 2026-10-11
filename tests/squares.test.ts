@@ -15,6 +15,7 @@ import {
 } from "../force5/src/squares";
 import {
   publishRun,
+  retire,
   runDigest,
   spotSquare as scriptSquare,
   SQUARE_DEGREES as SCRIPT_DEGREES,
@@ -33,6 +34,27 @@ const digest = JSON.parse(
   digest: string;
   oneByteChanged: { path: string; content: string; digest: string };
 };
+
+const superseded = JSON.parse(
+  readFileSync("tests/fixtures/superseded.json", "utf8"),
+) as {
+  cases: {
+    name: string;
+    previous: unknown;
+    base: string;
+    now: string;
+    expected: { base: string; at: string }[];
+  }[];
+};
+
+describe("superseded run directories", () => {
+  it("are remembered by a pointer exactly as the Python pipeline remembers them", () => {
+    for (const { name, previous, base, now, expected } of superseded.cases)
+      expect(retire(previous, { base }, Date.parse(now)), name).toEqual(
+        expected,
+      );
+  });
+});
 
 describe("spot squares", () => {
   it("names every shared case as the Python pipeline does", () => {

@@ -181,7 +181,7 @@ weather/harmonie-2026101106-61h-v3-1a2b3c4d/spots/{square}.json
   archive would mean range reads, harder caching and a rebuilt archive for
   each run.
 - **Pruning gets simpler.** Delete the superseded run's directory. No URL
-  bookkeeping.
+  bookkeeping. (As built, not at once: see "As built: keeping superseded runs".)
 
 **Request cost.** The estimate is about 850 objects per HARMONIE run (14
 tiles × 61 hours) and about 1,200 per ICON-EU run (16 × 73). All live models
@@ -550,9 +550,10 @@ has no frames.
   by); a blended place the catalogue no longer has is left out and named rather
   than failing the job. The image's build stage copies `scripts/runs.mjs` in.
 - **Publishing and pruning** need nothing of their own: the blend joins the run
-  kinds, so the publisher re-hashes its directory, uploads its squares, swaps the
-  pointer by compare-and-swap and deletes the directory it replaced, and the
-  pruner keeps it by its `base`. It is no longer a "self-contained" kind.
+  kinds, so the publisher re-hashes its directory, uploads its squares and swaps the
+  pointer by compare-and-swap, and the pruners keep it by its `base` and the
+  directory it replaced for the grace period. It is no longer a "self-contained"
+  kind.
 - **What the map reads.** The lights read the squares in view: the map's bounds,
   grown by a third on every side (decision 7's margin), read when the camera
   settles (`moveend`), intersected with the squares the blend lists, at most 36
@@ -579,3 +580,30 @@ has no frames.
 - **Dock.** The dock's stars come from the same table as the lights, so its
   spot's square is always among those read. Its blend chart already read the
   one square of the models it needs.
+
+## As built: keeping superseded runs
+
+Decision 4 deleted the superseded run's directory, and the publisher did it the moment
+its new pointer was in place. That is exactly when readers still hold the old pointer:
+the browser revalidates pointers every five minutes, the CDN caches them for one, the
+forecast server and a thread's spot card for five. Each of them then asked for tiles and
+squares that had just been deleted, and showed the model as unavailable for minutes.
+Yr keeps an old tileset at least 45 minutes for the same reason.
+
+- **The pointer remembers what it replaced**, under `superseded`:
+  `[{"base": "harmonie-…-1a2b3c4d/", "at": "2026-10-11T08:52:00Z"}]`, the time being
+  the swap's. The publisher works it out from the pointer in the bucket it is replacing,
+  inside the compare-and-swap, so the record cannot be lost apart from the swap
+  (`squares.retire`); `rundir.write_run` does the same on disk. Six hours of entries,
+  at most 24.
+- **Nothing is deleted at the swap.** The local prune and the bucket sweep keep a run
+  directory some pointer superseded less than the grace period ago (60 minutes,
+  `--grace-minutes` or `FORCE5_SUPERSEDED_GRACE_MINUTES`) and delete it after that. The
+  sweep still also needs every object in it older than its six-hour guard, and reads
+  the pointers once more just before each directory it deletes.
+- **A reused directory is put back.** The same content lands in the same directory and
+  `put_immutable` leaves what is there alone, so a republish can reuse a directory the
+  sweep is deleting; once its pointer is in place the publisher lists the directory and
+  uploads anything missing.
+
+docs/LIVE_FORECAST_PIPELINE.md, "Deleting what is superseded", has the details.

@@ -1,0 +1,75 @@
+{
+  "note": "The `superseded` list a pointer carries when it replaces `previous` at `now` (force5/ingest/squares.py `retire`, scripts/runs.mjs `retire`). Read by force5/ingest/test_squares.py and tests/squares.test.ts.",
+  "cases": [
+    {
+      "name": "a first pointer remembers nothing",
+      "previous": null,
+      "base": "harmonie-2026091312-2h-v1-0a0b0c0d/",
+      "now": "2026-09-13T12:30:00Z",
+      "expected": []
+    },
+    {
+      "name": "the run directory it replaces",
+      "previous": {"model": "harmonie", "base": "harmonie-2026091312-2h-v1-0a0b0c0d/"},
+      "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+      "now": "2026-09-13T13:30:00Z",
+      "expected": [{"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T13:30:00Z"}]
+    },
+    {
+      "name": "the same content again replaces nothing",
+      "previous": {"model": "harmonie", "base": "harmonie-2026091312-2h-v1-0a0b0c0d/"},
+      "base": "harmonie-2026091312-2h-v1-0a0b0c0d/",
+      "now": "2026-09-13T13:30:00Z",
+      "expected": []
+    },
+    {
+      "name": "six hours of what it remembered, and nothing unusable",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+        "superseded": [
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T12:00:00Z"},
+          {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T13:00:00Z"},
+          {"base": "../escape-0a0b0c0d/", "at": "2026-09-13T13:00:00Z"},
+          {"base": "harmonie-2026091313-2h-v1-1a1b1c1d", "at": "2026-09-13T13:00:00Z"},
+          "junk"
+        ]
+      },
+      "base": "harmonie-2026091315-2h-v1-3a3b3c3d/",
+      "now": "2026-09-13T18:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T13:00:00Z"},
+        {"base": "harmonie-2026091314-2h-v1-2a2b2c2d/", "at": "2026-09-13T18:30:00Z"}
+      ]
+    },
+    {
+      "name": "a directory named again is live, not superseded",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091312-2h-v1-1a1b1c1d/",
+        "superseded": [{"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T12:00:00Z"}]
+      },
+      "base": "harmonie-2026091312-2h-v1-0a0b0c0d/",
+      "now": "2026-09-13T12:30:00Z",
+      "expected": [{"base": "harmonie-2026091312-2h-v1-1a1b1c1d/", "at": "2026-09-13T12:30:00Z"}]
+    },
+    {
+      "name": "a time that cannot be read counts as now",
+      "previous": {
+        "model": "harmonie",
+        "base": "harmonie-2026091313-2h-v1-1a1b1c1d/",
+        "superseded": [
+          {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "soon"},
+          {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T12:00:00"}
+        ]
+      },
+      "base": "harmonie-2026091314-2h-v1-2a2b2c2d/",
+      "now": "2026-09-13T14:30:00Z",
+      "expected": [
+        {"base": "harmonie-2026091311-2h-v1-9a9b9c9d/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091312-2h-v1-0a0b0c0d/", "at": "2026-09-13T14:30:00Z"},
+        {"base": "harmonie-2026091313-2h-v1-1a1b1c1d/", "at": "2026-09-13T14:30:00Z"}
+      ]
+    }
+  ]
+}

@@ -1,10 +1,12 @@
 """Validate a local snapshot; publish immutable objects before its S3 pointer.
 
-No bucket creation, ACL changes or credentials stored in this module. It does
-delete, but only ever what the pointer manifest it has just replaced named and
-the new one does not: the superseded run directory, listed by its own prefix, or
-the station files a tide manifest no longer references. Nothing a live manifest
-points at can be in that set.
+No bucket creation, ACL changes or credentials stored in this module, and no
+deletes. The run directory a new pointer replaces is not deleted here: readers
+hold the old pointer for minutes after the swap (the browser revalidates every
+five, the CDN caches a pointer for one), and would find its files gone. The new
+pointer names it under `superseded` with the time of the swap instead
+(squares.retire), and the bucket sweep (`prune.py --bucket`) deletes it once the
+grace period is over.
 
 The backend is AWS S3 or any S3-compatible store; Cloudflare R2 is selected by
 passing an endpoint URL. Credentials come from the standard environment chain.
@@ -61,11 +63,11 @@ import sys
 from cadence import expected_hours
 import f5bin
 import f5tile
-from prune import (ARCHIVE_DIRECTORY, bucket_keys, delete_keys, is_archived, manifest_urls,
-                   model_owns, run_directory)
+from prune import bucket_keys, manifest_urls, model_owns
 from registry import MANIFESTS, MODELS, object_root
 import rundir
-from squares import SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, check_base, load_spot_data, run_path
+from squares import (SCHEMA_VERSION as RUN_SCHEMA, SPOT_KEYS, check_base, load_spot_data, retire,
+                     run_path)
 
 MAX_HEIGHT_METRES = 8.0  # Tidal range above LAT; no Irish station approaches this.
 MIN_HEIGHT_METRES = -1.0
@@ -150,11 +152,11 @@ def referenced(public, url, model, depth):
     """Read an immutable object the manifest points at, refusing unsafe paths.
 
     The station file must also be **named for this model**, by the same rule
-    `prune.model_owns` applies — the rule the superseded delete and the bucket
-    sweep already assume. Without it a manifest could reference an object of
-    another model's: `object_root` is shared, so the path itself would not say
-    who owned it, this model would upload into another's namespace, and that
-    other model's next publish would delete it out from under a live pointer.
+    `prune.model_owns` applies — the rule the bucket sweep's protection of a
+    model with no pointer already assumes. Without it a manifest could reference
+    an object of another model's: `object_root` is shared, so the path itself
+    would not say who owned it, and this model would upload into another's
+    namespace.
     A run's files are read by `run_files`, which applies the same rule to its
     directory.
     """
@@ -1006,73 +1008,49 @@ def read_current(s3, bucket, key):
         return None, response["ETag"]
 
 
-def superseded_objects(model, previous, manifest):
-    """What the pointer we are replacing named and the new one does not.
+def pointer_body(manifest, replaced, now):
+    """The bytes of the pointer to put over `replaced`, the one the bucket serves now.
 
-    Returns `(directories, keys)`: the superseded run directory, to be deleted by
-    listing its own prefix, and for a tide manifest the station files it no
-    longer references. Five guards, because this is the only code in the
-    pipeline that deletes from the bucket: the source is one model's own previous
-    pointer (never a listing of the store, so an upload in flight for another
-    model is invisible to it); anything the new manifest still names is excluded
-    first; the path must sit directly under that model's object root; the run
-    directory or station file must be named for this model and for no other,
-    which every adapter satisfies (`weather/ecmwf-RUN-360h-v2-HASH/`,
-    `marine/tides-STATION-…json`) — "harmonie" must not match "harmonie-eps", nor
-    "gfs" match "gfs-wave"; and pointer manifests, the archived manifests and the
-    forecast archive (`archive/`, archive.py) are never touched. A pointer that
-    ever stops using that naming simply stops deleting, and the bucket sweep
-    collects its leftovers instead: the safe direction to fail in.
+    A run pointer names, under `superseded`, the run directory `replaced` named,
+    if it is not this one, and what `replaced` itself still remembered
+    (squares.retire): that is how the bucket sweep knows to keep those
+    directories for their grace period. Worked out against the bucket's pointer,
+    never the work directory's, which a one-shot container does not even have.
     """
-    if not isinstance(previous, dict) or previous.get("model") != model:
-        return [], []
-    root = object_root(model)
-    pointers = set(MANIFESTS.values())
-
-    def ours(path):
-        parts = PurePosixPath(path).parts
-        return (len(parts) == 2 and parts[0] == root and ".." not in parts
-                and not is_archived(path) and path not in pointers
-                and parts[1] != ARCHIVE_DIRECTORY and model_owns(model, parts[1]))
-
-    directories = []
-    try:
-        old = run_directory(previous, MANIFESTS[model])
-    except ValueError:
-        old = None  # An unusable `base` names nothing we may delete.
-    if old is not None:
-        try:
-            new = run_directory(manifest, MANIFESTS[model])
-        except ValueError:
-            new = None
-        if old != new and ours(old):
-            directories.append(old)
-        return directories, []
-    keep = manifest_urls(manifest)
-    keys = [url for url in sorted(manifest_urls(previous) - keep) if ours(url)]
-    return directories, keys
+    pointer = {key: value for key, value in manifest.items() if key != "superseded"}
+    retired = retire(replaced if isinstance(replaced, dict)
+                     and replaced.get("model") == manifest["model"] else None, pointer, now)
+    if retired:
+        pointer["superseded"] = retired
+    return rundir.json_body(pointer)
 
 
-def drop_superseded_objects(s3, bucket, prefix, model, previous, manifest):
-    """Delete the replaced run's objects. Never fails the forecast that just published."""
-    directories, keys = superseded_objects(model, previous, manifest)
-    if not directories and not keys:
+def restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding, public):
+    """Once the pointer names this run, put back any of its objects that went missing.
+
+    The case it exists for: a republish of content published before lands in the
+    same run directory, and `put_immutable` leaves the objects already there
+    untouched — so if that directory had been superseded long enough ago, the
+    bucket sweep can delete it between those uploads and this pointer swap, which
+    no read of the pointers could have stopped. One listing of the directory
+    finds out; it costs a request or two per publish. Never fails the publish:
+    the pointer is in place, and the next publish or a rerun repairs it the same way.
+    """
+    if "base" not in manifest:
         return 0
+    directory = f"{prefix}{PurePosixPath(MANIFESTS[model]).parent}/{manifest['base']}"
     try:
-        stale = [prefix + key for key in keys]
-        for directory in directories:
-            # The trailing slash is what keeps `…-1a2b3c4d/` from also listing a
-            # longer name that merely starts the same way.
-            stale.extend(key for key, _, _ in bucket_keys(s3, bucket, f"{prefix}{directory}/"))
-        deleted = delete_keys(s3, bucket, stale) if stale else 0
+        present = {key for key, _, _ in bucket_keys(s3, bucket, directory)}
+        missing = [(path, data) for path, data in objects if prefix + path not in present]
+        for path, data in missing:
+            put_immutable(s3, bucket, prefix + path, data, state, encoding, public / path)
     except Exception as error:
-        # The forecast is live; these objects are only cost. The bucket sweep gets them.
-        log_event("superseded_delete_failed", model=model, directories=directories,
-                  objects=len(keys), error=error)
+        log_event("run_directory_check_failed", model=model, directory=directory, error=error)
         return 0
-    log_event("superseded_deleted", model=model, run=previous.get("run"),
-              directories=directories, objects=deleted)
-    return deleted
+    if missing:
+        log_event("run_directory_restored", model=model, directory=directory,
+                  objects=len(missing))
+    return len(missing)
 
 
 def already_current(current, incoming):
@@ -1095,10 +1073,15 @@ def already_current(current, incoming):
     return False
 
 
+# What may differ between two pointers to the same bundle: when each was made, and
+# which run directories each happened to replace.
+INCIDENTAL_KEYS = ("generatedAt", "superseded")
+
+
 def same_manifest(current, incoming):
     """The published pointer is byte-for-byte this bundle, give or take when it was made."""
-    return bool(current) and {k: v for k, v in current.items() if k != "generatedAt"} == {
-        k: v for k, v in incoming.items() if k != "generatedAt"}
+    return bool(current) and {k: v for k, v in current.items() if k not in INCIDENTAL_KEYS} == {
+        k: v for k, v in incoming.items() if k not in INCIDENTAL_KEYS}
 
 
 def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, encoding=None):
@@ -1107,6 +1090,7 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
     f5bin.brotli_quality()  # Likewise an unusable compression level.
     public = Path(public).resolve()
     manifest, body, objects = validate_bundle(public, model, max_age_hours, now)
+    run_kind = "base" in manifest
     pointer = prefix + MANIFESTS[model]
     replaced, _ = read_current(s3, bucket, pointer)
     if already_current(replaced, manifest):
@@ -1122,12 +1106,13 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
             if same_manifest(current, manifest):
                 # Our own bundle is up there although we never saw the answer: a PUT
                 # that succeeded server-side and then reported PreconditionFailed on a
-                # retry. The pointer is in place, so the run it replaced is still ours
-                # to delete; without this it would leak until the next bucket sweep.
-                drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
+                # retry. The pointer is in place, so check its directory is whole.
+                restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding,
+                                public)
             return "unchanged-or-newer"
-        replaced = current  # The newest manifest we have seen that this publish replaces.
         condition = {"IfMatch": etag} if etag else {"IfNoneMatch": "*"}
+        if run_kind:
+            body = pointer_body(manifest, current, now or datetime.now(timezone.utc))
         try:
             # The only mutable object. Publish LAST using compare-and-swap.
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
@@ -1146,8 +1131,8 @@ def publish(s3, public, model, bucket, prefix="", max_age_hours=12, now=None, en
                       note="Compare-and-swap unavailable on this backend")
             s3.put_object(Bucket=bucket, Key=pointer, Body=body,
                           ContentType="application/json", CacheControl=POINTER_CACHE)
-        # The new pointer is in place. Only now is the one it replaced junk, and only
-        # now can deleting what it referenced not break a manifest anybody can read.
-        drop_superseded_objects(s3, bucket, prefix, model, replaced, manifest)
+        # The new pointer is in place. The run directory it replaced stays, named
+        # under `superseded`, until the bucket sweep's grace period is over.
+        restore_missing(s3, bucket, prefix, model, manifest, objects, state, encoding, public)
         return "published"
     raise RuntimeError("Manifest changed repeatedly during publish; retry the job")

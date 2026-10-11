@@ -31,7 +31,7 @@ import { dirname, join } from "node:path";
 // The run layout the sample generator writes too; plain JavaScript, so it
 // carries no types of its own.
 // @ts-expect-error -- scripts/runs.mjs has no declaration file.
-import { publishRun } from "../../scripts/runs.mjs";
+import { publishRun, retire } from "../../scripts/runs.mjs";
 import { windModels } from "../src/manifests";
 import { withSpotSquares, type ReadJson } from "../src/spotData";
 import {
@@ -102,7 +102,14 @@ async function writeRun(
     await rename(staging, final);
   }
   await mkdir(weather, { recursive: true });
-  await writeFile(`${out}.tmp`, JSON.stringify(pointer));
+  // The run directory this pointer replaces stays for readers still holding the
+  // old pointer; naming it here is what tells the pruners so (rundir.write_run).
+  const previous = await readFile(out, "utf8")
+    .then((body) => JSON.parse(body) as unknown)
+    .catch(() => null);
+  const retired = retire(previous, pointer as { base: string });
+  const written = retired.length ? { ...pointer, superseded: retired } : pointer;
+  await writeFile(`${out}.tmp`, JSON.stringify(written));
   await rename(`${out}.tmp`, out);
 }
 

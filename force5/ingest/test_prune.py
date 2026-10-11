@@ -26,6 +26,12 @@ def wind_manifest(model, run, directory, hours=(0, 3)):
                       "keys": ["spotForecasts"]}}
 
 
+def superseding(manifest, directory, when):
+    """The pointer, naming `directory` as the run directory it replaced at `when`."""
+    return {**manifest, "superseded": [{"base": f"{directory}/",
+                                        "at": when.strftime("%Y-%m-%dT%H:%M:%SZ")}]}
+
+
 def tide_manifest(run, *stations):
     return {"model": "tides", "kind": "tide", "run": run, "runTime": "2026-09-16T00:00:00Z",
             "coverage": {"from": "2026-09-14T00:00:00Z", "to": "2026-09-23T00:00:00Z"},
@@ -201,6 +207,41 @@ class PrunePublishedTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.prune()
         self.assertTrue(self.orphan_old.exists())
+
+    def test_a_superseded_run_outlives_the_swap_by_its_grace_period(self):
+        # Old by its files, but its pointer only stopped naming it half an hour ago:
+        # a reader may still hold that pointer.
+        self.tree.pointer("weather/harmonie.json", superseding(
+            wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a"),
+            "harmonie-previous-3c3c3c3c", NOW - timedelta(minutes=30)))
+        result = prune.prune_published(self.tree.public, 0, now=NOW)
+        self.assertNotIn("weather/harmonie-previous-3c3c3c3c", result["removed"])
+        self.assertIn({"path": "weather/harmonie-previous-3c3c3c3c",
+                       "reason": "superseded-within-grace"}, result["kept"])
+        self.assertTrue(self.orphan_old.exists())
+        # Past its grace it is junk like any other.
+        result = prune.prune_published(self.tree.public, 0, now=NOW, grace=20)
+        self.assertIn("weather/harmonie-previous-3c3c3c3c", result["removed"])
+        self.assertFalse(self.orphan_old.exists())
+
+    def test_the_grace_period_comes_from_the_environment_and_is_bounded(self):
+        self.tree.pointer("weather/harmonie.json", superseding(
+            wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a"),
+            "harmonie-previous-3c3c3c3c", NOW - timedelta(minutes=30)))
+        with patch.dict(os.environ, {prune.GRACE_ENV: "10"}):
+            self.assertIn("weather/harmonie-previous-3c3c3c3c",
+                          prune.prune_published(self.tree.public, 0, now=NOW,
+                                                dry_run=True)["removed"])
+        for grace in (-1, prune.SUPERSEDED_KEEP_HOURS * 60 + 1):
+            with self.subTest(grace=grace), self.assertRaises(ValueError):
+                prune.prune_published(self.tree.public, 0, now=NOW, grace=grace)
+
+    def test_a_superseded_entry_with_an_unreadable_time_counts_as_just_now(self):
+        manifest = wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a")
+        manifest["superseded"] = [{"base": "harmonie-previous-3c3c3c3c/", "at": "soon"}]
+        self.tree.pointer("weather/harmonie.json", manifest)
+        result = prune.prune_published(self.tree.public, 0, now=NOW)
+        self.assertNotIn("weather/harmonie-previous-3c3c3c3c", result["removed"])
 
 
 class PruneCacheTest(unittest.TestCase):
@@ -472,7 +513,9 @@ class BucketPruneTest(unittest.TestCase):
         result = self.sweep()
         self.assertEqual(len(result["removed"]), 1100 + 2)
         self.assertGreater(self.s3.list_calls, 3)
-        self.assertEqual(self.s3.delete_calls, 2)  # 1102 keys, 1000 to a request.
+        # A directory at a time, 1000 keys to a request: 1100 keys in two, the
+        # previous run's directory in one, and the stale station file in one.
+        self.assertEqual(self.s3.delete_calls, 4)
         for key in keys:
             self.assertNotIn(key, self.s3.objects)
 
@@ -482,6 +525,54 @@ class BucketPruneTest(unittest.TestCase):
         self.assertEqual(result["removed"], ["marine/tides-DUBLIN-previous.json",
                                              "weather/harmonie-previous-3c3c3c3c/000-abc.json"])
         self.assertIn("cdn/weather/harmonie-live-1a1a1a1a/000-abc.json", self.s3.objects)
+
+    def supersede_previous(self, minutes_ago):
+        self.s3.seed("weather/harmonie.json", json.dumps(superseding(
+            wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a"),
+            "harmonie-previous-3c3c3c3c", NOW - timedelta(minutes=minutes_ago))).encode(), NOW)
+
+    def test_a_superseded_run_is_kept_for_its_grace_period_however_old_its_objects(self):
+        # Its objects are a hundred hours old, far past the guard; it is the swap
+        # half an hour ago that matters, because readers still hold that pointer.
+        self.supersede_previous(30)
+        result = self.sweep()
+        self.assertNotIn("weather/harmonie-previous-3c3c3c3c/000-abc.json", result["removed"])
+        self.assertEqual(result["withinGrace"], 1)
+        self.assertIn(self.orphan, self.s3.objects)
+        result = self.sweep(grace=20)
+        self.assertIn("weather/harmonie-previous-3c3c3c3c/000-abc.json", result["removed"])
+        self.assertNotIn(self.orphan, self.s3.objects)
+
+    def test_a_directory_named_again_just_before_its_delete_is_kept(self):
+        # A republish of the same content reuses the directory and leaves its old
+        # objects, and their old LastModified, alone. If its pointer lands after the
+        # sweep's second read, only the read just before the delete can see it.
+        reads = []
+        keep_sets = prune.keep_sets
+
+        def republished(s3, bucket, prefix, now, grace):
+            reads.append(1)
+            if len(reads) == 3:
+                self.s3.seed("weather/harmonie.json", json.dumps(wind_manifest(
+                    "harmonie", "2026091612", "harmonie-previous-3c3c3c3c")).encode(), NOW)
+            return keep_sets(s3, bucket, prefix, now, grace)
+
+        with patch.object(prune, "keep_sets", republished):
+            result = self.sweep()
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertNotIn("weather/harmonie-previous-3c3c3c3c/000-abc.json", result["removed"])
+        self.assertIn(self.orphan, self.s3.objects)
+        self.assertIn("marine/tides-DUBLIN-previous.json", result["removed"])
+
+    def test_a_run_directory_is_judged_by_its_newest_object(self):
+        # Half of a run uploaded long ago and half just now is one run in flight, not
+        # one old object to delete and one young one to keep.
+        young = self.s3.seed("weather/harmonie-previous-3c3c3c3c/003-abc.json", b"{}",
+                             NOW - timedelta(hours=1))
+        result = self.sweep()
+        self.assertNotIn("weather/harmonie-previous-3c3c3c3c/000-abc.json", result["removed"])
+        self.assertIn(self.orphan, self.s3.objects)
+        self.assertIn(young, self.s3.objects)
 
 
 class SweepCommandTest(unittest.TestCase):
@@ -516,6 +607,24 @@ class SweepCommandTest(unittest.TestCase):
         self.assertEqual((code, event["event"]), (0, "prune_complete"))
         self.assertEqual(event["removed"], ["weather/harmonie-previous-3c3c3c3c"])
 
+    def test_the_grace_period_is_an_option_of_both_modes_and_bounded(self):
+        from test_publish_s3 import FakeS3
+        s3 = FakeS3()
+        s3.seed("weather/harmonie.json", json.dumps(superseding(
+            wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a"),
+            "harmonie-previous-3c3c3c3c", datetime.now(timezone.utc) - timedelta(minutes=30)))
+            .encode())
+        s3.seed("weather/harmonie-previous-3c3c3c3c/000-abc.json", b"{}",
+                datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("publish_s3.make_client", return_value=s3):
+            code, event = run_main(["--bucket", "test"])
+            self.assertEqual((code, event["removed"], event["withinGrace"]), (0, [], 1))
+            self.assertEqual(event["graceMinutes"], prune.DEFAULT_GRACE_MINUTES)
+            code, event = run_main(["--bucket", "test", "--grace-minutes", "15"])
+            self.assertEqual(event["removed"], ["weather/harmonie-previous-3c3c3c3c/000-abc.json"])
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            prune.main(["--bucket", "test", "--grace-minutes", "600"])
+
     def test_local_only_options_cannot_be_combined_with_a_bucket(self):
         for extra in (["--max-age-hours", "48"], ["--cache-days", "1"], ["--root", "/tmp"]):
             with self.subTest(extra=extra[0]), contextlib.redirect_stderr(io.StringIO()) as err:
@@ -547,6 +656,18 @@ class WorkerTest(unittest.TestCase):
             self.assertEqual(worker.drop_superseded(tree.public), 1)
             self.assertTrue((tree.public / "weather" / "harmonie-live-1a1a1a1a").exists())
             self.assertFalse((tree.public / "weather" / "harmonie-previous-3c3c3c3c").exists())
+
+    def test_the_run_a_publish_just_replaced_waits_out_its_grace_period(self):
+        import worker
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Tree(directory)
+            tree.pointer("weather/harmonie.json", superseding(
+                wind_manifest("harmonie", "2026091600", "harmonie-live-1a1a1a1a"),
+                "harmonie-previous-3c3c3c3c", datetime.now(timezone.utc)))
+            tree.run_directory("harmonie-live-1a1a1a1a", age_hours=0)
+            tree.run_directory("harmonie-previous-3c3c3c3c", age_hours=0)
+            self.assertEqual(worker.drop_superseded(tree.public), 0)
+            self.assertTrue((tree.public / "weather" / "harmonie-previous-3c3c3c3c").exists())
 
     def test_raw_downloads_go_after_the_job_but_small_state_stays(self):
         import worker

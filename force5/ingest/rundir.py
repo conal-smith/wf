@@ -23,6 +23,7 @@ pointer, so an interrupted import leaves at most an unreferenced staging
 directory for the pruner. `rewrite_run` is the same for a run that is already
 published and whose spot data has been recomputed (backfill_spots.py).
 """
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -31,7 +32,7 @@ import shutil
 
 import f5bin
 import f5tile
-from squares import RUN_DIRECTORY, SQUARE_URL, check_base, run_path, split_spot_data
+from squares import RUN_DIRECTORY, SQUARE_URL, check_base, retire, run_path, split_spot_data
 import timing
 
 HASH_LENGTH = 8
@@ -101,7 +102,16 @@ def write_json(path, value):
         os.replace(temporary, path)
 
 
-def write_run(output, pointer_name, manifest, prefix, spots):
+def previous_pointer(path):
+    """The pointer a new run is about to replace on disk, or None if it cannot be read."""
+    try:
+        value = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def write_run(output, pointer_name, manifest, prefix, spots, now=None):
     """Finish a run the adapter has written into `output/prefix/`; returns the pointer.
 
     `manifest` is the whole manifest as adapters have always built it, with
@@ -112,7 +122,9 @@ def write_run(output, pointer_name, manifest, prefix, spots):
     `weather/<prefix>/frames/000.json`. `spots` are the catalogue entries the
     adapter sampled, which give each spot its square. The pointer written is
     schemaVersion 2: frame urls relative to `base`, the spot data replaced by
-    its square index.
+    its square index, and under `superseded` the run directory the pointer it
+    replaces named (squares.retire), so the pruner leaves that one for readers
+    still holding the old pointer.
     """
     output = Path(output)
     staging = output / prefix
@@ -165,6 +177,10 @@ def write_run(output, pointer_name, manifest, prefix, spots):
         else:
             os.replace(staging, final)
     pointer["base"] = f"{name}/"
+    retired = retire(previous_pointer(output / pointer_name), pointer,
+                     now or datetime.now(timezone.utc))
+    if retired:
+        pointer["superseded"] = retired
     write_json(output / pointer_name, pointer)
     return pointer
 
@@ -239,8 +255,10 @@ def rewrite_run(output, pointer_name, manifest, spots):
     The frames — a wind run's tiles, or a wave run's frame files — are
     hard-linked (or copied) from the run directory it names into a fresh
     staging directory and `write_run` does the rest, so the new run directory is
-    named for its new content and the old one is left whole for the pruner: a
-    reader holding the old pointer can still read everything it names.
+    named for its new content and the old one is left whole: the new pointer
+    names it under `superseded`, so the pruners keep it for their grace period
+    (prune.py) and a reader holding the old pointer can still read everything
+    it names.
     """
     output = Path(output)
     base = check_base(manifest["base"])
@@ -266,6 +284,6 @@ def rewrite_run(output, pointer_name, manifest, spots):
     frames = [dict(frame) if tiled else {**frame, "url": f"{output.name}/{prefix}/{frame['url']}"}
               for frame in manifest.get("frames") or []]
     whole = {key: value for key, value in manifest.items()
-             if key not in ("base", "spots", "tiles")}
+             if key not in ("base", "spots", "tiles", "superseded")}
     whole["frames"] = frames
     return write_run(output, pointer_name, whole, prefix, spots)

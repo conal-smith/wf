@@ -2,9 +2,11 @@
 
 `tests/fixtures/squares.json` is read by this suite and by
 `force5/src/squares.test.ts`, so the two languages cannot name a square
-differently without one of them failing.
+differently without one of them failing; `tests/fixtures/superseded.json` holds
+the `superseded` list a pointer carries to both writers of pointers likewise.
 """
 import copy
+from datetime import datetime
 import json
 from pathlib import Path
 import tempfile
@@ -17,6 +19,7 @@ import squares
 from squares import SQUARE_DEGREES, load_spot_data, spot_square, split_spot_data
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests/fixtures/squares.json"
+SUPERSEDED = Path(__file__).resolve().parents[2] / "tests/fixtures/superseded.json"
 SPOTS = [{"id": "dollymount", "lat": 53.365, "lon": -6.135},
          {"id": "bull", "lat": 53.36, "lon": -6.15},
          {"id": "brandon", "lat": 52.276, "lon": -10.024},
@@ -372,6 +375,34 @@ class RunDirectoryTests(unittest.TestCase):
         whole["spotForecasts"]["keel"][0]["u"] = 42
         rewritten = rundir.rewrite_run(self.output, "harmonie-eps.json", whole, SPOTS)
         self.assertEqual(rewritten["tiles"], pointer["tiles"])
+
+
+
+class SupersededTests(unittest.TestCase):
+    """What a pointer remembers of the run directories it replaced."""
+
+    def test_the_shared_cases(self):
+        for case in json.loads(SUPERSEDED.read_text())["cases"]:
+            with self.subTest(case["name"]):
+                now = datetime.fromisoformat(case["now"].replace("Z", "+00:00"))
+                self.assertEqual(squares.retire(case["previous"], {"base": case["base"]}, now),
+                                 case["expected"])
+
+    def test_write_run_names_the_run_directory_the_pointer_on_disk_named(self):
+        with tempfile.TemporaryDirectory() as directory:
+            weather = Path(directory) / "weather"
+            frameless = dict(whole_manifest(), frames=[])
+            first = rundir.write_run(weather, "harmonie-eps.json", frameless,
+                                     "harmonie-eps-2026091312-2h-v1", SPOTS)
+            self.assertNotIn("superseded", first)
+            changed = copy.deepcopy(frameless)
+            changed["spotForecasts"]["keel"][0]["u"] = 99
+            now = datetime.fromisoformat("2026-09-13T13:00:00+00:00")
+            second = rundir.write_run(weather, "harmonie-eps.json", changed,
+                                      "harmonie-eps-2026091312-2h-v1", SPOTS, now=now)
+            self.assertEqual(second["superseded"],
+                             [{"base": first["base"], "at": "2026-09-13T13:00:00Z"}])
+            self.assertEqual(json.loads((weather / "harmonie-eps.json").read_text()), second)
 
 
 if __name__ == "__main__":

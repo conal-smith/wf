@@ -36,7 +36,7 @@ The website and forecast worker are separate deployments. A forecast refresh mus
 - `force5/ingest/worker.py`: invokes any selection of the registered importers, validates each package and optionally publishes. It exits nonzero on failure and logs JSON completion/failure events. A filesystem lock prevents concurrent jobs using the same scratch directory.
 - `force5/ingest/f5tile.py` and `f5bin.py`: the wind frame as tiles ("F5T1", docs/TILING_DESIGN.md). Every wind adapter publishes its map frames through `f5bin.publish_frame`, which cuts the u/v/gust grids into 128 × 128-cell tiles on a global lattice, with overview levels averaged 2 × 2 until one tile holds the whole domain, each tile stored with a one-cell border as little-endian int16 tenths of a metre per second, row-delta-encoded behind a 24-byte header carrying the run, the forecast hour, the level and the tile's place. It writes every tile of every level for the hour at `t/{level}/{x}/{y}/<HHH>.bin` inside the run's directory, with precompressed `.bin.br` and `.bin.gz` sidecars beside each. `rundir.write_run` then lists the tiles that are empty at every hour as absent and drops them, and gives the pointer a `tiles` block (below). On the real HARMONIE run of 7 October 2026 a frame's nine native tiles are about 85 KB brotli in all (largest 30 KB), its four level-1 tiles 32 KB and its one level-2 tile 10 KB, against 74 KB for the same frame as one whole file. The rounding rule and the wrapping delta arithmetic are f5bin's; `force5/src/f5tile.ts` reads the tiles in the browser and `scripts/f5tile.mjs` writes them for the sample bundles, both pinned to the Python writer by the golden pyramids in `tests/fixtures/f5tile`. Whole frames (`f5-int16-v1`) are no longer published; the format stays as the reference the tiles' level 0 is tested against.
 - `force5/ingest/rundir.py` and `squares.py`: the run directory and the spot squares (see "Object layout" below). Every forecast adapter writes its frames into a staging directory as it goes and finishes with one call, `write_run`, instead of writing its pointer itself: it moves the per-spot data into one file per 2° square, drops anything the run does not reference, names the directory for the hash of what is in it, renames it and only then writes the pointer. `squares.load_spot_data` is the one Python reader of the squares, and `force5/src/spotData.ts` the one TypeScript reader.
-- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the tiles, frames and squares the pointer names — for a wind run every tile its `tiles` block does not call absent, at every hour. The `tiles` block must match the grid (`f5tile.check_tiles`: the grid on the global lattice, exactly the levels and cell sizes the grid gives, absent tiles inside their ranges, gust blocks exactly when some frame has a gust window). Then every tile is checked: its header must name the run, the hour, the level and the place it is published as, carry a gust block exactly where the frame has a gust window, and hold only plausible values, and a native tile may leave no cell of the grid missing; the spot data read back from the squares is checked as the whole manifest used to be. A tile carries no model, so the **model** comes from the path — the run directory must be named for this model, by the same rule the superseded delete uses — and the directory's hash proves the bytes are the ones published under that name. What is therefore _not_ checked: that a tile's numbers are this model's rather than another's, if someone builds one model's run directory out of another's tiles, nor that an overview tile is the mean of the native ones. It uploads one encoding per immutable object: a `.bin` tile brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same tile twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
+- `force5/ingest/publish_s3.py`: validates the whole run directory before uploading anything: it must sit beside the pointer, be named for this model, hash to the name it carries and hold exactly the tiles, frames and squares the pointer names — for a wind run every tile its `tiles` block does not call absent, at every hour. The `tiles` block must match the grid (`f5tile.check_tiles`: the grid on the global lattice, exactly the levels and cell sizes the grid gives, absent tiles inside their ranges, gust blocks exactly when some frame has a gust window). Then every tile is checked: its header must name the run, the hour, the level and the place it is published as, carry a gust block exactly where the frame has a gust window, and hold only plausible values, and a native tile may leave no cell of the grid missing; the spot data read back from the squares is checked as the whole manifest used to be. A tile carries no model, so the **model** comes from the path — the run directory must be named for this model, by the same rule the bucket sweep's protection of a model with no pointer uses — and the directory's hash proves the bytes are the ones published under that name. What is therefore _not_ checked: that a tile's numbers are this model's rather than another's, if someone builds one model's run directory out of another's tiles, nor that an overview tile is the mean of the native ones. It uploads one encoding per immutable object: a `.bin` tile brotli-encoded as `application/octet-stream` with `Content-Encoding: br` (`FORCE5_BUCKET_ENCODING=gzip` switches it), JSON gzipped as before, with the sha256 metadata always taken over the uncompressed bytes. It reuses the `.br`/`.gz` sidecar the adapter already wrote — after decompressing it and confirming it is exactly these bytes — rather than compressing the same tile twice. Then the public pointer with an ETag conditional write. The sidecars are for the local Caddy deployment only and are never uploaded as objects of their own.
 - `VITE_FORECAST_BASE_URL`: optional frontend build-time CDN root. All forecast manifests and frames use it; the spot catalogue and application assets remain on the website origin.
 
 **Published sizes recorded per model below predate the binary frames and the tiles** and were measured when wind frames were JSON. Divide a wind model's published figure by roughly eleven for one whole binary frame on disk plus its sidecars, or by three against what a browser was sent for one; a frame's tiles at every level are about 1.7 times its whole binary frame on disk (127 KB brotli against 74 KB for HARMONIE), and a browser fetches one level of them for its view. Wave and weather runs no longer publish frames at all.
@@ -443,7 +443,7 @@ resampled, so a truncated or interpolated cadence cannot publish under either id
 
 1. Create a private S3 bucket with Block Public Access and versioning enabled. The application data is public through CloudFront, not public bucket ACLs.
 2. Create a CloudFront distribution using S3 Origin Access Control. Use HTTPS, for example `forecast.wingfoil.ie`, with a suitable certificate/DNS record. Enable compression.
-3. Give the **task role** only the required bucket access. Adapt `force5/deploy/s3-task-policy.example.json`; if using `S3_PREFIX`, include it in the object ARN. `GetObject` supports manifest reads and collision checks; `ListBucket` allows missing-key reads to return 404 instead of ambiguous 403. No delete permission is needed. Configure separate execution-role permissions for ECR pulls and CloudWatch logs. KMS-encrypted buckets require additional scoped KMS permissions.
+3. Give the **task role** only the required bucket access. Adapt `force5/deploy/s3-task-policy.example.json`; if using `S3_PREFIX`, include it in the object ARN. `GetObject` supports manifest reads and collision checks; `ListBucket` allows missing-key reads to return 404 instead of ambiguous 403, and lets the publisher check its run directory is whole after the swap. The publisher needs no delete permission; the bucket sweep (`prune.py --bucket`), which deletes superseded runs after their grace period, does. Configure separate execution-role permissions for ECR pulls and CloudWatch logs. KMS-encrypted buckets require additional scoped KMS permissions.
 4. Configure CORS on S3/CloudFront for the actual website origins. `s3-cors.example.json` is a starting point. Allow GET/HEAD; expose ETag if needed. Ensure CloudFront forwards `Origin` and caches responses consistently, or use a response-headers policy with the intended allowed origins. Do not put AWS credentials in the browser.
 5. Build the image, push it to your ECR repository and register an ECS Fargate task definition. Start with 2 vCPU / 4 GiB RAM and 20 GiB ephemeral storage, then measure actual runtime and peak memory. Use an image digest for deployments and a tested dependency/base-image lock for reproducible releases.
 6. Give tasks outbound HTTPS access to providers, ECR, S3 and logging (appropriate public-subnet/public-IP routing or private-subnet NAT/endpoints). No inbound port is needed. Use a fresh writable scratch directory per task; persistent shared storage is not required.
@@ -523,8 +523,9 @@ explicit endpoint URL; nothing else differs from S3.
 `FORCE5_PUBLISHED_RUN` is set **by** the worker for the adapters that read it and must
 not be set in a job's environment; the worker clears any inherited value.
 
-Unlike the AWS design, the token **does** need `DeleteObject`: the publisher removes
-the run it supersedes, and the sweep removes failed uploads.
+Unlike the AWS design, the token **does** need `DeleteObject`, for the sweep: it removes
+superseded runs once their grace period is over, and failed uploads. The publisher itself
+deletes nothing.
 
 ### One-shot invocations, as Home Compute runs them
 
@@ -567,7 +568,7 @@ docker run --rm --env-file r2.env force5-forecast:latest --models tides $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models blend $R2
 
 # Verification (docs/VERIFICATION.md): observed wind hourly; the archive hourly after
-# the blend, before the next runs delete what it copies; the scores once a day
+# the blend, before the sweep deletes what it copies; the scores once a day
 docker run --rm --env-file r2.env force5-forecast:latest --models wind-obs $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models forecast-archive $R2
 docker run --rm --env-file r2.env force5-forecast:latest --models verify $R2
@@ -682,8 +683,9 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
   the same hash fixture, and the pointer last. The worker then validates it as it
   validates a model's run (the directory's hash, exactly the squares the pointer
   lists, then `validate_blend_bundle` over the places merged back in), uploads the
-  squares, swaps the pointer and deletes the run directory it replaced; the pruner
-  keeps the blend's directory by its `base`, like any model's.
+  squares and swaps the pointer, which names the run directory it replaced under
+  `superseded`; the pruners keep the blend's directory by its `base`, and the one it
+  replaced for the grace period, like any model's.
 - **Its run** is the hour it was worked out, so the hourly job (`:05`, after HARMONIE's
   `:45` slot) publishes a new one each hour; `maxAgeHours` is 3.
 - **The browser** reads the pointer when the map mounts and revalidates it every five
@@ -712,32 +714,50 @@ they cannot say — is in [VERIFICATION.md](VERIFICATION.md).
 
 ### Deleting what is superseded
 
-`publish()` used to only add objects, so the bucket grew for ever. It now deletes, and
-the rules are deliberately narrow:
+A run directory is deleted once nothing can still want it, and not at the moment its
+pointer moves on. Readers hold a pointer for a while after a swap: the browser
+revalidates every five minutes (`MANIFEST_REVALIDATE_MS`), the CDN caches a pointer for
+a minute (`s-maxage=60`), the forecast server for five (`SOURCE_TTL_MS`), and a thread's
+spot card for five. Deleting the old directory right after the swap, as the publisher
+used to, sent each of them to 404s for minutes, and the model read as unavailable. So,
+as MET Norway keeps an old tileset at least 45 minutes:
 
-- The set is computed from **one model's own previous pointer manifest** — the one
-  this publish has just replaced, which the publisher had already read for its
-  compare-and-swap. There is **no bucket listing**, so an upload in flight on another
-  machine for another model cannot be seen, let alone deleted.
-- Anything the **new** manifest still references is removed from the set first.
-- A path must sit directly under that model's own object root (`weather/` or
-  `marine/`) and be a run directory or station file named for **this** model and no
-  other — `harmonie` cannot touch `harmonie-eps-…`, `gfs` cannot touch
-  `gfs-wave-…`. Pointer manifests, anything under `manifests/` and anything under the
-  forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted; an
-  absolute, `..`-bearing or `https://` URL is left alone. An adapter that ever stopped
-  naming its objects `<model>-…` would simply stop deleting, and the sweep would collect
-  its leftovers — the safe direction to fail in.
-- It happens **after** the new pointer is successfully in place, never before. A
-  failed or racing publish deletes nothing at all.
-- For a forecast it is the replaced pointer's **run directory** (`base`), deleted by
-  listing exactly its own prefix with a trailing `/`, so `…-1a2b3c4d/` never lists a
-  longer name that starts the same way. A republish of the same content names the same
-  directory and deletes nothing. For tides it is the station files the old pointer
-  named and the new one does not.
-- Deletes are batched (`delete_objects`, 1000 keys a request). A failure is logged as
-  `superseded_delete_failed` and **does not fail the forecast that just published** —
-  the data is live, the leftovers are only cost, and the sweep collects them.
+- **The pointer remembers what it replaced.** A pointer whose `base` replaces another
+  names the old one under `superseded`, with the time of the swap:
+  `"superseded": [{"base": "harmonie-2026101106-61h-v3-1a2b3c4d/", "at": "2026-10-11T08:52:00Z"}]`.
+  The publisher works the list out from the pointer **in the bucket** it is replacing,
+  inside the same compare-and-swap, so the record and the swap are one write
+  (`publish_s3.pointer_body`, `squares.retire`); `rundir.write_run` does the same from
+  the pointer on disk for the local deployment. Entries are kept for six hours, at most
+  24 of them, and a directory the new pointer names again is dropped from the list.
+  Readers ignore the field.
+- **The grace period** is 60 minutes by default: `prune.py --grace-minutes`, or
+  `FORCE5_SUPERSEDED_GRACE_MINUTES`, for both the local prune and the bucket sweep, at
+  most the six hours a pointer remembers. A directory any pointer superseded less than
+  that long ago is kept whatever its age; an entry whose time cannot be read counts as
+  just now.
+- **The publisher deletes nothing.** The bucket sweep below deletes a superseded run
+  directory once its grace is over and it has passed the sweep's own age guard. Locally,
+  the worker's prune after each publish keeps the replaced run for the grace period and
+  the hourly prune job collects it.
+- **A reused directory is put back.** The same content always lands in the same
+  directory, and `put_immutable` leaves an object that is already there alone, so a
+  republish of content superseded long ago reuses a directory the sweep may be deleting
+  at that very moment. The sweep reads the pointers again just before each directory it
+  deletes, which catches a pointer that already names it; the publisher, once its own
+  pointer is in place, lists its run directory once and puts back anything missing
+  (`publish_s3.restore_missing`, logged `run_directory_restored`), which catches the
+  rest.
+- The guards on what may be deleted at all are unchanged: a path must sit directly under
+  a data root, pointer manifests, anything under `manifests/` and anything under the
+  forecast archive's `archive/` ([VERIFICATION.md](VERIFICATION.md)) are never deleted,
+  and a `superseded` entry can only name a run directory beside its own pointer
+  (`squares.check_base`).
+- **Tide station files** are not run directories and have no grace list: a station file
+  the tide pointer no longer names is deleted by the next sweep once it is past the age
+  guard. Their names change once a day, so a reader holding yesterday's tide pointer for
+  the minutes after the swap can miss its curve; the forecast server says the tides
+  could not be read just now and the next read recovers.
 
 **Manifests are not archived.** Earlier versions also wrote every published manifest to
 `<root>/manifests/<model>/RUN-HASH.json`. Nothing read them, and because only the newest
@@ -747,9 +767,10 @@ copies from before the change stay until they are deleted by hand.
 
 ### The bucket sweep
 
-A failed or interrupted upload leaves objects nothing references. `prune.py --bucket`
-is the bucket-side equivalent of the local `prune_published`, sharing its
-`manifest_urls`/`referenced` logic:
+The sweep deletes superseded run directories once their grace is over, and the objects
+a failed or interrupted upload left that nothing references. `prune.py --bucket` is the
+bucket-side equivalent of the local `prune_published`, sharing its
+`manifest_urls`/`referenced`/`retiring` logic:
 
 1. Read **every** registry pointer manifest from the bucket. A manifest that is present
    but unreadable **aborts the sweep without deleting anything**, because everything it
@@ -759,22 +780,28 @@ is the bucket-side equivalent of the local `prune_published`, sharing its
    under `noPointer`/`protectedModels`. That covers a first run, a model being
    onboarded and a pointer deleted by hand.
 2. List every object under each data root, **paginated**.
-3. Delete an object only when it is unreferenced, is not a pointer or an archived
-   manifest, and its `LastModified` is **older than `--min-age-hours` (default 6, or
-   `FORCE5_SWEEP_MIN_AGE_HOURS`)**. That guard is the important one: jobs run on
-   different machines, a run's frames go up before its manifest does, and six hours is
-   longer than any job timeout, so a run another machine is still uploading is never
-   mistaken for wreckage.
+3. Keep anything referenced, a pointer or an archived manifest, and any run directory a
+   pointer superseded within the grace period (counted as `withinGrace`). A run
+   directory is judged whole, by its newest object: it is deleted only when every object
+   in it is **older than `--min-age-hours` (default 6, or
+   `FORCE5_SWEEP_MIN_AGE_HOURS`)**, so the sweep never takes half a run. That guard is
+   what protects an upload in flight: jobs run on different machines, a run's files go
+   up before its pointer does, and six hours is longer than any job timeout, so a run
+   another machine is still uploading is never mistaken for wreckage.
 4. A two-segment `.json` object that reads like a pointer manifest is kept even for a
    model the registry has not adopted yet, exactly as on disk. So is anything that
    cannot be read: the sweep never deletes on a guess.
 5. **Read the pointer manifests again, after the listing**, and delete only what is
-   unreferenced in both reads. The listing is slow and paginated, and the age guard
-   cannot cover everything: `put_immutable` leaves an object that is already there
-   untouched, so a stable key a new run re-references — a tide station file, whose name
-   only changes with the day — keeps its old `LastModified` and would look both
-   unreferenced and long past the guard. Both reads abort on an unreadable manifest and
-   both contribute to `noPointer`.
+   unreferenced, and past its grace, in both reads. Then, **immediately before deleting
+   each run directory, read them once more** and skip it if any pointer now names or
+   has just superseded it. The listing is slow and paginated, and the age guard cannot
+   cover everything: `put_immutable` leaves an object that is already there untouched,
+   so a stable key a new run re-references — a tide station file, whose name only
+   changes with the day, or a run directory a republish of the same content reuses —
+   keeps its old `LastModified` and would look both unreferenced and long past the
+   guard. Every read aborts on an unreadable manifest and contributes to `noPointer`.
+   The last read costs a GET per pointer per directory deleted; the sweep runs a few
+   times a day and deletes a few dozen directories at most.
 
 `--bucket` must be given **explicitly**; it is deliberately not defaulted from
 `S3_BUCKET`, because the scheduler's environment carries that for the worker and
@@ -784,11 +811,11 @@ error rather than a silent no-op, for the same reason.
 
 `--dry-run` reports without deleting and is worth running first. The command logs
 `sweep_complete` (or `sweep_failed`, exit 1) with `removed`, `keptObjects`,
-`withinGuard`, `protectedObjects`, `protectedModels`, `noPointer` and `freedBytes` —
-note that the **local** sweep's `kept` is a list of reasons while the bucket sweep's
-`keptObjects` is a count, hence the different key. `prune` is already in the
-scheduler's `KNOWN_COMMANDS`, so the local deployment can schedule it with
-`args = ["--bucket", "..."]` and no scheduler change.
+`withinGuard`, `withinGrace`, `graceMinutes`, `protectedObjects`, `protectedModels`,
+`noPointer` and `freedBytes` — note that the **local** sweep's `kept` is a list of
+reasons while the bucket sweep's `keptObjects` is a count, hence the different key.
+`prune` is already in the scheduler's `KNOWN_COMMANDS`, so the local deployment can
+schedule it with `args = ["--bucket", "..."]` and no scheduler change.
 
 ### CORS and cache headers
 
@@ -875,15 +902,16 @@ Audited against every entry in `registry.py`:
 ### Still to verify against a live bucket
 
 No R2 credentials exist, so **none of this has been run against real R2**. Everything
-above is covered by unit tests against a fake S3 (superseded deletes, a tolerated
-delete failure, the sweep's age guard, unreadable-manifest abort and pagination, the
+above is covered by unit tests against a fake S3 (superseded runs kept for their
+grace, a reused directory put back, the sweep's age guard and its reads before each
+delete, unreadable-manifest abort and pagination, the
 conditional-put fallback and collision detection without it, and the unchanged-run
 skip path), and no test makes a network call. Before this is called live: create the
 bucket and token, confirm whether R2 accepts `If-None-Match: *` (and remove the
 fallback if it does), check the CORS and cache-rule behaviour through the CDN, run one
-job of each model end to end, confirm a second run really deletes the first run's
-objects, and run the sweep with `--dry-run` and read its output before letting it
-delete.
+job of each model end to end, confirm the sweep deletes the first run's objects once a
+second run has been live past the grace period, and run the sweep with `--dry-run` and
+read its output before letting it delete.
 
 ## Object layout and publication safety
 
@@ -1036,7 +1064,7 @@ The publisher:
 
 1. Rejects missing or unreferenced files, a run directory whose content does not hash to its name, nonfinite/invalid vectors and spot series, mixed model/run/time/grid identities, unsafe paths and stale/expired runs.
 2. Uploads every file of the run directory with `If-None-Match: *`, brotli for `.bin` tiles and gzip for JSON, and a SHA-256 metadata value. On an existing key, it checks that hash rather than overwriting it.
-3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. Then it deletes the run directory the replaced pointer named, if it is not this one.
+3. Reads the current pointer and conditionally writes using its ETag (`If-Match`), or `If-None-Match` for the initial publication. The pointer it writes names the run directory the replaced pointer named, if it is not this one, under `superseded` with the time of the swap; nothing is deleted. Then it lists its own run directory once and puts back anything a sweep removed between its uploads and the swap (a republish that reused a directory superseded long ago).
 4. Rechecks on a write race. An older run cannot replace a newer run, and a three-hourly job cannot replace hourly data for the same run. Identical output is a no-op.
 
 These use [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html). A failed upload can leave unreferenced frame objects, but never an intentionally published half-complete forecast. The last successfully published model remains available. Models are independent transactions, not a simultaneous cross-model switch.
@@ -1056,7 +1084,7 @@ Set the frontend environment before building:
 VITE_FORECAST_BASE_URL=https://forecast.wingfoil.ie/
 ````
 
-The browser fetches the manifest on page load and model changes, then reads the immutable tiles the view needs, at the level the screen can show (force5/src/tiledField.ts). It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A tab that is still reading the previous run when its frames are deleted does the same thing on the failed frame request: it loads the newest run at the selected time (`loadNewerRun`), so superseded runs do not need to be kept for open tabs.
+The browser fetches the manifest on page load and model changes, then reads the immutable tiles the view needs, at the level the screen can show (force5/src/tiledField.ts). It **also revalidates an already-open tab**: every five minutes while the tab is visible, and on `visibilitychange`/`focus` once that long has passed, it refetches the active model's manifest with `cache: "no-cache"` (`clearManifestCache(id)` + `loadManifest`). A `run` that matches the displayed one costs one small JSON and changes nothing on screen. A newer one is loaded whole through the same atomic `loadModel` transaction a model switch uses — manifest plus the frame nearest the **selected** valid time — and committed together, so no reader ever sees two runs mixed. The selected time is preserved, and a check that comes due while the reader is scrubbing, playing or switching model is deferred and retried a minute later. The blend's other manifests are swept on the same cadence. A failed background check is logged and otherwise silent: the run already on screen stays. The one visible sign is a dismissible "Updated to the HH:MM UTC run" notice. The browser already labels stale/expired snapshots. A superseded run directory is kept for an hour after its pointer stopped naming it (see "Deleting what is superseded"), well past the five minutes a tab, the CDN (one) or the forecast server (five) holds a pointer, so a tab that has not yet seen the swap still reads the run it shows. Should a tile or a square fail anyway, the reader re-reads that model's pointer and tries once more against the run it names now: a failed frame request loads the newest run at the selected time (`loadNewerRun`).
 
 ## Monitoring, retries and recovery
 
@@ -1065,8 +1093,8 @@ The browser fetches the manifest on page load and model changes, then reads the 
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. Irish Shelf SWAN runs once a day and is sometimes a day late, so only a published run older than about 40 hours is worth alerting on; a single missed attempt is normal.
 - Measure source publication lag before selecting alert thresholds. For HARMONIE, an initial warning around 3–4 hours without a newer published run is worth testing; keep a separate threshold for ICON-EU's longer cycle. For GFS, allow for the 6-hourly cycle plus its 3.5–5.5 hour publication delay before alerting: a published run older than about 12 hours is a genuine failure. GFS-Wave follows the same cycles with a similar delay, so it shares that threshold; its full 240-hour listing appears later than the wind files, and a wave task started too early simply skips the cycle. GEFS is slower still: its 0.25° members finish 4.5–6 hours after run time and not in member order, so a GEFS run one cycle behind the newest is normal and only a published run older than about 18 hours is worth alerting on.
 - After first publication, fetch the manifest and every referenced frame through CloudFront; check HTTP status, encoding, CORS, timestamps and numerical validity. Check switching, hourly scrubbing, arbitrary-point forecasts and unavailable-gust handling on phone/desktop.
-- Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's frames are deleted as soon as the newer run is live, so there is nothing to roll back to.
-- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. The publisher now does the same in the bucket — it deletes what the pointer manifest it just replaced referenced and the new one does not, after the new pointer is in place — and `prune.py --bucket` sweeps objects that failed uploads left behind, guarded by age. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
+- Keep S3 versioning. For rollback, an operator can restore a pointer version whose frames still exist. The normal worker deliberately refuses an older-run rollback. **This does not carry over to the R2 design**, which keeps only the newest run and uses no object versioning: a superseded run's directory is deleted once its hour of grace is over, so there is nothing to roll back to after that.
+- Do not blindly apply age-based deletion to all `weather/*` objects: an outage could leave the active manifest referring to old frames. Start without deletion, then implement garbage collection that protects current manifests and their referenced frames, and never touches a run that is still being written. Never expire the latest pointers. `force5/ingest/prune.py` implements exactly that for a filesystem: the worker calls it as soon as a new run is published, keeping only the newest run per model, and the local deployment schedules it hourly as a backstop. In the bucket the publisher deletes nothing: its new pointer names the run directory it replaced under `superseded`, and `prune.py --bucket` deletes that once the grace period is over, along with objects that failed uploads left behind, guarded by age. Locally the worker's prune keeps the replaced run for the same grace period and the hourly job collects it. See "Cloudflare R2 and one-shot batch containers" above. A bucket lifecycle rule is still not a substitute, because it cannot see which frames the current manifest references.
 - Preserve provider attribution, source links and modification notices in manifests and the UI. Force5 processes provider output; it is not itself a replacement numerical weather model.
 
 ### Where a job's time goes
@@ -1084,7 +1112,7 @@ the file the worker names in `FORCE5_TIMINGS_FILE`, and the worker adds its own 
 | `decode` | adapter | GRIB decode, validation, crop, regrid and spot sampling |
 | `write` | adapter | encoding frames, their sidecars and the manifest, on local disk |
 | `validate` | worker | `validate_bundle`: every referenced object re-read and checked |
-| `publish` | worker | the bucket upload (nothing without one) and the superseded-run delete |
+| `publish` | worker | the bucket upload (nothing without one), the pointer swap and the check that its run directory is whole |
 
 `archive` and `score` are the forecast archive's and the verification's single stages.
 Each phase has `seconds` of wall time, and may have `requests`, `bytes`, `workers` (the
@@ -1127,6 +1155,6 @@ event in the log is the record.
 
 ## Validation status / remaining launch work
 
-The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded-object deletion, a tolerated delete failure, the conditional-put fallback, the bucket sweep (age guard, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
+The publisher has local fake-S3 tests for publication order, missing/corrupt input, upload failure, collisions, idempotency, competing newer runs, superseded runs named and kept, a reused directory put back, the conditional-put fallback, the bucket sweep (grace period, age guard, the reads before each delete, unreadable-manifest abort, pagination, prefix) and the unchanged-run skip path. **No credentials for Cloudflare R2 exist, so nothing has been run against a real bucket of any kind.** The frontend supports a separate forecast CDN. The Docker image definition is supplied, but **Docker was not installed in the development environment**, so an actual image build/run and real AWS end-to-end publication remain required.
 
 Open-tab refresh is implemented in the browser and covered by unit and end-to-end tests; what remains untested is its behaviour against a **real** CDN, where a manifest served from a cache with a minimum TTL above zero can hide a new run from a tab for as long as that TTL. Also required before calling the site continuously live: provision the cloud resources, test IAM/CORS/cache policies (including that the latest-pointer TTL is short enough for the five-minute revalidation to see a new run), configure alerts/retries, benchmark hourly processing, and review provider licensing/attribution for the intended service. The current website is still a saved-snapshot prototype until those pieces are deployed.

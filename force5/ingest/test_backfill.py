@@ -220,9 +220,11 @@ class BackfillTests(unittest.TestCase):
         after = bundle.read_pointer()
         self.assertEqual(json.dumps(bundle.read()["spotForecasts"]["kept"]), before)
         # Nothing else about the pointer moves, including the key order, except the
-        # run directory it names and the squares that now hold every spot.
-        moved = ("base", "spots")
-        self.assertEqual([key for key in after], [key for key in pointer])
+        # run directory it names, the squares that now hold every spot, and the
+        # run directory it replaced, named last under `superseded`.
+        moved = ("base", "spots", "superseded")
+        self.assertEqual([key for key in after], [key for key in pointer] + ["superseded"])
+        self.assertEqual([entry["base"] for entry in after["superseded"]], [pointer["base"]])
         self.assertEqual({key: value for key, value in after.items() if key not in moved},
                          {key: value for key, value in pointer.items() if key not in moved})
 

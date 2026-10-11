@@ -16,7 +16,7 @@ import unittest
 
 import fetch_blend
 from prune import prune_published, referenced, read_manifests
-from publish_s3 import publish, superseded_objects, validate_bundle
+from publish_s3 import publish, validate_bundle
 from registry import MANIFESTS, MODELS
 from runfixtures import publish_whole, read_whole
 from squares import spot_square
@@ -130,17 +130,19 @@ class BlendRunTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "content its name claims"):
             self.check()
 
-    def test_the_pruner_keeps_the_served_run_and_drops_the_one_it_replaced(self):
+    def test_the_pruner_keeps_the_served_run_and_drops_the_one_it_replaced_after_its_grace(self):
         first = self.publish(blend())
         second = self.publish(blend(run="2026091401", runTime="2026-09-14T01:00:00Z"))
         self.assertNotEqual(first["base"], second["base"])
         _, directories = referenced(read_manifests(self.public))
         self.assertIn(f"weather/{second['base'][:-1]}", directories)
-        removed = prune_published(self.public, 0)["removed"]
+        self.assertEqual([entry["base"] for entry in second["superseded"]], [first["base"]])
+        self.assertEqual(prune_published(self.public, 0)["removed"], [])
+        removed = prune_published(self.public, 0, grace=0)["removed"]
         self.assertEqual(removed, [f"weather/{first['base'][:-1]}"])
         self.assertTrue((self.weather / second["base"]).is_dir())
 
-    def test_publishing_uploads_the_squares_then_the_pointer_and_deletes_the_last_run(self):
+    def test_publishing_uploads_the_squares_then_the_pointer_and_keeps_the_last_run(self):
         s3 = FakeS3()
         first = self.publish(blend())
         self.assertEqual(publish(s3, self.public, "blend", "test", max_age_hours=3, now=NOW),
@@ -151,12 +153,15 @@ class BlendRunTests(unittest.TestCase):
         later = datetime(2026, 9, 14, 1, 20, tzinfo=timezone.utc)
         second = self.publish(blend(run="2026091401", runTime="2026-09-14T01:00:00Z",
                                     generatedAt="2026-09-14T01:20:00Z"))
-        self.assertEqual(superseded_objects("blend", first, second),
-                         ([f"weather/{first['base'][:-1]}"], []))
         self.assertEqual(publish(s3, self.public, "blend", "test", max_age_hours=3, now=later),
                          "published")
-        self.assertFalse([key for key in s3.objects if key.startswith(f"weather/{first['base']}")])
+        # The run it replaced stays for readers still holding the old pointer, which
+        # names it; the bucket sweep deletes it once its grace period is over.
+        self.assertTrue([key for key in s3.objects if key.startswith(f"weather/{first['base']}")])
         self.assertTrue([key for key in s3.objects if key.startswith(f"weather/{second['base']}")])
+        served = json.loads(s3.objects["weather/blend.json"]["Body"])
+        self.assertEqual(served["superseded"],
+                         [{"base": first["base"], "at": "2026-09-14T01:20:00Z"}])
 
 
 def pointer(model, squares):

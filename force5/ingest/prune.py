@@ -1,32 +1,46 @@
 """Delete published objects no current manifest references, and aged raw cache.
 
-Only the newest run of a model is ever served, so a run directory or station
-file is junk as soon as no pointer manifest references it. A forecast pointer
-(schemaVersion 2) references exactly one run directory, its `base`, and every
-file inside it — frames and spot squares alike — lives or goes with it; a tide
-pointer references its station files one by one. The worker calls
-`prune_published` itself the moment a new run is published; this script is the
-scheduled backstop that also ages out the raw cache. It takes the workspace lock
-and skips the sweep while an import holds it, because a run that is still being
-written is unreferenced too. `--max-age-hours` can keep unreferenced objects for
-a while longer; the default is not to. Anything that reads like a pointer
-manifest is never deleted, even for a model the registry does not know yet, and
-an unreadable registry manifest aborts the whole sweep rather than risking
-objects that are still in use.
+Only the newest run of a model is ever served, but a reader can hold the
+pointer it replaced for a while: the browser revalidates pointers every five
+minutes, the CDN caches them for a minute, the forecast server for five. So a
+pointer that swaps its run directory for another names the old one under
+`superseded`, with the time of the swap (squares.retire), and a run directory is
+junk only once no pointer references it **and** no pointer superseded it less
+than the grace period ago (`--grace-minutes`, default 60, or
+`FORCE5_SUPERSEDED_GRACE_MINUTES`; MET Norway keeps an old tileset at least 45).
+A forecast pointer (schemaVersion 2) references exactly one run directory, its
+`base`, and every file inside it — tiles and spot squares alike — lives or goes
+with it; a tide pointer references its station files one by one. The worker
+calls `prune_published` itself the moment a new run is published; this script
+is the scheduled backstop that also ages out the raw cache. It takes the
+workspace lock and skips the sweep while an import holds it, because a run that
+is still being written is unreferenced too. `--max-age-hours` can keep
+unreferenced objects for a while longer; the default is not to. Anything that
+reads like a pointer manifest is never deleted, even for a model the registry
+does not know yet, and an unreadable registry manifest aborts the whole sweep
+rather than risking objects that are still in use.
 
 `--bucket` runs the same sweep against the object store instead of a work
 directory, for the one-shot deployment where the disk is empty at the start of
-every job and the bucket is the only state there is. There is no workspace lock
-to take, because the importers are on other machines, so three other things stand
-in for it: an unreferenced object is deleted only once it is older than
-`--min-age-hours` (default 6, longer than any job timeout), the pointer manifests
-are read again after the listing and an object must be unreferenced in both
-reads, and a model whose pointer manifest is absent altogether has everything
-named for it kept, because "unreferenced" tells us nothing about a model that has
-published nothing. Failed or interrupted uploads are what the bucket sweep is
-for; the ordinary superseded run is deleted by the publisher itself, which needs
-no listing. `--bucket` is never defaulted from the environment: it must be asked
-for, or a scheduled local retention job could silently become a bucket sweep.
+every job and the bucket is the only state there is. It is also what deletes a
+superseded run from the bucket: the publisher no longer does, because the moment
+it swaps a pointer is exactly when readers still hold the old one. There is no
+workspace lock to take, because the importers are on other machines, so other
+things stand in for it: an unreferenced run directory is deleted only once its
+newest object is older than `--min-age-hours` (default 6, longer than any job
+timeout) and no pointer superseded it within the grace period; the pointer
+manifests are read again after the listing, and once more immediately before
+each directory is deleted, and it must be unreferenced in every read; and a
+model whose pointer manifest is absent altogether has everything named for it
+kept, because "unreferenced" tells us nothing about a model that has published
+nothing. Age alone is never enough: `put_immutable` leaves an object that is
+already there untouched, so a directory a republish reuses keeps its old
+LastModified. The last read before the delete is what catches a reuse that has
+reached its pointer, and the publisher, once its pointer is in place, puts back
+anything of its run directory a sweep removed meanwhile
+(`publish_s3.restore_missing`). `--bucket` is never defaulted from the
+environment: it must be asked for, or a scheduled local retention job could
+silently become a bucket sweep.
 
 Nothing under `archive/` (archive.py) is ever touched, in either mode: it is not a
 data root, both sweeps skip it by name, and `delete_keys` refuses to send any key
@@ -42,7 +56,7 @@ import shutil
 import sys
 
 from registry import MANIFESTS, MODELS
-from squares import check_base, run_path
+from squares import SUPERSEDED_KEEP_HOURS, check_base, run_path, superseded_entries
 from workspace import workspace_lock
 
 DATA_ROOTS = sorted({PurePosixPath(path).parts[0] for path in MANIFESTS.values()})
@@ -61,6 +75,11 @@ DEFAULT_CACHE_DAYS = 3.0
 # so six hours is comfortably longer than any upload that could still be in flight
 # for a run whose pointer manifest has not been written yet.
 DEFAULT_BUCKET_MIN_AGE_HOURS = 6.0
+# How long a superseded run directory outlives the swap, for readers still holding
+# the pointer that named it: five minutes of browser revalidation, a minute of CDN
+# cache and five of the forecast server's, with a wide margin.
+DEFAULT_GRACE_MINUTES = 60.0
+GRACE_ENV = "FORCE5_SUPERSEDED_GRACE_MINUTES"
 DELETE_BATCH = 1000  # S3 and R2 both cap one DeleteObjects request here.
 LIST_PAGE = 1000
 MANIFEST_KEYS = ("frames", "stations", "spots", "spotForecasts")
@@ -156,6 +175,37 @@ def referenced(manifests):
     return files, directories
 
 
+def grace_minutes(value=None):
+    """The grace period in minutes: `value`, else the environment, else an hour.
+
+    A pointer remembers what it superseded for SUPERSEDED_KEEP_HOURS only, so a
+    longer grace could not be honoured and is refused rather than quietly cut.
+    """
+    if value is None:
+        value = float(os.environ.get(GRACE_ENV) or DEFAULT_GRACE_MINUTES)
+    if not 0 <= value <= SUPERSEDED_KEEP_HOURS * 60:
+        raise ValueError(f"The grace period must be 0 to {SUPERSEDED_KEEP_HOURS * 60} minutes")
+    return value
+
+
+def retiring(manifests, now, grace):
+    """Run directories some pointer superseded less than `grace` minutes ago.
+
+    Published paths, like the directories `referenced` gives. An entry whose time
+    cannot be read counts as just superseded: the pruners never delete on a guess.
+    """
+    cutoff = now - timedelta(minutes=grace)
+    directories = set()
+    for path, manifest in manifests.items():
+        if "base" not in manifest:
+            continue
+        parent = PurePosixPath(path).parent
+        for base, when in superseded_entries(manifest):
+            if when is None or when > cutoff:
+                directories.add(f"{parent}/{base[:-1]}")
+    return directories
+
+
 def model_owns(model, name):
     """Does this run directory or station file belong to `model`, and to no other?
 
@@ -208,10 +258,18 @@ def size_of(path):
     return total
 
 
-def prune_published(public, max_age_hours, now=None, dry_run=False):
-    """Remove unreferenced runs and station files older than the retention window."""
-    cutoff = (now or datetime.now(timezone.utc)).timestamp() - max_age_hours * 3600
-    keep_files, keep_directories = referenced(read_manifests(public))
+def prune_published(public, max_age_hours, now=None, dry_run=False, grace=None):
+    """Remove unreferenced runs and station files older than the retention window.
+
+    A run directory a pointer superseded less than `grace` minutes ago
+    (`grace_minutes`) is kept whatever the window: readers may still hold the
+    pointer that named it.
+    """
+    now = now or datetime.now(timezone.utc)
+    cutoff = now.timestamp() - max_age_hours * 3600
+    manifests = read_manifests(public)
+    keep_files, keep_directories = referenced(manifests)
+    superseded = retiring(manifests, now, grace_minutes(grace))
     removed, kept, freed = [], [], 0
     for root in DATA_ROOTS:
         directory = public / root
@@ -224,6 +282,9 @@ def prune_published(public, max_age_hours, now=None, dry_run=False):
                 continue
             if published in keep_files or published in keep_directories:
                 kept.append({"path": published, "reason": "referenced"})
+                continue
+            if published in superseded:
+                kept.append({"path": published, "reason": "superseded-within-grace"})
                 continue
             if entry.is_file() and looks_like_a_manifest(entry):
                 kept.append({"path": published, "reason": "manifest"})
@@ -335,11 +396,16 @@ def bucket_manifests(s3, bucket, prefix):
     return manifests, missing
 
 
-def keep_sets(s3, bucket, prefix):
-    """What the bucket's pointer manifests say must survive, right now."""
+def keep_sets(s3, bucket, prefix, now, grace):
+    """What the bucket's pointer manifests say must survive, right now.
+
+    `(files, directories, superseded, missing)`: the files and run directories
+    referenced, the run directories superseded within the grace period, and the
+    models with no pointer at all.
+    """
     manifests, missing = bucket_manifests(s3, bucket, prefix)
     files, directories = referenced(manifests)
-    return files, directories, missing
+    return files, directories, retiring(manifests, now, grace), missing
 
 
 def bucket_keys(s3, bucket, prefix):
@@ -373,69 +439,103 @@ def bucket_manifest_shaped(s3, bucket, key):
 
 
 def bucket_prune(s3, bucket, prefix="", min_age_hours=DEFAULT_BUCKET_MIN_AGE_HOURS,
-                 now=None, dry_run=False):
-    """Delete bucket objects no pointer manifest references and nothing can still be writing.
+                 now=None, dry_run=False, grace=None):
+    """Delete bucket objects no pointer manifest needs and nothing can still be writing.
 
-    The publisher already deletes the run each publish supersedes, so what is left
-    here is the wreckage of failed or interrupted uploads. Jobs for different models
-    run on different machines at the same time, and a run's frames go up before its
-    manifest does, so age is the only signal that an unreferenced object is not
-    simply a run in progress: nothing younger than the guard is touched.
+    Two kinds of thing are left here: the run directories publishes superseded,
+    once their grace period is over (`grace` minutes, `grace_minutes`), and the
+    wreckage of failed or interrupted uploads. Jobs for different models run on
+    different machines at the same time, and a run's files go up before its
+    pointer does, so nothing younger than the guard is touched; a run directory
+    is judged whole, by its newest object, so a sweep never takes half of one.
 
-    The pointer manifests are read **twice**, before and after the listing, and an
-    object must be unreferenced in both to be deleted. The listing is slow and
-    paginated, and the age guard cannot cover everything a publish in flight might
-    claim: `put_immutable` leaves an object that is already there untouched, so a
-    stable key a new run re-references (a tide station file, whose name only changes
-    with the day) keeps its old LastModified and would look both unreferenced and
-    long past the guard. Both reads abort on an unreadable manifest and both
-    contribute the models with no pointer at all.
+    The pointer manifests are read **twice**, before and after the listing, and
+    once more just before each run directory is deleted; it must be unreferenced
+    and past its grace in every read. The listing is slow and paginated, and the
+    age guard cannot cover everything a publish in flight might claim:
+    `put_immutable` leaves an object that is already there untouched, so a stable
+    key a new run re-references (a tide station file, whose name only changes
+    with the day, or a run directory a republish of the same content reuses)
+    keeps its old LastModified and would look both unreferenced and long past
+    the guard. Every read aborts on an unreadable manifest and contributes the
+    models with no pointer at all.
     """
     if prefix and (prefix.startswith("/") or ".." in PurePosixPath(prefix).parts):
         raise ValueError("S3 prefix must be a relative object prefix")
     prefix = prefix.rstrip("/") + "/" if prefix else ""
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(hours=min_age_hours)
-    files, directories, missing = keep_sets(s3, bucket, prefix)
+    now = now or datetime.now(timezone.utc)
+    grace = grace_minutes(grace)
+    cutoff = now - timedelta(hours=min_age_hours)
+    files, directories, superseded, missing = keep_sets(s3, bucket, prefix, now, grace)
     pointers = set(MANIFESTS.values())
-    candidates, kept, waiting = [], 0, 0
+    # A run directory is one candidate, a top-level file another: {path: [keys, newest, size]}.
+    groups, kept, waiting, graced = {}, 0, 0, 0
     for key, modified, size in bucket_objects(s3, bucket, prefix):
         published = key[len(prefix):]
         parts = PurePosixPath(published).parts
+        directory = "/".join(parts[:2])
         if len(parts) < 2 or parts[0] not in DATA_ROOTS or published in pointers \
                 or parts[1] == ARCHIVE_DIRECTORY or is_archived(published) \
-                or published in files or "/".join(parts[:2]) in directories:
+                or published in files or directory in directories:
             kept += 1
             continue
-        if modified > cutoff:
-            waiting += 1  # Another machine may be mid-upload of a run with no manifest yet.
+        if directory in superseded:
+            graced += 1  # A reader may still hold the pointer that named it.
             continue
-        if len(parts) == 2 and published.endswith(".json") \
+        if len(parts) == 2 and published.endswith(".json") and modified <= cutoff \
                 and bucket_manifest_shaped(s3, bucket, key):
             kept += 1  # A pointer for a model this registry has not adopted yet.
             continue
-        candidates.append((published, parts, size))
-    # Second read: anything a publish referenced while we were listing is now safe.
-    later_files, later_directories, later_missing = keep_sets(s3, bucket, prefix)
-    files, directories = files | later_files, directories | later_directories
-    missing |= later_missing
-    removed, protected, freed = [], [], 0
-    for published, parts, size in candidates:
-        if published in files or "/".join(parts[:2]) in directories:
-            kept += 1
+        group = groups.setdefault(directory, [[], modified, 0])
+        group[0].append(published)
+        group[1] = max(group[1], modified)
+        group[2] += size
+    candidates = []
+    for directory, (keys, newest, size) in groups.items():
+        if newest > cutoff:
+            waiting += len(keys)  # Another machine may be mid-upload of a run with no pointer yet.
             continue
-        owner = next((model for model in missing if model_owns(model, parts[1])), None)
+        candidates.append((directory, keys, size))
+    # Second read: anything a publish referenced while we were listing is now safe.
+    later = keep_sets(s3, bucket, prefix, now, grace)
+    files, directories, superseded = files | later[0], directories | later[1], superseded | later[2]
+    missing |= later[3]
+    removed, protected, freed, stale_files = [], [], 0, []
+    for directory, keys, size in candidates:
+        if directory in directories or any(key in files for key in keys):
+            kept += len(keys)
+            continue
+        if directory in superseded:
+            graced += len(keys)
+            continue
+        name = PurePosixPath(directory).parts[1]
+        owner = next((model for model in missing if model_owns(model, name)), None)
         if owner is not None:
             # That model has published no pointer at all, so "unreferenced" tells us
             # nothing about this object. Keep it and say whose it is.
-            protected.append(owner)
+            protected.extend([owner] * len(keys))
             continue
-        removed.append(published)
+        if keys == [directory]:
+            stale_files.append(directory)  # A top-level file: deleted together below.
+        elif not dry_run:
+            # Immediately before the delete, the pointers once more: a republish may
+            # have swapped one to this very directory since the last read.
+            now_files, now_directories, now_superseded, now_missing = keep_sets(
+                s3, bucket, prefix, now, grace)
+            if directory in now_directories or directory in now_superseded \
+                    or any(key in now_files for key in keys) \
+                    or any(model_owns(model, name) for model in now_missing):
+                kept += len(keys)
+                continue
+            delete_keys(s3, bucket, [prefix + key for key in keys])
+        removed.extend(keys)
         freed += size
-    if removed and not dry_run:
-        delete_keys(s3, bucket, [prefix + published for published in removed])
-    return {"removed": removed, "keptObjects": kept, "withinGuard": waiting,
-            "protectedObjects": len(protected), "protectedModels": sorted(set(protected)),
-            "noPointer": sorted(missing), "freedBytes": freed}
+    if stale_files and not dry_run:
+        delete_keys(s3, bucket, [prefix + published for published in stale_files])
+    return {"removed": sorted(removed), "keptObjects": kept, "withinGuard": waiting,
+            "withinGrace": graced, "protectedObjects": len(protected),
+            "protectedModels": sorted(set(protected)), "noPointer": sorted(missing),
+            "freedBytes": freed}
 
 
 def sweep(args):
@@ -444,15 +544,18 @@ def sweep(args):
     from publish_s3 import make_client
     try:
         result = bucket_prune(make_client(args.endpoint_url, args.region), args.bucket,
-                              args.prefix, args.min_age_hours, dry_run=args.dry_run)
+                              args.prefix, args.min_age_hours, dry_run=args.dry_run,
+                              grace=args.grace_minutes)
     except Exception as error:
         print(json.dumps({"event": "sweep_failed", "bucket": args.bucket, "error": str(error)}),
               file=sys.stderr, flush=True)
         return 1
     print(json.dumps({"event": "sweep_complete", "bucket": args.bucket,
                       "dryRun": args.dry_run, "minAgeHours": args.min_age_hours,
+                      "graceMinutes": args.grace_minutes,
                       "removed": result["removed"], "keptObjects": result["keptObjects"],
                       "withinGuard": result["withinGuard"],
+                      "withinGrace": result["withinGrace"],
                       "protectedObjects": result["protectedObjects"],
                       "protectedModels": result["protectedModels"],
                       "noPointer": result["noPointer"], "freedBytes": result["freedBytes"],
@@ -488,6 +591,10 @@ def main(argv=None):
         os.environ.get("FORCE5_SWEEP_MIN_AGE_HOURS") or DEFAULT_BUCKET_MIN_AGE_HOURS),
         help="Bucket sweep only: keep an unreferenced object this long, because another"
              " machine may still be uploading the run it belongs to (default 6)")
+    parser.add_argument("--grace-minutes", type=float,
+                        help="Keep a run directory this long after a pointer stopped naming"
+                             f" it, for readers still holding that pointer (default"
+                             f" {GRACE_ENV}, else {DEFAULT_GRACE_MINUTES:g})")
     args = parser.parse_args(argv)
     local_only = [name for name, value in (("--root", args.root),
                                            ("--max-age-hours", args.max_age_hours),
@@ -504,6 +611,10 @@ def main(argv=None):
         args.cache_days = float(os.environ.get("FORCE5_CACHE_DAYS") or DEFAULT_CACHE_DAYS)
     if args.max_age_hours < 0 or args.cache_days < 0 or args.min_age_hours < 0:
         parser.error("Retention windows cannot be negative")
+    try:
+        args.grace_minutes = grace_minutes(args.grace_minutes)
+    except ValueError as error:
+        parser.error(str(error))
     if args.bucket:
         return sweep(args)
     public = Path(args.root) / "public"
@@ -514,7 +625,8 @@ def main(argv=None):
         return 1
     try:
         with workspace_lock(Path(args.root)):
-            result = prune_published(public, args.max_age_hours, dry_run=args.dry_run)
+            result = prune_published(public, args.max_age_hours, dry_run=args.dry_run,
+                                     grace=args.grace_minutes)
             result.update(prune_cache(Path(args.root) / ".cache", args.cache_days,
                                       dry_run=args.dry_run))
     except BlockingIOError:
@@ -528,6 +640,7 @@ def main(argv=None):
         return 1
     print(json.dumps({"event": "prune_complete", "dryRun": args.dry_run,
                       "maxAgeHours": args.max_age_hours, "cacheDays": args.cache_days,
+                      "graceMinutes": args.grace_minutes,
                       "removed": result["removed"], "kept": len(result["kept"]),
                       "removedCacheFiles": result["removedCacheFiles"],
                       "freedBytes": result["freedBytes"] + result["freedCacheBytes"],
