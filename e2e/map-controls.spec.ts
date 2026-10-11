@@ -5,7 +5,7 @@ test("the chart's controls: zoom and the layers by keyboard, with the credits be
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+  await expect(page.locator(".spot-marker")).toHaveCount(141, {
     timeout: 30000,
   });
   const controls = page.getByRole("group", { name: "Map controls" });
@@ -82,7 +82,7 @@ test("the map's information is one dialog over the dimmed chart: the i under Lay
   // And Brandon Bay in the dock, chosen last: the stars' link names it.
   await rememberSpot(page, "brandon");
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+  await expect(page.locator(".spot-marker")).toHaveCount(141, {
     timeout: 30000,
   });
   // Its key is not drawn on the chart, nor anything of the dialog's until asked.
@@ -143,7 +143,7 @@ for (const width of [390, 1440]) {
       ),
     );
     await page.goto("/");
-    await expect(page.locator(".spot-marker")).toHaveCount(146, {
+    await expect(page.locator(".spot-marker")).toHaveCount(141, {
       timeout: 30000,
     });
     // Nothing of them on the chart until asked: no panel, no strip.

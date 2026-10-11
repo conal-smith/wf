@@ -161,729 +161,699 @@
       "water": 0.75
     },
     "doogort": {
-      "facing": 348,
-      "bearing": 348,
+      "facing": 357,
+      "bearing": 357,
       "strength": 0.27,
-      "water": 0.35
+      "water": 0.33
     },
     "dooniver": {
-      "facing": 61,
-      "bearing": 61,
-      "strength": 0.29,
-      "water": 0.5
+      "facing": 41,
+      "bearing": 41,
+      "strength": 0.24,
+      "water": 0.69
     },
     "keel-lake": {
       "facing": null,
-      "bearing": 272,
-      "strength": 0.11,
-      "water": 0.29
+      "bearing": 130,
+      "strength": 0.1,
+      "water": 0.3
     },
     "aghleam": {
-      "facing": 280,
-      "bearing": 280,
-      "strength": 0.3,
-      "water": 0.42
+      "facing": 85,
+      "bearing": 85,
+      "strength": 0.25,
+      "water": 0.32
     },
     "belmullet": {
-      "facing": 260,
-      "bearing": 260,
-      "strength": 0.29,
-      "water": 0.43
-    },
-    "elly-bay": {
-      "facing": null,
-      "bearing": 161,
-      "strength": 0.08,
-      "water": 0.53
+      "facing": 232,
+      "bearing": 232,
+      "strength": 0.19,
+      "water": 0.4
     },
     "elly-beach": {
-      "facing": 308,
-      "bearing": 308,
-      "strength": 0.28,
-      "water": 0.56
+      "facing": null,
+      "bearing": 77,
+      "strength": 0.09,
+      "water": 0.59
     },
     "trawmore-bay": {
-      "facing": 281,
-      "bearing": 281,
-      "strength": 0.16,
-      "water": 0.78
+      "facing": null,
+      "bearing": 312,
+      "strength": 0.09,
+      "water": 0.86
     },
     "bertra": {
       "facing": null,
-      "bearing": 19,
-      "strength": 0.09,
-      "water": 0.85
+      "bearing": 15,
+      "strength": 0.01,
+      "water": 0.9
     },
     "carrownisky": {
-      "facing": 270,
-      "bearing": 270,
-      "strength": 0.28,
-      "water": 0.42
-    },
-    "dogs-bay": {
-      "facing": null,
-      "bearing": 211,
-      "strength": 0.12,
-      "water": 0.44
-    },
-    "spanish-point": {
       "facing": 251,
       "bearing": 251,
       "strength": 0.28,
-      "water": 0.36
-    },
-    "easkey": {
-      "facing": 3,
-      "bearing": 3,
-      "strength": 0.29,
-      "water": 0.56
-    },
-    "enniscrone": {
-      "facing": 348,
-      "bearing": 348,
-      "strength": 0.3,
-      "water": 0.53
-    },
-    "dunmoran": {
-      "facing": 16,
-      "bearing": 16,
-      "strength": 0.31,
-      "water": 0.46
-    },
-    "west-of-dunmoran": {
-      "facing": null,
-      "bearing": 45,
-      "strength": 0.06,
-      "water": 0.93
-    },
-    "strandhill": {
-      "facing": 289,
-      "bearing": 289,
-      "strength": 0.29,
-      "water": 0.41
-    },
-    "rosses-point": {
-      "facing": 277,
-      "bearing": 277,
-      "strength": 0.29,
       "water": 0.45
     },
-    "lissadell": {
-      "facing": 173,
-      "bearing": 173,
+    "dogs-bay": {
+      "facing": null,
+      "bearing": 238,
+      "strength": 0.05,
+      "water": 0.42
+    },
+    "spanish-point": {
+      "facing": 261,
+      "bearing": 261,
+      "strength": 0.28,
+      "water": 0.4
+    },
+    "easkey": {
+      "facing": 1,
+      "bearing": 1,
+      "strength": 0.3,
+      "water": 0.45
+    },
+    "enniscrone": {
+      "facing": 342,
+      "bearing": 342,
+      "strength": 0.27,
+      "water": 0.56
+    },
+    "dunmoran": {
+      "facing": 14,
+      "bearing": 14,
+      "strength": 0.3,
+      "water": 0.42
+    },
+    "strandhill": {
+      "facing": 294,
+      "bearing": 294,
       "strength": 0.31,
       "water": 0.43
     },
+    "rosses-point": {
+      "facing": 267,
+      "bearing": 267,
+      "strength": 0.3,
+      "water": 0.52
+    },
+    "lissadell": {
+      "facing": 178,
+      "bearing": 178,
+      "strength": 0.31,
+      "water": 0.44
+    },
     "streedagh": {
       "facing": null,
-      "bearing": 306,
-      "strength": 0.13,
-      "water": 0.77
-    },
-    "streedagh-lagoon": {
-      "facing": null,
-      "bearing": 50,
-      "strength": 0.13,
-      "water": 0.66
+      "bearing": 36,
+      "strength": 0.11,
+      "water": 0.69
     },
     "portnoo": {
-      "facing": 341,
-      "bearing": 341,
-      "strength": 0.26,
-      "water": 0.49
+      "facing": 350,
+      "bearing": 350,
+      "strength": 0.21,
+      "water": 0.6
     },
     "bloody-foreland": {
-      "facing": 319,
-      "bearing": 319,
-      "strength": 0.27,
-      "water": 0.59
+      "facing": 338,
+      "bearing": 338,
+      "strength": 0.24,
+      "water": 0.73
     },
     "dunfanaghy": {
-      "facing": 1,
-      "bearing": 1,
-      "strength": 0.19,
-      "water": 0.39
+      "facing": 32,
+      "bearing": 32,
+      "strength": 0.28,
+      "water": 0.5
     },
     "downings": {
-      "facing": 218,
-      "bearing": 218,
-      "strength": 0.25,
-      "water": 0.31
+      "facing": 201,
+      "bearing": 201,
+      "strength": 0.26,
+      "water": 0.33
     },
     "portsalon": {
-      "facing": 93,
-      "bearing": 93,
-      "strength": 0.3,
-      "water": 0.45
+      "facing": 60,
+      "bearing": 60,
+      "strength": 0.29,
+      "water": 0.54
     },
     "portstewart": {
-      "facing": 339,
-      "bearing": 339,
+      "facing": 342,
+      "bearing": 342,
       "strength": 0.23,
-      "water": 0.61
+      "water": 0.55
     },
     "whiterocks": {
-      "facing": 5,
-      "bearing": 5,
+      "facing": 349,
+      "bearing": 349,
       "strength": 0.31,
-      "water": 0.46
+      "water": 0.53
     },
     "portballintrae": {
-      "facing": 325,
-      "bearing": 325,
-      "strength": 0.28,
-      "water": 0.38
+      "facing": 350,
+      "bearing": 350,
+      "strength": 0.26,
+      "water": 0.33
     },
     "browns-bay": {
-      "facing": 355,
-      "bearing": 355,
-      "strength": 0.27,
-      "water": 0.37
+      "facing": 335,
+      "bearing": 335,
+      "strength": 0.28,
+      "water": 0.47
     },
     "lough-neagh-antrim": {
-      "facing": 231,
-      "bearing": 231,
+      "facing": 232,
+      "bearing": 232,
       "strength": 0.31,
-      "water": 0.5
-    },
-    "oxford-island": {
-      "facing": 5,
-      "bearing": 5,
-      "strength": 0.18,
-      "water": 0.75
-    },
-    "millisle": {
-      "facing": 73,
-      "bearing": 73,
-      "strength": 0.32,
-      "water": 0.48
-    },
-    "kearney": {
-      "facing": 132,
-      "bearing": 132,
-      "strength": 0.28,
-      "water": 0.36
-    },
-    "newcastle": {
-      "facing": 106,
-      "bearing": 106,
-      "strength": 0.29,
-      "water": 0.45
-    },
-    "cranfield": {
-      "facing": 151,
-      "bearing": 151,
-      "strength": 0.31,
-      "water": 0.5
-    },
-    "warrenpoint": {
-      "facing": 164,
-      "bearing": 164,
-      "strength": 0.25,
-      "water": 0.55
-    },
-    "carlingford": {
-      "facing": 42,
-      "bearing": 42,
-      "strength": 0.31,
-      "water": 0.55
-    },
-    "greenore": {
-      "facing": 53,
-      "bearing": 53,
-      "strength": 0.2,
-      "water": 0.71
-    },
-    "giles-quay": {
-      "facing": 190,
-      "bearing": 190,
-      "strength": 0.28,
-      "water": 0.63
-    },
-    "annagassan": {
-      "facing": 39,
-      "bearing": 39,
-      "strength": 0.3,
       "water": 0.49
     },
-    "clogherhead": {
-      "facing": 126,
-      "bearing": 126,
-      "strength": 0.29,
-      "water": 0.38
+    "oxford-island": {
+      "facing": 349,
+      "bearing": 349,
+      "strength": 0.22,
+      "water": 0.27
     },
-    "termonfeckin": {
-      "facing": 100,
-      "bearing": 100,
-      "strength": 0.32,
-      "water": 0.5
-    },
-    "bettystown": {
-      "facing": 84,
-      "bearing": 84,
-      "strength": 0.32,
-      "water": 0.5
-    },
-    "laytown": {
-      "facing": 81,
-      "bearing": 81,
-      "strength": 0.3,
-      "water": 0.55
-    },
-    "gormanston": {
+    "millisle": {
       "facing": 71,
       "bearing": 71,
       "strength": 0.32,
-      "water": 0.49
+      "water": 0.53
+    },
+    "kearney": {
+      "facing": 171,
+      "bearing": 171,
+      "strength": 0.28,
+      "water": 0.46
+    },
+    "newcastle": {
+      "facing": 116,
+      "bearing": 116,
+      "strength": 0.31,
+      "water": 0.42
+    },
+    "cranfield": {
+      "facing": 194,
+      "bearing": 194,
+      "strength": 0.2,
+      "water": 0.77
+    },
+    "warrenpoint": {
+      "facing": 179,
+      "bearing": 179,
+      "strength": 0.22,
+      "water": 0.39
+    },
+    "carlingford": {
+      "facing": 67,
+      "bearing": 67,
+      "strength": 0.32,
+      "water": 0.52
+    },
+    "greenore": {
+      "facing": 16,
+      "bearing": 16,
+      "strength": 0.15,
+      "water": 0.84
+    },
+    "giles-quay": {
+      "facing": 195,
+      "bearing": 195,
+      "strength": 0.29,
+      "water": 0.63
+    },
+    "annagassan": {
+      "facing": 53,
+      "bearing": 53,
+      "strength": 0.3,
+      "water": 0.5
+    },
+    "clogherhead": {
+      "facing": 22,
+      "bearing": 22,
+      "strength": 0.3,
+      "water": 0.38
+    },
+    "termonfeckin": {
+      "facing": 102,
+      "bearing": 102,
+      "strength": 0.3,
+      "water": 0.4
+    },
+    "bettystown": {
+      "facing": 83,
+      "bearing": 83,
+      "strength": 0.32,
+      "water": 0.48
+    },
+    "laytown": {
+      "facing": 80,
+      "bearing": 80,
+      "strength": 0.31,
+      "water": 0.52
+    },
+    "gormanston": {
+      "facing": 73,
+      "bearing": 73,
+      "strength": 0.32,
+      "water": 0.47
     },
     "skerries": {
-      "facing": 57,
-      "bearing": 57,
-      "strength": 0.27,
-      "water": 0.6
+      "facing": 31,
+      "bearing": 31,
+      "strength": 0.18,
+      "water": 0.67
     },
     "rush-north": {
-      "facing": 85,
-      "bearing": 85,
-      "strength": 0.29,
+      "facing": 74,
+      "bearing": 74,
+      "strength": 0.27,
       "water": 0.46
     },
     "rush-south": {
-      "facing": 148,
-      "bearing": 148,
-      "strength": 0.31,
-      "water": 0.44
+      "facing": 144,
+      "bearing": 144,
+      "strength": 0.28,
+      "water": 0.56
     },
     "donabate": {
-      "facing": 123,
-      "bearing": 123,
-      "strength": 0.31,
-      "water": 0.46
+      "facing": 107,
+      "bearing": 107,
+      "strength": 0.22,
+      "water": 0.57
     },
     "low-rock": {
-      "facing": 56,
-      "bearing": 56,
-      "strength": 0.25,
+      "facing": 53,
+      "bearing": 53,
+      "strength": 0.23,
       "water": 0.45
     },
     "portmarnock": {
-      "facing": 92,
-      "bearing": 92,
-      "strength": 0.31,
-      "water": 0.44
+      "facing": 74,
+      "bearing": 74,
+      "strength": 0.21,
+      "water": 0.61
     },
     "burrow-beach": {
-      "facing": 1,
-      "bearing": 1,
-      "strength": 0.19,
-      "water": 0.57
+      "facing": 11,
+      "bearing": 11,
+      "strength": 0.25,
+      "water": 0.54
     },
     "bull-island-north": {
       "facing": null,
-      "bearing": 130,
-      "strength": 0.06,
-      "water": 0.73
+      "bearing": 199,
+      "strength": 0.1,
+      "water": 0.67
     },
     "poolbeg": {
-      "facing": 141,
-      "bearing": 141,
-      "strength": 0.17,
-      "water": 0.75
+      "facing": 145,
+      "bearing": 145,
+      "strength": 0.19,
+      "water": 0.68
     },
     "sandymount": {
-      "facing": 84,
-      "bearing": 84,
+      "facing": 83,
+      "bearing": 83,
       "strength": 0.29,
-      "water": 0.44
+      "water": 0.45
     },
     "seapoint": {
-      "facing": 356,
-      "bearing": 356,
-      "strength": 0.28,
-      "water": 0.38
+      "facing": 19,
+      "bearing": 19,
+      "strength": 0.31,
+      "water": 0.44
     },
     "killiney": {
-      "facing": 105,
-      "bearing": 105,
+      "facing": 107,
+      "bearing": 107,
       "strength": 0.31,
-      "water": 0.45
+      "water": 0.47
     },
     "bray": {
-      "facing": 64,
-      "bearing": 64,
-      "strength": 0.31,
-      "water": 0.46
+      "facing": 63,
+      "bearing": 63,
+      "strength": 0.32,
+      "water": 0.48
     },
     "greystones": {
-      "facing": 66,
-      "bearing": 66,
-      "strength": 0.21,
-      "water": 0.72
+      "facing": 70,
+      "bearing": 70,
+      "strength": 0.31,
+      "water": 0.49
     },
     "brittas-bay": {
-      "facing": 114,
-      "bearing": 114,
+      "facing": 118,
+      "bearing": 118,
       "strength": 0.32,
-      "water": 0.52
+      "water": 0.51
     },
     "kilmuckridge": {
-      "facing": 119,
-      "bearing": 119,
-      "strength": 0.31,
-      "water": 0.52
-    },
-    "curracloe": {
-      "facing": 99,
-      "bearing": 99,
-      "strength": 0.31,
-      "water": 0.45
-    },
-    "the-burrow": {
-      "facing": null,
-      "bearing": 14,
-      "strength": 0.08,
-      "water": 0.92
-    },
-    "rosslare": {
-      "facing": 75,
-      "bearing": 75,
+      "facing": 117,
+      "bearing": 117,
       "strength": 0.32,
       "water": 0.49
     },
+    "curracloe": {
+      "facing": 97,
+      "bearing": 97,
+      "strength": 0.32,
+      "water": 0.46
+    },
+    "the-burrow": {
+      "facing": null,
+      "bearing": 74,
+      "strength": 0.14,
+      "water": 0.72
+    },
+    "rosslare": {
+      "facing": 76,
+      "bearing": 76,
+      "strength": 0.25,
+      "water": 0.58
+    },
     "st-margarets": {
-      "facing": 112,
-      "bearing": 112,
+      "facing": 103,
+      "bearing": 103,
       "strength": 0.3,
-      "water": 0.48
+      "water": 0.4
     },
     "ladys-island-lake": {
       "facing": null,
-      "bearing": 254,
-      "strength": 0.14,
-      "water": 0.67
+      "bearing": 290,
+      "strength": 0.04,
+      "water": 0.45
     },
     "kilmore-quay": {
-      "facing": 229,
-      "bearing": 229,
-      "strength": 0.29,
-      "water": 0.46
+      "facing": 175,
+      "bearing": 175,
+      "strength": 0.26,
+      "water": 0.66
     },
     "cullenstown": {
-      "facing": 191,
-      "bearing": 191,
-      "strength": 0.29,
-      "water": 0.59
+      "facing": 170,
+      "bearing": 170,
+      "strength": 0.32,
+      "water": 0.49
     },
     "duncannon": {
-      "facing": 213,
-      "bearing": 213,
+      "facing": 219,
+      "bearing": 219,
       "strength": 0.3,
-      "water": 0.44
+      "water": 0.49
     },
     "dungarvan": {
-      "facing": null,
-      "bearing": 141,
-      "strength": 0.11,
-      "water": 0.77
+      "facing": 158,
+      "bearing": 158,
+      "strength": 0.18,
+      "water": 0.71
     },
     "red-barn": {
-      "facing": 143,
-      "bearing": 143,
-      "strength": 0.31,
-      "water": 0.52
+      "facing": 77,
+      "bearing": 77,
+      "strength": 0.19,
+      "water": 0.44
     },
     "ballycotton": {
-      "facing": 128,
-      "bearing": 128,
-      "strength": 0.31,
-      "water": 0.46
+      "facing": 89,
+      "bearing": 89,
+      "strength": 0.24,
+      "water": 0.45
     },
     "cobh": {
-      "facing": 166,
-      "bearing": 166,
-      "strength": 0.32,
-      "water": 0.5
-    },
-    "cork-harbour": {
-      "facing": null,
-      "bearing": 231,
-      "strength": 0.1,
-      "water": 0.89
-    },
-    "garrettstown": {
-      "facing": 192,
-      "bearing": 192,
-      "strength": 0.29,
-      "water": 0.39
-    },
-    "coolmaine": {
-      "facing": 180,
-      "bearing": 180,
-      "strength": 0.16,
-      "water": 0.36
-    },
-    "owenahincha": {
-      "facing": 204,
-      "bearing": 204,
-      "strength": 0.25,
-      "water": 0.64
-    },
-    "glandore": {
-      "facing": 190,
-      "bearing": 190,
-      "strength": 0.22,
-      "water": 0.3
-    },
-    "schull": {
-      "facing": 99,
-      "bearing": 99,
-      "strength": 0.26,
-      "water": 0.36
-    },
-    "bantry-bay": {
-      "facing": 353,
-      "bearing": 353,
-      "strength": 0.31,
-      "water": 0.5
-    },
-    "waterville": {
-      "facing": null,
-      "bearing": 217,
-      "strength": 0.14,
-      "water": 0.84
-    },
-    "rossbeigh": {
-      "facing": null,
-      "bearing": 341,
-      "strength": 0.02,
-      "water": 0.96
-    },
-    "inch": {
-      "facing": 218,
-      "bearing": 218,
-      "strength": 0.28,
-      "water": 0.38
-    },
-    "ventry": {
-      "facing": 152,
-      "bearing": 152,
-      "strength": 0.29,
-      "water": 0.4
-    },
-    "smerwick": {
-      "facing": 33,
-      "bearing": 33,
+      "facing": 161,
+      "bearing": 161,
       "strength": 0.3,
       "water": 0.45
     },
-    "fermoyle": {
-      "facing": 333,
-      "bearing": 333,
-      "strength": 0.21,
-      "water": 0.72
-    },
-    "kilcummin": {
+    "cork-harbour": {
       "facing": 348,
       "bearing": 348,
+      "strength": 0.2,
+      "water": 0.29
+    },
+    "garrettstown": {
+      "facing": 191,
+      "bearing": 191,
+      "strength": 0.3,
+      "water": 0.44
+    },
+    "coolmaine": {
+      "facing": null,
+      "bearing": 210,
+      "strength": 0.11,
+      "water": 0.73
+    },
+    "owenahincha": {
+      "facing": 180,
+      "bearing": 180,
+      "strength": 0.3,
+      "water": 0.41
+    },
+    "glandore": {
+      "facing": null,
+      "bearing": 103,
+      "strength": 0.06,
+      "water": 0.38
+    },
+    "schull": {
+      "facing": 249,
+      "bearing": 249,
+      "strength": 0.2,
+      "water": 0.46
+    },
+    "bantry-bay": {
+      "facing": 315,
+      "bearing": 315,
+      "strength": 0.27,
+      "water": 0.38
+    },
+    "waterville": {
+      "facing": 246,
+      "bearing": 246,
+      "strength": 0.26,
+      "water": 0.42
+    },
+    "rossbeigh": {
+      "facing": null,
+      "bearing": 263,
+      "strength": 0.06,
+      "water": 0.82
+    },
+    "inch": {
+      "facing": 247,
+      "bearing": 247,
       "strength": 0.32,
-      "water": 0.48
+      "water": 0.5
+    },
+    "ventry": {
+      "facing": 187,
+      "bearing": 187,
+      "strength": 0.28,
+      "water": 0.35
+    },
+    "smerwick": {
+      "facing": 271,
+      "bearing": 271,
+      "strength": 0.27,
+      "water": 0.66
+    },
+    "fermoyle": {
+      "facing": 351,
+      "bearing": 351,
+      "strength": 0.3,
+      "water": 0.54
     },
     "gowlane": {
       "facing": 332,
       "bearing": 332,
-      "strength": 0.32,
-      "water": 0.5
+      "strength": 0.31,
+      "water": 0.44
     },
     "stradbally": {
-      "facing": 323,
-      "bearing": 323,
-      "strength": 0.3,
-      "water": 0.51
-    },
-    "aughacasla": {
-      "facing": 26,
-      "bearing": 26,
+      "facing": 326,
+      "bearing": 326,
       "strength": 0.31,
       "water": 0.48
     },
+    "aughacasla": {
+      "facing": 38,
+      "bearing": 38,
+      "strength": 0.31,
+      "water": 0.46
+    },
     "scraggane": {
-      "facing": 10,
-      "bearing": 10,
-      "strength": 0.17,
-      "water": 0.56
+      "facing": null,
+      "bearing": 3,
+      "strength": 0.15,
+      "water": 0.66
     },
     "garrywilliam-point": {
       "facing": null,
-      "bearing": 264,
-      "strength": 0.14,
-      "water": 0.81
+      "bearing": 259,
+      "strength": 0.13,
+      "water": 0.86
     },
     "banna": {
-      "facing": 276,
-      "bearing": 276,
-      "strength": 0.32,
-      "water": 0.46
+      "facing": 283,
+      "bearing": 283,
+      "strength": 0.31,
+      "water": 0.52
     },
     "mullaghmore": {
-      "facing": null,
-      "bearing": 27,
-      "strength": 0.13,
-      "water": 0.77
+      "facing": 83,
+      "bearing": 83,
+      "strength": 0.27,
+      "water": 0.62
     },
     "aghada": {
-      "facing": 350,
-      "bearing": 350,
-      "strength": 0.31,
-      "water": 0.54
+      "facing": 351,
+      "bearing": 351,
+      "strength": 0.3,
+      "water": 0.59
     },
     "annascaul": {
       "facing": 165,
       "bearing": 165,
+      "strength": 0.29,
+      "water": 0.38
+    },
+    "blessington": {
+      "facing": 136,
+      "bearing": 136,
+      "strength": 0.15,
+      "water": 0.21
+    },
+    "broadmeadows-south": {
+      "facing": 27,
+      "bearing": 27,
+      "strength": 0.28,
+      "water": 0.4
+    },
+    "bunbeg": {
+      "facing": null,
+      "bearing": 258,
+      "strength": 0.13,
+      "water": 0.18
+    },
+    "cahore": {
+      "facing": 73,
+      "bearing": 73,
       "strength": 0.31,
       "water": 0.44
     },
-    "blessington": {
-      "facing": 222,
-      "bearing": 222,
-      "strength": 0.31,
-      "water": 0.47
-    },
-    "broadmeadows-south": {
-      "facing": 18,
-      "bearing": 18,
-      "strength": 0.31,
-      "water": 0.54
-    },
-    "bunbeg": {
-      "facing": 270,
-      "bearing": 270,
-      "strength": 0.25,
-      "water": 0.49
-    },
-    "cahore": {
-      "facing": 95,
-      "bearing": 95,
-      "strength": 0.3,
-      "water": 0.59
-    },
     "carrickfinn": {
-      "facing": 336,
-      "bearing": 336,
-      "strength": 0.18,
-      "water": 0.31
+      "facing": 299,
+      "bearing": 299,
+      "strength": 0.27,
+      "water": 0.52
     },
     "clonea": {
-      "facing": 145,
-      "bearing": 145,
-      "strength": 0.32,
-      "water": 0.49
+      "facing": 124,
+      "bearing": 124,
+      "strength": 0.3,
+      "water": 0.52
     },
     "cunnamore": {
       "facing": null,
-      "bearing": 252,
-      "strength": 0.08,
-      "water": 0.62
+      "bearing": 251,
+      "strength": 0.07,
+      "water": 0.61
     },
     "dooey": {
-      "facing": 275,
-      "bearing": 275,
-      "strength": 0.24,
-      "water": 0.43
+      "facing": null,
+      "bearing": 358,
+      "strength": 0.15,
+      "water": 0.8
     },
     "dun-laoghaire": {
-      "facing": 29,
-      "bearing": 29,
-      "strength": 0.28,
-      "water": 0.62
+      "facing": 11,
+      "bearing": 11,
+      "strength": 0.29,
+      "water": 0.56
     },
     "dunmore-east": {
-      "facing": 130,
-      "bearing": 130,
-      "strength": 0.29,
-      "water": 0.57
+      "facing": 110,
+      "bearing": 110,
+      "strength": 0.21,
+      "water": 0.67
     },
     "east-ferry": {
       "facing": null,
-      "bearing": 130,
-      "strength": 0.11,
+      "bearing": 298,
+      "strength": 0.09,
       "water": 0.21
     },
     "glin": {
-      "facing": 335,
-      "bearing": 335,
+      "facing": 162,
+      "bearing": 162,
       "strength": 0.31,
-      "water": 0.45
+      "water": 0.54
     },
     "liscannor": {
-      "facing": 166,
-      "bearing": 166,
-      "strength": 0.29,
-      "water": 0.39
+      "facing": 160,
+      "bearing": 160,
+      "strength": 0.31,
+      "water": 0.49
     },
     "mannin-bay": {
-      "facing": 332,
-      "bearing": 332,
-      "strength": 0.22,
-      "water": 0.35
+      "facing": 329,
+      "bearing": 329,
+      "strength": 0.23,
+      "water": 0.38
     },
     "marble-hill": {
       "facing": 71,
       "bearing": 71,
       "strength": 0.26,
-      "water": 0.34
+      "water": 0.36
     },
     "mountcharles": {
-      "facing": 147,
-      "bearing": 147,
-      "strength": 0.3,
-      "water": 0.42
+      "facing": null,
+      "bearing": 8,
+      "strength": 0.05,
+      "water": 0.06
     },
     "murvagh": {
-      "facing": 280,
-      "bearing": 280,
-      "strength": 0.29,
-      "water": 0.43
+      "facing": 271,
+      "bearing": 271,
+      "strength": 0.28,
+      "water": 0.5
     },
     "oysterhaven": {
       "facing": null,
-      "bearing": 257,
-      "strength": 0.12,
-      "water": 0.26
-    },
-    "port-arthur": {
-      "facing": 255,
-      "bearing": 255,
-      "strength": 0.28,
-      "water": 0.55
+      "bearing": 124,
+      "strength": 0.04,
+      "water": 0.42
     },
     "portrush": {
-      "facing": 346,
-      "bearing": 346,
-      "strength": 0.3,
-      "water": 0.49
+      "facing": 315,
+      "bearing": 315,
+      "strength": 0.26,
+      "water": 0.47
     },
     "tracht": {
-      "facing": 336,
-      "bearing": 336,
-      "strength": 0.24,
-      "water": 0.55
+      "facing": 333,
+      "bearing": 333,
+      "strength": 0.25,
+      "water": 0.52
     },
     "tyrella": {
-      "facing": 170,
-      "bearing": 170,
-      "strength": 0.32,
-      "water": 0.5
+      "facing": 173,
+      "bearing": 173,
+      "strength": 0.31,
+      "water": 0.45
     },
     "lough-derg-killaloe": {
-      "facing": 60,
-      "bearing": 60,
+      "facing": 59,
+      "bearing": 59,
       "strength": 0.31,
-      "water": 0.5
+      "water": 0.49
     },
     "white-strand-kerry": {
-      "facing": 219,
-      "bearing": 219,
-      "strength": 0.26,
+      "facing": 222,
+      "bearing": 222,
+      "strength": 0.21,
       "water": 0.5
     }
   }

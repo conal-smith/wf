@@ -256,7 +256,7 @@ test("an unknown spot says so and offers what it may have meant", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "Spot forecasts" }),
   ).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('a[href^="/spot/"]')).toHaveCount(146);
+  await expect(page.locator('a[href^="/spot/"]')).toHaveCount(141);
 });
 
 test("the map's dock opens the spot page, for the spot it opens on and one chosen", async ({
@@ -264,7 +264,7 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
 }) => {
   await rememberSpot(page, "brandon");
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(146, {
+  await expect(page.locator(".spot-marker")).toHaveCount(141, {
     timeout: 30000,
   });
   // The dock opens on Brandon Bay, chosen last, and links to its page.

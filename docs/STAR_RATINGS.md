@@ -111,8 +111,8 @@ OpenStreetMap data): for each place, 72 bearings at 300 m, 700 m and 1.2 km,
 each tested for water, and the facing is the circular mean of the water
 bearings. `strength` says how lopsided that is; below 0.15 (a pin on an isthmus,
 a lough's middle, an estuary with water all round) no facing is published and
-the hour is rated on the wind alone. 124 of the 146 places have one computed,
-and the overrides below bring it to 127.
+the hour is rated on the wind alone. 118 of the 141 places have one computed,
+and the overrides below bring it to 120.
 
 It is a computed estimate. `data/locations/shore-facing.json` has an
 `overrides` block for corrections, which win and survive a rerun. The first

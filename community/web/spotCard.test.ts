@@ -124,7 +124,7 @@ describe("S1: the name, the county and the way to the map", () => {
     const listed: Spot[] = JSON.parse(
       readFileSync("public/riding-locations.json", "utf8"),
     );
-    expect(listed).toHaveLength(146);
+    expect(listed).toHaveLength(141);
     for (const spot of listed) {
       const search = new URL(mapSpotHref(spot.id), "https://wingfoil.ie")
         .search;
