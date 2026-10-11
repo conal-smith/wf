@@ -11,6 +11,8 @@ __pycache__/
 test-results/
 # Reports and screenshots from npm run perf:audit.
 .perf/
+# One-off before/after performance reports, kept locally.
+perf-report/
 playwright-report/
 .env
 .env.local

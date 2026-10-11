@@ -61,9 +61,8 @@ of 2026-10-05 in `design-system/foundations/principles.md`.
 1. Open the Studio's **Design** door.
 2. Choose **Point at a folder** (in the door's bar, or on its first-run
    screen).
-3. Pick the folder that holds `design-system.json`: in the main checkout,
-   `/Volumes/workdrive/wingfoil/design-system`; before the branch is merged,
-   `/Volumes/workdrive/worktrees/wingfoil-brand/design-system`.
+3. Pick the folder that holds `design-system.json`: `design-system/` in the
+   checkout.
 
 The door reads the folder live and never writes to it; a commit or a
 `npm run design:build` shows up on the next read. If the folder moves, the
