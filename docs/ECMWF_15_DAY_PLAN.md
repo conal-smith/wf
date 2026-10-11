@@ -84,16 +84,29 @@ For a mirror outage, the importer accepts `--source ecmwf` or `--source google`;
 there is no silent fallback to another numerical model.
 
 Production uses the same ECR → scheduled ECS job → S3 → CloudFront arrangement
-as [the live pipeline](LIVE_FORECAST_PIPELINE.md). Schedule ECMWF checks hourly
-to pick up the two full-length runs when available. Jobs discover published data,
-not a presumed wall-clock release. Persistent cache avoids repeat GRIB downloads;
-ephemeral tasks re-download. S3 skips an identical/already-newer snapshot.
+as [the live pipeline](LIVE_FORECAST_PIPELINE.md). The shipped timetable takes the
+**00 UTC run once a day**: open data publishes all of it, +0 h to +360 h, at about
+07:35 UTC (the index files of 8–11 October 2026 were all stamped 07:34; the 12 UTC
+run lands at 19:34), so `deploy/local/jobs.toml` runs `--ecmwf-cycle 00` at 08:20
+UTC with a retry at 10:20 that downloads nothing once the first has published.
+`--ecmwf-cycle 00` (the adapter's `--cycle`) limits the `latest` probe to 00 UTC
+runs, so a slot that fires before today's run is complete finds yesterday's 00 UTC
+run, which the bucket already serves, rather than importing yesterday's 12 UTC run
+and then the 00 UTC run as well. Without the flag the importer takes the newer of
+the two full-length runs, as an hourly schedule would. Jobs discover published
+data, not a presumed wall-clock release. Persistent cache avoids repeat GRIB
+downloads; ephemeral tasks re-download. S3 skips an identical/already-newer snapshot.
 
-ECMWF defaults to a **24-hour publication age limit** versus 12h for the regional
-models because its full-horizon cycles are 12h apart plus dissemination latency.
-Set `--max-age-hours` explicitly to override the worker limit. The importer still
-refuses anything older than 24h. Existing UI marks runs older than 18h as older;
-operators should alert on that age, job failures and a missing day-15 horizon.
+ECMWF has a **40-hour age limit** (`maxAgeHours` in `force5/ingest/registry.py`)
+versus 12h for the regional models: a 00 UTC run fetched once a day is 32–36 h old
+just before the next morning's replaces it, and must not read as stale then. The
+importer refuses to download anything older (the run the bucket already serves is
+simply "unchanged"), the worker refuses to publish it, and `status.py` calls a
+published run stale past it, from 16 UTC on a day neither slot succeeded. Set
+`--max-age-hours` explicitly to override the worker limit. Existing UI marks runs
+older than 18h as older, cosmetically, which a once-a-day run is every afternoon;
+nothing hides or refuses it before its last forecast hour has passed. Operators
+should alert on the 40-hour age, job failures and a missing day-15 horizon.
 Keep the previous snapshot available during provider failures. Open-tab manifest
 polling, AWS provisioning, production scheduling and Docker image execution are
 not part of this local integration; follow the live runbook before launch.

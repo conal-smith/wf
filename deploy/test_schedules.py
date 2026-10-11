@@ -108,6 +108,38 @@ class SetTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Memory must be one of"):
             schedules.apply_set(arguments("harmonie", memory="6Gb"))
 
+    def test_a_ceiling_too_close_to_the_measured_peak_is_refused(self):
+        with mock.patch.dict(schedules.MEASURED_PEAK_MB, {"harmonie": 400}):
+            with self.assertRaisesRegex(ValueError, "measured using 400 MB"):
+                schedules.apply_set(arguments("harmonie", memory="512Mb"))
+            self.assertEqual(self.jobs.read_text(), TOML)
+            schedules.apply_set(arguments("harmonie", memory="1Gb"))
+        self.assertIn('memory = "1Gb"', self.jobs.read_text())
+
+
+class ResourcesTest(unittest.TestCase):
+    """The shipped ceilings: measured, with headroom, and small enough to share the VM."""
+
+    # Bacalhau's capacity in the recommended Colima VM (2 CPUs, 3 GiB, half a GiB kept
+    # back for Docker and the kernel): deploy/home-compute/README.md.
+    CPUS, MEMORY_MB = 2, 2560
+
+    def test_every_enabled_job_is_measured_and_has_twice_its_peak(self):
+        for job in schedules.scheduled(schedules.load()):
+            if not job["enabled"] or job["command"] == "prune":
+                continue
+            with self.subTest(job=job["id"]):
+                peak = max(schedules.MEASURED_PEAK_MB[model] for model in job["models"])
+                ceiling = schedules.memory_mb(schedules.resources_for(job)["memory"])
+                self.assertGreaterEqual(ceiling, 2 * peak)
+
+    def test_two_of_the_largest_enabled_jobs_fit_the_recommended_vm_at_once(self):
+        enabled = [schedules.resources_for(job) for job in schedules.scheduled(schedules.load())
+                   if job["enabled"]]
+        largest = max(schedules.memory_mb(resources["memory"]) for resources in enabled)
+        self.assertLessEqual(2 * largest, self.MEMORY_MB)
+        self.assertTrue(all(float(resources["cpu"]) <= self.CPUS / 2 for resources in enabled))
+
 
 class SweepTest(unittest.TestCase):
     """The bucket sweep in the real timetable: it deletes superseded run directories."""

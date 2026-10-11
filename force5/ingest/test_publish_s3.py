@@ -563,7 +563,7 @@ class WorkerUnchangedRunTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.args = SimpleNamespace(models=["ecmwf"], step=1, run=None, ecmwf_source="ecmwf",
-                                    noaa_source="nomads",
+                                    ecmwf_cycle=None, noaa_source="nomads",
                                     bucket="test", prefix="", publish_only=False,
                                     max_age_hours=None, timeout_seconds=60)
 
@@ -609,6 +609,15 @@ class WorkerUnchangedRunTest(unittest.TestCase):
         self.args.models = ["gfs"]
         self.run_models(1)
         self.assertNotIn("--source", self.command)
+
+    def test_only_the_ecmwf_control_is_told_which_cycle_to_take(self):
+        self.args.ecmwf_cycle = "00"
+        self.run_models(1)
+        self.assertEqual(self.command[-4:], ["--source", "ecmwf", "--cycle", "00"])
+        for model in ["ecmwf-ens", "aifs", "ecmwf-wave"]:
+            self.args.models = [model]
+            self.run_models(1)
+            self.assertNotIn("--cycle", self.command, model)
 
     def test_a_real_failure_is_still_a_failure(self):
         status, event = self.run_models(1)

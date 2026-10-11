@@ -38,9 +38,32 @@ panel() { "$PYTHON" -I "$HERE/panel.py" "$@"; }
 schedules() { "$PYTHON" -I "$WINGFOIL/deploy/schedules.py" "$@"; }
 
 # Colima's VM is what Docker containers actually get, not the Mac's own memory,
-# so Bacalhau is told the VM's size less a margin and never overcommits it.
+# so Bacalhau is told the VM's size less a margin and never overcommits it. The
+# VM's memory is also what macOS gives up while Colima runs, whatever the jobs
+# use, so size the VM, not Bacalhau: `colima stop && colima start --cpu 2
+# --memory 3`, then `setup` again (README.md, "Sizing the VM"). BACALHAU_CPUS and
+# BACALHAU_MEMORY (e.g. 2Gb) advertise less than the VM instead, for a VM that
+# other containers share.
+RECOMMENDED_VM="--cpu 2 --memory 3"
 colima_socket() { echo "unix://$HOME/.colima/default/docker.sock"; }
 vm_field() { colima list --json 2>/dev/null | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['$1'])"; }
+
+# Bacalhau never starts a job asking for more than it was told it has: the job
+# queues for its hour and fails. Name every enabled job that could never fit.
+check_capacity() {
+  "$PYTHON" -I - "$CONFIG" "$1" "$2" <<'PY'
+import json, re, sys
+config, cpus, memory = sys.argv[1], float(sys.argv[2]), sys.argv[3]
+def mb(value):
+    number, unit = re.fullmatch(r"([\d.]+)(Mb|Gb)", value).groups()
+    return float(number) * (1024 if unit == "Gb" else 1)
+for job in json.load(open(config))["jobs"]:
+    want = job["task"]["resources"]
+    if job.get("enabled", True) and (mb(want["memory"]) > mb(memory) or float(want["cpu"]) > cpus):
+        print("Warning: %s needs %s CPU and %s but Bacalhau has %g CPUs and %s; it would never run."
+              % (job["id"], want["cpu"], want["memory"], cpus, memory), file=sys.stderr)
+PY
+}
 
 say() { printf '\033[1m%s\033[0m\n' "$*"; }
 need() { command -v "$1" >/dev/null || { echo "Missing $1. $2" >&2; exit 1; }; }
@@ -110,10 +133,16 @@ write_agents() {
   need bacalhau "Install it: BACALHAU_INSTALL_DIR=\$HOME/.local/bin bash <(curl -sL https://get.bacalhau.org/install.sh)"
   need node "Install Node 22 or newer"
   mkdir -p "$AGENTS" "$LOGS"
-  local cpus memory
-  cpus="$(vm_field cpus)"
+  local cpus memory vm_gib
+  cpus="${BACALHAU_CPUS:-$(vm_field cpus)}"
+  vm_gib="$(python3 -c "print(f'{int($(vm_field memory)) / 2**30:g}')")"
   # GiB to the VM, a half GiB left to Docker and the kernel.
-  memory="$(python3 -c "print(f'{int($(vm_field memory)) / 2**30 - 0.5:g}Gb')")"
+  memory="${BACALHAU_MEMORY:-$(python3 -c "print(f'{$vm_gib - 0.5:g}Gb')")}"
+  check_capacity "$cpus" "$memory"
+  if python3 -c "import sys; sys.exit(0 if $vm_gib > 3 else 1)"; then
+    say "Colima's VM has ${vm_gib} GiB, all of it taken from macOS while it runs; 3 is enough for the jobs."
+    echo "  To give the rest back: colima stop && colima start $RECOMMENDED_VM && $0 setup"
+  fi
   cat > "$AGENTS/$BACALHAU_LABEL.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -190,6 +190,36 @@ class ShippedScheduleTest(unittest.TestCase):
             for model in job["models"]:
                 self.assertIn(model, MODELS)
 
+    def test_a_once_or_twice_daily_run_is_not_stale_before_the_next_can_replace_it(self):
+        # The served run must stay within maxAgeHours until the slot after one that
+        # failed has published, with an hour more for queueing behind another job in
+        # Home Compute. HARMONIE's newest complete cycle is about three hours behind
+        # each slot; ECMWF takes the day's 00 UTC run, so one run must last from its
+        # first slot to the next day's retry.
+        with contextlib.redirect_stdout(io.StringIO()):
+            jobs = {job["id"]: job for job in scheduler.load_jobs(JOBS_FILE)}
+
+        def slots(model):
+            day = datetime(2026, 10, 12, tzinfo=timezone.utc)
+            job = jobs[model]
+            return [day.replace(hour=hour, minute=minute)
+                    for hour in job["hours"] for minute in job["minutes"]]
+
+        def hours(earlier, later):
+            return (later - earlier).total_seconds() / 3600
+
+        harmonie = slots("harmonie")
+        gaps = [hours(a, b) for a, b in zip(harmonie, harmonie[1:])] + [
+            24 - hours(harmonie[0], harmonie[-1])]
+        missed_one = max(a + b for a, b in zip(gaps, gaps[1:] + gaps[:1]))
+        self.assertLessEqual(3 + missed_one + 1, MODELS["harmonie"]["maxAgeHours"])
+
+        ecmwf = slots("ecmwf")
+        first = ecmwf[0].hour + ecmwf[0].minute / 60  # The 00 UTC run's age then.
+        self.assertGreater(first, 7.6, "ECMWF's 00 UTC run is complete at about 07:35")
+        self.assertLessEqual(first + 24 + hours(ecmwf[0], ecmwf[-1]) + 1,
+                             MODELS["ecmwf"]["maxAgeHours"])
+
     def test_every_registered_model_has_a_cadence(self):
         with contextlib.redirect_stdout(io.StringIO()):
             jobs = scheduler.load_jobs(JOBS_FILE)

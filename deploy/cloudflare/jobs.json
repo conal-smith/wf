@@ -7,13 +7,13 @@
       "enabled": true,
       "description": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
       "hours": [
-        6,
+        7,
         12
       ],
       "minutes": [
         0
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -32,7 +32,7 @@
       "minutes": [
         30
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -51,7 +51,7 @@
       "minutes": [
         40
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
@@ -62,14 +62,20 @@
       "id": "ecmwf",
       "enabled": true,
       "description": "ECMWF IFS 15-day",
+      "hours": [
+        8,
+        10
+      ],
       "minutes": [
         20
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 3300,
       "args": [
         "--models",
-        "ecmwf"
+        "ecmwf",
+        "--ecmwf-cycle",
+        "00"
       ]
     },
     {
@@ -139,7 +145,7 @@
       "minutes": [
         0
       ],
-      "size": "large",
+      "size": "small",
       "timeoutSeconds": 2400,
       "args": [
         "--models",
@@ -229,7 +235,7 @@
       "minutes": [
         30
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 2400,
       "args": [
         "--models",
@@ -248,7 +254,7 @@
       "minutes": [
         15
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",
@@ -351,7 +357,7 @@
       "minutes": [
         15
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",
@@ -368,7 +374,7 @@
       "minutes": [
         25
       ],
-      "size": "medium",
+      "size": "small",
       "timeoutSeconds": 1800,
       "args": [
         "--models",

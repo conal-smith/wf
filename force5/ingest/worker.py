@@ -15,12 +15,21 @@ records its own discover, download, decode and write phases in the file this job
 names in FORCE5_TIMINGS_FILE, and this job adds `validate` and `publish`. The
 last event for each model is also kept in `.cache/jobs/<model>.json`, which is
 what status.py reports as the model's last job.
+
+Every event also carries `resources`: the CPU seconds (user + system) this job
+and its adapter spent on the model, and the peak resident memory, in MB, of
+this process (`worker`) and of the largest process it waited for (`adapter`,
+which includes the adapter's own children, such as the blend's Node process).
+The worker stays resident while its adapter runs, so the two added together
+bound what the container held at once; that is what a job's memory ceiling
+in deploy/schedules.py has to cover.
 """
 import argparse
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import resource
 import shutil
 import subprocess
 import sys
@@ -36,6 +45,29 @@ from workspace import workspace_lock
 ECMWF_MODELS = ("ecmwf", "ecmwf-ens", "aifs", "ecmwf-wave")
 # Adapters that read NOAA's NOMADS GRIB filter by default and its S3 mirror on request.
 NOAA_MODELS = ("gefs",)
+# getrusage's ru_maxrss is in kilobytes on Linux, the container, and bytes on macOS.
+MAXRSS_BYTES = 1 if sys.platform == "darwin" else 1024
+
+
+def usage():
+    """CPU seconds so far, and peak RSS in MB, of this process and its waited-for children."""
+    own, children = (resource.getrusage(resource.RUSAGE_SELF),
+                     resource.getrusage(resource.RUSAGE_CHILDREN))
+    return {"cpu": own.ru_utime + own.ru_stime + children.ru_utime + children.ru_stime,
+            "worker": own.ru_maxrss * MAXRSS_BYTES / 2**20,
+            "adapter": children.ru_maxrss * MAXRSS_BYTES / 2**20}
+
+
+def resources(before):
+    """The `resources` of an event: CPU since `before`, and the peaks so far.
+
+    CPU time adds up, so it is this model's alone. Peak memory does not: it is
+    the largest since the job started, which for a job of one model, as every
+    scheduled job is, is that model's.
+    """
+    now = usage()
+    return {"cpuSeconds": round(now["cpu"] - before["cpu"], 1),
+            "peakRssMb": {"worker": round(now["worker"]), "adapter": round(now["adapter"])}}
 
 
 def drop_superseded(public):
@@ -64,6 +96,9 @@ def main():
     parser.add_argument("--ecmwf-source", choices=["aws", "ecmwf", "google"],
                         default=os.environ.get("ECMWF_SOURCE", "ecmwf"),
                         help="ECMWF-hosted by default; the AWS mirror throttles with 503 SlowDown")
+    parser.add_argument("--ecmwf-cycle", choices=["00", "12"],
+                        help="ECMWF IFS: only this cycle's runs, for a once-a-day slot that must "
+                        "not fall back to the other cycle; by default the newer of the two")
     parser.add_argument("--noaa-source", choices=["nomads", "s3"],
                         default=os.environ.get("NOAA_SOURCE", "nomads"),
                         help="GEFS: NOMADS's subregion filter (about 19 MB, but two connections "
@@ -76,7 +111,8 @@ def main():
                         help="Defaults to 'auto' when an endpoint URL is given, as R2 wants")
     parser.add_argument("--publish-only", action="store_true", help="Validate and publish existing local output")
     parser.add_argument("--max-age-hours", type=float,
-                        help="Default: the registry limit per model (12 regional, 24 ECMWF, 30 tides, 48 observations)")
+                        help="Default: the registry limit per model (12 regional, 30 HARMONIE, "
+                        "ICON-EU and tides, 40 ECMWF, 48 observations)")
     parser.add_argument("--timeout-seconds", type=int, default=2700)
     args = parser.parse_args()
     if (args.max_age_hours is not None and args.max_age_hours <= 0) or args.timeout_seconds <= 0:
@@ -107,8 +143,8 @@ def published_run(s3, bucket, prefix, model):
 
     A one-shot container starts on an empty disk, so the bucket is the only record
     of what has already been imported. Every forecast adapter is scheduled at least
-    sometimes before its source has a newer run (ECMWF hourly against a twice-daily
-    run, a fallback to the previous cycle that is still the published one), so they
+    sometimes before its source has a newer run (ECMWF's retry slot once the morning
+    slot has published, a fallback to the previous cycle that is still the published one), so they
     read this and download nothing when it matches. Not knowing is never fatal:
     the adapter then does what it always did and simply fetches the run.
     """
@@ -148,7 +184,7 @@ def emit(root, event, stream=None):
 def run_models(args, root, s3):
     failures = 0
     for model in dict.fromkeys(args.models):
-        started = time.monotonic()
+        started, before = time.monotonic(), usage()
         record = root / JOBS_DIRECTORY / f"{model}.adapter.json"
         phases = {}
         try:
@@ -156,6 +192,9 @@ def run_models(args, root, s3):
                 command = [sys.executable, str(Path(__file__).with_name(MODELS[model]["script"]))]
                 if model in ECMWF_MODELS:
                     command += ["--source", args.ecmwf_source]
+                    # Only the IFS control takes a cycle: it is the one fetched once a day.
+                    if model == "ecmwf" and args.ecmwf_cycle:
+                        command += ["--cycle", args.ecmwf_cycle]
                 elif MODELS[model]["kind"] == "wind" and MODELS[model].get("workerStep", True):
                     command += ["--step", str(args.step)]
                 if model in NOAA_MODELS:
@@ -191,7 +230,8 @@ def run_models(args, root, s3):
                 if code == UNCHANGED_EXIT and current:
                     emit(root, {"event": "forecast_unchanged", "model": model,
                                 "run": current, "seconds": round(time.monotonic() - started),
-                                "phases": phases, "time": datetime.now(timezone.utc).isoformat()})
+                                "phases": phases, "resources": resources(before),
+                                "time": datetime.now(timezone.utc).isoformat()})
                     continue
                 if code:
                     raise subprocess.CalledProcessError(code, command)
@@ -208,11 +248,13 @@ def run_models(args, root, s3):
                         "objects": len(objects), "frames": len(manifest.get("frames", [])),
                         "status": status, "pruned": pruned,
                         "seconds": round(time.monotonic() - started), "phases": phases,
+                        "resources": resources(before),
                         "time": datetime.now(timezone.utc).isoformat()})
         except Exception as error:
             failures += 1
             emit(root, {"event": "forecast_failed", "model": model, "error": str(error),
                         "seconds": round(time.monotonic() - started), "phases": phases,
+                        "resources": resources(before),
                         "time": datetime.now(timezone.utc).isoformat()}, sys.stderr)
         finally:
             drop_downloads(root, model)
