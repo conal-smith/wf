@@ -252,14 +252,18 @@ table.tt {
 .tt td.d0 {
   border-left: 1.5px solid var(--color-ink);
 }
+/* The dark hours, dusk to dawn: hatched as a chart shades what is not there to
+   be used (ui/theme.css `hatch`), their hour in a lighter hand. The figures
+   under them stay in ink: the wind still blows at night, it is only not
+   rated. The tide row hatches the same columns (.tide-hatch). */
 .tt tr.tt-hour td.night {
   font-weight: 400;
-  color: color-mix(in srgb, var(--color-ink) 38%, transparent);
+  color: var(--color-ink-muted);
 }
 .tt td.night {
   background-image: repeating-linear-gradient(
     135deg,
-    color-mix(in srgb, var(--color-ink) 7%, transparent) 0 1px,
+    color-mix(in srgb, var(--color-ink) 9%, transparent) 0 1px,
     transparent 1px 4px
   );
 }
@@ -316,6 +320,10 @@ table.tt {
 .tide-row {
   display: block;
   overflow: visible;
+}
+/* The night's hatch under the curve, as the cells above have it. */
+.tide-hatch {
+  fill: color-mix(in srgb, var(--color-ink) 9%, transparent);
 }
 .tide-fill {
   fill: color-mix(in srgb, var(--color-depth) 16%, transparent);
