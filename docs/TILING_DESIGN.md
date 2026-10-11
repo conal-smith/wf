@@ -687,3 +687,34 @@ its cache and, when that names another run directory, tries once more from there
   requests, 1.29 MB to 0.75 MB of response bodies; a desktop's from 38 tiles and 51
   requests to 19 and 32, 2.77 MB to 1.49 MB. The synthetic fields compress unlike
   real weather, so the bytes say little; the files halve.
+
+## As built: the second fix pass
+
+A second review looked at what an upgrade over existing data does, at long-running
+readers, and at the three implementations side by side. What changed:
+
+- **An old pointer is left out, not fatal.** After an upgrade a volume still holds each
+  model's version 1 pointer until that model runs again. The blend (force5/blend/inputs.ts
+  and `fetch_blend.read_bucket`) now leaves out and names a pointer that will not
+  validate, as it did a missing one, instead of failing every hour. The browser already
+  showed such a model as unavailable, but HARMONIE, the map's own model, has no
+  fallback, so the local README and the pipeline doc say to run every enabled job once
+  after upgrading (`npm run deploy:once`).
+- **One square at a time.** The lights of the reader's own blend read each model's
+  squares separately (`loadSpotsSettled`): a square that fails leaves its places
+  pending and the model in every other place, where one far square used to take the
+  model out of every light. Each run keeps its last eight merged sets of squares, and a
+  run found replaced is remembered (`currentRun`), so later reads go straight to the new
+  one.
+- **Caches that stay small.** The forecast server's source keeps no run file (the spot
+  loader keeps squares) and sweeps what has expired; the tile cache pins the view on
+  screen, so the next hour's prefetch cannot push it out; the archive lets go of each
+  frame's tiles once it has sampled it (300 MiB to 5.5 MiB over a synthetic 61-frame
+  HARMONIE run).
+- **The bucket sweep runs hourly**, now that it is what deletes superseded runs: they
+  leave the bucket six to seven hours after publication, not up to thirty.
+- **Python, Node and TypeScript agree** on what a fuzzer found them to differ on: NaN in
+  JSON, "." as a path, a square with its envelope alone, the form of a `superseded`
+  time, longitudes past ±180°, non-ASCII digits in a square's name, and when a frameless
+  run's horizon is worked out. tests/fixtures/squares.json, superseded.json and
+  run-digest.json hold the edge cases.
