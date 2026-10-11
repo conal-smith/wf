@@ -516,7 +516,9 @@ export default function App() {
         if (!current()) return;
         setFrame(data);
         if (requestedIndex + 1 < manifest.frames.length)
-          void loadFrame(manifest, requestedIndex + 1).catch(() => {});
+          void loadFrame(manifest, requestedIndex + 1, { base: false }).catch(
+            () => {},
+          );
       })
       .catch(async (e) => {
         if (!current()) return;

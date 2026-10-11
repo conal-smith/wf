@@ -12,6 +12,10 @@
  *   - else a finer one: along the domain's edge an overview's values stop at
  *     the centres of its edge cells, leaving a strip only finer levels cover.
  *
+ * Zoomed in to native, the coarsest level's tiles for the hour shown are kept
+ * too (HARMONIE's is one tile of about 10 KB), so zooming or panning out never
+ * shows blank inside the domain while the new view's tiles load.
+ *
  * A tile the manifest lists as absent is all missing and is never requested;
  * any other tile exists for every hour, so a failed request is an error.
  *
@@ -302,13 +306,19 @@ export class TiledField {
    * Draw at the level `view` wants from now on, and load the tiles it needs.
    * Null when they are all here already; otherwise a promise that settles once
    * they are, while `sample` draws from whatever else is loaded.
+   *
+   * At the native level `base` also loads the coarsest level's tiles
+   * (`loadBase`), without waiting for them; a prefetch of the next hour asks
+   * for none.
    */
   request(
     view: MapView,
-    { keep = true }: { keep?: boolean } = {},
+    { keep = true, base = true }: { keep?: boolean; base?: boolean } = {},
   ): Promise<void> | null {
     const { level, tiles } = this.want(view);
     this.level = level;
+    if (base && level === this.levels[0].level && this.levels.length > 1)
+      this.loadBase(keep);
     const plan = this.levels.find((entry) => entry.level === level)!;
     const missing = tiles.filter(({ x, y }) => {
       const at = slotOf(plan, x, y);
@@ -335,8 +345,39 @@ export class TiledField {
   }
 
   /** Load the tiles `view` needs; resolves once they are all drawable. */
-  load(view: MapView, options: { keep?: boolean } = {}): Promise<void> {
+  load(
+    view: MapView,
+    options: { keep?: boolean; base?: boolean } = {},
+  ): Promise<void> {
     return this.request(view, options) ?? Promise.resolve();
+  }
+
+  /**
+   * The coarsest level's tiles for this hour, as a base under the native ones:
+   * whatever a zoom or a pan out shows first, before its own tiles arrive, is
+   * drawn from them rather than left blank. Kept fresh in the cache while the
+   * native level is drawn; a failure is the view's own tiles' to report.
+   */
+  private loadBase(keep: boolean) {
+    const plan = this.levels[this.levels.length - 1];
+    for (let at = 0; at < plan.slots.length; at++) {
+      const held = plan.slots[at];
+      if (held === null) continue; // Absent.
+      const x = plan.spec.x[0] + (at % plan.across);
+      const y = plan.spec.y[0] + Math.floor(at / plan.across);
+      const url = this.url(plan.level, x, y);
+      if (held) {
+        if (keep) cached(url);
+        continue;
+      }
+      const tile = keep ? cached(url) : cache.get(url);
+      if (tile) {
+        plan.slots[at] = tile;
+        this.version++;
+        continue;
+      }
+      this.loadTile(plan, x, y, keep).catch(() => {});
+    }
   }
 
   private loadTile(plan: LevelPlan, x: number, y: number, keep: boolean) {
@@ -396,7 +437,7 @@ export class TiledField {
   prefetchNext(view: MapView) {
     if (this.index + 1 >= this.manifest.frames.length) return;
     void new TiledField(this.manifest, this.index + 1)
-      .load(view)
+      .load(view, { base: false })
       .catch(() => {});
   }
 
@@ -409,6 +450,16 @@ export class TiledField {
     const x = (lon - this.grid.west) / this.grid.dx;
     const y = (this.grid.north - lat) / this.grid.dy;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    // Outside the grid there is nothing, at any level: an overview's edge block
+    // can reach past the grid's last row or column, and a coarser tile held as a
+    // base under a native view must not paint a strip beyond the domain. A
+    // global grid wraps in longitude, as its tiles do.
+    if (
+      y < 0 ||
+      y > this.grid.height - 1 ||
+      (!this.levels[0].native && (x < 0 || x > this.grid.width - 1))
+    )
+      return null;
     const levels = this.levels;
     const start = levels.findIndex((plan) => plan.level === this.level);
     // The wanted level, then coarser, then finer.
@@ -519,16 +570,18 @@ function bilinear(
  * One map frame: the frame's identity and a field loaded for the map's view
  * (`mapView`), or for the whole grid at its coarsest before there is a view.
  * The promise settles once the tiles the view needs are drawable, so a new
- * hour or a new model is shown complete, as a whole frame used to be.
+ * hour or a new model is shown complete, as a whole frame used to be. A
+ * prefetch of a frame not yet shown passes `base: false`: the coarsest tiles
+ * under a native view are for the hour on screen only.
  */
 export async function loadFrame(
   manifest: Manifest,
   index: number,
-  { keep = true }: { keep?: boolean } = {},
+  { keep = true, base = true }: { keep?: boolean; base?: boolean } = {},
 ): Promise<Frame> {
   const info = manifest.frames[index];
   const field = new TiledField(manifest, index);
-  await field.load(currentView ?? wholeView(manifest.grid), { keep });
+  await field.load(currentView ?? wholeView(manifest.grid), { keep, base });
   return {
     model: manifest.model,
     run: manifest.run,

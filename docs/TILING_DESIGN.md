@@ -463,6 +463,14 @@ measured:
   and the wash are drawn again (a field `version` is part of the wash's key)
   and the next hour's tiles for the same box are prefetched; App.tsx still
   prefetches the next hour when the time changes.
+- **A base under a native view.** Zoomed in far enough for native tiles, the
+  field also loads the coarsest level's tiles for the hour on screen (HARMONIE's
+  level 2 is one tile of about 10 KB), not waited for and never for a prefetched
+  hour (`loadBase`, `base: false` on prefetches). Before, a zoom or pan out
+  from a bay showed blank wherever the bay's native tiles did not reach until
+  the coarser ones arrived. Nothing is ever sampled outside the grid itself, at
+  any level, so a coarser tile held under a native view cannot paint the strip
+  an overview's edge block reaches past the domain.
 - **Cache.** 96 decoded tiles, LRU, shared by every frame and model, with
   requests in flight shared; a bare point's series reads through it
   (`keep: false`) as it read through the frame cache. A tile is held as its

@@ -204,6 +204,15 @@ const viewAt = (
   pxPerLat,
 });
 const NATIVE = 1e6; // So many pixels a degree that only level 0 is fine enough.
+/** Dublin Bay zoomed in: native, one or two tiles. */
+const BAY: MapView = {
+  west: -6.3,
+  east: -5.9,
+  north: 53.45,
+  south: 53.2,
+  pxPerLon: 1000,
+  pxPerLat: 1700,
+};
 const COARSEST = 0;
 
 beforeEach(() => {
@@ -427,9 +436,16 @@ describe("loading tiles for a view", () => {
       tilesCovering(HARMONIE, manifest.tiles!.levels[0], bay),
     );
     await field.load(bay);
-    expect(asked.every((url) => url.includes("/t/0/"))).toBe(true);
-    expect(asked.length).toBe(field.want(bay).tiles.length);
-    expect(asked.length).toBeLessThanOrEqual(2);
+    // The native tiles covering the bay, and the coarsest level's one tile as a
+    // base under them.
+    const native = asked.filter((url) => url.includes("/t/0/"));
+    expect(native.length).toBe(field.want(bay).tiles.length);
+    expect(native.length).toBeLessThanOrEqual(2);
+    expect(
+      asked
+        .filter((url) => !url.includes("/t/0/"))
+        .map((url) => url.split("/t/")[1]),
+    ).toEqual(["2/13/3/000.bin"]);
   });
 
   it("never asks for a tile the manifest lists as absent", async () => {
@@ -503,13 +519,16 @@ describe("loading tiles for a view", () => {
     const count =
       (level0.x[1] - level0.x[0] + 1) * (level0.y[1] - level0.y[0] + 1);
     expect(count).toBeGreaterThan(TILE_CACHE_SIZE);
-    await field.load(viewAt(HARMONIE, NATIVE));
+    // Without the coarsest tile under them, so only the native ones are counted.
+    await field.load(viewAt(HARMONIE, NATIVE), { base: false });
     expect(tileCacheSize()).toBe(TILE_CACHE_SIZE);
     expect(fetcher).toHaveBeenCalledTimes(count);
     // The field already holds them all, so it draws on regardless...
     expect(field.sample(53, -8)).not.toBeNull();
     // ...but a new frame of the same hour has to fetch the evicted ones again.
-    await new TiledField(manifest, 0).load(viewAt(HARMONIE, NATIVE));
+    await new TiledField(manifest, 0).load(viewAt(HARMONIE, NATIVE), {
+      base: false,
+    });
     expect(fetcher).toHaveBeenCalledTimes(2 * count - TILE_CACHE_SIZE);
   });
 
@@ -631,6 +650,44 @@ describe("drawing while tiles load", () => {
     const loaded = field.version;
     expect(field.request(viewAt(HARMONIE, 66, 110))).toBeNull();
     expect(field.version).toBe(loaded);
+  });
+
+  it("keeps the coarsest tile under a native view, so a zoom out is never blank", async () => {
+    const served = serve(HARMONIE, [0, 1], harmonie);
+    const field = new TiledField(served.manifest, 0);
+    await field.load(BAY);
+    await vi.waitFor(() =>
+      expect(served.asked.map((url) => url.split("/t/")[1])).toContain(
+        "2/13/3/000.bin",
+      ),
+    );
+    await vi.waitFor(() => expect(tileCacheSize()).toBe(served.asked.length));
+    // Out to all of Ireland, with nothing arriving: Kerry is in none of the
+    // bay's native tiles, and is drawn from the base rather than left blank.
+    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+    expect(field.request(viewAt(HARMONIE, 66, 110))).not.toBeNull();
+    expect(field.level).toBe(1);
+    expect(field.sample(52.2, -9.8)).not.toBeNull();
+  });
+
+  it("adds no base at a coarse level, nor to a frame not yet shown", async () => {
+    const { manifest, asked } = serve(HARMONIE, [0, 1], harmonie);
+    const field = new TiledField(manifest, 0);
+    await field.load(viewAt(HARMONIE, 66, 110));
+    expect(asked.every((url) => url.includes("/t/1/"))).toBe(true);
+    asked.length = 0;
+    field.prefetchNext(BAY);
+    await vi.waitFor(() => expect(asked.length).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(
+      asked.every((url) => url.includes("/t/0/") && url.endsWith("/001.bin")),
+    ).toBe(true);
+    clearTileCache();
+    asked.length = 0;
+    setMapView(BAY);
+    await loadFrame(manifest, 1, { base: false });
+    expect(asked.length).toBeGreaterThan(0);
+    expect(asked.every((url) => url.includes("/t/0/"))).toBe(true);
   });
 
   it("prefetches the next hour's tiles for the same view", async () => {

@@ -65,8 +65,15 @@ test("a phone showing all of Ireland asks for overview tiles only, and a bay for
   const home = tileOf(harmonie.grid, 0, DOLLYMOUNT.lat, DOLLYMOUNT.lon)!;
   expect(native).toContain(`${home.x}/${home.y}`);
   expect(native.length).toBeLessThanOrEqual(2);
-  // Nothing coarser was asked for on the way in that was not already there.
-  expect(asked.slice(overview).every(([level]) => level === 0)).toBe(true);
+  // On the way in, nothing coarser was asked for but the one level-2 tile held
+  // under the native ones as a base, and only for the hour on screen: a zoom
+  // back out draws from it at once instead of leaving blank what the bay's
+  // tiles do not cover.
+  const coarser = asked.slice(overview).filter(([level]) => level !== 0);
+  expect(coarser.every(([level]) => level === 2)).toBe(true);
+  expect(new Set(coarser.map(([, x, y]) => `${x}/${y}`)).size).toBe(1);
+  expect(new Set(coarser.map(([, , , hour]) => hour)).size).toBe(1);
+  expect(coarser).toHaveLength(1);
   // Nine native tiles a frame exist; a bay costs a fraction of them.
   const nineAnHour = 9;
   const hoursAsked = new Set(
