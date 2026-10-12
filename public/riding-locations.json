@@ -10,8 +10,8 @@
     "id": "dollymount",
     "name": "Dollymount",
     "county": "Dublin",
-    "lat": 53.365,
-    "lon": -6.135
+    "lat": 53.367583,
+    "lon": -6.144748
   },
   {
     "id": "rusheen",
@@ -395,8 +395,8 @@
     "id": "newcastle",
     "name": "Newcastle — Dundrum Bay",
     "county": "Down",
-    "lat": 54.2111818,
-    "lon": -5.888831
+    "lat": 54.209745,
+    "lon": -5.885668
   },
   {
     "id": "cranfield",
@@ -500,22 +500,22 @@
     "id": "donabate",
     "name": "Donabate",
     "county": "Dublin",
-    "lat": 53.4636495,
-    "lon": -6.1274164
+    "lat": 53.476222,
+    "lon": -6.118269
   },
   {
     "id": "low-rock",
     "name": "Low Rock — Malahide",
     "county": "Dublin",
-    "lat": 53.4498029,
-    "lon": -6.1369824
+    "lat": 53.448599,
+    "lon": -6.135773
   },
   {
     "id": "portmarnock",
     "name": "Portmarnock — Velvet Strand",
     "county": "Dublin",
-    "lat": 53.4109071,
-    "lon": -6.1164339
+    "lat": 53.431328,
+    "lon": -6.123934
   },
   {
     "id": "burrow-beach",
@@ -584,8 +584,8 @@
     "id": "kilmuckridge",
     "name": "Kilmuckridge",
     "county": "Wexford",
-    "lat": 52.5111806,
-    "lon": -6.240908
+    "lat": 52.513792,
+    "lon": -6.238689
   },
   {
     "id": "curracloe",
@@ -829,15 +829,15 @@
     "id": "blessington",
     "name": "Blessington Lakes",
     "county": "Wicklow",
-    "lat": 53.1702408,
-    "lon": -6.5291099
+    "lat": 53.132727,
+    "lon": -6.482577
   },
   {
     "id": "broadmeadows-south",
     "name": "Broadmeadows Estuary — south shore",
     "county": "Dublin",
-    "lat": 53.456851,
-    "lon": -6.1785879
+    "lat": 53.455592,
+    "lon": -6.167131
   },
   {
     "id": "bunbeg",
@@ -850,8 +850,8 @@
     "id": "cahore",
     "name": "Cahore",
     "county": "Wexford",
-    "lat": 52.5719999,
-    "lon": -6.2036882
+    "lat": 52.56082,
+    "lon": -6.195549
   },
   {
     "id": "carrickfinn",
@@ -969,8 +969,8 @@
     "id": "tyrella",
     "name": "Tyrella",
     "county": "Down",
-    "lat": 54.252153,
-    "lon": -5.73882
+    "lat": 54.250659,
+    "lon": -5.746193
   },
   {
     "id": "lough-derg-killaloe",
@@ -985,5 +985,54 @@
     "county": "Kerry",
     "lat": 51.9429875,
     "lon": -10.27488
+  },
+  {
+    "id": "ballyhornan",
+    "name": "Ballyhornan",
+    "county": "Down",
+    "lat": 54.301664,
+    "lon": -5.551776
+  },
+  {
+    "id": "benderg-bay",
+    "name": "Benderg Bay",
+    "county": "Down",
+    "lat": 54.312005,
+    "lon": -5.535564
+  },
+  {
+    "id": "killard",
+    "name": "Killard",
+    "county": "Down",
+    "lat": 54.320084,
+    "lon": -5.541111
+  },
+  {
+    "id": "malahide-estuary",
+    "name": "Malahide Estuary",
+    "county": "Dublin",
+    "lat": 53.463347,
+    "lon": -6.173072
+  },
+  {
+    "id": "portrane",
+    "name": "Portrane",
+    "county": "Dublin",
+    "lat": 53.495188,
+    "lon": -6.109482
+  },
+  {
+    "id": "donabate-north-beach",
+    "name": "Donabate North Beach",
+    "county": "Dublin",
+    "lat": 53.481942,
+    "lon": -6.111939
+  },
+  {
+    "id": "malahide-estuary-south-park",
+    "name": "Malahide Estuary — South Park",
+    "county": "Dublin",
+    "lat": 53.458976,
+    "lon": -6.182803
   }
 ]

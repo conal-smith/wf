@@ -22,9 +22,17 @@ try {
   );
   if (new Set(places.map((place) => place.id)).size !== places.length)
     throw new Error("Duplicate riding-location id");
+  // An original spot keeps its id and its coordinate. The one exception is a
+  // move by the site's owner (data/locations/owner-places.json), the most
+  // trusted position there is: the place then sits exactly where they put it.
+  const { overrides } = JSON.parse(
+    readFileSync(`${root}data/locations/owner-places.json`, "utf8"),
+  );
   for (const spot of original) {
     const place = places.find((candidate) => candidate.id === spot.id);
-    if (!place || place.lat !== spot.lat || place.lon !== spot.lon)
+    const moved = overrides[spot.id]?.status === "moved";
+    const want = moved ? overrides[spot.id] : spot;
+    if (!place || place.lat !== want.lat || place.lon !== want.lon)
       throw new Error(`Original spot ${spot.id} lost its id or coordinate`);
   }
   writeFileSync(

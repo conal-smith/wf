@@ -49,7 +49,7 @@ const scriptBytes = (responses: ReturnType<typeof record>) =>
   ].reduce((sum, bytes) => sum + bytes, 0);
 
 async function mapReady(page: Page) {
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {

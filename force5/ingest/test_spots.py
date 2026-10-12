@@ -30,12 +30,18 @@ class CatalogueTests(unittest.TestCase):
     def test_the_default_catalogue_is_every_riding_location(self):
         spots = load_spots()
         self.assertEqual(spots_file(), RIDING_LOCATIONS_FILE)
-        self.assertEqual(len(spots), 141)
+        self.assertEqual(len(spots), 148)
         original = json.loads(ORIGINAL_SPOTS_FILE.read_text())
         by_id = {spot["id"]: spot for spot in spots}
+        # An original spot keeps its coordinate unless the site's owner moved it,
+        # and then it sits exactly where they put it (scripts/export-riding-locations.mjs).
+        owner = json.loads((RIDING_LOCATIONS_FILE.parents[1] / "data/locations/owner-places.json")
+                           .read_text())["overrides"]
         for spot in original:
+            moved = owner.get(spot["id"], {})
+            want = moved if moved.get("status") == "moved" else spot
             self.assertEqual((by_id[spot["id"]]["lat"], by_id[spot["id"]]["lon"]),
-                             (spot["lat"], spot["lon"]))
+                             (want["lat"], want["lon"]))
         self.assertEqual([spot["id"] for spot in spots][:len(original)],
                          [spot["id"] for spot in original])
 
@@ -75,7 +81,7 @@ class AdapterSeriesTests(unittest.TestCase):
         manifest = read_whole(self.root / manifest_path)
         series = manifest["spotForecasts"]
         self.assertEqual(sorted(series), sorted(spot["id"] for spot in self.spots))
-        self.assertEqual(len(series), 141)
+        self.assertEqual(len(series), 148)
         for spot in self.spots:
             self.assertEqual(len(series[spot["id"]]), len(hours))
             for index, hour in enumerate(hours):
@@ -119,7 +125,7 @@ class AdapterSeriesTests(unittest.TestCase):
             (self.root / "unused").write_bytes(b"fake")
             fetch_harmonie.main()
         manifest = read_whole(self.root / "public/weather/harmonie.json")
-        self.assertEqual(len(manifest["spotForecasts"]), 141)
+        self.assertEqual(len(manifest["spotForecasts"]), 148)
         for spot in self.spots:
             for index, hour in enumerate(hours):
                 entry = manifest["spotForecasts"][spot["id"]][index]

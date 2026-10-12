@@ -2,6 +2,7 @@ import failte from "../data/locations/failte-ireland.json";
 import osm from "../data/locations/openstreetmap.json";
 import web from "../data/locations/web-research.json";
 import places from "../data/locations/riding-places.json";
+import owner from "../data/locations/owner-places.json";
 import type { Spot } from "../force5/src/weather";
 import { shoreFacing } from "../force5/src/shoreFacing";
 
@@ -27,7 +28,7 @@ export function ridingLocations(original: Spot[]): Spot[] {
       note: "Strangford Lough's north-eastern shore. Reference coordinate from the sailing club site; check local access and launch arrangements.",
     },
   };
-  return mergeLocations(original).flatMap((spot): Spot[] => {
+  const research = mergeLocations(original).flatMap((spot): Spot[] => {
     const place = places[spot.id];
     if (place)
       return [
@@ -43,6 +44,72 @@ export function ridingLocations(original: Spot[]): Spot[] {
     if (spot.kind !== "spot") return [];
     return [{ ...spot, website: undefined, facing: shoreFacing(spot.id) }];
   });
+  return withOwnerPlaces(research);
+}
+
+/** Where the site's owner put a place, as `npm run spots:owner` records it. */
+interface OwnerOverride {
+  status: "moved" | "ok" | "remove";
+  lat?: number;
+  lon?: number;
+  note?: string;
+}
+const ownerSource = {
+  name: "Placed by the wingfoil.ie site owner",
+  url: "https://wingfoil.ie/",
+  licence: "AGPL-3.0-only",
+};
+const ownerNote =
+  "Spot reference. Position placed by the site's owner from their own time on the water; check local access and launch arrangements.";
+
+/**
+ * The owner's own positions are the most trusted there are, so they win over
+ * every researched coordinate: a move puts the place where the owner put it
+ * (same id, so links and published series keep their name), `remove` takes it
+ * off the map, and the owner's added places join the public set.
+ */
+export function withOwnerPlaces(spots: Spot[]): Spot[] {
+  const overrides = owner.overrides as Record<string, OwnerOverride>;
+  const placed = spots.flatMap((spot): Spot[] => {
+    const override = spot.id ? overrides[spot.id] : undefined;
+    if (!override) return [spot];
+    if (override.status === "remove") return [];
+    const moved =
+      override.status === "moved" &&
+      override.lat !== undefined &&
+      override.lon !== undefined;
+    if (!moved && !override.note) return [spot];
+    const lat = moved ? override.lat! : spot.lat;
+    const lon = moved ? override.lon! : spot.lon;
+    return [
+      {
+        ...spot,
+        lat,
+        lon,
+        note: [moved ? ownerNote : spot.note, override.note]
+          .filter(Boolean)
+          .join(" "),
+        locationSources: moved
+          ? [...(spot.locationSources || []), { ...ownerSource, lat, lon }]
+          : spot.locationSources,
+      },
+    ];
+  });
+  for (const row of owner.records)
+    placed.push({
+      id: row.id,
+      name: row.name,
+      county: row.county,
+      lat: row.lat,
+      lon: row.lon,
+      kind: "spot",
+      aliases: row.aliases,
+      sports: row.sports,
+      note: [ownerNote, row.note].filter(Boolean).join(" "),
+      locationSources: [{ ...ownerSource, lat: row.lat, lon: row.lon }],
+      facing: shoreFacing(row.id),
+    });
+  return placed;
 }
 
 export { shoreFacing };

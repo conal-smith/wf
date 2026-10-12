@@ -27,6 +27,7 @@
     "design:build": "node design-system/scripts/build-tokens.mjs && node design-system/scripts/build-catalog.mjs",
     "spots:export": "node scripts/export-riding-locations.mjs",
     "spots:facing": "node scripts/shore-facing.mjs",
+    "spots:owner": "node scripts/import-owner-places.mjs",
     "market:api": "tsx watch market/api/src/index.ts",
     "market:api:build": "tsc -p market/api/tsconfig.json",
     "market:api:start": "node market/api/dist/market/api/src/index.js",

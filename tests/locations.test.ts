@@ -17,7 +17,7 @@ describe("saved Irish wind-sport coordinates", () => {
     const spots = ridingLocations(
       JSON.parse(readFileSync("public/spots.json", "utf8")),
     );
-    expect(spots).toHaveLength(141);
+    expect(spots).toHaveLength(148);
     expect(spots.every((s) => s.kind === "spot" && !s.website)).toBe(true);
     expect(spots.find((s) => s.id === "kilcrea")).toMatchObject({
       name: "Kilcrea — Malahide Estuary",
@@ -132,6 +132,84 @@ describe("saved Irish wind-sport coordinates", () => {
   });
 });
 
+const owner = JSON.parse(
+  readFileSync("data/locations/owner-places.json", "utf8"),
+);
+
+describe("places the site's owner placed", () => {
+  const original: Spot[] = JSON.parse(
+    readFileSync("public/spots.json", "utf8"),
+  );
+  const spots = ridingLocations(original);
+  const exported: Spot[] = JSON.parse(
+    readFileSync("public/riding-locations.json", "utf8"),
+  );
+  it("puts a moved place exactly where the owner put it, under the id it always had", () => {
+    for (const [id, override] of Object.entries(owner.overrides) as [
+      string,
+      { status: string; lat?: number; lon?: number },
+    ][]) {
+      const spot = spots.find((s) => s.id === id);
+      if (override.status === "remove") expect(spot, id).toBeUndefined();
+      else expect(spot, id).toBeDefined();
+      if (override.status === "moved") {
+        expect(spot, id).toMatchObject({
+          lat: override.lat,
+          lon: override.lon,
+        });
+        expect(
+          exported.find((s) => s.id === id),
+          id,
+        ).toMatchObject({
+          lat: override.lat,
+          lon: override.lon,
+        });
+        expect(spot?.note).toMatch(/placed by the site's owner/);
+      }
+    }
+  });
+  it("adds the owner's own places with clean ids and a county from the boundary map", () => {
+    expect(owner.records.length).toBeGreaterThan(0);
+    for (const record of owner.records) {
+      expect(record.id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(record.id).not.toMatch(/^new-/);
+      expect(record.editorId).toMatch(/^new-/);
+      expect(record.coordinateType).toBe("owner-surveyed");
+      expect(record.countySource).toBe("osm-county-boundary");
+      expect(record.sports).toContain("wingfoiling");
+      expect(record.jurisdiction).toBe(
+        ["Antrim", "Armagh", "Derry", "Down", "Fermanagh", "Tyrone"].includes(
+          record.county,
+        )
+          ? "UK-NI"
+          : "IE",
+      );
+      expect(spots.find((s) => s.id === record.id)).toMatchObject({
+        name: record.name,
+        county: record.county,
+        lat: record.lat,
+        lon: record.lon,
+        kind: "spot",
+      });
+    }
+    const ids = spots.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("keeps every original forecast spot's id, and its coordinate unless the owner moved it", () => {
+    for (const spot of original) {
+      const moved = owner.overrides[spot.id!]?.status === "moved";
+      const want = moved ? owner.overrides[spot.id!] : spot;
+      expect(
+        spots.find((s) => s.id === spot.id),
+        spot.id,
+      ).toMatchObject({
+        lat: want.lat,
+        lon: want.lon,
+      });
+    }
+  });
+});
+
 const places = JSON.parse(
   readFileSync("data/locations/riding-places.json", "utf8"),
 );
@@ -175,9 +253,20 @@ describe("riding places placed on OpenStreetMap", () => {
       const y = (b.lat - a.lat) * rad;
       return Math.hypot(x, y) * 6371;
     };
+    // The owner may put two of their places closer than that (they know both
+    // launches), but not on top of each other or of another place.
+    const placed = new Set([
+      ...Object.keys(owner.overrides),
+      ...owner.records.map((record: { id: string }) => record.id),
+    ]);
     for (let i = 0; i < spots.length; i++)
       for (let j = i + 1; j < spots.length; j++)
-        expect(km(spots[i], spots[j])).toBeGreaterThan(0.9);
+        expect(
+          km(spots[i], spots[j]),
+          `${spots[i].id} and ${spots[j].id}`,
+        ).toBeGreaterThan(
+          placed.has(spots[i].id!) || placed.has(spots[j].id!) ? 0.5 : 0.9,
+        );
   });
   it("gives every public place a shore facing entry, published only where it is clear", () => {
     for (const spot of spots) {

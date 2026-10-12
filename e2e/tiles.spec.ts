@@ -10,7 +10,8 @@ import { tileOf } from "../force5/src/f5tile";
  * production run has: nine native tiles, four at level 1, one at level 2.
  */
 const harmonie = readSample("harmonie");
-const DOLLYMOUNT = { lat: 53.365, lon: -6.135 };
+// Where the site's owner put it (data/locations/owner-places.json).
+const DOLLYMOUNT = { lat: 53.367583, lon: -6.144748 };
 
 /** Every HARMONIE tile the page asks for, as [level, x, y, hour]. */
 function tilesAsked(page: Page) {
@@ -43,7 +44,7 @@ test("a phone showing all of Ireland asks for overview tiles only, and a bay for
   await page.setViewportSize({ width: 390, height: 844 });
   const asked = tilesAsked(page);
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   // The first frame and the next hour's are in.
@@ -90,7 +91,7 @@ test("a desktop showing all of Ireland asks for the native tiles and never an ab
 }) => {
   const asked = tilesAsked(page);
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect
@@ -117,7 +118,7 @@ test("the first frame the page asks for is the one it opens on", async ({
   const asked = tilesAsked(page);
   await page.clock.install({ time: SAMPLE_CLOCK });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect.poll(() => asked.length, { timeout: 20000 }).toBeGreaterThan(0);

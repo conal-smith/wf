@@ -5,7 +5,7 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   // Riding places only: no schools, clubs or areas among the lights.
@@ -15,13 +15,14 @@ test("public riding places are on the chart and the Blast alias finds Kilcrea, w
   for (const alias of ["Blast", "Kilcrea", "Donabate"]) {
     await search.fill(alias);
     // Donabate is also a beach of its own on the far side of the peninsula,
-    // so that alias finds both; the estuary is still the one Blast names.
+    // and the owner's Donabate North Beach beyond it, so that alias finds all
+    // three; the estuary is still the one Blast names.
     const rows = page
       .locator(".spot-row")
       .filter({ hasText: "Kilcrea — Malahide Estuary" });
     await expect(rows).toHaveCount(1);
     await expect(page.locator(".spot-row")).toHaveCount(
-      alias === "Donabate" ? 2 : 1,
+      alias === "Donabate" ? 3 : 1,
     );
   }
   await search.fill("Kilcrea");

@@ -23,7 +23,7 @@ const harmonie = readSample("harmonie");
 export async function openChart(page: Page, width = 1440, height = 900) {
   await page.setViewportSize({ width, height });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {

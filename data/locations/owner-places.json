@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "source": "wingfoil.ie site owner",
+  "note": "Positions placed by the site's owner from their own knowledge of riding these places, not copied from any guide or map. They win over every other coordinate for the same id. `overrides` holds the owner's moves (`moved`, with lat/lon), confirmations (`ok`) and removals (`remove`) of public places by id; `records` holds places the owner added, each keyed to the editor id it came from (`editorId`) so a re-import keeps its slug. Written by `npm run spots:owner`; edit the owner's spot editor rather than this file.",
+  "licence": "AGPL-3.0-only",
+  "editorUpdatedAt": "2026-10-12T12:01:16.079Z",
+  "overrides": {
+    "newcastle": {
+      "status": "moved",
+      "lat": 54.209745,
+      "lon": -5.885668
+    },
+    "tyrella": {
+      "status": "moved",
+      "lat": 54.250659,
+      "lon": -5.746193
+    },
+    "portmarnock": {
+      "status": "moved",
+      "lat": 53.431328,
+      "lon": -6.123934
+    },
+    "low-rock": {
+      "status": "moved",
+      "lat": 53.448599,
+      "lon": -6.135773
+    },
+    "donabate": {
+      "status": "moved",
+      "lat": 53.476222,
+      "lon": -6.118269
+    },
+    "dollymount": {
+      "status": "moved",
+      "lat": 53.367583,
+      "lon": -6.144748
+    },
+    "blessington": {
+      "status": "moved",
+      "lat": 53.132727,
+      "lon": -6.482577
+    },
+    "cahore": {
+      "status": "moved",
+      "lat": 52.56082,
+      "lon": -6.195549
+    },
+    "kilmuckridge": {
+      "status": "moved",
+      "lat": 52.513792,
+      "lon": -6.238689
+    },
+    "broadmeadows-south": {
+      "status": "moved",
+      "lat": 53.455592,
+      "lon": -6.167131
+    }
+  },
+  "records": [
+    {
+      "id": "ballyhornan",
+      "editorId": "new-ballyhornan-wil1",
+      "name": "Ballyhornan",
+      "county": "Down",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "UK-NI",
+      "lat": 54.301664,
+      "lon": -5.551776,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "benderg-bay",
+      "editorId": "new-benderg-bay-0mnc",
+      "name": "Benderg Bay",
+      "county": "Down",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "UK-NI",
+      "lat": 54.312005,
+      "lon": -5.535564,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "killard",
+      "editorId": "new-killard-1atj",
+      "name": "Killard",
+      "county": "Down",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "UK-NI",
+      "lat": 54.320084,
+      "lon": -5.541111,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "malahide-estuary",
+      "editorId": "new-malahide-estuary-3d2e",
+      "name": "Malahide Estuary",
+      "county": "Dublin",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "IE",
+      "lat": 53.463347,
+      "lon": -6.173072,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "estuary",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "portrane",
+      "editorId": "new-portrane-3ukn",
+      "name": "Portrane",
+      "county": "Dublin",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "IE",
+      "lat": 53.495188,
+      "lon": -6.109482,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "donabate-north-beach",
+      "editorId": "new-donabate-north-beach-4hfp",
+      "name": "Donabate North Beach",
+      "county": "Dublin",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "IE",
+      "lat": 53.481942,
+      "lon": -6.111939,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "sea",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "malahide-estuary-south-park",
+      "editorId": "new-malahide-estuary-south-park-b9d9",
+      "name": "Malahide Estuary — South Park",
+      "county": "Dublin",
+      "countySource": "osm-county-boundary",
+      "jurisdiction": "IE",
+      "lat": 53.458976,
+      "lon": -6.182803,
+      "kind": "spot",
+      "coordinateType": "owner-surveyed",
+      "waterType": "estuary",
+      "sports": [
+        "wingfoiling"
+      ],
+      "aliases": [],
+      "note": ""
+    }
+  ]
+}
