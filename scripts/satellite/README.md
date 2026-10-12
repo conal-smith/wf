@@ -88,6 +88,17 @@ pyTMD) at its point, fitted to an open reference (`tides.py`):
   tables, which the rocks pilot used at Killard, are Crown copyright and are
   not used.
 
+**Strangford Lough** is a basin: behind the Narrows its water runs well behind
+the open coast, and on Killard's levels its flats got no fit. A flip fit
+depends only on the order of the looks' levels, so `lag.py` reads the lag off
+the imagery: Killard's fitted model shifted by each lag in turn, and the median
+misfit over the lough's pixels that are wet in some looks and dry in others
+(21,340 of them). It falls from 0.26 at no lag to **0.065 at 100 minutes**
+(about as good as the open coast's fits). So the lough is its own station
+(`Strangford_MODELLED`, a polygon inside the Narrows), Killard's tide 100
+minutes later; its amplitude and datum stay Killard's, which the order of the
+looks cannot give.
+
 At a look's time the level is the gauge's where there is one (the Irish
 National Tide Gauge Network's 5-minute gauges at 18 stations, the UK gauges
 since 2022: it carries the surge the waterline sees), else the fitted model. A

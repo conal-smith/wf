@@ -56,6 +56,8 @@ def robust_rgb_median(rgb, valid):
 
 def median_level(levels, use):
     """Each pixel's median tide over the looks it uses. levels: (n,) floats; use: (n, h, w) bool."""
+    if len(levels) == 0:
+        return np.full(use.shape[1:], np.nan, np.float32)
     order = np.argsort(levels)
     u = use[order]
     count = u.sum(axis=0)

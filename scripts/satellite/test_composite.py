@@ -53,6 +53,13 @@ class MedianTest(unittest.TestCase):
 
 
 class LevelTest(unittest.TestCase):
+    def test_no_looks_is_no_level(self):
+        # A block where no colour look was kept.
+        out = composite.median_level(np.array([]), np.zeros((0, 2, 2), bool))
+        self.assertTrue(np.isnan(out).all())
+        med, used = composite.robust_rgb_median(np.zeros((0, 3, 2, 2), np.uint8), np.zeros((0, 2, 2), bool))
+        self.assertTrue(np.isnan(med).all())
+
     def test_median_level(self):
         levels = np.array([3.0, 1.0, 2.0, 5.0])
         use = np.array([1, 1, 1, 0], bool)[:, None, None]
