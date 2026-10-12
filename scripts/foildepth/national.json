@@ -14,6 +14,7 @@
   "minWaterPixels": 200,
   "maxHolePixels": 2000,
   "maxUnsurveyedKm2": 5,
+  "estimateMetres": 1500,
   "marshAboveMhwMetres": 0.5,
   "upperBeachMetres": 60,
   "maxStationKm": 45,
@@ -27,7 +28,8 @@
     "ceilingMarginMetres": "Each region's dry ceiling is its station's highest predicted level over 2026-2028 (stations.json) plus this: three years are short of the 18.6-year nodal cycle by a few centimetres, and the waterline surface is good to about half a metre.",
     "pilots": "The pilot areas of areas.json win where they are: their boxes are cut out of the regions at the pilots' min zoom and above, and left in below it, where the pilots draw nothing. Their merged grids (build.py --debug, which reach a little past the boxes) are the regions' most trusted source, so at a box's edge both archives hold the same heights.",
     "upperBeachMetres": "The sea reaches up through ground that floods at a spring tide (MHW + marshAboveMhwMetres); above that, up to the dry ceiling, only this much upper beach beside it is foreshore. Fields and streets at 3-5 m LAT joined to the shore through a chain of low ground (behind Sandymount, round the Malahide and Rogerstown estuaries) are land.",
-    "maxUnsurveyedKm2": "Water no source gives a height (inside OSM's coastline) is estimated from the heights round it in stretches up to this size (a lagoon, the strip off a flat); a larger stretch is a gap in the surveys out at sea, taken for deep. No distance from the shore decides it, so no edge is a buffer's.",
+    "maxUnsurveyedKm2": "Without the OSM mask only: unsurveyed water in stretches up to this size is drawn as such; a larger stretch is taken for deep.",
+    "estimateMetres": "Water no source gives a height (inside OSM's coastline) is estimated from the heights round it within this distance of one; further out it is drawn as nothing and a tap says it is unsurveyed. A distance under the chunks' margin (one z13 tile, 2.9 km), so every chunk judges a pixel alike.",
     "osm": "OpenStreetMap's coastline (osmdata.openstreetmap.de's land polygons) and its tidal water are a hard mask (osm.py): outside them nothing is drawn, whatever a source says; inside the coastline nothing is land. Beaches, sand and marsh joined to the sea are drawn where a height says the tide reaches them."
   },
   "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017–2026. Coastline and tidal water © OpenStreetMap contributors (ODbL).",

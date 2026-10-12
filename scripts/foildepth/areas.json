@@ -12,6 +12,7 @@
   "minWaterPixels": 400,
   "maxHolePixels": 4000,
   "maxUnsurveyedKm2": 5,
+  "estimateMetres": 1500,
   "marshAboveMhwMetres": 0.5,
   "upperBeachMetres": 60,
   "marginDegrees": 0.01,

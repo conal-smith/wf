@@ -469,17 +469,32 @@ class OsmMask(unittest.TestCase):
         self.assertTrue((out[:, 30:] <= 0.6 + 1 / 32).all())
         self.assertAlmostEqual(float(out[30, 20]), 1.26, delta=0.1)  # the pin, 170 m from the rim
 
-    def test_a_large_stretch_with_no_height_is_unsurveyed_and_not_drawn(self):
-        z = np.full((300, 300), np.nan, np.float32)
+    def test_water_far_from_any_height_is_unsurveyed_and_not_drawn(self):
+        z = np.full((60, 300), np.nan, np.float32)
         z[:, :5] = -3.0
         out, stats = build.finish(z, np.zeros(z.shape, bool), np.full(z.shape, np.nan, np.float32),
                                   np.zeros(z.shape, bool), np.zeros(z.shape, bool), 5.0,
-                                  dict(CFG, maxUnsurveyedKm2=1.0), 10.0, sea=np.ones(z.shape, bool),
+                                  dict(CFG, estimateMetres=1000), 10.0, sea=np.ones(z.shape, bool),
                                   shore=np.zeros(z.shape, bool))
-        # Not drawn, as deep water is not, but flagged: a tap says unsurveyed.
-        self.assertTrue((out[:, 5:] == np.float32(-20 + 1 / 64)).all())
-        self.assertTrue(build.is_estimate(out[:, 5:]).all())
-        self.assertFalse(build.has_content(out[:, 5:], CFG))
+        # Within a kilometre of the soundings: estimated from them.
+        self.assertTrue(build.is_estimate(out[:, 5:100]).all())
+        self.assertTrue((np.abs(out[:, 5:100] + 3) < 0.1).all())
+        # Further: not drawn, as deep water is not, but flagged: a tap says unsurveyed.
+        self.assertTrue((out[:, 110:] == np.float32(-20 + 1 / 64)).all())
+        self.assertFalse(build.has_content(out[:, 110:], CFG))
+
+    def test_an_estimate_meets_the_heights_round_it_without_a_step(self):
+        # A gap between a beach at 3 m and a survey's edge at -2 m.
+        z = np.full((80, 120), np.nan, np.float32)
+        z[:, :20] = 3.0
+        z[:, 60:] = -2.0
+        out, _ = build.finish(z, np.zeros(z.shape, bool), np.full(z.shape, np.nan, np.float32),
+                              np.zeros(z.shape, bool), np.zeros(z.shape, bool), 5.0, CFG, 10.0,
+                              sea=np.ones(z.shape, bool), shore=np.zeros(z.shape, bool))
+        row = out[40]
+        self.assertLess(abs(float(row[59]) - (-2.0)), 0.5)  # beside the survey, near its height
+        self.assertLess(abs(float(row[20]) - 3.0), 0.5)  # beside the beach, near its
+        self.assertTrue((np.diff(row[20:60]) <= 0.05).all())  # falling between, no step
 
     def test_a_beach_draws_only_under_the_ceiling(self):
         z = np.tile(np.linspace(-2, 8, 40, dtype=np.float32), (10, 1))

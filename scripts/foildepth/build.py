@@ -646,6 +646,35 @@ def push_pull(z, known):
     return filled.astype(np.float32)
 
 
+def relax(v, known, values, coarse=4, coarse_iters=120, fine_iters=40):
+    """push_pull's surface made to meet the known heights: it is smooth but
+    steps where it meets them (its coarse levels mix both sides of a gap), so
+    a fill beside a survey's edge drew the edge as a line. A few hundred
+    sweeps of the neighbours' mean, the known held, first on a grid `coarse`
+    times coarser (for the long reach), then on the full one."""
+    h, w = v.shape
+    ph, pw = -(-h // coarse) * coarse, -(-w // coarse) * coarse
+    vp = np.pad(v, ((0, ph - h), (0, pw - w)), mode="edge")
+    kp = np.pad(known, ((0, ph - h), (0, pw - w)))
+    xp = np.pad(np.where(known, values, 0), ((0, ph - h), (0, pw - w)))
+    blocks = (ph // coarse, coarse, pw // coarse, coarse)
+    kc = kp.reshape(blocks).sum(axis=(1, 3))
+    xc = np.where(kc > 0, xp.reshape(blocks).sum(axis=(1, 3)) / np.maximum(kc, 1), 0)
+    vc = vp.reshape(blocks).mean(axis=(1, 3))
+    fixed = kc > 0
+    for _ in range(coarse_iters):
+        vc = ndimage.uniform_filter(vc, size=3, mode="nearest")
+        vc[fixed] = xc[fixed]
+    # The coarse correction, brought back up smoothly, where nothing is known.
+    up = np.repeat(np.repeat(vc - vp.reshape(blocks).mean(axis=(1, 3)), coarse, axis=0), coarse, axis=1)
+    up = ndimage.uniform_filter(up, size=coarse + 1, mode="nearest")[:h, :w]
+    out = np.where(known, values, v + up).astype(np.float32)
+    for _ in range(fine_iters):
+        out = ndimage.uniform_filter(out, size=3, mode="nearest")
+        out[known] = values[known]
+    return out.astype(np.float32)
+
+
 def quantise(v):
     return (np.round(np.asarray(v, dtype=np.float32) / QUANTUM) * QUANTUM).astype(np.float32)
 
@@ -676,11 +705,12 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
       is known of it (`hints["bound"]`: never seen dry by the satellite,
       under the waterlines' LAT line), and written as an estimate
       (mark_estimate). Far from any height a basin's `pin` (its bed as a
-      rider knows it) stands in. A stretch of such water larger than
-      `maxUnsurveyedKm2` is too large to fill from its edges (a gap in the
-      surveys out at sea, or a whole harbour no survey has crossed): it is
-      drawn as nothing, written as the deep value flagged as an estimate, so
-      a tap says it is unsurveyed rather than deep.
+      rider knows it) stands in. Such water further than `estimateMetres`
+      from any height (a gap in the surveys out at sea, the middle of a
+      harbour no survey has crossed) is drawn as nothing, written as the
+      deep value flagged as an estimate, so a tap says it is unsurveyed
+      rather than deep. The estimate is push_pull's surface relaxed onto the
+      heights round it (relax), so it meets them without a step.
 
     Returns the grid (heights from the floor to the ceiling, estimates among
     them, the deep and land values) and counts."""
@@ -701,16 +731,20 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
              "landByMask": int((height & ~sea & ~shore).sum()),
              "shoreOverCeiling": int((shore & ~height).sum()), "estimated": 0, "holesDeep": 0}
     if holes.any():
-        labels, count = ndimage.label(holes, structure=np.ones((3, 3)))
-        sizes = ndimage.sum(holes, labels, index=np.arange(1, count + 1)) * metres_per_px ** 2 / 1e6
-        small = np.zeros(count + 1, dtype=bool)
-        small[1:] = sizes <= cfg.get("maxUnsurveyedKm2", 5.0)
-        est = holes & small[labels]
-        # Drawn as nothing, as deep water is, but flagged as an estimate (a
-        # 64th over the deep value): a tap says no survey has sounded it,
-        # not that it is deep (Wexford Harbour's flats, with no survey yet).
-        out[holes & ~small[labels]] = np.float32(deep + ESTIMATE_OFFSET)
-        stats["holesDeep"] = int((holes & ~small[labels]).sum())
+        # Estimated within `estimateMetres` of a height (or anywhere in a
+        # basin, which has its own bed); further out, drawn as nothing, as
+        # deep water is, but flagged as an estimate (a 64th over the deep
+        # value): a tap says no survey has sounded it, not that it is deep
+        # (the middle of Wexford Harbour, with no survey yet). A distance, not
+        # a stretch's size, decides it: a chunk sees all of a distance within
+        # its margin, but not all of a stretch, and the two sides of a chunk's
+        # edge drew a straight line where they judged a stretch differently.
+        reach = ndimage.distance_transform_edt(~known) * metres_per_px <= cfg.get("estimateMetres", 1500)
+        if pin is not None:
+            reach |= np.isfinite(pin)
+        est = holes & reach
+        out[holes & ~reach] = np.float32(deep + ESTIMATE_OFFSET)
+        stats["holesDeep"] = int((holes & ~reach).sum())
         if est.any():
             base = np.where(known, np.clip(z, floor - 1, ceil), np.nan).astype(np.float32)
             anchor = known.copy()
@@ -721,7 +755,7 @@ def finish_masked(z, wet_at_lat, sea, shore, ceiling, cfg, metres_per_px, hints=
                 base[p] = pin[p]
                 anchor |= p
             if anchor.any():
-                v = push_pull(np.nan_to_num(base), anchor)
+                v = relax(push_pull(np.nan_to_num(base), anchor), anchor, np.nan_to_num(base))
             else:
                 v = np.zeros(shape, dtype=np.float32)
             bound = np.full(shape, np.nan, dtype=np.float32) if hints is None else hints["bound"].copy()
