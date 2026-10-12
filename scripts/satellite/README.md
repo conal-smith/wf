@@ -47,6 +47,16 @@ $PY -I $S/publish.py --imagery <root>/out/satellite --intertidal <root>/out/inte
 Each step is resumable: the catalog by month, the fetch by acquisition, the
 compose by block, and `run.py` skips a tile that has its `stats.json`.
 
+`run.py` reads a tile, then composes it, one step at a time (5 readers, one
+compose worker, about 2 GB at most: the machine it ran on is shared), and
+then drops the tile's Sentinel-2 reads (`--keep-downloads` keeps them): from
+compose on, everything reads only `work/tiles/<tile>/` (`high.tif`, `low.tif`,
+`heights.tif`, `weight.tif`, `stats.json`; `blocks/` and `qc.npz` let a tile be
+finished again without reading). So the tiles can be split between machines:
+copy `work/plan.json`, `work/coarse.tif`, `work/tides/` and
+`downloads/{catalog,eot20}` across, run `run.py --tiles <some>` there, and copy
+each finished `work/tiles/<tile>/` back.
+
 ## Method
 
 ### Where

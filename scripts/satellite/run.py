@@ -11,6 +11,7 @@ composed again.
 """
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -20,6 +21,24 @@ sys.path.insert(0, HERE)
 import common  # noqa: E402
 
 
+OUTPUTS = ("stats.json", "high.tif", "low.tif", "heights.tif", "weight.tif")
+
+
+def drop_downloads(tile):
+    """A composed tile's Sentinel-2 reads, once its outputs are all there
+    (2-25 GB a tile; the island's would be about 250 GB). Its log.jsonl stays,
+    the record of what was read. Everything after compose (tiles.py,
+    validate.py, publish.py) reads only work/tiles/<tile>/."""
+    out = common.path("work", "tiles", tile)
+    if not all(os.path.exists(os.path.join(out, f)) for f in OUTPUTS):
+        print(f"{tile}: outputs missing, downloads kept", flush=True)
+        return
+    base = common.path("downloads", "s2", tile)
+    for kind in ("coast", "summer"):
+        shutil.rmtree(os.path.join(base, kind), ignore_errors=True)
+    print(f"{tile}: downloads dropped", flush=True)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--tiles")
@@ -27,6 +46,7 @@ def main():
     p.add_argument("--fetch-workers", type=int, default=5)
     p.add_argument("--compose-jobs", type=int, default=1)
     p.add_argument("--overlap", action="store_true", help="compose a tile while the next one is read")
+    p.add_argument("--keep-downloads", action="store_true", help="keep a composed tile's Sentinel-2 reads")
     a = p.parse_args()
     plan = common.read_json(common.path("work", "plan.json"))
     if a.all:
@@ -41,6 +61,8 @@ def main():
     for t in tiles:
         if os.path.exists(common.path("work", "tiles", t, "stats.json")):
             print(f"{t}: already composed", flush=True)
+            if not a.keep_downloads:
+                drop_downloads(t)
             continue
         t0 = time.time()
         with open(os.path.join(logs, f"fetch-{t}.log"), "a") as fh:
@@ -58,6 +80,8 @@ def main():
             composing.wait()
             print(f"{t}: composed ({composing.returncode}) in {time.time() - t1:.0f} s", flush=True)
             composing = None
+            if not a.keep_downloads:
+                drop_downloads(t)
     if composing is not None:
         composing.wait()
     print("all done", flush=True)
