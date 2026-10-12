@@ -33,24 +33,32 @@ def masked_median(stack, valid):
     return np.where(count > 0, med, np.nan).astype(np.float32), count
 
 
-def robust_rgb_median(rgb, valid):
+def robust_rgb_median(rgb, valid, rows=128):
     """The median colour of the valid looks, a second time without the looks
     whose brightness (the mean of the three bands' codes) is more than
     OUTLIER_STEPS from the first median's.
 
     rgb: (n, 3, h, w) uint8, 0 where a look is not usable; valid: (n, h, w)
-    bool. Returns ((3, h, w) float32 codes, NaN where none; count used)."""
-    ok = valid & (rgb > 0).all(axis=1)
-    bright = rgb.astype(np.float32).mean(axis=1)
-    first, count = masked_median(np.round(bright).astype(np.uint8), ok)
-    keep = ok & (np.abs(bright - first[None]) <= OUTLIER_STEPS)
-    # Where rejecting would leave fewer than half, the first median's looks stand.
-    kept = keep.sum(axis=0)
-    keep = np.where((kept * 2 >= count)[None], keep, ok)
+    bool. Returns ((3, h, w) float32 codes, NaN where none; count used).
+
+    A strip of rows at a time, in integers: a few hundred looks of a block
+    as floats are over a gigabyte."""
+    h = rgb.shape[2]
     out = np.empty((3,) + rgb.shape[2:], dtype=np.float32)
-    used = None
-    for band in range(3):
-        out[band], used = masked_median(rgb[:, band], keep)
+    used = np.zeros(rgb.shape[2:], dtype=np.int64)
+    for r0 in range(0, h, rows):
+        sl = slice(r0, r0 + rows)
+        part = rgb[:, :, sl]
+        ok = valid[:, sl] & (part.min(axis=1) > 0)
+        bright = (part.sum(axis=1, dtype=np.uint16) + 1) // 3
+        first, count = masked_median(bright.astype(np.uint8), ok)
+        keep = ok & (np.abs(bright.astype(np.int16) - np.nan_to_num(first, nan=0).astype(np.int16)[None])
+                     <= OUTLIER_STEPS)
+        # Where rejecting would leave fewer than half, the first median's looks stand.
+        kept = keep.sum(axis=0)
+        keep = np.where((kept * 2 >= count)[None], keep, ok)
+        for band in range(3):
+            out[band, sl], used[sl] = masked_median(part[:, band], keep)
     return out, used
 
 

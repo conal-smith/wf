@@ -63,12 +63,17 @@ class Looks:
         except KeyError:
             return None
 
-    def stack(self, ks, name, shape, dtype=np.uint8):
-        out = np.zeros((len(ks),) + shape, dtype=dtype)
+    def stack(self, ks, name, shape, dtype=np.uint8, rows=None):
+        """The looks' arrays for one block, stacked; only `rows` (a slice of the
+        last-but-one axis) of each if given, so a part of a block costs a part
+        of the memory."""
+        rows = rows or slice(None)
+        h = len(range(*rows.indices(shape[-2])))
+        out = np.zeros((len(ks),) + shape[:-2] + (h, shape[-1]), dtype=dtype)
         for n, k in enumerate(ks):
             a = self.member(k, name)
             if a is not None:
-                out[n] = a
+                out[n] = a[..., rows, :]
         return out
 
     def close(self):
@@ -193,27 +198,37 @@ def _qc_worker(job):
 # ---- pass 2: per block -----------------------------------------------------------
 
 
-def coastal_block(ctx, i, j, keep):
+def coastal_block(ctx, i, j, keep, parts=4):
+    """A coastal block's fields, in `parts` strips of rows (the looks' stacks
+    for a strip only, so the memory is a part of a whole block's)."""
+    size = ctx.size
+    step = size // parts
+    pieces = [coastal_part(ctx, i, j, keep, slice(r0, r0 + step)) for r0 in range(0, size, step)]
+    return {k: np.concatenate([pc[k] for pc in pieces], axis=-2) for k in pieces[0]}
+
+
+def coastal_part(ctx, i, j, keep, rows):
     size, cfg = ctx.size, ctx.cfg
     c = cfg["composite"]
     max_km = cfg["intertidalArchive"]["maxStationKm"]
+    hh = rows.stop - rows.start
     looks = Looks([p for _, p, _ in ctx.coast])
     try:
         ks = np.flatnonzero(keep)
-        codes = looks.stack(ks, f"c{i:02d}_{j:02d}", (size, size))
+        codes = looks.stack(ks, f"c{i:02d}_{j:02d}", (size, size), rows=rows)
         st = np.where(codes == 0, -1, np.where((codes & 3) == 2, 1, 0)).astype(np.int8)
         cand = ctx.cand[ks]
         (lon, lat), _ = block_lonlat(ctx.pt, i, j, size)
-        blon, blat = common.region_block_lonlat(lon, lat)
+        blon, blat = common.region_block_lonlat(lon[rows], lat[rows])
         nearest = common.nearest_station(blon, blat, ctx.stations, max_km)
         res = {}
         # Heights against each station's tide, kept where the pixel is that station's.
-        z = np.full((size, size), np.nan, np.float32)
-        misfit = np.full((size, size), np.nan, np.float32)
-        nvalid = np.zeros((size, size), np.int16)
-        state = np.zeros((size, size), np.int8)
-        drybelow = np.zeros((size, size), np.int16)
-        wetabove = np.zeros((size, size), np.int16)
+        z = np.full((hh, size), np.nan, np.float32)
+        misfit = np.full((hh, size), np.nan, np.float32)
+        nvalid = np.zeros((hh, size), np.int16)
+        state = np.zeros((hh, size), np.int8)
+        drybelow = np.zeros((hh, size), np.int16)
+        wetabove = np.zeros((hh, size), np.int16)
         for k in np.unique(nearest):
             if k not in ctx.levels:
                 continue
@@ -237,13 +252,13 @@ def coastal_block(ctx, i, j, keep):
         (slon, slat), _ = block_lonlat(ctx.pt, i, j, size, step=sub)
         wts = common.station_weights(slon, slat, ctx.stations, max_km, c["stationBlendKm"])
         cks = ks[cand]
-        rgb = looks.stack(cks, f"r{i:02d}_{j:02d}", (3, size, size))
-        clean = (rgb > 0).all(axis=1)
+        rgb = looks.stack(cks, f"r{i:02d}_{j:02d}", (3, size, size), rows=rows)
+        clean = rgb.min(axis=1) > 0
         for opt in ("high", "low"):
-            acc = np.zeros((3, size, size), np.float32)
-            wsum = np.zeros((size, size), np.float32)
-            tide_acc = np.zeros((size, size), np.float32)
-            count_acc = np.zeros((size, size), np.float32)
+            acc = np.zeros((3, hh, size), np.float32)
+            wsum = np.zeros((hh, size), np.float32)
+            tide_acc = np.zeros((hh, size), np.float32)
+            count_acc = np.zeros((hh, size), np.float32)
             for k in np.flatnonzero((wts > 0).any(axis=(1, 2))):
                 if k not in ctx.levels:
                     continue
@@ -255,7 +270,7 @@ def coastal_block(ctx, i, j, keep):
                 sel &= np.isfinite(lv)
                 use = clean & sel[:, None, None]
                 med, used = composite.robust_rgb_median(rgb, use)
-                w = upsample(wts[k], sub, size) * (used >= c["minScenes"])
+                w = upsample(wts[k], sub, size)[rows] * (used >= c["minScenes"])
                 good = np.isfinite(med[0]) & (w > 0)
                 acc += np.where(good[None], med * w[None], 0)
                 wsum += np.where(good, w, 0)
