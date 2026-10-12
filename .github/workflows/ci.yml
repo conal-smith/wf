@@ -89,6 +89,9 @@ jobs:
       # The production monitor (.github/workflows/monitor.yml): standard library only.
       - name: Release script tests
         run: python -m unittest discover -s scripts/release -p 'test_*.py'
+      # The satellite pipeline's pure parts (scripts/satellite): numpy only.
+      - name: Satellite pipeline tests
+        run: python -m unittest discover -s scripts/satellite -p 'test_*.py'
       # Home Compute's and Cloudflare's timetables are generated from
       # deploy/local/jobs.toml; an edit to one without the others fails here.
       - name: Generated timetables are current

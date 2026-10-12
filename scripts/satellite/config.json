@@ -1,0 +1,73 @@
+{
+  "bbox": [-10.8, 51.3, -5.3, 55.5],
+  "start": "2017-01-01",
+  "end": "2026-10-12",
+  "maxTileCloud": 80,
+  "coarse": {
+    "crs": "EPSG:2157",
+    "pixelMetres": 100,
+    "scenesPerTile": 14,
+    "maxTileCloud": 12,
+    "seaKm": 5.0,
+    "coastalLandKm": 3.0,
+    "coastalSeaKm": 5.5,
+    "tileBlendKm": 1.5,
+    "tileMarginKm": 1.0
+  },
+  "blockSize": 512,
+  "maxBadFraction": 0.75,
+  "composite": {
+    "lowPercentile": 20,
+    "highPercentile": 80,
+    "minScenes": 3,
+    "stationBlendKm": 3.0,
+    "tideZoneMinWetShare": 0.04,
+    "tideZoneDilatePixels": 8,
+    "tideZoneFeatherPixels": 8
+  },
+  "summer": {
+    "months": [5, 6, 7, 8, 9],
+    "years": [2018, 2025],
+    "maxTileCloud": 40,
+    "maxScenes": 28
+  },
+  "heights": {
+    "maxSceneError": 0.06,
+    "minValid": 30,
+    "minDryBelow": 3,
+    "minWetAbove": 3,
+    "maxMisfit": 0.2,
+    "maxLushShare": 0.5,
+    "alwaysWetShare": 0.97,
+    "biasMetres": 0.25
+  },
+  "intertidalArchive": {
+    "tileSize": 512,
+    "minzoom": 6,
+    "maxzoom": 13,
+    "quantumMetres": 0.03125,
+    "deepMetres": -20,
+    "landMetres": 50,
+    "noSurveyMetres": 40,
+    "belowSeenMetres": 30,
+    "maxStationKm": 45,
+    "regionPrefix": "tide-"
+  },
+  "imagery": {
+    "tileSize": 512,
+    "minzoom": 6,
+    "maxzoom": 13,
+    "quality": 78,
+    "white": 0.26,
+    "gamma": 2.0,
+    "saturation": 1.15,
+    "edgeFadeKm": 2.0
+  },
+  "notes": {
+    "maxzoom": "512 px tiles at z13 are 5.8 m a pixel at 53 N, the same as 256 px tiles at z14: the imagery is 10 m, so this is its native resolution with room to spare. The map overzooms past it.",
+    "maxBadFraction": "A scene whose window is more than this share cloud, shadow or no data (SCL) is not read past its SCL.",
+    "composite": "Per pixel, the median of the clean looks whose tide (at the pixel's station) is in the bottom lowPercentile or top highPercentile of that station's tides at Sentinel-2's overpass, from every season. Keeping to the summer looks where a pixel had enough of them made the sea blotchy (the choice changes from pixel to pixel with the clouds); the seasons' colours are kept apart instead by giving the land the one summer composite in both.",
+    "tideZone": "Where water ever reaches (wet in at least tideZoneMinWetShare of the clean looks, joined to the sea, not lush vegetation) and a margin round it, the image is tide-sorted; elsewhere both options share one summer composite, so land looks the same in both.",
+    "heights": "The rocks pilot's method (scripts/rockspilot/build_heights.py): each pixel's flip level between dry and wet against the tide, with its misfit; biasMetres is subtracted (the pilot measured +0.26 m against the OPW LiDAR)."
+  }
+}
