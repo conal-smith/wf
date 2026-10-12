@@ -63,13 +63,17 @@ async function firstStrokes(page: Page) {
  * resampled for the view once the camera is still, and never while it moves
  * (windLayer.ts), so a rebuild counted after the move began is one made where
  * it stopped. The count is taken before the move: read after it, a short zoom
- * could already have stopped and rebuilt, and no rebuild would follow.
+ * could already have stopped and rebuilt, and no rebuild would follow. A
+ * zoom on a CI runner, under the pinned clock, can block the page for a few
+ * seconds before it settles, so it gets the chart's own allowance, not five.
  */
 async function cameraAtRest(page: Page, move: () => Promise<void>) {
   const before = await page.evaluate(() => window.particleWork.fields);
   await move();
   await expect
-    .poll(() => page.evaluate(() => window.particleWork.fields))
+    .poll(() => page.evaluate(() => window.particleWork.fields), {
+      timeout: 30000,
+    })
     .toBeGreaterThan(before);
 }
 
@@ -213,6 +217,8 @@ const tinted = (page: Page) =>
 test("zoomed right in, the coloured arrows go to ink and keep moving", async ({
   page,
 }) => {
+  // Seven zooms, each waited out: more than the default test time on CI.
+  test.slow();
   await instrument(page);
   const layers = page.getByRole("button", { name: "Layers", exact: true });
   await layers.click();
