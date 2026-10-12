@@ -1,0 +1,33 @@
+{
+ "howth_vs_gauge": {
+  "n": 297,
+  "msl_above_lat": 2.583,
+  "scale": 1.007,
+  "rmse": 0.173,
+  "rmse_unscaled_offset_only": 0.173,
+  "p95_abs_resid": 0.347
+ },
+ "killard_vs_ukho": {
+  "events": 28,
+  "model_minus_ukho_minutes_median": -11.0,
+  "model_minus_ukho_minutes_range": [
+   -21.0,
+   11.0
+  ],
+  "msl_above_cd": 2.609,
+  "scale": 0.915,
+  "rmse_at_extremes": 0.237,
+  "raw_model_range_high_minus_low_mean": 3.392,
+  "ukho_range_high_minus_low_mean": 3.222
+ },
+ "killard_calibrated_19y": {
+  "lowest": -0.277,
+  "highest": 5.384,
+  "p01": 0.324,
+  "mean": 2.609
+ },
+ "howth_calibrated_19y": {
+  "lowest": -0.027,
+  "highest": 5.03
+ }
+}

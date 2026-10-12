@@ -1,0 +1,73 @@
+{
+ "satellite_minus_layer_all": {
+  "n": 46352,
+  "median": 0.881,
+  "iqr": [
+   0.434,
+   1.274
+  ],
+  "mean": 0.842,
+  "mae": 0.974,
+  "within_0.5m": 0.233
+ },
+ "satellite_minus_layer_where_layer_is_lidar": {
+  "n": 6790,
+  "median": 0.314,
+  "iqr": [
+   0.126,
+   0.553
+  ],
+  "mean": 0.313,
+  "mae": 0.395,
+  "within_0.5m": 0.668
+ },
+ "satellite_minus_layer_elsewhere": {
+  "n": 36829,
+  "median": 0.992,
+  "iqr": [
+   0.65,
+   1.36
+  ],
+  "mean": 0.947,
+  "mae": 1.087,
+  "within_0.5m": 0.152
+ },
+ "satellite_minus_lidar_direct": {
+  "n": 10071,
+  "median": 0.257,
+  "iqr": [
+   0.004,
+   0.509
+  ],
+  "mean": 0.168,
+  "mae": 0.43,
+  "within_0.5m": 0.656
+ },
+ "layer_pixels_in_satellite_intertidal": 46352,
+ "satellite_intertidal_pixels_outside_lagoon": 48401,
+ "satellite_intertidal_where_layer_says_land": 1074,
+ "satellite_intertidal_where_layer_says_unsurveyed": 1703,
+ "wet_dry_agreement": {
+  "1.5": {
+   "agree": 0.842,
+   "satellite_wet_layer_dry": 0.031,
+   "satellite_dry_layer_wet": 0.128,
+   "n": 132421,
+   "agree_where_either_intertidal": 0.758
+  },
+  "2.5": {
+   "agree": 0.87,
+   "satellite_wet_layer_dry": 0.023,
+   "satellite_dry_layer_wet": 0.107,
+   "n": 132421,
+   "agree_where_either_intertidal": 0.802
+  },
+  "3.5": {
+   "agree": 0.948,
+   "satellite_wet_layer_dry": 0.017,
+   "satellite_dry_layer_wet": 0.034,
+   "n": 132421,
+   "agree_where_either_intertidal": 0.924
+  }
+ }
+}

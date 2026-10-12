@@ -1,0 +1,68 @@
+[
+ {
+  "variant": "NDWI > 0, all scenes",
+  "n": 10071,
+  "median": 0.257,
+  "iqr": [
+   0.004,
+   0.509
+  ],
+  "within_0.5m": 0.656,
+  "misfit_median": 0.047
+ },
+ {
+  "variant": "NDWI > -0.1",
+  "n": 9903,
+  "median": 0.058,
+  "iqr": [
+   -0.252,
+   0.421
+  ],
+  "within_0.5m": 0.688,
+  "misfit_median": 0.085
+ },
+ {
+  "variant": "NDWI > 0.1",
+  "n": 9978,
+  "median": 0.332,
+  "iqr": [
+   0.133,
+   0.588
+  ],
+  "within_0.5m": 0.604,
+  "misfit_median": 0.045
+ },
+ {
+  "variant": "MNDWI > 0 (SWIR, 20 m)",
+  "n": 9890,
+  "median": -0.053,
+  "iqr": [
+   -0.436,
+   0.386
+  ],
+  "within_0.5m": 0.647,
+  "misfit_median": 0.091
+ },
+ {
+  "variant": "NDWI > 0, rising tide only",
+  "n": 10041,
+  "median": 0.325,
+  "iqr": [
+   0.034,
+   0.548
+  ],
+  "within_0.5m": 0.619,
+  "misfit_median": 0.026
+ },
+ {
+  "variant": "NDWI > 0, falling tide only",
+  "n": 9791,
+  "median": 0.101,
+  "iqr": [
+   -0.095,
+   0.432
+  ],
+  "within_0.5m": 0.724,
+  "misfit_median": 0.041
+ }
+]

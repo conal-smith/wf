@@ -1,0 +1,17 @@
+{
+ "rock_pixels": 10081,
+ "rock_km2": 1.008,
+ "polygons": 182,
+ "high_confidence_polygons": 26,
+ "medium_confidence_polygons": 59,
+ "fringe_polygons": 97,
+ "rock_km2_not_fringe": 0.694,
+ "osm_rock_pixels_on_foreshore": 1739,
+ "osm_rock_pixels_detected_share": 0.477,
+ "detected_pixels_within_20m_of_osm_rock_share": 0.102,
+ "detected_pixels_inside_osm_sand_or_flats": 1771,
+ "osm_soft_pixels_on_foreshore": 34232,
+ "osm_soft_false_positive_share": 0.052,
+ "osm_rock_features_on_foreshore": 12,
+ "osm_rock_features_detected": 7
+}

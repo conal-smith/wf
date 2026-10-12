@@ -1,0 +1,37 @@
+{
+  "areas": {
+    "down": {
+      "name": "Ballyhornan, Benderg Bay and Killard Point, Co. Down",
+      "bbox": [-5.600, 54.285, -5.490, 54.345],
+      "epsg": 32630,
+      "mgrs": "30UUF",
+      "spots": [
+        {"name": "Ballyhornan", "lat": 54.30166, "lon": -5.55178},
+        {"name": "Benderg Bay", "lat": 54.31200, "lon": -5.53556},
+        {"name": "Killard", "lat": 54.32008, "lon": -5.54111}
+      ]
+    },
+    "dublin": {
+      "name": "Donabate, Portrane and the Malahide (Broadmeadow) estuary, Co. Dublin",
+      "bbox": [-6.210, 53.435, -6.070, 53.515],
+      "epsg": 32629,
+      "mgrs": "29UPV",
+      "spots": [
+        {"name": "Donabate", "lat": 53.4636495, "lon": -6.1274164},
+        {"name": "Kilcrea, Malahide estuary", "lat": 53.4690824, "lon": -6.1755492},
+        {"name": "Broadmeadows estuary, south shore", "lat": 53.456851, "lon": -6.1785879},
+        {"name": "Low Rock, Malahide", "lat": 53.4498029, "lon": -6.1369824}
+      ]
+    },
+    "portmarnock": {
+      "name": "Portmarnock, Baldoyle and Sutton: a check area under the OPW 2011 LiDAR",
+      "bbox": [-6.170, 53.370, -6.050, 53.440],
+      "epsg": 32629,
+      "mgrs": "29UPV",
+      "validationOnly": true,
+      "spots": [
+        {"name": "Portmarnock", "lat": 53.4229, "lon": -6.1213}
+      ]
+    }
+  }
+}

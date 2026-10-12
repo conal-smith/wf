@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rocks pilot: Sentinel-2 rock and intertidal heights</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="viewer-data/leaflet/leaflet.css">
+<style>
+  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, sans-serif; }
+  #map { position: absolute; inset: 0 0 0 0; }
+  .panel { position: absolute; z-index: 1000; top: 10px; left: 54px; background: rgba(255,255,255,0.94);
+           padding: 8px 12px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); max-width: 360px; }
+  .panel h1 { font-size: 15px; margin: 0 0 4px; }
+  .panel button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
+  .panel button.on { background: #1f6feb; color: white; border: 1px solid #1f6feb; border-radius: 3px; }
+  .legend { position: absolute; z-index: 1000; bottom: 18px; left: 10px; background: rgba(255,255,255,0.94);
+            padding: 8px 10px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); font-size: 12px; max-width: 340px; }
+  .sw { display: inline-block; width: 14px; height: 10px; margin-right: 5px; vertical-align: middle; border: 1px solid #333; }
+  .ramp { height: 10px; width: 200px; background: linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725); }
+  .small { color: #555; font-size: 12px; }
+  .leaflet-popup-content { font-size: 12px; }
+  .leaflet-popup-content table td { padding: 0 6px 0 0; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="panel">
+  <h1>Rocks pilot (Sentinel-2, 10 m)</h1>
+  <div id="areas"></div>
+  <div class="small" id="summary"></div>
+  <div class="small">Tap a rock for its heights. The heights are the tide level at which a 10 m pixel covers and uncovers, at the tide station.</div>
+</div>
+<div class="legend" id="legend"></div>
+<script src="viewer-data/leaflet/leaflet.js"></script>
+<script src="viewer-data/data.js"></script>
+<script>
+  const P = window.PILOT;
+  const map = L.map('map', { zoomControl: true });
+  // Display only: Esri imagery has no acquisition dates and may not be used to derive data.
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, attribution: 'Basemap: Esri, Maxar, Earthstar Geographics (display only)'
+  }).addTo(map);
+  const conf = { high: '#e4002b', medium: '#ff8c00', low: '#ffd400' };
+  const overlays = {}, groups = {};
+  const control = L.control.layers({ 'Esri World Imagery (display only)': esri }, {}, { collapsed: false }).addTo(map);
+
+  function fmt(v) { return v === null || v === undefined ? '–' : (typeof v === 'number' ? v.toFixed(2) : v); }
+
+  for (const [id, a] of Object.entries(P.areas)) {
+    const rocks = L.geoJSON(a.rocks, {
+      style: f => ({ color: conf[f.properties.confidenceClass], weight: 1, fillOpacity: 0.45, fillColor: conf[f.properties.confidenceClass] }),
+      onEachFeature: (f, layer) => {
+        const p = f.properties;
+        layer.bindPopup(`<b>${p.kind}</b> (${p.confidenceClass}${p.shorelineFringe ? ', shoreline fringe' : ''}, score ${fmt(p.confidence)})<br>
+          <table><tr><td>Area</td><td>${p.areaM2.toLocaleString()} m²</td></tr>
+          <tr><td>Lowest part seen to dry</td><td>${fmt(p.zMin)} m</td></tr>
+          <tr><td>Median cover/uncover level</td><td>${fmt(p.zMedian)} m</td></tr>
+          <tr><td>Highest flip level</td><td>${fmt(p.zMax)} m</td></tr>
+          <tr><td>Never dried in the scenes</td><td>${Math.round(p.shareNeverDried * 100)}%</td></tr>
+          <tr><td>Never covered in the scenes</td><td>${Math.round(p.shareNeverCovered * 100)}%</td></tr></table>
+          <span class="small">${a.datum}</span>`);
+      }
+    });
+    const osm = L.geoJSON(a.osm, {
+      style: f => f.properties.class === 'rock' ? { color: '#00e5ff', weight: 2, fill: false } : { color: '#ffffff', weight: 1, dashArray: '4 3', fill: false },
+      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, color: '#00e5ff', weight: 2, fill: false }),
+      onEachFeature: (f, layer) => layer.bindPopup(`OSM ${f.properties.osm}<br>${f.properties.natural || f.properties.seamark || f.properties.wetland || ''}${f.properties.name ? ': ' + f.properties.name : ''}${f.properties.tidal ? ' (tidal)' : ''}`)
+    });
+    const spots = L.layerGroup(a.spots.map(s => L.marker([s.lat, s.lon], { title: s.name }).bindTooltip(s.name, { permanent: true, direction: 'right', offset: [10, -18] })));
+    const name = id === 'down' ? 'Co. Down' : 'Dublin';
+    const lay = {};
+    for (const [k, o] of Object.entries(a.overlays)) {
+      lay[k] = L.imageOverlay(o.url, o.bounds, { opacity: k.endsWith('tide') ? 1 : 0.85 });
+      control.addOverlay(lay[k], `${name}: ${o.label}`);
+    }
+    control.addOverlay(rocks, `${name}: detected rock (${a.summary.rockPolygons} polygons)`);
+    control.addOverlay(osm, `${name}: OpenStreetMap rocks (cyan), sand/flats (white)`);
+    control.addOverlay(spots, `${name}: riding spots`);
+    rocks.addTo(map); osm.addTo(map); spots.addTo(map);
+    groups[id] = { a, rocks, osm, spots, lay };
+  }
+
+  function show(id) {
+    const g = groups[id];
+    map.fitBounds(g.a.bounds);
+    document.querySelectorAll('#areas button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+    document.getElementById('summary').textContent =
+      `${g.a.name}. ${g.a.summary.scenes} cloud-free scenes, tides ${g.a.summary.tideRange[0].toFixed(2)}–${g.a.summary.tideRange[1].toFixed(2)} ${g.a.datum}. ${g.a.summary.rockKm2} km² flagged as rock.`;
+    const hr = g.a.overlays.heights.range;
+    document.getElementById('legend').innerHTML = `
+      <div><span class="sw" style="background:${conf.high}"></span>rock, high confidence
+       <span class="sw" style="background:${conf.medium};margin-left:8px"></span>medium
+       <span class="sw" style="background:${conf.low};margin-left:8px"></span>shoreline fringe</div>
+      <div><span class="sw" style="border:2px solid #00e5ff;background:none"></span>OpenStreetMap rock / reef / stone</div>
+      <div style="margin-top:4px">Intertidal height layer (${hr[0].toFixed(1)}–${hr[1].toFixed(1)} m):</div><div class="ramp"></div>
+      <div class="small">Sentinel-2: Copernicus data 2017–2026. OSM © OpenStreetMap contributors, ODbL.</div>`;
+  }
+  const box = document.getElementById('areas');
+  for (const id of Object.keys(groups)) {
+    const b = document.createElement('button');
+    b.textContent = id === 'down' ? 'Ballyhornan / Killard' : 'Donabate / Malahide';
+    b.dataset.id = id;
+    b.onclick = () => show(id);
+    box.appendChild(b);
+  }
+  const start = new URLSearchParams(location.search).get('area') || 'down';
+  show(start in groups ? start : 'down');
+</script>
+</body>
+</html>

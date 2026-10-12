@@ -1,0 +1,2049 @@
+{
+ "area": "down",
+ "scenes_with_tide": 386,
+ "scenes_kept": 361,
+ "tide_range_kept": [
+  0.94,
+  5.22
+ ],
+ "tide_source": [
+  "EOT20 calibrated to UKHO Killard Point"
+ ],
+ "tide_source_counts": {
+  "EOT20 calibrated to UKHO Killard Point": 361
+ },
+ "months_of_lowest_15pct": [
+  5,
+  3,
+  3,
+  5,
+  11,
+  12,
+  7,
+  2,
+  3,
+  0,
+  2,
+  2
+ ],
+ "months_of_highest_15pct": [
+  6,
+  10,
+  4,
+  7,
+  3,
+  0,
+  2,
+  3,
+  8,
+  4,
+  3,
+  5
+ ],
+ "months_all": [
+  40,
+  29,
+  30,
+  34,
+  36,
+  34,
+  25,
+  27,
+  34,
+  26,
+  27,
+  19
+ ],
+ "intertidal_pixels": 28066,
+ "intertidal_km2": 2.81,
+ "intertidal_height_percentiles_5_50_95": [
+  1.11,
+  2.21,
+  4.42
+ ],
+ "intertidal_misfit_median": 0.068,
+ "kept_scenes": [
+  {
+   "stamp": "20170101T114502",
+   "tide": 4.205,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170111T114431",
+   "tide": 4.054,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170128T113321",
+   "tide": 4.665,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170501T114351",
+   "tide": 2.287,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170508T113321",
+   "tide": 3.645,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170511T114351",
+   "tide": 4.429,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170518T113321",
+   "tide": 1.562,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170617T113321",
+   "tide": 1.247,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170620T114351",
+   "tide": 1.621,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170705T114349",
+   "tide": 2.637,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170712T113319",
+   "tide": 3.565,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170717T113321",
+   "tide": 1.055,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170727T113321",
+   "tide": 2.925,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170801T113319",
+   "tide": 1.559,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170809T114351",
+   "tide": 4.315,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170915T113321",
+   "tide": 1.609,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20170925T113321",
+   "tide": 2.846,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20171102T114339",
+   "tide": 3.543,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20171112T114339",
+   "tide": 1.527,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20171127T114421",
+   "tide": 1.763,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20171129T113419",
+   "tide": 2.041,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20171227T114501",
+   "tide": 1.58,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180101T114459",
+   "tide": 4.259,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180106T114451",
+   "tide": 3.265,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180108T113439",
+   "tide": 1.686,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180126T114341",
+   "tide": 1.46,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180131T114339",
+   "tide": 4.769,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180202T113311",
+   "tide": 4.902,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180212T113321",
+   "tide": 3.222,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180215T114351",
+   "tide": 4.473,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180217T113309",
+   "tide": 4.566,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180220T114339",
+   "tide": 3.363,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180225T114351",
+   "tide": 1.549,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180227T113309",
+   "tide": 3.059,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180319T113309",
+   "tide": 4.568,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180324T113321",
+   "tide": 1.485,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180327T114351",
+   "tide": 1.905,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180513T113321",
+   "tide": 3.491,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180516T114351",
+   "tide": 4.779,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180523T113321",
+   "tide": 1.042,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180607T113319",
+   "tide": 1.359,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180622T113321",
+   "tide": 1.273,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180625T114351",
+   "tide": 3.125,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180627T113319",
+   "tide": 4.134,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180630T114349",
+   "tide": 4.012,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180702T113321",
+   "tide": 3.064,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180809T114349",
+   "tide": 3.072,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180829T114339",
+   "tide": 4.005,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180831T113321",
+   "tide": 2.928,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180903T114351",
+   "tide": 1.546,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180905T113309",
+   "tide": 1.691,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180918T114339",
+   "tide": 1.735,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20180923T114341",
+   "tide": 3.799,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181015T113319",
+   "tide": 2.295,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181018T114349",
+   "tide": 1.905,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181028T114349",
+   "tide": 3.96,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181030T113321",
+   "tide": 2.386,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181122T114401",
+   "tide": 4.161,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181202T114431",
+   "tide": 1.704,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181207T114449",
+   "tide": 4.607,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20181222T114501",
+   "tide": 4.42,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190108T113441",
+   "tide": 4.331,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190116T114429",
+   "tide": 1.796,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190128T113331",
+   "tide": 1.293,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190202T113319",
+   "tide": 3.712,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190207T113321",
+   "tide": 4.239,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190210T114351",
+   "tide": 2.925,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190215T114349",
+   "tide": 1.859,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190217T113321",
+   "tide": 3.31,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190227T113311",
+   "tide": 1.411,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190309T113311",
+   "tide": 4.132,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190312T114351",
+   "tide": 2.653,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190317T114349",
+   "tide": 2.121,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190329T113321",
+   "tide": 1.598,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190406T114349",
+   "tide": 4.562,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190408T113321",
+   "tide": 3.933,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190413T113329",
+   "tide": 1.336,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190421T114351",
+   "tide": 4.8,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190501T114351",
+   "tide": 2.884,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190511T114351",
+   "tide": 1.53,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190602T113329",
+   "tide": 4.023,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190627T113321",
+   "tide": 1.604,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190722T113329",
+   "tide": 2.397,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190725T114359",
+   "tide": 1.486,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190801T113329",
+   "tide": 4.616,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190816T113321",
+   "tide": 4.229,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190826T113321",
+   "tide": 1.978,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190831T113319",
+   "tide": 4.908,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190920T113319",
+   "tide": 2.459,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20190925T113321",
+   "tide": 2.411,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20191020T113319",
+   "tide": 2.282,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20191028T114351",
+   "tide": 4.911,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20191102T114349",
+   "tide": 2.863,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20191114T113331",
+   "tide": 4.488,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20191214T113451",
+   "tide": 4.468,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200103T113451",
+   "tide": 1.855,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200123T113351",
+   "tide": 4.055,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200131T114339",
+   "tide": 2.437,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200202T113311",
+   "tide": 1.783,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200212T113311",
+   "tide": 4.07,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200220T114349",
+   "tide": 3.053,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200225T114341",
+   "tide": 4.515,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200227T113319",
+   "tide": 3.676,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200303T113311",
+   "tide": 1.72,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200306T114351",
+   "tide": 2.563,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200313T113321",
+   "tide": 3.543,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200326T114351",
+   "tide": 4.369,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200328T113319",
+   "tide": 3.454,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200407T113319",
+   "tide": 4.713,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200415T114351",
+   "tide": 1.398,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200417T113319",
+   "tide": 1.994,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200420T114349",
+   "tide": 3.539,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200427T113319",
+   "tide": 3.135,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200527T113319",
+   "tide": 2.663,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200530T114349",
+   "tide": 1.094,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200601T113331",
+   "tide": 1.414,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200808T114349",
+   "tide": 2.874,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200813T114401",
+   "tide": 1.697,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200917T114349",
+   "tide": 4.655,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200919T113321",
+   "tide": 4.765,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200927T114349",
+   "tide": 2.356,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20200929T113321",
+   "tide": 3.595,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201002T114401",
+   "tide": 4.402,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201014T113319",
+   "tide": 3.192,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201022T114351",
+   "tide": 2.443,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201103T113319",
+   "tide": 4.147,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201106T114349",
+   "tide": 2.914,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201113T113329",
+   "tide": 3.586,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201121T114411",
+   "tide": 2.204,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201203T113439",
+   "tide": 4.079,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20201206T114449",
+   "tide": 2.572,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210102T113359",
+   "tide": 3.931,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210105T114359",
+   "tide": 2.108,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210122T113319",
+   "tide": 1.856,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210125T114349",
+   "tide": 2.975,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210216T113321",
+   "tide": 3.121,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210226T113321",
+   "tide": 4.416,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210301T114351",
+   "tide": 4.837,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210316T114349",
+   "tide": 4.111,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210326T114349",
+   "tide": 3.369,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210331T114351",
+   "tide": 4.617,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210402T113319",
+   "tide": 2.631,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210405T114349",
+   "tide": 1.327,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210410T114341",
+   "tide": 4.088,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210415T114349",
+   "tide": 3.825,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210417T113311",
+   "tide": 2.681,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210422T113309",
+   "tide": 1.843,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210430T114351",
+   "tide": 3.933,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210505T114349",
+   "tide": 1.428,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210512T113319",
+   "tide": 4.33,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210527T113321",
+   "tide": 4.921,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210530T114351",
+   "tide": 3.035,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210621T113319",
+   "tide": 1.948,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210629T114351",
+   "tide": 2.368,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210709T114351",
+   "tide": 4.003,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210716T113321",
+   "tide": 1.509,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210719T114351",
+   "tide": 1.134,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210721T113319",
+   "tide": 2.597,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210825T113321",
+   "tide": 3.764,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210828T114351",
+   "tide": 2.339,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210919T113319",
+   "tide": 3.938,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210922T114349",
+   "tide": 4.505,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20210929T113319",
+   "tide": 1.927,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20211004T113321",
+   "tide": 3.567,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20211121T114349",
+   "tide": 4.409,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20211128T113329",
+   "tide": 1.726,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20211228T113409",
+   "tide": 1.535,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220117T113319",
+   "tide": 4.353,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220122T113401",
+   "tide": 3.342,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220127T113309",
+   "tide": 1.525,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220201T113321",
+   "tide": 4.827,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220221T113321",
+   "tide": 3.046,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220306T114351",
+   "tide": 3.771,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220321T114349",
+   "tide": 4.23,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220323T113321",
+   "tide": 2.545,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220326T114351",
+   "tide": 1.406,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220328T113319",
+   "tide": 2.448,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220402T113321",
+   "tide": 4.792,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220420T114349",
+   "tide": 3.698,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220427T113309",
+   "tide": 2.952,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220507T113319",
+   "tide": 1.995,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220601T113331",
+   "tide": 4.037,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220604T114401",
+   "tide": 2.784,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220619T114359",
+   "tide": 1.939,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220624T114401",
+   "tide": 1.978,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220629T114359",
+   "tide": 4.145,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220716T113329",
+   "tide": 3.823,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220726T113329",
+   "tide": 3.486,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220810T113331",
+   "tide": 3.512,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220813T114401",
+   "tide": 4.648,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220823T114401",
+   "tide": 2.656,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220904T113319",
+   "tide": 1.522,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20220924T113319",
+   "tide": 3.905,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221007T114349",
+   "tide": 3.206,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221014T113319",
+   "tide": 3.336,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221103T113319",
+   "tide": 1.892,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221106T114349",
+   "tide": 3.6,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221128T113421",
+   "tide": 3.102,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221208T113451",
+   "tide": 4.524,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221211T114501",
+   "tide": 4.12,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221221T114511",
+   "tide": 3.18,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20221226T114409",
+   "tide": 4.263,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230102T113359",
+   "tide": 2.282,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230112T113339",
+   "tide": 2.934,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230115T114349",
+   "tide": 1.774,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230120T114411",
+   "tide": 3.619,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230130T114351",
+   "tide": 1.565,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230323T113319",
+   "tide": 4.979,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230402T113319",
+   "tide": 3.03,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230407T113321",
+   "tide": 4.553,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230420T114351",
+   "tide": 4.937,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230430T114351",
+   "tide": 1.968,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230512T113319",
+   "tide": 1.255,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230515T114359",
+   "tide": 1.773,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230522T113319",
+   "tide": 3.867,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230525T114349",
+   "tide": 2.3,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230530T114351",
+   "tide": 1.84,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230604T114349",
+   "tide": 4.366,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230609T114351",
+   "tide": 1.785,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230614T114349",
+   "tide": 2.142,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230619T114351",
+   "tide": 4.228,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230621T113319",
+   "tide": 3.467,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230624T114349",
+   "tide": 2.086,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230626T113321",
+   "tide": 1.412,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230629T114351",
+   "tide": 1.842,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230729T114351",
+   "tide": 2.145,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230820T113319",
+   "tide": 3.334,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230902T114349",
+   "tide": 4.533,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230904T113321",
+   "tide": 2.887,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20230909T113319",
+   "tide": 2.035,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231012T114349",
+   "tide": 3.505,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231014T113321",
+   "tide": 4.281,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231022T114349",
+   "tide": 1.874,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231103T113321",
+   "tide": 2.769,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231108T113319",
+   "tide": 2.363,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231111T114349",
+   "tide": 3.592,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231128T113329",
+   "tide": 4.755,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20231228T113409",
+   "tide": 4.552,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240105T114451",
+   "tide": 1.844,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240107T113349",
+   "tide": 2.35,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240115T114421",
+   "tide": 3.602,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240117T113329",
+   "tide": 1.789,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240122T113351",
+   "tide": 2.844,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240130T114349",
+   "tide": 3.462,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240211T113311",
+   "tide": 5.041,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240224T114351",
+   "tide": 4.512,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240226T113319",
+   "tide": 4.406,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240307T113309",
+   "tide": 2.871,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240320T114349",
+   "tide": 2.368,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240322T113321",
+   "tide": 3.6,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240330T114349",
+   "tide": 3.014,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240406T113319",
+   "tide": 3.328,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240409T114349",
+   "tide": 5.224,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240511T113321",
+   "tide": 3.649,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240519T114349",
+   "tide": 2.451,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240521T113321",
+   "tide": 3.537,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240615T113319",
+   "tide": 1.466,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240628T114349",
+   "tide": 1.169,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240708T114349",
+   "tide": 3.868,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240723T114351",
+   "tide": 4.299,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240812T114351",
+   "tide": 1.843,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240814T113319",
+   "tide": 1.8,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20240906T114349",
+   "tide": 3.823,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241011T114351",
+   "tide": 1.888,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241021T114351",
+   "tide": 3.837,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241026T114349",
+   "tide": 2.009,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241028T113321",
+   "tide": 2.827,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241122T113319",
+   "tide": 2.147,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20241127T113421",
+   "tide": 2.876,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250101T113409",
+   "tide": 4.548,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250109T114441",
+   "tide": 1.529,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250116T113421",
+   "tide": 4.356,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250124T114349",
+   "tide": 2.096,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250129T114411",
+   "tide": 4.568,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250131T113319",
+   "tide": 4.726,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250205T113341",
+   "tide": 1.444,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250225T113341",
+   "tide": 3.337,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250228T114411",
+   "tide": 5.004,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250312T113319",
+   "tide": 4.07,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250319T113331",
+   "tide": 2.939,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250406T113341",
+   "tide": 1.505,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250408T113331",
+   "tide": 2.51,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250409T114411",
+   "tide": 3.013,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250424T114349",
+   "tide": 2.183,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250506T113341",
+   "tide": 1.623,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250508T113331",
+   "tide": 2.638,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250516T113331",
+   "tide": 3.32,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250518T113331",
+   "tide": 2.219,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250521T113319",
+   "tide": 1.141,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250521T114401",
+   "tide": 1.126,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250620T113319",
+   "tide": 0.988,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250620T114401",
+   "tide": 0.945,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250710T114411",
+   "tide": 3.992,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250713T114349",
+   "tide": 3.902,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250804T113341",
+   "tide": 2.103,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250809T113319",
+   "tide": 4.297,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250809T114401",
+   "tide": 4.276,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250816T113331",
+   "tide": 1.376,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250908T113319",
+   "tide": 4.697,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250908T114401",
+   "tide": 4.689,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250916T114401",
+   "tide": 1.78,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250923T113331",
+   "tide": 4.382,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250925T113331",
+   "tide": 3.793,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20250926T114401",
+   "tide": 3.497,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251008T113319",
+   "tide": 4.968,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251008T114401",
+   "tide": 4.975,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251025T113331",
+   "tide": 3.793,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251102T113331",
+   "tide": 2.568,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251110T114349",
+   "tide": 3.037,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251124T113431",
+   "tide": 3.674,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251125T114431",
+   "tide": 3.296,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251130T114339",
+   "tide": 1.661,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251202T113451",
+   "tide": 2.708,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251212T113511",
+   "tide": 1.673,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251224T113531",
+   "tide": 3.516,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251225T114521",
+   "tide": 3.072,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251227T113409",
+   "tide": 1.821,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20251227T114531",
+   "tide": 1.928,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260103T113341",
+   "tide": 4.577,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260129T114339",
+   "tide": 2.078,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260228T114349",
+   "tide": 2.786,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260314T113341",
+   "tide": 2.388,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260325T114351",
+   "tide": 1.777,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260413T113341",
+   "tide": 2.326,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260416T113319",
+   "tide": 4.174,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260416T114411",
+   "tide": 4.053,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260424T114351",
+   "tide": 1.274,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260429T114349",
+   "tide": 3.578,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260509T114349",
+   "tide": 1.668,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260511T113321",
+   "tide": 1.473,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260514T114351",
+   "tide": 2.753,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260524T114351",
+   "tide": 1.042,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260526T113309",
+   "tide": 1.941,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260526T114401",
+   "tide": 1.818,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260603T114351",
+   "tide": 3.672,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260612T113331",
+   "tide": 2.416,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260623T114351",
+   "tide": 1.179,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260625T113319",
+   "tide": 2.191,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260625T114401",
+   "tide": 2.081,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260708T114349",
+   "tide": 1.185,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260712T113331",
+   "tide": 3.037,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260713T114351",
+   "tide": 3.746,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260715T113319",
+   "tide": 4.563,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260715T114401",
+   "tide": 4.587,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260720T113321",
+   "tide": 1.501,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260722T113341",
+   "tide": 1.326,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260804T113319",
+   "tide": 2.251,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260821T113331",
+   "tide": 1.723,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260824T113319",
+   "tide": 2.768,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260824T114401",
+   "tide": 2.672,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260908T113321",
+   "tide": 2.966,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260913T114401",
+   "tide": 4.479,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260920T113331",
+   "tide": 1.947,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260921T114351",
+   "tide": 2.091,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260923T113319",
+   "tide": 2.945,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260928T113321",
+   "tide": 4.65,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20260930T113331",
+   "tide": 3.879,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20261001T114351",
+   "tide": 3.338,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20261003T113319",
+   "tide": 1.956,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20261003T114401",
+   "tide": 2.05,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  },
+  {
+   "stamp": "20261011T114351",
+   "tide": 4.69,
+   "source": "EOT20 calibrated to UKHO Killard Point"
+  }
+ ],
+ "dropped_scenes": [
+  {
+   "stamp": "20170227T113311",
+   "tide": 4.868,
+   "wet_err": 0.548,
+   "dry_err": 0.0,
+   "cover": 0.47
+  },
+  {
+   "stamp": "20171229T113449",
+   "tide": 2.096,
+   "wet_err": 0.139,
+   "dry_err": 0.257,
+   "cover": 0.93
+  },
+  {
+   "stamp": "20180528T113319",
+   "tide": 4.184,
+   "wet_err": 0.133,
+   "dry_err": 0.0,
+   "cover": 0.88
+  },
+  {
+   "stamp": "20180610T114349",
+   "tide": 2.154,
+   "wet_err": 0.114,
+   "dry_err": 0.0,
+   "cover": 0.67
+  },
+  {
+   "stamp": "20190423T113329",
+   "tide": 3.22,
+   "wet_err": 0.609,
+   "dry_err": 0.0,
+   "cover": 0.72
+  },
+  {
+   "stamp": "20190617T113321",
+   "tide": 4.472,
+   "wet_err": 0.086,
+   "dry_err": 0.0,
+   "cover": 0.9
+  },
+  {
+   "stamp": "20190819T114351",
+   "tide": 3.483,
+   "wet_err": 0.097,
+   "dry_err": 0.0,
+   "cover": 0.57
+  },
+  {
+   "stamp": "20191217T114501",
+   "tide": 2.75,
+   "wet_err": 0.002,
+   "dry_err": 0.0,
+   "cover": 0.41
+  },
+  {
+   "stamp": "20200331T114349",
+   "tide": 2.046,
+   "wet_err": 0.17,
+   "dry_err": 0.0,
+   "cover": 0.74
+  },
+  {
+   "stamp": "20200505T114351",
+   "tide": 3.309,
+   "wet_err": 0.072,
+   "dry_err": 0.0,
+   "cover": 0.78
+  },
+  {
+   "stamp": "20201007T114349",
+   "tide": 3.055,
+   "wet_err": 0.188,
+   "dry_err": 0.0,
+   "cover": 0.74
+  },
+  {
+   "stamp": "20201027T114349",
+   "tide": 2.672,
+   "wet_err": 0.994,
+   "dry_err": 0.0,
+   "cover": 0.01
+  },
+  {
+   "stamp": "20210425T114349",
+   "tide": 3.625,
+   "wet_err": 0.107,
+   "dry_err": 0.0,
+   "cover": 0.92
+  },
+  {
+   "stamp": "20210706T113321",
+   "tide": 2.819,
+   "wet_err": 0.417,
+   "dry_err": 0.0,
+   "cover": 0.74
+  },
+  {
+   "stamp": "20211201T114349",
+   "tide": 2.543,
+   "wet_err": 0.203,
+   "dry_err": 0.309,
+   "cover": 0.28
+  },
+  {
+   "stamp": "20211208T113349",
+   "tide": 3.347,
+   "wet_err": 0.061,
+   "dry_err": 0.159,
+   "cover": 0.71
+  },
+  {
+   "stamp": "20220425T114351",
+   "tide": 1.498,
+   "wet_err": 0.213,
+   "dry_err": 0.0,
+   "cover": 0.63
+  },
+  {
+   "stamp": "20231213T113451",
+   "tide": 4.525,
+   "wet_err": 0.156,
+   "dry_err": 0.004,
+   "cover": 0.74
+  },
+  {
+   "stamp": "20240424T114351",
+   "tide": 4.352,
+   "wet_err": 0.066,
+   "dry_err": 0.0,
+   "cover": 0.62
+  },
+  {
+   "stamp": "20240531T113321",
+   "tide": 0.918,
+   "wet_err": 0.136,
+   "dry_err": 0.0,
+   "cover": 0.97
+  },
+  {
+   "stamp": "20241001T114351",
+   "tide": 3.926,
+   "wet_err": 0.204,
+   "dry_err": 0.0,
+   "cover": 1.0
+  },
+  {
+   "stamp": "20250519T114411",
+   "tide": 1.787,
+   "wet_err": 0.183,
+   "dry_err": 0.0,
+   "cover": 0.91
+  },
+  {
+   "stamp": "20250617T113331",
+   "tide": 1.69,
+   "wet_err": 0.544,
+   "dry_err": 0.0,
+   "cover": 0.45
+  },
+  {
+   "stamp": "20250718T114411",
+   "tide": 1.084,
+   "wet_err": 0.34,
+   "dry_err": 0.0,
+   "cover": 0.59
+  },
+  {
+   "stamp": "20260605T113319",
+   "tide": 2.592,
+   "wet_err": 0.15,
+   "dry_err": 0.0,
+   "cover": 0.72
+  }
+ ]
+}

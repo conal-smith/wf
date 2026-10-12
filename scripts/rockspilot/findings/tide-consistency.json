@@ -1,0 +1,26 @@
+{
+ "dublin": {
+  "scenes": 316,
+  "median_implied_minus_assigned": 0.001,
+  "rmse": 0.17,
+  "robust_sd": 0.068,
+  "p90_abs": 0.275,
+  "correlation": 0.987
+ },
+ "portmarnock": {
+  "scenes": 308,
+  "median_implied_minus_assigned": 0.0,
+  "rmse": 0.152,
+  "robust_sd": 0.027,
+  "p90_abs": 0.171,
+  "correlation": 0.989
+ },
+ "down": {
+  "scenes": 349,
+  "median_implied_minus_assigned": 0.0,
+  "rmse": 0.303,
+  "robust_sd": 0.105,
+  "p90_abs": 0.387,
+  "correlation": 0.968
+ }
+}

@@ -1,0 +1,1710 @@
+{
+ "area": "dublin",
+ "scenes_with_tide": 325,
+ "scenes_kept": 318,
+ "tide_range_kept": [
+  0.82,
+  4.84
+ ],
+ "tide_source": [
+  "EOT20 at Howth",
+  "Howth gauge"
+ ],
+ "tide_source_counts": {
+  "EOT20 at Howth": 28,
+  "Howth gauge": 290
+ },
+ "months_of_lowest_15pct": [
+  2,
+  3,
+  3,
+  4,
+  7,
+  11,
+  6,
+  7,
+  4,
+  0,
+  1,
+  0
+ ],
+ "months_of_highest_15pct": [
+  8,
+  5,
+  6,
+  6,
+  5,
+  1,
+  1,
+  2,
+  2,
+  2,
+  2,
+  8
+ ],
+ "months_all": [
+  27,
+  23,
+  35,
+  35,
+  33,
+  22,
+  18,
+  27,
+  25,
+  26,
+  24,
+  23
+ ],
+ "intertidal_pixels": 77872,
+ "intertidal_km2": 7.79,
+ "intertidal_height_percentiles_5_50_95": [
+  1.31,
+  2.64,
+  4.14
+ ],
+ "intertidal_misfit_median": 0.052,
+ "kept_scenes": [
+  {
+   "stamp": "20170101T114502",
+   "tide": 3.954,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170128T113321",
+   "tide": 4.365,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170227T113311",
+   "tide": 4.525,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170309T113311",
+   "tide": 2.83,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170312T114341",
+   "tide": 4.542,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170408T113321",
+   "tide": 3.32,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170508T113321",
+   "tide": 3.537,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170511T114351",
+   "tide": 4.172,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170617T113321",
+   "tide": 1.352,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170712T113319",
+   "tide": 3.359,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170717T113321",
+   "tide": 1.172,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170809T114351",
+   "tide": 3.983,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170819T114351",
+   "tide": 2.855,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170918T114351",
+   "tide": 3.497,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20170930T113309",
+   "tide": 2.008,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20171112T114339",
+   "tide": 1.62,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20171129T113419",
+   "tide": 2.061,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20171204T113441",
+   "tide": 4.659,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20171227T114501",
+   "tide": 1.667,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20180103T113451",
+   "tide": 4.726,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20180108T113439",
+   "tide": 1.864,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20180118T113409",
+   "tide": 4.228,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20180202T113311",
+   "tide": 4.34,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180212T113321",
+   "tide": 3.356,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180215T114351",
+   "tide": 4.469,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180220T114339",
+   "tide": 3.321,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20180225T114351",
+   "tide": 1.46,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180307T114351",
+   "tide": 2.882,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180324T113321",
+   "tide": 1.722,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180408T113319",
+   "tide": 1.841,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180421T114349",
+   "tide": 2.406,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180428T113319",
+   "tide": 4.071,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180506T114351",
+   "tide": 2.118,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180513T113321",
+   "tide": 3.599,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180516T114351",
+   "tide": 4.336,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180528T113319",
+   "tide": 4.142,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180531T114349",
+   "tide": 4.137,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180607T113319",
+   "tide": 1.457,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180622T113321",
+   "tide": 1.204,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180627T113319",
+   "tide": 4.015,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180630T114349",
+   "tide": 3.844,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180702T113321",
+   "tide": 2.946,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180824T114351",
+   "tide": 3.73,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180831T113321",
+   "tide": 2.979,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180903T114351",
+   "tide": 1.532,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180905T113309",
+   "tide": 1.64,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20180918T114339",
+   "tide": 2.0,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181010T113321",
+   "tide": 4.716,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181015T113319",
+   "tide": 2.522,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181018T114349",
+   "tide": 1.986,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181028T114349",
+   "tide": 3.592,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181030T113321",
+   "tide": 2.747,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181117T114349",
+   "tide": 2.07,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181122T114401",
+   "tide": 4.206,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20181209T113441",
+   "tide": 4.151,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190108T113441",
+   "tide": 3.892,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190116T114429",
+   "tide": 2.025,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190128T113331",
+   "tide": 1.317,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190202T113319",
+   "tide": 3.734,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190207T113321",
+   "tide": 4.171,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190210T114351",
+   "tide": 3.092,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190215T114349",
+   "tide": 1.943,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190217T113321",
+   "tide": 3.611,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190312T114351",
+   "tide": 3.183,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190314T113319",
+   "tide": 2.033,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190324T113319",
+   "tide": 3.742,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190329T113321",
+   "tide": 1.571,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190406T114349",
+   "tide": 4.568,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190411T114351",
+   "tide": 2.387,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190421T114351",
+   "tide": 4.488,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190501T114351",
+   "tide": 3.098,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190610T114351",
+   "tide": 0.934,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190627T113321",
+   "tide": 1.403,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190707T113321",
+   "tide": 2.243,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190715T114359",
+   "tide": 3.605,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190824T114359",
+   "tide": 1.54,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190826T113321",
+   "tide": 1.848,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190831T113319",
+   "tide": 4.69,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190910T113319",
+   "tide": 2.881,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190918T114351",
+   "tide": 3.271,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20190920T113319",
+   "tide": 2.429,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20191020T113319",
+   "tide": 2.317,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20191117T114351",
+   "tide": 3.051,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20191209T113349",
+   "tide": 2.761,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20191214T113451",
+   "tide": 4.346,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20191222T114409",
+   "tide": 2.358,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200202T113311",
+   "tide": 1.939,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200212T113311",
+   "tide": 3.817,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200227T113319",
+   "tide": 3.373,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200303T113311",
+   "tide": 1.7,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200306T114351",
+   "tide": 2.515,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200308T113319",
+   "tide": 4.099,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200311T114349",
+   "tide": 4.845,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200326T114351",
+   "tide": 3.935,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200331T114349",
+   "tide": 1.794,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200407T113319",
+   "tide": 4.204,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200415T114351",
+   "tide": 1.309,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200417T113319",
+   "tide": 1.99,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200420T114349",
+   "tide": 3.46,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200427T113319",
+   "tide": 3.094,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200505T114351",
+   "tide": 3.161,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200527T113319",
+   "tide": 2.442,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200601T113331",
+   "tide": 1.305,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200614T114401",
+   "tide": 1.445,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200808T114349",
+   "tide": 2.69,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200815T113319",
+   "tide": 2.443,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20200917T114349",
+   "tide": 4.138,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201002T114401",
+   "tide": 3.87,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201007T114349",
+   "tide": 3.016,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201014T113319",
+   "tide": 2.904,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201022T114351",
+   "tide": 2.513,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20201103T113319",
+   "tide": 3.933,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201106T114349",
+   "tide": 2.767,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201113T113329",
+   "tide": 3.562,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20201121T114411",
+   "tide": 2.31,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20201211T114501",
+   "tide": 2.486,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210226T113321",
+   "tide": 4.036,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210311T114351",
+   "tide": 3.933,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210313T113319",
+   "tide": 4.435,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210316T114349",
+   "tide": 3.798,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210326T114349",
+   "tide": 3.443,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210405T114349",
+   "tide": 1.079,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210410T114341",
+   "tide": 3.884,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210415T114349",
+   "tide": 3.538,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210417T113311",
+   "tide": 2.596,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210422T113309",
+   "tide": 1.799,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210425T114349",
+   "tide": 3.44,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210430T114351",
+   "tide": 3.747,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210507T113321",
+   "tide": 2.721,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210530T114351",
+   "tide": 2.79,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210604T114349",
+   "tide": 1.51,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210621T113319",
+   "tide": 1.943,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210629T114351",
+   "tide": 2.328,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210716T113321",
+   "tide": 1.586,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210719T114351",
+   "tide": 1.025,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210721T113319",
+   "tide": 2.577,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210823T114349",
+   "tide": 4.004,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210825T113321",
+   "tide": 3.394,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210828T114351",
+   "tide": 2.281,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210904T113321",
+   "tide": 3.331,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210914T113321",
+   "tide": 1.53,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210927T114351",
+   "tide": 2.739,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20210929T113319",
+   "tide": 1.909,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211121T114349",
+   "tide": 3.944,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211126T114421",
+   "tide": 2.584,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211128T113329",
+   "tide": 1.741,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211201T114349",
+   "tide": 2.399,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211206T114451",
+   "tide": 4.598,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211226T114511",
+   "tide": 2.271,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20211228T113409",
+   "tide": 1.85,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220105T114501",
+   "tide": 4.212,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220112T113441",
+   "tide": 1.889,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220117T113319",
+   "tide": 3.945,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220120T114349",
+   "tide": 3.737,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220127T113309",
+   "tide": 1.407,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220130T114349",
+   "tide": 3.307,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220204T114351",
+   "tide": 3.941,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220209T114349",
+   "tide": 1.612,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220301T114349",
+   "tide": 3.734,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220306T114351",
+   "tide": 3.474,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220318T113319",
+   "tide": 4.037,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220323T113321",
+   "tide": 2.599,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220326T114351",
+   "tide": 1.15,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220328T113319",
+   "tide": 2.417,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220420T114349",
+   "tide": 3.489,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220601T113331",
+   "tide": 3.721,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220604T114401",
+   "tide": 2.602,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220805T113329",
+   "tide": 1.359,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220808T114359",
+   "tide": 1.652,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220810T113331",
+   "tide": 3.406,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220813T114401",
+   "tide": 4.237,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220830T113331",
+   "tide": 3.518,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220904T113319",
+   "tide": 1.565,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220924T113319",
+   "tide": 3.756,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20220929T113331",
+   "tide": 3.677,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221007T114349",
+   "tide": 3.325,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221017T114349",
+   "tide": 2.364,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221022T114351",
+   "tide": 3.268,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221103T113319",
+   "tide": 2.11,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221116T114349",
+   "tide": 2.524,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221118T113351",
+   "tide": 2.199,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221123T113319",
+   "tide": 4.527,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221208T113451",
+   "tide": 4.211,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221216T114409",
+   "tide": 2.144,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221221T114511",
+   "tide": 3.481,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20221226T114409",
+   "tide": 4.143,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230102T113359",
+   "tide": 2.514,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230117T113421",
+   "tide": 2.022,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230120T114411",
+   "tide": 3.587,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230209T114351",
+   "tide": 3.417,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230402T113319",
+   "tide": 3.036,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230417T113321",
+   "tide": 3.015,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230420T114351",
+   "tide": 4.422,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230507T113321",
+   "tide": 4.204,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230525T114349",
+   "tide": 2.012,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230530T114351",
+   "tide": 1.859,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230604T114349",
+   "tide": 4.157,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230611T113319",
+   "tide": 1.009,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230614T114349",
+   "tide": 2.29,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230629T114351",
+   "tide": 1.865,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20230729T114351",
+   "tide": 2.287,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230810T113329",
+   "tide": 1.664,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230825T113321",
+   "tide": 1.575,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230902T114349",
+   "tide": 4.037,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230904T113321",
+   "tide": 2.925,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230909T113319",
+   "tide": 2.253,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20230929T113319",
+   "tide": 4.462,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231012T114349",
+   "tide": 3.623,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231014T113321",
+   "tide": 4.077,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231019T113319",
+   "tide": 3.721,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231203T113431",
+   "tide": 2.695,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231211T114359",
+   "tide": 3.66,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20231213T113451",
+   "tide": 4.204,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240105T114451",
+   "tide": 1.841,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240107T113349",
+   "tide": 2.274,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240117T113329",
+   "tide": 2.245,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240130T114349",
+   "tide": 3.154,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240226T113319",
+   "tide": 3.908,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240302T113321",
+   "tide": 2.193,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240307T113309",
+   "tide": 2.808,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240322T113321",
+   "tide": 3.674,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240421T113321",
+   "tide": 3.499,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20240501T113321",
+   "tide": 1.547,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240509T114349",
+   "tide": 4.443,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240514T114351",
+   "tide": 1.857,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240623T114351",
+   "tide": 4.022,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240703T114351",
+   "tide": 3.064,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240723T114351",
+   "tide": 3.982,
+   "source": "EOT20 at Howth"
+  },
+  {
+   "stamp": "20240728T114349",
+   "tide": 1.307,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240809T113321",
+   "tide": 2.863,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240814T113319",
+   "tide": 1.63,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20240906T114349",
+   "tide": 3.696,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241001T114351",
+   "tide": 3.838,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241003T113319",
+   "tide": 4.117,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241011T114351",
+   "tide": 2.056,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241021T114351",
+   "tide": 3.53,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241122T113319",
+   "tide": 2.281,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241125T114349",
+   "tide": 2.36,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241127T113421",
+   "tide": 2.983,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20241222T113409",
+   "tide": 2.073,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250101T113409",
+   "tide": 4.48,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250116T113421",
+   "tide": 4.023,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250124T114349",
+   "tide": 2.57,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250129T114411",
+   "tide": 4.338,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250131T113319",
+   "tide": 4.351,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250205T113341",
+   "tide": 1.44,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250228T114411",
+   "tide": 4.523,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250310T114411",
+   "tide": 2.911,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250312T113319",
+   "tide": 4.154,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250315T114349",
+   "tide": 4.272,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250319T113331",
+   "tide": 3.034,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250330T114411",
+   "tide": 4.58,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250406T113341",
+   "tide": 1.392,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250408T113331",
+   "tide": 2.552,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250409T114411",
+   "tide": 3.008,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250411T113319",
+   "tide": 4.0,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250411T114401",
+   "tide": 3.92,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250424T114349",
+   "tide": 2.164,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250426T113341",
+   "tide": 3.776,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250504T114349",
+   "tide": 1.317,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250506T113341",
+   "tide": 1.548,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250508T113331",
+   "tide": 2.703,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250509T114411",
+   "tide": 3.092,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250514T114349",
+   "tide": 3.905,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250516T113331",
+   "tide": 3.143,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250518T113331",
+   "tide": 2.244,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250521T113319",
+   "tide": 1.207,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250521T114401",
+   "tide": 1.195,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250713T114349",
+   "tide": 3.636,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250812T114349",
+   "tide": 3.658,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250816T113331",
+   "tide": 1.493,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250826T113331",
+   "tide": 3.741,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20250925T113331",
+   "tide": 3.617,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251006T114401",
+   "tide": 3.952,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251025T113331",
+   "tide": 3.702,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251102T113331",
+   "tide": 2.693,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251120T114339",
+   "tide": 3.986,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251125T114431",
+   "tide": 3.069,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251127T113319",
+   "tide": 2.454,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251127T114441",
+   "tide": 2.526,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251202T113451",
+   "tide": 2.817,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251204T113501",
+   "tide": 4.139,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251212T113511",
+   "tide": 1.764,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20251224T113531",
+   "tide": 3.237,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260103T113341",
+   "tide": 4.23,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260215T113309",
+   "tide": 3.925,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260228T114349",
+   "tide": 2.853,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260307T114411",
+   "tide": 3.467,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260314T113341",
+   "tide": 2.298,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260325T114351",
+   "tide": 1.593,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260403T113341",
+   "tide": 4.303,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260419T114349",
+   "tide": 4.189,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260424T114351",
+   "tide": 0.989,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260429T114349",
+   "tide": 3.281,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260506T113319",
+   "tide": 2.74,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260506T114401",
+   "tide": 2.83,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260509T114349",
+   "tide": 1.47,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260524T114351",
+   "tide": 0.822,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260526T113309",
+   "tide": 1.807,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260526T114401",
+   "tide": 1.674,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260602T113331",
+   "tide": 3.692,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260608T114349",
+   "tide": 1.365,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260623T114351",
+   "tide": 1.072,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260708T114349",
+   "tide": 1.189,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260710T113321",
+   "tide": 1.41,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260712T113331",
+   "tide": 2.885,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260715T114401",
+   "tide": 4.139,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260718T114349",
+   "tide": 2.818,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260811T113331",
+   "tide": 3.569,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260824T113319",
+   "tide": 2.776,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260824T114401",
+   "tide": 2.685,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260920T113331",
+   "tide": 1.866,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260921T114351",
+   "tide": 2.121,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20260928T113321",
+   "tide": 4.148,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20261003T113319",
+   "tide": 1.775,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20261003T114401",
+   "tide": 1.853,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20261010T113331",
+   "tide": 4.116,
+   "source": "Howth gauge"
+  },
+  {
+   "stamp": "20261011T114351",
+   "tide": 4.276,
+   "source": "Howth gauge"
+  }
+ ],
+ "dropped_scenes": [
+  {
+   "stamp": "20181127T114419",
+   "tide": 3.807,
+   "wet_err": 0.0,
+   "dry_err": 0.0,
+   "cover": 0.0
+  },
+  {
+   "stamp": "20181207T114449",
+   "tide": 4.865,
+   "wet_err": 0.004,
+   "dry_err": 0.278,
+   "cover": 0.34
+  },
+  {
+   "stamp": "20181224T113459",
+   "tide": 4.532,
+   "wet_err": 0.121,
+   "dry_err": 0.304,
+   "cover": 0.93
+  },
+  {
+   "stamp": "20201208T113451",
+   "tide": 1.896,
+   "wet_err": 0.068,
+   "dry_err": 0.0,
+   "cover": 0.78
+  },
+  {
+   "stamp": "20210105T114359",
+   "tide": 2.131,
+   "wet_err": 0.0,
+   "dry_err": 0.097,
+   "cover": 0.84
+  },
+  {
+   "stamp": "20221211T114501",
+   "tide": 3.832,
+   "wet_err": 0.006,
+   "dry_err": 0.102,
+   "cover": 0.81
+  },
+  {
+   "stamp": "20260307T113319",
+   "tide": 3.352,
+   "wet_err": 0.0,
+   "dry_err": 0.0,
+   "cover": 0.45
+  }
+ ]
+}
