@@ -199,11 +199,23 @@ def fit_reference(lon, lat, t_ref, v_ref):
     return best
 
 
-def calibrate(stations):
-    out = {}
+def calibrate(stations, force=False):
+    path = common.path("work", "tides", "calibration.json")
+    out = {} if force or not os.path.exists(path) else common.read_json(path)["stations"]
     long_t = np.arange(datetime(2020, 1, 1, tzinfo=timezone.utc).timestamp(),
                        datetime(2039, 1, 1, tzinfo=timezone.utc).timestamp(), 1800.0)
-    for s in stations:
+    for s in sorted(stations, key=lambda s: bool(s.get("lagOf"))):
+        if s["id"] in out:
+            continue
+        if s.get("lagOf"):
+            # A basin: its parent's fit, lagMinutes later (lag.py read the lag off the imagery).
+            entry = dict(out[s["lagOf"]])
+            entry["shiftMinutes"] = entry["shiftMinutes"] - s["lagMinutes"]
+            entry["reference"] = (f"{s['lagOf']}'s fit, {s['lagMinutes']} min later: the lag that best sorts the "
+                                  "basin's wet and dry looks (lag.py); the parent's amplitude and datum")
+            out[s["id"]] = entry
+            print(f"{s['id']}: {entry}", flush=True)
+            continue
         lon, lat = s["model"]
         entry = {"model": [lon, lat]}
         if not s["ni"]:

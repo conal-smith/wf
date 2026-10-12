@@ -58,7 +58,7 @@ def time_of(stamp):
 # ---- stations -----------------------------------------------------------------
 
 
-def stations(foil_stations=None, ni_stations=None):
+def stations(foil_stations=None, ni_stations=None, include_inactive=False):
     """Every tide station, sorted: the Marine Institute's 33 (the foil-depth
     regions' stations, scripts/foildepth/stations.json) then Northern
     Ireland's (stations_ni.json). Each has id, name, lon, lat, `ni`, and the
@@ -71,10 +71,32 @@ def stations(foil_stations=None, ni_stations=None):
                     "model": [float(s["lon"]), float(s["lat"])], "modelled": bool(s.get("modelled")),
                     "hat": s.get("hatMetres"), "msl": s.get("mslMetres")})
     for sid, s in sorted(ni.items()):
+        # A station not yet calibrated (a basin before lag.py has read its lag) is left out.
+        if s.get("active") is False and not include_inactive:
+            continue
         out.append({"id": sid, "name": s["name"], "lon": float(s["lon"]), "lat": float(s["lat"]), "ni": True,
                     "model": [float(v) for v in s["model"]], "modelled": "gauge" not in s,
-                    "gauge": s.get("gauge")})
+                    "gauge": s.get("gauge"), "lagOf": s.get("lagOf"), "lagMinutes": s.get("lagMinutes", 0),
+                    "polygon": s.get("polygon")})
     return out
+
+
+def in_polygon(lon, lat, ring):
+    """Points in a lon/lat polygon (even-odd rule)."""
+    lon, lat = np.broadcast_arrays(np.asarray(lon, dtype=np.float64), np.asarray(lat, dtype=np.float64))
+    out = np.zeros(lon.shape, bool)
+    for i in range(len(ring)):
+        x0, y0 = ring[i]
+        x1, y1 = ring[(i + 1) % len(ring)]
+        if y0 == y1:
+            continue
+        out ^= ((y0 > lat) != (y1 > lat)) & (lon < (x1 - x0) * (lat - y0) / (y1 - y0) + x0)
+    return out
+
+
+def basins(stations_, lon, lat):
+    """[(index, mask)] of the stations with a polygon, over these points."""
+    return [(k, in_polygon(lon, lat, s["polygon"])) for k, s in enumerate(stations_) if s.get("polygon")]
 
 
 def region_id(station_id, prefix="tide-"):
@@ -103,11 +125,17 @@ def nearest_station(lon, lat, stations_, max_station_km):
     off Kerry or the Shannon at Limerick stays with its nearest station here),
     and Northern Ireland's stations take only the coast nearer them."""
     km = station_distances(lon, lat, stations_)
-    ni = np.array([s["ni"] for s in stations_]).reshape((-1,) + (1,) * (km.ndim - 1))
+    shape = (-1,) + (1,) * (km.ndim - 1)
+    ni = np.array([s["ni"] for s in stations_]).reshape(shape)
+    basin = np.array([bool(s.get("polygon")) for s in stations_]).reshape(shape)
     roi = np.where(ni, np.inf, km)
-    north = np.where(ni, km, np.inf)
+    north = np.where(ni & ~basin, km, np.inf)
     use_roi = (roi.min(axis=0) <= max_station_km) | (roi.min(axis=0) <= north.min(axis=0))
-    return np.where(use_roi, roi.argmin(axis=0), north.argmin(axis=0)).astype(np.int16)
+    out = np.where(use_roi, roi.argmin(axis=0), north.argmin(axis=0)).astype(np.int16)
+    # A basin's station takes every point in its polygon, and none outside it.
+    for k, inside in basins(stations_, *np.broadcast_arrays(lon, lat)):
+        out = np.where(inside, k, out).astype(np.int16)
+    return out
 
 
 def station_weights(lon, lat, stations_, max_station_km, blend_km):
@@ -119,10 +147,12 @@ def station_weights(lon, lat, stations_, max_station_km, blend_km):
     station is nearest by more than blend_km it has the whole point, so the
     blend is only along the cells' edges."""
     km = station_distances(lon, lat, stations_)
-    ni = np.array([s["ni"] for s in stations_]).reshape((-1,) + (1,) * (km.ndim - 1))
+    shape = (-1,) + (1,) * (km.ndim - 1)
+    ni = np.array([s["ni"] for s in stations_]).reshape(shape)
+    basin = np.array([bool(s.get("polygon")) for s in stations_]).reshape(shape)
     group_w, group_min = {}, {}
     for group in (False, True):
-        mine = ni & True if group else ~ni
+        mine = (ni & ~basin) if group else ~ni
         d = np.where(mine, km, np.inf)
         dmin = d.min(axis=0)
         w = np.where(mine, np.clip(1 - (d - dmin) / blend_km, 0, 1), 0)
@@ -131,7 +161,12 @@ def station_weights(lon, lat, stations_, max_station_km, blend_km):
     roi, north = group_min[False], group_min[True]
     lead = np.maximum(max_station_km - roi, north - roi)
     share = np.clip(0.5 + lead / blend_km, 0, 1)
-    return (group_w[False] * share + group_w[True] * (1 - share)).astype(np.float32)
+    out = (group_w[False] * share + group_w[True] * (1 - share)).astype(np.float32)
+    # A basin's station has the whole of its polygon (its edge is in a narrows).
+    for k, inside in basins(stations_, *np.broadcast_arrays(lon, lat)):
+        out = np.where(inside[None], 0, out)
+        out[k] = np.where(inside, 1, out[k])
+    return out
 
 
 def merc(lon, lat):

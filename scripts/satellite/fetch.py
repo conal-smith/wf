@@ -282,19 +282,27 @@ def run(tile, workers, summer_only=False):
     os.makedirs(os.path.join(base, "coast"), exist_ok=True)
     os.makedirs(os.path.join(base, "summer"), exist_ok=True)
     log_path = os.path.join(base, "log.jsonl")
-    done = set()
+    done = {}
     if os.path.exists(log_path):
         with open(log_path) as fh:
             for line in fh:
                 r = json.loads(line)
                 if r.get("status") in ("kept", "cloudy"):
-                    done.add((r["kind"], r["stamp"]))
+                    done[(r["kind"], r["stamp"])] = r
     jobs = []
     if pt["coastalBlocks"] and not summer_only:
         tide_levels = common.read_json(common.path("work", "tides", "scenes.json"))["levels"]
         cand = candidates(items, pt["stations"], plan, tide_levels)
         for it in items:
-            if ("coast", it["stamp"]) not in done:
+            r = done.get(("coast", it["stamp"]))
+            # A look kept without its colour that is now a candidate (a station
+            # added to the tile, a basin's lag) is read again, colour and all.
+            if r and r["status"] == "kept" and cand[it["stamp"]] and not r.get("candidate"):
+                p = os.path.join(base, "coast", f"{it['stamp']}.npz")
+                if os.path.exists(p):
+                    os.remove(p)
+                r = None
+            if r is None:
                 jobs.append(("coast", it, cand[it["stamp"]]))
     for it in summer_items(items, cfg):
         if ("summer", it["stamp"]) not in done:

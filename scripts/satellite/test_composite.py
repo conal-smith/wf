@@ -125,6 +125,19 @@ class StationTest(unittest.TestCase):
         col = (x + common.EARTH / 2) / px
         self.assertAlmostEqual(float(col[0] % 4), 2.0, places=6)
 
+    def test_a_basin_takes_its_polygon_and_nothing_else(self):
+        lough = {"id": "L", "name": "L", "lon": -5.62, "lat": 54.48, "ni": True,
+                 "polygon": [[-5.7, 54.4], [-5.5, 54.4], [-5.5, 54.6], [-5.7, 54.6]]}
+        st = STATIONS + [lough]
+        lon = np.array([-5.6, -5.45, -5.6])
+        lat = np.array([54.5, 54.5, 54.3])
+        idx = common.nearest_station(lon, lat, st, 45)
+        self.assertEqual(idx.tolist(), [3, 2, 2])  # in the lough; the open coast beside it; south of it
+        w = common.station_weights(lon, lat, st, 45, 3.0)
+        self.assertEqual(w[:, 0].tolist(), [0, 0, 0, 1])
+        self.assertEqual(float(w[3, 1]), 0.0)
+        self.assertTrue(np.allclose(w.sum(axis=0), 1))
+
     def test_region_ids_follow_national(self):
         self.assertEqual(common.region_id("Achill_Island_MODELLED"), "tide-achill-island")
         self.assertEqual(common.region_id("Dublin_Port"), "tide-dublin-port")
