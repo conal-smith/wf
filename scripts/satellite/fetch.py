@@ -1,6 +1,10 @@
 """Read one Sentinel-2 tile's acquisitions over the blocks the plan gives it.
 
-For every acquisition, its SCL first (the whole 20 m band is about 3 MB);
+Not every acquisition: the selection (config select, `chosen`) spreads the
+looks evenly over each station's tide levels, the least cloudy first, and
+replaces one found cloudy; `--every-look` reads them all.
+
+For every acquisition read, its SCL first (the whole 20 m band is about 3 MB);
 one whose coastal blocks are more than `maxBadFraction` cloud, shadow or no
 data stops there. Otherwise, over the coastal blocks:
 
@@ -23,7 +27,7 @@ by planetary_computer; no account), and nothing but these bytes is kept:
 (c<row>_<col> codes, (512, 512); r<row>_<col> colour, (3, 512, 512)), and
 log.jsonl. A scene already written is not read again.
 
-    python -I fetch.py --tile 29UPV [--workers 24] [--summer-only]
+    python -I fetch.py --tile 29UPV [--workers 24] [--summer-only] [--every-look]
 """
 import argparse
 import concurrent.futures as cf
@@ -49,6 +53,7 @@ os.environ.setdefault("GDAL_CACHEMAX", "512")
 os.environ.setdefault("VSI_CACHE", "FALSE")
 
 LOG_LOCK = threading.Lock()
+BANDS_20M = ("B11",)
 
 
 def offset_of(item):
@@ -82,7 +87,12 @@ class Scene:
         import planetary_computer
         import rasterio
         if band not in self.ds:
-            self.ds[band] = rasterio.open(planetary_computer.sign(self.item["href"][band]))
+            href = self.item["href"].get(band)
+            if href is None:
+                # The catalogue keeps the bands it was first asked for; the 20 m
+                # ones sit beside SCL in R20m and are named the same way.
+                href = self.item["href"]["SCL"].replace("_SCL_20m.tif", f"_{band}_20m.tif")
+            self.ds[band] = rasterio.open(planetary_computer.sign(href))
         return self.ds[band]
 
     def read(self, band, window, size):
@@ -156,8 +166,11 @@ def read_rows(scene, blocks, size, bands, scl20):
         bad_parts = []
         for j0, j1 in runs:
             win = (i * size, j0 * size, size, (j1 - j0 + 1) * size)
-            got = {b: scene.read(b, win, size) for b in bands}
             half = size // 2
+            win20 = (i * half, j0 * half, half, (j1 - j0 + 1) * half)
+            # A 20 m band is read at 20 m and each pixel given to its 2×2 at 10 m.
+            got = {b: up2(scene.read(b, win20, size), (size, (j1 - j0 + 1) * size)) if b in BANDS_20M
+                   else scene.read(b, win, size) for b in bands}
             s20 = scl20[i * half:(i + 1) * half, j0 * half:(j1 + 1) * half]
             pad = np.ones((half, (j1 - j0 + 1) * half), dtype=bool)
             pad[:s20.shape[0], :s20.shape[1]] = s20
@@ -171,9 +184,9 @@ def read_rows(scene, blocks, size, bands, scl20):
         yield i, cols, {b: np.stack(v) for b, v in parts.items()}, np.stack(bad_parts)
 
 
-def coast_scene(item, plan_tile, size, candidate, out_dir, max_bad):
+def coast_scene(item, plan_tile, size, candidate, out_dir, max_bad, low=False):
     path = os.path.join(out_dir, f"{item['stamp']}.npz")
-    rec = {"stamp": item["stamp"], "kind": "coast", "candidate": candidate}
+    rec = {"stamp": item["stamp"], "kind": "coast", "candidate": candidate, "low": low}
     if os.path.exists(path):
         return dict(rec, status="kept")
     blocks = plan_tile["coastalBlocks"]
@@ -186,7 +199,7 @@ def coast_scene(item, plan_tile, size, candidate, out_dir, max_bad):
         rec["bad"] = round(frac, 3)
         if frac > max_bad:
             return dict(rec, status="cloudy")
-        bands = ["B03", "B08"] + (["B02", "B04"] if candidate else [])
+        bands = ["B03", "B08"] + (["B02", "B04"] if candidate else []) + (["B11"] if low else [])
         writer = NpzWriter(path)
         for i, cols, b, bad in read_rows(scene, blocks, size, bands, bad20):
             g, n = b["B03"], b["B08"]
@@ -203,6 +216,13 @@ def coast_scene(item, plan_tile, size, candidate, out_dir, max_bad):
                 rgb[np.broadcast_to(bad[:, None], rgb.shape)] = 0
                 for k, j in enumerate(cols):
                     writer.add(f"r{i:02d}_{j:02d}", rgb[k])
+            if low:
+                # The low tide's bed: near and shortwave infrared tell rock, weed,
+                # sand and mud apart where the colour alone does not.
+                ir = np.stack([common.encode_refl(n), common.encode_refl(b["B11"])], axis=1)
+                ir[np.broadcast_to(bad[:, None], ir.shape)] = 0
+                for k, j in enumerate(cols):
+                    writer.add(f"x{i:02d}_{j:02d}", ir[k])
             for k, j in enumerate(cols):
                 writer.add(f"c{i:02d}_{j:02d}", code[k])
         writer.close()
@@ -256,25 +276,65 @@ def summer_items(items, cfg):
     return best[:s["maxScenes"]]
 
 
-def candidates(items, stations, plan, tide_levels):
-    """Which acquisitions are in a tide tail at one of the tile's stations."""
+def candidates(items, stations, plan, tide_levels, tail=("low", "high")):
+    """Which acquisitions are in a tide tail (either, or the one named) at one of the tile's stations."""
     out = {}
     for it in items:
         c = False
         for s in stations:
             lv = tide_levels[s].get(it["stamp"])
             th = plan["stations"].get(s)
-            if lv is not None and th and (lv[0] <= th["low"] or lv[0] >= th["high"]):
+            if lv is not None and th and (("low" in tail and lv[0] <= th["low"])
+                                          or ("high" in tail and lv[0] >= th["high"])):
                 c = True
                 break
         out[it["stamp"]] = c
     return out
 
 
-def run(tile, workers, summer_only=False):
+def chosen(items, stations, plan, tide_levels, done, sel):
+    """The coastal looks to read (config select): per station, perBin clear looks in
+    each of bins equal steps of its levels, and tailLooks in each tide tail; the least
+    cloudy first, a look found cloudy replaced by the next. A look not read yet counts
+    towards its step as if it were clear, so this is called again after each round of
+    reads until it asks for nothing new."""
+    order = sorted(items, key=lambda it: (it["cloud"] if it["cloud"] is not None else 100, it["stamp"]))
+    pick = set()
+    for s in stations:
+        lv = {it["stamp"]: tide_levels[s][it["stamp"]][0] for it in order if it["stamp"] in tide_levels[s]}
+        if not lv:
+            continue
+        lo, hi = min(lv.values()), max(lv.values())
+        th = plan["stations"].get(s) or {}
+        groups = {}
+        for it in order:
+            v = lv.get(it["stamp"])
+            if v is None:
+                continue
+            k = min(int((v - lo) / max(hi - lo, 1e-6) * sel["bins"]), sel["bins"] - 1)
+            groups.setdefault(("bin", k), []).append(it)
+            if th and v <= th["low"]:
+                groups.setdefault(("low",), []).append(it)
+            if th and v >= th["high"]:
+                groups.setdefault(("high",), []).append(it)
+        for key, its in groups.items():
+            want = sel["tailLooks"] if key[0] != "bin" else sel["perBin"]
+            n = 0
+            for it in its:
+                if n >= want:
+                    break
+                r = done.get(("coast", it["stamp"]))
+                if r and r["status"] in ("cloudy", "error"):
+                    continue
+                pick.add(it["stamp"])
+                n += 1
+    return pick
+
+
+def run(tile, workers, summer_only=False, every_look=False):
     cfg = common.config()
     plan = common.read_json(common.path("work", "plan.json"))
-    pt = plan["tiles"][tile]
+    pt = common.scouted(plan["tiles"][tile], tile)
     size = plan["blockSize"]
     cat = common.read_json(common.path("downloads", "catalog", f"{tile}.json"))
     items = cat["items"]
@@ -289,34 +349,50 @@ def run(tile, workers, summer_only=False):
                 r = json.loads(line)
                 if r.get("status") in ("kept", "cloudy"):
                     done[(r["kind"], r["stamp"])] = r
-    jobs = []
-    if pt["coastalBlocks"] and not summer_only:
+    coastal = bool(pt["coastalBlocks"]) and not summer_only
+    if coastal:
         tide_levels = common.read_json(common.path("work", "tides", "scenes.json"))["levels"]
         cand = candidates(items, pt["stations"], plan, tide_levels)
+        low = candidates(items, pt["stations"], plan, tide_levels, tail=("low",))
+
+    def coast_jobs():
+        if not coastal:
+            return []
+        wanted = None if every_look else chosen(items, pt["stations"], plan, tide_levels, done, cfg["select"])
+        out = []
         for it in items:
-            r = done.get(("coast", it["stamp"]))
-            # A look kept without its colour that is now a candidate (a station
-            # added to the tile, a basin's lag) is read again, colour and all.
-            if r and r["status"] == "kept" and cand[it["stamp"]] and not r.get("candidate"):
-                p = os.path.join(base, "coast", f"{it['stamp']}.npz")
+            if wanted is not None and it["stamp"] not in wanted:
+                continue
+            st = it["stamp"]
+            r = done.get(("coast", st))
+            # A look kept without its colour (or its infrared) that now needs it (a
+            # station added to the tile, a basin's lag, a read from before the
+            # infrared was kept) is read again, all of it.
+            if r and r["status"] == "kept" and ((cand[st] and not r.get("candidate")) or (low[st] and not r.get("low"))):
+                p = os.path.join(base, "coast", f"{st}.npz")
                 if os.path.exists(p):
                     os.remove(p)
                 r = None
             if r is None:
-                jobs.append(("coast", it, cand[it["stamp"]]))
+                out.append(("coast", it, (cand[st], low[st])))
+        return out
+
+    jobs = coast_jobs()
     for it in summer_items(items, cfg):
         if ("summer", it["stamp"]) not in done:
             jobs.append(("summer", it, None))
     print(f"{tile}: {len(jobs)} reads to do ({len(pt['coastalBlocks'])} coastal, "
-          f"{len(pt['coverageBlocks'])} coverage blocks)", flush=True)
+          f"{len(pt['coverageBlocks'])} coverage blocks, "
+          f"{'every look' if every_look else 'selected looks'} of {len(items)})", flush=True)
     t0 = time.time()
 
     def one(job):
-        kind, it, cand_ = job
+        kind, it, flags = job
         for attempt in range(4):
             try:
                 if kind == "coast":
-                    return coast_scene(it, pt, size, cand_, os.path.join(base, "coast"), cfg["maxBadFraction"])
+                    return coast_scene(it, pt, size, flags[0], os.path.join(base, "coast"), cfg["maxBadFraction"],
+                                       low=flags[1])
                 return summer_scene(it, pt, size, os.path.join(base, "summer"))
             except Exception as e:  # network trouble, an expired signature: wait, re-sign, retry
                 err = repr(e)[:300]
@@ -324,13 +400,23 @@ def run(tile, workers, summer_only=False):
         return {"stamp": it["stamp"], "kind": kind, "status": "error", "error": err}
 
     counts = {}
+    n = 0
     with cf.ThreadPoolExecutor(workers) as pool:
-        for n, rec in enumerate(pool.map(one, jobs), 1):
-            with LOG_LOCK, open(log_path, "a") as fh:
-                fh.write(json.dumps(rec) + "\n")
-            counts[rec["status"]] = counts.get(rec["status"], 0) + 1
-            if n % 50 == 0 or n == len(jobs):
-                print(f"  {tile} [{n}/{len(jobs)}] {counts} {time.time() - t0:.0f} s", flush=True)
+        # Rounds: a look found cloudy (or not read) frees its place in the
+        # selection for the next least cloudy one.
+        while jobs:
+            for rec in pool.map(one, jobs):
+                n += 1
+                with LOG_LOCK, open(log_path, "a") as fh:
+                    fh.write(json.dumps(rec) + "\n")
+                done[(rec["kind"], rec["stamp"])] = rec
+                counts[rec["status"]] = counts.get(rec["status"], 0) + 1
+                if n % 50 == 0:
+                    print(f"  {tile} [{n}] {counts} {time.time() - t0:.0f} s", flush=True)
+            jobs = [] if every_look else [j for j in coast_jobs() if ("coast", j[1]["stamp"]) not in done]
+            if jobs:
+                print(f"  {tile}: {len(jobs)} more to replace cloudy looks", flush=True)
+    print(f"  {tile} [{n}] {counts} {time.time() - t0:.0f} s", flush=True)
     return counts
 
 
@@ -339,9 +425,10 @@ def main():
     p.add_argument("--tile", required=True, action="append")
     p.add_argument("--workers", type=int, default=24)
     p.add_argument("--summer-only", action="store_true")
+    p.add_argument("--every-look", action="store_true", help="read every acquisition, not the selection (config select)")
     a = p.parse_args()
     for t in a.tile:
-        run(t, a.workers, a.summer_only)
+        run(t, a.workers, a.summer_only, a.every_look)
 
 
 if __name__ == "__main__":

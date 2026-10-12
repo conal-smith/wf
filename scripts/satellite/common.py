@@ -47,6 +47,25 @@ def read_json(p):
         return json.load(fh)
 
 
+def scout_skips(block, limit):
+    """A block scout.py saw clear at both ends of the tide, with next to no foreshore."""
+    return min(block["lowLooks"], block["highLooks"]) >= 2 and block["foreshoreKm2"] < limit
+
+
+def scouted(pt, tile):
+    """The plan's tile without the coastal blocks scout.py found next to no
+    foreshore in (scout.minKm2): a steep coast, where the tide only climbs the
+    rock. As it was planned where the tile has not been scouted."""
+    p = path("work", "scout", f"{tile}.json")
+    if not os.path.exists(p):
+        return pt
+    blocks = read_json(p)["blocks"]
+    limit = config()["scout"]["minKm2"]
+    keep = [b for b in pt["coastalBlocks"]
+            if not (f"{b[0]:02d}_{b[1]:02d}" in blocks and scout_skips(blocks[f"{b[0]:02d}_{b[1]:02d}"], limit))]
+    return dict(pt, coastalBlocks=keep)
+
+
 def stamp_of(dt):
     return dt.strftime("%Y%m%dT%H%M%S")
 

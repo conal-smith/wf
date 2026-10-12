@@ -35,7 +35,7 @@ $PY -I $S/tides.py calibrate    # EOT20 fitted per station (~25 min)
 $PY -I $S/tides.py scenes       # every station's level at every acquisition
 $PY -I $S/coarse.py             # the island at 100 m: coverage, coast, sea (1 min)
 $PY -I $S/plan.py               # blocks, stations and tide thresholds per tile
-$PY -I $S/run.py --all          # fetch.py then compose.py, tile by tile (many hours)
+$PY -I $S/run.py --all          # scout.py, fetch.py then compose.py, tile by tile (hours)
 $PY -I $S/tiles.py imagery      # high.pmtiles, low.pmtiles, index.json
 $PY -I $S/tiles.py intertidal   # tide-<station>.pmtiles, index.json
 $PY -I $S/validate.py --infomar <infomar10> --lidar dub:2.561:<mosaic> ...
@@ -51,11 +51,18 @@ compose by block, and `run.py` skips a tile that has its `stats.json`.
 compose worker, about 2 GB at most: the machine it ran on is shared), and
 then drops the tile's Sentinel-2 reads (`--keep-downloads` keeps them): from
 compose on, everything reads only `work/tiles/<tile>/` (`high.tif`, `low.tif`,
-`heights.tif`, `weight.tif`, `stats.json`; `blocks/` and `qc.npz` let a tile be
-finished again without reading). So the tiles can be split between machines:
-copy `work/plan.json`, `work/coarse.tif`, `work/tides/` and
-`downloads/{catalog,eot20}` across, run `run.py --tiles <some>` there, and copy
-each finished `work/tiles/<tile>/` back.
+`heights.tif`, `lowir.tif`, `weight.tif`, `stats.json`; `blocks/` and `qc.npz`
+let a tile be finished again without reading). So the tiles can be split
+between machines: copy `work/plan.json`, `work/coarse.tif`, `work/tides/`,
+`downloads/catalog` and `scripts/foildepth/stations.json` across (EOT20 is only
+for `tides.py`), run `run.py --tiles <some>` there, and copy each finished
+`work/tiles/<tile>/` back.
+
+The national run (October 2026) was read on an Azure VM in Sweden Central (4
+vCPUs, `--fetch-workers 16 --compose-jobs 3`), beside Planetary Computer's
+storage in West Europe: about 390 MB/s against a home connection's 30–70, and
+nothing read over the home connection. Dublin (29UPV) took 24 minutes there,
+reading and composing.
 
 ## Method
 
@@ -135,8 +142,36 @@ its clouds and shadows grown by 40 m, or haze, B03 > 0.22), dry, or wet
 8-bit square-root encoding, 0 where unusable or B02 > 0.22), and the lush flag
 (a dry pixel with NDVI > 0.7). The summer scenes (the 28 clearest of May to
 September, 2018–2025) are read over all the tile's blocks, in colour. The
-processing baseline's +1000 offset (04.00 on) is removed. Nothing else is
-kept. About 70 MB/s from a home connection.
+processing baseline's +1000 offset (04.00 on) is removed. For the looks in the
+low tail, B08 and B11 (20 m, beside SCL) too, the same encoding: the low tide's
+near and shortwave infrared, which tell the bed's rock and weed from sand and
+mud (`lowir.tif`). Nothing else is kept.
+
+**Not every acquisition** (`chosen`, config `select`; `--every-look` reads
+them all): per station of the tile, its levels at the overpasses cut into 12
+equal steps, each given 12 clear looks, the least cloudy first by the
+catalogue's tile cloud, a look found cloudy over the coast replaced by the
+next in later rounds; a step with fewer gives all it has (the lowest tides,
+rare at the overpass, show the lowest flats dry), and each tide tail 30 clear
+looks for the composites. About a third of the reads: Dublin 348 of 989, 192
+coastal looks kept against 557. Its heights against the every-look run's, over
+the 103.7 km² both observed: median difference 0.000 m, 97% within 0.25 m;
+against the LiDAR, 80% within 0.5 m (82,794 pixels) where every look gave
+79% (78,708); the looks spread evenly over the levels fit better (median
+misfit 0.029 against 0.042).
+
+**Not every coastal block** (`scout.py`, config `scout`): first, per station,
+the 8 least cloudy looks at its lowest and at its highest levels, B03, B08 and
+SCL at 40 m from the overviews (half a minute a tile). A 40 m pixel dry in most
+clear low looks and wet in most clear high ones is foreshore. A block with
+under 0.01 km² of it, seen clear at least twice at each end of the tide, is
+left out of the fetch and the compose (`common.scouted`): a steep coast, where
+the tide only climbs the rock. On the six tiles composed every block, the
+scout's foreshore against the observed heights' per block correlates at 0.97;
+the rule leaves out 274 of 873 coastal blocks (31%) and 0.30 km² of the
+560.5 km² observed (0.05%, no block over 0.09 km²). A block the scout saw
+clear fewer than twice at either end is never left out: in Connemara, cloud at
+the lowest tides hid 2 km² a block that way.
 
 ### Composites
 

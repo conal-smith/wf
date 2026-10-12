@@ -120,7 +120,7 @@ class Ctx:
         self.tile = tile
         self.cfg = common.config()
         self.plan = common.read_json(common.path("work", "plan.json"))
-        self.pt = self.plan["tiles"][tile]
+        self.pt = common.scouted(self.plan["tiles"][tile], tile)
         self.size = self.plan["blockSize"]
         self.stations = common.stations()
         self.sid = [s["id"] for s in self.stations]
@@ -254,6 +254,10 @@ def coastal_part(ctx, i, j, keep, rows):
         cks = ks[cand]
         rgb = looks.stack(cks, f"r{i:02d}_{j:02d}", (3, size, size), rows=rows)
         clean = rgb.min(axis=1) > 0
+        # The low looks' near and shortwave infrared, where fetch.py kept it (0 elsewhere).
+        ir = looks.stack(cks, f"x{i:02d}_{j:02d}", (2, size, size), rows=rows)
+        ir_acc = np.zeros((2, hh, size), np.float32)
+        ir_wsum = np.zeros((hh, size), np.float32)
         for opt in ("high", "low"):
             acc = np.zeros((3, hh, size), np.float32)
             wsum = np.zeros((hh, size), np.float32)
@@ -276,10 +280,19 @@ def coastal_part(ctx, i, j, keep, rows):
                 wsum += np.where(good, w, 0)
                 tide_acc += np.where(good, composite.median_level(lv, use) * w, 0)
                 count_acc += np.where(good, used * w, 0)
+                if opt == "low":
+                    # The same looks as the colour, those that kept their infrared.
+                    use_ir = use & (ir.min(axis=1) > 0)
+                    w_ir = w * (use_ir.sum(axis=0) >= c["minScenes"])
+                    for band in range(2):
+                        med_ir, _ = composite.masked_median(ir[:, band], use_ir)
+                        ir_acc[band] += np.where(np.isfinite(med_ir) & (w_ir > 0), med_ir * w_ir, 0)
+                    ir_wsum += np.where(np.isfinite(med_ir) & (w_ir > 0), w_ir, 0)
             have = wsum > 0
             res[opt] = np.where(have[None], acc / np.maximum(wsum, 1e-6)[None], np.nan).astype(np.float32)
             res[opt + "_tide"] = np.where(have, tide_acc / np.maximum(wsum, 1e-6), np.nan).astype(np.float32)
             res[opt + "_n"] = np.where(have, count_acc / np.maximum(wsum, 1e-6), 0).astype(np.float32)
+        res["low_ir"] = np.where((ir_wsum > 0)[None], ir_acc / np.maximum(ir_wsum, 1e-6)[None], np.nan).astype(np.float32)
         return res
     finally:
         looks.close()
@@ -329,7 +342,8 @@ def mosaic(ctx, names):
     arrs = {}
     for name in names:
         dtype, fill = FIELDS.get(name, (np.float32, np.nan))
-        shape = (3, full, full) if name in ("high", "low", "summer") else (full, full)
+        shape = (3, full, full) if name in ("high", "low", "summer") else (2, full, full) if name == "low_ir" \
+            else (full, full)
         a = np.lib.format.open_memmap(os.path.join(ctx.out, f"m-{name}.npy"), mode="w+", dtype=dtype, shape=shape)
         a[...] = fill
         arrs[name] = a
@@ -378,7 +392,7 @@ def finish(ctx, strip=1024):
     cfg, h, c, ia = ctx.cfg, ctx.cfg["heights"], ctx.cfg["composite"], ctx.cfg["intertidalArchive"]
     size = ctx.size
     full = -(-TILE_PX // size) * size
-    names = list(FIELDS) + ["high", "low", "summer"]
+    names = list(FIELDS) + ["high", "low", "summer", "low_ir"]
     m = mosaic(ctx, names)
     l, b, r, t = ctx.pt["bbox"]
     profile = {"driver": "GTiff", "width": TILE_PX, "height": TILE_PX, "crs": f"EPSG:{ctx.pt['epsg']}",
@@ -528,6 +542,21 @@ def finish(ctx, strip=1024):
                                    "medianTide": round(float(np.nanmedian(np.concatenate(a["tides"]))), 2),
                                    "looksMedian": round(float(np.median(np.concatenate(a["n"]))), 1)}
                       for k, a in tide_sum.items()}
+
+    # The low tide's near and shortwave infrared (B08, B11) in the tide zone, for
+    # telling the bed's rock, weed, sand and mud apart (encode_refl codes, 0 none).
+    with rasterio.open(os.path.join(ctx.out, "lowir.tif"), "w", count=2, dtype="uint8", nodata=0,
+                       **profile) as dst:
+        dst.set_band_description(1, "B08_low")
+        dst.set_band_description(2, "B11_low")
+        for r0 in range(0, TILE_PX, strip):
+            r1 = min(TILE_PX, r0 + strip)
+            win = Window(0, r0, TILE_PX, r1 - r0)
+            zone = tz[r0:r1]
+            for band in range(2):
+                v = np.asarray(m["low_ir"][band, r0:r1])
+                code = np.where(zone & np.isfinite(v), np.clip(np.round(np.nan_to_num(v)), 1, 255), 0)
+                dst.write(code[:, :TILE_PX].astype(np.uint8), band + 1, window=win)
     common.write_json(os.path.join(ctx.out, "stats.json"), stats)
     del m
     for name in names:

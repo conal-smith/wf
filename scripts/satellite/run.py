@@ -21,7 +21,7 @@ sys.path.insert(0, HERE)
 import common  # noqa: E402
 
 
-OUTPUTS = ("stats.json", "high.tif", "low.tif", "heights.tif", "weight.tif")
+OUTPUTS = ("stats.json", "high.tif", "low.tif", "heights.tif", "weight.tif", "lowir.tif")
 
 
 def drop_downloads(tile):
@@ -47,6 +47,8 @@ def main():
     p.add_argument("--compose-jobs", type=int, default=1)
     p.add_argument("--overlap", action="store_true", help="compose a tile while the next one is read")
     p.add_argument("--keep-downloads", action="store_true", help="keep a composed tile's Sentinel-2 reads")
+    p.add_argument("--every-look", action="store_true", help="read every acquisition, not fetch.py's selection")
+    p.add_argument("--no-scout", action="store_true", help="read every coastal block, without scout.py first")
     a = p.parse_args()
     plan = common.read_json(common.path("work", "plan.json"))
     if a.all:
@@ -65,9 +67,17 @@ def main():
                 drop_downloads(t)
             continue
         t0 = time.time()
+        if not a.no_scout and not os.path.exists(common.path("work", "scout", f"{t}.json")):
+            # A few looks at 40 m first: fetch.py and compose.py then leave out
+            # the coastal blocks with next to no foreshore (common.scouted).
+            with open(os.path.join(logs, f"scout-{t}.log"), "a") as fh:
+                r = subprocess.run([py, "-I", os.path.join(HERE, "scout.py"), "--tile", t, "--workers",
+                                    str(a.fetch_workers)], stdout=fh, stderr=subprocess.STDOUT)
+            print(f"{t}: scouted ({r.returncode}) in {time.time() - t0:.0f} s", flush=True)
         with open(os.path.join(logs, f"fetch-{t}.log"), "a") as fh:
             r = subprocess.run([py, "-I", os.path.join(HERE, "fetch.py"), "--tile", t, "--workers",
-                                str(a.fetch_workers)], stdout=fh, stderr=subprocess.STDOUT)
+                                str(a.fetch_workers)] + (["--every-look"] if a.every_look else []),
+                               stdout=fh, stderr=subprocess.STDOUT)
         print(f"{t}: fetched ({r.returncode}) in {time.time() - t0:.0f} s", flush=True)
         if composing is not None:
             composing.wait()
