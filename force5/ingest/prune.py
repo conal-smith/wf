@@ -45,8 +45,9 @@ silently become a bucket sweep.
 Nothing under `archive/` (archive.py) is ever touched, in either mode: it is not a
 data root, both sweeps skip it by name, and `delete_keys` refuses to send any key
 inside it to the store. Those are three separate guards on purpose. The same three
-hold for the static data under `foildepth/` and `bathy/` (STATIC_ROOTS): published by
-hand under content-versioned prefixes, referenced by no pointer, never swept.
+hold for the static data under `foildepth/`, `bathy/`, `satellite/` and `intertidal/`
+(STATIC_ROOTS): published by hand under content-versioned prefixes, referenced by no
+pointer, never swept.
 """
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -72,11 +73,12 @@ if ARCHIVE_ROOT in DATA_ROOTS:
     # archived file in it "unreferenced". Refuse to run at all rather than sweep it.
     raise RuntimeError(f"No registered manifest may live under {ARCHIVE_ROOT}/")
 # Static data published once by hand under an immutable, content-versioned prefix
-# (scripts/foildepth/publish.py): the foilable-depth archives and the chart's
-# bathymetry. Nothing in the registry points at them, so to a sweep they would be
+# (scripts/foildepth/publish.py, scripts/satellite/publish.py): the foilable-depth
+# archives, the chart's bathymetry, the satellite imagery and the intertidal heights
+# from it. Nothing in the registry points at them, so to a sweep they would be
 # "unreferenced". They are not data roots, no sweep lists them, and `delete_keys`
 # refuses any key inside them, as for the archive.
-STATIC_ROOTS = ("foildepth", "bathy")
+STATIC_ROOTS = ("foildepth", "bathy", "satellite", "intertidal")
 for _root in STATIC_ROOTS:
     if _root in DATA_ROOTS:
         raise RuntimeError(f"No registered manifest may live under {_root}/")

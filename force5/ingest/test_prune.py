@@ -615,8 +615,10 @@ class BucketPruneTest(unittest.TestCase):
 
 
 class StaticDataTest(unittest.TestCase):
-    """The foilable-depth archives and the chart's bathymetry, published by hand
-    under foildepth/v<hash>/ and bathy/v<hash>/, are never swept or deleted."""
+    """The foilable-depth archives, the chart's bathymetry, the satellite imagery
+    and the intertidal heights, published by hand under foildepth/v<hash>/,
+    bathy/v<hash>/, satellite/v<hash>/ and intertidal/v<hash>/, are never swept
+    or deleted."""
 
     def setUp(self):
         from test_publish_s3 import FakeS3
@@ -632,12 +634,17 @@ class StaticDataTest(unittest.TestCase):
             "foildepth/v0123456789ab/dublin-north.pmtiles",
             "foildepth/vfedcba987654/tide-howth.pmtiles",  # an older version, still kept
             "bathy/v0123456789ab/ireland.pmtiles",
+            "satellite/v0123456789ab/index.json",
+            "satellite/v0123456789ab/high.pmtiles",
+            "satellite/vfedcba987654/low.pmtiles",  # an older version, still kept
+            "intertidal/v0123456789ab/index.json",
+            "intertidal/v0123456789ab/tide-howth.pmtiles",
         )]
 
     def test_the_static_prefixes_are_not_data_roots(self):
         for root in prune.STATIC_ROOTS:
             self.assertNotIn(root, prune.DATA_ROOTS)
-        self.assertEqual(set(prune.STATIC_ROOTS), {"foildepth", "bathy"})
+        self.assertEqual(set(prune.STATIC_ROOTS), {"foildepth", "bathy", "satellite", "intertidal"})
 
     def test_a_bucket_sweep_leaves_every_static_object(self):
         for kwargs in ({}, {"min_age_hours": 0, "grace": 0}):
@@ -654,12 +661,16 @@ class StaticDataTest(unittest.TestCase):
         self.assertIn(stray, self.s3.objects)
         self.assertNotIn(stray, result["removed"])
         self.assertTrue(prune.is_static("site/foildepth/v1/x.pmtiles"))
+        self.assertTrue(prune.is_static("site/satellite/v1/high.pmtiles"))
+        self.assertTrue(prune.is_static("intertidal/v1/tide-howth.pmtiles"))
         self.assertFalse(prune.is_static("weather/foildepthy/x.json"))
+        self.assertFalse(prune.is_static("weather/satellites/x.json"))
 
     def test_delete_keys_refuses_a_static_key_outright(self):
         other = self.s3.seed("weather/harmonie-old/000.json", b"{}", NOW - timedelta(days=400))
         for key in ("foildepth/v0123456789ab/tide-howth.pmtiles", "bathy/v0123456789ab/ireland.pmtiles",
-                    "prefix/foildepth/v1/index.json"):
+                    "prefix/foildepth/v1/index.json", "satellite/v0123456789ab/high.pmtiles",
+                    "intertidal/v0123456789ab/tide-howth.pmtiles"):
             with self.assertRaises(ValueError):
                 prune.delete_keys(self.s3, "test", ["weather/harmonie-old/000.json", key])
         for key in self.static:
