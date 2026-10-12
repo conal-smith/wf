@@ -488,6 +488,11 @@ export default function WindMap(props: Props) {
             paint: {
               "color-relief-color": area.color,
               "color-relief-opacity": 0.82,
+              // Each pixel its own height. Interpolated, two reserved values
+              // side by side (deep water beside a survey gap, land beside a
+              // region's edge) would run through every colour of the ramp: a
+              // hairline along every such edge, plain on the zoomed-out chart.
+              resampling: "nearest",
             },
           },
           map.getLayer("rivers") ? "rivers" : undefined,
