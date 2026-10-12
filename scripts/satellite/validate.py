@@ -69,6 +69,7 @@ def main():
     cfg = common.config()
     bias = cfg["heights"]["biasMetres"]
     stations = common.stations()
+    plan = common.read_json(common.path("work", "plan.json"))
     infomar = sorted(glob.glob(os.path.join(a.infomar, "*.tif"))) if a.infomar else []
     pairs = {}
     tiles_dir = common.path("work", "tiles")
@@ -99,7 +100,10 @@ def main():
                 continue
             kind = name.split(" ")[0]
             for k in np.unique(stn[ok]).astype(int):
-                sel = ok & (stn == k)
+                # Only ground above the station's low-tide threshold: below the lowest
+                # tides seen a pixel cannot flip lower than they are, so it reads high.
+                low = plan["stations"].get(stations[k]["id"], {}).get("low", 0.0)
+                sel = ok & (stn == k) & (sv >= low)
                 key = (stations[k]["id"], kind)
                 pairs.setdefault(key, []).append((raw[sel] - sv[sel]).astype(np.float32))
         print(f"{tile}: {sum(v.size for vs in pairs.values() for v in vs)} pairs so far", flush=True)

@@ -173,6 +173,7 @@ def finish_rgba(premult, cfg):
 
 def imagery_chunk(job):
     import rasterio
+    import rasterio.errors
     import rasterio.windows
     from rasterio.warp import reproject, Resampling
     option, x, y, srcs, tmp, clip = job
@@ -188,7 +189,10 @@ def imagery_chunk(job):
             # Only the part of the source under this chunk (and a margin).
             l, b, r, tp = transform_bounds("EPSG:3857", src.crs, *tile_bounds_merc(CHUNK_Z, x, y), densify_pts=21)
             win = win_from_bounds(l - 200, b - 200, r + 200, tp + 200, src.transform).round_offsets().round_lengths()
-            win = win.intersection(rasterio.windows.Window(0, 0, src.width, src.height))
+            try:
+                win = win.intersection(rasterio.windows.Window(0, 0, src.width, src.height))
+            except rasterio.errors.WindowError:  # the chunk only touches the tile's lon/lat box
+                continue
             data = src.read(window=win).astype(np.float32)
             w = data[3] / 255
             if w.max() == 0:
@@ -456,6 +460,11 @@ def intertidal_chunk(job):
     region = common.nearest_station(blon[None, :], blat[:, None], stations, ia["maxStationKm"])
     region = np.repeat(np.repeat(region, 4, axis=0), 4, axis=1)
     value = np.where(np.isfinite(value), value, ia["landMetres"]).astype(np.float32)
+    # compose.py's heights are the raw flip levels: the bias against surveyed
+    # ground (validate.py) comes off here, so it can be set after the run.
+    q = ia["quantumMetres"]
+    value = np.where(is_height(value, ia), np.round((value - cfg["heights"]["biasMetres"]) / q) * q,
+                     value).astype(np.float32)
     # Measured against another station (the cells' edges fall a pixel differently in UTM): no fit.
     value = np.where((stn != region) & is_height(value, ia), ia["noSurveyMetres"], value)
     edge = edge_value(value, ia)

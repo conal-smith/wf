@@ -441,7 +441,7 @@ def finish(ctx, strip=1024):
             out = np.full(ok.shape, ia["noSurveyMetres"], np.float32)
             out[cls == ABOVE_SEEN] = ia["landMetres"]
             out[cls == BELOW_SEEN] = ia["belowSeenMetres"]
-            out[inter] = np.round((z[inter] - h["biasMetres"]) / q) * q
+            out[inter] = np.round(z[inter] / q) * q  # the bias comes off in tiles.py
             out[cls == 0] = np.nan
             mine = weight8[rows] > 127
             for v in counts:

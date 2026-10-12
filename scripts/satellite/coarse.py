@@ -169,6 +169,9 @@ def main():
     ireland = ndimage.binary_fill_holes(np.isin(lab, keep))
     sea = sea & ~ireland
     sea_to_land = ndimage.distance_transform_edt(~ireland) * px_km
+    # Smoothed (σ 300 m): on a 100 m grid the distance's contours are steps,
+    # and the imagery's fade at sea follows them.
+    sea_to_land = ndimage.gaussian_filter(sea_to_land, 3)
     land_to_sea = ndimage.distance_transform_edt(~sea) * px_km
     coverage = ireland | (sea_to_land <= c["seaKm"])
     coastal = (ireland & (land_to_sea <= c["coastalLandKm"])) | (sea & (sea_to_land <= c["coastalSeaKm"]))
