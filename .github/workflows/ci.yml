@@ -86,6 +86,9 @@ jobs:
         run: python -m unittest discover -s force5/ingest -p 'test_*.py'
       - name: Schedule generator tests
         run: python -m unittest discover -s deploy -p 'test_*.py'
+      # deploy/home-compute is not a package, so the step above does not reach it.
+      - name: Home Compute panel tests
+        run: python -m unittest discover -s deploy/home-compute -p 'test_*.py'
       # The production monitor (.github/workflows/monitor.yml): standard library only.
       - name: Release script tests
         run: python -m unittest discover -s scripts/release -p 'test_*.py'

@@ -244,9 +244,41 @@ def image_state():
 
 # --- services -----------------------------------------------------------------------
 
-def loaded(label):
-    result = run("launchctl", "print", f"gui/{os.getuid()}/{label}")
-    return bool(result and result.returncode == 0)
+# How long a probe waits for launchctl or a service's API. A busy Mac (an import,
+# an image build) can take several seconds to answer either; a shorter wait read
+# that as "stopped" while the services had been up all along.
+PROBE_TIMEOUT = 10
+# `launchctl print`'s exit status for "Could not find service ... in domain".
+LAUNCHCTL_NOT_FOUND = 113
+
+
+def launchd_loaded(label):
+    """True if launchd has the job loaded, False only when launchd says it is not,
+    and None when launchctl could not be asked (it timed out or failed otherwise)."""
+    result = run("launchctl", "print", f"gui/{os.getuid()}/{label}", timeout=PROBE_TIMEOUT)
+    if result is None:
+        return None
+    if result.returncode == 0:
+        return True
+    return False if result.returncode == LAUNCHCTL_NOT_FOUND else None
+
+
+def service_state(answering, is_loaded, refused):
+    """A launchd service's state, saying "stopped" only on launchd's word.
+
+    running   it answered
+    stopped   launchd says the job is not loaded
+    starting  loaded, but nothing is listening yet (the connection was refused)
+    unknown   it did not answer in time, or launchctl could not be asked: a busy
+              Mac, not a stopped service, so nothing should offer to start it
+    """
+    if answering:
+        return "running"
+    if is_loaded is False:
+        return "stopped"
+    if is_loaded and refused:
+        return "starting"
+    return "unknown"
 
 
 def colima_state():
@@ -254,8 +286,12 @@ def colima_state():
         return {"state": "missing", "cpus": None, "memoryGiB": None, "autostart": False}
     result = run("colima", "list", "--json")
     profile = {}
-    if result and result.returncode == 0 and result.stdout.strip():
-        profile = json.loads(result.stdout.splitlines()[0])
+    listed = bool(result and result.returncode == 0)
+    if listed and result.stdout.strip():
+        try:
+            profile = json.loads(result.stdout.splitlines()[0])
+        except ValueError:
+            listed = False
     services = run("brew", "services", "info", "colima", "--json")
     autostart = False
     if services and services.returncode == 0:
@@ -263,7 +299,8 @@ def colima_state():
             autostart = bool(json.loads(services.stdout)[0].get("loaded"))
         except (ValueError, IndexError):
             pass
-    return {"state": "running" if profile.get("status") == "Running" else "stopped",
+    state = ("running" if profile.get("status") == "Running" else "stopped") if listed else "unknown"
+    return {"state": state,
             "cpus": profile.get("cpus"),
             "memoryGiB": round(profile["memory"] / 2**30, 1) if profile.get("memory") else None,
             "autostart": autostart}
@@ -272,31 +309,33 @@ def colima_state():
 def bacalhau_state():
     if not (BIN / "bacalhau").exists():
         return {"state": "missing", "loaded": False, "nodes": 0}
-    is_loaded = loaded(BACALHAU_LABEL)
-    nodes = 0
+    is_loaded = launchd_loaded(BACALHAU_LABEL)
+    nodes = None
     result = run(str(BIN / "bacalhau"), "node", "list", "--output", "json",
-                 "--api-host", "127.0.0.1", "--api-port", "1234", timeout=8)
-    if result and result.returncode == 0:
+                 "--api-host", "127.0.0.1", "--api-port", "1234", timeout=PROBE_TIMEOUT)
+    answering = bool(result and result.returncode == 0)
+    if answering:
         try:
             nodes = sum(1 for node in json.loads(result.stdout) if node.get("Connection") == "CONNECTED")
         except ValueError:
-            pass
-    answering = bool(result and result.returncode == 0)
-    state = "running" if answering else ("starting" if is_loaded else "stopped")
-    return {"state": state, "loaded": is_loaded, "nodes": nodes}
+            nodes = 0
+    # The CLI exits non-zero at once when nothing is listening; None is a timeout.
+    refused = bool(result and result.returncode != 0)
+    return {"state": service_state(answering, is_loaded, refused), "loaded": is_loaded, "nodes": nodes}
 
 
 def controller_state():
-    is_loaded = loaded(CONTROLLER_LABEL)
+    is_loaded = launchd_loaded(CONTROLLER_LABEL)
     request = urllib.request.Request("http://127.0.0.1:4786/v1/health", headers={
         "Authorization": f"Bearer {read_env().get('HOME_COMPUTE_API_TOKEN', '')}"})
+    refused = False
     try:
-        with urllib.request.urlopen(request, timeout=3) as response:
+        with urllib.request.urlopen(request, timeout=PROBE_TIMEOUT) as response:
             answering = response.status == 200
-    except (urllib.error.URLError, OSError):
+    except (urllib.error.URLError, OSError) as error:
         answering = False
-    state = "running" if answering else ("starting" if is_loaded else "stopped")
-    return {"state": state, "loaded": is_loaded, "answering": answering}
+        refused = isinstance(getattr(error, "reason", error), ConnectionRefusedError)
+    return {"state": service_state(answering, is_loaded, refused), "loaded": is_loaded, "answering": answering}
 
 
 def config_current():
