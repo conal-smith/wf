@@ -32,7 +32,7 @@ test("the lights read the blend's squares in view, and nothing where the blend h
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   // All of Ireland is in view: every place rated, from Ireland's squares.
-  await expect(page.locator(".spot-marker")).toHaveCount(141, { timeout: 30000 });
+  await expect(page.locator(".spot-marker")).toHaveCount(148, { timeout: 30000 });
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });

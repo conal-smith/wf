@@ -17,10 +17,10 @@
       "water": 0.55
     },
     "dollymount": {
-      "facing": null,
-      "bearing": 137,
-      "strength": 0.11,
-      "water": 0.87
+      "facing": 133,
+      "bearing": 133,
+      "strength": 0.24,
+      "water": 0.6
     },
     "rusheen": {
       "facing": 160,
@@ -347,10 +347,10 @@
       "water": 0.46
     },
     "newcastle": {
-      "facing": 116,
-      "bearing": 116,
-      "strength": 0.31,
-      "water": 0.42
+      "facing": 114,
+      "bearing": 114,
+      "strength": 0.28,
+      "water": 0.58
     },
     "cranfield": {
       "facing": 194,
@@ -437,22 +437,22 @@
       "water": 0.56
     },
     "donabate": {
-      "facing": 107,
-      "bearing": 107,
-      "strength": 0.22,
-      "water": 0.57
-    },
-    "low-rock": {
-      "facing": 53,
-      "bearing": 53,
-      "strength": 0.23,
+      "facing": 124,
+      "bearing": 124,
+      "strength": 0.31,
       "water": 0.45
     },
+    "low-rock": {
+      "facing": 56,
+      "bearing": 56,
+      "strength": 0.25,
+      "water": 0.44
+    },
     "portmarnock": {
-      "facing": 74,
-      "bearing": 74,
-      "strength": 0.21,
-      "water": 0.61
+      "facing": 91,
+      "bearing": 91,
+      "strength": 0.31,
+      "water": 0.45
     },
     "burrow-beach": {
       "facing": 11,
@@ -509,10 +509,10 @@
       "water": 0.51
     },
     "kilmuckridge": {
-      "facing": 117,
-      "bearing": 117,
+      "facing": 122,
+      "bearing": 122,
       "strength": 0.32,
-      "water": 0.49
+      "water": 0.47
     },
     "curracloe": {
       "facing": 97,
@@ -719,16 +719,16 @@
       "water": 0.38
     },
     "blessington": {
-      "facing": 136,
-      "bearing": 136,
-      "strength": 0.15,
-      "water": 0.21
+      "facing": 231,
+      "bearing": 231,
+      "strength": 0.3,
+      "water": 0.42
     },
     "broadmeadows-south": {
-      "facing": 27,
-      "bearing": 27,
-      "strength": 0.28,
-      "water": 0.4
+      "facing": 19,
+      "bearing": 19,
+      "strength": 0.31,
+      "water": 0.54
     },
     "bunbeg": {
       "facing": null,
@@ -737,10 +737,10 @@
       "water": 0.18
     },
     "cahore": {
-      "facing": 73,
-      "bearing": 73,
-      "strength": 0.31,
-      "water": 0.44
+      "facing": 100,
+      "bearing": 100,
+      "strength": 0.3,
+      "water": 0.57
     },
     "carrickfinn": {
       "facing": 299,
@@ -839,10 +839,10 @@
       "water": 0.52
     },
     "tyrella": {
-      "facing": 173,
-      "bearing": 173,
+      "facing": 159,
+      "bearing": 159,
       "strength": 0.31,
-      "water": 0.45
+      "water": 0.49
     },
     "lough-derg-killaloe": {
       "facing": 59,
@@ -855,6 +855,48 @@
       "bearing": 222,
       "strength": 0.21,
       "water": 0.5
+    },
+    "ballyhornan": {
+      "facing": 106,
+      "bearing": 106,
+      "strength": 0.28,
+      "water": 0.46
+    },
+    "benderg-bay": {
+      "facing": 146,
+      "bearing": 146,
+      "strength": 0.2,
+      "water": 0.59
+    },
+    "killard": {
+      "facing": 69,
+      "bearing": 69,
+      "strength": 0.29,
+      "water": 0.4
+    },
+    "malahide-estuary": {
+      "facing": null,
+      "bearing": 137,
+      "strength": 0.1,
+      "water": 0.69
+    },
+    "portrane": {
+      "facing": 55,
+      "bearing": 55,
+      "strength": 0.29,
+      "water": 0.44
+    },
+    "donabate-north-beach": {
+      "facing": 131,
+      "bearing": 131,
+      "strength": 0.3,
+      "water": 0.42
+    },
+    "malahide-estuary-south-park": {
+      "facing": 35,
+      "bearing": 35,
+      "strength": 0.27,
+      "water": 0.46
     }
   }
 }

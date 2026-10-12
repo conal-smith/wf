@@ -23,7 +23,7 @@ const harmonie = readSample<{
  */
 async function openMap(page: Page, path = "/") {
   await page.goto(path);
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   if (!new URL(path, "http://x").searchParams.has("spot"))

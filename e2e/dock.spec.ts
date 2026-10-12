@@ -75,7 +75,7 @@ async function openDock(page: Page, width = 1440, height = 900) {
   await withTides(page);
   await page.setViewportSize({ width, height });
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({

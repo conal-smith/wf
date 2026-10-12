@@ -11,7 +11,7 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   const clock = Date.parse(ecmwf.runTime) + 14 * 3600000;
   await page.clock.setFixedTime(new Date(clock));
   await page.goto("/");
-  await expect(page.locator(".spot-marker")).toHaveCount(141, {
+  await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
   });
   await expect(page.locator(".map-loading")).toHaveCount(0);

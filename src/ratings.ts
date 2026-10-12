@@ -7,7 +7,7 @@
  * it to them value for value. What it does differently is never parse a time
  * twice: a model publishes every spot on the same steps, so where each axis
  * column falls between them is worked out once per model and reused for all
- * 141 places, rather than searched for with `Date.parse` in every series.
+ * 148 places, rather than searched for with `Date.parse` in every series.
  */
 import {
   agreementFrom,

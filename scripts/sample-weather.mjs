@@ -709,7 +709,7 @@ function waveBundle(model, spots, runMs, grid) {
   const names = Object.keys(WAVE_VARIABLES);
   const mask = new Array(grid.width * grid.height).fill(false);
   // A cell another location reads from stays water: one masked corner is
-  // enough to mask a location, and with 141 places on a coarse sample grid a
+  // enough to mask a location, and with 148 places on a coarse sample grid a
   // neighbour can share a corner (Kinvara shares one with Rusheen).
   const shared = new Set(
     spots
