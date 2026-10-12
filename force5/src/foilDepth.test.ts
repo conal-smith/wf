@@ -437,7 +437,7 @@ describe("a basin behind a weir", () => {
       "water 3.1 m above LAT behind the weir (tide 0.6 m at Howth)",
     );
     expect(foilReadout("unsurveyed", 3.06, "17:40", "Howth", 1, 0.8)).toBe(
-      "Wet at every tide, depth not surveyed at 17:40 (water 3.1 m above LAT behind the weir; tide 0.8 m at Howth).",
+      "Water no survey has sounded: depth not surveyed at 17:40 (water 3.1 m above LAT behind the weir; tide 0.8 m at Howth).",
     );
     expect(foilReadout(1.2, 3.06, "17:40", "Howth", 1, 0.8)).toMatch(
       /^~1\.9 m of water at 17:40 \(water 3\.1 m/,

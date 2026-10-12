@@ -312,7 +312,7 @@ const CLEAR = "rgba(0, 0, 0, 0)";
 /** The width of the blend between two classes: crisp, but not aliased. */
 const EDGE = 0.02;
 /** The waterline's height band, metres: a thin line on a beach, wider on a flat. */
-export const FOIL_LINE_METRES = 0.05;
+export const FOIL_LINE_METRES = 0.025;
 
 /** A CSS colour (#rgb, #rrggbb, rgb(), rgba()) as [r, g, b, a], or null. */
 export function parseColour(
@@ -610,8 +610,8 @@ export type FoilReserved = Pick<
  * its Terrarium blue byte: land at or over the archive's land value (and the
  * land the build pads beside the water, from `padMetres`, and anything over
  * the area's dry ceiling); `{ estimate }` where the blue byte is the index's
- * `estimateBlue`; an older set's no-survey value; the deep value; else a
- * height. The map's probe (foilProbe.ts) and the app's read it the same way;
+ * `estimateBlue`; an older set's no-survey value; the deep value (flagged
+ * as an estimate: unsurveyed); else a height. The map's probe (foilProbe.ts) and the app's read it the same way;
  * an archive with neither flag (the intertidal heights') is read by its
  * reserved values alone.
  */
@@ -629,16 +629,19 @@ export function foilPoint(
     Math.abs(z - manifest.noSurveyMetres) < 1
   )
     return "unsurveyed";
+  const estimate =
+    manifest.estimateBlue !== undefined && blue % 8 === manifest.estimateBlue;
   if (
     manifest.deepMetres !== undefined &&
     Math.abs(z - manifest.deepMetres) < 1
   )
-    return "deep";
+    // The deep value flagged as an estimate: a stretch of water too large
+    // to fill from its edges, which no survey has sounded.
+    return estimate ? "unsurveyed" : "deep";
   // Over the dry ceiling is not foreshore: land.
   if (manifest.padMetres !== undefined && z > dryCeilingMetres + 0.05)
     return null;
-  if (manifest.estimateBlue !== undefined && blue % 8 === manifest.estimateBlue)
-    return { estimate: z };
+  if (estimate) return { estimate: z };
   return z;
 }
 
@@ -700,7 +703,8 @@ export function foilReadout(
     return `More than ${-floor} m deep at the lowest tide: deep enough at any tide ${at}.`;
   if (z === "none")
     return `Nothing drawn here: dry land, or more than ${-floor} m deep at the lowest tide ${at}.`;
-  if (z === "unsurveyed") return `Wet at every tide, depth not surveyed ${at}.`;
+  if (z === "unsurveyed")
+    return `Water no survey has sounded: depth not surveyed ${at}.`;
   const bed = typeof z === "object" ? z.estimate : z;
   const note =
     typeof z === "object"

@@ -24,6 +24,8 @@ describe("a tapped pixel", () => {
   });
   it("reads the deep value, land and the padding beside land", () => {
     expect(read(-20)).toBe("deep");
+    // The deep value flagged: a stretch too large to estimate, unsurveyed.
+    expect(read(-20 + 1 / 64)).toBe("unsurveyed");
     expect(read(50)).toBeNull();
     for (const pad of [10, 22.5, 45]) expect(read(pad)).toBeNull();
     // Over the dry ceiling is not foreshore.
