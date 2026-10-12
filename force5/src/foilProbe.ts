@@ -11,23 +11,27 @@ import {
   tilePixel,
   type FoilArea,
   type FoilPoint,
-  type FoilManifest,
+  type FoilReserved,
 } from "./foilDepth";
 
 /**
  * What the archive says under a point (FoilPoint): metres above LAT;
- * "unsurveyed" where the water is there at every tide but its depth is not
- * known; "deep" where it is deeper than the index's floor; null where there
- * is no water (land); "none" where the archive has no tile there (it leaves
- * out the tiles with nothing to draw: land, or deep water). The intertidal
- * heights' archives (intertidal.ts) are read the same way.
+ * `{ estimate }` where no survey reached and the build estimated the bed
+ * (the index's `estimateBlue`); "unsurveyed" where an older set says the
+ * water is there at every tide but its depth is not known; "deep" where it
+ * is deeper than the index's floor; null where there is no water (land, and
+ * the land the build pads beside the water); "none" where the archive has
+ * no tile there (it leaves out the tiles with nothing to draw: land, or
+ * deep water). The intertidal heights' archives (intertidal.ts) are read
+ * the same way, by their reserved values (foilPoint).
  */
 export async function elevationAt(
-  area: Pick<FoilArea, "maxzoom" | "tileSize">,
+  area: Pick<FoilArea, "maxzoom" | "tileSize"> &
+    Partial<Pick<FoilArea, "dryCeilingMetres">>,
   url: string,
   lon: number,
   lat: number,
-  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres" | "deepMetres">,
+  manifest: FoilReserved,
 ): Promise<FoilPoint> {
   const at = tilePixel(lon, lat, area.maxzoom, area.tileSize);
   // The map's own archive: on a host without ranges, the file it already has.
@@ -44,5 +48,10 @@ export async function elevationAt(
   context.drawImage(bitmap, -at.px, -at.py);
   bitmap.close();
   const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
-  return foilPoint(terrariumHeight(r, g, b), manifest);
+  return foilPoint(
+    terrariumHeight(r, g, b),
+    manifest,
+    b,
+    area.dryCeilingMetres,
+  );
 }

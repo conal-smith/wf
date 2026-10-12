@@ -7,8 +7,12 @@ import {
   areasInView,
   basinLevel,
   foilClass,
+  depthColour,
+  depthScale,
   foilColours,
   foilRamp,
+  mixColour,
+  parseColour,
   foilReadout,
   latToMalin,
   levelLine,
@@ -26,12 +30,39 @@ import {
 } from "./foilDepth";
 
 const colours = {
+  edge: "#ffff00",
+  shallow: "#00ff00",
+  enough: "#00ffff",
   deep: "#0000ff",
-  shallow: "#ffaa00",
-  dry: "#887766",
+  deeper: "rgba(0, 0, 128, 0.2)",
+  line: "#000000",
+  dry: "rgba(136, 119, 102, 0.3)",
   unsurveyed: "#cccccc",
 };
 const CLEAR = "rgba(0, 0, 0, 0)";
+/** The ramp's colour at a height, mixed between its stops as MapLibre does. */
+const evalRamp = (ramp: unknown, z: number): string => {
+  const stops = stopsOf(ramp);
+  if (z <= stops[0][0]) return mixColour(stops[0][1], stops[0][1], 0);
+  for (let i = 1; i < stops.length; i++)
+    if (z <= stops[i][0]) {
+      const [z0, c0] = stops[i - 1];
+      const [z1, c1] = stops[i];
+      return mixColour(c0, c1, (z - z0) / (z1 - z0));
+    }
+  const last = stops[stops.length - 1][1];
+  return mixColour(last, last, 0);
+};
+/** Two colours within a shade of each other. */
+const near = (a: string, b: string) => {
+  const ca = parseColour(a);
+  const cb = parseColour(b);
+  if (!ca || !cb) return false;
+  return (
+    ca.slice(0, 3).every((v, i) => Math.abs(v - cb[i]) <= 3) &&
+    Math.abs(ca[3] - cb[3]) <= 0.02
+  );
+};
 
 /** The ramp's stops as [height, colour] pairs. */
 const stopsOf = (ramp: unknown): [number, string][] => {
@@ -127,49 +158,68 @@ describe("foilClass", () => {
 describe("foilRamp", () => {
   const opts = { dryCeiling: 5, floor: -6 };
   it("is an interpolate on elevation with strictly rising stops", () => {
-    const ramp = foilRamp(2.4, colours, opts);
-    expect(ramp.slice(0, 3)).toEqual([
-      "interpolate",
-      ["linear"],
-      ["elevation"],
-    ]);
-    const zs = stopsOf(ramp).map(([z]) => z);
-    for (let i = 1; i < zs.length; i++)
-      expect(zs[i]).toBeGreaterThan(zs[i - 1]);
-    expect(zs.every(Number.isFinite)).toBe(true);
-  });
-  it("colours each class as foilClass does, at low, mid and high water", () => {
-    for (const tide of [0.5, 2.4, 4.3]) {
-      const ramp = foilRamp(tide, colours, opts);
-      for (let z = -8; z <= 6; z += 0.05) {
-        const want =
-          z > opts.dryCeiling
-            ? CLEAR
-            : colours[foilClass(z, tide, FOIL_CLEARANCE_METRES)];
-        const got = colourAt(ramp, z);
-        // Within the two-centimetre blend at an edge either is fair.
-        if (got !== null) expect([z, got]).toEqual([z, want]);
-      }
+    for (const tide of [-0.2, 0.5, 2.4, 4.3, 5.4]) {
+      const ramp = foilRamp(tide, colours, { ...opts, deep: -20, floor: -5 });
+      expect(ramp.slice(0, 3)).toEqual([
+        "interpolate",
+        ["linear"],
+        ["elevation"],
+      ]);
+      const zs = stopsOf(ramp).map(([z]) => z);
+      for (let i = 1; i < zs.length; i++)
+        expect(zs[i]).toBeGreaterThan(zs[i - 1]);
+      expect(zs.every(Number.isFinite)).toBe(true);
     }
   });
-  it("moves the edges with the clearance", () => {
-    const ramp = foilRamp(3, colours, { ...opts, clearance: 2.5 });
-    expect(colourAt(ramp, 0.4)).toBe(colours.deep);
-    expect(colourAt(ramp, 0.6)).toBe(colours.shallow);
+  it("colours the water by its depth at the tide, at low, mid and high water", () => {
+    const scale = depthScale(colours);
+    for (const tide of [0.5, 2.4, 4.3]) {
+      const ramp = foilRamp(tide, colours, opts);
+      for (const depth of [0.2, 0.5, 0.9, 1.05, 2, 3, 4.5])
+        expect(
+          near(evalRamp(ramp, tide - depth), depthColour(scale, depth)),
+        ).toBe(true);
+      // The waterline just under the tide, the dry tint over it, and
+      // nothing over the dry ceiling.
+      expect(near(evalRamp(ramp, tide - 0.02), colours.line)).toBe(true);
+      expect(near(evalRamp(ramp, tide + 0.3), colours.dry)).toBe(true);
+      expect(near(evalRamp(ramp, 5.2), CLEAR)).toBe(true);
+    }
+  });
+  it("steps from too shallow to deep enough at the clearance", () => {
+    for (const clearance of [1, 2.5]) {
+      const ramp = foilRamp(3, colours, { ...opts, clearance });
+      expect(near(evalRamp(ramp, 3 - clearance - 0.001), colours.enough)).toBe(
+        true,
+      );
+      expect(
+        near(evalRamp(ramp, 3 - clearance + 0.021), colours.shallow),
+      ).toBe(true);
+    }
+    expect(foilClass(3 - 1, 3)).toBe("deep");
   });
   it("draws nothing above the dry ceiling, even at a tide over it", () => {
     const ramp = foilRamp(5.4, colours, opts);
-    expect(colourAt(ramp, 5.2)).toBe(CLEAR);
-    expect(colourAt(ramp, 4.9)).toBe(colours.shallow);
-    expect(colourAt(ramp, 3)).toBe(colours.deep);
+    expect(near(evalRamp(ramp, 5.2), CLEAR)).toBe(true);
+    expect(near(evalRamp(ramp, 4.98), colours.line)).toBe(true);
+    expect(near(evalRamp(ramp, 3), depthColour(depthScale(colours), 2.4))).toBe(
+      true,
+    );
   });
-  it("draws the no-survey height in its own colour at any tide", () => {
+  it("leaves the build's padding beside the land clear", () => {
+    // Land beside the water is written from 10 m up (build.pad_land).
+    for (const tide of [0.5, 4.3]) {
+      const ramp = foilRamp(tide, colours, { ...opts, deep: -20 });
+      for (const z of [10, 20, 30, 45, 50])
+        expect(near(evalRamp(ramp, z), CLEAR)).toBe(true);
+    }
+  });
+  it("draws an older set's no-survey height in its own colour at any tide", () => {
     for (const tide of [0.5, 4.3]) {
       const ramp = foilRamp(tide, colours, { ...opts, noSurvey: 40 });
       expect(colourAt(ramp, 40)).toBe(colours.unsurveyed);
       expect(colourAt(ramp, 30)).toBe(CLEAR);
       expect(colourAt(ramp, 50)).toBe(CLEAR);
-      expect(colourAt(ramp, -1)).toBe(colours.deep);
     }
   });
   it("is a valid color-relief paint for MapLibre", () => {
@@ -190,7 +240,7 @@ describe("foilRamp", () => {
           paint: {
             "color-relief-color": foilRamp(1.7, colours, {
               ...opts,
-              noSurvey: 40,
+              deep: -20,
             }),
           },
         },
@@ -200,21 +250,38 @@ describe("foilRamp", () => {
   });
 });
 
+describe("colours", () => {
+  it("parses and mixes CSS colours", () => {
+    expect(parseColour("#fff")).toEqual([255, 255, 255, 1]);
+    expect(parseColour("rgba(10, 20, 30, 0.5)")).toEqual([10, 20, 30, 0.5]);
+    expect(parseColour("nonsense")).toBeNull();
+    expect(mixColour("#000000", "rgba(255, 255, 255, 0)", 0.5)).toBe(
+      "rgba(128, 128, 128, 0.5)",
+    );
+  });
+});
+
 describe("foilColours", () => {
-  it("reads the three colours off the theme", () => {
-    const root = {
-      getPropertyValue: (name: string) =>
-        ({
-          "--map-foil-deep": " #3b7ea1",
-          "--map-foil-shallow": "#e2a648 ",
-          "--map-foil-dry": "#9a8c70",
-          "--map-foil-unsurveyed": "#c5c8c3",
-        })[name] ?? "",
+  it("reads the colours off the theme", () => {
+    const theme: Record<string, string> = {
+      "--map-foil-edge": " #ece296",
+      "--map-foil-shallow": "#92c48c ",
+      "--map-foil-enough": "#34929c",
+      "--map-foil-deep": "#2e6696",
+      "--map-foil-deeper": "#2e4c80",
+      "--map-foil-line": "#183442",
+      "--map-foil-dry": "#beaa78",
+      "--map-foil-unsurveyed": "#c5c8c3",
     };
+    const root = { getPropertyValue: (name: string) => theme[name] ?? "" };
     expect(foilColours(root)).toEqual({
-      deep: "#3b7ea1",
-      shallow: "#e2a648",
-      dry: "#9a8c70",
+      edge: "#ece296",
+      shallow: "#92c48c",
+      enough: "#34929c",
+      deep: "#2e6696",
+      deeper: "#2e4c80",
+      line: "#183442",
+      dry: "#beaa78",
       unsurveyed: "#c5c8c3",
     });
   });
@@ -287,6 +354,11 @@ describe("foilReadout", () => {
     );
     expect(foilReadout("unsurveyed", 0.6, "06:00", "Howth")).toMatch(
       /depth not surveyed/,
+    );
+  });
+  it("says when the depth is an estimate", () => {
+    expect(foilReadout({ estimate: 1.26 }, 3.06, "17:40", "Howth")).toBe(
+      "~1.8 m of water at 17:40 (tide 3.1 m at Howth). No survey has sounded it: the depth is estimated from the surveys round it.",
     );
   });
 });
@@ -459,27 +531,26 @@ describe("the national regions", () => {
     expect(() => validateFoilManifest(odd)).toThrow();
   });
 
-  it("fades the deep colour out over the last metre above the floor", () => {
+  it("fades the water out over the last metre above the floor", () => {
     const m = national();
     const ramp = foilRamp(2, colours, {
       dryCeiling: 5,
       floor: m.floorMetres,
       deep: m.deepMetres,
-      noSurvey: m.noSurveyMetres,
     });
     const stops = stopsOf(ramp);
     for (let i = 1; i < stops.length; i++)
       expect(stops[i][0]).toBeGreaterThan(stops[i - 1][0]);
-    // Nothing at the deep value or down to the floor; deep from a metre up.
-    expect(colourAt(ramp, -20)).toBe(CLEAR);
-    expect(colourAt(ramp, -5)).toBe(CLEAR);
-    expect(colourAt(ramp, -4.5)).toBeNull(); // in the fade
-    expect(colourAt(ramp, -4)).toBe(colours.deep);
-    expect(colourAt(ramp, 0.5)).toBe(colours.deep);
-    expect(colourAt(ramp, 1.5)).toBe(colours.shallow);
-    expect(colourAt(ramp, 3)).toBe(colours.dry);
-    expect(colourAt(ramp, 40)).toBe(colours.unsurveyed);
-    expect(colourAt(ramp, 50)).toBe(CLEAR);
+    // Nothing at the deep value or down to the floor; the water from a
+    // metre up, faded in between.
+    expect(near(evalRamp(ramp, -20), CLEAR)).toBe(true);
+    expect(near(evalRamp(ramp, -5), CLEAR)).toBe(true);
+    const half = parseColour(evalRamp(ramp, -4.5));
+    const full = parseColour(evalRamp(ramp, -4));
+    expect(half && full && half[3] < full[3]).toBe(true);
+    expect(near(evalRamp(ramp, -4), depthColour(depthScale(colours), 6))).toBe(
+      true,
+    );
     // A clean edge when asked, and still rising at the lowest tide.
     const clean = stopsOf(
       foilRamp(-0.1, colours, { dryCeiling: 5, floor: -5, deep: -20, fade: 0 }),

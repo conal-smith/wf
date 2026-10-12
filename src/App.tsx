@@ -888,7 +888,10 @@ export default function App() {
           color: foilRamp(tide, foilPalette, {
             dryCeiling: area.dryCeilingMetres,
             floor: m.floorMetres,
-            noSurvey: m.noSurveyMetres,
+            // A set that estimates the beds no survey reached writes no
+            // no-survey value, and its padded land crosses it.
+            noSurvey:
+              m.estimateBlue === undefined ? m.noSurveyMetres : undefined,
             deep: m.deepMetres,
           }),
           attribution: m.attribution,

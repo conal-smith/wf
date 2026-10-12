@@ -524,12 +524,13 @@ export default function WindMap(props: Props) {
             minzoom: Math.max(0, area.minzoom - 0.5),
             paint: {
               "color-relief-color": area.color,
-              "color-relief-opacity": 0.82,
-              // Each pixel its own height. Interpolated, two reserved values
-              // side by side (deep water beside a survey gap, land beside a
-              // region's edge) would run through every colour of the ramp: a
-              // hairline along every such edge, plain on the zoomed-out chart.
-              resampling: "nearest",
+              "color-relief-opacity": 1,
+              // Heights interpolated between pixels, so the edges and the
+              // waterline are smooth. The build keeps reserved values from
+              // meeting where that would sweep through the ramp: land beside
+              // water is padded to just over the dry ceiling, and OSM's
+              // coastline decides which is which (scripts/foildepth).
+              resampling: "linear",
             },
           },
           // A foil area under the intertidal heights, whenever it is added.

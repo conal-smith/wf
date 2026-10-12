@@ -130,9 +130,22 @@ export interface FoilManifest {
   landMetres: number;
   /**
    * Height written where the water is there at every tide (under the
-   * satellite LAT line) but no survey says how deep: its own class.
+   * satellite LAT line) but no survey says how deep: its own class. A set
+   * with `estimateBlue` writes no such pixel.
    */
   noSurveyMetres: number;
+  /**
+   * Where no survey reached, the bed is estimated from the heights round
+   * it and written as a height whose Terrarium blue byte is this much over
+   * a multiple of 8 (heights are kept to 1/32 m: a multiple of 8): drawn as
+   * any other height, told apart by a tap.
+   */
+  estimateBlue?: number;
+  /**
+   * From this up, a value is not a height: land beside the water, padded so
+   * the map's linear sampling runs cleanly from the water to nothing.
+   */
+  padMetres?: number;
   areas: FoilArea[];
   attribution: string;
 }
@@ -156,6 +169,12 @@ export function validateFoilManifest(m: FoilManifest): FoilManifest {
     finite(m.landMetres) &&
     finite(m.noSurveyMetres) &&
     m.noSurveyMetres < m.landMetres &&
+    (m.estimateBlue === undefined ||
+      (Number.isInteger(m.estimateBlue) &&
+        m.estimateBlue > 0 &&
+        m.estimateBlue < 8)) &&
+    (m.padMetres === undefined ||
+      (finite(m.padMetres) && m.padMetres < m.landMetres)) &&
     Array.isArray(m.areas) &&
     m.areas.length > 0 &&
     m.areas.every(
@@ -254,21 +273,36 @@ export function foilClass(
 }
 
 export interface FoilColours {
-  deep: string;
+  /** Water just over the bed: the edge of the tide. */
+  edge: string;
+  /** Wet, but short of the clearance: too shallow for the mast. */
   shallow: string;
+  /** Just the clearance: deep enough from here. */
+  enough: string;
+  /** About three metres. */
+  deep: string;
+  /** Six metres and more, fading into the chart's tints. */
+  deeper: string;
+  /** The waterline at the tide. */
+  line: string;
+  /** Dry at this tide: a light tint, so the dry foreshore reads as land. */
   dry: string;
-  /** Wet at every tide, depth not surveyed. */
+  /** An older index's water of unsurveyed depth. */
   unsurveyed: string;
 }
 
-/** The three colours off the theme (ui/theme.css, the map's banner). */
+/** The colours off the theme (ui/theme.css, --map-foil-*). */
 export function foilColours(
   root: Pick<CSSStyleDeclaration, "getPropertyValue">,
 ): FoilColours {
   const read = (name: string) => root.getPropertyValue(name).trim();
   return {
-    deep: read("--map-foil-deep"),
+    edge: read("--map-foil-edge"),
     shallow: read("--map-foil-shallow"),
+    enough: read("--map-foil-enough"),
+    deep: read("--map-foil-deep"),
+    deeper: read("--map-foil-deeper"),
+    line: read("--map-foil-line"),
     dry: read("--map-foil-dry"),
     unsurveyed: read("--map-foil-unsurveyed"),
   };
@@ -277,22 +311,92 @@ export function foilColours(
 const CLEAR = "rgba(0, 0, 0, 0)";
 /** The width of the blend between two classes: crisp, but not aliased. */
 const EDGE = 0.02;
+/** The waterline's height band, metres: a thin line on a beach, wider on a flat. */
+export const FOIL_LINE_METRES = 0.05;
+
+/** A CSS colour (#rgb, #rrggbb, rgb(), rgba()) as [r, g, b, a], or null. */
+export function parseColour(
+  css: string,
+): [number, number, number, number] | null {
+  const s = css.trim();
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+  if (hex) {
+    const h =
+      hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join("") : hex[1];
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)).concat(1) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+  }
+  const fn = /^rgba?\(([^)]+)\)$/i.exec(s);
+  if (!fn) return null;
+  const parts = fn[1]
+    .split(/[\s,/]+/)
+    .filter(Boolean)
+    .map(Number);
+  if (parts.length < 3 || parts.some((v) => !Number.isFinite(v))) return null;
+  return [parts[0], parts[1], parts[2], parts.length > 3 ? parts[3] : 1];
+}
+
+/** Two colours mixed, `t` of the way from `a` to `b`, as rgba(). */
+export function mixColour(a: string, b: string, t: number): string {
+  const ca = parseColour(a);
+  const cb = parseColour(b);
+  if (!ca || !cb) return t < 0.5 ? a : b;
+  const m = ca.map((v, i) => v + (cb[i] - v) * t);
+  const r = (v: number) => Math.round(Math.max(0, Math.min(255, v)));
+  return `rgba(${r(m[0])}, ${r(m[1])}, ${r(m[2])}, ${Math.round(Math.max(0, Math.min(1, m[3])) * 1000) / 1000})`;
+}
+
+/**
+ * The water's colour scale by depth (tide − bed), metres: pale at the edge
+ * of the tide, green to the clearance, then a step to the teal of "deep
+ * enough" and on through blue to a faint wash at six metres and more.
+ */
+export function depthScale(
+  colours: FoilColours,
+  clearance = FOIL_CLEARANCE_METRES,
+): [number, string][] {
+  const c = Math.max(clearance, EDGE * 4);
+  return [
+    [0, colours.edge],
+    [c - EDGE, colours.shallow],
+    [c, colours.enough],
+    [Math.max(3, c + 1), colours.deep],
+    [Math.max(6, c + 4), colours.deeper],
+  ];
+}
+
+/** A depth's colour on the scale. */
+export function depthColour(scale: [number, string][], depth: number): string {
+  if (depth <= scale[0][0]) return scale[0][1];
+  for (let i = 1; i < scale.length; i++)
+    if (depth <= scale[i][0]) {
+      const [d0, c0] = scale[i - 1];
+      const [d1, c1] = scale[i];
+      return mixColour(c0, c1, (depth - d0) / (d1 - d0));
+    }
+  return scale[scale.length - 1][1];
+}
 
 /**
  * The `color-relief-color` for a tide. MapLibre wants literal stops, so the
  * ramp is rebuilt (and set with setPaintProperty) as the tide moves; that is a
  * small texture upload, not a re-tile.
  *
- * Stops, rising: with a `deep` value (schema 2), nothing from it up to the
- * floor, then the deep colour fading in over `fade` metres; without one, deep
- * from below the floor. Then deep up to tide − clearance; shallow from just
- * above that to the tide; dry from just above the tide to the dry ceiling;
- * nothing above it (land, and the archive's no-water value); and, apart,
- * the archive's no-survey value in its own colour, whatever the tide.
+ * Rising: with a `deep` value (schema 2), nothing from it up to the floor,
+ * then the water fading in over `fade` metres; then the water coloured by
+ * its depth at this tide (depthScale: a smooth ramp, with a step where it
+ * becomes deep enough); a thin dark waterline just under the tide; a light
+ * dry tint from the tide to the dry ceiling; nothing above it (land, and
+ * the padding the build writes beside it). An older index's no-survey value
+ * keeps its own colour, whatever the tide.
  *
- * The map interpolates heights between pixels, so between the last height
- * kept and a deep pixel the values run down through the fade: the edge of
- * what is drawn is soft, and passes through no colour that is not there.
+ * The map samples the heights linearly, so between pixels the colours
+ * follow the ground: the waterline falls between them where the tide does,
+ * and the shore fades out where the build's padding crosses the ceiling.
  */
 export function foilRamp(
   tide: number,
@@ -305,12 +409,12 @@ export function foilRamp(
     noSurvey?: number;
     /** The archive's deeper-than-the-floor value, drawn as nothing. */
     deep?: number;
-    /** The deep colour's fade above the floor, metres (0: a clean edge). */
+    /** The water's fade above the floor, metres (0: a clean edge). */
     fade?: number;
   },
 ): ExpressionSpecification {
-  const clearance = Math.max(opts.clearance ?? FOIL_CLEARANCE_METRES, EDGE * 2);
-  const deepTop = tide - clearance;
+  const clearance = Math.max(opts.clearance ?? FOIL_CLEARANCE_METRES, EDGE * 4);
+  const scale = depthScale(colours, clearance);
   const stops: [number, string][] = [];
   const push = (z: number, colour: string) => {
     const last = stops[stops.length - 1];
@@ -319,26 +423,34 @@ export function foilRamp(
     if (last && z <= last[0]) return;
     stops.push([z, colour]);
   };
+  const ceiling = opts.dryCeiling;
+  // The water's surface, as drawn: never over the ceiling.
+  const top = Math.min(tide, ceiling);
+  const lineBottom = top - FOIL_LINE_METRES;
+  let from: number;
   if (opts.deep !== undefined) {
     const fade = Math.max(opts.fade ?? FOIL_FADE_METRES, EDGE);
     push(opts.deep - 1, CLEAR);
     push(opts.floor, CLEAR);
-    // The fade ends short of the deep colour's top, however low the tide.
-    push(Math.min(opts.floor + fade, deepTop - EDGE), colours.deep);
-  } else push(Math.min(opts.floor, deepTop) - 1, colours.deep);
-  push(deepTop, colours.deep);
-  push(deepTop + EDGE, colours.shallow);
-  if (opts.dryCeiling > tide + EDGE) {
-    push(tide, colours.shallow);
-    push(tide + EDGE, colours.dry);
-    push(opts.dryCeiling, colours.dry);
-    push(opts.dryCeiling + EDGE, CLEAR);
+    from = Math.min(opts.floor + fade, lineBottom - EDGE);
+    push(from, depthColour(scale, tide - from));
   } else {
-    // A tide over the dry ceiling (a surge the ramp is not told of, or a
-    // ceiling set too low): wet to the ceiling, nothing above it.
-    push(opts.dryCeiling, colours.shallow);
-    push(opts.dryCeiling + EDGE, CLEAR);
+    from = Math.min(opts.floor, lineBottom) - 1;
+    push(from, depthColour(scale, tide - from));
   }
+  // The depth scale's own stops, deepest first, where they fall above.
+  for (let i = scale.length - 1; i >= 0; i--) {
+    const z = tide - scale[i][0];
+    if (z > from && z < lineBottom - EDGE) push(z, scale[i][1]);
+  }
+  push(lineBottom - EDGE, depthColour(scale, tide - (lineBottom - EDGE)));
+  push(lineBottom, colours.line);
+  push(top, colours.line);
+  if (ceiling > top + EDGE) {
+    push(top + EDGE, colours.dry);
+    push(ceiling, colours.dry);
+  }
+  push(ceiling + EDGE, CLEAR);
   if (opts.noSurvey !== undefined) {
     push(opts.noSurvey - 2 * EDGE, CLEAR);
     push(opts.noSurvey - EDGE, colours.unsurveyed);
@@ -487,22 +599,46 @@ export function tilePixel(
   };
 }
 
+/** The reserved values and flags a pixel is read against (FoilManifest). */
+export type FoilReserved = Pick<
+  FoilManifest,
+  "noSurveyMetres" | "landMetres" | "deepMetres" | "estimateBlue" | "padMetres"
+>;
+
 /**
- * What a height read out of an archive means (FoilPoint): land at or over
- * the archive's land value, its no-survey and deep values, else a height.
- * The map's probe (foilProbe.ts) and the app's read it the same way.
+ * What a pixel read out of an archive means (FoilPoint), from its height and
+ * its Terrarium blue byte: land at or over the archive's land value (and the
+ * land the build pads beside the water, from `padMetres`, and anything over
+ * the area's dry ceiling); `{ estimate }` where the blue byte is the index's
+ * `estimateBlue`; an older set's no-survey value; the deep value; else a
+ * height. The map's probe (foilProbe.ts) and the app's read it the same way;
+ * an archive with neither flag (the intertidal heights') is read by its
+ * reserved values alone.
  */
 export function foilPoint(
   z: number,
-  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres" | "deepMetres">,
+  manifest: FoilReserved,
+  blue = 0,
+  dryCeilingMetres = Infinity,
 ): FoilPoint {
   if (z >= manifest.landMetres - 1) return null;
-  if (Math.abs(z - manifest.noSurveyMetres) < 1) return "unsurveyed";
+  if (manifest.padMetres !== undefined && z >= manifest.padMetres - 0.01)
+    return null;
+  if (
+    manifest.estimateBlue === undefined &&
+    Math.abs(z - manifest.noSurveyMetres) < 1
+  )
+    return "unsurveyed";
   if (
     manifest.deepMetres !== undefined &&
     Math.abs(z - manifest.deepMetres) < 1
   )
     return "deep";
+  // Over the dry ceiling is not foreshore: land.
+  if (manifest.padMetres !== undefined && z > dryCeilingMetres + 0.05)
+    return null;
+  if (manifest.estimateBlue !== undefined && blue % 8 === manifest.estimateBlue)
+    return { estimate: z };
   return z;
 }
 
@@ -531,11 +667,14 @@ export function levelLine(tide: number, station: string, sea?: number) {
 }
 
 /**
- * What a tapped point's archive says is there: a height above LAT; water of
- * unsurveyed depth; water deeper than the floor ("deep"); land (null); or,
- * where the archive has no tile at all, nothing drawn ("none": land, or deep).
+ * What a tapped point's archive says is there: a height above LAT; one
+ * estimated from the heights round it, where no survey reached
+ * (`{ estimate }`); water of unsurveyed depth (an older set); water deeper
+ * than the floor ("deep"); land (null); or, where the archive has no tile at
+ * all, nothing drawn ("none": land, or deep).
  */
-export type FoilPoint = number | "unsurveyed" | "deep" | "none" | null;
+export type FoilPoint =
+  number | { estimate: number } | "unsurveyed" | "deep" | "none" | null;
 
 /**
  * A tapped point, as the legend says it: "~2.3 m of water at 18:00 (tide
@@ -562,10 +701,16 @@ export function foilReadout(
   if (z === "none")
     return `Nothing drawn here: dry land, or more than ${-floor} m deep at the lowest tide ${at}.`;
   if (z === "unsurveyed") return `Wet at every tide, depth not surveyed ${at}.`;
-  const water = waterOver(z, tide);
-  const cls = foilClass(z, tide, clearance);
-  if (cls === "dry") return `Dry, ${one(-water)} m above the water ${at}.`;
-  return `~${one(water)} m of water ${at}${cls === "shallow" ? ", too shallow to foil" : ""}.`;
+  const bed = typeof z === "object" ? z.estimate : z;
+  const note =
+    typeof z === "object"
+      ? " No survey has sounded it: the depth is estimated from the surveys round it."
+      : "";
+  const water = waterOver(bed, tide);
+  const cls = foilClass(bed, tide, clearance);
+  if (cls === "dry")
+    return `Dry, ${one(-water)} m above the water ${at}.${note}`;
+  return `~${one(water)} m of water ${at}${cls === "shallow" ? ", too shallow to foil" : ""}.${note}`;
 }
 
 /** The survey line for the caveat, e.g. "INFOMAR 2018, GSI LiDAR 2020". */

@@ -550,20 +550,26 @@
   --map-tide: #3f6e7e;
   /* The paper a label is haloed in over the chart. */
   --map-halo: #f1efe6;
-  /* Foilable depth at the selected tide (force5/src/foilDepth.ts). The
-     layer is about the shallows, so they carry the colour: a strong blue
-     where there is water but not enough for a mast (still water: ochre read
-     as sand), and the grey-brown of a drying flat where there is none. Where
-     a mast has room it is only a faint wash of the same blue, so the chart's
-     own depth tints and soundings read through it and the edge where the
-     water becomes rideable is the strong blue giving way to the wash. */
-  --map-foil-deep: rgba(59, 126, 161, 0.16);
-  --map-foil-shallow: #3f8fbf;
-  --map-foil-dry: #9a8c70;
-  /* Wet at every tide but no survey says how deep: a grey slate, plainly
-     not a depth, a shade over the wash. Malahide's inner lagoon is the
-     place riders meet it: about 1.8 m at low water and 2.5 m at high by a
-     rider who sails it. */
+  /* Foilable depth at the selected tide (force5/src/foilDepth.ts): the
+     water coloured by how deep it is now, as the satellite height map of the
+     foreshore reads. Pale straw at the tide's edge, through sea green while
+     it is too shallow for a mast, then a step to teal where a metre of water
+     makes it rideable, on through the chart's blue to a faint wash six
+     metres down, so the chart's own tints and soundings read through the
+     deep water. A thin ink line is the waterline at the hour; the foreshore
+     the tide has left is only a light sand tint, so dry ground reads as
+     ground. */
+  --map-foil-edge: rgba(238, 228, 146, 0.95);
+  --map-foil-shallow: rgba(146, 198, 138, 0.95);
+  --map-foil-enough: rgba(52, 146, 158, 0.92);
+  --map-foil-deep: rgba(40, 96, 152, 0.76);
+  --map-foil-deeper: rgba(34, 62, 116, 0.24);
+  --map-foil-line: rgba(20, 44, 58, 1);
+  --map-foil-dry: rgba(190, 170, 120, 0.26);
+  /* An older set's water of unsurveyed depth: a grey slate, plainly not a
+     depth. The sets built now estimate such beds from the surveys round
+     them (Malahide's lagoon from a rider's 1.8 m at low water) and draw
+     them by depth; a tap says they are estimates. */
   --map-foil-unsurveyed: rgba(96, 120, 140, 0.38);
 
   /* The wind as a rider reads it: the wash and the coloured arrows. Blue is

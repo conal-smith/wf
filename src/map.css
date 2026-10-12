@@ -1176,17 +1176,45 @@
   height: 10px;
   border: 1px solid var(--color-ink);
 }
-.foil-key .fk-deep {
-  background: var(--map-foil-deep);
+.foil-key .fk-enough {
+  background: var(--map-foil-enough);
 }
 .foil-key .fk-shallow {
   background: var(--map-foil-shallow);
 }
+.foil-key .fk-line {
+  height: 0;
+  border: 0;
+  border-top: 2px solid var(--map-foil-line);
+}
 .foil-key .fk-dry {
   background: var(--map-foil-dry);
 }
-.foil-key .fk-unsurveyed {
-  background: var(--map-foil-unsurveyed);
+.foil-key .fk-title {
+  margin: 0 0 4px;
+}
+.foil-key .fk-scale {
+  height: 10px;
+  border: 1px solid var(--color-ink);
+}
+.foil-key .fk-ticks {
+  position: relative;
+  height: 14px;
+  margin: 2px 0 6px;
+  font: 500 10px var(--font-mono);
+  color: var(--color-ink-muted);
+}
+.foil-key .fk-ticks span {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.foil-key .fk-ticks span:first-child {
+  transform: none;
+}
+.foil-key .fk-ticks span:last-child {
+  transform: translateX(-100%);
 }
 .foil-key .foil-probe {
   margin: 6px 0 0;
