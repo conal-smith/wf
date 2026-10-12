@@ -681,6 +681,28 @@
   );
   opacity: 0.55;
 }
+/* The satellite's three choices, and under them the tide each image was
+   taken at near the map's centre, as the models' details are written. */
+.layers .layer-sat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 2px 0;
+}
+/* The capsule fills the panel, its three parts sharing it, so it fits the
+   phone's narrower panel too. */
+.layers .layer-sat > [role="group"] {
+  align-self: stretch;
+}
+.layers .layer-sat > [role="group"] > button {
+  flex: 1 1 auto;
+  padding-inline: 6px;
+}
+.layers .layer-sat small {
+  font: 400 9.5px var(--font-mono);
+  color: var(--color-ink-muted);
+}
 .layers .models {
   display: flex;
   flex-direction: column;

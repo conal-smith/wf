@@ -99,6 +99,7 @@ function stageStaticData() {
     recursive: true,
     filter: (path) => !region.test(path),
   });
+  stageSatellite(data);
   const indexPath = join(E2E_PUBLIC, "foildepth", "index.json");
   const index = JSON.parse(readFileSync(indexPath, "utf8"));
   if (!index.base) return;
@@ -107,6 +108,26 @@ function stageStaticData() {
       area.kind !== "region" && existsSync(join(data, index.base, area.url)),
   );
   writeFileSync(indexPath, JSON.stringify(index, null, 1) + "\n");
+}
+
+/**
+ * The satellite imagery is the whole island, far too large to commit: a small
+ * set (Malahide to Bull Island, scripts/satellite/publish.py --offline) is,
+ * with an index of its own, and the e2e site serves that index in place of
+ * the national one, so the imagery is read from disk too.
+ */
+function stageSatellite(data) {
+  const dir = join(data, "satellite");
+  if (!existsSync(dir)) return;
+  const offline = readdirSync(dir).find((v) =>
+    existsSync(join(dir, v, "index.json")),
+  );
+  if (!offline) return;
+  mkdirSync(join(E2E_PUBLIC, "satellite"), { recursive: true });
+  cpSync(
+    join(dir, offline, "index.json"),
+    join(E2E_PUBLIC, "satellite", "index.json"),
+  );
 }
 
 main();

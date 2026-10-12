@@ -59,6 +59,21 @@ export interface FoilView {
   attribution: string;
 }
 
+/**
+ * The satellite image under the chart (force5/src/satellite.ts): which
+ * tide's, and its archive.
+ */
+export interface SatelliteView {
+  option: "high" | "low";
+  /** The archive's absolute URL. */
+  url: string;
+  bounds: [number, number, number, number];
+  minzoom: number;
+  maxzoom: number;
+  tileSize: number;
+  attribution: string;
+}
+
 /** What the page can ask of the camera. */
 export interface MapControls {
   flyTo(spot: Spot): void;
@@ -87,6 +102,8 @@ type Props = {
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
+  /** The satellite image to draw under the chart's lines, or null for none. */
+  satellite?: SatelliteView | null;
   reducedMotion: boolean;
   /** The dock's height: what a camera move keeps the spot above. */
   bottomInset: number;
@@ -174,6 +191,7 @@ export default function WindMap(props: Props) {
     rideStops,
     layers,
     foil,
+    satellite = null,
     reducedMotion,
     bottomInset,
     phone,
@@ -504,6 +522,47 @@ export default function WindMap(props: Props) {
       if (id.startsWith("foil-") && !shown.has(id))
         map.setLayoutProperty(id, "visibility", "none");
   }, [ready, foil]);
+
+  // The satellite image: one raster source and layer per tide's archive, made
+  // the first time it is chosen and kept, the other hidden. Over the land and
+  // the sea's fills and the depth tints, which it covers, and under the
+  // relief, the contours, the foilable depth, the rivers, the coast's ink and
+  // every name, so the chart's lines still read over it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const showing = satellite ? `satellite-${satellite.option}` : null;
+    if (satellite && showing) {
+      if (!map.getSource(showing))
+        map.addSource(showing, {
+          type: "raster",
+          url: archiveUrl(satellite.url),
+          tileSize: satellite.tileSize,
+          bounds: satellite.bounds,
+          minzoom: satellite.minzoom,
+          maxzoom: satellite.maxzoom,
+          attribution: satellite.attribution,
+        });
+      if (!map.getLayer(showing))
+        map.addLayer(
+          {
+            id: showing,
+            type: "raster",
+            source: showing,
+            // MapLibre rounds a raster's zoom: half a zoom under the archive's
+            // first is where its tiles start.
+            minzoom: Math.max(0, satellite.minzoom - 0.5),
+            paint: { "raster-opacity": 0.92, "raster-fade-duration": 150 },
+          },
+          map.getLayer("relief") ? "relief" : undefined,
+        );
+      map.setLayoutProperty(showing, "visibility", "visible");
+    }
+    for (const id of map.getLayersOrder())
+      if (id.startsWith("satellite-") && id !== showing)
+        map.setLayoutProperty(id, "visibility", "none");
+    map.getContainer().dataset.satellite = satellite?.option ?? "off";
+  }, [ready, satellite]);
 
   // The lights: made once per set of places, then written to in place.
   useEffect(() => {

@@ -21,7 +21,16 @@ import type {
   ChartLayers,
   FoilView,
   MapControls as Controls,
+  SatelliteView,
 } from "../force5/src/WindMap";
+import {
+  nearestSatelliteStation,
+  parseSatelliteOption,
+  SATELLITE_ATTRIBUTION,
+  satelliteNote,
+  type SatelliteOption,
+} from "../force5/src/satellite";
+import { satelliteArchiveUrl, useSatellite } from "./useSatellite";
 import {
   areaAt,
   areasAt,
@@ -157,12 +166,16 @@ const store = {
   },
 };
 
-const DEFAULT_LAYERS: ChartLayers = {
+/** The chart's switches and, in the same store, the satellite's choice. */
+type MapLayers = ChartLayers & { satellite: SatelliteOption };
+
+const DEFAULT_LAYERS: MapLayers = {
   tints: true,
   soundings: true,
   relief: true,
   names: true,
   foil: true,
+  satellite: "off",
 };
 
 function useMedia(query: string) {
@@ -240,11 +253,13 @@ export default function App() {
     const saved = store.get(WIND_KEY) as WindStyle | null;
     return saved && WIND_STYLES.includes(saved) ? saved : "ink";
   });
-  const [layers, setLayers] = useState<ChartLayers>(() => {
+  const [layers, setLayers] = useState<MapLayers>(() => {
     try {
+      const saved = JSON.parse(store.get(LAYERS_KEY) ?? "{}");
       return {
         ...DEFAULT_LAYERS,
-        ...JSON.parse(store.get(LAYERS_KEY) ?? "{}"),
+        ...saved,
+        satellite: parseSatelliteOption(saved.satellite),
       };
     } catch {
       return DEFAULT_LAYERS;
@@ -254,7 +269,7 @@ export default function App() {
     setWindStyle(style);
     store.set(WIND_KEY, style);
   };
-  const chooseLayers = (next: ChartLayers) => {
+  const chooseLayers = (next: MapLayers) => {
     setLayers(next);
     store.set(LAYERS_KEY, JSON.stringify(next));
   };
@@ -760,6 +775,34 @@ export default function App() {
     (d) => selected >= d.start && selected < d.start + d.count,
   );
 
+  /* ---- the satellite image under the chart ---- */
+  const satelliteState = useSatellite(layers.satellite);
+  const chooseSatellite = (option: SatelliteOption) =>
+    chooseLayers({ ...layers, satellite: option });
+  const satelliteView = useMemo<SatelliteView | null>(() => {
+    const m = satelliteState.manifest;
+    if (layers.satellite === "off" || !m) return null;
+    return {
+      option: layers.satellite,
+      url: satelliteArchiveUrl(m, layers.satellite),
+      bounds: m.bounds,
+      minzoom: m.minzoom,
+      maxzoom: m.maxzoom,
+      tileSize: m.tileSize,
+      attribution: m.attribution,
+    };
+  }, [layers.satellite, satelliteState.manifest]);
+  // The images' tides at the station nearest the map's centre, for the
+  // panel and the key: "high tide (≈4.6 m)".
+  const satelliteStation =
+    satelliteState.manifest && chartView
+      ? nearestSatelliteStation(
+          satelliteState.manifest.stations,
+          (chartView.west + chartView.east) / 2,
+          (chartView.south + chartView.north) / 2,
+        )
+      : null;
+
   /* ---- foilable depth at the selected tide ---- */
   // The stations whose curves are wanted: those of the areas in view, of the
   // key's area and of a tapped point's. Set after each render that changes
@@ -1129,6 +1172,10 @@ export default function App() {
         </li>
         <li>Tides: Marine Institute predictions</li>
         <li>
+          Satellite imagery:{" "}
+          {satelliteState.manifest?.attribution ?? SATELLITE_ATTRIBUTION}
+        </li>
+        <li>
           Places: Fáilte Ireland (CC BY 4.0), OpenStreetMap (ODbL) and linked
           guides; not verified launches
         </li>
@@ -1214,7 +1261,10 @@ export default function App() {
               windStyle={windStyle}
               onWindStyle={chooseWind}
               layers={layers}
-              onLayersChange={chooseLayers}
+              onLayersChange={(next) => chooseLayers({ ...layers, ...next })}
+              satellite={layers.satellite}
+              onSatellite={chooseSatellite}
+              satelliteTides={satelliteStation}
               rideStops={rideStops}
               rider={rider}
               model={manifest?.model}
@@ -1238,6 +1288,7 @@ export default function App() {
               rideStops={rideStops}
               layers={layers}
               foil={foilViews}
+              satellite={satelliteView}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
               phone={phone}
@@ -1387,6 +1438,10 @@ export default function App() {
             />
           }
           sources={sources}
+          satellite={satelliteNote(layers.satellite, satelliteStation)}
+          satelliteError={
+            layers.satellite !== "off" ? satelliteState.error : null
+          }
         />
       )}
     </div>
