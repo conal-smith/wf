@@ -1,6 +1,6 @@
 /**
  * The map drawn as an Admiralty chart: paper land, the sea in depth tints
- * from EMODnet (public/bathy/ireland.pmtiles), contours and soundings in the
+ * from EMODnet (BATHY_PATH, on the data host), contours and soundings in the
  * chart's italic, the coast in ink, land relief, and the places in ink on
  * paper. Ported from the signed-off mockup's kit (design/chart/chart-kit.js,
  * `chartStyle`), with every colour read from ui/theme.css.
@@ -23,8 +23,12 @@ import { windBand, type Rider } from "./stars";
 export const OPENFREEMAP = "https://tiles.openfreemap.org";
 export const TILES_URL = `${OPENFREEMAP}/planet`;
 export const GLYPHS_URL = `${OPENFREEMAP}/fonts/{fontstack}/{range}.pbf`;
-/** The depth tiles, served from public/ and read by range (archives.ts). */
-export const BATHY_PATH = "bathy/ireland.pmtiles";
+/**
+ * The depth tiles: an immutable, versioned file on the data host (forecastUrl;
+ * the dev server and the e2e site serve the copy in public-data/), read by
+ * range (archives.ts). Written by scripts/foildepth/publish.py --bathy.
+ */
+export const BATHY_PATH = "bathy/v7a4f9286f579/ireland.pmtiles";
 
 const FONT = ["Noto Sans Italic"];
 const FONT_UP = ["Noto Sans Regular"];

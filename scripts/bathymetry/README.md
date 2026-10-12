@@ -1,7 +1,13 @@
-# The chart's depths: `public/bathy/ireland.pmtiles`
+# The chart's depths: `bathy/v…/ireland.pmtiles` on the data host
 
 The map's depth tints, contours, soundings and land relief come from one static
-file, `public/bathy/ireland.pmtiles` (~11.5 MB), committed. The seabed does not
+file, `ireland.pmtiles` (~11.5 MB). It is served from the data host
+(https://data.wingfoil.ie, the R2 bucket) under an immutable, content-versioned
+prefix, `bathy/v<12 hex>/ireland.pmtiles`, which `force5/src/chartStyle.ts`'s
+`BATHY_PATH` names and the map reads through the data base URL, by range;
+the committed copy in `public-data/` (same path) is what the dev server and
+the e2e site serve. `scripts/foildepth/publish.py --bathy` versions, uploads
+and points the repo at a new build. The seabed does not
 change, so nothing rebuilds it: these scripts are kept so that it can be
 rebuilt by hand if the survey is updated or the style wants another contour.
 They are a one-off, not part of any job, and nothing in the build runs them.
@@ -15,7 +21,7 @@ the water over the bottom. Not for navigation.
 **Licence.** EMODnet data is free to reuse with attribution under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see
 [EMODnet's data policy](https://emodnet.ec.europa.eu/en/emodnet-web-service-documentation)).
-`public/bathy/ireland.pmtiles` is a derived work of the DTM, and the chart's
+`ireland.pmtiles` is a derived work of the DTM, and the chart's
 attribution names "EMODnet Bathymetry" (`force5/src/chartStyle.ts`). It is not
 covered by this repository's AGPL licence.
 
@@ -43,12 +49,16 @@ pip install pmtiles
 bash fetch.sh                                  # the coarse quarters → tif/ie-*.tif
 bash fetch-fine.sh                             # the 115 m tiles → tif/fine/*.tif
 node --max-old-space-size=12000 tiles.mjs tiles  # vector tiles → tiles/{z}/{x}/{y}.pbf
-python pack.py tiles ../../public/bathy/ireland.pmtiles
+python pack.py tiles /tmp/ireland.pmtiles
+python -I ../foildepth/publish.py --set <the foildepth set> --bathy /tmp/ireland.pmtiles --env <bucket env> --upload
 ```
 
 ## Serving
 
 The map reads the archive by HTTP range requests (the `pmtiles` package,
-registered as MapLibre's `pmtiles://` protocol in `force5/src/chartStyle.ts`).
-`vite` and `vite preview` serve `public/` with range support; so does any
-static host (Cloudflare Pages, nginx). `python -m http.server` does not.
+registered as MapLibre's `pmtiles://` protocol in `force5/src/chartStyle.ts`,
+through `force5/src/archives.ts`). R2 serves ranges (206) to the site's
+origins; Cloudflare Pages does not, which is why the file is not in the site.
+`vite` and `vite preview` serve `public-data/` with range support (the
+`wingfoil:static-data` plugin in `vite.config.ts`). The bucket sweep never
+touches `bathy/` (`force5/ingest/prune.py`, STATIC_ROOTS).

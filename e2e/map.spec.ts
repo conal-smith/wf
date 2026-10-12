@@ -7,8 +7,16 @@ import {
 } from "./fixtures";
 import { SAMPLE_CLOCK, sampleStrip, stripAt } from "./columns";
 import { readSample } from "./sample";
+import { readFileSync } from "node:fs";
 
 const manifest = readSample("latest");
+/**
+ * The bathymetry's versioned path on the data host (chartStyle.ts, written by
+ * scripts/foildepth/publish.py); the e2e site serves it from public-data/.
+ */
+const BATHY_PATH = /BATHY_PATH = "([^"]+)"/.exec(
+  readFileSync("force5/src/chartStyle.ts", "utf8"),
+)![1];
 const harmonie = readSample("harmonie");
 
 /** The chart, up: every light placed and rated, the dock drawn. */
@@ -118,7 +126,7 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
 test("the depths are one static file, read by range requests", async ({
   page,
 }) => {
-  const response = await page.request.get("/bathy/ireland.pmtiles", {
+  const response = await page.request.get(`/${BATHY_PATH}`, {
     headers: { Range: "bytes=0-126" },
   });
   expect(response.status()).toBe(206);
@@ -130,7 +138,7 @@ test("the depths are one static file, read by range requests", async ({
   // And the chart asks for it through the protocol, not as a whole download.
   const ranged: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/bathy/ireland.pmtiles"))
+    if (request.url().includes(`/${BATHY_PATH}`))
       ranged.push(request.headers()["range"] ?? "none");
   });
   await openChart(page);

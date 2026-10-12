@@ -4,9 +4,21 @@ import { EtagMismatch, FetchSource, PMTiles } from "pmtiles";
 import { ArchiveSource } from "./archives";
 import { tilePixel } from "./foilDepth";
 
-// A real archive: the Malahide lagoon's, as public/foildepth serves it.
+// A real archive: the Malahide lagoon's, the committed copy of the data
+// host's (public-data/, under the index's versioned base).
+const BASE = (
+  JSON.parse(
+    readFileSync(
+      new URL("../../public/foildepth/index.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { base: string }
+).base;
 const FILE = readFileSync(
-  new URL("../../public/foildepth/malahide-lagoon.pmtiles", import.meta.url),
+  new URL(
+    `../../public-data/${BASE}malahide-lagoon.pmtiles`,
+    import.meta.url,
+  ),
 );
 const URL_ = "https://example.test/foildepth/malahide-lagoon.pmtiles";
 const body = (from: number, to: number) => FILE.subarray(from, to + 1);
@@ -44,7 +56,7 @@ function host(ranges: boolean, etag = '"one"') {
 }
 
 // A tile in the middle of the lagoon at the archive's finest zoom.
-const at = tilePixel(-6.2, 53.46, 14, 512);
+const at = tilePixel(-6.185, 53.455, 14, 512); // the lagoon's water
 
 describe("ArchiveSource", () => {
   it("reads by range where the host serves ranges", async () => {
@@ -74,7 +86,7 @@ describe("ArchiveSource", () => {
     expect(source.isWhole).toBe(true);
     expect(asked).toHaveLength(1);
     // And every later read is a slice of it, the probe's included.
-    const other = tilePixel(-6.17, 53.455, 14, 512);
+    const other = tilePixel(-6.163, 53.455, 14, 512);
     await archive.getZxy(other.z, other.x, other.y);
     await archive.getZxy(13, at.x >> 1, at.y >> 1);
     expect(asked).toHaveLength(1);
