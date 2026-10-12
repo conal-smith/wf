@@ -1,7 +1,7 @@
 {
   "tileSize": 512,
   "maxzoom": 13,
-  "minzoom": 7,
+  "minzoom": 6,
   "chunkZoom": 10,
   "marginTiles": 1,
   "bbox": [-10.8, 51.3, -5.3, 55.5],
@@ -21,7 +21,7 @@
   "regionPrefix": "tide-",
   "notes": {
     "maxzoom": "z13 with 512 px tiles is about 5.8 m a pixel at 53 N; the national sources are 10 m (INFOMAR) and coarser.",
-    "minzoom": "z7 shows the coast's band on the all-Ireland view; z7-z9 are overviews (mean of the heights under each pixel).",
+    "minzoom": "z6 shows the coast's band on the all-Ireland view (the map opens on it at about zoom 6.3); z6-z9 are overviews (mean of the heights under each pixel).",
     "maxStationKm": "A pixel further than this from every tide station in public/marine/tides.json has no tide to colour it by, and is left out. It keeps Lough Foyle (Buncranna, Malin Head) and Carlingford Lough and the Mourne coast to about Annalong (Port Oriel), and leaves out Northern Ireland's coast from Portrush round to Dundrum Bay, whose tides (a degenerate amphidrome off Antrim, Strangford's narrows) no station here predicts.",
     "ceilingMarginMetres": "Each region's dry ceiling is its station's highest predicted level over 2026-2028 (stations.json) plus this: three years are short of the 18.6-year nodal cycle by a few centimetres, and the waterline surface is good to about half a metre.",
     "pilots": "The pilot areas of areas.json win where they are: their boxes are cut out of the regions at the pilots' min zoom and above, and left in below it, where the pilots draw nothing. Their merged grids (build.py --debug, which reach a little past the boxes) are the regions' most trusted source, so at a box's edge both archives hold the same heights.",

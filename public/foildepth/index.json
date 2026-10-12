@@ -1,163 +1,1669 @@
 {
-  "schemaVersion": 1,
-  "kind": "foildepth",
-  "generatedAt": "2026-10-10T13:54:59Z",
-  "datum": "LAT",
-  "encoding": "terrarium",
-  "floorMetres": -6,
-  "landMetres": 50,
-  "noSurveyMetres": 40,
-  "areas": [
+ "schemaVersion": 2,
+ "kind": "foildepth",
+ "generatedAt": "2026-10-12T00:43:12Z",
+ "datum": "LAT",
+ "encoding": "terrarium",
+ "floorMetres": -5,
+ "deepMetres": -20,
+ "landMetres": 50,
+ "noSurveyMetres": 40,
+ "areas": [
+  {
+   "id": "malahide-lagoon",
+   "name": "Malahide inner estuary, behind the viaduct",
+   "url": "malahide-lagoon.pmtiles",
+   "bounds": [
+    -6.26,
+    53.445,
+    -6.1537,
+    53.476
+   ],
+   "minzoom": 10,
+   "maxzoom": 14,
+   "tileSize": 512,
+   "station": "Howth",
+   "dryCeilingMetres": 5.0,
+   "level": {
+    "floorLat": 3.06,
+    "rangeFactor": 0.6,
+    "lagHours": 1
+   },
+   "sources": [
     {
-      "id": "malahide-lagoon",
-      "name": "Malahide inner estuary, behind the viaduct",
-      "url": "foildepth/malahide-lagoon.pmtiles",
-      "bounds": [
-        -6.26,
-        53.445,
-        -6.1537,
-        53.476
-      ],
-      "minzoom": 10,
-      "maxzoom": 14,
-      "tileSize": 512,
-      "station": "Howth",
-      "dryCeilingMetres": 5.0,
-      "level": {
-        "floorLat": 3.06,
-        "rangeFactor": 0.6,
-        "lagHours": 1
-      },
-      "sources": [
-        {
-          "name": "EMODnet",
-          "role": "fallback",
-          "years": "DTM 2024",
-          "resolution": "~115 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "EMODnet waterlines",
-          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
-          "years": "",
-          "resolution": "~10\u201330 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "INFOMAR",
-          "role": "seabed, multibeam",
-          "years": "2003\u20132021",
-          "resolution": "2\u20135 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "OPW/TII LiDAR",
-          "role": "foreshore above the flight's water",
-          "years": "2010\u201311",
-          "resolution": "2 m",
-          "licence": "CC BY 4.0"
-        }
-      ]
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
     },
     {
-      "id": "dublin-north",
-      "name": "Malahide estuary, Portmarnock and Dublin Bay",
-      "url": "foildepth/dublin-north.pmtiles",
-      "bounds": [
-        -6.26,
-        53.287,
-        -5.99,
-        53.5
-      ],
-      "minzoom": 10,
-      "maxzoom": 14,
-      "tileSize": 512,
-      "station": "Howth",
-      "dryCeilingMetres": 5.0,
-      "sources": [
-        {
-          "name": "EMODnet",
-          "role": "fallback",
-          "years": "DTM 2024",
-          "resolution": "~115 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "EMODnet waterlines",
-          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
-          "years": "",
-          "resolution": "~10\u201330 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "INFOMAR",
-          "role": "seabed, multibeam",
-          "years": "2003\u20132021",
-          "resolution": "2\u20135 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "OPW/TII LiDAR",
-          "role": "foreshore above the flight's water",
-          "years": "2010\u201311",
-          "resolution": "2 m",
-          "licence": "CC BY 4.0"
-        }
-      ]
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
     },
     {
-      "id": "brandon",
-      "name": "Brandon Bay and Castlegregory",
-      "url": "foildepth/brandon.pmtiles",
-      "bounds": [
-        -10.18,
-        52.22,
-        -9.83,
-        52.35
-      ],
-      "minzoom": 10,
-      "maxzoom": 14,
-      "tileSize": 512,
-      "station": "Fenit",
-      "dryCeilingMetres": 5.6,
-      "sources": [
-        {
-          "name": "EMODnet",
-          "role": "fallback",
-          "years": "DTM 2024",
-          "resolution": "~115 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "EMODnet waterlines",
-          "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
-          "years": "",
-          "resolution": "~10\u201330 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "INFOMAR",
-          "role": "seabed, multibeam",
-          "years": "2014\u201317",
-          "resolution": "2\u20135 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "INFOMAR LiDAR",
-          "role": "shallows and lower beach, airborne bathymetric LiDAR (Tenix LADS)",
-          "years": "2008",
-          "resolution": "5 m",
-          "licence": "CC BY 4.0"
-        },
-        {
-          "name": "OPW LiDAR",
-          "role": "foreshore",
-          "years": "2006\u201311",
-          "resolution": "2 m",
-          "licence": "CC BY 4.0"
-        }
-      ]
+     "name": "INFOMAR",
+     "role": "seabed, multibeam",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OPW/TII LiDAR",
+     "role": "foreshore above the flight's water",
+     "years": "2010\u201311",
+     "resolution": "2 m",
+     "licence": "CC BY 4.0"
     }
-  ],
-  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0."
+   ],
+   "kind": "pilot"
+  },
+  {
+   "id": "dublin-north",
+   "name": "Malahide estuary, Portmarnock and Dublin Bay",
+   "url": "dublin-north.pmtiles",
+   "bounds": [
+    -6.26,
+    53.287,
+    -5.99,
+    53.5
+   ],
+   "minzoom": 10,
+   "maxzoom": 14,
+   "tileSize": 512,
+   "station": "Howth",
+   "dryCeilingMetres": 5.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed, multibeam",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OPW/TII LiDAR",
+     "role": "foreshore above the flight's water",
+     "years": "2010\u201311",
+     "resolution": "2 m",
+     "licence": "CC BY 4.0"
+    }
+   ],
+   "kind": "pilot"
+  },
+  {
+   "id": "brandon",
+   "name": "Brandon Bay and Castlegregory",
+   "url": "brandon.pmtiles",
+   "bounds": [
+    -10.18,
+    52.22,
+    -9.83,
+    52.35
+   ],
+   "minzoom": 10,
+   "maxzoom": 14,
+   "tileSize": 512,
+   "station": "Fenit",
+   "dryCeilingMetres": 5.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed, multibeam",
+     "years": "2014\u201317",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR LiDAR",
+     "role": "shallows and lower beach, airborne bathymetric LiDAR (Tenix LADS)",
+     "years": "2008",
+     "resolution": "5 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "OPW LiDAR",
+     "role": "foreshore",
+     "years": "2006\u201311",
+     "resolution": "2 m",
+     "licence": "CC BY 4.0"
+    }
+   ],
+   "kind": "pilot"
+  },
+  {
+   "id": "tide-achill-island",
+   "kind": "region",
+   "name": "Coast on the Achill Island tide",
+   "url": "tide-achill-island.pmtiles",
+   "bounds": [
+    -10.4648,
+    53.7949,
+    -9.7942,
+    54.1539
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Achill_Island_MODELLED",
+   "stationLonLat": [
+    -10.1016,
+    53.9522
+   ],
+   "dryCeilingMetres": 5.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-aranmore",
+   "kind": "region",
+   "name": "Coast on the Aranmore tide",
+   "url": "tide-aranmore.pmtiles",
+   "bounds": [
+    -8.5819,
+    54.8036,
+    -8.2314,
+    55.1106
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Aranmore",
+   "stationLonLat": [
+    -8.49562,
+    54.9896
+   ],
+   "dryCeilingMetres": 4.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-arklow",
+   "kind": "region",
+   "name": "Coast on the Arklow tide",
+   "url": "tide-arklow.pmtiles",
+   "bounds": [
+    -6.2302,
+    52.5269,
+    -5.9213,
+    53.0034
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Arklow",
+   "stationLonLat": [
+    -6.145231,
+    52.79205
+   ],
+   "dryCeilingMetres": 2.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-ballycotton",
+   "kind": "region",
+   "name": "Coast on the Ballycotton tide",
+   "url": "tide-ballycotton.pmtiles",
+   "bounds": [
+    -8.1236,
+    51.802,
+    -7.7723,
+    52.0092
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballycotton",
+   "stationLonLat": [
+    -8.0007,
+    51.82776
+   ],
+   "dryCeilingMetres": 4.9,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-ballyglass",
+   "kind": "region",
+   "name": "Coast on the Ballyglass tide",
+   "url": "tide-ballyglass.pmtiles",
+   "bounds": [
+    -10.2074,
+    54.0666,
+    -9.2217,
+    54.3694
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballyglass",
+   "stationLonLat": [
+    -9.89,
+    54.253
+   ],
+   "dryCeilingMetres": 4.7,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-bray-harbour",
+   "kind": "region",
+   "name": "Coast on the Bray Harbour tide",
+   "url": "tide-bray-harbour.pmtiles",
+   "bounds": [
+    -6.1298,
+    53.0012,
+    -5.8509,
+    53.3
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Bray_Harbour_MODELLED",
+   "stationLonLat": [
+    -6.0901,
+    53.2191
+   ],
+   "dryCeilingMetres": 4.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-buncranna",
+   "kind": "region",
+   "name": "Coast on the Buncranna tide",
+   "url": "tide-buncranna.pmtiles",
+   "bounds": [
+    -7.862,
+    54.9463,
+    -6.9535,
+    55.2822
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Buncranna",
+   "stationLonLat": [
+    -7.464125,
+    55.12662
+   ],
+   "dryCeilingMetres": 5.3,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-castletownbere",
+   "kind": "region",
+   "name": "Coast on the Castletownbere tide",
+   "url": "tide-castletownbere.pmtiles",
+   "bounds": [
+    -10.3578,
+    51.3144,
+    -9.4833,
+    51.8863
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Castletownbere",
+   "stationLonLat": [
+    -9.9034,
+    51.6496
+   ],
+   "dryCeilingMetres": 4.2,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-clare-island",
+   "kind": "region",
+   "name": "Coast on the Clare Island tide",
+   "url": "tide-clare-island.pmtiles",
+   "bounds": [
+    -10.1978,
+    53.711,
+    -9.6095,
+    53.9605
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Clare_Island_MODELLED",
+   "stationLonLat": [
+    -9.9443,
+    53.8019
+   ],
+   "dryCeilingMetres": 5.2,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-crosshaven",
+   "kind": "region",
+   "name": "Coast on the Crosshaven tide",
+   "url": "tide-crosshaven.pmtiles",
+   "bounds": [
+    -8.3418,
+    51.5094,
+    -7.9782,
+    51.8474
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Crosshaven_MODELLED",
+   "stationLonLat": [
+    -8.2411,
+    51.7794
+   ],
+   "dryCeilingMetres": 4.4,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-dingle",
+   "kind": "region",
+   "name": "Coast on the Dingle tide",
+   "url": "tide-dingle.pmtiles",
+   "bounds": [
+    -10.6906,
+    51.7675,
+    -9.9518,
+    52.2933
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dingle",
+   "stationLonLat": [
+    -10.27732,
+    52.13924
+   ],
+   "dryCeilingMetres": 4.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-dublin-port",
+   "kind": "region",
+   "name": "Coast on the Dublin Port tide",
+   "url": "tide-dublin-port.pmtiles",
+   "bounds": [
+    -6.2511,
+    53.2915,
+    -6.1222,
+    53.3809
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dublin_Port",
+   "stationLonLat": [
+    -6.22166,
+    53.34574
+   ],
+   "dryCeilingMetres": 5.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-dungarvan",
+   "kind": "region",
+   "name": "Coast on the Dungarvan tide",
+   "url": "tide-dungarvan.pmtiles",
+   "bounds": [
+    -7.863,
+    51.9364,
+    -7.2823,
+    52.1416
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dungarvan_MODELLED",
+   "stationLonLat": [
+    -7.5521,
+    52.0672
+   ],
+   "dryCeilingMetres": 4.5,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-dunmore",
+   "kind": "region",
+   "name": "Coast on the Dunmore tide",
+   "url": "tide-dunmore.pmtiles",
+   "bounds": [
+    -7.351,
+    52.0678,
+    -6.6209,
+    52.3935
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dunmore",
+   "stationLonLat": [
+    -6.99166,
+    52.14754
+   ],
+   "dryCeilingMetres": 4.9,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-fenit",
+   "kind": "region",
+   "name": "Coast on the Fenit tide",
+   "url": "tide-fenit.pmtiles",
+   "bounds": [
+    -10.1122,
+    52.0648,
+    -9.7204,
+    52.4732
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Fenit",
+   "stationLonLat": [
+    -9.8644,
+    52.27129
+   ],
+   "dryCeilingMetres": 5.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-galway",
+   "kind": "region",
+   "name": "Coast on the Galway tide",
+   "url": "tide-galway.pmtiles",
+   "bounds": [
+    -9.3057,
+    53.1137,
+    -8.8767,
+    53.2814
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Galway",
+   "stationLonLat": [
+    -9.04796,
+    53.26895
+   ],
+   "dryCeilingMetres": 6.1,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-howth",
+   "kind": "region",
+   "name": "Coast on the Howth tide",
+   "url": "tide-howth.pmtiles",
+   "bounds": [
+    -6.2067,
+    53.2979,
+    -5.9369,
+    53.496
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Howth",
+   "stationLonLat": [
+    -6.0683,
+    53.39148
+   ],
+   "dryCeilingMetres": 5.2,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-killybegs",
+   "kind": "region",
+   "name": "Coast on the Killybegs tide",
+   "url": "tide-killybegs.pmtiles",
+   "bounds": [
+    -8.8393,
+    54.4573,
+    -8.1038,
+    54.8086
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Killybegs",
+   "stationLonLat": [
+    -8.3949,
+    54.6364
+   ],
+   "dryCeilingMetres": 5.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-kilrush",
+   "kind": "region",
+   "name": "Coast on the Kilrush tide",
+   "url": "tide-kilrush.pmtiles",
+   "bounds": [
+    -9.9406,
+    52.4322,
+    -8.8372,
+    52.7803
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Kilrush",
+   "stationLonLat": [
+    -9.50208,
+    52.63191
+   ],
+   "dryCeilingMetres": 6.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-kinsale",
+   "kind": "region",
+   "name": "Coast on the Kinsale tide",
+   "url": "tide-kinsale.pmtiles",
+   "bounds": [
+    -8.7746,
+    51.5679,
+    -8.3343,
+    51.726
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Kinsale_MODELLED",
+   "stationLonLat": [
+    -8.446,
+    51.6777
+   ],
+   "dryCeilingMetres": 4.3,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-lahinch",
+   "kind": "region",
+   "name": "Coast on the Lahinch tide",
+   "url": "tide-lahinch.pmtiles",
+   "bounds": [
+    -9.6165,
+    52.6796,
+    -8.8296,
+    53.1175
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Lahinch_MODELLED",
+   "stationLonLat": [
+    -9.3899,
+    52.911
+   ],
+   "dryCeilingMetres": 5.5,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-letterfrack",
+   "kind": "region",
+   "name": "Coast on the Letterfrack tide",
+   "url": "tide-letterfrack.pmtiles",
+   "bounds": [
+    -10.5504,
+    53.3152,
+    -9.6938,
+    53.7324
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Letterfrack_MODELLED",
+   "stationLonLat": [
+    -10.0388,
+    53.582
+   ],
+   "dryCeilingMetres": 5.2,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-malin-head",
+   "kind": "region",
+   "name": "Coast on the Malin Head tide",
+   "url": "tide-malin-head.pmtiles",
+   "bounds": [
+    -7.5281,
+    55.1585,
+    -6.6918,
+    55.4541
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Malin_Head",
+   "stationLonLat": [
+    -7.33432,
+    55.37168
+   ],
+   "dryCeilingMetres": 4.5,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-port-oriel",
+   "kind": "region",
+   "name": "Coast on the Port Oriel tide",
+   "url": "tide-port-oriel.pmtiles",
+   "bounds": [
+    -6.4153,
+    53.675,
+    -5.8649,
+    54.1506
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Port_Oriel",
+   "stationLonLat": [
+    -6.221713,
+    53.79899
+   ],
+   "dryCeilingMetres": 6.1,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-ringaskiddy",
+   "kind": "region",
+   "name": "Coast on the Ringaskiddy tide",
+   "url": "tide-ringaskiddy.pmtiles",
+   "bounds": [
+    -8.4645,
+    51.8003,
+    -8.1736,
+    51.9123
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ringaskiddy",
+   "stationLonLat": [
+    -8.304,
+    51.84
+   ],
+   "dryCeilingMetres": 4.9,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-roonagh",
+   "kind": "region",
+   "name": "Coast on the Roonagh tide",
+   "url": "tide-roonagh.pmtiles",
+   "bounds": [
+    -10.1214,
+    53.5985,
+    -9.5468,
+    53.9025
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Roonagh",
+   "stationLonLat": [
+    -9.90442,
+    53.76235
+   ],
+   "dryCeilingMetres": 5.2,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-rossaveel",
+   "kind": "region",
+   "name": "Coast on the Rossaveel tide",
+   "url": "tide-rossaveel.pmtiles",
+   "bounds": [
+    -10.036,
+    53.0635,
+    -9.3038,
+    53.4199
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Rossaveel",
+   "stationLonLat": [
+    -9.562056,
+    53.26693
+   ],
+   "dryCeilingMetres": 5.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-rosslare",
+   "kind": "region",
+   "name": "Coast on the Rosslare tide",
+   "url": "tide-rosslare.pmtiles",
+   "bounds": [
+    -6.6295,
+    52.0976,
+    -6.2043,
+    52.3447
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Rosslare",
+   "stationLonLat": [
+    -6.334861,
+    52.2546
+   ],
+   "dryCeilingMetres": 2.6,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-skerries",
+   "kind": "region",
+   "name": "Coast on the Skerries tide",
+   "url": "tide-skerries.pmtiles",
+   "bounds": [
+    -6.247,
+    53.4865,
+    -5.9945,
+    53.6845
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Skerries",
+   "stationLonLat": [
+    -6.108117,
+    53.585
+   ],
+   "dryCeilingMetres": 5.8,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "Pilot areas",
+     "role": "the pilot areas' merged grids (LiDAR and INFOMAR's surveys), a little past their boxes",
+     "years": "2003\u20132021",
+     "resolution": "2\u20135 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-sligo",
+   "kind": "region",
+   "name": "Coast on the Sligo tide",
+   "url": "tide-sligo.pmtiles",
+   "bounds": [
+    -9.2312,
+    54.1615,
+    -8.412,
+    54.4694
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Sligo",
+   "stationLonLat": [
+    -8.5689,
+    54.3046
+   ],
+   "dryCeilingMetres": 5.0,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-tory-island",
+   "kind": "region",
+   "name": "Coast on the Tory Island tide",
+   "url": "tide-tory-island.pmtiles",
+   "bounds": [
+    -8.3197,
+    55.1076,
+    -7.7949,
+    55.2787
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Tory_Island_MODELLED",
+   "stationLonLat": [
+    -8.1962,
+    55.2508
+   ],
+   "dryCeilingMetres": 4.9,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-union-hall",
+   "kind": "region",
+   "name": "Coast on the Union Hall tide",
+   "url": "tide-union-hall.pmtiles",
+   "bounds": [
+    -9.5519,
+    51.4188,
+    -8.7727,
+    51.7333
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Union_Hall",
+   "stationLonLat": [
+    -9.1335,
+    51.559
+   ],
+   "dryCeilingMetres": 4.3,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  },
+  {
+   "id": "tide-wexford",
+   "kind": "region",
+   "name": "Coast on the Wexford tide",
+   "url": "tide-wexford.pmtiles",
+   "bounds": [
+    -6.7023,
+    52.1789,
+    -6.1556,
+    52.5452
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Wexford",
+   "stationLonLat": [
+    -6.4589,
+    52.33852
+   ],
+   "dryCeilingMetres": 2.3,
+   "sources": [
+    {
+     "name": "EMODnet",
+     "role": "fallback",
+     "years": "DTM 2024",
+     "resolution": "~115 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "EMODnet waterlines",
+     "role": "intertidal, interpolated between the satellite LAT, MSL and MHW lines",
+     "years": "",
+     "resolution": "~10\u201330 m",
+     "licence": "CC BY 4.0"
+    },
+    {
+     "name": "INFOMAR",
+     "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR)",
+     "years": "2002\u20132025",
+     "resolution": "10 m",
+     "licence": "CC BY 4.0"
+    }
+   ]
+  }
+ ],
+ "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. INFOMAR (Geological Survey Ireland & Marine Institute), EMODnet Bathymetry DTM and satellite-derived coastlines, Marine Institute tidal predictions; all CC BY 4.0.",
+ "base": "foildepth/vb2f7a0ca40ae/"
 }
