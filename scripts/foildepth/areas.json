@@ -15,7 +15,9 @@
   "marshAboveMhwMetres": 0.5,
   "upperBeachMetres": 60,
   "marginDegrees": 0.01,
-  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0.",
+  "pinMetres": 60,
+  "osm": { "dir": "osm", "joinPixels": 3 },
+  "attribution": "INFOMAR (Geological Survey Ireland & Marine Institute), GSI/OPW/TII LiDAR, EMODnet Bathymetry DTM and coastlines; all CC BY 4.0. Contains modified Copernicus Sentinel data 2017–2026. Coastline and tidal water © OpenStreetMap contributors (ODbL).",
   "areas": [
     {
       "id": "dublin-north",
@@ -36,8 +38,10 @@
             [-6.1566, 53.4527], [-6.1562, 53.4554], [-6.156, 53.4563], [-6.1559, 53.4573], [-6.1558, 53.4578]
           ],
           "lidarWaterLat": 4.0,
+          "bedEstimateLat": 1.26,
           "level": { "floorLat": 3.06, "rangeFactor": 0.6, "lagHours": 1 },
           "notes": {
+            "bedEstimateLat": "No survey has sounded the lagoon, and the satellite never sees its middle dry. Over 150 m from any height its bed is taken as the owner's figure, about 1.8 m under the weir's crest at low water (3.06 - 1.8 = 1.26 m LAT), and written as an estimate; nearer the rim it is filled from the heights there.",
             "polygon": "West of the railway: along its two embankments as EMODnet's OSM coastline draws them (the Malahide one to 53.4578 N, the Donabate one from 53.4594 N), straight across the viaduct's 180 m opening between them, and round the inner estuary over land.",
             "lidarWaterLat": "The TII LiDAR (2010-11) saw a flat surface at +1.3 m OD Malin (3.86 m LAT) under the M1 at the lagoon's west end: the lagoon's water that day, not its bed, so returns at or under 4.0 m LAT in here are dropped.",
             "floorLat": "The weir under the viaduct: crest about +0.5 m OD Malin before the 2009 collapse (Engineers Ireland, 'The collapse and reconstruction of the Malahide viaduct', part 2), 3.06 m LAT with Howth's offset. The lagoon cannot drain below it; at neaps it drains to it.",
@@ -73,6 +77,19 @@
           "coarsen": 2
         },
         {
+          "name": "INFOMAR 10 m",
+          "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR), under the surveys below",
+          "years": "2002–2025",
+          "resolution": "10 m",
+          "licence": "CC BY 4.0",
+          "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland & Marine Institute) licensed under CC BY 4.0",
+          "files": ["infomar10/*.tif"],
+          "datum": "LAT",
+          "kind": "bathy",
+          "nodata": -9999,
+          "validRange": [-400, 60]
+        },
+        {
           "name": "INFOMAR",
           "role": "seabed, multibeam",
           "years": "2003–2021",
@@ -98,6 +115,18 @@
           "nodata": -9999,
           "validRange": [-5, 200],
           "waterLevelLat": 1.65
+        },
+        {
+          "name": "Sentinel-2 intertidal heights",
+          "role": "the foreshore between the lowest and highest tides seen: the tide at which each 10 m pixel floods",
+          "years": "2017–2026",
+          "resolution": "10 m",
+          "licence": "Copernicus (free and open)",
+          "attribution": "Contains modified Copernicus Sentinel data 2017–2026; tide gauge data © Marine Institute (CC BY 4.0)",
+          "files": ["satellite/*.tif"],
+          "kind": "satellite",
+          "biasMetres": 0,
+          "featherMetres": 80
         }
       ]
     },
@@ -133,6 +162,19 @@
           "kind": "waterlines",
           "levels": { "LAT": 0, "MSL": 2.7, "MHW": 4.1 },
           "coarsen": 2
+        },
+        {
+          "name": "INFOMAR 10 m",
+          "role": "seabed and shallows, the merged inshore grid (multibeam and bathymetric LiDAR), under the surveys below",
+          "years": "2002–2025",
+          "resolution": "10 m",
+          "licence": "CC BY 4.0",
+          "attribution": "Contains Irish Public Sector Data (Geological Survey Ireland & Marine Institute) licensed under CC BY 4.0",
+          "files": ["infomar10/*.tif"],
+          "datum": "LAT",
+          "kind": "bathy",
+          "nodata": -9999,
+          "validRange": [-400, 60]
         },
         {
           "name": "INFOMAR",

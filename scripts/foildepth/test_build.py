@@ -1,4 +1,5 @@
-"""Checks of build.py's gap-fill and basin pieces on toy grids.
+"""Checks of build.py's pieces (gap-fill, basins, the OSM mask, estimates, padding,
+satellite heights) and of national.py and publish.py on toy grids.
 
     python -I test_build.py
 
@@ -366,6 +367,272 @@ class Index(unittest.TestCase):
         with self.assertRaises(SystemExit):
             publish.put_new(s3, "b", "weather/harmonie.json", body=b"{}")
         self.assertEqual(publish.put_new(s3, "b", "foildepth/v1/index.json", body=b"{}"), "put")
+
+
+class OsmMask(unittest.TestCase):
+    """OpenStreetMap's coastline is the shore: a field never draws, the lagoon is always water."""
+
+    def write_osm(self, d):
+        # Land is the right half of the grid (east of column 50), with a
+        # lagoon cut into it (columns 50-80, rows 20-40) that opens on the
+        # sea through a gap a pixel wide, and a lake (rows 60-80) behind a
+        # 15-pixel bar; a beach on the land's edge (columns 50-53).
+        land = {"type": "Polygon", "coordinates": [[list(p) for p in square(50, -5, 105, 105) + [lonlat(50, -5)]]]}
+        os.makedirs(os.path.join(d, "land"))
+        w, s_, e, n = build.grid_lonlat_bounds(T, SHAPE)
+        name = f"{w - 0.1:.1f}_{s_ - 0.1:.1f}_{e + 0.1:.1f}_{n + 0.1:.1f}"
+        with open(os.path.join(d, "land", name + ".json"), "w") as fh:
+            json.dump({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {}, "geometry": land}]}, fh)
+
+        def feat(kind, ring, **tags):
+            xs = [p[0] for p in ring]
+            ys = [p[1] for p in ring]
+            return {"type": "Feature", "properties": {"kind": kind, "bbox": [min(xs), min(ys), max(xs), max(ys)], **tags},
+                    "geometry": {"type": "MultiPolygon", "coordinates": [[[list(p) for p in ring + ring[:1]]]]}}
+        tidal = [feat("sea", square(49, 20, 80, 40), natural="water", water="lagoon"),
+                 feat("sea", square(65, 60, 90, 80), natural="water", water="lagoon"),
+                 feat("shore", square(50, 45, 54, 55), natural="beach"),
+                 # A beach along the bar, from the sea's edge to the lake's.
+                 feat("shore", square(48, 79, 70, 83), natural="beach")]
+        with open(os.path.join(d, "tidal.json"), "w") as fh:
+            json.dump({"type": "FeatureCollection", "features": tidal}, fh)
+
+    def test_the_classes(self):
+        import osm
+        self.assertEqual(osm.classify({"natural": "water", "water": "lagoon"}), "sea")
+        self.assertEqual(osm.classify({"natural": "water", "tidal": "yes"}), "sea")
+        self.assertEqual(osm.classify({"natural": "wetland", "wetland": "tidalflat"}), "sea")
+        self.assertEqual(osm.classify({"natural": "wetland", "wetland": "saltmarsh"}), "shore")
+        self.assertEqual(osm.classify({"natural": "beach"}), "shore")
+        self.assertIsNone(osm.classify({"natural": "water", "water": "lake"}))
+        self.assertIsNone(osm.classify({"natural": "wetland", "wetland": "bog"}))
+        self.assertIsNone(osm.classify({"landuse": "farmland"}))
+
+    def test_the_mask_from_osm(self):
+        import osm
+        with tempfile.TemporaryDirectory() as d:
+            self.write_osm(d)
+            sea, shore = osm.water_mask(d, T, SHAPE)
+        self.assertTrue(sea[50, 20])  # the open sea
+        self.assertFalse(sea[50, 90])  # the land
+        self.assertTrue(sea[30, 70])  # the lagoon, joined to the sea
+        self.assertFalse(sea[70, 80])  # the lake behind its bar, though a beach joins them
+        self.assertTrue(shore[81, 60])  # that beach
+        self.assertTrue(shore[50, 52] and not sea[50, 52])  # the beach
+
+    def finish(self, z, sea, shore=None, wet=None, hints=None, pin=None, ceiling=5.0):
+        shape = z.shape
+        return build.finish(z.astype(np.float32), np.zeros(shape, bool) if wet is None else wet,
+                            np.full(shape, np.nan, np.float32), np.zeros(shape, bool), np.zeros(shape, bool),
+                            ceiling, dict(CFG, maxUnsurveyedKm2=5.0), 10.0, 3.8,
+                            sea=sea, shore=np.zeros(shape, bool) if shore is None else shore, hints=hints, pin=pin)
+
+    def test_a_field_never_draws(self):
+        # EMODnet's coarse land at 0.4-1.1 m LAT joined to the sea: the old
+        # rules drew it as a tidal flat (north of the Malahide lagoon).
+        z = np.full((40, 40), 0.7, np.float32)
+        z[:, :10] = -3.0
+        sea = np.zeros(z.shape, bool)
+        sea[:, :12] = True
+        out, stats = self.finish(z, sea)
+        self.assertTrue((out[:, 12:] == 50).all())
+        self.assertTrue((out[:, 10:12] == np.float32(0.6875)).all())  # 0.7 to the 1/32 m
+        self.assertEqual(stats["landByMask"], 40 * 28)
+
+    def test_the_lagoon_is_always_water(self):
+        # Nothing has a height over the lagoon (no survey, or a LiDAR that saw
+        # only its surface): it is water, its bed estimated, never land.
+        z = np.full((40, 40), np.nan, np.float32)
+        z[:, :5] = -3.0  # the sea
+        z[:, 5:8] = 1.0  # a flat between them
+        z[:, 35:] = 12.0  # the land round it
+        z[10:30, 15:30] = 4.4  # a LiDAR's lagoon surface, over the ceiling here
+        sea = np.zeros(z.shape, bool)
+        sea[:, :35] = True
+        out, stats = self.finish(z, sea, ceiling=4.0)
+        lagoon = out[:, 8:35]
+        self.assertFalse((lagoon >= 49).any())
+        self.assertTrue(build.is_estimate(lagoon).all())
+        self.assertTrue((lagoon > -5).all() and (lagoon <= 4.0 + 1 / 32).all())
+        self.assertTrue((out[:, 35:] == 50).all())
+
+    def test_an_estimate_keeps_under_what_is_known_and_a_basin_takes_its_pin(self):
+        z = np.full((60, 60), np.nan, np.float32)
+        z[:, :3] = 3.5  # a high rim, the only height
+        sea = np.ones(z.shape, bool)
+        hints = {"bound": np.full(z.shape, np.nan, np.float32)}
+        hints["bound"][:, 30:] = 0.6  # never seen dry: under the lowest tide seen
+        pin = np.full(z.shape, 1.26, np.float32)  # a basin's bed, far from any height
+        out, _ = self.finish(z, sea, hints=hints, pin=pin)
+        est = out[:, 3:]
+        self.assertTrue(build.is_estimate(est).all())
+        self.assertTrue((out[:, 30:] <= 0.6 + 1 / 32).all())
+        self.assertAlmostEqual(float(out[30, 20]), 1.26, delta=0.1)  # the pin, 170 m from the rim
+
+    def test_a_large_stretch_with_no_height_is_unsurveyed_and_not_drawn(self):
+        z = np.full((300, 300), np.nan, np.float32)
+        z[:, :5] = -3.0
+        out, stats = build.finish(z, np.zeros(z.shape, bool), np.full(z.shape, np.nan, np.float32),
+                                  np.zeros(z.shape, bool), np.zeros(z.shape, bool), 5.0,
+                                  dict(CFG, maxUnsurveyedKm2=1.0), 10.0, sea=np.ones(z.shape, bool),
+                                  shore=np.zeros(z.shape, bool))
+        # Not drawn, as deep water is not, but flagged: a tap says unsurveyed.
+        self.assertTrue((out[:, 5:] == np.float32(-20 + 1 / 64)).all())
+        self.assertTrue(build.is_estimate(out[:, 5:]).all())
+        self.assertFalse(build.has_content(out[:, 5:], CFG))
+
+    def test_a_beach_draws_only_under_the_ceiling(self):
+        z = np.tile(np.linspace(-2, 8, 40, dtype=np.float32), (10, 1))
+        sea = np.zeros(z.shape, bool)
+        sea[:, :10] = True
+        shore = np.zeros(z.shape, bool)
+        shore[:, 10:] = True
+        out, _ = self.finish(z, sea, shore=shore)
+        self.assertTrue((out[:, 10:][z[:, 10:] <= 5.0] < 20).all())
+        self.assertTrue((out[:, 10:][z[:, 10:] > 5.0] == 50).all())
+
+
+class Smooth(unittest.TestCase):
+    """Land beside water is padded so linear sampling never sweeps the ramp."""
+
+    def test_land_beside_water_is_padded_just_over_the_ceiling(self):
+        level = np.full((5, 6), 50.0, np.float32)
+        level[:, :2] = 3.8
+        level[0, 0] = -20.0
+        padded = build.pad_land(level, CFG, 5.0)
+        self.assertTrue((padded[:, 2] >= build.PAD_MIN).all() and (padded[:, 2] < 45).all())
+        self.assertTrue((padded[:, 3:] == 50).all())  # only the ring
+        np.testing.assert_array_equal(padded[:, :2], level[:, :2])  # water untouched
+        # Beside only deep water (a cliff), well over the ceiling too.
+        cliff = np.array([[-20, 50, 50]] * 3, np.float32)
+        self.assertEqual(build.pad_land(cliff, CFG, 5.0)[1, 1], 30.0)
+
+    def test_padding_is_not_content_and_estimates_survive_the_encoding(self):
+        self.assertFalse(build.has_content(np.array([-20, 10, 30, 50], np.float32), CFG))
+        v = build.mark_estimate(np.array([1.26, -0.5, 3.0], np.float32))
+        self.assertTrue(build.is_estimate(v).all())
+        self.assertFalse(build.is_estimate(build.quantise(np.array([1.26, -0.5], np.float32))).any())
+        rgb = build.terrarium(v)
+        self.assertTrue(((rgb[..., 2].astype(int) % 8) == 4).all())
+        back = rgb[..., 0] * 256.0 + rgb[..., 1] + rgb[..., 2] / 256.0 - 32768
+        np.testing.assert_allclose(back, v, atol=1e-6)
+
+    def test_a_pyramid_pads_each_level_and_keeps_the_raw(self):
+        size = 8
+        grid = np.full((size, 2 * size), 50.0, np.float32)
+        grid[:, :size] = 1.0  # water in the left tile, land in the right
+        tiles = list(build.pyramid(grid, (0, 0, 1, 0), size, 3, 3, CFG, 5.0, raw=True))
+        (_, _, _, left, _), (_, _, _, right, right_raw) = tiles
+        self.assertTrue((right[:, 0] == build.PAD_MIN).all())  # sees the water across the tile edge
+        self.assertTrue((right_raw == 50).all())
+
+
+    def test_the_overviews_carry_a_grids_edge_on_not_land(self):
+        # One z3 tile whose west edge is open sea (deep): its z2 parent's
+        # other half is past the grid, and must be sea too, not land, or the
+        # sea's edge there draws every colour of the ramp.
+        size = 8
+        grid = np.full((size, size), 1.0, np.float32)
+        grid[:, :2] = -20.0
+        tiles = list(build.pyramid(grid, (1, 0, 1, 0), size, 2, 3, CFG, 5.0))
+        z2 = [t for z, x, y, t in tiles if z == 2][0]
+        self.assertFalse((z2 >= 49).any())
+
+
+class Satellite(unittest.TestCase):
+    def write(self, d, z, flag, low=0.82, high=4.84):
+        import satellite
+        prof = {"width": SHAPE[1], "height": SHAPE[0], "crs": "EPSG:3857", "transform": T}
+        satellite.write(os.path.join(d, "satellite", "s.tif"), z, flag, prof, "Howth", low, high, "test")
+
+    def test_satellite_heights_lead_in_the_band_and_bound_what_is_under_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            z = np.full(SHAPE, np.nan, np.float32)
+            flag = np.zeros(SHAPE, np.uint8)
+            z[:, 40:70] = 2.5
+            flag[:, 40:70] = 1  # seen wet and dry
+            flag[:, 20:30] = 2  # never seen dry
+            flag[:, 70:] = 3  # never seen wet
+            z[50, 55] = np.nan
+            flag[50, 55] = 0  # one pixel rejected among the heights
+            self.write(d, z, flag)
+            fallback = np.full(SHAPE, 1.4, np.float32)  # the waterlines' flats, too low
+            fallback[:10, 20:30] = np.nan  # never seen dry, and no source: none, not the bound
+            src = [{"name": "f", "kind": "fallback", "files": ["f.tif"]},
+                   {"name": "sat", "kind": "satellite", "files": ["satellite/*.tif"], "biasMetres": -0.25,
+                    "featherMetres": 30}]
+            with rasterio_open_w(os.path.join(d, "f.tif"), fallback) as _:
+                pass
+            m, wet, bathy, above, used, hints = build.merge_sources(src, dict(CFG, featherPixels=0), d, T, SHAPE, 0.0)
+        self.assertAlmostEqual(float(m[50, 60]), 2.25, places=3)  # the satellite, less its bias
+        # Feathered into the fallback at the edge of what it saw, and only there.
+        self.assertTrue(1.4 < float(m[50, 41]) < 2.25)
+        self.assertAlmostEqual(float(m[50, 68]), 2.25, places=3)  # beside the never-wet: no feather
+        self.assertAlmostEqual(float(m[50, 55]), 2.25, places=3)  # the rejected pixel, from its neighbours
+        self.assertTrue((m[10:, 20:30] <= 0.82 - 0.25 + 1e-6).all())  # never dry: under the lowest tide seen
+        self.assertTrue(np.isnan(m[:10, 20:30]).all())  # left to be estimated under that bound
+        self.assertTrue((m[:, 75:] >= 4.84 - 0.25 - 1e-6).all())  # never wet: over the highest
+        self.assertTrue((hints["bound"][:, 20:30] <= 0.57 + 1e-6).all())
+
+    def test_a_sonar_well_under_the_satellite_stands(self):
+        with tempfile.TemporaryDirectory() as d:
+            z = np.full(SHAPE, 2.5, np.float32)
+            flag = np.ones(SHAPE, np.uint8)
+            self.write(d, z, flag)
+            sonar = np.full(SHAPE, np.nan, np.float32)
+            sonar[:, :20] = -3.0  # a wall's foot the 10 m pixel straddles
+            sonar[:, 20:40] = 2.3  # agreeing
+            with rasterio_open_w(os.path.join(d, "b.tif"), sonar) as _:
+                pass
+            src = [{"name": "b", "kind": "bathy", "files": ["b.tif"]},
+                   {"name": "sat", "kind": "satellite", "files": ["satellite/*.tif"], "biasMetres": -0.25,
+                    "featherMetres": 0}]
+            m, wet, bathy, above, used, hints = build.merge_sources(src, dict(CFG, featherPixels=0), d, T, SHAPE, 0.0)
+        self.assertTrue((m[:, :18] == -3.0).all())
+        self.assertAlmostEqual(float(m[50, 30]), 2.25, places=3)
+        self.assertGreater(hints["satYielded"], 0)
+
+    def test_the_bias_and_the_station_ride_with_the_file(self):
+        import satellite
+        with tempfile.TemporaryDirectory() as d:
+            z = np.full(SHAPE, 2.75, np.float32)
+            flag = np.ones(SHAPE, np.uint8)
+            flag[:, :30] = 2
+            prof = {"width": SHAPE[1], "height": SHAPE[0], "crs": "EPSG:3857", "transform": T}
+            # Measured against Skerries, the bias already off, as the national run writes it.
+            satellite.write(os.path.join(d, "satellite", "s.tif"), z - 0.25, flag, prof, "Skerries", 0.86, 5.46,
+                            "test", -0.25)
+            src = [{"name": "sat", "kind": "satellite", "files": ["satellite/*.tif"], "featherMetres": 0}]
+            got = build.read_satellite(src[0], d, T, SHAPE)
+            self.assertAlmostEqual(float(got[0][50, 60]), 2.5, places=3)
+            self.assertAlmostEqual(float(got[2][50, 10]), 0.86 - 0.25, places=3)
+            # Drawn on Howth's tide: the same stage of the tide there.
+            got = build.read_satellite(src[0], d, T, SHAPE, "Howth")
+            sk, ho = build.station_levels("Skerries"), build.station_levels("Howth")
+            want = ho[0] + (2.5 - sk[0]) * (ho[1] - ho[0]) / (sk[1] - sk[0])
+            self.assertAlmostEqual(float(got[0][50, 60]), want, places=3)
+            self.assertAlmostEqual(float(build.to_station(np.float32(sk[1]), "Skerries", "Howth")), ho[1], places=3)
+
+    def test_a_basins_satellite_heights_are_in_its_own_level(self):
+        level = {"floorLat": 3.06, "rangeFactor": 0.6, "lagHours": 1}
+        self.assertAlmostEqual(float(build.basin_height(level, np.float32(4.2))), 3.06 + 0.6 * 1.14, places=4)
+        self.assertAlmostEqual(float(build.basin_height(level, np.float32(2.0))), 3.06, places=4)
+
+
+class rasterio_open_w:
+    """A one-band float GeoTIFF on the toy grid, for a fallback source."""
+
+    def __init__(self, path, data):
+        import rasterio
+        self.ds = rasterio.open(path, "w", driver="GTiff", width=SHAPE[1], height=SHAPE[0], count=1,
+                                dtype="float32", crs="EPSG:3857", transform=T)
+        self.ds.write(data, 1)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        self.ds.close()
 
 
 if __name__ == "__main__":

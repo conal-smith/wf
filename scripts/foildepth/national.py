@@ -161,53 +161,69 @@ def build_chunk(cx, cy, cfg, data_dir, work_dir, stations, boxes, method=6):
     levels = {"LAT": 0.0, "MSL": msl[idx], "MHW": mhw[idx]}
     ceiling = ceil[idx]
     print(f"chunk {cx},{cy}: {width}×{height} px")
-    z, wet_at_lat, bathy, above_mhw, used = build.merge_sources(cfg["sources"], cfg, data_dir, transform, shape,
-                                                                offset=0.0, levels=levels)
+    z, wet_at_lat, bathy, above_mhw, used, hints = build.merge_sources(cfg["sources"], cfg, data_dir, transform, shape,
+                                                                       offset=0.0, levels=levels)
     result = {"chunk": [cx, cy], "regions": {}}
     if used:
         lat_mid = build.grid_lonlat_bounds(transform, shape)
         mpp = transform.a * math.cos(math.radians((lat_mid[1] + lat_mid[3]) / 2))
+        sea = shore = None
+        if cfg.get("osm"):
+            sea, shore = build.osm_mask(cfg["osm"], data_dir, transform, shape)
         out, stats = build.finish(z, wet_at_lat, bathy, above_mhw, np.zeros(shape, dtype=bool), ceiling, cfg, mpp,
-                                  levels["MHW"])
+                                  levels["MHW"], sea=sea, shore=shore, hints=hints)
+        stats["satellite"] = hints["compare"]
         result["stats"] = stats
-        del z, bathy, wet_at_lat, above_mhw
+        del z, bathy, wet_at_lat, above_mhw, hints
+        # The whole grid, margin and all, is cut into the regions and
+        # pyramided, so the padding of land beside water (build.pad_land) sees
+        # past the chunk's edge; only the chunk's own tiles are kept.
         inner = (slice(m * size, (m + k) * size), slice(m * size, (m + k) * size))
-        out = out[inner]
-        region = idx[inner].astype(np.int16)
-        region[km[inner] > cfg["maxStationKm"]] = -1
-        itr, _, _ = build.tile_grid(tx0, tx1, ty0, ty1, zmax, size)
-        lon, lat = pixel_lonlat(itr, out.shape)
+        region = idx.astype(np.int16)
+        region[km > cfg["maxStationKm"]] = -1
+        lon, lat = pixel_lonlat(transform, out.shape)
         pilot = in_boxes(lon, lat, boxes)
         pilot_min = min((b[2] for b in boxes), default=99)
         edge = build.edge_value(out, cfg)
         content = (out > cfg["deepMetres"] + 1) & (out < cfg["landMetres"] - 1)
         names = [s["name"] for s in used]
-        for r in np.unique(region[(region >= 0) & content]):
+        full = (tx0 - m, ty0 - m, tx1 + m, ty1 + m)
+
+        def own(zz, x, y):
+            d = zmax - zz
+            return (tx0 >> d) <= x <= (tx1 >> d) and (ty0 >> d) <= y <= (ty1 >> d)
+
+        for r in np.unique(region[inner][(region[inner] >= 0) & content[inner]]):
             mine = region == r
             grid = np.where(mine, out, edge)
-            if not build.has_content(np.where(mine, out, cfg["landMetres"]), cfg):
+            if not build.has_content(np.where(mine, out, cfg["landMetres"])[inner], cfg):
                 continue
             cut = np.where(pilot, edge, grid) if pilot.any() else grid
+            ceil_r = stations[r]["ceiling"]
             tiles = []
             z10 = None
-            plain = {(zz, x, y): t for zz, x, y, t in build.pyramid(grid, (tx0, ty0, tx1, ty1), size, zc, zmax, cfg)}
-            masked = ({(zz, x, y): t for zz, x, y, t in build.pyramid(cut, (tx0, ty0, tx1, ty1), size, zc, zmax, cfg)}
-                      if pilot.any() else plain)
-            for key, tile in plain.items():
+            plain = {(zz, x, y): (t, raw) for zz, x, y, t, raw in
+                     build.pyramid(grid, full, size, zc, zmax, cfg, ceil_r, raw=True) if own(zz, x, y)}
+            masked = ({(zz, x, y): t for zz, x, y, t in build.pyramid(cut, full, size, zc, zmax, cfg, ceil_r)
+                       if own(zz, x, y)} if pilot.any() else {key: t for key, (t, _) in plain.items()})
+            for key, (tile, raw) in plain.items():
                 zz, x, y = key
                 use = masked[key] if zz >= pilot_min else tile
                 if build.has_content(use, cfg):
                     tiles.append((zxy_to_tileid(zz, x, y), build.encode(use, method)))
-                if zz == zc and build.has_content(tile, cfg):
-                    z10 = tile.copy()
-            rows = np.flatnonzero((mine & content).any(axis=1))
-            cols = np.flatnonzero((mine & content).any(axis=0))
-            bbox = [float(lon[cols[0]]), float(lat[rows[-1]]), float(lon[cols[-1]]), float(lat[rows[0]])]
+                if zz == zc and build.has_content(raw, cfg):
+                    z10 = raw.copy()
+            mine, content_r = mine[inner], content[inner]
+            out_i = out[inner]
+            lon_i, lat_i = lon[m * size:(m + k) * size], lat[m * size:(m + k) * size]
+            rows = np.flatnonzero((mine & content_r).any(axis=1))
+            cols = np.flatnonzero((mine & content_r).any(axis=0))
+            bbox = [float(lon_i[cols[0]]), float(lat_i[rows[-1]]), float(lon_i[cols[-1]]), float(lat_i[rows[0]])]
             result["regions"][stations[r]["id"]] = {
                 "tiles": tiles, "z10": z10, "bbox": bbox, "sources": names,
-                "pixels": int((mine & content).sum()),
-                "intertidal": int((mine & content & (out > 0) & (out < 20)).sum()),
-                "unsurveyed": int((mine & (out == cfg["noSurveyMetres"])).sum()),
+                "pixels": int((mine & content_r).sum()),
+                "intertidal": int((mine & content_r & (out_i > 0) & (out_i < 20)).sum()),
+                "unsurveyed": int((mine & content_r & build.is_estimate(out_i)).sum()),
             }
     os.makedirs(os.path.join(work_dir, "chunks"), exist_ok=True)
     path = os.path.join(work_dir, "chunks", f"{cx}_{cy}.pkl")
@@ -246,7 +262,47 @@ def run_chunks(cfg, data_dir, work_dir, jobs, only=None, method=6, force=False):
             print(f"[{done}/{len(args)}] {cx},{cy} {summary}", flush=True)
 
 
-def assemble(cfg, work_dir, out_dir, method=6):
+class Fill:
+    """What a tile an archive leaves out (nothing to draw) holds, at any zoom:
+    the deep value where OpenStreetMap says sea, land elsewhere, as
+    build.edge_value writes a region's edge. An overview made from it beside
+    a tile with content then meets the sea as sea: filled with land, the open
+    sea at a chunk's edge drew a line of every colour on the zoomed-out chart."""
+
+    def __init__(self, cfg, data_dir, size):
+        self.cfg, self.data_dir, self.size, self.cache = cfg, data_dir, size, {}
+
+    def __call__(self, z, x, y):
+        key = (z, x, y)
+        if key not in self.cache:
+            if not self.cfg.get("osm") or self.data_dir is None:
+                self.cache[key] = np.zeros((self.size, self.size), dtype=bool)
+            else:
+                t, _, _ = build.tile_grid(x, x, y, y, z, self.size)
+                sea, _ = build.osm_mask(self.cfg["osm"], self.data_dir, t, (self.size, self.size), quiet=True)
+                self.cache[key] = sea
+        return np.where(self.cache[key], self.cfg["deepMetres"], self.cfg["landMetres"]).astype(np.float32)
+
+
+def pad_tiles(level, size, cfg, ceiling, zoom=None, fill=None):
+    """Each tile of a level padded (build.pad_land) with its eight
+    neighbours round it, so land at a tile's edge sees the water across it."""
+    land = cfg["landMetres"]
+    out = {}
+    for (x, y), tile in level.items():
+        big = np.full((3 * size, 3 * size), land, dtype=np.float32)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                t = level.get((x + dx, y + dy))
+                if t is None and fill is not None:
+                    t = fill(zoom, x + dx, y + dy)
+                if t is not None:
+                    big[(dy + 1) * size:(dy + 2) * size, (dx + 1) * size:(dx + 2) * size] = t
+        out[(x, y)] = build.pad_land(big, cfg, ceiling)[size:2 * size, size:2 * size]
+    return out
+
+
+def assemble(cfg, work_dir, out_dir, method=6, data_dir=None):
     """Each region's tiles from every chunk, its overviews below the chunk
     zoom from the chunks' grids, and one archive per region."""
     stations = {s["id"]: s for s in load_stations(cfg)}
@@ -274,6 +330,7 @@ def assemble(cfg, work_dir, out_dir, method=6):
     os.makedirs(out_dir, exist_ok=True)
     entries = []
     land = cfg["landMetres"]
+    fill = Fill(cfg, data_dir, size)
     for sid in sorted(regions):
         g = regions[sid]
         level = g["z10"]
@@ -285,12 +342,17 @@ def assemble(cfg, work_dir, out_dir, method=6):
             nxt = {}
             for (px, py), kids in parents.items():
                 big = np.full((2 * size, 2 * size), land, dtype=np.float32)
-                for (ox, oy), grid in kids.items():
-                    big[oy * size:(oy + 1) * size, ox * size:(ox + 1) * size] = grid
+                for ox in (0, 1):
+                    for oy in (0, 1):
+                        grid = kids.get((ox, oy))
+                        if grid is None:
+                            grid = fill(zoom + 1, px * 2 + ox, py * 2 + oy)
+                        big[oy * size:(oy + 1) * size, ox * size:(ox + 1) * size] = grid
                 tile = build.downsample(big, cfg)
                 if build.has_content(tile, cfg):
                     nxt[(px, py)] = tile
-                    tiles.append((zxy_to_tileid(zoom, px, py), build.encode(tile, method)))
+            for key, tile in pad_tiles(nxt, size, cfg, stations[sid]["ceiling"], zoom, fill).items():
+                tiles.append((zxy_to_tileid(zoom, *key), build.encode(tile, method)))
             level = nxt
         rid = region_id(cfg, sid)
         st = stations[sid]
@@ -342,6 +404,10 @@ def write_index(cfg, out_dir, pilots_dir, pilots_cfg=None):
         "datum": "LAT", "encoding": "terrarium",
         "floorMetres": cfg["floorMetres"], "deepMetres": cfg["deepMetres"],
         "landMetres": cfg["landMetres"], "noSurveyMetres": cfg["noSurveyMetres"],
+        # Schema 2's additions: a height whose Terrarium blue byte is this
+        # over a multiple of 8 is an estimate (build.mark_estimate); from
+        # `padMetres` up is land (build.pad_land), not a height.
+        "estimateBlue": round(build.ESTIMATE_OFFSET * 256), "padMetres": build.PAD_MIN,
         "areas": pilots + regions,
         "attribution": f"{areas_cfg['attribution']} {cfg['attribution']}",
     }
@@ -373,7 +439,7 @@ def main():
         only = [tuple(int(v) for v in o.split(",")) for o in a.only] if a.only else None
         run_chunks(cfg, a.data, a.work, a.jobs, only, a.method, a.force)
     elif a.step == "assemble":
-        assemble(cfg, a.work, a.out, a.method)
+        assemble(cfg, a.work, a.out, a.method, a.data)
     elif a.step == "index":
         write_index(cfg, a.out, a.pilots)
 
