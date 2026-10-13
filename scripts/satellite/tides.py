@@ -21,6 +21,16 @@ waterline sees; else the fitted model. An observation further than
 `maxSurgeMetres` from the model, or from a gauge-year whose median departs
 from it by more than `maxGaugeOffsetMetres` (a datum change), is not used.
 
+Great Britain (SATELLITE_CONFIG=config-gb.json) has no Marine Institute
+stations: its gauges (gauges_gb.json, the UK National Tide Gauge Network and
+the Channel Coastal Observatory's, on the same ERDDAP, mid-2022 to late 2024)
+and, where the coast is further than tides.fillKm from all of them, the model
+alone at a point offshore (`place` writes stations_gb.json). Some gauges are
+in chart datum and some in Ordnance Datum Newlyn, so with tides.datum
+"modelLAT" every station's datum is its own fitted model's 19-year lowest,
+the gauges' levels moved with it.
+
+    python -I tides.py place        # Great Britain: stations_gb.json (needs coarse.py's coarse.tif)
     python -I tides.py fetch        # downloads: predictions, gauges
     python -I tides.py calibrate    # work/tides/calibration.json
     python -I tides.py scenes       # work/tides/scenes.json (needs catalog.py's lists)
@@ -97,6 +107,7 @@ def save(path, text):
 
 def fetch(stations, workers=4):
     d = common.path("downloads", "tides")
+    gauge_from = common.config().get("tides", {}).get("gaugeFrom", NI_FROM)
     jobs = []
     for s in stations:
         if not s["ni"]:
@@ -115,7 +126,7 @@ def fetch(stations, workers=4):
         elif s.get("gauge"):
             out = os.path.join(d, "ni", f"{s['id']}.csv")
             url = (f"{EMODNET}.csv?time,SLEV,SLEV_QC&PLATFORMCODE={quote(chr(34) + s['gauge']['platform'] + chr(34))}"
-                   f"&time{quote('>=')}{NI_FROM}&time{quote('<')}{NI_TO}")
+                   f"&time{quote('>=')}{gauge_from}&time{quote('<')}{NI_TO}")
             jobs.append((out, url))
     todo = [(o, u) for o, u in jobs if not os.path.exists(o)]
     print(f"tides: {len(todo)} of {len(jobs)} downloads to do", flush=True)
@@ -131,9 +142,11 @@ def fetch(stations, workers=4):
 
 
 def load_series(path, value_col=1, flag_col=2, good_flags=None):
-    """(epoch seconds, level) arrays from an ERDDAP csv; bad flags and NaNs dropped."""
+    """(epoch seconds, level) arrays from an ERDDAP csv; bad flags, NaNs and
+    levels outside tides.validRange dropped (the Severn's reach 14 m)."""
     if not os.path.exists(path):
         return np.empty(0), np.empty(0)
+    lo, hi = common.config().get("tides", {}).get("validRange", [-3, 9])
     t, v = [], []
     with open(path) as fh:
         for row in rows(fh.read()):
@@ -141,7 +154,7 @@ def load_series(path, value_col=1, flag_col=2, good_flags=None):
                 val = float(row[value_col])
             except (ValueError, IndexError):
                 continue
-            if not np.isfinite(val) or not -3 < val < 9:
+            if not np.isfinite(val) or not lo < val < hi:
                 continue
             if good_flags is not None and len(row) > flag_col and row[flag_col] not in good_flags:
                 continue
@@ -199,15 +212,54 @@ def fit_reference(lon, lat, t_ref, v_ref):
     return best
 
 
-def calibrate(stations, force=False):
-    path = common.path("work", "tides", "calibration.json")
-    out = {} if force or not os.path.exists(path) else common.read_json(path)["stations"]
+def calibrate_one(s, datum):
+    """One station's fit (not a basin's)."""
     long_t = np.arange(datetime(2020, 1, 1, tzinfo=timezone.utc).timestamp(),
                        datetime(2039, 1, 1, tzinfo=timezone.utc).timestamp(), 1800.0)
-    for s in sorted(stations, key=lambda s: bool(s.get("lagOf"))):
-        if s["id"] in out:
-            continue
-        if s.get("lagOf"):
+    lon, lat = s["model"]
+    entry = {"model": [lon, lat]}
+    if not s["ni"]:
+        t, v = load_series(common.path("downloads", "tides", "pred", f"{s['id']}.csv"), flag_col=99)
+        ref = "Marine Institute prediction 2026 (imiTidePrediction)"
+    elif s.get("gauge"):
+        t, v = load_series(common.path("downloads", "tides", "ni", f"{s['id']}.csv"), good_flags=("1", "2", "0"))
+        ref = (f"UK gauge {s['gauge']['platform']} (via EMODnet Physics), "
+               + ("its datum moved to the fitted model's 19-year lowest" if datum == "modelLAT" else "chart datum"))
+    else:
+        t, v = np.empty(0), np.empty(0)
+        ref = None
+    if len(t) > 500:
+        shift, a, b, rms = fit_reference(lon, lat, t, v)
+        entry.update({"reference": ref, "samples": int(len(t)), "shiftMinutes": shift, "a": round(a, 4),
+                      "b": round(b, 4), "rms": round(rms, 3)})
+        z = entry["a"] + entry["b"] * model(lon, lat, long_t + entry["shiftMinutes"] * 60)
+        if datum == "modelLAT":
+            # The gauge's datum (chart datum or ODN) to the fitted model's own lowest.
+            entry["obsOffset"] = round(float(-z.min()), 4)
+            entry["a"] = round(entry["a"] + entry["obsOffset"], 4)
+            z = z + entry["obsOffset"]
+    else:
+        # No reference: the model as it is, its datum its own 19-year lowest.
+        z = model(lon, lat, long_t)
+        entry.update({"reference": "none: EOT20 as is, datum its own 19-year lowest (model LAT)",
+                      "shiftMinutes": 0, "a": round(float(-z.min()), 4), "b": 1.0, "rms": None})
+        z = z + entry["a"]
+    entry["modelLowest19y"] = round(float(z.min()), 3)
+    entry["modelHighest19y"] = round(float(z.max()), 3)
+    return entry
+
+
+def calibrate(stations, force=False, workers=4):
+    path = common.path("work", "tides", "calibration.json")
+    out = {} if force or not os.path.exists(path) else common.read_json(path)["stations"]
+    datum = common.config().get("tides", {}).get("datum", "reference")
+    todo = [s for s in stations if s["id"] not in out and not s.get("lagOf")]
+    with cf.ProcessPoolExecutor(workers) as pool:
+        for s, entry in zip(todo, pool.map(calibrate_one, todo, [datum] * len(todo))):
+            out[s["id"]] = entry
+            print(f"{s['id']}: {entry}", flush=True)
+    for s in stations:
+        if s.get("lagOf") and s["id"] not in out:
             # A basin: its parent's fit, lagMinutes later (lag.py read the lag off the imagery).
             entry = dict(out[s["lagOf"]])
             entry["shiftMinutes"] = entry["shiftMinutes"] - s["lagMinutes"]
@@ -215,32 +267,6 @@ def calibrate(stations, force=False):
                                   "basin's wet and dry looks (lag.py); the parent's amplitude and datum")
             out[s["id"]] = entry
             print(f"{s['id']}: {entry}", flush=True)
-            continue
-        lon, lat = s["model"]
-        entry = {"model": [lon, lat]}
-        if not s["ni"]:
-            t, v = load_series(common.path("downloads", "tides", "pred", f"{s['id']}.csv"), flag_col=99)
-            ref = "Marine Institute prediction 2026 (imiTidePrediction)"
-        elif s.get("gauge"):
-            t, v = load_series(common.path("downloads", "tides", "ni", f"{s['id']}.csv"), good_flags=("1", "2", "0"))
-            ref = f"UK gauge {s['gauge']['platform']} (Copernicus Marine in-situ via EMODnet Physics), chart datum"
-        else:
-            t, v = np.empty(0), np.empty(0)
-            ref = None
-        if len(t) > 500:
-            shift, a, b, rms = fit_reference(lon, lat, t, v)
-            entry.update({"reference": ref, "samples": int(len(t)), "shiftMinutes": shift, "a": round(a, 4),
-                          "b": round(b, 4), "rms": round(rms, 3)})
-        else:
-            # No reference: the model as it is, its datum its own 19-year lowest.
-            z = model(lon, lat, long_t)
-            entry.update({"reference": "none: EOT20 as is, datum its own 19-year lowest (model LAT)",
-                          "shiftMinutes": 0, "a": round(float(-z.min()), 4), "b": 1.0, "rms": None})
-        z = entry["a"] + entry["b"] * model(lon, lat, long_t + entry["shiftMinutes"] * 60)
-        entry["modelLowest19y"] = round(float(z.min()), 3)
-        entry["modelHighest19y"] = round(float(z.max()), 3)
-        out[s["id"]] = entry
-        print(f"{s['id']}: {entry}", flush=True)
     common.write_json(common.path("work", "tides", "calibration.json"),
                       {"generatedAt": datetime.now(timezone.utc).isoformat()[:19] + "Z", "stations": out})
     return out
@@ -281,7 +307,7 @@ def scenes(stations):
             obs = interp_obs(t, v, when, max_gap=20 * 60)
         elif s.get("gauge"):
             t, v = load_series(common.path("downloads", "tides", "ni", f"{s['id']}.csv"), good_flags=("1", "2", "0"))
-            obs = interp_obs(t, v, when, max_gap=2 * 3600 + 60)
+            obs = interp_obs(t, v, when, max_gap=2 * 3600 + 60) + c.get("obsOffset", 0.0)
         # A gauge-year off the model by a datum's worth is not used, nor a single wild reading.
         years = np.array([int(x[:4]) for x in stamps])
         dropped_years = []
@@ -303,10 +329,56 @@ def scenes(stations):
                       {"datum": "LAT (chart datum for the UK gauges)", "report": report, "levels": levels}, indent=None)
 
 
+# ---- Great Britain's stations ------------------------------------------------------
+
+
+def place(fill_km, out_path):
+    """stations_gb.json: every gauge in gauges_gb.json, then the model alone
+    wherever the coast is further than fill_km from every station so far (the
+    furthest first), at a point of sea 1-2 km off it."""
+    import rasterio
+    from pyproj import Transformer
+    gauges = common.read_json(os.path.join(HERE, "gauges_gb.json"))["gauges"]
+    with rasterio.open(common.path("work", "coarse.tif")) as src:
+        sea, s2l = src.read(3) > 0, src.read(5)
+        tf, crs = src.transform, src.crs
+    # Coast points: sea 1-2 km from the land, on a 500 m lattice.
+    band = sea & (s2l >= 1.0) & (s2l <= 2.0)
+    keep = np.zeros_like(band)
+    keep[::5, ::5] = band[::5, ::5]
+    rows, cols = np.nonzero(keep)
+    x, y = tf * (cols + 0.5, rows + 0.5)
+    lon, lat = Transformer.from_crs(crs, 4326, always_xy=True).transform(x, y)
+    out = {}
+    for g in gauges:
+        out[g["id"]] = {"name": g["name"], "lon": g["lon"], "lat": g["lat"], "model": [g["lon"], g["lat"]],
+                        "gauge": {"source": "emodnet", "platform": g["platform"]}}
+    pts = [{"lon": v["lon"], "lat": v["lat"]} for v in out.values()]
+    d = common.station_distances(lon, lat, pts).min(axis=0)
+    while d.max() > fill_km:
+        k = int(np.argmax(d))
+        sid = f"GB_{lat[k]:.2f}N_{abs(lon[k]):.2f}{'W' if lon[k] < 0 else 'E'}_MODELLED".replace(".", "")
+        out[sid] = {"name": f"{lat[k]:.2f}N {abs(lon[k]):.2f}{'W' if lon[k] < 0 else 'E'} (modelled)",
+                    "lon": round(float(lon[k]), 4), "lat": round(float(lat[k]), 4),
+                    "model": [round(float(lon[k]), 4), round(float(lat[k]), 4)]}
+        d = np.minimum(d, common.station_distances(lon, lat, [out[sid]])[0])
+    n_model = sum(1 for v in out.values() if "gauge" not in v)
+    print(f"{len(gauges)} gauges and {n_model} modelled stations, every coast point within {fill_km} km", flush=True)
+    common.write_json(out_path, {
+        "about": "Tide stations for Great Britain's coast (tides.py place): the UK gauges on EMODnet Physics' "
+                 "ERDDAP (gauges_gb.json), EOT20 fitted to each; where the coast is further than "
+                 f"{fill_km} km from all of them, EOT20 as it is at a point 1-2 km offshore. Every datum is "
+                 "the station's fitted model's 19-year lowest (tides.datum modelLAT).",
+        "stations": out})
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("step", choices=["fetch", "calibrate", "scenes"])
+    p.add_argument("step", choices=["place", "fetch", "calibrate", "scenes"])
     a = p.parse_args()
+    if a.step == "place":
+        cfg = common.config()
+        return place(cfg["tides"]["fillKm"], os.path.join(HERE, cfg["stations"]["others"]))
     st = common.stations()
     if a.step == "fetch":
         fetch(st)

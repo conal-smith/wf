@@ -1,4 +1,5 @@
 """The island at 100 m: land, sea, what the layer covers and where the coast is.
+(Great Britain's, with config-gb.json: its land is coarse.landPolygon's, below.)
 
 From Sentinel-2 itself, so nothing else's licence comes into it: for every
 tile, the clearest acquisitions (tile cloud under coarse.maxTileCloud) read at
@@ -97,11 +98,28 @@ def read_coarse(it):
     return wet & valid, valid, transform
 
 
+def tile_window(cat, tf, shape, crs, pad=20):
+    """The grid's rows and columns the tile covers (with a margin)."""
+    from rasterio.warp import transform_bounds
+    l, b, r, t = transform_bounds(f"EPSG:{cat['epsg']}", crs, *cat["bbox10"], densify_pts=21)
+    c0, r0 = ~tf * (l, t)
+    c1, r1 = ~tf * (r, b)
+    r0, c0 = max(int(r0) - pad, 0), max(int(c0) - pad, 0)
+    r1, c1 = min(int(r1) + pad, shape[0]), min(int(c1) + pad, shape[1])
+    return slice(r0, r1), slice(c0, c1)
+
+
 def accumulate(tile, cat, cfg, tf, shape, crs):
+    """(window, wet votes, valid votes) over the tile's part of the grid."""
     import rasterio
     from rasterio.warp import reproject, Resampling
-    wet_sum = np.zeros(shape, np.uint16)
-    valid_sum = np.zeros(shape, np.uint16)
+    win = tile_window(cat, tf, shape, crs)
+    wshape = (win[0].stop - win[0].start, win[1].stop - win[1].start)
+    wtf = tf * tf.translation(win[1].start, win[0].start)
+    wet_sum = np.zeros(wshape, np.uint16)
+    valid_sum = np.zeros(wshape, np.uint16)
+    if min(wshape) <= 0:
+        return win, wet_sum, valid_sum
     for it in pick(cat["items"], cfg["coarse"]["scenesPerTile"], cfg["coarse"]["maxTileCloud"]):
         for attempt in range(3):
             try:
@@ -112,13 +130,59 @@ def accumulate(tile, cat, cfg, tf, shape, crs):
         else:
             continue
         for arr, acc in ((wet, wet_sum), (valid, valid_sum)):
-            dst = np.zeros(shape, np.uint8)
+            dst = np.zeros(wshape, np.uint8)
             reproject(arr.astype(np.uint8), dst, src_transform=src_tf, src_crs=f"EPSG:{cat['epsg']}",
-                      dst_transform=tf, dst_crs=crs, resampling=Resampling.nearest, src_nodata=None,
+                      dst_transform=wtf, dst_crs=crs, resampling=Resampling.nearest, src_nodata=None,
                       init_dest_nodata=False)
             acc += dst
         # Cells outside the tile come back 0 for both: no vote.
-    return wet_sum, valid_sum
+    return win, wet_sum, valid_sum
+
+
+def chained(lab, land, touching, px_km):
+    """Ireland: the biggest land not joined to the box's edge, and the land
+    within 15 km of it by a chain of islands, twice over."""
+    from scipy import ndimage
+    sizes = np.bincount(lab.ravel())
+    sizes[0] = 0
+    sizes_ok = sizes.copy()
+    sizes_ok[touching] = 0
+    main_island = lab == sizes_ok.argmax()
+    near = ndimage.distance_transform_edt(~main_island) * px_km <= 15
+    keep = np.unique(lab[near & land])
+    keep = keep[(keep > 0) & ~np.isin(keep, touching)]
+    ireland = np.isin(lab, keep)
+    # Chain once more, so an island off an island comes in (Fastnet off Cape Clear).
+    near = ndimage.distance_transform_edt(~ireland) * px_km <= 15
+    keep = np.unique(lab[near & land])
+    keep = keep[(keep > 0) & ~np.isin(keep, touching)]
+    return keep
+
+
+def in_polygon(lab, land, sure, ring, min_sure, tf, shape, crs):
+    """Great Britain: every piece of land mostly inside coarse.landPolygon (lon,
+    lat), a line drawn through the seas between it and Ireland and the
+    continent: the Hebrides, Orkney, Shetland, Scilly and Man come in, which
+    no chain of islands 15 km apart reaches, and Rathlin and Alderney stay out.
+    A piece needs min_sure cells dry in four fifths of at least four clear
+    looks: the open sea's specks, a cloud or glint the masks missed in a
+    handful of looks (dry in about half), are left out, and so are most oil
+    platforms; St Kilda, North Rona and Sule Skerry have dozens."""
+    from pyproj import Transformer
+    from rasterio.features import rasterize
+    to = Transformer.from_crs(4326, crs, always_xy=True)
+    pts = []
+    for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
+        for f in np.linspace(0, 1, 50, endpoint=False):
+            pts.append(to.transform(x0 + f * (x1 - x0), y0 + f * (y1 - y0)))
+    inside = rasterize([({"type": "Polygon", "coordinates": [pts + pts[:1]]}, 1)], out_shape=shape,
+                       transform=tf, fill=0, dtype="uint8").astype(bool)
+    n = lab.max() + 1
+    total = np.bincount(lab[land], minlength=n)
+    within = np.bincount(lab[land & inside], minlength=n)
+    certain = np.bincount(lab[land & sure], minlength=n)
+    keep = np.flatnonzero((within * 2 > total) & (total > 0) & (certain >= min_sure))
+    return keep[keep > 0]
 
 
 def main():
@@ -139,34 +203,29 @@ def main():
         with cf.ThreadPoolExecutor(8) as pool:
             futs = {pool.submit(accumulate, t, cat, cfg, tf, shape, crs): t for t, cat in cats.items()}
             for f in cf.as_completed(futs):
-                w_, v_ = f.result()
-                wet += w_
-                valid += v_
+                win, w_, v_ = f.result()
+                wet[win] += w_
+                valid[win] += v_
                 print(f"  {futs[f]} done", flush=True)
         os.makedirs(common.path("work"), exist_ok=True)
         np.savez_compressed(votes, wet=wet, valid=valid)
     px_km = c["pixelMetres"] / 1000
     water = (wet * 2 >= valid) | (valid < 2)
+    sure = (valid >= 4) & (wet * 5 <= valid)
+    del wet, valid
     lab, n = ndimage.label(water)
     edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
     sea = np.isin(lab, edge[edge > 0])
+    del water
     land = ~sea
     lab, n = ndimage.label(land)
-    sizes = np.bincount(lab.ravel())
-    sizes[0] = 0
     touching = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
-    sizes_ok = sizes.copy()
-    sizes_ok[touching] = 0
-    main_island = lab == sizes_ok.argmax()
-    near = ndimage.distance_transform_edt(~main_island) * px_km <= 15
-    keep = np.unique(lab[near & land])
-    keep = keep[(keep > 0) & ~np.isin(keep, touching)]
-    ireland = np.isin(lab, keep)
-    # Chain once more, so an island off an island comes in (Fastnet off Cape Clear).
-    near = ndimage.distance_transform_edt(~ireland) * px_km <= 15
-    keep = np.unique(lab[near & land])
-    keep = keep[(keep > 0) & ~np.isin(keep, touching)]
+    if c.get("landPolygon"):
+        keep = in_polygon(lab, land, sure, c["landPolygon"], c.get("minSureCells", 5), tf, shape, crs)
+    else:
+        keep = chained(lab, land, touching, px_km)
     ireland = ndimage.binary_fill_holes(np.isin(lab, keep))
+    del lab
     sea = sea & ~ireland
     sea_to_land = ndimage.distance_transform_edt(~ireland) * px_km
     # Smoothed (σ 300 m): on a 100 m grid the distance's contours are steps,

@@ -42,8 +42,9 @@ def footprints():
 class Ownership:
     """Tile weights at any points given in one CRS."""
 
-    def __init__(self, fps, cfg, crs="EPSG:2157"):
+    def __init__(self, fps, cfg, crs=None):
         from pyproj import Transformer
+        crs = crs or cfg["coarse"]["crs"]
         self.fps = fps
         self.names = sorted(fps)
         self.blend = cfg["coarse"]["tileBlendKm"] * 1000
@@ -115,7 +116,7 @@ def main():
     to_wgs = {}
     station_tiles = {}
     for tile, fp in sorted(fps.items()):
-        to_itm = Transformer.from_crs(f"EPSG:{fp['epsg']}", "EPSG:2157", always_xy=True)
+        to_itm = Transformer.from_crs(f"EPSG:{fp['epsg']}", cfg["coarse"]["crs"], always_xy=True)
         to_wgs[tile] = Transformer.from_crs(f"EPSG:{fp['epsg']}", 4326, always_xy=True)
         blocks, _ = block_grid(fp, size)
         cblocks, vblocks, sts = [], [], set()

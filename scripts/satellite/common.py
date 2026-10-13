@@ -21,7 +21,9 @@ REFL_MAX = 0.5
 
 
 def config(path=None):
-    with open(path or os.path.join(HERE, "config.json")) as fh:
+    """config.json, or the file SATELLITE_CONFIG names (beside this one if not
+    absolute): config-gb.json runs the same steps over Great Britain."""
+    with open(path or os.path.join(HERE, os.environ.get("SATELLITE_CONFIG", "config.json"))) as fh:
         return json.load(fh)
 
 
@@ -81,9 +83,15 @@ def stations(foil_stations=None, ni_stations=None, include_inactive=False):
     """Every tide station, sorted: the Marine Institute's 33 (the foil-depth
     regions' stations, scripts/foildepth/stations.json) then Northern
     Ireland's (stations_ni.json). Each has id, name, lon, lat, `ni`, and the
-    point EOT20 is evaluated at."""
-    foil = read_json(foil_stations or os.path.join(REPO, "scripts", "foildepth", "stations.json"))["stations"]
-    ni = read_json(ni_stations or os.path.join(HERE, "stations_ni.json"))["stations"]
+    point EOT20 is evaluated at. The config's `stations` can name other files
+    (Great Britain: no Marine Institute stations, and stations_gb.json as the
+    others, which take the `ni` group's part: fitted to a UK gauge, or the
+    model as it is)."""
+    files = config().get("stations", {})
+    mi_file = files.get("marineInstitute", "scripts/foildepth/stations.json")
+    foil = (read_json(foil_stations or os.path.join(REPO, mi_file))["stations"]
+            if foil_stations or mi_file else {})
+    ni = read_json(ni_stations or os.path.join(HERE, files.get("others", "stations_ni.json")))["stations"]
     out = []
     for sid, s in sorted(foil.items()):
         out.append({"id": sid, "name": s["name"], "lon": float(s["lon"]), "lat": float(s["lat"]), "ni": False,
