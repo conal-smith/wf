@@ -39,6 +39,8 @@ $PY -I $S/run.py --all          # scout.py, fetch.py then compose.py, tile by ti
 $PY -I $S/tiles.py imagery      # high.pmtiles, low.pmtiles, index.json
 $PY -I $S/tiles.py intertidal   # tide-<station>.pmtiles, index.json
 $PY -I $S/validate.py --infomar <infomar10> --lidar dub:2.561:<mosaic> ...
+$PY -I $S/bedtype.py fit --region dublin:29UPV:2.561:<mosaic> --region brandon:29UMT:2.677:<mosaic>
+$PY -I $S/bedtype.py apply      # rocky.tif per tile: rock or weed, percent
 $PY -I $S/tiles.py imagery --tiles 29UPV --bbox -6.26,53.34,-6.04,53.50 --out <root>/out/satellite-offline
 $PY -I $S/publish.py --imagery <root>/out/satellite --intertidal <root>/out/intertidal \
     --offline <root>/out/satellite-offline --env deploy/home-compute/.env --upload
@@ -233,6 +235,29 @@ Reserved values (the index says them too):
 
 A tile with no height in it is left out. Overviews (z6–z12) are the mean of
 the heights under each pixel, else the most telling reserved value.
+
+### Rock or weed
+
+`bedtype.py` rates each observed foreshore pixel's likelihood of being rock or
+weed rather than sand or mud (`rocky.tif`, percent). The features: the low
+tide's bed from `lowir.tif` and the tide zone's colour (`lowrgb.tif`: log of
+B11 over red, NDVI, NDWI, log B08, log red) and the flip heights' own spread
+over 3×3 and 5×5 pixels (a rocky shore's heights jump, a flat's run
+smoothly). The labels are the LiDAR's: the 2 m DTM's RMS about its own 10 m
+smoothing, rough over 0.10 m, smooth under 0.04 m, above 1.7 m LAT (dry at
+the flights). A class-balanced logistic model on both regions
+(`work/bed_model.json`); each region tested on the model from the other:
+
+| Held out | Pixels | Rough | AUC | Flagged that is rough, finding 60% of it |
+| --- | --- | --- | --- | --- |
+| Dublin (dub, mal mosaics) | 73,635 | 10% | 0.850 | 39% |
+| Brandon | 14,727 | 9% | 0.873 | 50% |
+
+Four to five times the base rate, from the far side of the island: a guide to
+where the bed is likely rock or weed, not a map of rocks (a boulder or a reef
+narrower than a pixel or two is lost in it). The colour alone separates them
+barely (AUC 0.57); the infrared and the heights' spread carry it. Where a
+LiDAR reaches, its own roughness says more.
 
 ## Findings
 
