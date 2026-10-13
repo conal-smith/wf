@@ -259,6 +259,33 @@ narrower than a pixel or two is lost in it). The colour alone separates them
 barely (AUC 0.57); the infrared and the heights' spread carry it. Where a
 LiDAR reaches, its own roughness says more.
 
+### Great Britain
+
+The same steps with `SATELLITE_CONFIG=config-gb.json` and a root of its own
+(Northern Ireland is in the island's run). What differs:
+
+- **Grid**: British National Grid (EPSG:27700), 100 m, 12,889 × 8,129;
+  `coarse.py` votes each tile into its own window of it.
+- **Land**: every piece mostly inside `coarse.landPolygon`, a line through
+  the North Channel, the Irish Sea, the Channel and the southern North Sea:
+  the Hebrides, St Kilda, Orkney, Shetland, Man and Scilly in; Rathlin, the
+  Channel Islands and the continent out. A piece needs 5 cells dry in four
+  fifths of at least four clear looks (`minSureCells`): the open sea's specks
+  (a cloud or glint dry in about half of a handful of looks) and most oil
+  platforms are left out, while St Kilda, North Rona, Sule Skerry and the
+  Flannans have dozens. 233,400 km² of land, 78,600 km² of coastal zone.
+- **Tides**: no Marine Institute stations. The 47 open UK gauges on EMODnet
+  Physics' ERDDAP (`gauges_gb.json`: the National Tide Gauge Network under
+  its short codes, hourly or 15-minute since 2012 to late 2024, and the
+  Channel Coastal Observatory's), EOT20 fitted to each; and EOT20 alone at
+  91 points 1–2 km offshore, placed furthest first until every coast point
+  is within 30 km of a station (`tides.py place`, `stations_gb.json`). Some
+  gauges are in chart datum, some in ODN (Deal, 3.58 m apart), so every
+  station's datum is its fitted model's 19-year lowest (`tides.datum`
+  `modelLAT`), the gauge's levels moved with it. Levels from −9 to 16 m are
+  kept (`validRange`: the Severn's reach 14 m).
+- **Rock or weed**: Ireland's model (`bed_model.json`) applied as it is.
+
 ## Findings
 
 (See the numbers below, filled in from the national run.)

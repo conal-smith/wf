@@ -186,7 +186,7 @@ def model(lon, lat, epoch_seconds):
     import pyTMD.compute
     t = np.asarray(epoch_seconds, dtype=np.float64).astype("datetime64[s]")
     out = np.empty(len(t))
-    step = 2000000
+    step = 200000  # pyTMD holds every constituent at every time: about 3 kB a time
     for i in range(0, len(t), step):
         z = pyTMD.compute.tide_elevations(np.array([lon]), np.array([lat]), t[i:i + step], directory=eot20_dir(),
                                           model="EOT20", type="time series", standard="datetime",
@@ -249,15 +249,20 @@ def calibrate_one(s, datum):
     return entry
 
 
-def calibrate(stations, force=False, workers=4):
+def calibrate(stations, force=False, workers=2):  # EOT20 takes about 4.5 GB a process
     path = common.path("work", "tides", "calibration.json")
     out = {} if force or not os.path.exists(path) else common.read_json(path)["stations"]
     datum = common.config().get("tides", {}).get("datum", "reference")
     todo = [s for s in stations if s["id"] not in out and not s.get("lagOf")]
-    with cf.ProcessPoolExecutor(workers) as pool:
+    def save():
+        common.write_json(path, {"generatedAt": datetime.now(timezone.utc).isoformat()[:19] + "Z", "stations": out})
+
+    # A fresh process a station: pyTMD's memory grows from one call to the next.
+    with cf.ProcessPoolExecutor(workers, max_tasks_per_child=1) as pool:
         for s, entry in zip(todo, pool.map(calibrate_one, todo, [datum] * len(todo))):
             out[s["id"]] = entry
             print(f"{s['id']}: {entry}", flush=True)
+            save()
     for s in stations:
         if s.get("lagOf") and s["id"] not in out:
             # A basin: its parent's fit, lagMinutes later (lag.py read the lag off the imagery).
@@ -267,8 +272,7 @@ def calibrate(stations, force=False, workers=4):
                                   "basin's wet and dry looks (lag.py); the parent's amplitude and datum")
             out[s["id"]] = entry
             print(f"{s['id']}: {entry}", flush=True)
-    common.write_json(common.path("work", "tides", "calibration.json"),
-                      {"generatedAt": datetime.now(timezone.utc).isoformat()[:19] + "Z", "stations": out})
+    save()
     return out
 
 
