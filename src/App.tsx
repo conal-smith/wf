@@ -21,16 +21,14 @@ import type {
   ChartLayers,
   FoilView,
   MapControls as Controls,
-  SatelliteView,
 } from "../force5/src/WindMap";
 import {
-  nearestSatelliteStation,
   parseSatelliteOption,
   SATELLITE_ATTRIBUTION,
-  satelliteNote,
   type SatelliteOption,
 } from "../force5/src/satellite";
-import { satelliteArchiveUrl, useSatellite } from "./useSatellite";
+import { useSatellite } from "./useSatellite";
+import { INTERTIDAL_FROM_ZOOM, useIntertidal } from "./useIntertidal";
 import {
   areaAt,
   areasAt,
@@ -114,6 +112,7 @@ import {
   type ColumnModel,
 } from "../force5/src/timeline";
 import { tideAt } from "../force5/src/tides";
+import { forecastUrl } from "../force5/src/urls";
 import { FEATURES } from "../shared/web/features";
 import { favourites } from "../shared/web/favourites";
 import {
@@ -776,32 +775,12 @@ export default function App() {
   );
 
   /* ---- the satellite image under the chart ---- */
-  const satelliteState = useSatellite(layers.satellite);
+  // Its index and code load the first time an image is chosen; then only the
+  // areas in view are drawn. The station nearest the map's centre gives the
+  // panel and the key the tide each image was taken at.
+  const satellite = useSatellite(layers.satellite, chartView);
   const chooseSatellite = (option: SatelliteOption) =>
     chooseLayers({ ...layers, satellite: option });
-  const satelliteView = useMemo<SatelliteView | null>(() => {
-    const m = satelliteState.manifest;
-    if (layers.satellite === "off" || !m) return null;
-    return {
-      option: layers.satellite,
-      url: satelliteArchiveUrl(m, layers.satellite),
-      bounds: m.bounds,
-      minzoom: m.minzoom,
-      maxzoom: m.maxzoom,
-      tileSize: m.tileSize,
-      attribution: m.attribution,
-    };
-  }, [layers.satellite, satelliteState.manifest]);
-  // The images' tides at the station nearest the map's centre, for the
-  // panel and the key: "high tide (≈4.6 m)".
-  const satelliteStation =
-    satelliteState.manifest && chartView
-      ? nearestSatelliteStation(
-          satelliteState.manifest.stations,
-          (chartView.west + chartView.east) / 2,
-          (chartView.south + chartView.north) / 2,
-        )
-      : null;
 
   /* ---- foilable depth at the selected tide ---- */
   // The stations whose curves are wanted: those of the areas in view, of the
@@ -849,10 +828,55 @@ export default function App() {
         : [],
     [foilState.manifest, chartView],
   );
+  // The Sentinel-2 intertidal heights, over the foil areas from the zoom a
+  // bay's flats fill the view: their index loads the first time the map is
+  // there with the layer on, and only the regions in view are read.
+  const intertidalShown =
+    layers.foil && !!chartView && chartView.zoom >= INTERTIDAL_FROM_ZOOM;
+  const intertidal = useIntertidal(intertidalShown);
+  const intertidalInView = useMemo(
+    () =>
+      intertidalShown && intertidal.manifest && chartView
+        ? areasInView(intertidal.manifest.areas, chartView, chartView.zoom)
+        : [],
+    [intertidalShown, intertidal.manifest, chartView],
+  );
   const foilViews = useMemo<FoilView[] | null>(() => {
     const m = foilState.manifest;
     if (!layers.foil || !m || !foilPalette) return null;
-    return foilInView.flatMap((area) => {
+    const heights = intertidal.manifest;
+    const over = intertidalInView.flatMap((area) => {
+      const curve = foilState.tides[area.station]?.curve;
+      const tide =
+        curve && foilTime !== null ? tideAt(curve, foilTime) : null;
+      if (!heights || tide === null) return [];
+      return [
+        {
+          id: area.id,
+          url: new URL(
+            forecastUrl(`${area.base}${area.url}`),
+            window.location.href,
+          ).href,
+          bounds: area.bounds,
+          minzoom: Math.max(area.minzoom, INTERTIDAL_FROM_ZOOM),
+          maxzoom: area.maxzoom,
+          tileSize: area.tileSize,
+          // The foil layer's colours at the same tide; every reserved value
+          // (another region's water, under the lowest tide seen, no fit,
+          // land) clear, so the foil archive under it shows there.
+          color: foilRamp(tide, foilPalette, {
+            dryCeiling: area.highestSeenMetres,
+            floor: area.lowestSeenMetres - 1,
+            deep: heights.deepMetres,
+            fade: 0,
+          }),
+          attribution: heights.attribution,
+          over: true,
+        },
+      ];
+    });
+    return [
+      ...foilInView.flatMap((area) => {
       const tide = foilTides[area.id]?.water;
       if (tide === undefined) return [];
       return [
@@ -872,8 +896,20 @@ export default function App() {
           attribution: m.attribution,
         },
       ];
-    });
-  }, [layers.foil, foilState.manifest, foilInView, foilTides, foilPalette]);
+      }),
+      ...over,
+    ];
+  }, [
+    layers.foil,
+    foilState.manifest,
+    foilState.tides,
+    foilInView,
+    foilTides,
+    foilPalette,
+    foilTime,
+    intertidal.manifest,
+    intertidalInView,
+  ]);
   /** The seabed under the last point tapped while the layer was on. */
   const [foilProbe, setFoilProbe] = useState<{
     lon: number;
@@ -900,7 +936,9 @@ export default function App() {
   const stationsKey = layers.foil
     ? [
         ...new Set(
-          [...foilInView, foilArea].flatMap((a) => (a ? [a.station] : [])),
+          [...foilInView, ...intertidalInView, foilArea].flatMap((a) =>
+            a ? [a.station] : [],
+          ),
         ),
       ]
         .sort()
@@ -919,7 +957,31 @@ export default function App() {
       setFoilProbe(null);
       return;
     }
+    const heights = intertidalShown ? intertidal : null;
     (async () => {
+      // Where the intertidal heights are drawn and have one here, theirs is
+      // the bed the colours show: read against the foil region on the same
+      // station, whose tide it is.
+      if (heights?.manifest && heights.index) {
+        for (const area of areasAt(heights.manifest.areas, lon, lat)) {
+          const region = m.areas.find(
+            (a) => a.kind === "region" && a.station === area.station,
+          );
+          if (!region) continue;
+          const z = await elevationAt(
+            area,
+            new URL(
+              forecastUrl(`${area.base}${area.url}`),
+              window.location.href,
+            ).href,
+            lon,
+            lat,
+            heights.manifest,
+          );
+          if (heights.index.isIntertidalHeight(heights.manifest, z))
+            return { area: region.id, z };
+        }
+      }
       let last: FoilPoint = null;
       for (const area of candidates) {
         const z = await elevationAt(area, foilArchiveUrl(m, area), lon, lat, m);
@@ -1172,8 +1234,8 @@ export default function App() {
         </li>
         <li>Tides: Marine Institute predictions</li>
         <li>
-          Satellite imagery:{" "}
-          {satelliteState.manifest?.attribution ?? SATELLITE_ATTRIBUTION}
+          Satellite imagery and intertidal heights:{" "}
+          {satellite.attribution ?? SATELLITE_ATTRIBUTION}
         </li>
         <li>
           Places: Fáilte Ireland (CC BY 4.0), OpenStreetMap (ODbL) and linked
@@ -1264,7 +1326,7 @@ export default function App() {
               onLayersChange={(next) => chooseLayers({ ...layers, ...next })}
               satellite={layers.satellite}
               onSatellite={chooseSatellite}
-              satelliteTides={satelliteStation}
+              satelliteTides={satellite.station}
               rideStops={rideStops}
               rider={rider}
               model={manifest?.model}
@@ -1288,7 +1350,7 @@ export default function App() {
               rideStops={rideStops}
               layers={layers}
               foil={foilViews}
-              satellite={satelliteView}
+              satellite={satellite.image}
               reducedMotion={reducedMotion}
               bottomInset={dockHeight}
               phone={phone}
@@ -1438,10 +1500,8 @@ export default function App() {
             />
           }
           sources={sources}
-          satellite={satelliteNote(layers.satellite, satelliteStation)}
-          satelliteError={
-            layers.satellite !== "off" ? satelliteState.error : null
-          }
+          satellite={satellite.note}
+          satelliteError={satellite.error}
         />
       )}
     </div>

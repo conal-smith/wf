@@ -18,10 +18,11 @@ import {
  * "unsurveyed" where the water is there at every tide but its depth is not
  * known; "deep" where it is deeper than the index's floor; null where there
  * is no water (land); "none" where the archive has no tile there (it leaves
- * out the tiles with nothing to draw: land, or deep water).
+ * out the tiles with nothing to draw: land, or deep water). The intertidal
+ * heights' archives (intertidal.ts) are read the same way.
  */
 export async function elevationAt(
-  area: FoilArea,
+  area: Pick<FoilArea, "maxzoom" | "tileSize">,
   url: string,
   lon: number,
   lat: number,

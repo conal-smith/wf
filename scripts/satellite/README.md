@@ -15,7 +15,9 @@ Two products from one national pass over Sentinel-2 L2A, 2017-01 to 2026-10:
    `rocks-pilot`), one archive per tide station's region, in the foil-depth
    layer's own encoding.
 
-Not drawn by the app: the heights are an input to the foil-depth build.
+The app draws the heights over the foil-depth layer from zoom 10, with the
+foil layer's colours at the same tide (`force5/src/intertidal.ts`), until the
+foil-depth build takes them in itself.
 
 ## Steps
 
@@ -42,8 +44,10 @@ $PY -I $S/validate.py --infomar <infomar10> --lidar dub:2.561:<mosaic> ...
 $PY -I $S/bedtype.py fit --region dublin:29UPV:2.561:<mosaic> --region brandon:29UMT:2.677:<mosaic>
 $PY -I $S/bedtype.py apply      # rocky.tif per tile: rock or weed, percent
 $PY -I $S/tiles.py imagery --tiles 29UPV --bbox -6.26,53.34,-6.04,53.50 --out <root>/out/satellite-offline
-$PY -I $S/publish.py --imagery <root>/out/satellite --intertidal <root>/out/intertidal \
+$PY -I $S/publish.py --area ireland --imagery <root>/out/satellite --intertidal <root>/out/intertidal \
     --offline <root>/out/satellite-offline --env deploy/home-compute/.env --upload
+$PY -I $S/publish.py --offline-intertidal <root>/out/intertidal --offline-bbox=-6.24,53.36,-6.06,53.49 \
+    --offline-areas tide-howth
 ```
 
 Each step is resumable: the catalog by month, the fetch by acquisition, the
@@ -285,6 +289,33 @@ The same steps with `SATELLITE_CONFIG=config-gb.json` and a root of its own
   `modelLAT`), the gauge's levels moved with it. Levels from −9 to 16 m are
   kept (`validRange`: the Severn's reach 14 m).
 - **Rock or weed**: Ireland's model (`bed_model.json`) applied as it is.
+
+## In the app
+
+Nothing of either product is on the first load. The site ships two small
+indexes, `public/satellite/index.json` and `public/intertidal/index.json`,
+written by `publish.py`; the archives are on the data host under immutable,
+content-versioned prefixes (`Cache-Control: public, max-age=31536000,
+immutable`), read by HTTP range a tile at a time.
+
+- **Satellite** (Layers → Satellite: Off / High tide / Low tide, off by
+  default): the index and the code that reads it
+  (`force5/src/satelliteIndex.ts`) load the first time an image is chosen.
+  The index lists **areas**, one per published run, each with its own `base`,
+  its archives and its `cover` (the z8 tiles its archive has, as boxes); only
+  an area whose cover meets the view is opened. The archives are opened
+  ranges-only (`force5/src/archives.ts`): a host that answered a range with
+  the whole file would be refused, never downloaded.
+- **Intertidal heights**: with the foil layer on, from zoom 10, the index and
+  `force5/src/intertidal.ts` load, and the regions in view are drawn over the
+  foil areas on their station's tide, every reserved value clear (the foil
+  archive shows there). A tap reads them first. A region whose station has no
+  Marine Institute prediction in the app (Northern Ireland's five, and Great
+  Britain's) has no tide to draw at, so it is not drawn.
+
+Great Britain is another area: `publish.py --area great-britain --imagery …
+--intertidal …` uploads its sets and adds its entries to both indexes beside
+Ireland's (a run replaces only its own area's), with no change to the app.
 
 ## Findings
 

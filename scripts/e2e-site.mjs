@@ -94,12 +94,13 @@ function main() {
 function stageStaticData() {
   const data = join(ROOT, "public-data");
   // Never a region a developer built or copied there: the committed files only.
-  const region = /\/tide-[^/]*\.pmtiles$/;
+  const region = /\/foildepth\/[^/]+\/tide-[^/]*\.pmtiles$/;
   cpSync(data, E2E_PUBLIC, {
     recursive: true,
     filter: (path) => !region.test(path),
   });
-  stageSatellite(data);
+  stageOffline(data, "satellite");
+  stageOffline(data, "intertidal");
   const indexPath = join(E2E_PUBLIC, "foildepth", "index.json");
   const index = JSON.parse(readFileSync(indexPath, "utf8"));
   if (!index.base) return;
@@ -111,23 +112,25 @@ function stageStaticData() {
 }
 
 /**
- * The satellite imagery is the whole island, far too large to commit: a small
- * set (Malahide to Bull Island, scripts/satellite/publish.py --offline) is,
- * with an index of its own, and the e2e site serves that index in place of
- * the national one, so the imagery is read from disk too.
+ * The satellite imagery and the intertidal heights are the whole coast, far
+ * too large to commit: a small set of each (Malahide to Bull Island,
+ * scripts/satellite/publish.py --offline and --offline-intertidal) is, with
+ * an index of its own, and the e2e site serves that index in place of the
+ * national one, so they are read from disk too. With no offline set, no
+ * index: the e2e site reads nothing from the network.
  */
-function stageSatellite(data) {
-  const dir = join(data, "satellite");
-  if (!existsSync(dir)) return;
-  const offline = readdirSync(dir).find((v) =>
-    existsSync(join(dir, v, "index.json")),
-  );
-  if (!offline) return;
-  mkdirSync(join(E2E_PUBLIC, "satellite"), { recursive: true });
-  cpSync(
-    join(dir, offline, "index.json"),
-    join(E2E_PUBLIC, "satellite", "index.json"),
-  );
+function stageOffline(data, name) {
+  const dir = join(data, name);
+  const offline =
+    existsSync(dir) &&
+    readdirSync(dir).find((v) => existsSync(join(dir, v, "index.json")));
+  const index = join(E2E_PUBLIC, name, "index.json");
+  if (!offline) {
+    rmSync(index, { force: true });
+    return;
+  }
+  mkdirSync(join(E2E_PUBLIC, name), { recursive: true });
+  cpSync(join(dir, offline, "index.json"), index);
 }
 
 main();

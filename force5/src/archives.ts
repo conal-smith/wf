@@ -12,6 +12,11 @@
  * host that sends the whole file is taken at its word: the file is kept, and
  * every later read is a slice of it. A host that serves ranges (vite, Caddy,
  * R2) is read by range exactly as before.
+ *
+ * Not so the satellite imagery: a quarter of a gigabyte a tide, which no
+ * visitor should ever download whole. Opened `rangesOnly`, an archive whose
+ * host answers a range with the whole file is refused, its body let go, and
+ * the image is simply not drawn.
  */
 import {
   EtagMismatch,
@@ -42,6 +47,8 @@ export class ArchiveSource implements Source {
   constructor(
     readonly url: string,
     private readonly load: typeof fetch = (input, init) => fetch(input, init),
+    /** Refuse a whole-file answer rather than keep it (the satellite imagery). */
+    private readonly rangesOnly = false,
   ) {}
 
   getKey() {
@@ -83,9 +90,13 @@ export class ArchiveSource implements Source {
           expires: response.headers.get("Expires") ?? undefined,
         };
       }
-      if (response.status !== 200) {
+      if (response.status !== 200 || this.rangesOnly) {
         await response.body?.cancel();
-        throw new Error(`${this.url} answered ${response.status}.`);
+        throw new Error(
+          response.status === 200
+            ? `${this.url} answered a range with the whole file: not read.`
+            : `${this.url} answered ${response.status}.`,
+        );
       }
       // The whole file, whatever was asked. Two reads can be in flight when
       // the first such answer lands: the first body is kept, the other let go.
@@ -114,14 +125,20 @@ export const pmtilesTile = protocol.tile;
  * (`pmtiles://` + the URL) and anything reading it directly (foilProbe.ts),
  * so a host without ranges sends the file once.
  */
-export function archive(url: string): PMTiles {
+export function archive(
+  url: string,
+  { rangesOnly = false }: { rangesOnly?: boolean } = {},
+): PMTiles {
   let found = protocol.get(url);
-  if (!found) protocol.add((found = new PMTiles(new ArchiveSource(url))));
+  if (!found)
+    protocol.add(
+      (found = new PMTiles(new ArchiveSource(url, undefined, rangesOnly))),
+    );
   return found;
 }
 
 /** A style's source URL for the archive at an absolute URL. */
-export function archiveUrl(url: string) {
-  archive(url);
+export function archiveUrl(url: string, options?: { rangesOnly?: boolean }) {
+  archive(url, options);
   return `pmtiles://${url}`;
 }

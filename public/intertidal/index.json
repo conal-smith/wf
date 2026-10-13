@@ -1,0 +1,910 @@
+{
+ "schemaVersion": 1,
+ "kind": "intertidal",
+ "datum": "LAT",
+ "encoding": "terrarium",
+ "deepMetres": -20,
+ "landMetres": 50,
+ "noSurveyMetres": 40,
+ "belowSeenMetres": 30,
+ "attribution": "Contains modified Copernicus Sentinel data 2017\u20132026, composited for wingfoil.ie; tide levels from the Marine Institute (CC BY 4.0), EOT20 (DGFI-TUM, CC BY 4.0) and UK tide gauges via Copernicus Marine and EMODnet Physics.",
+ "areas": [
+  {
+   "id": "tide-achill-island",
+   "kind": "region",
+   "url": "tide-achill-island.pmtiles",
+   "bounds": [
+    -10.3531,
+    53.8704,
+    -9.8255,
+    54.1491
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Achill_Island_MODELLED",
+   "stationLonLat": [
+    -10.1016,
+    53.9522
+   ],
+   "lowestSeenMetres": -0.043,
+   "highestSeenMetres": 3.715,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-aranmore",
+   "kind": "region",
+   "url": "tide-aranmore.pmtiles",
+   "bounds": [
+    -8.5769,
+    54.8062,
+    -8.2819,
+    55.1218
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Aranmore",
+   "stationLonLat": [
+    -8.49562,
+    54.9896
+   ],
+   "lowestSeenMetres": -0.182,
+   "highestSeenMetres": 4.076,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-arklow",
+   "kind": "region",
+   "url": "tide-arklow.pmtiles",
+   "bounds": [
+    -6.2307,
+    52.5449,
+    -5.9966,
+    53.0034
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Arklow",
+   "stationLonLat": [
+    -6.145231,
+    52.79205
+   ],
+   "lowestSeenMetres": 0.41,
+   "highestSeenMetres": 1.393,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-ballycastle",
+   "kind": "region",
+   "url": "tide-ballycastle.pmtiles",
+   "bounds": [
+    -6.4503,
+    55.0497,
+    -5.9636,
+    55.314
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballycastle_MODELLED",
+   "stationLonLat": [
+    -6.242,
+    55.206
+   ],
+   "lowestSeenMetres": 0.05,
+   "highestSeenMetres": 1.184,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-ballycotton",
+   "kind": "region",
+   "url": "tide-ballycotton.pmtiles",
+   "bounds": [
+    -8.1233,
+    51.8048,
+    -7.7774,
+    52.0094
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballycotton",
+   "stationLonLat": [
+    -8.0007,
+    51.82776
+   ],
+   "lowestSeenMetres": 0.158,
+   "highestSeenMetres": 4.064,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-ballyglass",
+   "kind": "region",
+   "url": "tide-ballyglass.pmtiles",
+   "bounds": [
+    -10.2075,
+    54.0679,
+    -9.2217,
+    54.3729
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ballyglass",
+   "stationLonLat": [
+    -9.89,
+    54.253
+   ],
+   "lowestSeenMetres": -0.002,
+   "highestSeenMetres": 3.732,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-bangor",
+   "kind": "region",
+   "url": "tide-bangor.pmtiles",
+   "bounds": [
+    -5.9216,
+    54.507,
+    -5.4594,
+    54.7688
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Bangor",
+   "stationLonLat": [
+    -5.6692,
+    54.665
+   ],
+   "lowestSeenMetres": 0.627,
+   "highestSeenMetres": 4.169,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-bray-harbour",
+   "kind": "region",
+   "url": "tide-bray-harbour.pmtiles",
+   "bounds": [
+    -6.13,
+    53.0014,
+    -6.0332,
+    53.2935
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Bray_Harbour_MODELLED",
+   "stationLonLat": [
+    -6.0901,
+    53.2191
+   ],
+   "lowestSeenMetres": 0.67,
+   "highestSeenMetres": 4.336,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-buncranna",
+   "kind": "region",
+   "url": "tide-buncranna.pmtiles",
+   "bounds": [
+    -7.8624,
+    54.9472,
+    -6.9603,
+    55.2816
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Buncranna",
+   "stationLonLat": [
+    -7.464125,
+    55.12662
+   ],
+   "lowestSeenMetres": 0.143,
+   "highestSeenMetres": 4.118,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-castletownbere",
+   "kind": "region",
+   "url": "tide-castletownbere.pmtiles",
+   "bounds": [
+    -10.6004,
+    51.4459,
+    -9.4839,
+    51.8858
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Castletownbere",
+   "stationLonLat": [
+    -9.9034,
+    51.6496
+   ],
+   "lowestSeenMetres": -0.322,
+   "highestSeenMetres": 3.283,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-clare-island",
+   "kind": "region",
+   "url": "tide-clare-island.pmtiles",
+   "bounds": [
+    -10.0568,
+    53.7598,
+    -9.6104,
+    53.9114
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Clare_Island_MODELLED",
+   "stationLonLat": [
+    -9.9443,
+    53.8019
+   ],
+   "lowestSeenMetres": -0.047,
+   "highestSeenMetres": 3.827,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-crosshaven",
+   "kind": "region",
+   "url": "tide-crosshaven.pmtiles",
+   "bounds": [
+    -8.3393,
+    51.7229,
+    -8.121,
+    51.8261
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Crosshaven_MODELLED",
+   "stationLonLat": [
+    -8.2411,
+    51.7794
+   ],
+   "lowestSeenMetres": -0.015,
+   "highestSeenMetres": 3.353,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-dingle",
+   "kind": "region",
+   "url": "tide-dingle.pmtiles",
+   "bounds": [
+    -10.6943,
+    51.7426,
+    -9.9515,
+    52.2923
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dingle",
+   "stationLonLat": [
+    -10.27732,
+    52.13924
+   ],
+   "lowestSeenMetres": -0.026,
+   "highestSeenMetres": 3.76,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-dublin-port",
+   "kind": "region",
+   "url": "tide-dublin-port.pmtiles",
+   "bounds": [
+    -6.2592,
+    53.2913,
+    -6.1222,
+    53.3807
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dublin_Port",
+   "stationLonLat": [
+    -6.22166,
+    53.34574
+   ],
+   "lowestSeenMetres": 0.782,
+   "highestSeenMetres": 4.786,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-dungarvan",
+   "kind": "region",
+   "url": "tide-dungarvan.pmtiles",
+   "bounds": [
+    -7.863,
+    51.9365,
+    -7.2834,
+    52.142
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dungarvan_MODELLED",
+   "stationLonLat": [
+    -7.5521,
+    52.0672
+   ],
+   "lowestSeenMetres": 0.016,
+   "highestSeenMetres": 3.462,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-dunmore",
+   "kind": "region",
+   "url": "tide-dunmore.pmtiles",
+   "bounds": [
+    -7.2856,
+    52.1075,
+    -6.6224,
+    52.359
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Dunmore",
+   "stationLonLat": [
+    -6.99166,
+    52.14754
+   ],
+   "lowestSeenMetres": 0.157,
+   "highestSeenMetres": 4.005,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-fenit",
+   "kind": "region",
+   "url": "tide-fenit.pmtiles",
+   "bounds": [
+    -10.1077,
+    52.0648,
+    -9.7199,
+    52.4729
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Fenit",
+   "stationLonLat": [
+    -9.8644,
+    52.27129
+   ],
+   "lowestSeenMetres": 0.051,
+   "highestSeenMetres": 4.13,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-galway",
+   "kind": "region",
+   "url": "tide-galway.pmtiles",
+   "bounds": [
+    -9.3057,
+    53.1137,
+    -8.8781,
+    53.2801
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Galway",
+   "stationLonLat": [
+    -9.04796,
+    53.26895
+   ],
+   "lowestSeenMetres": 0.02,
+   "highestSeenMetres": 4.986,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-howth",
+   "kind": "region",
+   "url": "tide-howth.pmtiles",
+   "bounds": [
+    -6.2039,
+    53.3587,
+    -5.9931,
+    53.4958
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Howth",
+   "stationLonLat": [
+    -6.0683,
+    53.39148
+   ],
+   "lowestSeenMetres": 0.8,
+   "highestSeenMetres": 4.982,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-killard",
+   "kind": "region",
+   "url": "tide-killard.pmtiles",
+   "bounds": [
+    -5.8934,
+    54.1486,
+    -5.4048,
+    54.5095
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Killard_MODELLED",
+   "stationLonLat": [
+    -5.525,
+    54.315
+   ],
+   "lowestSeenMetres": 1.215,
+   "highestSeenMetres": 6.035,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-killybegs",
+   "kind": "region",
+   "url": "tide-killybegs.pmtiles",
+   "bounds": [
+    -8.8401,
+    54.4572,
+    -8.1043,
+    54.8086
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Killybegs",
+   "stationLonLat": [
+    -8.3949,
+    54.6364
+   ],
+   "lowestSeenMetres": -0.046,
+   "highestSeenMetres": 4.099,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-kilrush",
+   "kind": "region",
+   "url": "tide-kilrush.pmtiles",
+   "bounds": [
+    -9.9395,
+    52.4684,
+    -8.6706,
+    52.778
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Kilrush",
+   "stationLonLat": [
+    -9.50208,
+    52.63191
+   ],
+   "lowestSeenMetres": -0.207,
+   "highestSeenMetres": 4.803,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-kinsale",
+   "kind": "region",
+   "url": "tide-kinsale.pmtiles",
+   "bounds": [
+    -8.7744,
+    51.568,
+    -8.3347,
+    51.7323
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Kinsale_MODELLED",
+   "stationLonLat": [
+    -8.446,
+    51.6777
+   ],
+   "lowestSeenMetres": -0.024,
+   "highestSeenMetres": 3.272,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-lahinch",
+   "kind": "region",
+   "url": "tide-lahinch.pmtiles",
+   "bounds": [
+    -9.6131,
+    52.6551,
+    -8.6215,
+    53.1162
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Lahinch_MODELLED",
+   "stationLonLat": [
+    -9.3899,
+    52.911
+   ],
+   "lowestSeenMetres": -0.044,
+   "highestSeenMetres": 4.083,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-larne",
+   "kind": "region",
+   "url": "tide-larne.pmtiles",
+   "bounds": [
+    -5.9937,
+    54.7668,
+    -5.6872,
+    55.052
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Larne_MODELLED",
+   "stationLonLat": [
+    -5.79,
+    54.853
+   ],
+   "lowestSeenMetres": 0.573,
+   "highestSeenMetres": 3.522,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-letterfrack",
+   "kind": "region",
+   "url": "tide-letterfrack.pmtiles",
+   "bounds": [
+    -10.3159,
+    53.326,
+    -9.6931,
+    53.7128
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Letterfrack_MODELLED",
+   "stationLonLat": [
+    -10.0388,
+    53.582
+   ],
+   "lowestSeenMetres": -0.052,
+   "highestSeenMetres": 3.832,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-malin-head",
+   "kind": "region",
+   "url": "tide-malin-head.pmtiles",
+   "bounds": [
+    -7.5293,
+    55.1588,
+    -6.6925,
+    55.4519
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Malin_Head",
+   "stationLonLat": [
+    -7.33432,
+    55.37168
+   ],
+   "lowestSeenMetres": 0.036,
+   "highestSeenMetres": 3.772,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-port-oriel",
+   "kind": "region",
+   "url": "tide-port-oriel.pmtiles",
+   "bounds": [
+    -6.3929,
+    53.6731,
+    -5.8769,
+    54.1507
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Port_Oriel",
+   "stationLonLat": [
+    -6.221713,
+    53.79899
+   ],
+   "lowestSeenMetres": 1.011,
+   "highestSeenMetres": 5.755,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-portrush",
+   "kind": "region",
+   "url": "tide-portrush.pmtiles",
+   "bounds": [
+    -6.7293,
+    55.1406,
+    -6.4484,
+    55.2532
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Portrush",
+   "stationLonLat": [
+    -6.6567,
+    55.2067
+   ],
+   "lowestSeenMetres": 0.262,
+   "highestSeenMetres": 2.304,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-ringaskiddy",
+   "kind": "region",
+   "url": "tide-ringaskiddy.pmtiles",
+   "bounds": [
+    -8.477,
+    51.8004,
+    -8.1691,
+    51.9076
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Ringaskiddy",
+   "stationLonLat": [
+    -8.304,
+    51.84
+   ],
+   "lowestSeenMetres": -0.046,
+   "highestSeenMetres": 3.745,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-roonagh",
+   "kind": "region",
+   "url": "tide-roonagh.pmtiles",
+   "bounds": [
+    -10.1234,
+    53.5983,
+    -9.5433,
+    53.9014
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Roonagh",
+   "stationLonLat": [
+    -9.90442,
+    53.76235
+   ],
+   "lowestSeenMetres": 0.036,
+   "highestSeenMetres": 3.727,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-rossaveel",
+   "kind": "region",
+   "url": "tide-rossaveel.pmtiles",
+   "bounds": [
+    -10.0344,
+    53.0637,
+    -9.3039,
+    53.4195
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Rossaveel",
+   "stationLonLat": [
+    -9.562056,
+    53.26693
+   ],
+   "lowestSeenMetres": 0.103,
+   "highestSeenMetres": 4.183,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-rosslare",
+   "kind": "region",
+   "url": "tide-rosslare.pmtiles",
+   "bounds": [
+    -6.6278,
+    52.0976,
+    -6.3034,
+    52.3016
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Rosslare",
+   "stationLonLat": [
+    -6.334861,
+    52.2546
+   ],
+   "lowestSeenMetres": 0.07,
+   "highestSeenMetres": 2.016,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-skerries",
+   "kind": "region",
+   "url": "tide-skerries.pmtiles",
+   "bounds": [
+    -6.2468,
+    53.4865,
+    -5.9955,
+    53.681
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Skerries",
+   "stationLonLat": [
+    -6.108117,
+    53.585
+   ],
+   "lowestSeenMetres": 0.862,
+   "highestSeenMetres": 5.465,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-sligo",
+   "kind": "region",
+   "url": "tide-sligo.pmtiles",
+   "bounds": [
+    -9.2308,
+    54.1717,
+    -8.4115,
+    54.4696
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Sligo",
+   "stationLonLat": [
+    -8.5689,
+    54.3046
+   ],
+   "lowestSeenMetres": -0.041,
+   "highestSeenMetres": 4.022,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-strangford",
+   "kind": "region",
+   "url": "tide-strangford.pmtiles",
+   "bounds": [
+    -5.7404,
+    54.384,
+    -5.5289,
+    54.5842
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Strangford_MODELLED",
+   "stationLonLat": [
+    -5.62,
+    54.48
+   ],
+   "lowestSeenMetres": 1.003,
+   "highestSeenMetres": 5.656,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-tory-island",
+   "kind": "region",
+   "url": "tide-tory-island.pmtiles",
+   "bounds": [
+    -8.3512,
+    55.1076,
+    -7.797,
+    55.2771
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Tory_Island_MODELLED",
+   "stationLonLat": [
+    -8.1962,
+    55.2508
+   ],
+   "lowestSeenMetres": 0.048,
+   "highestSeenMetres": 3.723,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-union-hall",
+   "kind": "region",
+   "url": "tide-union-hall.pmtiles",
+   "bounds": [
+    -9.5519,
+    51.419,
+    -8.773,
+    51.7331
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Union_Hall",
+   "stationLonLat": [
+    -9.1335,
+    51.559
+   ],
+   "lowestSeenMetres": -0.019,
+   "highestSeenMetres": 3.283,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  },
+  {
+   "id": "tide-wexford",
+   "kind": "region",
+   "url": "tide-wexford.pmtiles",
+   "bounds": [
+    -6.7023,
+    52.1811,
+    -6.2049,
+    52.5412
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "station": "Wexford",
+   "stationLonLat": [
+    -6.4589,
+    52.33852
+   ],
+   "lowestSeenMetres": 0.079,
+   "highestSeenMetres": 1.696,
+   "set": "ireland",
+   "base": "intertidal/vd340d553a223/"
+  }
+ ]
+}
