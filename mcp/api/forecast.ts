@@ -10,12 +10,13 @@
  * FROM, as everywhere on the site.
  *
  * The consensus is deliberately simple and says so: one line per model — an
- * ensemble's member mean counts once, like any other model — reduced to the
- * median, the range and an agreement label on the same 4 kn / 8 kn thresholds
- * the dock's blend uses (force5/src/blend.ts). The median and the bearing count
- * each model by its grid (force5/src/weights.ts): 3 km or finer three times, up
- * to 8 km twice, coarser once. It is not bias-corrected and not weighted by any
- * model's past accuracy.
+ * ensemble's member mean counts once, like any other model. Its headline wind,
+ * gust and direction are HARMONIE's own forecast while HARMONIE reaches the
+ * hour (`LEAD_MODEL`, force5/src/weights.ts), and past it a weighted median of
+ * the other models, each counted by how well it verified that far into its run
+ * (`modelWeight`), with a weighted mean bearing. The range and the agreement
+ * label, the same the dock's blend gives (force5/src/blend.ts), are read
+ * across every model either way. It is not bias-corrected.
  *
  * Beside it, where an ensemble reaches the spot, the spread of its members (ECMWF
  * ENS and GEFS, each member its own run). Both ensembles are retired for now
@@ -34,6 +35,7 @@ import { sunTimes } from "../../force5/src/sun.js";
 import { KNOTS } from "../../force5/src/units.js";
 import {
   AGREEMENT_SPREAD_KN,
+  LEAD_MODEL,
   agreementFrom,
   leadHours,
   modelWeight,
@@ -578,18 +580,43 @@ export interface ModelWind {
   direction_deg: number;
 }
 export interface HourWind {
-  /** The median of the models' speeds, each counted by its grid's weight. */
+  /**
+   * The headline speed: the lead model's own (HARMONIE, `LEAD_MODEL`) while it
+   * reaches the hour; past it, the weighted median of the models that do.
+   */
   wind_kn: number;
+  /** The lowest and highest of every model, the lead among them. */
   min_kn: number;
   max_kn: number;
-  /** The median of the models that forecast a gust, and the highest of them. */
+  /**
+   * The headline gust: the lead model's while it gives one; otherwise the
+   * weighted median of the models that forecast a gust (`gust_lead` says
+   * which). `gust_max_kn` is the highest of every model's.
+   */
   gust_kn: number | null;
   gust_max_kn: number | null;
+  /** The headline bearing: the lead model's, or the models' weighted mean vector. */
   direction_deg: number;
   direction: string;
-  /** Null with only one model: one line cannot agree or disagree. */
+  /**
+   * How far the models agree, read from the spread of every model's speed,
+   * not from how far they sit from the headline. Null with only one model:
+   * one line cannot agree or disagree.
+   */
   agreement: Agreement | null;
   models: number;
+  /**
+   * Which model the headline wind and direction are: `"harmonie"` while
+   * HARMONIE reaches the hour, null where they are the blend of the models.
+   */
+  lead: string | null;
+  /**
+   * Which model the headline gust is: the lead's id when it gave a gust this
+   * hour, null where `gust_kn` is the blend's (or there is none). HARMONIE
+   * gives none at the first hour of its run, so `lead` can be set while this
+   * is null.
+   */
+  gust_lead: string | null;
   by_model?: Record<string, ModelWind>;
 }
 
@@ -642,27 +669,39 @@ export function hourWind(
   const speeds = samples.map((s) => s.speed * KNOTS).sort((a, b) => a - b);
   const gusted = samples.filter((s) => s.gust !== null);
   const gusts = gusted.map((s) => s.gust! * KNOTS).sort((a, b) => a - b);
+  // The headline is the lead model's own while it reaches the hour; the blend
+  // below is the headline only where it does not.
+  const lead = samples.find((s) => s.id === LEAD_MODEL) ?? null;
   const weight = samples.reduce((sum, s) => sum + s.weight, 0);
-  const u = samples.reduce((sum, s) => sum + s.u * s.weight, 0) / weight;
-  const v = samples.reduce((sum, s) => sum + s.v * s.weight, 0) / weight;
+  const u = lead
+    ? lead.u
+    : samples.reduce((sum, s) => sum + s.u * s.weight, 0) / weight;
+  const v = lead
+    ? lead.v
+    : samples.reduce((sum, s) => sum + s.v * s.weight, 0) / weight;
   const direction = bearing(u, v);
+  const gustLead = lead !== null && lead.gust !== null;
   const hour: HourWind = {
     wind_kn: round(
-      weightedMedian(
-        samples.map((s) => s.speed * KNOTS),
-        samples.map((s) => s.weight),
-      ),
+      lead
+        ? lead.speed * KNOTS
+        : weightedMedian(
+            samples.map((s) => s.speed * KNOTS),
+            samples.map((s) => s.weight),
+          ),
     ),
     min_kn: round(speeds[0]),
     max_kn: round(speeds[speeds.length - 1]),
-    gust_kn: gusted.length
-      ? round(
-          weightedMedian(
-            gusted.map((s) => s.gust! * KNOTS),
-            gusted.map((s) => s.weight),
-          ),
-        )
-      : null,
+    gust_kn: gustLead
+      ? round(lead.gust! * KNOTS)
+      : gusted.length
+        ? round(
+            weightedMedian(
+              gusted.map((s) => s.gust! * KNOTS),
+              gusted.map((s) => s.weight),
+            ),
+          )
+        : null,
     gust_max_kn: gusts.length ? round(gusts[gusts.length - 1]) : null,
     direction_deg: direction,
     direction: compass(direction),
@@ -674,6 +713,8 @@ export function hourWind(
           )
         : null,
     models: samples.length,
+    lead: lead ? lead.id : null,
+    gust_lead: gustLead ? lead.id : null,
   };
   if (perModel)
     hour.by_model = Object.fromEntries(
@@ -1013,11 +1054,14 @@ export interface SpotForecast {
 }
 
 export const METHOD =
-  "Wind is the weighted median of every live model's forecast for the spot at " +
-  "each hour (an ensemble's member mean counts as one model), each model " +
-  "weighted by how well it verified against Irish stations that far into its " +
-  "run, with the range across models, a vector-mean direction, and agreement " +
-  "from the standard deviation of the models' speeds, tighter the further " +
+  "Wind, gust and direction are HARMONIE's own forecast while it reaches the " +
+  'hour (about 60 hours ahead; `lead` is "harmonie"); past it, a weighted ' +
+  "median of the other models (`lead` is null), each weighted by how well it " +
+  "verified against Irish stations that far into its run, with a vector-mean " +
+  "direction (an ensemble's member mean counts as one model). Where HARMONIE " +
+  "gives no gust the gust is the models' weighted median (`gust_lead` null). " +
+  "The range (min_kn, max_kn, gust_max_kn) is across every model, and " +
+  "agreement comes from the standard deviation of every model's speed, tighter the further " +
   `ahead: high under ${AGREEMENT_SPREAD_KN[0][0]} kn today and under ` +
   `${AGREEMENT_SPREAD_KN[3][0]} kn from day 3, low from ` +
   `${AGREEMENT_SPREAD_KN[0][1]} kn today and ${AGREEMENT_SPREAD_KN[3][1]} kn ` +

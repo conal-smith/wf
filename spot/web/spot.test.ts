@@ -43,6 +43,8 @@ const wind = (knots: number, deg = 270, gust: number | null = null) =>
     direction: compass(deg),
     agreement: "high",
     models: 5,
+    lead: null,
+    gust_lead: null,
   }) satisfies HourWind;
 
 const hour = (

@@ -22,7 +22,9 @@ station over all leads, over the last 30 and 90 complete UTC days:
 **The blend** is scored as model "blend": rebuilt at 00, 06, 12 and 18 UTC each day
 from the newest run of each model that had been published by then (its
 `generatedAt`), exactly as the site works it out (consensus.py replicates
-src/ratings.ts `placeConsensus`), and its lead is hours after that issue time.
+src/ratings.ts `placeConsensus`: HARMONIE's own forecast while it reaches the
+hour, past it a weighted median of the other models), and its lead is hours
+after that issue time.
 At a station an ensemble contributes its mean wind, because only its mean frames
 are gridded; at a spot the site uses the mean of its members' speeds.
 
@@ -279,7 +281,8 @@ def day_sums(day, records, observed):
 def blend_signature():
     """Changes whenever the scoring or the replicated blend would score differently."""
     probe = [[consensus.blend_weight(km) for km in (1, 2.5, 3, 5, 8, 9, 25, None)],
-             sorted((model, list(row)) for model, row in consensus.MODEL_WEIGHTS.items())]
+             sorted((model, list(row)) for model, row in consensus.MODEL_WEIGHTS.items()),
+             consensus.LEAD_MODEL]
     material = json.dumps([SUMS_VERSION, list(BLEND_MODELS), probe, list(BLEND_ISSUE_HOURS),
                            RIDEABLE_MPS, DIRECTION_MIN_MPS, [b[2] for b in LEAD_BUCKETS]])
     return hashlib.sha256(material.encode()).hexdigest()[:16]
@@ -420,8 +423,10 @@ def scores(results, now):
         "blend": {"models": list(BLEND_MODELS), "issueHours": list(BLEND_ISSUE_HOURS),
                   "signature": blend_signature(),
                   "method": "src/ratings.ts placeConsensus, replicated in force5/ingest/consensus.py: "
-                            "per-model weights by lead day (MODEL_WEIGHTS; grid-size 3/2/1 for a "
-                            "model it does not list), weighted median speed and gust, weighted "
+                            "HARMONIE's own speed, gust and bearing wherever it reaches the hour "
+                            "(LEAD_MODEL; the gust falls back to the blend's where it gives none); "
+                            "past it, per-model weights by lead day (MODEL_WEIGHTS; grid-size 3/2/1 "
+                            "for a model it does not list), weighted median speed and gust, weighted "
                             "mean vector for the bearing. At a station an ensemble contributes "
                             "its mean wind, sampled from its mean frames."},
         "fields": list(SCORE_FIELDS),

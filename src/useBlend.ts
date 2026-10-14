@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   blendInputs,
   blendStats,
+  LEAD_MODEL,
   leadHours,
   modelWeight,
   perModelLines,
@@ -452,14 +453,19 @@ export function useSpotWeather(
 export interface Blend {
   /** One line per deterministic model and per ensemble member. */
   lines: BlendInput[];
+  /**
+   * The chart's statistics over every line. Its headline (`median`) is
+   * HARMONIE's own line wherever it reaches the hour (`LEAD_MODEL`); the
+   * spread around it stays every line's.
+   */
   stats: HourStats[];
   /**
    * The same statistics with each ensemble counted once, as its member mean,
-   * and each model at its grid's weight: the consensus the stars rate, and the
-   * one the forecast server reports.
+   * and each model at its weight: the consensus the stars rate, and the one
+   * the forecast server reports, HARMONIE's own while it reaches the hour.
    */
   consensus: HourStats[];
-  /** Mean bearing per axis hour across the contributing models. */
+  /** The headline bearing per axis hour: HARMONIE's, else the models' mean. */
   directions: (number | null)[];
   /** Models that actually contributed a line, in registry order. */
   contributing: string[];
@@ -518,6 +524,8 @@ export function useBlend(
     const runs = new Map(
       usable.map((manifest) => [manifest.model, Date.parse(manifest.runTime)]),
     );
+    // HARMONIE's own line is the headline wherever it reaches the hour.
+    const lead = usable.findIndex((manifest) => manifest.model === LEAD_MODEL);
     const leadOf = (at: number) =>
       leadHours(
         Math.max(
@@ -529,14 +537,21 @@ export function useBlend(
       );
     return {
       lines,
-      stats: blendStats(lines, axis, undefined, leadOf),
-      consensus: blendStats(perModelLines(lines), axis, weightOf, leadOf),
+      stats: blendStats(lines, axis, undefined, leadOf, LEAD_MODEL),
+      consensus: blendStats(
+        perModelLines(lines),
+        axis,
+        weightOf,
+        leadOf,
+        LEAD_MODEL,
+      ),
       directions: meanDirections(
         usable.map((manifest) =>
           axisVectors(spotSeries(manifest, spotId)!, axis),
         ),
         axis.length,
         (model, at) => weightAt(usable[model], at),
+        lead < 0 ? undefined : lead,
       ),
       contributing: Array.from(new Set(lines.map((line) => line.model))),
       manifests: usable,

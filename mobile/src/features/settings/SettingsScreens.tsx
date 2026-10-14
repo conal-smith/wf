@@ -171,8 +171,8 @@ export function ModelsScreen() {
         </ListSection>
       ) : null}
       <T variant="caption" color="muted" style={styles.small}>
-        Each model counts by how well it has verified against Irish stations that far into its run. The stars rate the
-        blend&rsquo;s weighted median.
+        The stars rate HARMONIE&rsquo;s own forecast while it reaches the hour; past it, a weighted median of the other
+        models, each counting by how well it has verified against Irish stations that far into its run.
       </T>
     </SettingsPage>
   );

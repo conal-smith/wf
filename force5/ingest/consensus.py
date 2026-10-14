@@ -3,11 +3,14 @@
 The blend riders see is worked out in TypeScript: `modelWeight` and
 `weightedMedian` (force5/src/weights.ts) and `placeConsensus` (src/ratings.ts).
 Verifying "the blend" means verifying *that* arithmetic, so this is a line-by-line
-replica of it and nothing more: each model taken once at its weight for how far
-into its run the hour is (`MODEL_WEIGHTS`, or by its grid for a model the backtest
-has not judged: 3 for 3 km or finer, 2 up to 8 km, else 1), an ensemble's members collapsed
-to their hourly mean speed, the weighted median of the speeds and of the gusts,
-and the weighted mean of the models' mean wind vectors for the bearing. Every
+replica of it and nothing more. Wherever HARMONIE (`LEAD_MODEL`) reaches the hour,
+the wind, gust and bearing are its own, the gust falling back to the blend's at an
+hour it gives none. Elsewhere they are the blend: each model taken once at its
+weight for how far into its run the hour is (`MODEL_WEIGHTS`, or by its grid for a
+model the backtest has not judged: 3 for 3 km or finer, 2 up to 8 km, else 1), an
+ensemble's members collapsed to their hourly mean speed, the weighted median of
+the speeds and of the gusts, and the weighted mean of the models' mean wind
+vectors for the bearing. Every
 model is put on the axis the TypeScript way too: linear in u and v between its
 own steps, never across a gap wider than twice its typical step, and never past
 either end of its run.
@@ -32,6 +35,9 @@ import math
 # force5/src/weights.ts
 FINE_GRID_KM = 3
 REGIONAL_GRID_KM = 8
+# weights.ts `LEAD_MODEL`: the model whose own forecast is the headline wherever
+# it reaches the hour.
+LEAD_MODEL = "harmonie"
 # force5/src/manifests.ts `windModels()`: every wind model that is neither planned
 # nor retired, in catalogue order. The published blend reads every one the bucket
 # serves.
@@ -229,7 +235,7 @@ def member_lines(manifest, spot):
 
 
 def place_consensus(manifests, blend_ids, spot, axis):
-    """ratings.ts `placeConsensus` without the agreement: median, gust and bearing.
+    """ratings.ts `placeConsensus` without the agreement: wind, gust and bearing.
 
     `manifests` are dicts shaped like the published wind manifests with their
     spot squares merged back in (squares.with_spot_data); only `model`,
@@ -241,6 +247,7 @@ def place_consensus(manifests, blend_ids, spot, axis):
     axis_times = [parse_ms(value) for value in axis]
     count = len(axis_times)
     lines, vectors = [], []
+    lead_line, lead_vector = None, None
     for blend_id in blend_ids:
         manifest = next((m for m in manifests if m.get("model") == blend_id), None)
         if manifest is None:
@@ -255,11 +262,16 @@ def place_consensus(manifests, blend_ids, spot, axis):
         for points in (members if members is not None else [mean]):
             plan = plan_for([parse_ms(point["validTime"]) for point in points], axis_times)
             speed, gust = line_on(points, plan)
-            lines.append({"model": manifest["model"], "member": members is not None,
-                          "weight": weight, "speed": speed, "gust": gust})
+            line = {"model": manifest["model"], "member": members is not None,
+                    "weight": weight, "speed": speed, "gust": gust}
+            lines.append(line)
+            if line["model"] == LEAD_MODEL and not line["member"]:
+                lead_line = line
         plan = plan_for([parse_ms(point["validTime"]) for point in mean], axis_times)
         u, v = vector_on(mean, plan)
         vectors.append({"u": u, "v": v, "weight": weight})
+        if manifest["model"] == LEAD_MODEL:
+            lead_vector = {"u": u, "v": v}
     # `perModelLines`: an ensemble's members collapse to their hourly mean.
     per_model, groups = [], {}
     for line in lines:
@@ -288,8 +300,23 @@ def place_consensus(manifests, blend_ids, spot, axis):
             if math.isfinite(line["gust"][c]):
                 gusts.append(line["gust"][c])
                 gust_weights.append(line["weight"][c])
-        out["gust"].append(weighted_median(gusts, gust_weights) if gusts else None)
-        out["median"].append(weighted_median(speeds, speed_weights) if speeds else None)
+        # The lead's own hour, where it has one: the headline.
+        lead_speed = lead_line["speed"][c] \
+            if lead_line is not None and math.isfinite(lead_line["speed"][c]) else None
+        if lead_speed is not None and math.isfinite(lead_line["gust"][c]):
+            out["gust"].append(lead_line["gust"][c])
+        else:
+            out["gust"].append(weighted_median(gusts, gust_weights) if gusts else None)
+        if not speeds:
+            out["median"].append(None)
+        else:
+            out["median"].append(lead_speed if lead_speed is not None
+                                 else weighted_median(speeds, speed_weights))
+        if lead_speed is not None and lead_vector is not None \
+                and math.isfinite(lead_vector["u"][c]) and math.isfinite(lead_vector["v"][c]):
+            lu, lv = lead_vector["u"][c], lead_vector["v"][c]
+            out["from"].append(direction(lu, lv) if math.hypot(lu, lv) >= 0.1 else None)
+            continue
         u = v = k = 0
         for vector in vectors:
             if math.isfinite(vector["u"][c]) and math.isfinite(vector["v"][c]):

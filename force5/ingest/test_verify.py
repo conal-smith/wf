@@ -132,7 +132,7 @@ class PairingTests(unittest.TestCase):
         _, station, forecast, _ = pairs[0]
         self.assertEqual(station, "ME_1")
         self.assertAlmostEqual(forecast[0], expected["median"][0])
-        # HARMONIE's 2 km grid outweighs GFS three to one: the median is HARMONIE's.
+        # HARMONIE reaches the hour, so the blend's wind and gust are HARMONIE's own.
         self.assertAlmostEqual(forecast[0], 9.0)
         self.assertAlmostEqual(forecast[1], 13.0)
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   blendInputs,
   blendStats,
+  LEAD_MODEL,
   leadHours,
   modelWeight,
   perModelLines,
@@ -55,11 +56,19 @@ function slow(manifests: Manifest[], ids: string[], id: string, axis: string[]) 
       ),
       times[at],
     );
-  const consensus = blendStats(perModelLines(lines), axis, weightOf, leadOf);
+  const consensus = blendStats(
+    perModelLines(lines),
+    axis,
+    weightOf,
+    leadOf,
+    LEAD_MODEL,
+  );
+  const lead = usable.findIndex((m) => m.model === LEAD_MODEL);
   const from = meanDirections(
     usable.map((m) => axisVectors(spotSeries(m, id)!, axis)),
     axis.length,
     (model, at) => weightAt(usable[model], at),
+    lead < 0 ? undefined : lead,
   );
   return { consensus, from };
 }
@@ -133,6 +142,49 @@ describe("placeConsensus", () => {
       "brandon",
       hourly("2026-09-14T00:00:00Z", 7),
     );
+  });
+
+  it("gives HARMONIE's own hour even where the others would outvote it, and the blend past its run", () => {
+    const steady = (model: string, km: number) =>
+      windManifest({
+        model,
+        hours: [0, 3, 6, 9],
+        wind: () => ({ u: 0, v: 3, gust: 5 }),
+        extra: { resolutionKm: km },
+      });
+    // HARMONIE from the west at 9 m/s for three hours, then its run ends.
+    const harmonie = windManifest({
+      model: "harmonie",
+      hours: [0, 1, 2, 3],
+      wind: (h) => ({ u: 9, v: 0, gust: h === 2 ? null : 13 }),
+      extra: { resolutionKm: 2 },
+    });
+    const others = ["icon-eu", "gfs", "arome", "gefs"];
+    const manifests = [harmonie, ...others.map((id) => steady(id, 7))];
+    const ids = ["harmonie", ...others];
+    const axis = hourly("2026-09-14T00:00:00Z", 10);
+    const c = placeConsensus(manifests, ids, "brandon", axis);
+    const blend = placeConsensus(manifests.slice(1), others, "brandon", axis);
+    // Weights 2 + 2 + 2 + 1 against HARMONIE's 4: a blend would say 3 m/s.
+    expect(blend.median[0]).toBeCloseTo(3);
+    expect(c.median[0]).toBeCloseTo(9);
+    expect(c.gust[0]).toBeCloseTo(13);
+    expect(c.from[0]).toBeCloseTo(270);
+    // An hour HARMONIE gives no gust: its wind, the others' gust.
+    expect(c.median[2]).toBeCloseTo(9);
+    expect(c.gust[2]).toBeCloseTo(blend.gust[2]!);
+    // The agreement is still read across every model.
+    expect(c.agreement[0]).toBe("low");
+    // Past HARMONIE's run the headline is the blend of the rest.
+    for (const at of [4, 6, 9]) {
+      expect(c.median[at]).toBeCloseTo(blend.median[at]!);
+      expect(c.gust[at]).toBeCloseTo(blend.gust[at]!);
+      expect(c.from[at]).toBeCloseTo(blend.from[at]!);
+    }
+    // A reader who leaves HARMONIE out of their blend gets the blend.
+    expect(
+      placeConsensus(manifests, others, "brandon", axis).median[0],
+    ).toBeCloseTo(3);
   });
 
   it("lets HARMONIE outweigh two global models, and an unjudged model fall back to its grid", () => {

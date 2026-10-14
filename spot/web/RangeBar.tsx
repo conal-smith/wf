@@ -2,9 +2,11 @@
  * An hour's wind against the rider's own range. The frame is the range: its
  * left edge the rider's floor, its right edge the most they can hold, the
  * sweet spot tinted inside. The models' spread is an ink line across it, the
- * blend a dot on that line and the gust a tick above it; a blend outside the
- * range is an arrowhead pinned beyond the edge it missed. Every row draws the
- * same frame, so down a column it reads where each hour sits.
+ * headline wind a dot on that line and the gust a tick above it; a headline
+ * outside the range is an arrowhead pinned beyond the edge it missed. The
+ * headline is HARMONIE's own while it reaches the hour and the blend of the
+ * models past it (`HourWind.lead`). Every row draws the same frame, so down a
+ * column it reads where each hour sits.
  *
  * Tapped, it opens `RangeDetail`: the same frame drawn large and labelled, and
  * every model's wind, HARMONIE's first while it reaches the hour.
@@ -12,6 +14,7 @@
 import type { ReactNode } from "react";
 import { SHORE_LABEL, type ShoreAngle } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
+import { LEAD_MODEL } from "../../force5/src/weights";
 import type { HourWind } from "../../mcp/api/forecast";
 import { MONO_LABEL, tv } from "../../ui/tv";
 import { WindArrow } from "./glyphs";
@@ -37,7 +40,8 @@ const styles = tv({
     gustSup: "align-super text-caption text-gust",
     facts: "m-0 flex flex-col gap-1 font-mono text-caption",
     fact: "flex gap-3",
-    term: ["w-12 shrink-0 pt-px text-ink-muted", MONO_LABEL],
+    // Wide enough for "HARMONIE", the longest term.
+    term: ["w-16 shrink-0 pt-px text-ink-muted", MONO_LABEL],
     value: "m-0 text-ink-2",
     strong: "font-semibold text-ink",
     warn: "m-0 text-pen-ink",
@@ -103,11 +107,15 @@ export function rangeText(knots: number, band: Band, units: Units): string {
   }
 }
 
+/** The headline's name: HARMONIE while it leads the hour, else the blend. */
+export const headlineName = (wind: Pick<HourWind, "lead">) =>
+  wind.lead === LEAD_MODEL ? "HARMONIE" : "Blend";
+
 /** What the frame draws, for a screen reader and the trigger's label. */
 export function rangeWords(wind: HourWind, band: Band, units: Units): string {
   const say = (k: number) => windIn(k, units);
   return [
-    `blend ${say(wind.wind_kn)}${wind.gust_kn !== null ? ` gusting ${say(wind.gust_kn)}` : ""}`,
+    `${wind.lead === LEAD_MODEL ? "HARMONIE" : "blend"} ${say(wind.wind_kn)}${wind.gust_kn !== null ? ` gusting ${say(wind.gust_kn)}` : ""}`,
     wind.models > 1
       ? `${wind.models} models ${say(wind.min_kn)}–${say(wind.max_kn)}`
       : null,
@@ -236,9 +244,6 @@ export function RangeAxis({ band, units }: { band: Band; units: Units }) {
     </svg>
   );
 }
-
-/** The model the blend leans on most while it reaches the hour (force5/src/weights.ts). */
-export const LEAD_MODEL = "harmonie";
 
 const DETAIL_WIDTH = 284;
 
@@ -385,7 +390,7 @@ export function RangeDetail({
       </span>
       <DetailChart wind={wind} band={band} units={units} />
       <dl className={s.facts()}>
-        <Fact term="Blend">
+        <Fact term={headlineName(wind)}>
           <b className={s.strong()}>{say(wind.wind_kn)}</b>
           {wind.models > 1 && (
             <>

@@ -11,6 +11,7 @@
  */
 import {
   agreementFrom,
+  LEAD_MODEL,
   leadHours,
   modelWeight,
   weightedMedian,
@@ -179,11 +180,13 @@ function lineOn(
 }
 
 /**
- * One place's consensus on the axis: each model taken once (an ensemble as
- * its member mean) at its weight for how far into its run the hour is
- * (`modelWeight`), the weighted median wind and gust, how far the models agree
- * (`agreementFrom`, against the freshest run's lead), and the weighted mean
- * bearing.
+ * One place's consensus on the axis. Wherever HARMONIE (`LEAD_MODEL`) reaches
+ * the hour, the wind, gust and bearing are its own, the gust falling back to
+ * the blend's at an hour it gives none. Elsewhere they are the blend: each
+ * model taken once (an ensemble as its member mean) at its weight for how far
+ * into its run the hour is (`modelWeight`), the weighted median wind and gust
+ * and the weighted mean bearing. How far the models agree (`agreementFrom`,
+ * against the freshest run's lead) is read across every model either way.
  * Speeds come back in m/s, as the blend keeps them.
  */
 export function placeConsensus(
@@ -203,6 +206,9 @@ export function placeConsensus(
   const lines: Line[] = [];
   const vectors: { u: Float64Array; v: Float64Array; weight: Float64Array }[] =
     [];
+  // The lead model's own line and bearing, where it is in the blend.
+  let leadLine: Line | undefined;
+  let leadVector: { u: Float64Array; v: Float64Array } | undefined;
   for (const blendId of blendIds) {
     const manifest = manifests.find((m) => m.model === blendId);
     if (!manifest) continue;
@@ -213,13 +219,15 @@ export function placeConsensus(
     const weight = weightsFor(manifest, run, axisTimes, axisKey);
     for (const line of modelSeries(manifest, id)) {
       const plan = planFor(parsed(line.points), axisTimes, axisKey);
-      lines.push({
+      const on: Line = {
         model: manifest.model,
         member: line.memberIndex !== undefined,
         weight,
         run,
         ...lineOn(line.points, plan),
-      });
+      };
+      lines.push(on);
+      if (on.model === LEAD_MODEL && !on.member) leadLine = on;
     }
     // The arrows read the mean series, as `meanDirections` does.
     const plan = planFor(parsed(mean), axisTimes, axisKey);
@@ -240,6 +248,7 @@ export function placeConsensus(
       }
     }
     vectors.push({ u, v, weight });
+    if (manifest.model === LEAD_MODEL) leadVector = { u, v };
   }
   // `perModelLines`: an ensemble's members collapse to their hourly mean.
   const perModel: {
@@ -304,9 +313,18 @@ export function placeConsensus(
         gustWeights.push(line.weight[c]);
       }
     }
-    out.gust.push(gusts.length ? weightedMedian(gusts, gustWeights) : null);
+    // The lead's own hour, where it has one: the headline.
+    const leadSpeed =
+      leadLine && Number.isFinite(leadLine.speed[c]) ? leadLine.speed[c] : null;
+    out.gust.push(
+      leadSpeed !== null && Number.isFinite(leadLine!.gust[c])
+        ? leadLine!.gust[c]
+        : gusts.length
+          ? weightedMedian(gusts, gustWeights)
+          : null,
+    );
     if (speeds.length) {
-      out.median.push(weightedMedian(speeds, speedWeights));
+      out.median.push(leadSpeed ?? weightedMedian(speeds, speedWeights));
       out.agreement.push(
         agreementFrom(
           speeds.map((speed) => speed * KNOTS),
@@ -316,6 +334,17 @@ export function placeConsensus(
     } else {
       out.median.push(null);
       out.agreement.push(null);
+    }
+    if (
+      leadSpeed !== null &&
+      leadVector &&
+      Number.isFinite(leadVector.u[c]) &&
+      Number.isFinite(leadVector.v[c])
+    ) {
+      const lu = leadVector.u[c];
+      const lv = leadVector.v[c];
+      out.from.push(Math.hypot(lu, lv) >= 0.1 ? direction(lu, lv) : null);
+      continue;
     }
     let u = 0,
       v = 0,

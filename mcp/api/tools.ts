@@ -51,7 +51,7 @@ export const INSTRUCTIONS = `wingfoil.ie forecasts wind, waves and tides for win
 
 - Start with list_spots or find_wind to learn spot ids; get_spot_forecast accepts an id, a name or part of one.
 - Speeds are knots, directions are degrees the wind comes FROM, times are UTC with a \`local\` Europe/Dublin label. Quote the local time to people.
-- The forecast is a consensus of several numerical weather models (HARMONIE, ICON-EU, ECMWF and GFS). \`agreement\` says how closely they agree; say so when it is low, and use by_model to explain a disagreement.
+- The forecast is HARMONIE's own (Met Éireann's 2.5 km model, the most accurate here) while it reaches the hour, about the next 60 hours; past it, a weighted median of the other models (ICON-EU, ECMWF and GFS). \`lead\` says which an hour is. \`agreement\` says how closely all the models agree; say so when it is low, and use by_model to explain a disagreement.
 - ${METHOD}
 - ${CARE}
 - Credit the model providers named in \`sources\` when you share a forecast, and link people to https://wingfoil.ie for the map.`;
@@ -93,7 +93,7 @@ export const getSpotForecast = tool({
   name: "get_spot_forecast",
   title: "Spot forecast",
   description:
-    "Hour-by-hour forecast for one spot: consensus wind speed, gusts and direction across every weather model with how well they agree, plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
+    "Hour-by-hour forecast for one spot: wind speed, gusts and direction (HARMONIE's own while it reaches the hour, past it a weighted median of the other weather models) with the range across every model and how well they agree, plus waves, air temperature, rain, daylight, sunrise and sunset, high and low tides and the latest sea temperature.",
   inputSchema: {
     spot: z
       .string()
@@ -245,7 +245,7 @@ export const findWind = tool({
       sources: found.sources,
       unavailable: found.unavailable,
       method:
-        "An hour counts when the models' median wind is inside the range and they do not disagree by 8 kn or more. " +
+        "An hour counts when its wind (HARMONIE's own while it reaches the hour; past it, a weighted median of the other models) is inside the range and the models' agreement is not low. " +
         METHOD,
     });
   },

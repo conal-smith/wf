@@ -118,13 +118,19 @@ value.
 reading's hour exactly. Nothing is interpolated in time for a model. The lead is hours
 after the run.
 
-**The blend** is scored as model `blend`. At 00, 06, 12 and 18 UTC each day it is rebuilt
-from the newest run of each blended model whose `generatedAt` was by then, exactly as the
-site works it out: `force5/ingest/consensus.py` replicates `modelWeight` and
-`weightedMedian` (`force5/src/weights.ts`) and `placeConsensus` (`src/ratings.ts`) — each
-model at its weight for the day of its run the hour falls on, ensembles collapsed to their member-mean speed, weighted median speed and
-gust, weighted vector-mean bearing, linear in u/v between a model's steps but never
-across a gap wider than twice its step. The fixture `force5/ingest/fixtures/blend-consensus.json`
+**The blend** is scored as model `blend`: the headline riders see. At 00, 06, 12 and 18
+UTC each day it is rebuilt from the newest run of each blended model whose `generatedAt`
+was by then, exactly as the site works it out: `force5/ingest/consensus.py` replicates
+`LEAD_MODEL`, `modelWeight` and `weightedMedian` (`force5/src/weights.ts`) and
+`placeConsensus` (`src/ratings.ts`). The headline is HARMONIE's own forecast while it
+reaches the hour; past it, a weighted median of the other models. That is: HARMONIE's own
+speed, gust and bearing wherever its run has the hour (its gust falling back to the
+others' where it gives none, as at its first hour); elsewhere each model at its weight for
+the day of its run the hour falls on, ensembles collapsed to their member-mean speed,
+weighted median speed and gust, weighted vector-mean bearing. Every model is linear in
+u/v between its steps but never across a gap wider than twice its step. So while HARMONIE
+runs (about 60 hours) `blend` scores close to HARMONIE itself, and differs from it only
+where its run is older than a newer issue time's or it has ended. The fixture `force5/ingest/fixtures/blend-consensus.json`
 holds the two together: `force5/src/consensusReplica.test.ts` checks that the TypeScript
 produces its `expected` values and `test_consensus.py` checks that the Python does. After
 changing the blend, regenerate it (`npx tsx force5/blend/consensus-fixture.ts`) and bring
@@ -152,7 +158,15 @@ observation manifest no longer covers it and nothing can change it. Each run rec
 only the newer days. A stored day carries `sumsVersion` and the blend replica's
 `blendSignature`, and is recomputed when either has changed.
 
-## Blend weights
+## The headline, and the blend weights
+
+Since October 2026 the headline wind, gust and direction everywhere on the site (the
+map's lights and dock, the spot pages, the forecast server and alerts) are HARMONIE's own
+while it reaches the hour, and a weighted median of the other models past it
+(`LEAD_MODEL`, `force5/src/weights.ts`). HARMONIE was the best model on every day it
+runs in the backtest below, and the weighted median could still outvote it; the weights
+now only decide the headline past HARMONIE's run, and nowhere a reader has left HARMONIE
+out. The spread, the range and the agreement label are still every model's.
 
 The weights in `MODEL_WEIGHTS` and the agreement thresholds in `AGREEMENT_SPREAD_KN`
 (`force5/src/weights.ts`) come from a one-off backtest run before this record existed,

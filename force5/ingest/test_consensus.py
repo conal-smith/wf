@@ -10,8 +10,8 @@ import math
 from pathlib import Path
 import unittest
 
-from consensus import (BLEND_MODELS, blend_weight, direction, place_consensus,
-                       weighted_median)
+from consensus import (BLEND_MODELS, LEAD_MODEL, blend_weight, direction,
+                       place_consensus, weighted_median)
 
 FIXTURE = json.loads((Path(__file__).with_name("fixtures") / "blend-consensus.json").read_text())
 
@@ -39,6 +39,45 @@ class ReplicaTests(unittest.TestCase):
         self.assertIsNone(median["2026-09-14T01:00:00Z"])
         self.assertIsNotNone(median["2026-09-14T03:00:00Z"])
         self.assertIsNotNone(median["2026-09-13T13:30:00Z"])
+
+    def test_harmonie_is_the_headline_while_it_reaches_the_hour(self):
+        harmonie = next(m for m in FIXTURE["manifests"] if m["model"] == LEAD_MODEL)
+        got = place_consensus(FIXTURE["manifests"], FIXTURE["blendIds"], "b", FIXTURE["axis"])
+        without = place_consensus(FIXTURE["manifests"],
+                                  [m for m in FIXTURE["blendIds"] if m != LEAD_MODEL],
+                                  "b", FIXTURE["axis"])
+        for point in harmonie["spotForecasts"]["b"]:
+            column = FIXTURE["axis"].index(point["validTime"]) \
+                if point["validTime"] in FIXTURE["axis"] else None
+            if column is None:
+                continue
+            with self.subTest(time=point["validTime"]):
+                self.assertAlmostEqual(got["median"][column], math.hypot(point["u"], point["v"]))
+                self.assertAlmostEqual(got["gust"][column], point["gust"])
+                self.assertAlmostEqual(got["from"][column], direction(point["u"], point["v"]))
+        # Past HARMONIE's last hour the headline is the other models' blend.
+        last = FIXTURE["axis"].index(harmonie["spotForecasts"]["b"][-1]["validTime"])
+        for column in range(last + 1, len(FIXTURE["axis"])):
+            self.assertEqual(got["median"][column], without["median"][column])
+
+    def test_a_harmonie_hour_without_a_gust_takes_the_blends_gust(self):
+        # HARMONIE gives no gust at "a" at 14:00: its wind leads, the gust is the blend's.
+        got = place_consensus(FIXTURE["manifests"], FIXTURE["blendIds"], "a", FIXTURE["axis"])
+        without = place_consensus(FIXTURE["manifests"],
+                                  [m for m in FIXTURE["blendIds"] if m != LEAD_MODEL],
+                                  "a", FIXTURE["axis"])
+        column = FIXTURE["axis"].index("2026-09-13T14:00:00Z")
+        self.assertAlmostEqual(got["median"][column], math.hypot(6.85, 4.11))
+        self.assertNotAlmostEqual(got["median"][column], without["median"][column])
+        self.assertIsNotNone(got["gust"][column])
+        self.assertEqual(got["gust"][column], without["gust"][column])
+
+    def test_a_place_harmonie_does_not_reach_is_the_blend(self):
+        got = place_consensus(FIXTURE["manifests"], FIXTURE["blendIds"], "c", FIXTURE["axis"])
+        without = place_consensus(FIXTURE["manifests"],
+                                  [m for m in FIXTURE["blendIds"] if m != LEAD_MODEL],
+                                  "c", FIXTURE["axis"])
+        self.assertEqual(got, without)
 
     def test_the_replica_blends_the_models_the_site_does(self):
         self.assertEqual(list(BLEND_MODELS), FIXTURE["blendModels"])

@@ -283,6 +283,19 @@ describe("wind vectors", () => {
     expect(meanDirections([[{ u: 5, v: 0 }]], 1)).toEqual([270]);
     expect(meanDirections([[null]], 1)).toEqual([null]);
   });
+
+  it("points the arrows the lead model's way while it has the hour", () => {
+    const lead = [{ u: 5, v: 0 }, null];
+    const others = [
+      { u: 0, v: 5 },
+      { u: 0, v: 5 },
+    ];
+    // The lead is a westerly; the others, southerlies, take over past it.
+    expect(meanDirections([lead, others, others], 2, undefined, 0)).toEqual([
+      270, 180,
+    ]);
+    expect(meanDirections([lead, others, others], 2)[0]).not.toBe(270);
+  });
 });
 
 describe("agreement", () => {

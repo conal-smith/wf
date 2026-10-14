@@ -96,6 +96,7 @@ import {
   windModels,
 } from "../force5/src/manifests";
 import { runLabel } from "../force5/src/revalidate";
+import { LEAD_MODEL } from "../force5/src/weights";
 import { loadModel, MODELS, type ModelId } from "../force5/src/models";
 // The display options, only when asked for from the map's controls.
 const DisplayFilter = lazy(() => import("./DisplayFilter"));
@@ -1209,7 +1210,11 @@ export default function App() {
         <li>
           Wind: {manifest?.modelName ?? "HARMONIE"} on the map
           {manifest ? ` (${runLabel(manifest.runTime)} run)` : ""}; the stars
-          blend {prefs.blendModels.length} models
+          rate{" "}
+          {prefs.blendModels.includes(LEAD_MODEL)
+            ? "HARMONIE's own forecast while it reaches the hour, then a blend of "
+            : "a blend of "}
+          {prefs.blendModels.length} models
         </li>
         <li>Depths: EMODnet Bathymetry, metres below chart datum</li>
         {foilState.manifest && (

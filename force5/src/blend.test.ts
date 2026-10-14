@@ -319,6 +319,48 @@ describe("per-hour statistics", () => {
     expect(later[0].agreement).toBe("high");
     expect(later[1].agreement).toBe("moderate");
   });
+  it("takes the lead model's own line as the headline where it has the hour", () => {
+    const lines = [
+      line("harmonie", [12, null], [16, null]),
+      line("gfs", [5, 9], [7, 11]),
+      line("ecmwf", [6, 11], [8, 13]),
+      line("icon-eu", [7, 10], [9, 12]),
+      // A member of an ensemble that shares the lead's name is never the lead.
+      { model: "harmonie", memberIndex: 0, speed: [1, 1], gust: [2, 2] },
+    ];
+    const stats = blendStats(lines, axis, undefined, undefined, "harmonie");
+    // HARMONIE's own hour, though the others would outvote it...
+    expect(stats[0].median).toBe(12);
+    expect(stats[0].gust.median).toBe(16);
+    expect(stats[0].lead).toBe("harmonie");
+    // ...with the spread still every line's.
+    expect(stats[0]).toMatchObject({ n: 5, min: 1, max: 12 });
+    expect(stats[0].gust).toMatchObject({ n: 5, min: 2, max: 16 });
+    // Where it has no hour, the median of the lines that do.
+    expect(stats[1].median).toBe(9.5);
+    expect(stats[1].gust.median).toBe(11.5);
+    expect(stats[1].lead).toBeNull();
+    // Without a lead, the median as before.
+    const plain = blendStats(lines, axis);
+    expect(plain[0].median).toBe(6);
+    expect(plain[0].lead).toBeNull();
+  });
+  it("keeps the median gust where the lead gives none", () => {
+    const stats = blendStats(
+      [
+        line("harmonie", [12, 12], [null, 15]),
+        line("gfs", [5, 5], [7, 7]),
+        line("ecmwf", [6, 6], [9, 9]),
+      ],
+      axis,
+      undefined,
+      undefined,
+      "harmonie",
+    );
+    expect(stats[0].median).toBe(12);
+    expect(stats[0].gust.median).toBe(8);
+    expect(stats[1].gust.median).toBe(15);
+  });
   it("interpolates quantiles between order statistics", () => {
     expect(quantile([1, 2, 3, 4], 0.25)).toBeCloseTo(1.75, 10);
     expect(quantile([1, 2, 3, 4], 0.5)).toBeCloseTo(2.5, 10);

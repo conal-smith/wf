@@ -678,8 +678,10 @@ pointer `weather/blend.json` (about 1 kB compressed) and a run directory beside 
 `weather/blend-RUN-HOURSh-v2-HASH8/spots/<square>.json`, one file per 2° spot square
 (about 81 kB compressed between Ireland's ten, the largest, around Dublin, 22 kB):
 
-- **What it holds.** Each place's weighted median wind and gust (tenths of a knot),
-  mean bearing (whole degrees) and agreement letter, on every time a deterministic
+- **What it holds.** Each place's headline wind and gust (tenths of a knot) and
+  bearing (whole degrees) — HARMONIE's own while it reaches the hour, past it the
+  other models' weighted median and weighted mean bearing — and the agreement letter
+  across every model, on every time a deterministic
   model publishes, plus a summary of each model's run so the dock can build its
   columns without the manifests. No stars: those depend on the reader's weight, level
   and wings, and the browser rates an hour in microseconds (`src/spotBlend.ts`).

@@ -12,6 +12,7 @@ export {
   agreementFrom,
   blendWeight,
   FINE_GRID_KM,
+  LEAD_MODEL,
   leadHours,
   modelWeight,
   REGIONAL_GRID_KM,
@@ -254,21 +255,33 @@ export interface GustStats {
   n: number;
   min: number | null;
   max: number | null;
+  /**
+   * The headline gust: the lead model's while it gives one at this hour,
+   * otherwise the median (weighted, with `weightOf`) of the lines that do.
+   */
   median: number | null;
 }
 export interface HourStats {
   time: string;
   n: number;
+  /** The range and quartiles span every line, the lead among them. */
   min: number | null;
   max: number | null;
   q25: number | null;
+  /**
+   * The headline wind: the lead model's own while it reaches the hour, past it
+   * the median (weighted, with `weightOf`) of every line. `lead` says which.
+   */
   median: number | null;
   q75: number | null;
+  /** The (weighted) mean of every line, whichever is the headline. */
   mean: number | null;
   /** Full range, max − min, in m/s. */
   spread: number | null;
   agreement: Agreement | null;
   gust: GustStats;
+  /** The model `median` is, or null where it is the lines' median. */
+  lead: string | null;
 }
 
 const EMPTY_GUST: GustStats = { n: 0, min: null, max: null, median: null };
@@ -280,18 +293,37 @@ const EMPTY_GUST: GustStats = { n: 0, min: null, max: null, median: null };
  * agreement stay what the lines themselves span. Agreement reads the lines'
  * spread against how far ahead the hour is (`agreementFrom`): `leadOf` gives
  * that in hours for each axis index, and without it every hour counts as day 0.
+ *
+ * With `leadModel` (`LEAD_MODEL`, HARMONIE), the headline — `median` and
+ * `gust.median` — is that model's own deterministic line wherever it has the
+ * hour, and the median of the lines only where it does not: the dock's chart,
+ * its stars and the forecast server then give the same number for the hour.
  */
 export function blendStats(
   inputs: readonly BlendInput[],
   axis: readonly string[],
   weightOf?: (model: string, at: number) => number,
   leadOf?: (at: number) => number,
+  leadModel?: string,
 ): HourStats[] {
   const finite = (v: number | null): v is number =>
     typeof v === "number" && Number.isFinite(v);
+  const leadLine =
+    leadModel === undefined
+      ? undefined
+      : inputs.find(
+          (input) =>
+            input.model === leadModel && input.memberIndex === undefined,
+        );
   return axis.map((iso, i) => {
     const speedLines = inputs.filter((input) => finite(input.speed[i]));
     const gustLines = inputs.filter((input) => finite(input.gust[i]));
+    const leadSpeed =
+      leadLine && finite(leadLine.speed[i]) ? leadLine.speed[i]! : null;
+    const leadGust =
+      leadSpeed !== null && finite(leadLine!.gust[i])
+        ? leadLine!.gust[i]!
+        : null;
     const speeds = speedLines.map((input) => input.speed[i]!).sort((a, b) => a - b);
     const gusts = gustLines.map((input) => input.gust[i]!).sort((a, b) => a - b);
     const middle = (
@@ -310,7 +342,8 @@ export function blendStats(
           n: gusts.length,
           min: gusts[0],
           max: gusts[gusts.length - 1],
-          median: middle(gustLines, (input) => input.gust[i]!, gusts),
+          median:
+            leadGust ?? middle(gustLines, (input) => input.gust[i]!, gusts),
         }
       : EMPTY_GUST;
     if (!speeds.length)
@@ -326,6 +359,7 @@ export function blendStats(
         spread: null,
         agreement: null,
         gust,
+        lead: null,
       };
     const min = speeds[0];
     const max = speeds[speeds.length - 1];
@@ -342,7 +376,8 @@ export function blendStats(
       min,
       max,
       q25: quantile(speeds, 0.25),
-      median: middle(speedLines, (input) => input.speed[i]!, speeds),
+      median:
+        leadSpeed ?? middle(speedLines, (input) => input.speed[i]!, speeds),
       q75: quantile(speeds, 0.75),
       mean,
       spread,
@@ -351,6 +386,7 @@ export function blendStats(
         leadOf?.(i) ?? 0,
       ),
       gust,
+      lead: leadSpeed === null ? null : leadModel!,
     };
   });
 }

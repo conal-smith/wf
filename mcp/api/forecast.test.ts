@@ -14,6 +14,7 @@ import {
   findSessions,
   findSpot,
   hourEnsemble,
+  hourWind,
   loadSpots,
   modelStatus,
   spotForecast,
@@ -166,7 +167,7 @@ describe("spotForecast", () => {
     );
   });
 
-  it("gives the weighted median, range and agreement of the models in knots", async () => {
+  it("gives the weighted median, range and agreement of the models in knots where HARMONIE has ended", async () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
     expect(first.time).toBe("2026-09-16T18:00:00.000Z");
@@ -211,6 +212,8 @@ describe("spotForecast", () => {
       ),
       1,
     );
+    expect(wind.lead).toBeNull();
+    expect(wind.gust_lead).toBeNull();
     expect(wind.min_kn).toBeCloseTo(speeds[0], 1);
     expect(wind.max_kn).toBeCloseTo(speeds[1], 1);
     expect(wind.agreement).toBe(
@@ -277,6 +280,77 @@ describe("spotForecast", () => {
       ],
       attribution: "Marine Institute",
     });
+  });
+});
+
+describe("hourWind", () => {
+  const at = Date.parse("2026-10-14T12:00:00Z");
+  const run = (id: string) => ({
+    id,
+    name: id,
+    provider: "test",
+    run_time: "2026-10-14T06:00:00Z",
+    until: "2026-10-16T18:00:00Z",
+    stale: false,
+    attribution: "",
+    license_url: "",
+  });
+  /** A model blowing steadily from `hours` steps: u, v and gust in m/s. */
+  const line = (
+    id: string,
+    wind: { u: number; v: number; gust: number | null },
+    hours = [0, 1, 2, 3],
+  ) => ({
+    run: run(id),
+    points: hours.map((h) => ({ time: at + h * HOUR, ...wind })),
+    gap: 2 * HOUR,
+    resolutionKm: null,
+  });
+  // Four models that agree on a 5 m/s southerly, and HARMONIE's 9 m/s westerly.
+  const others = ["icon-eu", "gfs", "arome", "gefs"].map((id) =>
+    line(id, { u: 0, v: 5, gust: 7 }, [0, 1, 2, 3, 4, 5, 6]),
+  );
+
+  it("is HARMONIE's own forecast where HARMONIE reaches the hour", () => {
+    const harmonie = line("harmonie", { u: 9, v: 0, gust: 12 });
+    const hour = hourWind([harmonie, ...others], at, true)!;
+    expect(hour.lead).toBe("harmonie");
+    expect(hour.gust_lead).toBe("harmonie");
+    expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
+    expect(hour.gust_kn).toBeCloseTo(12 * KNOTS, 1);
+    expect(hour.direction_deg).toBe(270);
+    expect(hour.direction).toBe("W");
+    // The range, the gusts' top and the agreement are still every model's.
+    expect(hour.min_kn).toBeCloseTo(5 * KNOTS, 1);
+    expect(hour.max_kn).toBeCloseTo(9 * KNOTS, 1);
+    expect(hour.gust_max_kn).toBeCloseTo(12 * KNOTS, 1);
+    expect(hour.models).toBe(5);
+    expect(hour.agreement).toBe("low");
+    expect(Object.keys(hour.by_model!)).toHaveLength(5);
+    // The weighted median the four would have outvoted it with.
+    const blend = hourWind(others, at, false)!;
+    expect(blend.lead).toBeNull();
+    expect(blend.wind_kn).toBeCloseTo(5 * KNOTS, 1);
+    expect(blend.direction_deg).toBe(180);
+  });
+
+  it("keeps the blend's gust where HARMONIE gives none, and says so", () => {
+    const harmonie = line("harmonie", { u: 9, v: 0, gust: null });
+    const hour = hourWind([harmonie, ...others], at, false)!;
+    expect(hour.lead).toBe("harmonie");
+    expect(hour.gust_lead).toBeNull();
+    expect(hour.wind_kn).toBeCloseTo(9 * KNOTS, 1);
+    expect(hour.gust_kn).toBeCloseTo(7 * KNOTS, 1);
+  });
+
+  it("falls back to the blend past HARMONIE's run", () => {
+    const harmonie = line("harmonie", { u: 9, v: 0, gust: 12 });
+    const later = at + 5 * HOUR;
+    const hour = hourWind([harmonie, ...others], later, false)!;
+    expect(hour).toEqual(hourWind(others, later, false));
+    expect(hour.lead).toBeNull();
+    expect(hour.wind_kn).toBeCloseTo(5 * KNOTS, 1);
+    expect(hour.models).toBe(4);
   });
 });
 

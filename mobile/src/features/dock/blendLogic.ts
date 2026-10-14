@@ -1,7 +1,8 @@
 /**
  * The blend chart's drawing (src/BlendChart.tsx), worked out once per blend:
  * the models' spread as nested bands in the wind's own colours, the gusts
- * over the median, the median, each model's own line, the arrows, the night
+ * over the headline, the headline (`HourStats.median`: HARMONIE's own while it
+ * reaches the hour, else the models' median), each model's own line, the arrows, the night
  * and the gridlines. Every path is in strip pixels; each day of the dock draws
  * the same paths through its own window, so nothing is split at midnight.
  */

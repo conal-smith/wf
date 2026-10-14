@@ -7,8 +7,9 @@
  * The `blend` job (force5/blend/build.ts, run by force5/ingest/fetch_blend.py)
  * reads the published wind manifests, puts every model on the times the dock
  * can show, and keeps each place's consensus as `placeConsensus` computes it:
- * the weighted median wind and gust, how far the models agree, and the mean
- * bearing. It does not keep stars: those are the reader's own (weight, level,
+ * the wind, gust and bearing (HARMONIE's own while it reaches the hour, past
+ * it the other models' weighted median and mean bearing) and how far the
+ * models agree. It does not keep stars: those are the reader's own (weight, level,
  * wings), and rating an hour is arithmetic the browser does in microseconds.
  *
  * It is published as a run, the way the models are (docs/TILING_DESIGN.md,

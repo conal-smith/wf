@@ -1,5 +1,5 @@
-// How much each model counts in the wind consensus, and how far to trust the
-// hour it gives. Dependency-free, so the forecast server (mcp/api, compiled on
+// Which model leads the wind consensus, how much each other model counts in it,
+// and how far to trust the hour it gives. Dependency-free, so the forecast server (mcp/api, compiled on
 // its own) reads the same weights as the site's stars and the dock's blend
 // (force5/src/blend.ts re-exports them).
 //
@@ -63,6 +63,17 @@ export const MODEL_WEIGHTS: Readonly<
   ecmwf: [0.5, 0.5, 0.5, 0.5],
   arpege: [0.5, 0.5, 0.5, 0.5],
 };
+
+/**
+ * The model whose own forecast is the headline wherever it reaches the hour.
+ * The backtest found HARMONIE, Met Éireann's 2.5 km regional model, the best
+ * for as long as it runs (about 60 hours), better than any blend that could
+ * outvote it, so the headline wind, gust and direction are HARMONIE's own while
+ * it has the hour. Past its run, or where it does not reach a place or a reader
+ * has left it out, the headline is the weighted median of the models that do.
+ * The spread, the range and the agreement stay across every model either way.
+ */
+export const LEAD_MODEL = "harmonie";
 
 /**
  * How much one model's line counts at an hour `leadHours` into its run: the

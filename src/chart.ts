@@ -460,17 +460,22 @@ function weightedVectorMean(
 }
 
 /**
- * Mean wind bearing per axis hour across every model that covers it, for the
- * arrows on the median. A single model's arrow on a multi-model chart would be
- * a claim the chart is not making.
+ * The headline bearing per axis hour, for the arrows on the headline line: the
+ * lead model's own (`lead`, its index in `vectorsByModel`: HARMONIE,
+ * `LEAD_MODEL`) wherever it has the hour, as the headline wind is; elsewhere
+ * the mean across every model that covers it.
  */
 export function meanDirections(
   vectorsByModel: readonly ({ u: number; v: number } | null)[][],
   length: number,
   /** Each model's weight at an axis index (`modelWeight`); equal when left out. */
   weightAt?: (model: number, index: number) => number,
+  lead?: number,
 ): (number | null)[] {
   return Array.from({ length }, (_, index) => {
+    const own = lead === undefined ? null : vectorsByModel[lead]?.[index];
+    if (own && Number.isFinite(own.u) && Number.isFinite(own.v))
+      return Math.hypot(own.u, own.v) < 0.1 ? null : direction(own.u, own.v);
     const at = vectorsByModel.flatMap((vectors, model) => {
       const vector = vectors[index];
       return vector
