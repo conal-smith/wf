@@ -466,6 +466,7 @@ function SpotPage({
             width={width}
             eager={index <= eagerTo}
             spotName={spot.name}
+            models={forecast.sources.wind}
           />
         ))}
       </div>

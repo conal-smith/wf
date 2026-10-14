@@ -3,15 +3,17 @@
  * its hours scroll under it, with the day's best stars and window; then a row per daylight hour, the dark folded either side;
  * then the tide and the light. Each row is figures, not words: the time, the
  * stars, the wind with its gust raised, where it comes from, the waves with
- * the way they come from, and the sky. A tap opens the hour's second line, with the session, the
- * wing, what it rides like, the waves, the models' spread and every reason a
- * star came off. The pen loops the day's best window, when it is worth riding.
+ * the way they come from, and the sky. The rows do not open: the hour's wind
+ * against the rider's range is a frame of its own (RangeBar.tsx), and a tap on
+ * it opens the hour's wind broken down, model by model. A phone has no room for
+ * the frame, so there the wind figure opens it. The pen loops the day's best
+ * window, when it is worth riding.
  *
  * A day off the screen draws only its header and a space its height: the
  * rows, the curve and the loop arrive as it scrolls near, or all at once when
  * the page is printed.
  */
-import { Fragment, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
   SESSION_LABEL,
@@ -25,7 +27,13 @@ import { penStyles } from "../../ui/Pen";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DayTide } from "./DayTide";
 import { ShoreGlyph, SkyGlyph, WindArrow } from "./glyphs";
-import { RangeAxis, RangeBar, type Band } from "./RangeBar";
+import {
+  RangeAxis,
+  RangeBar,
+  RangeDetail,
+  rangeWords,
+  type Band,
+} from "./RangeBar";
 import {
   HOUR,
   PEN_STARS,
@@ -61,11 +69,7 @@ const styles = tv({
       "border-0 border-b border-ink px-1 pt-1.5 pb-1 text-left align-bottom whitespace-nowrap text-ink-muted",
       MONO_LABEL,
     ],
-    row: [
-      "cursor-pointer border-b border-line align-middle outline-none",
-      "hover:bg-chart-magenta/5 focus-visible:bg-chart-magenta/5",
-      "aria-expanded:border-transparent",
-    ],
+    row: "border-b border-line align-middle",
     cell: "h-10 px-1 whitespace-nowrap wide:h-9",
     time: "w-8 font-mono text-body font-semibold text-ink",
     now: "text-now",
@@ -76,7 +80,7 @@ const styles = tv({
     // A phone has no Shore column, and offshore is the one thing on the row a
     // rider must not miss: the shore's mark rides in From there instead.
     fromShore: "ml-1.5 wide:hidden",
-    range: "w-28 max-wide:hidden",
+    range: "w-31 max-wide:hidden",
     shore: "w-8 max-wide:hidden",
     wing: "w-14 max-wide:hidden",
     waves: "w-24 max-wide:hidden",
@@ -88,13 +92,11 @@ const styles = tv({
     unit: "text-ink-muted",
     muted: "text-ink-muted",
     more: "border-b border-line",
-    moreCell: "px-1 pt-0 pb-2.5",
-    moreBody:
-      "flex flex-wrap items-center gap-x-3.5 gap-y-1 font-mono text-caption text-ink-muted",
-    moreItem: "inline-flex items-center gap-1.5",
     strong: "font-semibold text-ink",
-    session: "font-display text-prose text-ink italic",
-    reason: "basis-full font-body text-body text-pen-ink italic",
+    // Where the frame is hidden, the wind figure opens its card; where it
+    // shows, the figure is only a figure.
+    windTip: "wide:hidden",
+    windPlain: "max-wide:hidden",
     fold: [
       "flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-1 py-2 text-left font-mono text-caption text-ink-muted",
       "pointer-coarse:min-h-touch not-disabled:hover:bg-sunken not-disabled:hover:text-ink",
@@ -137,6 +139,8 @@ export interface DaySectionProps {
   /** Draw the rows now, rather than when the day scrolls near. */
   eager: boolean;
   spotName: string;
+  /** The live wind models, for the hour's card. */
+  models: readonly { id: string; name: string }[];
 }
 
 /** The theme's `wide` breakpoint (ui/theme.css), where the rows get shorter. */
@@ -326,29 +330,19 @@ function DayBody({
   stationNote,
   width,
   spotName,
+  models,
 }: DaySectionProps) {
   const s = styles();
   const names = dayNames(day.date, now);
-  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [showNight, setShowNight] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const [loop, setLoop] = useState<string | null>(null);
   const { before, light, after } = darkRuns(day.rows);
   const nowHour = Math.floor(now / HOUR) * HOUR;
-  const toggle = (time: number) =>
-    setOpen((was) => {
-      const next = new Set(was);
-      if (next.has(time)) next.delete(time);
-      else next.add(time);
-      return next;
-    });
-
   // The pen's loop round the window: measured once the rows are laid out, and
-  // again whenever something moves them (the width, a second line opening,
-  // the night unfolding, the web fonts arriving). Only round a window worth
+  // again whenever something moves them (the width, the night unfolding, the web fonts arriving). Only round a window worth
   // riding: the pen ringing a one-star day would be praising it.
   const ringed = window && window.stars >= PEN_STARS ? window : null;
-  const openKey = [...open].join();
   useLayoutEffect(() => {
     const box = wrap.current;
     if (!box || !ringed) {
@@ -386,7 +380,7 @@ function DayBody({
     return () => {
       live = false;
     };
-  }, [ringed, width, openKey, showNight, day.rows]);
+  }, [ringed, width, showNight, day.rows]);
 
   const fold = (rows: SpotRow[], edge: "before" | "after") =>
     rows.length > 0 && (
@@ -427,181 +421,194 @@ function DayBody({
     const { hour, rating } = row;
     const index = day.rows.indexOf(row);
     const wind = hour.wind;
-    const isOpen = open.has(row.time);
     const jump = wind ? gustJumps(wind.wind_kn, wind.gust_kn) : false;
+    const detail = wind && (
+      <RangeDetail
+        time={row.time}
+        date={`${names.short} ${names.date}`}
+        wind={wind}
+        band={band}
+        units={units}
+        unitText={unitText}
+        shore={row.shore}
+        rainMm={hour.weather?.rain_mm}
+        models={models}
+        riderText={riderText}
+      />
+    );
+    const tipLabel = wind
+      ? `${clock(row.time)}: ${rangeWords(wind, band, units)} ${unitText}`
+      : "";
     return (
-      <Fragment key={row.time}>
-        <tr
-          className={s.row()}
-          data-row={row.time}
-          data-hour={new Date(row.time).toISOString()}
-          data-daylight={hour.daylight ? "" : undefined}
-          id={`hour-${row.time}`}
-          tabIndex={0}
-          aria-expanded={isOpen}
-          onClick={() => toggle(row.time)}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            toggle(row.time);
-          }}
+      <tr
+        key={row.time}
+        className={s.row()}
+        data-row={row.time}
+        data-hour={new Date(row.time).toISOString()}
+        data-daylight={hour.daylight ? "" : undefined}
+        id={`hour-${row.time}`}
+      >
+        <th
+          scope="row"
+          className={s.cell({
+            className: [s.time(), row.time === nowHour ? s.now() : ""],
+          })}
+          data-now={row.time === nowHour ? "" : undefined}
         >
-          <th
-            scope="row"
-            className={s.cell({
-              className: [s.time(), row.time === nowHour ? s.now() : ""],
-            })}
-            data-now={row.time === nowHour ? "" : undefined}
-          >
-            {clock(row.time).slice(0, 2)}
-            <span className="sr-only">:00</span>
-          </th>
-          <td
-            className={s.cell({ className: s.stars() })}
-            data-stars={rating ? rating.stars : undefined}
-          >
-            <RatingTip
-              label={`${clock(row.time)}: ${
-                rating
-                  ? starsText(rating)
-                  : hour.daylight
-                    ? "no wind reading"
-                    : "dark, not rated"
-              }`}
-              detail={
-                <HourTip
-                  row={row}
-                  units={units}
-                  riderText={riderText}
-                  band={band}
-                  facing={facing}
-                  date={names.short}
-                />
-              }
-            >
-              <StarGlyphs
-                stars={rating ? rating.stars : null}
-                potential={rating?.potential}
-                size={9.5}
-              />
-            </RatingTip>
-          </td>
-          <td className={s.cell({ className: s.wind() })}>
-            {wind ? (
-              <Figure
-                value={windIn(wind.wind_kn, units)}
-                sup={
-                  wind.gust_kn === null
-                    ? undefined
-                    : windIn(wind.gust_kn, units)
-                }
-                alarm={jump}
-                label={`${windIn(wind.wind_kn, units)} ${unitText}${
-                  wind.gust_kn === null
-                    ? ""
-                    : `, gusting ${windIn(wind.gust_kn, units)}`
-                }`}
-              />
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.from() })}>
-            {wind && (
-              <>
-                <WindArrow from={wind.direction_deg} size={16} />
-                <span className={s.compass()}>{wind.direction}</span>
-                {facing !== null && (
-                  <span className={s.fromShore()}>
-                    <ShoreGlyph from={wind.direction_deg} facing={facing} />
-                  </span>
-                )}
-              </>
-            )}
-          </td>
-          <td className={s.cell({ className: s.range() })}>
-            {wind && (
-              <RangeBar wind={wind} ensemble={hour.ensemble} band={band} />
-            )}
-          </td>
-          <td className={s.cell({ className: s.shore() })}>
-            {wind && facing !== null ? (
-              <ShoreGlyph from={wind.direction_deg} facing={facing} />
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: [s.wing(), s.wingText()] })}>
-            {rating?.potential ? (
-              <>
-                {rating.wing.own ?? rating.wing.recommended}
-                <span className={s.unit()}> m</span>
-              </>
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: [s.waves(), s.wavesText()] })}>
-            {hour.waves?.height_m != null ? (
-              <>
-                {hour.waves.direction_deg != null && (
-                  <span title={`From ${compass(hour.waves.direction_deg)}`}>
-                    <WindArrow from={hour.waves.direction_deg} size={14} />
-                    <span className="sr-only">
-                      from {compass(hour.waves.direction_deg)}
-                    </span>
-                  </span>
-                )}{" "}
-                {hour.waves.height_m.toFixed(1)}
-                <span className={s.unit()}>m</span>
-                {hour.waves.period_s != null && (
-                  <>
-                    {" "}
-                    {hour.waves.period_s}
-                    <span className={s.unit()}>s</span>
-                  </>
-                )}
-              </>
-            ) : (
-              <span className={s.muted()}>–</span>
-            )}
-          </td>
-          <td className={s.cell({ className: s.sky() })}>
-            {hour.weather ? (
-              <>
-                <SkyGlyph weather={hour.weather} />
-                {hour.weather.air_c != null && (
-                  <span className={s.air()}>{hour.weather.air_c}°</span>
-                )}
-              </>
-            ) : index < skyEnds ? (
-              <span className={s.muted()}>–</span>
-            ) : row.time === skyNote ? (
-              <span
-                className={s.notYet()}
-                title="The sky forecast does not reach this far yet"
-              >
-                not yet<span className="sr-only"> forecast</span>
-              </span>
-            ) : (
-              <span className="sr-only">not forecast yet</span>
-            )}
-          </td>
-        </tr>
-        {isOpen && (
-          <tr className={s.more()} data-hour-detail>
-            <td colSpan={9} className={s.moreCell()}>
-              <HourMore
+          {clock(row.time).slice(0, 2)}
+          <span className="sr-only">:00</span>
+        </th>
+        <td
+          className={s.cell({ className: s.stars() })}
+          data-stars={rating ? rating.stars : undefined}
+        >
+          <RatingTip
+            label={`${clock(row.time)}: ${
+              rating
+                ? starsText(rating)
+                : hour.daylight
+                  ? "no wind reading"
+                  : "dark, not rated"
+            }`}
+            detail={
+              <HourTip
                 row={row}
                 units={units}
-                unitText={unitText}
+                riderText={riderText}
                 band={band}
                 facing={facing}
+                date={names.short}
               />
-            </td>
-          </tr>
-        )}
-      </Fragment>
+            }
+          >
+            <StarGlyphs
+              stars={rating ? rating.stars : null}
+              potential={rating?.potential}
+              size={9.5}
+            />
+          </RatingTip>
+        </td>
+        <td className={s.cell({ className: s.wind() })}>
+          {wind ? (
+            <>
+              <span className={s.windTip()}>
+                <RatingTip label={tipLabel} detail={detail}>
+                  <Figure
+                    value={windIn(wind.wind_kn, units)}
+                    sup={
+                      wind.gust_kn === null
+                        ? undefined
+                        : windIn(wind.gust_kn, units)
+                    }
+                    alarm={jump}
+                  />
+                </RatingTip>
+              </span>
+              <span className={s.windPlain()}>
+                <Figure
+                  value={windIn(wind.wind_kn, units)}
+                  sup={
+                    wind.gust_kn === null
+                      ? undefined
+                      : windIn(wind.gust_kn, units)
+                  }
+                  alarm={jump}
+                  label={`${windIn(wind.wind_kn, units)} ${unitText}${
+                    wind.gust_kn === null
+                      ? ""
+                      : `, gusting ${windIn(wind.gust_kn, units)}`
+                  }`}
+                />
+              </span>
+            </>
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: s.from() })}>
+          {wind && (
+            <>
+              <WindArrow from={wind.direction_deg} size={16} />
+              <span className={s.compass()}>{wind.direction}</span>
+              {facing !== null && (
+                <span className={s.fromShore()}>
+                  <ShoreGlyph from={wind.direction_deg} facing={facing} />
+                </span>
+              )}
+            </>
+          )}
+        </td>
+        <td className={s.cell({ className: s.range() })}>
+          {wind && (
+            <RatingTip label={tipLabel} detail={detail}>
+              <RangeBar wind={wind} band={band} />
+            </RatingTip>
+          )}
+        </td>
+        <td className={s.cell({ className: s.shore() })}>
+          {wind && facing !== null ? (
+            <ShoreGlyph from={wind.direction_deg} facing={facing} />
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: [s.wing(), s.wingText()] })}>
+          {rating?.potential ? (
+            <>
+              {rating.wing.own ?? rating.wing.recommended}
+              <span className={s.unit()}> m</span>
+            </>
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: [s.waves(), s.wavesText()] })}>
+          {hour.waves?.height_m != null ? (
+            <>
+              {hour.waves.direction_deg != null && (
+                <span title={`From ${compass(hour.waves.direction_deg)}`}>
+                  <WindArrow from={hour.waves.direction_deg} size={14} />
+                  <span className="sr-only">
+                    from {compass(hour.waves.direction_deg)}
+                  </span>
+                </span>
+              )}{" "}
+              {hour.waves.height_m.toFixed(1)}
+              <span className={s.unit()}>m</span>
+              {hour.waves.period_s != null && (
+                <>
+                  {" "}
+                  {hour.waves.period_s}
+                  <span className={s.unit()}>s</span>
+                </>
+              )}
+            </>
+          ) : (
+            <span className={s.muted()}>–</span>
+          )}
+        </td>
+        <td className={s.cell({ className: s.sky() })}>
+          {hour.weather ? (
+            <>
+              <SkyGlyph weather={hour.weather} />
+              {hour.weather.air_c != null && (
+                <span className={s.air()}>{hour.weather.air_c}°</span>
+              )}
+            </>
+          ) : index < skyEnds ? (
+            <span className={s.muted()}>–</span>
+          ) : row.time === skyNote ? (
+            <span
+              className={s.notYet()}
+              title="The sky forecast does not reach this far yet"
+            >
+              not yet<span className="sr-only"> forecast</span>
+            </span>
+          ) : (
+            <span className="sr-only">not forecast yet</span>
+          )}
+        </td>
+      </tr>
     );
   };
 
@@ -634,7 +641,7 @@ function DayBody({
                   From
                 </th>
                 <th scope="col" className={s.th({ className: s.range() })}>
-                  <span className="sr-only">The models&rsquo; spread</span>
+                  <span className="sr-only">The wind against your range</span>
                   <RangeAxis band={band} units={units} />
                 </th>
                 <th scope="col" className={s.th({ className: s.shore() })}>
@@ -683,114 +690,6 @@ function DayBody({
         stationNote={stationNote}
       />
     </>
-  );
-}
-
-/** The hour's second line: what the row has no room for. */
-function HourMore({
-  row,
-  units,
-  unitText,
-  band,
-  facing,
-}: {
-  row: SpotRow;
-  units: Units;
-  unitText: string;
-  band: Band;
-  facing: number | null;
-}) {
-  const s = styles();
-  const { hour, rating } = row;
-  const wind = hour.wind;
-  const ensemble = hour.ensemble;
-  if (!rating && !wind)
-    return (
-      <p className="m-0 font-body text-body text-ink-muted">No wind reading.</p>
-    );
-  return (
-    <div className={s.moreBody()}>
-      {rating && (
-        <span className={s.moreItem()}>
-          <i className={s.session()}>{SESSION_LABEL[rating.session]}</i>
-          {rating.potential > 0 && (
-            <>
-              on a{" "}
-              <b className={s.strong()}>
-                {rating.wing.own ?? rating.wing.recommended} m
-              </b>
-            </>
-          )}
-        </span>
-      )}
-      {rating && (
-        <span className={s.moreItem()}>
-          rides like{" "}
-          <b className={s.strong()}>{windIn(rating.rideKn, units)}</b>{" "}
-          {unitText}
-        </span>
-      )}
-      {wind && (
-        <span className={s.moreItem()}>
-          {facing !== null && (
-            <ShoreGlyph from={wind.direction_deg} facing={facing} size={16} />
-          )}
-          {row.shore ? SHORE_LABEL[row.shore] : "facing unknown"}
-        </span>
-      )}
-      <span className={s.moreItem()}>
-        waves{" "}
-        {hour.waves?.height_m != null ? (
-          <>
-            <b className={s.strong()}>{hour.waves.height_m.toFixed(1)}</b> m
-            {hour.waves.period_s != null && ` ${hour.waves.period_s} s`}
-            {hour.waves.direction_deg != null && (
-              <WindArrow from={hour.waves.direction_deg} size={12} />
-            )}
-          </>
-        ) : (
-          "–"
-        )}
-      </span>
-      {wind && (
-        <span className={s.moreItem()}>
-          <RangeBar wind={wind} ensemble={ensemble} band={band} />
-        </span>
-      )}
-      {wind && (
-        <span className={s.moreItem()} data-spread>
-          {wind.models > 1 && (
-            <>
-              {wind.models} models{" "}
-              <b className={s.strong()}>
-                {windIn(wind.min_kn, units)}–{windIn(wind.max_kn, units)}
-              </b>
-            </>
-          )}
-          {ensemble && (
-            <>
-              {wind.models > 1 && " · "}
-              {ensemble.members} members{" "}
-              <b className={s.strong()}>
-                {windIn(ensemble.p10_kn, units)}–
-                {windIn(ensemble.p90_kn, units)}
-              </b>
-            </>
-          )}{" "}
-          {unitText}
-        </span>
-      )}
-      {hour.weather?.rain_mm ? (
-        <span className={s.moreItem()}>
-          rain <b className={s.strong()}>{hour.weather.rain_mm}</b> mm
-        </span>
-      ) : null}
-      {rating?.reasons.map((reason) => (
-        <span key={reason} className={s.reason()}>
-          − {reason}
-        </span>
-      ))}
-    </div>
   );
 }
 

@@ -80,8 +80,10 @@ export function useSpotForecast(id: string | null, attempt = 0): SpotState {
           candidates: candidatesFor(spots, id),
         } as const;
       const now = Date.now();
+      // Each model's own wind too: the hour's card lists them.
       const forecast = await spotForecast(source(), spot, forecastWindow(now), {
         now,
+        perModel: true,
       });
       return { kind: "ready", spot, forecast } as const;
     })().then(

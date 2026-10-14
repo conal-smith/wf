@@ -128,17 +128,26 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0);
 
-  // A tap on the row opens its second line: the spread and the reasons.
+  // A row is not a button: a tap on it opens nothing.
   const row = light.nth(2);
-  // The last cell, the sky: the stars are a button of their own.
   await row.locator("td").last().click();
-  await expect(row).toHaveAttribute("aria-expanded", "true");
-  const more = tomorrow.locator("[data-hour-detail]");
-  await expect(more).toHaveCount(1);
-  await expect(more.locator("[data-spread]")).toContainText("models");
-  await expect(more.locator("[data-range-bar]")).toBeAttached();
-  await row.press("Enter");
-  await expect(more).toHaveCount(0);
+  await expect(row).not.toHaveAttribute("aria-expanded");
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+
+  // The frame opens the hour's wind, broken down: the blend, the models one
+  // by one, where it sits in the rider's range. No session, no advice.
+  const frame = row.locator("[data-range-bar]");
+  await frame.click();
+  const card = page.locator("[data-range-detail]");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Blend");
+  await expect(card.locator("[data-range-text]")).toContainText("your");
+  await expect(
+    card.locator("[data-range-models] tbody tr").first(),
+  ).toBeVisible();
+  await expect(card).not.toContainText("rides like");
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
 
   // The day is figures, not a verdict in words.
   await expect(page.locator("[data-pen-note]")).toHaveCount(0);
@@ -269,9 +278,10 @@ test("the map's dock opens the spot page, for the spot it opens on and one chose
   });
   // The dock opens on Brandon Bay, chosen last, and links to its page.
   await expect(page.locator(".dock .dk-name")).toHaveText("Brandon Bay");
-  await expect(
-    page.locator(".dock [data-spot-page-link]"),
-  ).toHaveAttribute("href", "/spot/brandon");
+  await expect(page.locator(".dock [data-spot-page-link]")).toHaveAttribute(
+    "href",
+    "/spot/brandon",
+  );
 
   // A spot chosen on the map is the dock's, with no box over the chart.
   await page.getByRole("combobox", { name: "Find a spot" }).fill("Dollymount");
@@ -305,10 +315,12 @@ test("on a phone the week and the first day are on the first screen, and far day
   await expect(
     page.locator("[data-day]").first().getByRole("heading", { level: 2 }),
   ).toBeInViewport();
-  // The columns a phone has no room for are in the second line instead.
-  await expect(
-    page.locator("tr[data-daylight] [data-range-bar]").first(),
-  ).toBeHidden();
+  // A phone has no room for the frame: the wind figure opens its card.
+  const phoneRow = page.locator("tr[data-daylight]").first();
+  await expect(phoneRow.locator("[data-range-bar]")).toBeHidden();
+  await phoneRow.getByRole("button", { name: /blend/ }).click();
+  await expect(page.locator("[data-range-detail]")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // The last day keeps a space and draws its rows only once it comes near.
   const last = page.locator("[data-day]").last();
