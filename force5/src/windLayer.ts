@@ -199,13 +199,22 @@ export function createWindLayer(
   };
   paint();
 
+  // The canvas is carried with the camera between draws by a CSS transform
+  // about its own top-left corner (carry, below).
+  canvas.style.transformOrigin = "0 0";
+
   const resize = () => {
     const rect = canvas.getBoundingClientRect();
     width = rect.width;
     height = rect.height;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.max(1, Math.round(width * dpr));
-    canvas.height = Math.max(1, Math.round(height * dpr));
+    const w = Math.max(1, Math.round(width * dpr)),
+      h = Math.max(1, Math.round(height * dpr));
+    // Setting a canvas's size, even to the one it has, gives it a new backing
+    // store: on a Retina screen 16 MB, every time the camera stopped.
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width = w;
+    canvas.height = h;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // Joined runs with round joins draw what round-capped segments did.
     ctx.lineCap = "round";
@@ -591,6 +600,8 @@ export function createWindLayer(
   const build = () => {
     stale = false;
     follow();
+    // Measured as laid out, not as carried; the step that builds draws next.
+    canvas.style.transform = "";
     resize();
     field = null;
     if (!frame || !width || !height) return;
@@ -672,15 +683,49 @@ export function createWindLayer(
 
   /* ---- the loop ---- */
 
-  /** The cloud a step on when one is due, then drawn. */
-  const tick = (now: number) => {
+  /**
+   * The screen's corners, as places, when the lines were last drawn: what
+   * the camera has done since is put on the canvas as a transform.
+   */
+  let drawnAt: LngLat[] | null = null;
+
+  /**
+   * The cloud carried to the camera, a step on, and drawn: at most once a
+   * step, 30 ms, whether the loop or the map's moving asks for it.
+   */
+  const render = (now: number) => {
+    last = now;
+    follow();
     const coloured = colouredNow();
-    if (now - last >= 30) {
-      last = now;
-      advance(coloured);
-    }
+    advance(coloured);
     draw(coloured);
+    drawnAt = [
+      map.unproject([0, 0]),
+      map.unproject([width, 0]),
+      map.unproject([0, height]),
+    ];
+    canvas.style.transform = "";
   };
+
+  /**
+   * Between steps, the lines as drawn go with the map as a transform, which
+   * the compositor applies for nothing. Redrawn for every frame of a pan
+   * instead, at a display's 120 or 144 Hz, they cost five times what they do
+   * at rest, and the steps between draws are too short to see the trails
+   * stretch or the edges go bare.
+   */
+  const carry = () => {
+    if (!drawnAt || !width || !height) return;
+    const p0 = map.project(drawnAt[0]),
+      p1 = map.project(drawnAt[1]),
+      p2 = map.project(drawnAt[2]);
+    const a = (p1.x - p0.x) / width,
+      b = (p1.y - p0.y) / width,
+      c = (p2.x - p0.x) / height,
+      d = (p2.y - p0.y) / height;
+    canvas.style.transform = `matrix(${a},${b},${c},${d},${p0.x},${p0.y})`;
+  };
+
   const step = (now: number) => {
     raf = 0;
     if (destroyed || paused || !frame || document.hidden) return;
@@ -689,7 +734,7 @@ export function createWindLayer(
     // The field is resampled once the camera is still: per frame it is too
     // costly, and until then the cloud drifts on the one it had.
     if (stale && !map.isMoving()) build();
-    if (field) tick(now);
+    if (field) render(now);
   };
 
   const restart = () => {
@@ -912,11 +957,13 @@ export function createWindLayer(
 
   /* ---- wiring ---- */
 
-  // The lines go with the map as it moves, drawn in the same frame as it.
+  // The lines go with the map as it moves, in the same frame as it: drawn
+  // when a step is due, carried as drawn until then.
   const onMove = () => {
     if (destroyed || paused || !frame || !field || document.hidden) return;
-    follow();
-    tick(performance.now());
+    const now = performance.now();
+    if (now - last >= 30) render(now);
+    else carry();
   };
   const onMoveEnd = () => {
     requestTiles();
