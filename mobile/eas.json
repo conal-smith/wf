@@ -5,8 +5,7 @@
   },
   "build": {
     "base": {
-      "node": "22.12.0",
-      "env": { "EAS_PROJECT_ID": "$EAS_PROJECT_ID" }
+      "node": "22.12.0"
     },
     "development": {
       "extends": "base",
@@ -40,11 +39,11 @@
   },
   "submit": {
     "staging": {
-      "ios": { "ascAppId": "$ASC_APP_ID_STAGING" },
+      "ios": {},
       "android": { "track": "internal", "releaseStatus": "completed" }
     },
     "production": {
-      "ios": { "ascAppId": "$ASC_APP_ID" },
+      "ios": {},
       "android": { "track": "production", "releaseStatus": "draft" }
     }
   }

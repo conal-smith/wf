@@ -9,6 +9,9 @@
  *   record-staged OUT          staged.json: what staging tested, for a later promote
  *   verify-staged              the downloaded staged build is exactly what staging tested
  *
+ * The app's part of the train (an EAS update and store binaries) is
+ * scripts/release/mobile.mjs; staged.json carries what staging did with it.
+ *
  * Main feeds a nightly; a release stages what a nightly already built, and a
  * promote puts what staging tested into production. All three are tags on this
  * repository:
@@ -27,7 +30,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -40,6 +43,12 @@ export const FORECAST_BASE_META = "wingfoil:forecast-base";
 export const STAGING_JOB = "Staging";
 /** The files a staged candidate carries, and the release after it. */
 export const STAGED_FILES = ["images.json", "site.tar.gz"];
+/**
+ * Carried when the nightly had them: mobile.json (the app's update, from
+ * scripts/release/mobile.mjs). A candidate staged before they existed is still
+ * promotable; one that recorded them must still have them, unchanged.
+ */
+export const OPTIONAL_STAGED_FILES = ["mobile.json"];
 
 /** 2026.10.10, in UTC: the date a run starts is the date it is named for. */
 export function dateStamp(now) {
@@ -182,11 +191,15 @@ export function promoteCheck({ candidate, staged, stagingJob, releasedAt, produc
 }
 
 /** staged.json: everything promote needs to put exactly this build in production. */
-export function stagedRecord({ tag, version, nightlyTag, commit, images, sha256, runId, runAttempt, siteDeployed, siteUrl, forecastBase, at }) {
+export function stagedRecord({ tag, version, nightlyTag, commit, images, sha256, runId, runAttempt, siteDeployed, siteUrl, forecastBase, at, mobile }) {
   if (!STAGED_TAG.test(tag)) throw new Error(`Not a staged tag: ${tag}`);
   if (images?.commit !== commit) throw new Error(`images.json is for ${images?.commit}, not ${commit}`);
   for (const file of STAGED_FILES)
     if (!/^[0-9a-f]{64}$/.test(sha256?.[file] ?? "")) throw new Error(`No sha256 for ${file}`);
+  for (const file of OPTIONAL_STAGED_FILES)
+    if (file in (sha256 ?? {}) && !/^[0-9a-f]{64}$/.test(sha256[file] ?? "")) throw new Error(`No sha256 for ${file}`);
+  if (mobile && !("mobile.json" in sha256)) throw new Error("The app was staged but mobile.json was not hashed");
+  if (mobile && mobile.commit !== commit) throw new Error(`The app staged is for ${mobile.commit}, not ${commit}`);
   return {
     schemaVersion: 1,
     tag,
@@ -203,13 +216,27 @@ export function stagedRecord({ tag, version, nightlyTag, commit, images, sha256,
       siteUrl: siteDeployed ? siteUrl || "" : "",
       forecastBase: siteDeployed ? forecastBase || "" : "",
     },
+    // What staging did with the app (mobile.mjs record-app-staged), or null.
+    mobile: mobile ?? null,
     stagedAt: at,
   };
 }
 
 /** The files downloaded from a staged candidate are byte for byte what staging tested. */
-export function verifyStaged({ staged, tag, ref, images, sha256 }) {
+export function verifyStaged({ staged, tag, ref, images, sha256, mobile }) {
   const problems = [];
+  for (const file of OPTIONAL_STAGED_FILES)
+    if (staged.sha256?.[file] && staged.sha256[file] !== sha256[file])
+      problems.push(
+        sha256[file]
+          ? `${file} is not the file staging tested (sha256 ${sha256[file]}, staged ${staged.sha256[file]})`
+          : `${file} is missing, but staging recorded it`,
+      );
+  if (staged.mobile && mobile) {
+    if (staged.mobile.branch !== mobile.branch) problems.push(`the app staged was ${staged.mobile.branch}, mobile.json says ${mobile.branch}`);
+    for (const [platform, group] of Object.entries(staged.mobile.groups ?? {}))
+      if (mobile.updates?.[platform]?.group !== group) problems.push(`the ${platform} app update is not the group staging pointed at`);
+  }
   if (staged.tag !== tag) problems.push(`staged.json is for ${staged.tag}, not ${tag}`);
   if (staged.commit !== ref) problems.push(`staged.json is for commit ${staged.commit}, not ${ref}`);
   if (images.commit !== ref) problems.push(`images.json is for commit ${images.commit}, not ${ref}`);
@@ -421,6 +448,17 @@ function notes(out) {
     const { images: built } = JSON.parse(readFileSync(images, "utf8"));
     lines.push("## Images", "", ...Object.entries(built).map(([name, ref]) => `- ${name}: \`${ref}\``), "");
   }
+  const mobile = process.env.MOBILE_JSON && existsSync(process.env.MOBILE_JSON) ? readJson(process.env.MOBILE_JSON) : null;
+  if (mobile?.configured)
+    lines.push(
+      "## App",
+      "",
+      `Over-the-air update on EAS branch \`${mobile.branch}\` (app ${mobile.appVersion}):`,
+      ...Object.entries(mobile.updates).map(
+        ([platform, u]) => `- ${platform}: group \`${u.group}\`, runtime \`${String(u.runtimeVersion).slice(0, 12)}\``,
+      ),
+      "",
+    );
   lines.push(previous ? `## Changes since ${previous}` : "## Changes", "", commits || "- No changes.", "");
   writeFileSync(out, lines.join("\n"));
   console.log(lines.join("\n"));
@@ -452,6 +490,11 @@ async function pruneNightlies(keep) {
 
 const sha256Of = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
 const readJson = (file) => JSON.parse(readFileSync(file, "utf8"));
+/** The staged files here: every required one, and each optional one present. */
+const hashes = () =>
+  Object.fromEntries(
+    [...STAGED_FILES, ...OPTIONAL_STAGED_FILES.filter((file) => existsSync(file))].map((file) => [file, sha256Of(file)]),
+  );
 
 /** Run beside images.json and site.tar.gz, at the end of a staging that passed. */
 function recordStaged(out) {
@@ -462,13 +505,14 @@ function recordStaged(out) {
     nightlyTag: env.NIGHTLY_TAG,
     commit: env.REF,
     images: readJson("images.json"),
-    sha256: Object.fromEntries(STAGED_FILES.map((file) => [file, sha256Of(file)])),
+    sha256: hashes(),
     runId: env.GITHUB_RUN_ID,
     runAttempt: env.GITHUB_RUN_ATTEMPT,
     siteDeployed: env.SITE_DEPLOYED === "true",
     siteUrl: env.SITE_URL,
     forecastBase: env.FORECAST_BASE,
     at: new Date().toISOString(),
+    mobile: existsSync(env.APP_STAGED || "app-staged.json") ? readJson(env.APP_STAGED || "app-staged.json") : undefined,
   });
   writeFileSync(out, `${JSON.stringify(record, null, 2)}\n`);
   console.log(JSON.stringify(record, null, 2));
@@ -482,9 +526,11 @@ function verifyStagedFiles() {
     tag,
     ref,
     images: readJson("images.json"),
-    sha256: Object.fromEntries(STAGED_FILES.map((file) => [file, sha256Of(file)])),
+    sha256: hashes(),
+    mobile: existsSync("mobile.json") ? readJson("mobile.json") : undefined,
   });
-  console.log(`${tag}: images.json and site.tar.gz are the files staging tested, for ${ref}.`);
+  const files = [...STAGED_FILES, ...OPTIONAL_STAGED_FILES.filter((file) => existsSync(file))];
+  console.log(`${tag}: ${files.join(", ")} are the files staging tested, for ${ref}.`);
 }
 
 async function main(argv) {

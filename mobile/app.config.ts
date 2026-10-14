@@ -52,8 +52,20 @@ const v = VARIANTS[variant];
 /**
  * The EAS project. Until one exists (docs/MOBILE.md, "One-time setup") the
  * app builds and runs with over-the-air updates off.
+ *
+ * On EAS's build machines it comes from EAS's environment variables (set it in
+ * every environment there), not from eas.json: EAS does not expand "$NAME" in
+ * a build profile's env, so a placeholder would reach this file as text. A
+ * store build without it would ship with updates off, unreachable by the
+ * release train, so that is refused here rather than discovered by riders.
  */
-const projectId = process.env.EAS_PROJECT_ID || undefined;
+const rawProjectId = process.env.EAS_PROJECT_ID?.trim() ?? "";
+const projectId = rawProjectId && !rawProjectId.startsWith("$") ? rawProjectId : undefined;
+if (!projectId && process.env.EAS_BUILD === "true" && variant !== "development")
+  throw new Error(
+    "EAS_PROJECT_ID is not set on this EAS build. Add it as an EAS environment variable " +
+      "(plain text, every environment): docs/MOBILE.md, \"One-time setup\".",
+  );
 
 /** Paper, the ground of every page (ui/theme.css --paper). */
 const PAPER = "#f3eee3";

@@ -179,3 +179,100 @@ jobs:
         run: scripts/release/web-image-smoke.sh wingfoil-web:ci
       - name: Marketplace API image boots
         run: scripts/release/market-image-smoke.sh wingfoil-market:ci
+
+  # The app (mobile/, docs/MOBILE.md): its own gate, npm run ci (typecheck,
+  # eslint, the token lint and its self-test, unit tests), then Metro bundling
+  # both platforms, which is what an over-the-air update ships. The root's
+  # modules are installed too: the app imports the site's forecast code, and
+  # its tests reach the site's dependencies through it. No native compile (a
+  # store build is EAS's, at release); the fingerprint that decides whether one
+  # is needed is printed in the summary instead.
+  mobile:
+    name: App (typecheck, lints, tests, bundles)
+    if: ${{ inputs.release_gate || github.event_name == 'workflow_dispatch' || github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # app.config.ts turns over-the-air updates on with it, which the
+      # fingerprint counts: with it set, the hash below is the one EAS computes.
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: mobile
+      - name: Typecheck, lints, unit tests
+        working-directory: mobile
+        run: npm run ci
+      - name: Bundle iOS and Android (expo export)
+        working-directory: mobile
+        run: npm run export:check
+      - name: Runtime fingerprints
+        working-directory: mobile
+        run: |
+          {
+            echo "### App runtime fingerprints"
+            echo
+            echo "An over-the-air update reaches only binaries with the same fingerprint (mobile/fingerprint.config.js)."
+            if [ -z "$EAS_PROJECT_ID" ]; then echo "EAS_PROJECT_ID is not set, so these are for a build with updates off."; fi
+            echo
+            echo "| Platform | Fingerprint |"
+            echo "| --- | --- |"
+            for platform in ios android; do
+              echo "| $platform | \`$(npx expo-updates fingerprint:generate --platform "$platform" | jq -r .hash)\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Advisory, on pull requests: does this change the app's native code? If the
+  # fingerprint moves, the next release builds new store binaries (and riders
+  # on older ones need the store); if not, it ships over the air. Never fails
+  # and labels nothing: it writes the answer in the run's summary, as t3code's
+  # mobile-fingerprint-check does in a comment.
+  mobile-fingerprint:
+    name: App native change (advisory)
+    if: ${{ github.event_name == 'pull_request' && github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    env:
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Fingerprints of this change
+        working-directory: mobile
+        run: |
+          npm ci
+          for platform in ios android; do npx expo-updates fingerprint:generate --platform "$platform" > "$RUNNER_TEMP/head-$platform.json"; done
+      # The fingerprint reads mobile/ only, so the base's mobile/ is enough.
+      - name: Fingerprints of the base
+        run: |
+          mkdir -p "$RUNNER_TEMP/base"
+          if ! git archive "$BASE_SHA" mobile | tar -x -C "$RUNNER_TEMP/base"; then echo "The base has no app."; exit 0; fi
+          cd "$RUNNER_TEMP/base/mobile"
+          npm ci
+          for platform in ios android; do
+            npx expo-updates fingerprint:generate --platform "$platform" > "$RUNNER_TEMP/base-$platform.json" || rm -f "$RUNNER_TEMP/base-$platform.json"
+          done
+      - name: Compare
+        run: |
+          { echo "### App native change"; echo; } >> "$GITHUB_STEP_SUMMARY"
+          for platform in ios android; do
+            node scripts/release/mobile.mjs fingerprint-diff "$RUNNER_TEMP/base-$platform.json" "$RUNNER_TEMP/head-$platform.json" "$platform"
+          done

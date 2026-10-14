@@ -36,10 +36,26 @@ name: Release
 # Pages once the repository variables in docs/RELEASES.md exist (skipped with a
 # notice until then).
 #
-# Staging and production run the train's own logic (scripts/release/release.mjs)
-# from this workflow's commit, checked out under .train, and the tests from the
-# commit being shipped: a candidate staged before a change to the train can
-# still be promoted by the train as it is now.
+# The app (mobile/, docs/MOBILE.md) rides the same train, once EXPO_TOKEN and
+# EAS_PROJECT_ID exist (every app step is a notice until then, as the site is
+# without Cloudflare):
+#
+#   nightly    its JavaScript published ONCE as an EAS update, on an EAS branch
+#              named for the nightly's tag that no channel points at; mobile.json
+#              (the update groups, their runtimes, the binaries that can run them)
+#              goes on the prerelease
+#   release    the `staging` channel pointed at that branch; a staging binary
+#              built and submitted (TestFlight, Play internal) only if none runs
+#              its runtime yet; recorded in staged.json
+#   promote    the `production` channel pointed at the SAME branch, checked to
+#              hold exactly the groups staging ran; app/latest.json published with
+#              the site; riders told; then a production binary built and
+#              submitted for review only if none runs the runtime yet
+#
+# Staging and production run the train's own logic (scripts/release/release.mjs
+# and mobile.mjs) from this workflow's commit, checked out under .train, and the
+# tests from the commit being shipped: a candidate staged before a change to the
+# train can still be promoted by the train as it is now.
 run-name: "${{ github.event_name == 'schedule' && 'nightly (scheduled)' || format('{0} {1}{2}', inputs.channel, inputs.nightly, inputs.staged) }}"
 
 on:
@@ -78,6 +94,8 @@ permissions:
 
 env:
   IMAGES: ghcr.io/${{ github.repository_owner }}/wingfoil
+  # EAS CLI, pinned: the app's train reads its JSON (scripts/release/mobile.mjs).
+  EAS_CLI: "24.13.0"
 
 jobs:
   resolve:
@@ -269,9 +287,96 @@ jobs:
             playwright-report
             test-results
 
+  # The app's JavaScript, published once as an EAS update on a branch of its
+  # own (the nightly's tag) that no channel points at: staging and production
+  # are later pointed at this very branch, so they get these bytes. The update
+  # is built with EAS's `production` environment variables (EXPO_PUBLIC_*,
+  # docs/MOBILE.md), which the staging and production apps share. mobile.json
+  # records the groups, their runtimes (fingerprints) and which staging and
+  # production binaries already run them.
+  mobile:
+    name: App update (EAS)
+    needs: [resolve, quality]
+    if: needs.resolve.outputs.channel == 'nightly' && needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.resolve.outputs.version }}
+      TAG: ${{ needs.resolve.outputs.tag }}
+      REF: ${{ needs.resolve.outputs.ref }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - id: app
+        name: Is EAS set up?
+        run: |
+          if [ -n "$EXPO_TOKEN" ] && [ -n "$EAS_PROJECT_ID" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=App::EXPO_TOKEN (secret) or EAS_PROJECT_ID (variable) is not set, so no app update was published. docs/MOBILE.md says how to set them up."
+            node scripts/release/mobile.mjs record-unconfigured mobile.json "EXPO_TOKEN or EAS_PROJECT_ID was not set"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: npm ci
+      - if: steps.app.outputs.run == 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: ${{ env.EAS_CLI }}
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Publish the update, once, on the nightly's own branch
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: |
+          eas update --branch "$TAG" --message "$TAG (${REF:0:12})" --platform all \
+            --environment production --non-interactive --json > ../update.json
+          jq . ../update.json
+      - name: The store binaries that already run it
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: |
+          for platform in ios android; do
+            runtime="$(jq -r --arg p "$platform" '[.[] | select((.platform | ascii_downcase) == $p)][0].runtimeVersion' ../update.json)"
+            eas build:list --platform "$platform" --runtime-version "$runtime" --status finished --distribution store \
+              --limit 50 --json --non-interactive > "../builds-$platform.json"
+          done
+      - name: mobile.json
+        if: steps.app.outputs.run == 'true'
+        env:
+          UPDATE_JSON: update.json
+          BUILDS_JSON: builds-ios.json,builds-android.json
+        run: |
+          node scripts/release/mobile.mjs record-nightly mobile.json
+          {
+            echo "### App update \`$TAG\`"
+            echo
+            echo "Published on EAS branch \`$TAG\`; no channel points at it until a release stages it."
+            echo
+            echo "| Platform | Update group | Runtime | Staging binary | Production binary |"
+            echo "| --- | --- | --- | --- | --- |"
+            for p in ios android; do
+              jq -r --arg p "$p" '"| \($p) | `\(.updates[$p].group)` | `\(.updates[$p].runtimeVersion[0:12])` | \(.native.staging[$p] // "none: release builds one") | \(.native.production[$p] // "none: promote builds one") |"' mobile.json
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mobile
+          path: mobile.json
+          retention-days: 7
+
   publish:
     name: Publish nightly
-    needs: [resolve, quality, images, site, acceptance]
+    needs: [resolve, quality, images, site, acceptance, mobile]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -299,6 +404,9 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: site
+      - uses: actions/download-artifact@v8
+        with:
+          name: mobile
       - name: images.json
         run: |
           jq -n --arg version "$VERSION" --arg commit "$REF" \
@@ -319,13 +427,14 @@ jobs:
       - name: Release notes
         env:
           IMAGES_JSON: images.json
+          MOBILE_JSON: mobile.json
         run: node scripts/release/release.mjs notes release-notes.md
       # --target creates the tag on the commit that was built, not on wherever
       # main has moved since.
       - name: Publish the prerelease
         run: |
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$REF" --prerelease --latest=false \
-            --title "Nightly ${VERSION}" --notes-file release-notes.md images.json site.tar.gz
+            --title "Nightly ${VERSION}" --notes-file release-notes.md images.json site.tar.gz mobile.json
       # A failure here leaves the nightly it follows published, so it does not fail the job.
       - name: Delete the older nightly releases (their tags stay)
         continue-on-error: true
@@ -339,9 +448,138 @@ jobs:
   # the site deployed to the staging branch and the smoke suite against it. Its
   # last step records what passed as the prerelease v<date>-rc.<run>, which is
   # what a promote reads: nothing is recorded for a staging that failed.
+  # The app's half of staging, before the site's (Staging needs it, so a
+  # candidate is only recorded once both passed). The `staging` channel is
+  # pointed at the nightly's EAS branch, after checking the branch holds exactly
+  # the update groups the nightly recorded. If no staging binary runs the
+  # update's runtime yet, one is built and submitted (TestFlight internal, Play
+  # internal), from the nightly's commit, and must come out with that runtime.
+  # Its working files live outside the checkout, which EAS uploads to build.
+  staging-app:
+    name: Staging (app)
+    needs: resolve
+    if: needs.resolve.outputs.channel == 'release'
+    runs-on: ubuntu-latest
+    # A store build waits in EAS's queue, then 15-30 minutes per platform.
+    timeout-minutes: 180
+    environment:
+      name: staging
+    permissions:
+      contents: read
+    env:
+      REF: ${{ needs.resolve.outputs.ref }}
+      NIGHTLY_TAG: ${{ needs.resolve.outputs.nightly_tag }}
+      GH_TOKEN: ${{ github.token }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/checkout@v7
+        with:
+          path: .train
+          sparse-checkout: scripts/release
+      - name: Keep the train and the working files out of what EAS uploads
+        run: |
+          mkdir -p "$RUNNER_TEMP/app/eas"
+          mv .train "$RUNNER_TEMP/train"
+          {
+            echo "TRAIN=$RUNNER_TEMP/train/scripts/release"
+            echo "W=$RUNNER_TEMP/app"
+            echo "MOBILE_JSON=$RUNNER_TEMP/app/mobile.json"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: The nightly's app update
+        run: |
+          gh release download "$NIGHTLY_TAG" --repo "$GITHUB_REPOSITORY" -p mobile.json -D "$W" \
+            || echo "$NIGHTLY_TAG has no mobile.json."
+      - id: app
+        name: Is there an app to stage?
+        run: node "$TRAIN/mobile.mjs" gate
+      - if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: npm ci
+      - if: steps.app.outputs.run == 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: ${{ env.EAS_CLI }}
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: The branch holds exactly the nightly's update
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          BRANCH: ${{ steps.app.outputs.branch }}
+          UPDATE_GROUPS: ${{ steps.app.outputs.groups }}
+        run: |
+          eas branch:view "$BRANCH" --json --non-interactive > "$W/eas/branch.json"
+          for group in $UPDATE_GROUPS; do eas update:view "$group" --json > "$W/eas/group-$group.json"; done
+          node "$TRAIN/mobile.mjs" verify-update "$W/eas"
+      - name: Point the staging channel at it
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          BRANCH: ${{ steps.app.outputs.branch }}
+        run: |
+          eas channel:view staging --json --non-interactive > /dev/null 2>&1 || eas channel:create staging --non-interactive
+          eas channel:edit staging --branch "$BRANCH" --non-interactive
+      - id: need
+        name: Staging binaries for its runtime
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          IOS_RUNTIME: ${{ steps.app.outputs.ios_runtime }}
+          ANDROID_RUNTIME: ${{ steps.app.outputs.android_runtime }}
+        run: |
+          eas build:list --platform ios --runtime-version "$IOS_RUNTIME" --build-profile staging --status finished \
+            --limit 50 --json --non-interactive > "$W/builds-ios.json"
+          eas build:list --platform android --runtime-version "$ANDROID_RUNTIME" --build-profile staging --status finished \
+            --limit 50 --json --non-interactive > "$W/builds-android.json"
+          BUILDS_JSON="$W/builds-ios.json,$W/builds-android.json" CHECK_SUBMIT=true node "$TRAIN/mobile.mjs" needs-build staging
+      - name: Build and submit the staging app (TestFlight, Play internal)
+        if: steps.app.outputs.run == 'true' && steps.need.outputs.eas_platform != ''
+        working-directory: mobile
+        env:
+          PLATFORM: ${{ steps.need.outputs.eas_platform }}
+        run: |
+          eas build --profile staging --platform "$PLATFORM" --auto-submit --non-interactive --wait --json \
+            --message "$NIGHTLY_TAG (${REF:0:12})" > "$W/built.json"
+          node "$TRAIN/mobile.mjs" check-built "$W/built.json"
+      - name: Record what staging did with the app
+        if: steps.app.outputs.run == 'true'
+        env:
+          CHANNEL: staging
+          BUILDS_JSON: ${{ format('{0}/app/builds-ios.json,{0}/app/builds-android.json', runner.temp) }}
+          BUILT_JSON: ${{ format('{0}/app/built.json', runner.temp) }}
+        run: |
+          node "$TRAIN/mobile.mjs" record-app-staged "$W/app-staged.json"
+          {
+            echo "### The staging app"
+            echo
+            echo "The \`staging\` channel now serves EAS branch \`$(jq -r .branch "$W/app-staged.json")\`."
+            for p in ios android; do
+              jq -r --arg p "$p" '"- \($p): " + (if .binaries[$p] == null then "no binary" elif .binaries[$p].builtNow then "new binary \(.binaries[$p].version) (\(.binaries[$p].build)), submitted: it reaches testers once the store has processed it" else "binary \(.binaries[$p].version) (\(.binaries[$p].build)) already installed: the update arrives on its next launch" end)' "$W/app-staged.json"
+            done
+            echo
+            echo "Try it before promoting: **Wingfoil Staging** from TestFlight (iOS) or Google Play's internal testing track (Android). Settings → About shows the update it runs; *Check for updates* fetches it at once."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-staged
+          path: |
+            ${{ runner.temp }}/app/app-staged.json
+            ${{ runner.temp }}/app/mobile.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   staging:
     name: Staging
-    needs: resolve
+    needs: [resolve, staging-app]
     if: needs.resolve.outputs.channel == 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -380,6 +618,13 @@ jobs:
           gh release download "$NIGHTLY_TAG" --repo "$GITHUB_REPOSITORY" -p images.json -p site.tar.gz
           jq . images.json
           test "$(jq -r .commit images.json)" = "$REF"
+      # mobile.json, and app-staged.json when Staging (app) staged the app; the
+      # artifact is empty, or absent, for a nightly from before the app's train.
+      - name: The app's part
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: app-staged
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -434,6 +679,7 @@ jobs:
       - name: Release notes
         env:
           IMAGES_JSON: images.json
+          MOBILE_JSON: mobile.json
         run: node .train/scripts/release/release.mjs notes release-notes.md
       # --target tags the commit that was staged, not wherever main has moved since.
       # This is the job's last real step, so a candidate exists only for a
@@ -442,13 +688,16 @@ jobs:
         env:
           STAGING_SITE_URL: ${{ vars.STAGING_SITE_URL }}
         run: |
+          files=(images.json site.tar.gz staged.json)
+          if [ -f mobile.json ]; then files+=(mobile.json); fi
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$REF" --prerelease --latest=false \
-            --title "Staged ${VERSION}" --notes-file release-notes.md images.json site.tar.gz staged.json
+            --title "Staged ${VERSION}" --notes-file release-notes.md "${files[@]}"
           {
             echo "### Staged as \`$TAG\`"
             echo
             echo "From \`$NIGHTLY_TAG\`, commit \`${REF:0:12}\`."
             if [ -n "$PAGES_PROJECT" ]; then echo "Look at the site on staging: $STAGING_SITE_URL"; fi
+            if [ -f app-staged.json ]; then echo "Try the staging app (TestFlight, Play internal): it runs EAS branch \`$(jq -r .branch app-staged.json)\`."; fi
             echo
             echo "When it is right: *Actions → Release → Run workflow → promote* (staged: \`$TAG\`, or empty for the newest that passed)."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -494,6 +743,8 @@ jobs:
       PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
       GH_TOKEN: ${{ github.token }}
       PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -507,9 +758,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      # mobile.json too when staging recorded one; verify-staged then checks it
+      # is the file staging hashed and names the update groups staging pointed at.
       - name: The staged build, checked against what staging tested
         run: |
           gh release download "$STAGED_TAG" --repo "$GITHUB_REPOSITORY" -p images.json -p site.tar.gz -p staged.json
+          if jq -e '.sha256["mobile.json"]' staged.json > /dev/null; then
+            gh release download "$STAGED_TAG" --repo "$GITHUB_REPOSITORY" -p mobile.json
+          fi
           jq . staged.json
           node .train/scripts/release/release.mjs verify-staged
       - uses: docker/setup-buildx-action@v3
@@ -526,6 +782,67 @@ jobs:
             docker buildx imagetools create -t "${IMAGES}-${name}:production" -t "${IMAGES}-${name}:latest" \
               -t "${IMAGES}-${name}:${VERSION}" "$(jq -r ".images.$name" images.json)"
           done
+      # The app: the production channel goes to the very branch staging ran,
+      # once it is checked to still hold exactly those update groups (immutable,
+      # so the same bytes). Binaries of the update's runtime get it on their next
+      # launch; Production (app binaries) builds one if none exists.
+      - id: app
+        name: Is there an app to promote?
+        env:
+          MOBILE_JSON: mobile.json
+        run: node .train/scripts/release/mobile.mjs gate staged.json
+      - if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: npm ci
+      - if: steps.app.outputs.run == 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: ${{ env.EAS_CLI }}
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: The branch still holds exactly what staging ran
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          BRANCH: ${{ steps.app.outputs.branch }}
+          UPDATE_GROUPS: ${{ steps.app.outputs.groups }}
+          MOBILE_JSON: ../mobile.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/eas"
+          eas branch:view "$BRANCH" --json --non-interactive > "$RUNNER_TEMP/eas/branch.json"
+          for group in $UPDATE_GROUPS; do eas update:view "$group" --json > "$RUNNER_TEMP/eas/group-$group.json"; done
+          node ../.train/scripts/release/mobile.mjs verify-update "$RUNNER_TEMP/eas"
+      - name: Point the production channel at it
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          BRANCH: ${{ steps.app.outputs.branch }}
+        run: |
+          eas channel:view production --json --non-interactive > /dev/null 2>&1 || eas channel:create production --non-interactive
+          eas channel:edit production --branch "$BRANCH" --non-interactive
+      # app/latest.json, for binaries too old for this update: the newest store
+      # binary per platform (advertised once its review window has passed), the
+      # runtimes production now serves, and MOBILE_MINIMUM_VERSION. It goes out
+      # with the site (configure-site's moment: the same build, pointed at
+      # production) and on the release.
+      - id: latest
+        name: app/latest.json
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          MOBILE_JSON: ../mobile.json
+          # The App Store link; mobile/eas.json's production ascAppId when unset.
+          ASC_APP_ID: ${{ vars.ASC_APP_ID }}
+          MOBILE_MINIMUM_VERSION: ${{ vars.MOBILE_MINIMUM_VERSION }}
+          MOBILE_STORE_GRACE_HOURS: ${{ vars.MOBILE_STORE_GRACE_HOURS }}
+        run: |
+          for platform in ios android; do
+            eas build:list --platform "$platform" --build-profile production --status finished --distribution store \
+              --limit 50 --json --non-interactive > "$RUNNER_TEMP/production-$platform.json"
+          done
+          export BUILDS_JSON="$RUNNER_TEMP/production-ios.json,$RUNNER_TEMP/production-android.json"
+          node ../.train/scripts/release/mobile.mjs latest-json ../latest.json
+          node ../.train/scripts/release/mobile.mjs needs-build production
       - name: Deploy the site to production
         if: env.PAGES_PROJECT != ''
         env:
@@ -536,6 +853,7 @@ jobs:
           # build unpacks beside it, into pages/.
           mkdir pages && tar -xzf site.tar.gz -C pages
           node .train/scripts/release/release.mjs configure-site pages "${{ vars.PRODUCTION_FORECAST_BASE_URL }}"
+          if [ -f latest.json ]; then mkdir -p pages/app && cp latest.json pages/app/latest.json; fi
           npx --yes wrangler@4 pages deploy pages --project-name "$PAGES_PROJECT" --branch main \
             --commit-hash "$REF" --commit-message "${VERSION}"
       - name: Smoke the production site
@@ -547,14 +865,42 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           npx playwright test -c playwright.smoke.config.ts
+      - name: No app/latest.json on the site
+        if: steps.app.outputs.run == 'true' && env.PAGES_PROJECT == ''
+        run: echo "::notice title=App::CLOUDFLARE_PAGES_PROJECT is not set, so app/latest.json is on the release only, and older app binaries are not told about the store."
       - name: Release notes
         env:
           IMAGES_JSON: images.json
+          MOBILE_JSON: mobile.json
         run: node .train/scripts/release/release.mjs notes release-notes.md
       - name: Publish the release
         run: |
+          files=(images.json site.tar.gz staged.json)
+          for file in mobile.json latest.json; do if [ -f "$file" ]; then files+=("$file"); fi; done
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$REF" --latest \
-            --title "wingfoil.ie ${VERSION}" --notes-file release-notes.md images.json site.tar.gz staged.json
+            --title "wingfoil.ie ${VERSION}" --notes-file release-notes.md "${files[@]}"
+      # Riders are told through the alerts API (in-app and push, its choice).
+      # Never fails the promote: everything has shipped by now.
+      - name: Tell riders
+        if: steps.app.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          ALERTS_API_URL: ${{ vars.ALERTS_API_URL }}
+          ALERTS_ADMIN_TOKEN: ${{ secrets.ALERTS_ADMIN_TOKEN }}
+          NEEDS_STORE: ${{ steps.latest.outputs.platforms }}
+        run: node .train/scripts/release/mobile.mjs announce
+      - name: The app in production
+        if: steps.app.outputs.run == 'true'
+        env:
+          BRANCH: ${{ steps.app.outputs.branch }}
+          NEEDS_STORE: ${{ steps.latest.outputs.platforms }}
+        run: |
+          {
+            echo "### The production app"
+            echo
+            echo "The \`production\` channel now serves EAS branch \`$BRANCH\`, the update staging ran. Production binaries with its runtime install it the next time riders leave the app."
+            if [ -n "$NEEDS_STORE" ]; then echo "No production binary runs this runtime on: $NEEDS_STORE. *Production (app binaries)* builds and submits one; the update reaches riders on those platforms once the store has released it."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the report
         if: failure()
         uses: actions/upload-artifact@v7
@@ -564,3 +910,105 @@ jobs:
           path: |
             playwright-report
             test-results
+
+  # After production is out: a production binary for each platform that has
+  # none running the promoted update's runtime (a native change since the last
+  # store release), built from the same commit and submitted: App Store review,
+  # and Google Play's production track as a draft (eas.json). Until a rider has
+  # it, the over-the-air update cannot reach them; app/latest.json advertises
+  # the new binary from the next promote, once its review window has passed.
+  production-app:
+    name: Production (app binaries)
+    needs: [resolve, production]
+    if: needs.resolve.outputs.channel == 'promote'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment:
+      name: production
+    permissions:
+      contents: read
+    env:
+      REF: ${{ needs.resolve.outputs.ref }}
+      STAGED_TAG: ${{ needs.resolve.outputs.staged_tag }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/checkout@v7
+        with:
+          path: .train
+          sparse-checkout: scripts/release
+      - name: Keep the train and the working files out of what EAS uploads
+        run: |
+          mkdir -p "$RUNNER_TEMP/app"
+          mv .train "$RUNNER_TEMP/train"
+          {
+            echo "TRAIN=$RUNNER_TEMP/train/scripts/release"
+            echo "W=$RUNNER_TEMP/app"
+            echo "MOBILE_JSON=$RUNNER_TEMP/app/mobile.json"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: The staged app, checked against what staging recorded
+        run: |
+          gh release download "$STAGED_TAG" --repo "$GITHUB_REPOSITORY" -p staged.json -D "$W"
+          if jq -e '.sha256["mobile.json"]' "$W/staged.json" > /dev/null; then
+            gh release download "$STAGED_TAG" --repo "$GITHUB_REPOSITORY" -p mobile.json -D "$W"
+            test "$(sha256sum "$W/mobile.json" | cut -d' ' -f1)" = "$(jq -r '.sha256["mobile.json"]' "$W/staged.json")"
+          fi
+      - id: app
+        name: Is there an app to build?
+        run: node "$TRAIN/mobile.mjs" gate "$W/staged.json"
+      - if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        run: npm ci
+      - if: steps.app.outputs.run == 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: ${{ env.EAS_CLI }}
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - id: need
+        name: Production binaries for its runtime
+        if: steps.app.outputs.run == 'true'
+        working-directory: mobile
+        env:
+          IOS_RUNTIME: ${{ steps.app.outputs.ios_runtime }}
+          ANDROID_RUNTIME: ${{ steps.app.outputs.android_runtime }}
+        run: |
+          eas build:list --platform ios --runtime-version "$IOS_RUNTIME" --build-profile production --status finished \
+            --limit 50 --json --non-interactive > "$W/builds-ios.json"
+          eas build:list --platform android --runtime-version "$ANDROID_RUNTIME" --build-profile production --status finished \
+            --limit 50 --json --non-interactive > "$W/builds-android.json"
+          BUILDS_JSON="$W/builds-ios.json,$W/builds-android.json" CHECK_SUBMIT=true node "$TRAIN/mobile.mjs" needs-build production
+      - name: Build and submit the production app (App Store review, Google Play)
+        if: steps.app.outputs.run == 'true' && steps.need.outputs.eas_platform != ''
+        working-directory: mobile
+        env:
+          PLATFORM: ${{ steps.need.outputs.eas_platform }}
+        run: |
+          eas build --profile production --platform "$PLATFORM" --auto-submit --non-interactive --wait --json \
+            --message "v$VERSION (${REF:0:12})" > "$W/built.json"
+          node "$TRAIN/mobile.mjs" check-built "$W/built.json"
+      - name: Summary
+        if: steps.app.outputs.run == 'true'
+        env:
+          NEEDED: ${{ steps.need.outputs.platforms }}
+        run: |
+          {
+            echo "### Production app binaries"
+            echo
+            if [ -z "$NEEDED" ]; then
+              echo "Every platform already has a production binary for this runtime: nothing to build."
+            else
+              echo "Built and submitted for: $NEEDED. Release them in App Store Connect and the Play Console once review passes; the over-the-air update reaches only binaries of this runtime."
+              jq -r '.[] | "- \(.platform | ascii_downcase): \(.appVersion) (\(.appBuildVersion)), runtime `\((.runtime.version // "")[0:12])`, build \(.id)"' "$W/built.json"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
