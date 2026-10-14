@@ -25,6 +25,7 @@ config.watchFolders = [
   path.join(repo, "shared"),
   path.join(repo, "spot", "web"),
   path.join(repo, "mcp", "api"),
+  path.join(repo, "ai", "web"),
   path.join(repo, "alerts", "shared"),
   path.join(repo, "data", "locations"),
   path.join(repo, "public"),

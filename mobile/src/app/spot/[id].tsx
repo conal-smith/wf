@@ -1,11 +1,8 @@
-import { View } from "react-native";
-import { T } from "../../components/Text";
+import { useLocalSearchParams } from "expo-router";
+import { SpotScreen } from "../../features/spot/SpotScreen";
 
-// Placeholder: replaced by the feature that owns this route.
-export default function SpotScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <T variant="title">Spot</T>
-    </View>
-  );
+/** /spot/<id>, and /spot/<id>?t=<iso> to open on that hour. */
+export default function SpotRoute() {
+  const { id, t } = useLocalSearchParams<{ id: string; t?: string }>();
+  return <SpotScreen key={id} id={id} t={t} />;
 }
