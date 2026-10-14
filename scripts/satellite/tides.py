@@ -263,9 +263,15 @@ def calibrate(stations, force=False, workers=2):  # EOT20 takes about 4.5 GB a p
             out[s["id"]] = entry
             print(f"{s['id']}: {entry}", flush=True)
             save()
-    for s in stations:
-        if s.get("lagOf") and s["id"] not in out:
-            # A basin: its parent's fit, lagMinutes later (lag.py read the lag off the imagery).
+    pending = [s for s in stations if s.get("lagOf") and s["id"] not in out]
+    while pending:
+        # A basin: its parent's fit, lagMinutes later (lag.py or lagmap.py read the lag off the
+        # imagery). A basin inside a basin waits for its parent.
+        ready = [s for s in pending if s["lagOf"] in out]
+        if not ready:
+            raise RuntimeError(f"basins without a parent: {[s['id'] for s in pending]}")
+        for s in ready:
+            pending.remove(s)
             entry = dict(out[s["lagOf"]])
             entry["shiftMinutes"] = entry["shiftMinutes"] - s["lagMinutes"]
             entry["reference"] = (f"{s['lagOf']}'s fit, {s['lagMinutes']} min later: the lag that best sorts the "

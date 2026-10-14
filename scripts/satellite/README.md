@@ -38,6 +38,10 @@ $PY -I $S/tides.py scenes       # every station's level at every acquisition
 $PY -I $S/coarse.py             # the island at 100 m: coverage, coast, sea (1 min)
 $PY -I $S/plan.py               # blocks, stations and tide thresholds per tile
 $PY -I $S/run.py --all          # scout.py, fetch.py then compose.py, tile by tile (hours)
+$PY -I $S/bathyguard.py fetch   # EMODnet Bathymetry's DTM over the box
+$PY -I $S/bathyguard.py apply   # deep open water read as foreshore, put back as water
+$PY -I $S/fetch.py --tile <t> --coast-only && $PY -I $S/lagmap.py --tile <t>   # the tide's lag, per 2.56 km cell
+$PY -I $S/basins.py             # lag maps -> basin stations (then tides.py calibrate, scenes, plan.py, compose)
 $PY -I $S/tiles.py imagery      # high.pmtiles, low.pmtiles, index.json
 $PY -I $S/tiles.py intertidal   # tide-<station>.pmtiles, index.json
 $PY -I $S/validate.py --infomar <infomar10> --lidar dub:2.561:<mosaic> ...
@@ -263,6 +267,53 @@ narrower than a pixel or two is lost in it). The colour alone separates them
 barely (AUC 0.57); the infrared and the heights' spread carry it. Where a
 LiDAR reaches, its own roughness says more.
 
+### Deep water
+
+A handful of the lowest tide's looks can read open water as dry (glint and
+whitecaps the masks missed), and every pixel of that patch then flips at the
+one look's level: squares of the Atlantic west of Lewis came out as flat
+foreshore at 0.50 m, east of Shetland at 0.6 m, off the Blaskets at 0.3 m.
+The scene QC misses them, each patch being small against the 3x3 blocks it
+weighs a look over. `bathyguard.py` puts such a pixel back as water (below
+the lowest tide seen) when EMODnet Bathymetry's DTM has all of the seabed
+within about 300 m deeper than 20 m **and** it flips within 0.75 m of the
+lowest level its station was seen at: both, because the DTM is coarse and
+wrong in places by the shore. Deep alone at 5 m took 0.7 km² of Sandymount
+Strand (3.1 m above LAT on the OPW LiDAR, the satellite within 0.1 m of it);
+deep alone at 20 m took Castlemaine Harbour's and Trawbreaga Bay's flats,
+which flip at 2.2 m and 1.0 m. Both together took 20 km² of open water out
+of Great Britain's foreshore and 0.5 km² out of Ireland's (the Blaskets),
+and nothing a LiDAR covers. `undo` restores a tile exactly (a pixel it moved
+keeps its flip level, which no always-wet pixel has). Bridgwater Bay's
+squares, in about 11 m of the Bristol Channel's muddy water, are not caught.
+
+### The tide's lag
+
+Behind a narrows or up an estuary the water covers and uncovers its flats
+later than at the station a sailor would look up; along a coast it can be
+earlier, where the nearest station is a gauge up a river. A flip fit depends
+only on the order of the looks' levels, so the lag can be read off the looks
+themselves: `lagmap.py` takes each 2.56 km cell of flats, shifts its
+station's fitted tide by -120 to +240 minutes, and keeps the shift that sorts
+its wet and dry looks best (a positive lag is later). A cell's lag counts
+when it beats no lag by 0.02 of misfit, is 20 minutes or more, and then fits
+under 0.1 (`lagmap.clear`). Round Strangford, where the lough was already a
+basin 100 minutes behind Killard: inside it the cells read 0 (the method
+agrees with itself), the Narrows read +40 and +60 going in, the lough's
+southern flats +100 (they lay outside the basin's polygon), its north end a
+further +20, and inner Dundrum Bay +30. Up the Tay the flats run 40 to 100
+minutes behind the station at its mouth; the Humber's mouth and Spurn 30 to
+80 minutes ahead of Immingham's gauge.
+
+`basins.py` joins touching clear cells of one station whose lags agree
+within 20 minutes into a basin station (polygon, `lagOf`, `lagMinutes`,
+1.5 km² of flats at least) in the root's stations file; the smaller of two
+overlapping basins wins (`common.basins`), and a basin can lag another.
+Its tide is its parent's model shifted; its amplitude its parent's, which
+the order of the looks cannot give. Precision is about the lag step (10
+minutes); a strongly asymmetric tide (the Severn's) fits a shifted curve
+less well, and its larger lags are less sure.
+
 ### Great Britain
 
 The same steps with `SATELLITE_CONFIG=config-gb.json` and a root of its own
@@ -289,6 +340,17 @@ The same steps with `SATELLITE_CONFIG=config-gb.json` and a root of its own
   `modelLAT`), the gauge's levels moved with it. Levels from −9 to 16 m are
   kept (`validRange`: the Severn's reach 14 m).
 - **Rock or weed**: Ireland's model (`bed_model.json`) applied as it is.
+- **Checked** against the Environment Agency's LiDAR Composite DTM (1 m,
+  ODN, OGL, from its WCS), only above 1.7 m on the station's datum, where
+  the datum is exact (an ODN gauge's own station: the offset is its
+  `obsOffset`): Pegwell Bay (Deal) 93% of 37,130 pixels within 0.5 m,
+  median -0.18 m; Ryde Sands (Sandown) 88% of 9,307, +0.11 m; Camber and
+  Rye Bay (Hastings) 80% of 22,613, -0.14 m. Morecambe Bay, on a chart-datum
+  gauge: the middle half of the differences within 0.40 m of each other.
+- **Station numbers past 127**: `compose.py` kept each pixel's station in an
+  int8, and Great Britain's last ten wrapped; the heights were right but
+  `tiles.py` left those pixels out. Now an int16; a block written before is
+  read back unwrapped.
 
 ## In the app
 

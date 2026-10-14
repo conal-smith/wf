@@ -357,10 +357,14 @@ def mosaic(ctx, names):
             for name in names:
                 if name in z.files:
                     a = arrs[name]
+                    v = z[name]
+                    if name == "station" and v.dtype == np.int8:
+                        # A block from before the station was kept in an int16: past 127 it wrapped.
+                        v = np.where(v <= -2, v.astype(np.int16) + 256, v)
                     if a.ndim == 3:
-                        a[:, i * size:(i + 1) * size, j * size:(j + 1) * size] = z[name]
+                        a[:, i * size:(i + 1) * size, j * size:(j + 1) * size] = v
                     else:
-                        a[i * size:(i + 1) * size, j * size:(j + 1) * size] = z[name]
+                        a[i * size:(i + 1) * size, j * size:(j + 1) * size] = v
     return arrs
 
 
