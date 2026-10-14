@@ -252,7 +252,7 @@ function RideExamples({ rider }: { rider: Rider }) {
     <ul className={s.examples()} data-ride-examples>
       {pairs.map(([w, g]) => (
         <li key={w}>
-          {w} knots gusting {g} rides like{" "}
+          {w} knots gusting {g} is rated as{" "}
           <b>{rideableWind(w, g, rider).toFixed(1)} knots</b>
         </li>
       ))}

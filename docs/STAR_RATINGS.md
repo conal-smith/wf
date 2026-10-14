@@ -33,9 +33,8 @@ where the share is 0.2 learning, 0.3 riding and 0.35 advanced (a learner still
 falls off in the lulls), and `fade` runs from 1 at the floor to 0 at the top of
 the sweet spot: the lift matters on a light day, when gusts are what get you
 foiling, and not on a strong one, where a gust is only more power. A 9 kn mean
-gusting 17 rides like 11.4 kn for an intermediate; 20 gusting 30 like 20.4.
-The tooltip says "rides like N kn with the gusts" whenever the lift is a knot
-or more.
+gusting 17 is rated as 11.4 kn for an intermediate; 20 gusting 30 as 20.4.
+The lift stays inside the rating: no page names it as a wind of its own.
 
 ### Potential: the rideable wind against the rider's band
 
@@ -140,9 +139,11 @@ own wing is the smallest that is not much smaller than the recommendation
 
 ### Sessions
 
-Each rated hour also has a name: _Too light_, _Pump and glide_, _Light-wind
-drills_ (floor to sweet spot: tacks and gybes on a big wing), _Cruising_,
-_Powered up_, _Overpowered_, _Too strong_, or _Offshore_.
+Each rated hour is also sorted by its rideable wind against the band (too
+light, floor to sweet spot, sweet spot, powered, overpowered, too strong) or
+as offshore. The kinds have no names on the page: the stars and the figures
+speak for the hour. Only an hour with no stars says why, where the wind alone
+does: "too light", "too strong" or "offshore" (`noStarsWhy`).
 
 ## The rider
 
@@ -168,12 +169,12 @@ given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 ## On the spot page
 
 `/spot/<id>` (`spot/web/`) is the chart's broadsheet for one place, day by
-day. It rates the forecast server's consensus line rather than the dock's
-blend: the median wind and gust of every live model, each ensemble's mean
-once, their vector-mean direction and the same agreement thresholds
-(`mcp/api/forecast.ts`), so the stars there are the stars an
-assistant would be given. They can differ from the dock's by a star where the
-dock's blend uses a different set of models (Display options) or columns.
+day. It rates the forecast server's headline line: HARMONIE's own wind, gust and
+direction while it reaches the hour, and past it the weighted median of the
+other models, with agreement read across every model (`mcp/api/forecast.ts`),
+so the stars there are the stars an assistant would be given. The dock follows
+the same rule, so the two agree unless a reader has left models out in Display
+options.
 
 - **The headline** is the week's verdict: its best window, most stars first,
   then the longest, then the soonest ("Brandon Bay: a five-star Friday

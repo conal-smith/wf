@@ -21,7 +21,7 @@ import {
   type ViewToken,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { SESSION_LABEL, SHORE_LABEL } from "../../../../force5/src/stars";
+import { SHORE_LABEL } from "../../../../force5/src/stars";
 import { compass } from "../../../../force5/src/weather";
 import {
   HOUR,
@@ -78,7 +78,8 @@ export function SpotScreen({ id, t }: { id: string; t?: string | string[] }) {
 function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
   const spot = spotById(id)!;
   const forecast = useForecast();
-  const { strip, axis, now, openSpot, resolved, wantModels, selectTime } = forecast;
+  const { strip, axis, now, openSpot, resolved, wantModels, selectTime } =
+    forecast;
   const { prefs } = usePrefs();
   const units = prefs.units;
   const { store: favourites, starred } = useFavourites();
@@ -101,19 +102,29 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
     () => (hours ? pageRows(strip, hours, now, facing, cells) : []),
     [hours, strip, now, facing, cells],
   );
-  const days = useMemo(() => pageDays(rows, spot.lat, spot.lon), [rows, spot.lat, spot.lon]);
+  const days = useMemo(
+    () => pageDays(rows, spot.lat, spot.lon),
+    [rows, spot.lat, spot.lon],
+  );
   const best = useMemo(() => penBest(days), [days]);
   // `?t=` names an hour: its day's night is unfolded if it is dark, and its
   // detail opened. A tap flips either from there.
   const wanted = useMemo(() => parseTimeParam(t, now), [t, now]);
-  const landing = useMemo(() => (wanted === null ? null : rowAt(days, wanted)), [wanted, days]);
-  const [nightsFlipped, setNights] = useState<ReadonlySet<string>>(() => new Set());
+  const landing = useMemo(
+    () => (wanted === null ? null : rowAt(days, wanted)),
+    [wanted, days],
+  );
+  const [nightsFlipped, setNights] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [openFlipped, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const nightShown = useCallback(
-    (date: string) => nightsFlipped.has(date) !== (!!landing?.dark && landing.date === date),
+    (date: string) =>
+      nightsFlipped.has(date) !== (!!landing?.dark && landing.date === date),
     [nightsFlipped, landing],
   );
-  const rowOpen = (time: number) => openFlipped.has(time) !== (landing?.row.time === time);
+  const rowOpen = (time: number) =>
+    openFlipped.has(time) !== (landing?.row.time === time);
   const sections = useMemo<Section[]>(
     () =>
       days.map((entry) => ({
@@ -128,23 +139,34 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
   const band = useMemo(() => bandKnots(forecast.rider), [forecast.rider]);
   const curve = tide.tide?.curve ?? null;
   const ceiling = useMemo(() => tideCeiling(curve), [curve]);
-  const tideNote = tide.loading ? null : (tide.error ?? (tide.tide ? null : "No tide station near"));
+  const tideNote = tide.loading
+    ? null
+    : (tide.error ?? (tide.tide ? null : "No tide station near"));
   const isStarred = starred.includes(id);
 
   /* ---- the week strip follows the day at the top ---- */
   const [current, setCurrent] = useState<string | null>(null);
-  const onViewable = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const top = viewableItems.find((v) => v.section);
-    const key = (top?.section as { key?: string } | undefined)?.key;
-    if (key) setCurrent(key);
-  }, []);
-  const list = useRef<SectionList<DayItem, { key: string; entry: PageDay }>>(null);
+  const onViewable = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const top = viewableItems.find((v) => v.section);
+      const key = (top?.section as { key?: string } | undefined)?.key;
+      if (key) setCurrent(key);
+    },
+    [],
+  );
+  const list =
+    useRef<SectionList<DayItem, { key: string; entry: PageDay }>>(null);
   const goTo = useCallback(
     (date: string, item = 0) => {
       const sectionIndex = sections.findIndex((s) => s.key === date);
       if (sectionIndex < 0) return;
       setCurrent(date);
-      list.current?.scrollToLocation({ sectionIndex, itemIndex: item, viewOffset: 0, animated: true });
+      list.current?.scrollToLocation({
+        sectionIndex,
+        itemIndex: item,
+        viewOffset: 0,
+        animated: true,
+      });
     },
     [sections],
   );
@@ -154,7 +176,10 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
   useEffect(() => {
     if (landed.current || !landing) return;
     const section = sections.find((s) => s.key === landing.date);
-    const index = section?.data.findIndex((item) => item.kind === "row" && item.row === landing.row) ?? -1;
+    const index =
+      section?.data.findIndex(
+        (item) => item.kind === "row" && item.row === landing.row,
+      ) ?? -1;
     if (index < 0) return;
     // The section's head is index 0 of its run in the list.
     const timer = setTimeout(() => {
@@ -187,9 +212,15 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
 
   const share = useCallback(() => {
     tick();
-    const top = best ? `${dayNames(best.date, now).short} ${"★".repeat(best.window.stars)} ${windowHours(best.window)}` : null;
+    const top = best
+      ? `${dayNames(best.date, now).short} ${"★".repeat(best.window.stars)} ${windowHours(best.window)}`
+      : null;
     const content = shareContent(spot.name, id, top);
-    void Share.share({ title: content.title, message: content.message, url: content.url }).catch(() => undefined);
+    void Share.share({
+      title: content.title,
+      message: content.message,
+      url: content.url,
+    }).catch(() => undefined);
   }, [best, now, spot.name, id]);
 
   const toggleRow = useCallback((time: number) => {
@@ -220,7 +251,9 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
         <T variant="label" caps color="muted">
           {facing !== null
             ? `Faces ${compass(facing)} ${Math.round(facing)}°${
-                arcs.length ? ` · best ${arcs.map((a) => (a.from === a.to ? a.from : `${a.from}–${a.to}`)).join(", ")}` : ""
+                arcs.length
+                  ? ` · best ${arcs.map((a) => (a.from === a.to ? a.from : `${a.from}–${a.to}`)).join(", ")}`
+                  : ""
               }`
             : "Facing unknown: rated on the wind alone"}
           {spot.county ? ` · ${spot.county}` : ""}
@@ -229,18 +262,34 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
       </View>
       <RiderLine />
       {days.length ? (
-        <WeekStrip days={days} current={current ?? days[0].day.date} now={now} onSelect={(date) => goTo(date)} />
+        <WeekStrip
+          days={days}
+          current={current ?? days[0].day.date}
+          now={now}
+          onSelect={(date) => goTo(date)}
+        />
       ) : null}
       <Button
         kind="primary"
         label="Set an alert for this spot"
         accessibilityHint="Tells you when the stars here reach what you ask for"
-        onPress={() => router.push({ pathname: "/alert/[id]", params: { id: "new", spot: id } })}
+        onPress={() =>
+          router.push({
+            pathname: "/alert/[id]",
+            params: { id: "new", spot: id },
+          })
+        }
       />
     </View>
   );
 
-  const renderItem = ({ item, section }: { item: DayItem; section: Section }) => {
+  const renderItem = ({
+    item,
+    section,
+  }: {
+    item: DayItem;
+    section: Section;
+  }) => {
     if (item.kind === "fold") {
       const shown = nightShown(section.key);
       return (
@@ -303,7 +352,11 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
           headerLargeTitleEnabled: true,
           headerRight: () => (
             <View style={styles.headerActions}>
-              <StarToggle on={isStarred} name={spot.name} onToggle={() => favourites.toggle(id)} />
+              <StarToggle
+                on={isStarred}
+                name={spot.name}
+                onToggle={() => favourites.toggle(id)}
+              />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Share ${spot.name}'s forecast`}
@@ -325,9 +378,16 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
               <Button kind="pill" label="Try again" onPress={wantModels} />
             </View>
           ) : (
-            <View accessibilityLabel="Reading the forecast" accessibilityState={{ busy: true }} style={styles.skeleton}>
+            <View
+              accessibilityLabel="Reading the forecast"
+              accessibilityState={{ busy: true }}
+              style={styles.skeleton}
+            >
               {Array.from({ length: 8 }, (_, i) => (
-                <View key={i} style={[styles.bone, { width: `${92 - (i % 3) * 14}%` }]} />
+                <View
+                  key={i}
+                  style={[styles.bone, { width: `${92 - (i % 3) * 14}%` }]}
+                />
               ))}
             </View>
           )}
@@ -339,7 +399,12 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           renderSectionHeader={({ section }) => (
-            <DayHeader entry={section.entry} weekBest={best?.date === section.key} now={now} unit={units} />
+            <DayHeader
+              entry={section.entry}
+              weekBest={best?.date === section.key}
+              now={now}
+              unit={units}
+            />
           )}
           stickySectionHeadersEnabled
           ListHeaderComponent={header}
@@ -351,11 +416,20 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
           initialNumToRender={20}
           windowSize={9}
           onScrollToIndexFailed={(info) => {
-            list.current?.getScrollResponder()?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
+            list.current
+              ?.getScrollResponder()
+              ?.scrollTo({
+                y: info.averageItemLength * info.index,
+                animated: false,
+              });
           }}
         />
       )}
-      <RatingTip explanation={explanation} onClose={() => setTip(null)} onHow={() => router.push("/stars" as never)} />
+      <RatingTip
+        explanation={explanation}
+        onClose={() => setTip(null)}
+        onHow={() => router.push("/stars" as never)}
+      />
     </View>
   );
 }
@@ -386,8 +460,17 @@ const DayHeader = memo(function DayHeader({
           </T>
         ) : null}
         {window ? (
-          <View style={styles.dayBest} accessible accessibilityLabel={`Best ${window.stars} of 5 stars, ${windowHours(window)}`}>
-            <Stars stars={window.stars} potential={window.potential} size={10} best />
+          <View
+            style={styles.dayBest}
+            accessible
+            accessibilityLabel={`Best ${window.stars} of 5 stars, ${windowHours(window)}`}
+          >
+            <Stars
+              stars={window.stars}
+              potential={window.potential}
+              size={10}
+              best
+            />
             <T variant="figureSm" tabular>
               {windowHours(window)}
             </T>
@@ -404,7 +487,11 @@ const DayHeader = memo(function DayHeader({
         ) : null}
       </View>
       {entry.day.rows.some((r) => r.hour.daylight) ? (
-        <View style={styles.heads} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View
+          style={styles.heads}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           <T variant="eyebrow" caps color="muted" style={styles.cTime}>
             IST
           </T>
@@ -465,7 +552,9 @@ const HourRow = memo(function HourRow({
         accessibilityLabel={`${reading}${wing ? `, ${wing} square metre wing` : ""}${row.wave ? `, waves ${row.wave.words}` : ""}${
           row.air !== null ? `, air ${row.air} degrees` : ""
         }${row.sky ? `, ${row.sky.words}` : ""}`}
-        accessibilityHint={open ? "Hides the hour's detail" : "Shows the hour's detail"}
+        accessibilityHint={
+          open ? "Hides the hour's detail" : "Shows the hour's detail"
+        }
         accessibilityActions={[
           { name: "activate" },
           ...(rating ? [{ name: "stars", label: "Why these stars" }] : []),
@@ -485,7 +574,11 @@ const HourRow = memo(function HourRow({
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
         {item.ringed ? <PenMark first={item.first} last={item.last} /> : null}
-        <T variant="figureSm" tabular style={[styles.cTime, styles.time, isNow && styles.now]}>
+        <T
+          variant="figureSm"
+          tabular
+          style={[styles.cTime, styles.time, isNow && styles.now]}
+        >
           {clock(row.time).slice(0, 2)}
         </T>
         <Pressable
@@ -500,7 +593,12 @@ const HourRow = memo(function HourRow({
           hitSlop={{ top: 6, bottom: 6 }}
         >
           {rating ? (
-            <Stars stars={rating.stars} potential={rating.potential} size={10} best />
+            <Stars
+              stars={rating.stars}
+              potential={rating.potential}
+              size={10}
+              best
+            />
           ) : (
             <T variant="caption" color="muted">
               {row.hour.daylight ? "–" : "dark"}
@@ -514,7 +612,12 @@ const HourRow = memo(function HourRow({
                 {windIn(place.windKn, units)}
               </T>
               {place.gustKn !== null ? (
-                <T variant="figureSm" tabular color={jump ? "penInk" : "muted"} style={styles.gust}>
+                <T
+                  variant="figureSm"
+                  tabular
+                  color={jump ? "penInk" : "muted"}
+                  style={styles.gust}
+                >
                   {windIn(place.gustKn, units)}
                 </T>
               ) : null}
@@ -528,7 +631,11 @@ const HourRow = memo(function HourRow({
         <View style={[styles.cFrom, styles.from]}>
           {place.from !== null ? (
             <>
-              <WindArrow from={place.from} size={15} color={off ? colors.pen : colors.ink} />
+              <WindArrow
+                from={place.from}
+                size={15}
+                color={off ? colors.pen : colors.ink}
+              />
               <T variant="eyebrow" color={off ? "penInk" : "muted"}>
                 {compass(place.from)}
               </T>
@@ -550,11 +657,10 @@ const HourRow = memo(function HourRow({
       {open ? (
         <View style={styles.more}>
           {rating ? (
-            <T variant="spot">
-              {SESSION_LABEL[rating.session]}
-              {rating.potential > 0 ? (
-                <T variant="figureSm">{` on a ${rating.wing.own ?? rating.wing.recommended} m`}</T>
-              ) : null}
+            <T variant="figureSm">
+              {rating.potential > 0
+                ? `${rating.wing.own ?? rating.wing.recommended} m wing`
+                : "No stars"}
             </T>
           ) : (
             <T variant="body" color="muted">
@@ -562,14 +668,13 @@ const HourRow = memo(function HourRow({
             </T>
           )}
           <View style={styles.moreFacts}>
-            {rating ? (
-              <T variant="caption" color="muted">
-                rides like {windIn(rating.rideKn, units)} {units}
-              </T>
-            ) : null}
             {place.from !== null ? (
               <T variant="caption" color="muted">
-                {row.shore ? SHORE_LABEL[row.shore] : facing === null ? "facing unknown" : ""}
+                {row.shore
+                  ? SHORE_LABEL[row.shore]
+                  : facing === null
+                    ? "facing unknown"
+                    : ""}
               </T>
             ) : null}
             <T variant="caption" color="muted">
@@ -596,7 +701,12 @@ const HourRow = memo(function HourRow({
 function PenMark({ first, last }: { first: boolean; last: boolean }) {
   return (
     <View pointerEvents="none" style={styles.pen}>
-      <Svg width={8} height="100%" preserveAspectRatio="none" viewBox="0 0 8 40">
+      <Svg
+        width={8}
+        height="100%"
+        preserveAspectRatio="none"
+        viewBox="0 0 8 40"
+      >
         <Path
           d={`${first ? "M7 3 Q2 4 2 10" : "M2 0"} L2 ${last ? 30 : 40}${last ? " Q2 36 7 37" : ""}`}
           fill="none"
@@ -634,7 +744,9 @@ function Sources({
 }) {
   const { published, models } = useForecast();
   const wind = published
-    ? published.sources.map((s) => `${s.name} (${s.runTime.slice(11, 16)} UTC)`).join(", ")
+    ? published.sources
+        .map((s) => `${s.name} (${s.runTime.slice(11, 16)} UTC)`)
+        .join(", ")
     : models
         .filter((m) => m.wind)
         .map((m) => `${m.entry.name} (${m.wind!.runTime.slice(11, 16)} UTC)`)
@@ -650,7 +762,8 @@ function Sources({
       </T>
       {tide.tide ? (
         <T variant="body" color="ink2">
-          Tides: {tide.tide.station.name}, {tide.tide.distanceKm.toFixed(0)} km away, above {tide.tide.curve.datum}
+          Tides: {tide.tide.station.name}, {tide.tide.distanceKm.toFixed(0)} km
+          away, above {tide.tide.curve.datum}
           {tide.manifest?.attribution ? ` · ${tide.manifest.attribution}` : ""}.
         </T>
       ) : null}
@@ -663,9 +776,15 @@ function Sources({
       <T variant="body" color="ink2">
         Times are Irish.
       </T>
-      <Button kind="quiet" size="sm" label="How the stars work" onPress={() => router.push("/stars" as never)} />
+      <Button
+        kind="quiet"
+        size="sm"
+        label="How the stars work"
+        onPress={() => router.push("/stars" as never)}
+      />
       <T variant="body" style={styles.safety}>
-        Model forecasts only, not a safety statement. Look at the water, and never ride alone in offshore wind.
+        Model forecasts only, not a safety statement. Look at the water, and
+        never ride alone in offshore wind.
       </T>
     </View>
   );
@@ -684,14 +803,19 @@ function UnknownSpot({ id }: { id: string }) {
       <Stack.Screen options={{ title: "Spot not found" }} />
       <T variant="title">No riding place at this address</T>
       <T variant="prose" color="ink2">
-        Nothing is called “{id}”. {candidates.length ? "Did you mean one of these?" : "It may have been renamed."}
+        Nothing is called “{id}”.{" "}
+        {candidates.length
+          ? "Did you mean one of these?"
+          : "It may have been renamed."}
       </T>
       {candidates.map((spot) => (
         <Pressable
           key={spot.id}
           accessibilityRole="link"
           accessibilityLabel={`${spot.name}, ${spot.county}`}
-          onPress={() => router.replace({ pathname: "/spot/[id]", params: { id: spot.id } })}
+          onPress={() =>
+            router.replace({ pathname: "/spot/[id]", params: { id: spot.id } })
+          }
           style={({ pressed }) => [styles.place, pressed && styles.pressed]}
         >
           <T variant="spot">{spot.name}</T>
@@ -700,7 +824,11 @@ function UnknownSpot({ id }: { id: string }) {
           </T>
         </Pressable>
       ))}
-      <Button kind="pill" label="All places" onPress={() => router.navigate("/spots")} />
+      <Button
+        kind="pill"
+        label="All places"
+        onPress={() => router.navigate("/spots")}
+      />
     </View>
   );
 }
@@ -713,20 +841,39 @@ const styles = StyleSheet.create({
   top: { gap: space.md, paddingTop: space.sm, paddingBottom: space.md },
   meta: { flexDirection: "row", flexWrap: "wrap" },
   headerActions: { flexDirection: "row", alignItems: "center" },
-  headerButton: { minWidth: hitTarget, minHeight: hitTarget, alignItems: "center", justifyContent: "center" },
+  headerButton: {
+    minWidth: hitTarget,
+    minHeight: hitTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   state: { flex: 1, paddingHorizontal: space.lg },
   notice: { gap: space.md, paddingVertical: space.lg },
   skeleton: { gap: space.md, paddingTop: space.lg },
-  bone: { height: space.xl, backgroundColor: colors.sunken, borderRadius: radius.control },
+  bone: {
+    height: space.xl,
+    backgroundColor: colors.sunken,
+    borderRadius: radius.control,
+  },
   dayHead: {
     backgroundColor: colors.paper,
     borderBottomWidth: 2,
     borderBottomColor: colors.ink,
     paddingTop: space.md,
   },
-  dayLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.sm, paddingBottom: space.xs },
+  dayLine: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.sm,
+    paddingBottom: space.xs,
+  },
   dayBest: { flexDirection: "row", alignItems: "center", gap: space.xs },
-  heads: { flexDirection: "row", alignItems: "flex-end", paddingVertical: space.xs },
+  heads: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingVertical: space.xs,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -757,7 +904,13 @@ const styles = StyleSheet.create({
   },
   moreFacts: { flexDirection: "row", flexWrap: "wrap", columnGap: space.md },
   reason: { fontFamily: fonts.bodyItalic },
-  pen: { position: "absolute", left: -space.md, top: 0, bottom: 0, width: space.sm },
+  pen: {
+    position: "absolute",
+    left: -space.md,
+    top: 0,
+    bottom: 0,
+    width: space.sm,
+  },
   fold: {
     flexDirection: "row",
     alignItems: "center",

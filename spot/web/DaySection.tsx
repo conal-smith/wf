@@ -16,7 +16,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
-  SESSION_LABEL,
   SHORE_LABEL,
   starsText,
   type HourRating,
@@ -731,13 +730,6 @@ function HourTip({
             <WindArrow from={wind.direction_deg} size={12} />
             {wind.direction} {windIn(wind.wind_kn, units)}
             {wind.gust_kn !== null && ` g${windIn(wind.gust_kn, units)}`}
-            {rating && rating.liftKn >= 0.95 && (
-              <>
-                {" "}
-                → rides like{" "}
-                <b className={s.strong()}>{windIn(rating.rideKn, units)}</b>
-              </>
-            )}
           </li>
           <li className={s.tipItem()}>
             {facing !== null && (
@@ -776,12 +768,12 @@ function verdict(rating: HourRating | null, daylight: boolean) {
   const wing = rating.wing.own ?? rating.wing.recommended;
   return (
     <>
-      <i className="font-display italic">{SESSION_LABEL[rating.session]}</i>
-      {rating.potential > 0 && (
+      {rating.potential > 0 ? (
         <>
-          {" "}
-          on a <b className="font-mono font-semibold">{wing} m</b>
+          <b className="font-mono font-semibold">{wing} m</b> wing
         </>
+      ) : (
+        "No stars"
       )}
       <span className="sr-only">. {starsText(rating)}</span>
     </>

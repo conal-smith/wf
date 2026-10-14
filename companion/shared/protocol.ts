@@ -101,7 +101,6 @@ export interface WindowSummary extends WindowChip {
   wing_m2: number;
   /** Which of the rider's own wings to take, when they have listed any. */
   own_wing_m2: number | null;
-  session: string;
   /** "cross-onshore", "offshore"…; null where the shore's facing is unknown. */
   shore: string | null;
   agreement: "high" | "moderate" | "low" | null;

@@ -40,7 +40,6 @@ const card = (stars: number): SpotCardData => ({
     direction_deg: 248,
     wing_m2: 5,
     own_wing_m2: null,
-    session: "Powered up",
     shore: "cross-onshore",
     agreement: "high",
   },

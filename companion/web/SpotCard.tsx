@@ -117,10 +117,6 @@ export function SpotCard({ card, onShow, compact = false }: SpotCardProps) {
         <>
           <p className="m-0 font-mono text-caption font-semibold text-ink tabular-nums">
             {best.local}
-            <span className="font-body text-body font-normal text-ink-2 italic">
-              {" "}
-              · {best.session}
-            </span>
           </p>
           <dl className="m-0 grid grid-cols-3 gap-2 border-0 border-t border-line pt-2">
             <Fact

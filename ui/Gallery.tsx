@@ -787,7 +787,6 @@ export default function Gallery() {
                   direction_deg: 248,
                   wing_m2: 5,
                   own_wing_m2: 5,
-                  session: "Powered up",
                   shore: "cross-offshore",
                   agreement: "moderate",
                 },

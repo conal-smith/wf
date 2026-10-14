@@ -4,8 +4,8 @@ import RowLabel from "./RowLabel";
 import type { DockColumn } from "../force5/src/timeline";
 import {
   ESTIMATE_WEIGHT_KG,
-  SESSION_LABEL,
   SHORE_LABEL,
+  noStarsWhy,
   starsText,
   type HourRating,
   type Rider,
@@ -104,11 +104,8 @@ export function ratingTitle(rating: HourRating): string {
       ? `${rating.wing.recommended} m² wing`
       : `your ${rating.wing.own} m² wing`;
   return [
-    `${starsText(rating)} · ${SESSION_LABEL[rating.session]}`,
+    starsText(rating),
     rating.shore ? SHORE_LABEL[rating.shore] : null,
-    rating.liftKn >= 1
-      ? `rides like ${Math.round(rating.rideKn)} kn with the gusts`
-      : null,
     wing,
     ...rating.reasons,
   ]
@@ -172,7 +169,9 @@ export default function StarsRows({
                     <span
                       className="stars-none"
                       role="img"
-                      aria-label={`No stars: ${SESSION_LABEL[rating.session].toLowerCase()}`}
+                      aria-label={["No stars", noStarsWhy(rating)]
+                        .filter(Boolean)
+                        .join(": ")}
                     >
                       –
                     </span>

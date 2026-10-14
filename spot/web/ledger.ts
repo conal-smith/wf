@@ -7,7 +7,6 @@
  * shore, gust and agreement, so they cannot drift apart unnoticed.
  */
 import {
-  SESSION_LABEL,
   SHORE_LABEL,
   rateHour,
   rideableWind,
@@ -65,12 +64,12 @@ export function ledger(
   const ride = rideableWind(windKn, gustKn, rider);
   if (gustKn !== null && gustKn > windKn) {
     lines.push({
-      what: `${one(windKn)} kn gusting ${one(gustKn)} rides like`,
+      what: `${one(windKn)} kn gusting ${one(gustKn)} is rated as`,
       figure: `${one(ride)} kn`,
     });
   } else
     lines.push({
-      what: `${one(windKn)} kn with no gusts rides like`,
+      what: `${one(windKn)} kn with no gusts is rated as`,
       figure: `${one(ride)} kn`,
     });
 
@@ -160,7 +159,7 @@ export function ledger(
   });
   lines.push({
     what: "Wing",
-    figure: `${rating.wing.own ?? rating.wing.recommended} m² · ${SESSION_LABEL[rating.session]}`,
+    figure: `${rating.wing.own ?? rating.wing.recommended} m²`,
   });
   return { lines, stars, potential, rating };
 }

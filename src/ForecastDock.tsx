@@ -71,7 +71,7 @@ import { spotSquare } from "../force5/src/spotData";
 import { useSpotSquares } from "./useSpotSquares";
 import type { Prefs } from "../force5/src/prefs";
 import {
-  SESSION_LABEL,
+  noStarsWhy,
   SHORE_LABEL,
   shoreAngle,
   starsText,
@@ -387,7 +387,9 @@ const StripTable = memo(function StripTable({
                       label={`${clock(column.time)}: ${
                         hour.rating.potential
                           ? starsText(hour.rating)
-                          : `No stars, ${SESSION_LABEL[hour.rating.session].toLowerCase()}`
+                          : ["No stars", noStarsWhy(hour.rating)]
+                              .filter(Boolean)
+                              .join(", ")
                       }`}
                     />
                   ) : null,

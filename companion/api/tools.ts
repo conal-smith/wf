@@ -18,7 +18,6 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
-  SESSION_LABEL,
   SHORE_LABEL,
   SKILLS,
   bestWindow,
@@ -179,7 +178,6 @@ function summarise(
       : worst;
   }, null);
   const ratings = span.flatMap((h) => (h.rating ? [h.rating] : []));
-  const middle = ratings[Math.floor(ratings.length / 2)];
   const wing = pickWing(rider, mean);
   const start = hours[from].time;
   const end = hours[to].time + HOUR;
@@ -195,7 +193,6 @@ function summarise(
     direction_deg: direction,
     wing_m2: wing.recommended,
     own_wing_m2: wing.own,
-    session: middle ? SESSION_LABEL[middle.session] : "",
     shore: facing === null ? null : SHORE_LABEL[shoreAngle(direction, facing)],
     agreement,
   };
@@ -457,7 +454,7 @@ const getSpotForecast = tool({
   definition: {
     name: "get_spot_forecast",
     description:
-      "The forecast for one spot, rated in stars (0-5) for the rider in the context: daylight hours with consensus wind, gusts and direction across the weather models, their agreement, the stars, the wing to take and how the wind meets the shore (onshore … offshore), plus the best window, waves, tides, sunrise/sunset and sea temperature. Call it for questions about one place: 'is X on this weekend?', 'what wing should I take?', 'when is best at X?'. The rider sees a card with the best window.",
+      "The forecast for one spot, rated in stars (0-5) for the rider in the context: daylight hours with the headline wind, gusts and direction (HARMONIE's own while it reaches the hour, else the weighted median of the models), how well the models agree, the stars, the wing to take and how the wind meets the shore (onshore … offshore), plus the best window, waves, tides, sunrise/sunset and sea temperature. Call it for questions about one place: 'is X on this weekend?', 'what wing should I take?', 'when is best at X?'. The rider sees a card with the best window.",
     input_schema: {
       type: "object",
       properties: {
@@ -539,7 +536,6 @@ const getSpotForecast = tool({
           potential: h.rating?.potential ?? null,
           wing_m2: h.rating?.wing.recommended ?? null,
           own_wing_m2: h.rating?.wing.own ?? null,
-          session: h.rating ? SESSION_LABEL[h.rating.session] : null,
           shore: h.rating?.shore ? SHORE_LABEL[h.rating.shore] : null,
           waves_m: f.waves?.height_m ?? null,
           air_c: f.weather?.air_c ?? null,

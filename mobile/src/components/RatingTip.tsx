@@ -2,11 +2,15 @@
  * Why an hour has its stars: the site's RatingTip (ui/RatingTip.tsx), the one
  * explanation everywhere, opened by a tap on an hour's stars in the dock or on
  * the spot page. A card of the chart's paper, ruled twice in ink, over a
- * scrim: the session and the wing, the wind and what it rides like, the shore,
+ * scrim: the wing, the wind, the shore,
  * and every reason a star came off, in the pen's ink.
  */
 import { Modal, Pressable, StyleSheet, View } from "react-native";
-import { SESSION_LABEL, SHORE_LABEL, starsText, type HourRating } from "../../../force5/src/stars";
+import {
+  SHORE_LABEL,
+  starsText,
+  type HourRating,
+} from "../../../force5/src/stars";
 import type { Units } from "../../../force5/src/units";
 import { compass } from "../../../force5/src/weather";
 import { windIn } from "../../../spot/web/spot";
@@ -34,11 +38,14 @@ export interface HourExplanation {
   facingKnown: boolean;
 }
 
-/** The one-line verdict: "Cruising on a 5 m" / "Dark: not rated". */
-export function verdictText(rating: HourRating | null, daylight: boolean): string {
+/** The one-line verdict: "5 m wing" / "No stars" / "Dark: not rated". */
+export function verdictText(
+  rating: HourRating | null,
+  daylight: boolean,
+): string {
   if (!rating) return daylight ? "No wind reading" : "Dark: not rated";
   const wing = rating.wing.own ?? rating.wing.recommended;
-  return `${SESSION_LABEL[rating.session]}${rating.potential > 0 ? ` on a ${wing} m` : ""}`;
+  return rating.potential > 0 ? `${wing} m wing` : "No stars";
 }
 
 export function RatingTip({
@@ -77,10 +84,18 @@ export function RatingTip({
                   {e.when}
                 </T>
                 {e.rating ? (
-                  <Stars stars={e.rating.stars} potential={e.rating.potential} size={14} />
+                  <Stars
+                    stars={e.rating.stars}
+                    potential={e.rating.potential}
+                    size={14}
+                  />
                 ) : null}
               </View>
-              <T variant="spot" style={styles.verdict} accessibilityRole="header">
+              <T
+                variant="spot"
+                style={styles.verdict}
+                accessibilityRole="header"
+              >
                 {verdictText(e.rating, e.daylight)}
               </T>
               {e.rating ? (
@@ -95,9 +110,6 @@ export function RatingTip({
                     {e.from !== null ? `${compass(e.from)} ` : ""}
                     {windIn(e.windKn, e.units)}
                     {e.gustKn !== null ? ` g${windIn(e.gustKn, e.units)}` : ""}
-                    {e.rating && e.rating.liftKn >= 0.95
-                      ? ` → rides like ${windIn(e.rating.rideKn, e.units)}`
-                      : ""}
                   </T>
                 </View>
               )}
@@ -111,15 +123,22 @@ export function RatingTip({
                 </T>
               )}
               {e.rating?.reasons.map((reason) => (
-                <T key={reason} variant="body" color="penInk" style={styles.reason}>
+                <T
+                  key={reason}
+                  variant="body"
+                  color="penInk"
+                  style={styles.reason}
+                >
                   − {reason}
                 </T>
               ))}
-              {e.rating && !e.rating.reasons.length && e.rating.stars === e.rating.potential && (
-                <T variant="body" color="muted">
-                  Nothing taken off
-                </T>
-              )}
+              {e.rating &&
+                !e.rating.reasons.length &&
+                e.rating.stars === e.rating.potential && (
+                  <T variant="body" color="muted">
+                    Nothing taken off
+                  </T>
+                )}
               <Rule style={styles.rule} />
               <T variant="caption" color="muted">
                 Rated for {e.riderText} · best {e.sweet.low}–{e.sweet.high} kn
@@ -166,9 +185,18 @@ const styles = StyleSheet.create({
     padding: space.lg,
     gap: space.sm,
   },
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  head: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   verdict: { fontSize: 19, lineHeight: 24 },
-  line: { flexDirection: "row", alignItems: "center", gap: space.xs, minHeight: space["2xl"] },
+  line: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minHeight: space["2xl"],
+  },
   reason: { fontFamily: fonts.bodyItalic },
   rule: { marginVertical: space.xs },
   actions: {

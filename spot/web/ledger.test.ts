@@ -56,7 +56,7 @@ describe("the worked example's ledger", () => {
       { skill: "intermediate", weightKg: null, wings: [] },
     )!;
     expect(worked.lines[0]).toEqual({
-      what: "12.6 kn gusting 18.9 rides like",
+      what: "12.6 kn gusting 18.9 is rated as",
       figure: "14.1 kn",
     });
     expect(worked.lines.map((line) => line.what)).toContain(

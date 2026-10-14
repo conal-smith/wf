@@ -10,13 +10,20 @@
 import type { ForecastView, Prefs, RowKey } from "../../../../force5/src/prefs";
 import { rowOn } from "../../../../force5/src/prefs";
 import {
-  SESSION_LABEL,
+  noStarsWhy,
   SHORE_LABEL,
   type HourRating,
 } from "../../../../force5/src/stars";
 import { seaTemperatureText } from "../../../../force5/src/seaTemperature";
-import { presentWeather, type PresentWeather } from "../../../../force5/src/surface";
-import { eventsBetween, tideAt, type TideCurve } from "../../../../force5/src/tides";
+import {
+  presentWeather,
+  type PresentWeather,
+} from "../../../../force5/src/surface";
+import {
+  eventsBetween,
+  tideAt,
+  type TideCurve,
+} from "../../../../force5/src/tides";
 import { KNOTS, convert, type Units } from "../../../../force5/src/units";
 import { variableValue } from "../../../../force5/src/variables";
 import { compass } from "../../../../force5/src/weather";
@@ -33,7 +40,11 @@ import {
   type StripDay,
   type StripGeometry,
 } from "../../../../src/strip";
-import type { SeaTemperatureState, SpotWaves, SpotWeather } from "../../../../src/useBlend";
+import type {
+  SeaTemperatureState,
+  SpotWaves,
+  SpotWeather,
+} from "../../../../src/useBlend";
 import { windScale } from "../../theme/tokens";
 
 /* ------------------------------------------------------------------ view */
@@ -93,7 +104,11 @@ export const DOCK_ROWS: readonly DockRowInfo[] = [
  * row is on (the sea row only where there is a temperature to show); once the
  * rider has switched it, their choice stands (`rowOn`).
  */
-export function dockRowOn(prefs: Prefs, row: DockRow, seaAvailable = true): boolean {
+export function dockRowOn(
+  prefs: Prefs,
+  row: DockRow,
+  seaAvailable = true,
+): boolean {
   const info = DOCK_ROWS.find((r) => r.row === row);
   if (!info?.key) return true;
   return rowOn(prefs, info.key, row === "sea" ? seaAvailable : true);
@@ -163,7 +178,9 @@ export function rowLayout(options: {
   const slots: RowSlot[] = [];
   let y = 0;
   for (const row of rows) {
-    const h = Math.round(ROW_HEIGHT[row] * (row === "blend" || row === "tide" ? 1 : scale));
+    const h = Math.round(
+      ROW_HEIGHT[row] * (row === "blend" || row === "tide" ? 1 : scale),
+    );
     slots.push({ row, y, h });
     y += h;
   }
@@ -173,7 +190,11 @@ export function rowLayout(options: {
 }
 
 /** A column's width: the site's phone width, wider with Dynamic Type. */
-export function columnWidths(scale = 1): { cw: number; coarse: number; label: number } {
+export function columnWidths(scale = 1): {
+  cw: number;
+  coarse: number;
+  label: number;
+} {
   const s = Math.max(1, Math.min(1.35, scale));
   const cw = Math.round(52 * s);
   return { cw, coarse: cw - 4, label: Math.round(30 * s) };
@@ -183,7 +204,8 @@ export function columnWidths(scale = 1): { cw: number; coarse: number; label: nu
  * Pixels per star in an hour's cell, as the site's dock sizes them: the row's
  * size where the column is wide enough, else as large as five fit.
  */
-export const starSize = (width: number) => Math.max(4, Math.min(9.5, (width - 6) / 5.4));
+export const starSize = (width: number) =>
+  Math.max(4, Math.min(9.5, (width - 6) / 5.4));
 
 /* ------------------------------------------------------------------ scrub */
 
@@ -235,7 +257,10 @@ export function trackCursorAt(p: TrackParams, scroll: number): number {
 }
 
 /** The column whose centre is nearest a position (`columnAtX`), on the UI thread. */
-export function nearestCentre(centres: readonly number[], position: number): number {
+export function nearestCentre(
+  centres: readonly number[],
+  position: number,
+): number {
   "worklet";
   let lo = 0;
   let hi = centres.length - 1;
@@ -245,7 +270,10 @@ export function nearestCentre(centres: readonly number[], position: number): num
     if (centres[mid] < position) lo = mid + 1;
     else hi = mid;
   }
-  if (lo > 0 && Math.abs(position - centres[lo - 1]) < Math.abs(position - centres[lo]))
+  if (
+    lo > 0 &&
+    Math.abs(position - centres[lo - 1]) < Math.abs(position - centres[lo])
+  )
     return lo - 1;
   return lo;
 }
@@ -283,7 +311,8 @@ const COMPASS_WORDS: Record<string, string> = {
 };
 
 /** "west-south-west": a bearing, spoken. */
-export const compassWords = (degrees: number) => COMPASS_WORDS[compass(degrees)] ?? compass(degrees);
+export const compassWords = (degrees: number) =>
+  COMPASS_WORDS[compass(degrees)] ?? compass(degrees);
 
 const UNIT_WORDS: Record<Units, string> = {
   kn: "knots",
@@ -293,7 +322,8 @@ const UNIT_WORDS: Record<Units, string> = {
 };
 
 /** A speed in knots, in the reader's units, rounded as the dock rounds it. */
-export const speedIn = (kn: number, units: Units) => Math.round(convert(kn / KNOTS, units));
+export const speedIn = (kn: number, units: Units) =>
+  Math.round(convert(kn / KNOTS, units));
 
 /**
  * One hour read aloud: "Saturday 14:00, 4 stars, west-south-west 18 knots
@@ -313,9 +343,11 @@ export function hourReading(
     parts.push(
       rating.potential
         ? `${rating.stars} star${rating.stars === 1 ? "" : "s"}${
-            rating.potential > rating.stars ? `, ${rating.potential} possible` : ""
+            rating.potential > rating.stars
+              ? `, ${rating.potential} possible`
+              : ""
           }`
-        : `no stars, ${SESSION_LABEL[rating.session].toLowerCase()}`,
+        : ["no stars", noStarsWhy(rating)].filter(Boolean).join(", "),
     );
   else if (!hour.daylight) parts.push("dark, not rated");
   if (hour.windKn === null) parts.push("no wind reading");
@@ -323,7 +355,9 @@ export function hourReading(
     const from = hour.from === null ? "" : `${compassWords(hour.from)} `;
     const gust =
       hour.gustKn === null ? "" : ` gusting ${speedIn(hour.gustKn, units)}`;
-    parts.push(`${from}${speedIn(hour.windKn, units)} ${UNIT_WORDS[units]}${gust}`);
+    parts.push(
+      `${from}${speedIn(hour.windKn, units)} ${UNIT_WORDS[units]}${gust}`,
+    );
   }
   if (rating?.shore === "offshore" || rating?.shore === "cross-off")
     parts.push(SHORE_LABEL[rating.shore]);
@@ -331,7 +365,10 @@ export function hourReading(
 }
 
 /** "14 g22 · WSW": the hour's wind as the readout prints it. */
-export function windFigures(hour: PlaceHour | null | undefined, units: Units): string {
+export function windFigures(
+  hour: PlaceHour | null | undefined,
+  units: Units,
+): string {
   if (!hour || hour.windKn === null) return "–";
   const gust = hour.gustKn === null ? "" : ` g${speedIn(hour.gustKn, units)}`;
   const from = hour.from === null ? "" : ` · ${compass(hour.from)}`;
@@ -355,7 +392,12 @@ export function windInk(kn: number): string {
  * The night's fine diagonal hatch (ui/theme.css `hatch`) over a box, as one
  * path of strokes `gap` apart, falling left to right as the site's does.
  */
-export function hatchPath(x: number, width: number, height: number, gap = 4): string {
+export function hatchPath(
+  x: number,
+  width: number,
+  height: number,
+  gap = 4,
+): string {
   let d = "";
   for (let k = -height; k < width; k += gap) {
     const x0 = Math.max(0, k);
@@ -445,8 +487,10 @@ export const dayOf = (days: readonly StripDay[], column: number) =>
  * Whether the chart can draw the selected hour: past the map model's run the
  * dock offers the run that reaches it (src/App.tsx `reachable`).
  */
-export const beyondMapModel = (column: Pick<StripColumn, "model"> | undefined, mapModel = "harmonie") =>
-  !!column && column.model !== mapModel;
+export const beyondMapModel = (
+  column: Pick<StripColumn, "model"> | undefined,
+  mapModel = "harmonie",
+) => !!column && column.model !== mapModel;
 
 /* ------------------------------------------------------------------ tide */
 
@@ -472,7 +516,10 @@ export function xInDay(
   }
   for (let i = a; i < b; i++)
     if (t <= columns[i + 1].time)
-      return centre(i) + ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i));
+      return (
+        centre(i) +
+        ((t - columns[i].time) / step(i, i + 1)) * (centre(i + 1) - centre(i))
+      );
   return centre(b);
 }
 
@@ -505,7 +552,8 @@ export function tideScale(curve: TideCurve, height: number) {
     if (h < lo) lo = h;
     if (h > hi) hi = h;
   }
-  return (h: number) => height - 6 - ((h - lo) / (hi - lo || 1)) * (height - 16);
+  return (h: number) =>
+    height - 6 - ((h - lo) / (hi - lo || 1)) * (height - 16);
 }
 
 /**
@@ -525,9 +573,12 @@ export function dayTide(
   const first = columns[day.start];
   const last = columns[day.start + day.count - 1];
   if (!first || !last) return null;
-  const half = day.count > 1 ? (columns[day.start + 1].time - first.time) / 2 : 1800000;
+  const half =
+    day.count > 1 ? (columns[day.start + 1].time - first.time) / 2 : 1800000;
   const halfEnd =
-    day.count > 1 ? (last.time - columns[day.start + day.count - 2].time) / 2 : 1800000;
+    day.count > 1
+      ? (last.time - columns[day.start + day.count - 2].time) / 2
+      : 1800000;
   const a = first.time - half;
   const b = last.time + halfEnd;
   let d = "";
@@ -555,7 +606,9 @@ export function dayTide(
   });
   for (const high of [true, false]) {
     let edge = -Infinity;
-    for (const turn of turns.filter((t) => t.high === high).sort((p, q) => p.x - q.x)) {
+    for (const turn of turns
+      .filter((t) => t.high === high)
+      .sort((p, q) => p.x - q.x)) {
       const w = turn.text.length * TIDE_CHAR;
       const after = turn.x + 5;
       const before = turn.x - 5 - w;
@@ -595,7 +648,13 @@ function hand(seed: number): () => number {
  * The pen's loop round a stretch: an ellipse drawn in one stroke that runs a
  * little past its start, with a small wobble, as a hand rings an hour.
  */
-export function penLoop(cx: number, cy: number, rx: number, ry: number, seed: number): string {
+export function penLoop(
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  seed: number,
+): string {
   const rnd = hand(seed);
   const start = rnd() * Math.PI * 2;
   const turns = 1.08 + rnd() * 0.08;
@@ -641,7 +700,8 @@ export interface RainCell {
 }
 
 /** A row's cells, or a note across it where there is nothing to put in them. */
-export type MoreRow<C> = { cells: (C | null)[]; note: null } | { cells: null; note: string };
+export type MoreRow<C> =
+  { cells: (C | null)[]; note: null } | { cells: null; note: string };
 
 export interface MoreCells {
   waves: MoreRow<WaveCell>;
@@ -692,20 +752,29 @@ export function moreCells(
         }
       : {
           cells: null,
-          note: waves.published ? "No wave model reaches this spot" : "Waves: reading…",
+          note: waves.published
+            ? "No wave model reaches this spot"
+            : "Waves: reading…",
         };
   const fields = weather.source?.fields;
-  const at = (c: number, name: string | null | undefined) => variableValue(weather.columns[c], name);
+  const at = (c: number, name: string | null | undefined) =>
+    variableValue(weather.columns[c], name);
   const none = (note: string) => ({ cells: null, note }) as const;
   const skyRow: MoreRow<SkyCell> = fields
     ? {
         note: null,
         cells: Array.from({ length: n }, (_, c) => {
           const reading = presentWeather(at(c, fields.present));
-          return reading ? { icon: reading.icon, words: reading.description } : null;
+          return reading
+            ? { icon: reading.icon, words: reading.description }
+            : null;
         }),
       }
-    : none(weather.published ? "No weather model reaches this spot" : "Weather: reading…");
+    : none(
+        weather.published
+          ? "No weather model reaches this spot"
+          : "Weather: reading…",
+      );
   const airRow: MoreRow<number> = fields
     ? {
         note: null,
@@ -716,13 +785,20 @@ export function moreCells(
       }
     : none("");
   const series = weather.source?.series ?? [];
-  const rain = fields?.rain ? rainColumns(columns.map((c) => c.time), series) : [];
+  const rain = fields?.rain
+    ? rainColumns(
+        columns.map((c) => c.time),
+        series,
+      )
+    : [];
   const rainRow: MoreRow<RainCell> = fields?.rain
     ? {
         note: null,
         cells: Array.from({ length: n }, (_, c) => {
           const covered = rain[c];
-          const value = covered ? variableValue(series[covered.step], fields.rain) : null;
+          const value = covered
+            ? variableValue(series[covered.step], fields.rain)
+            : null;
           if (!covered || value === null) return null;
           const amount = value < 0.05 ? "0" : value.toFixed(1);
           return {
@@ -737,7 +813,11 @@ export function moreCells(
   let seaRow: MoreCells["sea"];
   if (sea.observed) {
     const text = seaTemperatureText(sea.observed);
-    seaRow = { cells: null, note: `${text.value} measured · ${text.detail}`, measured: true };
+    seaRow = {
+      cells: null,
+      note: `${text.value} measured · ${text.detail}`,
+      measured: true,
+    };
   } else if (fields?.skin) {
     seaRow = {
       note: null,
@@ -747,7 +827,12 @@ export function moreCells(
         return v === null ? null : Math.round(v);
       }),
     };
-  } else seaRow = { cells: null, note: sea.loading ? "" : "No sea temperature here", measured: false };
+  } else
+    seaRow = {
+      cells: null,
+      note: sea.loading ? "" : "No sea temperature here",
+      measured: false,
+    };
   return {
     waves: wavesRow,
     sky: skyRow,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RIDER,
   bestWindow,
+  noStarsWhy,
   pickWing,
   rateHour,
   rideableWind,
@@ -263,5 +264,15 @@ describe("best window", () => {
   });
   it("is null when nothing holds a star for two columns", () => {
     expect(bestWindow([r(0), r(3), r(0), null])).toBeNull();
+  });
+});
+
+describe("noStarsWhy", () => {
+  it("names only the plain reasons an hour has no stars", () => {
+    expect(noStarsWhy({ session: "too-light" })).toBe("too light");
+    expect(noStarsWhy({ session: "too-strong" })).toBe("too strong");
+    expect(noStarsWhy({ session: "offshore" })).toBe("offshore");
+    expect(noStarsWhy({ session: "pump" })).toBeNull();
+    expect(noStarsWhy({ session: "cruising" })).toBeNull();
   });
 });

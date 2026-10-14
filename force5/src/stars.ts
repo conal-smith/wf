@@ -1,6 +1,7 @@
 // Star ratings for a wing-foiling session: how good an hour is, for this rider,
-// at this spot. Pure functions over numbers the dock already has — the blend's
-// median wind and gust, its mean direction and agreement — so the map, the dock
+// at this spot. Pure functions over numbers the dock already has — the headline
+// wind and gust (HARMONIE's own while it reaches the hour, else the weighted
+// median of the models), its direction and agreement — so the map, the dock
 // and the forecast server can all rate an hour the same way.
 //
 // Two numbers per hour, both out of five:
@@ -189,9 +190,9 @@ export interface SpotShore {
 export type Agreement = "high" | "moderate" | "low";
 
 export interface HourInput {
-  /** Median mean wind across the models, in knots. */
+  /** The headline mean wind, in knots: HARMONIE's while it reaches the hour, else the weighted median. */
   windKn: number | null;
-  /** Median gust across the models, in knots, where any model publishes one. */
+  /** The headline gust, in knots, chosen as the wind is, where any model publishes one. */
   gustKn: number | null;
   /** Mean bearing the wind blows from, in degrees. */
   from: number | null;
@@ -210,16 +211,23 @@ export type SessionKind =
   | "too-strong"
   | "offshore";
 
-export const SESSION_LABEL: Record<SessionKind, string> = {
-  "too-light": "Too light",
-  pump: "Pump and glide",
-  drills: "Light-wind drills",
-  cruising: "Cruising",
-  powered: "Powered up",
-  overpowered: "Overpowered",
-  "too-strong": "Too strong",
-  offshore: "Offshore",
-};
+/**
+ * Why an hour has no stars, where the wind alone says so: "too light", "too
+ * strong", "offshore". The kinds in between are the rating's own business and
+ * have no words on the page: a rider reads the stars and the figures.
+ */
+export function noStarsWhy(rating: Pick<HourRating, "session">): string | null {
+  switch (rating.session) {
+    case "too-light":
+      return "too light";
+    case "too-strong":
+      return "too strong";
+    case "offshore":
+      return "offshore";
+    default:
+      return null;
+  }
+}
 
 export interface HourRating {
   /** The rideable wind the hour was rated on, in knots. */
