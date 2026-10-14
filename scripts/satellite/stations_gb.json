@@ -1,0 +1,1435 @@
+{
+ "about": "Tide stations for Great Britain's coast (tides.py place): the UK gauges on EMODnet Physics' ERDDAP (gauges_gb.json), EOT20 fitted to each; where the coast is further than 30 km from all of them, EOT20 as it is at a point 1-2 km offshore. Every datum is the station's fitted model's 19-year lowest (tides.datum modelLAT).",
+ "stations": {
+  "Aberdeen": {
+   "name": "Aberdeen",
+   "lon": -2.08,
+   "lat": 57.14,
+   "model": [
+    -2.08,
+    57.14
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "abed"
+   }
+  },
+  "Avonmouth": {
+   "name": "Avonmouth",
+   "lon": -2.73,
+   "lat": 51.5,
+   "model": [
+    -2.73,
+    51.5
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "avon"
+   }
+  },
+  "Bournemouth": {
+   "name": "Bournemouth",
+   "lon": -1.87,
+   "lat": 50.71,
+   "model": [
+    -1.87,
+    50.71
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "bour"
+   }
+  },
+  "Brighton": {
+   "name": "Brighton",
+   "lon": -0.1013,
+   "lat": 50.8118,
+   "model": [
+    -0.1013,
+    50.8118
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "BrightonTG"
+   }
+  },
+  "Cromer": {
+   "name": "Cromer",
+   "lon": 1.3,
+   "lat": 52.93,
+   "model": [
+    1.3,
+    52.93
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "crom"
+   }
+  },
+  "Deal": {
+   "name": "Deal",
+   "lon": 1.4093,
+   "lat": 51.2238,
+   "model": [
+    1.4093,
+    51.2238
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "dlpr"
+   }
+  },
+  "Dover": {
+   "name": "Dover",
+   "lon": 1.32,
+   "lat": 51.11,
+   "model": [
+    1.32,
+    51.11
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "dove"
+   }
+  },
+  "Exmouth": {
+   "name": "Exmouth",
+   "lon": -3.4236,
+   "lat": 50.6174,
+   "model": [
+    -3.4236,
+    50.6174
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "ExmouthTG"
+   }
+  },
+  "Fishguard": {
+   "name": "Fishguard",
+   "lon": -4.98,
+   "lat": 52.01,
+   "model": [
+    -4.98,
+    52.01
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "fish"
+   }
+  },
+  "Harwich": {
+   "name": "Harwich",
+   "lon": 1.29,
+   "lat": 51.95,
+   "model": [
+    1.29,
+    51.95
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "harw"
+   }
+  },
+  "Hastings": {
+   "name": "Hastings",
+   "lon": 0.5728,
+   "lat": 50.8509,
+   "model": [
+    0.5728,
+    50.8509
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "hasp"
+   }
+  },
+  "Heysham": {
+   "name": "Heysham",
+   "lon": -2.92,
+   "lat": 54.03,
+   "model": [
+    -2.92,
+    54.03
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "heys"
+   }
+  },
+  "Hinkley_Point": {
+   "name": "Hinkley Point",
+   "lon": -3.13,
+   "lat": 51.21,
+   "model": [
+    -3.13,
+    51.21
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "hink"
+   }
+  },
+  "Holyhead": {
+   "name": "Holyhead",
+   "lon": -4.62,
+   "lat": 53.31,
+   "model": [
+    -4.62,
+    53.31
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "holy2"
+   }
+  },
+  "Ilfracombe": {
+   "name": "Ilfracombe",
+   "lon": -4.11,
+   "lat": 51.21,
+   "model": [
+    -4.11,
+    51.21
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "ilfa"
+   }
+  },
+  "Immingham": {
+   "name": "Immingham",
+   "lon": -0.19,
+   "lat": 53.63,
+   "model": [
+    -0.19,
+    53.63
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "immi"
+   }
+  },
+  "Kinlochbervie": {
+   "name": "Kinlochbervie",
+   "lon": -5.05,
+   "lat": 58.46,
+   "model": [
+    -5.05,
+    58.46
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "kinl"
+   }
+  },
+  "Leith": {
+   "name": "Leith",
+   "lon": -3.18,
+   "lat": 55.99,
+   "model": [
+    -3.18,
+    55.99
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "leit"
+   }
+  },
+  "Lerwick": {
+   "name": "Lerwick",
+   "lon": -1.1452,
+   "lat": 60.1553,
+   "model": [
+    -1.1452,
+    60.1553
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "lerw2"
+   }
+  },
+  "Liverpool": {
+   "name": "Liverpool",
+   "lon": -3.02,
+   "lat": 53.45,
+   "model": [
+    -3.02,
+    53.45
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "live"
+   }
+  },
+  "Llandudno": {
+   "name": "Llandudno",
+   "lon": -3.83,
+   "lat": 53.33,
+   "model": [
+    -3.83,
+    53.33
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "llan"
+   }
+  },
+  "Lowestoft": {
+   "name": "Lowestoft",
+   "lon": 1.75,
+   "lat": 52.47,
+   "model": [
+    1.75,
+    52.47
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "lowe"
+   }
+  },
+  "Lymington": {
+   "name": "Lymington",
+   "lon": -1.5071,
+   "lat": 50.7403,
+   "model": [
+    -1.5071,
+    50.7403
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "LymingtonTG"
+   }
+  },
+  "Milford_Haven": {
+   "name": "Milford Haven",
+   "lon": -5.05,
+   "lat": 51.71,
+   "model": [
+    -5.05,
+    51.71
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "mhav"
+   }
+  },
+  "Millport": {
+   "name": "Millport",
+   "lon": -4.91,
+   "lat": 55.75,
+   "model": [
+    -4.91,
+    55.75
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "mill"
+   }
+  },
+  "Mumbles": {
+   "name": "Mumbles",
+   "lon": -3.98,
+   "lat": 51.57,
+   "model": [
+    -3.98,
+    51.57
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "mumb"
+   }
+  },
+  "Newhaven": {
+   "name": "Newhaven",
+   "lon": 0.06,
+   "lat": 50.78,
+   "model": [
+    0.06,
+    50.78
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "nhav"
+   }
+  },
+  "Newlyn": {
+   "name": "Newlyn",
+   "lon": -5.5427,
+   "lat": 50.103,
+   "model": [
+    -5.5427,
+    50.103
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "newl2"
+   }
+  },
+  "Newport": {
+   "name": "Newport",
+   "lon": -2.99,
+   "lat": 51.55,
+   "model": [
+    -2.99,
+    51.55
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "npor"
+   }
+  },
+  "North_Shields": {
+   "name": "North Shields",
+   "lon": -1.44,
+   "lat": 55.01,
+   "model": [
+    -1.44,
+    55.01
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "nshi"
+   }
+  },
+  "Plymouth": {
+   "name": "Plymouth",
+   "lon": -4.19,
+   "lat": 50.37,
+   "model": [
+    -4.19,
+    50.37
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "plym"
+   }
+  },
+  "Port_Isaac": {
+   "name": "Port Isaac",
+   "lon": -4.8344,
+   "lat": 50.5942,
+   "model": [
+    -4.8344,
+    50.5942
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "PortIsaacTG"
+   }
+  },
+  "Portpatrick": {
+   "name": "Portpatrick",
+   "lon": -5.12,
+   "lat": 54.84,
+   "model": [
+    -5.12,
+    54.84
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "porp"
+   }
+  },
+  "Portsmouth": {
+   "name": "Portsmouth",
+   "lon": -1.11,
+   "lat": 50.8,
+   "model": [
+    -1.11,
+    50.8
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "ptmt"
+   }
+  },
+  "Sandown": {
+   "name": "Sandown",
+   "lon": -1.1532,
+   "lat": 50.6511,
+   "model": [
+    -1.1532,
+    50.6511
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "sdpr"
+   }
+  },
+  "Scarborough": {
+   "name": "Scarborough",
+   "lon": -0.3903,
+   "lat": 54.2825,
+   "model": [
+    -0.3903,
+    54.2825
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "ScarboroughTG"
+   }
+  },
+  "Sheerness": {
+   "name": "Sheerness",
+   "lon": 0.74,
+   "lat": 51.45,
+   "model": [
+    0.74,
+    51.45
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "shee"
+   }
+  },
+  "St_Marys": {
+   "name": "St Mary's",
+   "lon": -6.3172,
+   "lat": 49.9179,
+   "model": [
+    -6.3172,
+    49.9179
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "stmr"
+   }
+  },
+  "Stornoway": {
+   "name": "Stornoway",
+   "lon": -6.39,
+   "lat": 58.21,
+   "model": [
+    -6.39,
+    58.21
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "stor"
+   }
+  },
+  "Swanage": {
+   "name": "Swanage",
+   "lon": -1.9492,
+   "lat": 50.6093,
+   "model": [
+    -1.9492,
+    50.6093
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "SwanagePierTG"
+   }
+  },
+  "Tobermory": {
+   "name": "Tobermory",
+   "lon": -6.06,
+   "lat": 56.62,
+   "model": [
+    -6.06,
+    56.62
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "tobe"
+   }
+  },
+  "Ullapool": {
+   "name": "Ullapool",
+   "lon": -5.16,
+   "lat": 57.9,
+   "model": [
+    -5.16,
+    57.9
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "ulla"
+   }
+  },
+  "West_Bay": {
+   "name": "West Bay",
+   "lon": -2.7641,
+   "lat": 50.7089,
+   "model": [
+    -2.7641,
+    50.7089
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "WestBayHarbourTG"
+   }
+  },
+  "Weymouth": {
+   "name": "Weymouth",
+   "lon": -2.45,
+   "lat": 50.61,
+   "model": [
+    -2.45,
+    50.61
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "weym"
+   }
+  },
+  "Whitby": {
+   "name": "Whitby",
+   "lon": -0.61,
+   "lat": 54.49,
+   "model": [
+    -0.61,
+    54.49
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "whit"
+   }
+  },
+  "Wick": {
+   "name": "Wick",
+   "lon": -3.09,
+   "lat": 58.44,
+   "model": [
+    -3.09,
+    58.44
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "wick"
+   }
+  },
+  "Workington": {
+   "name": "Workington",
+   "lon": -3.57,
+   "lat": 54.65,
+   "model": [
+    -3.57,
+    54.65
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "work"
+   }
+  },
+  "GB_5782N_867W_MODELLED": {
+   "name": "57.82N 8.67W (modelled)",
+   "lon": -8.6731,
+   "lat": 57.8194,
+   "model": [
+    -8.6731,
+    57.8194
+   ]
+  },
+  "GB_5940N_246W_MODELLED": {
+   "name": "59.40N 2.46W (modelled)",
+   "lon": -2.4587,
+   "lat": 59.3953,
+   "model": [
+    -2.4587,
+    59.3953
+   ]
+  },
+  "GB_5734N_718W_MODELLED": {
+   "name": "57.34N 7.18W (modelled)",
+   "lon": -7.1781,
+   "lat": 57.3361,
+   "model": [
+    -7.1781,
+    57.3361
+   ]
+  },
+  "GB_5567N_655W_MODELLED": {
+   "name": "55.67N 6.55W (modelled)",
+   "lon": -6.5493,
+   "lat": 55.6694,
+   "model": [
+    -6.5493,
+    55.6694
+   ]
+  },
+  "GB_5911N_618W_MODELLED": {
+   "name": "59.11N 6.18W (modelled)",
+   "lon": -6.1757,
+   "lat": 59.1089,
+   "model": [
+    -6.1757,
+    59.1089
+   ]
+  },
+  "GB_5767N_367W_MODELLED": {
+   "name": "57.67N 3.67W (modelled)",
+   "lon": -3.6691,
+   "lat": 57.6742,
+   "model": [
+    -3.6691,
+    57.6742
+   ]
+  },
+  "GB_5410N_453W_MODELLED": {
+   "name": "54.10N 4.53W (modelled)",
+   "lon": -4.5315,
+   "lat": 54.0961,
+   "model": [
+    -4.5315,
+    54.0961
+   ]
+  },
+  "GB_5257N_410W_MODELLED": {
+   "name": "52.57N 4.10W (modelled)",
+   "lon": -4.1031,
+   "lat": 52.567,
+   "model": [
+    -4.1031,
+    52.567
+   ]
+  },
+  "GB_5573N_191W_MODELLED": {
+   "name": "55.73N 1.91W (modelled)",
+   "lon": -1.9052,
+   "lat": 55.7267,
+   "model": [
+    -1.9052,
+    55.7267
+   ]
+  },
+  "GB_5910N_438W_MODELLED": {
+   "name": "59.10N 4.38W (modelled)",
+   "lon": -4.3839,
+   "lat": 59.1003,
+   "model": [
+    -4.3839,
+    59.1003
+   ]
+  },
+  "GB_6087N_087W_MODELLED": {
+   "name": "60.87N 0.87W (modelled)",
+   "lon": -0.8685,
+   "lat": 60.8683,
+   "model": [
+    -0.8685,
+    60.8683
+   ]
+  },
+  "GB_5294N_012E_MODELLED": {
+   "name": "52.94N 0.12E (modelled)",
+   "lon": 0.1198,
+   "lat": 52.9398,
+   "model": [
+    0.1198,
+    52.9398
+   ]
+  },
+  "GB_5731N_586W_MODELLED": {
+   "name": "57.31N 5.86W (modelled)",
+   "lon": -5.8615,
+   "lat": 57.3115,
+   "model": [
+    -5.8615,
+    57.3115
+   ]
+  },
+  "GB_5829N_768W_MODELLED": {
+   "name": "58.29N 7.68W (modelled)",
+   "lon": -7.6839,
+   "lat": 58.2863,
+   "model": [
+    -7.6839,
+    58.2863
+   ]
+  },
+  "GB_5654N_256W_MODELLED": {
+   "name": "56.54N 2.56W (modelled)",
+   "lon": -2.5618,
+   "lat": 56.5431,
+   "model": [
+    -2.5618,
+    56.5431
+   ]
+  },
+  "GB_5677N_766W_MODELLED": {
+   "name": "56.77N 7.66W (modelled)",
+   "lon": -7.6645,
+   "lat": 56.766,
+   "model": [
+    -7.6645,
+    56.766
+   ]
+  },
+  "GB_5769N_254W_MODELLED": {
+   "name": "57.69N 2.54W (modelled)",
+   "lon": -2.5375,
+   "lat": 57.6885,
+   "model": [
+    -2.5375,
+    57.6885
+   ]
+  },
+  "GB_5528N_578W_MODELLED": {
+   "name": "55.28N 5.78W (modelled)",
+   "lon": -5.78,
+   "lat": 55.2819,
+   "model": [
+    -5.78,
+    55.2819
+   ]
+  },
+  "GB_5610N_568W_MODELLED": {
+   "name": "56.10N 5.68W (modelled)",
+   "lon": -5.6752,
+   "lat": 56.1033,
+   "model": [
+    -5.6752,
+    56.1033
+   ]
+  },
+  "GB_5896N_337W_MODELLED": {
+   "name": "58.96N 3.37W (modelled)",
+   "lon": -3.3743,
+   "lat": 58.9577,
+   "model": [
+    -3.3743,
+    58.9577
+   ]
+  },
+  "GB_5858N_407W_MODELLED": {
+   "name": "58.58N 4.07W (modelled)",
+   "lon": -4.0732,
+   "lat": 58.5801,
+   "model": [
+    -4.0732,
+    58.5801
+   ]
+  },
+  "GB_5643N_694W_MODELLED": {
+   "name": "56.43N 6.94W (modelled)",
+   "lon": -6.94,
+   "lat": 56.428,
+   "model": [
+    -6.94,
+    56.428
+   ]
+  },
+  "GB_5786N_712W_MODELLED": {
+   "name": "57.86N 7.12W (modelled)",
+   "lon": -7.1177,
+   "lat": 57.8559,
+   "model": [
+    -7.1177,
+    57.8559
+   ]
+  },
+  "GB_6012N_214W_MODELLED": {
+   "name": "60.12N 2.14W (modelled)",
+   "lon": -2.1449,
+   "lat": 60.1233,
+   "model": [
+    -2.1449,
+    60.1233
+   ]
+  },
+  "GB_5282N_478W_MODELLED": {
+   "name": "52.82N 4.78W (modelled)",
+   "lon": -4.776,
+   "lat": 52.8229,
+   "model": [
+    -4.776,
+    52.8229
+   ]
+  },
+  "GB_5956N_158W_MODELLED": {
+   "name": "59.56N 1.58W (modelled)",
+   "lon": -1.5762,
+   "lat": 59.5615,
+   "model": [
+    -1.5762,
+    59.5615
+   ]
+  },
+  "GB_5696N_666W_MODELLED": {
+   "name": "56.96N 6.66W (modelled)",
+   "lon": -6.6641,
+   "lat": 56.9559,
+   "model": [
+    -6.6641,
+    56.9559
+   ]
+  },
+  "GB_5773N_627W_MODELLED": {
+   "name": "57.73N 6.27W (modelled)",
+   "lon": -6.2675,
+   "lat": 57.73,
+   "model": [
+    -6.2675,
+    57.73
+   ]
+  },
+  "GB_6056N_162W_MODELLED": {
+   "name": "60.56N 1.62W (modelled)",
+   "lon": -1.6179,
+   "lat": 60.5628,
+   "model": [
+    -1.6179,
+    60.5628
+   ]
+  },
+  "GB_5528N_486W_MODELLED": {
+   "name": "55.28N 4.86W (modelled)",
+   "lon": -4.8587,
+   "lat": 55.2845,
+   "model": [
+    -4.8587,
+    55.2845
+   ]
+  },
+  "GB_5483N_431W_MODELLED": {
+   "name": "54.83N 4.31W (modelled)",
+   "lon": -4.3128,
+   "lat": 54.8331,
+   "model": [
+    -4.3128,
+    54.8331
+   ]
+  },
+  "GB_5669N_525W_MODELLED": {
+   "name": "56.69N 5.25W (modelled)",
+   "lon": -5.2503,
+   "lat": 56.6906,
+   "model": [
+    -5.2503,
+    56.6906
+   ]
+  },
+  "GB_5754N_178W_MODELLED": {
+   "name": "57.54N 1.78W (modelled)",
+   "lon": -1.7753,
+   "lat": 57.5413,
+   "model": [
+    -1.7753,
+    57.5413
+   ]
+  },
+  "GB_5811N_362W_MODELLED": {
+   "name": "58.11N 3.62W (modelled)",
+   "lon": -3.6213,
+   "lat": 58.106,
+   "model": [
+    -3.6213,
+    58.106
+   ]
+  },
+  "GB_5018N_491W_MODELLED": {
+   "name": "50.18N 4.91W (modelled)",
+   "lon": -4.907,
+   "lat": 50.18,
+   "model": [
+    -4.907,
+    50.18
+   ]
+  },
+  "GB_5570N_579W_MODELLED": {
+   "name": "55.70N 5.79W (modelled)",
+   "lon": -5.788,
+   "lat": 55.6953,
+   "model": [
+    -5.788,
+    55.6953
+   ]
+  },
+  "GB_5334N_030E_MODELLED": {
+   "name": "53.34N 0.30E (modelled)",
+   "lon": 0.3046,
+   "lat": 53.3365,
+   "model": [
+    0.3046,
+    53.3365
+   ]
+  },
+  "GB_5600N_244W_MODELLED": {
+   "name": "56.00N 2.44W (modelled)",
+   "lon": -2.4417,
+   "lat": 56.0045,
+   "model": [
+    -2.4417,
+    56.0045
+   ]
+  },
+  "GB_5221N_441W_MODELLED": {
+   "name": "52.21N 4.41W (modelled)",
+   "lon": -4.4083,
+   "lat": 52.2105,
+   "model": [
+    -4.4083,
+    52.2105
+   ]
+  },
+  "GB_5021N_362W_MODELLED": {
+   "name": "50.21N 3.62W (modelled)",
+   "lon": -3.6195,
+   "lat": 50.2141,
+   "model": [
+    -3.6195,
+    50.2141
+   ]
+  },
+  "GB_5901N_258W_MODELLED": {
+   "name": "59.01N 2.58W (modelled)",
+   "lon": -2.5841,
+   "lat": 59.0086,
+   "model": [
+    -2.5841,
+    59.0086
+   ]
+  },
+  "GB_5095N_457W_MODELLED": {
+   "name": "50.95N 4.57W (modelled)",
+   "lon": -4.5702,
+   "lat": 50.948,
+   "model": [
+    -4.5702,
+    50.948
+   ]
+  },
+  "GB_5539N_156W_MODELLED": {
+   "name": "55.39N 1.56W (modelled)",
+   "lon": -1.5587,
+   "lat": 55.3935,
+   "model": [
+    -1.5587,
+    55.3935
+   ]
+  },
+  "GB_5427N_344W_MODELLED": {
+   "name": "54.27N 3.44W (modelled)",
+   "lon": -3.4365,
+   "lat": 54.2714,
+   "model": [
+    -3.4365,
+    54.2714
+   ]
+  },
+  "GB_5625N_632W_MODELLED": {
+   "name": "56.25N 6.32W (modelled)",
+   "lon": -6.3196,
+   "lat": 56.2533,
+   "model": [
+    -6.3196,
+    56.2533
+   ]
+  },
+  "GB_5467N_117W_MODELLED": {
+   "name": "54.67N 1.17W (modelled)",
+   "lon": -1.1712,
+   "lat": 54.6726,
+   "model": [
+    -1.1712,
+    54.6726
+   ]
+  },
+  "GB_5300N_071E_MODELLED": {
+   "name": "53.00N 0.71E (modelled)",
+   "lon": 0.7114,
+   "lat": 52.9997,
+   "model": [
+    0.7114,
+    52.9997
+   ]
+  },
+  "GB_5769N_772W_MODELLED": {
+   "name": "57.69N 7.72W (modelled)",
+   "lon": -7.7154,
+   "lat": 57.6863,
+   "model": [
+    -7.7154,
+    57.6863
+   ]
+  },
+  "GB_6044N_072W_MODELLED": {
+   "name": "60.44N 0.72W (modelled)",
+   "lon": -0.7197,
+   "lat": 60.445,
+   "model": [
+    -0.7197,
+    60.445
+   ]
+  },
+  "GB_5732N_652W_MODELLED": {
+   "name": "57.32N 6.52W (modelled)",
+   "lon": -6.5191,
+   "lat": 57.3211,
+   "model": [
+    -6.5191,
+    57.3211
+   ]
+  },
+  "GB_5443N_435W_MODELLED": {
+   "name": "54.43N 4.35W (modelled)",
+   "lon": -4.3518,
+   "lat": 54.4323,
+   "model": [
+    -4.3518,
+    54.4323
+   ]
+  },
+  "GB_5696N_589W_MODELLED": {
+   "name": "56.96N 5.89W (modelled)",
+   "lon": -5.8909,
+   "lat": 56.9599,
+   "model": [
+    -5.8909,
+    56.9599
+   ]
+  },
+  "GB_5171N_449W_MODELLED": {
+   "name": "51.71N 4.49W (modelled)",
+   "lon": -4.4904,
+   "lat": 51.7142,
+   "model": [
+    -4.4904,
+    51.7142
+   ]
+  },
+  "GB_5291N_422W_MODELLED": {
+   "name": "52.91N 4.22W (modelled)",
+   "lon": -4.2162,
+   "lat": 52.9066,
+   "model": [
+    -4.2162,
+    52.9066
+   ]
+  },
+  "GB_5496N_332W_MODELLED": {
+   "name": "54.96N 3.32W (modelled)",
+   "lon": -3.3206,
+   "lat": 54.9648,
+   "model": [
+    -3.3206,
+    54.9648
+   ]
+  },
+  "GB_5825N_704W_MODELLED": {
+   "name": "58.25N 7.04W (modelled)",
+   "lon": -7.038,
+   "lat": 58.2505,
+   "model": [
+    -7.038,
+    58.2505
+   ]
+  },
+  "GB_5397N_016W_MODELLED": {
+   "name": "53.97N 0.16W (modelled)",
+   "lon": -0.1637,
+   "lat": 53.9694,
+   "model": [
+    -0.1637,
+    53.9694
+   ]
+  },
+  "GB_5932N_310W_MODELLED": {
+   "name": "59.32N 3.10W (modelled)",
+   "lon": -3.0988,
+   "lat": 59.3151,
+   "model": [
+    -3.0988,
+    59.3151
+   ]
+  },
+  "GB_5853N_624W_MODELLED": {
+   "name": "58.53N 6.24W (modelled)",
+   "lon": -6.2442,
+   "lat": 58.5312,
+   "model": [
+    -6.2442,
+    58.5312
+   ]
+  },
+  "GB_5750N_420W_MODELLED": {
+   "name": "57.50N 4.20W (modelled)",
+   "lon": -4.1954,
+   "lat": 57.5044,
+   "model": [
+    -4.1954,
+    57.5044
+   ]
+  },
+  "GB_5682N_225W_MODELLED": {
+   "name": "56.82N 2.25W (modelled)",
+   "lon": -2.2465,
+   "lat": 56.8226,
+   "model": [
+    -2.2465,
+    56.8226
+   ]
+  },
+  "GB_5641N_310W_MODELLED": {
+   "name": "56.41N 3.10W (modelled)",
+   "lon": -3.1028,
+   "lat": 56.4092,
+   "model": [
+    -3.1028,
+    56.4092
+   ]
+  },
+  "GB_5594N_618W_MODELLED": {
+   "name": "55.94N 6.18W (modelled)",
+   "lon": -6.1803,
+   "lat": 55.9388,
+   "model": [
+    -6.1803,
+    55.9388
+   ]
+  },
+  "GB_5702N_729W_MODELLED": {
+   "name": "57.02N 7.29W (modelled)",
+   "lon": -7.2902,
+   "lat": 57.0165,
+   "model": [
+    -7.2902,
+    57.0165
+   ]
+  },
+  "GB_5642N_558W_MODELLED": {
+   "name": "56.42N 5.58W (modelled)",
+   "lon": -5.576,
+   "lat": 56.4209,
+   "model": [
+    -5.576,
+    56.4209
+   ]
+  },
+  "GB_5549N_535W_MODELLED": {
+   "name": "55.49N 5.35W (modelled)",
+   "lon": -5.3488,
+   "lat": 55.4923,
+   "model": [
+    -5.3488,
+    55.4923
+   ]
+  },
+  "GB_5138N_356W_MODELLED": {
+   "name": "51.38N 3.56W (modelled)",
+   "lon": -3.5598,
+   "lat": 51.384,
+   "model": [
+    -3.5598,
+    51.384
+   ]
+  },
+  "GB_5077N_060W_MODELLED": {
+   "name": "50.77N 0.60W (modelled)",
+   "lon": -0.6037,
+   "lat": 50.7746,
+   "model": [
+    -0.6037,
+    50.7746
+   ]
+  },
+  "GB_5984N_126W_MODELLED": {
+   "name": "59.84N 1.26W (modelled)",
+   "lon": -1.2605,
+   "lat": 59.8385,
+   "model": [
+    -1.2605,
+    59.8385
+   ]
+  },
+  "GB_5820N_539W_MODELLED": {
+   "name": "58.20N 5.39W (modelled)",
+   "lon": -5.3869,
+   "lat": 58.1971,
+   "model": [
+    -5.3869,
+    58.1971
+   ]
+  },
+  "GB_5789N_575W_MODELLED": {
+   "name": "57.89N 5.75W (modelled)",
+   "lon": -5.7542,
+   "lat": 57.8857,
+   "model": [
+    -5.7542,
+    57.8857
+   ]
+  },
+  "GB_5874N_289W_MODELLED": {
+   "name": "58.74N 2.89W (modelled)",
+   "lon": -2.8905,
+   "lat": 58.7374,
+   "model": [
+    -2.8905,
+    58.7374
+   ]
+  },
+  "GB_5217N_164E_MODELLED": {
+   "name": "52.17N 1.64E (modelled)",
+   "lon": 1.6407,
+   "lat": 52.1699,
+   "model": [
+    1.6407,
+    52.1699
+   ]
+  },
+  "GB_5172N_097E_MODELLED": {
+   "name": "51.72N 0.97E (modelled)",
+   "lon": 0.9742,
+   "lat": 51.7164,
+   "model": [
+    0.9742,
+    51.7164
+   ]
+  },
+  "GB_5769N_311W_MODELLED": {
+   "name": "57.69N 3.11W (modelled)",
+   "lon": -3.108,
+   "lat": 57.6938,
+   "model": [
+    -3.108,
+    57.6938
+   ]
+  },
+  "GB_5375N_308W_MODELLED": {
+   "name": "53.75N 3.08W (modelled)",
+   "lon": -3.085,
+   "lat": 53.7493,
+   "model": [
+    -3.085,
+    53.7493
+   ]
+  },
+  "GB_5666N_659W_MODELLED": {
+   "name": "56.66N 6.59W (modelled)",
+   "lon": -6.5949,
+   "lat": 56.6617,
+   "model": [
+    -6.5949,
+    56.6617
+   ]
+  },
+  "GB_5864N_352W_MODELLED": {
+   "name": "58.64N 3.52W (modelled)",
+   "lon": -3.5167,
+   "lat": 58.6373,
+   "model": [
+    -3.5167,
+    58.6373
+   ]
+  },
+  "GB_5276N_169E_MODELLED": {
+   "name": "52.76N 1.69E (modelled)",
+   "lon": 1.6895,
+   "lat": 52.7575,
+   "model": [
+    1.6895,
+    52.7575
+   ]
+  },
+  "GB_5760N_577W_MODELLED": {
+   "name": "57.60N 5.77W (modelled)",
+   "lon": -5.7662,
+   "lat": 57.5976,
+   "model": [
+    -5.7662,
+    57.5976
+   ]
+  },
+  "GB_5587N_537W_MODELLED": {
+   "name": "55.87N 5.37W (modelled)",
+   "lon": -5.3736,
+   "lat": 55.8737,
+   "model": [
+    -5.3736,
+    55.8737
+   ]
+  },
+  "GB_5041N_517W_MODELLED": {
+   "name": "50.41N 5.17W (modelled)",
+   "lon": -5.1742,
+   "lat": 50.4069,
+   "model": [
+    -5.1742,
+    50.4069
+   ]
+  },
+  "GB_4995N_517W_MODELLED": {
+   "name": "49.95N 5.17W (modelled)",
+   "lon": -5.1721,
+   "lat": 49.9526,
+   "model": [
+    -5.1721,
+    49.9526
+   ]
+  },
+  "GB_5785N_408W_MODELLED": {
+   "name": "57.85N 4.08W (modelled)",
+   "lon": -4.0815,
+   "lat": 57.8478,
+   "model": [
+    -4.0815,
+    57.8478
+   ]
+  },
+  "GB_5091N_101E_MODELLED": {
+   "name": "50.91N 1.01E (modelled)",
+   "lon": 1.0079,
+   "lat": 50.9105,
+   "model": [
+    1.0079,
+    50.9105
+   ]
+  },
+  "GB_5122N_469W_MODELLED": {
+   "name": "51.22N 4.69W (modelled)",
+   "lon": -4.6925,
+   "lat": 51.215,
+   "model": [
+    -4.6925,
+    51.215
+   ]
+  },
+  "GB_5627N_257W_MODELLED": {
+   "name": "56.27N 2.57W (modelled)",
+   "lon": -2.574,
+   "lat": 56.269,
+   "model": [
+    -2.574,
+    56.269
+   ]
+  },
+  "GB_5603N_366W_MODELLED": {
+   "name": "56.03N 3.66W (modelled)",
+   "lon": -3.6618,
+   "lat": 56.0345,
+   "model": [
+    -3.6618,
+    56.0345
+   ]
+  },
+  "GB_5462N_484W_MODELLED": {
+   "name": "54.62N 4.84W (modelled)",
+   "lon": -4.8428,
+   "lat": 54.6196,
+   "model": [
+    -4.8428,
+    54.6196
+   ]
+  },
+  "GB_6029N_172W_MODELLED": {
+   "name": "60.29N 1.72W (modelled)",
+   "lon": -1.7205,
+   "lat": 60.2937,
+   "model": [
+    -1.7205,
+    60.2937
+   ]
+  },
+  "GB_5859N_460W_MODELLED": {
+   "name": "58.59N 4.60W (modelled)",
+   "lon": -4.5989,
+   "lat": 58.593,
+   "model": [
+    -4.5989,
+    58.593
+   ]
+  }
+ }
+}

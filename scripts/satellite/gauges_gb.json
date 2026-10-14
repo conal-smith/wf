@@ -1,0 +1,334 @@
+{
+ "about": "Great Britain's open tide gauges on EMODnet Physics' ERDDAP (ERD_EP_SLEV_NRT_60m): the UK National Tide Gauge Network under its short codes (abed, avon, ...: hourly or 15-minute since 2012, to late 2024) and the Channel Coastal Observatory's (dlpr, hasp, sdpr since 2021; the platforms ending TG since mid-2022). One code per harbour: the longest record. The Second Severn Crossing (2024 only) is left out, Avonmouth and Newport beside it.",
+ "gauges": [
+  {
+   "id": "Aberdeen",
+   "name": "Aberdeen",
+   "platform": "abed",
+   "lon": -2.08,
+   "lat": 57.14
+  },
+  {
+   "id": "Avonmouth",
+   "name": "Avonmouth",
+   "platform": "avon",
+   "lon": -2.73,
+   "lat": 51.5
+  },
+  {
+   "id": "Bournemouth",
+   "name": "Bournemouth",
+   "platform": "bour",
+   "lon": -1.87,
+   "lat": 50.71
+  },
+  {
+   "id": "Brighton",
+   "name": "Brighton",
+   "platform": "BrightonTG",
+   "lon": -0.1013,
+   "lat": 50.8118
+  },
+  {
+   "id": "Cromer",
+   "name": "Cromer",
+   "platform": "crom",
+   "lon": 1.3,
+   "lat": 52.93
+  },
+  {
+   "id": "Deal",
+   "name": "Deal",
+   "platform": "dlpr",
+   "lon": 1.4093,
+   "lat": 51.2238
+  },
+  {
+   "id": "Dover",
+   "name": "Dover",
+   "platform": "dove",
+   "lon": 1.32,
+   "lat": 51.11
+  },
+  {
+   "id": "Exmouth",
+   "name": "Exmouth",
+   "platform": "ExmouthTG",
+   "lon": -3.4236,
+   "lat": 50.6174
+  },
+  {
+   "id": "Fishguard",
+   "name": "Fishguard",
+   "platform": "fish",
+   "lon": -4.98,
+   "lat": 52.01
+  },
+  {
+   "id": "Harwich",
+   "name": "Harwich",
+   "platform": "harw",
+   "lon": 1.29,
+   "lat": 51.95
+  },
+  {
+   "id": "Hastings",
+   "name": "Hastings",
+   "platform": "hasp",
+   "lon": 0.5728,
+   "lat": 50.8509
+  },
+  {
+   "id": "Heysham",
+   "name": "Heysham",
+   "platform": "heys",
+   "lon": -2.92,
+   "lat": 54.03
+  },
+  {
+   "id": "Hinkley_Point",
+   "name": "Hinkley Point",
+   "platform": "hink",
+   "lon": -3.13,
+   "lat": 51.21
+  },
+  {
+   "id": "Holyhead",
+   "name": "Holyhead",
+   "platform": "holy2",
+   "lon": -4.62,
+   "lat": 53.31
+  },
+  {
+   "id": "Ilfracombe",
+   "name": "Ilfracombe",
+   "platform": "ilfa",
+   "lon": -4.11,
+   "lat": 51.21
+  },
+  {
+   "id": "Immingham",
+   "name": "Immingham",
+   "platform": "immi",
+   "lon": -0.19,
+   "lat": 53.63
+  },
+  {
+   "id": "Kinlochbervie",
+   "name": "Kinlochbervie",
+   "platform": "kinl",
+   "lon": -5.05,
+   "lat": 58.46
+  },
+  {
+   "id": "Leith",
+   "name": "Leith",
+   "platform": "leit",
+   "lon": -3.18,
+   "lat": 55.99
+  },
+  {
+   "id": "Lerwick",
+   "name": "Lerwick",
+   "platform": "lerw2",
+   "lon": -1.1452,
+   "lat": 60.1553
+  },
+  {
+   "id": "Liverpool",
+   "name": "Liverpool",
+   "platform": "live",
+   "lon": -3.02,
+   "lat": 53.45
+  },
+  {
+   "id": "Llandudno",
+   "name": "Llandudno",
+   "platform": "llan",
+   "lon": -3.83,
+   "lat": 53.33
+  },
+  {
+   "id": "Lowestoft",
+   "name": "Lowestoft",
+   "platform": "lowe",
+   "lon": 1.75,
+   "lat": 52.47
+  },
+  {
+   "id": "Lymington",
+   "name": "Lymington",
+   "platform": "LymingtonTG",
+   "lon": -1.5071,
+   "lat": 50.7403
+  },
+  {
+   "id": "Milford_Haven",
+   "name": "Milford Haven",
+   "platform": "mhav",
+   "lon": -5.05,
+   "lat": 51.71
+  },
+  {
+   "id": "Millport",
+   "name": "Millport",
+   "platform": "mill",
+   "lon": -4.91,
+   "lat": 55.75
+  },
+  {
+   "id": "Mumbles",
+   "name": "Mumbles",
+   "platform": "mumb",
+   "lon": -3.98,
+   "lat": 51.57
+  },
+  {
+   "id": "Newhaven",
+   "name": "Newhaven",
+   "platform": "nhav",
+   "lon": 0.06,
+   "lat": 50.78
+  },
+  {
+   "id": "Newlyn",
+   "name": "Newlyn",
+   "platform": "newl2",
+   "lon": -5.5427,
+   "lat": 50.103
+  },
+  {
+   "id": "Newport",
+   "name": "Newport",
+   "platform": "npor",
+   "lon": -2.99,
+   "lat": 51.55
+  },
+  {
+   "id": "North_Shields",
+   "name": "North Shields",
+   "platform": "nshi",
+   "lon": -1.44,
+   "lat": 55.01
+  },
+  {
+   "id": "Plymouth",
+   "name": "Plymouth",
+   "platform": "plym",
+   "lon": -4.19,
+   "lat": 50.37
+  },
+  {
+   "id": "Port_Isaac",
+   "name": "Port Isaac",
+   "platform": "PortIsaacTG",
+   "lon": -4.8344,
+   "lat": 50.5942
+  },
+  {
+   "id": "Portpatrick",
+   "name": "Portpatrick",
+   "platform": "porp",
+   "lon": -5.12,
+   "lat": 54.84
+  },
+  {
+   "id": "Portsmouth",
+   "name": "Portsmouth",
+   "platform": "ptmt",
+   "lon": -1.11,
+   "lat": 50.8
+  },
+  {
+   "id": "Sandown",
+   "name": "Sandown",
+   "platform": "sdpr",
+   "lon": -1.1532,
+   "lat": 50.6511
+  },
+  {
+   "id": "Scarborough",
+   "name": "Scarborough",
+   "platform": "ScarboroughTG",
+   "lon": -0.3903,
+   "lat": 54.2825
+  },
+  {
+   "id": "Sheerness",
+   "name": "Sheerness",
+   "platform": "shee",
+   "lon": 0.74,
+   "lat": 51.45
+  },
+  {
+   "id": "St_Marys",
+   "name": "St Mary's",
+   "platform": "stmr",
+   "lon": -6.3172,
+   "lat": 49.9179
+  },
+  {
+   "id": "Stornoway",
+   "name": "Stornoway",
+   "platform": "stor",
+   "lon": -6.39,
+   "lat": 58.21
+  },
+  {
+   "id": "Swanage",
+   "name": "Swanage",
+   "platform": "SwanagePierTG",
+   "lon": -1.9492,
+   "lat": 50.6093
+  },
+  {
+   "id": "Tobermory",
+   "name": "Tobermory",
+   "platform": "tobe",
+   "lon": -6.06,
+   "lat": 56.62
+  },
+  {
+   "id": "Ullapool",
+   "name": "Ullapool",
+   "platform": "ulla",
+   "lon": -5.16,
+   "lat": 57.9
+  },
+  {
+   "id": "West_Bay",
+   "name": "West Bay",
+   "platform": "WestBayHarbourTG",
+   "lon": -2.7641,
+   "lat": 50.7089
+  },
+  {
+   "id": "Weymouth",
+   "name": "Weymouth",
+   "platform": "weym",
+   "lon": -2.45,
+   "lat": 50.61
+  },
+  {
+   "id": "Whitby",
+   "name": "Whitby",
+   "platform": "whit",
+   "lon": -0.61,
+   "lat": 54.49
+  },
+  {
+   "id": "Wick",
+   "name": "Wick",
+   "platform": "wick",
+   "lon": -3.09,
+   "lat": 58.44
+  },
+  {
+   "id": "Workington",
+   "name": "Workington",
+   "platform": "work",
+   "lon": -3.57,
+   "lat": 54.65
+  }
+ ]
+}

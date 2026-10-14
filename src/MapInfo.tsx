@@ -32,6 +32,8 @@ export default function MapInfo({
   spotId,
   foil,
   sources,
+  satellite = null,
+  satelliteError = null,
 }: {
   at: InfoSection;
   onClose: () => void;
@@ -43,6 +45,10 @@ export default function MapInfo({
   /** The foilable-depth key (src/FoilLegend.tsx). */
   foil: ReactNode;
   sources: ReactNode;
+  /** "Satellite: high tide (≈4.6 m)" while the image is on, else null. */
+  satellite?: string | null;
+  /** Why the image is not drawn, when it was asked for and could not be. */
+  satelliteError?: string | null;
 }) {
   // The dialog is open by the time this runs (a child's effects come first),
   // so the part asked for can be brought up in its scroll.
@@ -73,7 +79,13 @@ export default function MapInfo({
       {section(
         "key",
         "Map key",
-        <MapKey scale={scale} rideStops={rideStops} rider={rider} />,
+        <MapKey
+          scale={scale}
+          rideStops={rideStops}
+          rider={rider}
+          satellite={satellite}
+          satelliteError={satelliteError}
+        />,
       )}
       {section(
         "stars",
@@ -124,10 +136,14 @@ function MapKey({
   scale,
   rideStops,
   rider,
+  satellite,
+  satelliteError,
 }: {
   scale: string;
   rideStops: readonly RideStop[];
   rider: Rider;
+  satellite: string | null;
+  satelliteError: string | null;
 }) {
   return (
     <div className="key">
@@ -215,6 +231,15 @@ function MapKey({
         ))}
       </div>
       <p className="datum">Depths in metres below chart datum</p>
+      {(satellite || satelliteError) && (
+        <p
+          className={`datum k-sat${satelliteError ? " is-error" : ""}`}
+          role="status"
+        >
+          {satelliteError ??
+            `${satellite}. Sentinel-2's clear looks at that tide, at the nearest tide station; the land is one summer composite in both.`}
+        </p>
+      )}
     </div>
   );
 }

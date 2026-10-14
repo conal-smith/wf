@@ -385,15 +385,13 @@ export function distanceKm(
  * first one with water under the point is it). Else the one region whose
  * station is nearest, as the regions were cut (scripts/foildepth/national.py).
  */
-export function areasAt(
-  areas: readonly FoilArea[],
-  lon: number,
-  lat: number,
-): FoilArea[] {
+export function areasAt<
+  T extends Pick<FoilArea, "bounds" | "kind" | "stationLonLat">,
+>(areas: readonly T[], lon: number, lat: number): T[] {
   const boxes = areas.filter((a) => inBounds(a.bounds, lon, lat));
   const pilots = boxes.filter((a) => a.kind !== "region");
   if (pilots.length) return pilots;
-  let best: FoilArea | null = null;
+  let best: T | null = null;
   let distance = Infinity;
   for (const a of boxes) {
     const at = a.stationLonLat;
@@ -418,13 +416,19 @@ export function areaAt(
 /**
  * The areas worth drawing over a view: those whose box meets it, from half a
  * zoom under their min zoom (MapLibre rounds a raster's zoom to the nearest
- * whole one, so that is where their tiles start).
+ * whole one, so that is where their tiles start). Any archive's box will do:
+ * the satellite imagery's and the intertidal heights' are read the same way.
  */
-export function areasInView(
-  areas: readonly FoilArea[],
+export function areasInView<
+  T extends {
+    bounds: readonly [number, number, number, number];
+    minzoom: number;
+  },
+>(
+  areas: readonly T[],
   view: { west: number; south: number; east: number; north: number },
   zoom: number,
-): FoilArea[] {
+): T[] {
   return areas.filter(
     (a) =>
       zoom >= a.minzoom - 0.5 &&

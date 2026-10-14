@@ -57,6 +57,30 @@ export interface FoilView {
   /** The `color-relief-color` for the selected tide (foilRamp). */
   color: ExpressionSpecification;
   attribution: string;
+  /**
+   * Drawn over every foil area: the Sentinel-2 intertidal heights
+   * (force5/src/intertidal.ts), which leave clear where they have none.
+   */
+  over?: boolean;
+}
+
+/**
+ * The satellite image under the chart (force5/src/satelliteIndex.ts): which
+ * tide's, and the archive of each area in view.
+ */
+export interface SatelliteImage {
+  option: "high" | "low";
+  layers: readonly {
+    /** The area's id, e.g. "ireland". */
+    id: string;
+    /** The archive's absolute URL. */
+    url: string;
+    bounds: [number, number, number, number];
+    minzoom: number;
+    maxzoom: number;
+    tileSize: number;
+    attribution: string;
+  }[];
 }
 
 /** What the page can ask of the camera. */
@@ -87,6 +111,8 @@ type Props = {
   layers: ChartLayers;
   /** The foilable-depth areas to draw, or null to draw none. */
   foil: readonly FoilView[] | null;
+  /** The satellite image to draw under the chart's lines, or null for none. */
+  satellite?: SatelliteImage | null;
   reducedMotion: boolean;
   /** The dock's height: what a camera move keeps the spot above. */
   bottomInset: number;
@@ -174,6 +200,7 @@ export default function WindMap(props: Props) {
     rideStops,
     layers,
     foil,
+    satellite = null,
     reducedMotion,
     bottomInset,
     phone,
@@ -460,12 +487,14 @@ export default function WindMap(props: Props) {
   // coast's ink and every name. A layer shows from half a zoom under its
   // archive's min zoom: MapLibre rounds a raster's zoom, so that is where its
   // tiles start, and where a region's cut-out for a pilot's box starts too.
+  // The intertidal heights (`over`) are layers of the same kind, kept above
+  // every foil area's.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const shown = new Set<string>();
     for (const area of foil ?? []) {
-      const id = `foil-${area.id}`;
+      const id = `${area.over ? "intertidal" : "foil"}-${area.id}`;
       shown.add(id);
       if (!map.getSource(id))
         map.addSource(id, {
@@ -495,15 +524,64 @@ export default function WindMap(props: Props) {
               resampling: "nearest",
             },
           },
-          map.getLayer("rivers") ? "rivers" : undefined,
+          // A foil area under the intertidal heights, whenever it is added.
+          (!area.over &&
+            map.getLayersOrder().find((l) => l.startsWith("intertidal-"))) ||
+            (map.getLayer("rivers") ? "rivers" : undefined),
         );
       else map.setPaintProperty(id, "color-relief-color", area.color);
       map.setLayoutProperty(id, "visibility", "visible");
     }
     for (const id of map.getLayersOrder())
-      if (id.startsWith("foil-") && !shown.has(id))
+      if (/^(foil|intertidal)-/.test(id) && !shown.has(id))
         map.setLayoutProperty(id, "visibility", "none");
   }, [ready, foil]);
+
+  // The satellite image: one raster source and layer per area and tide, made
+  // the first time it is wanted and kept, hidden when another tide is chosen
+  // or its area leaves the view. Over the land and the sea's fills and the
+  // depth tints, which it covers, and under the relief, the contours, the
+  // foilable depth, the rivers, the coast's ink and every name, so the
+  // chart's lines still read over it. Read by range only: an archive is a
+  // quarter of a gigabyte, and a host that answered with all of it would be
+  // refused rather than downloaded (archives.ts).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const shown = new Set<string>();
+    for (const area of satellite?.layers ?? []) {
+      const id = `satellite-${area.id}-${satellite!.option}`;
+      shown.add(id);
+      if (!map.getSource(id))
+        map.addSource(id, {
+          type: "raster",
+          url: archiveUrl(area.url, { rangesOnly: true }),
+          tileSize: area.tileSize,
+          bounds: area.bounds,
+          minzoom: area.minzoom,
+          maxzoom: area.maxzoom,
+          attribution: area.attribution,
+        });
+      if (!map.getLayer(id))
+        map.addLayer(
+          {
+            id,
+            type: "raster",
+            source: id,
+            // MapLibre rounds a raster's zoom: half a zoom under the archive's
+            // first is where its tiles start.
+            minzoom: Math.max(0, area.minzoom - 0.5),
+            paint: { "raster-opacity": 0.92, "raster-fade-duration": 150 },
+          },
+          map.getLayer("relief") ? "relief" : undefined,
+        );
+      map.setLayoutProperty(id, "visibility", "visible");
+    }
+    for (const id of map.getLayersOrder())
+      if (id.startsWith("satellite-") && !shown.has(id))
+        map.setLayoutProperty(id, "visibility", "none");
+    map.getContainer().dataset.satellite = satellite?.option ?? "off";
+  }, [ready, satellite]);
 
   // The lights: made once per set of places, then written to in place.
   useEffect(() => {

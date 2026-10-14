@@ -1,0 +1,90 @@
+{
+ "schemaVersion": 2,
+ "kind": "satellite",
+ "attribution": "Contains modified Copernicus Sentinel data 2017\u20132026, composited for wingfoil.ie; tide levels from the Marine Institute (CC BY 4.0), EOT20 (DGFI-TUM, CC BY 4.0) and UK tide gauges via Copernicus Marine and EMODnet Physics.",
+ "areas": [
+  {
+   "id": "ireland",
+   "name": "low.pmtiles",
+   "base": "satellite/vd18c86648416/",
+   "generatedAt": "2026-10-12T16:29:57Z",
+   "bounds": [
+    -6.24,
+    53.36,
+    -6.06,
+    53.49
+   ],
+   "minzoom": 6,
+   "maxzoom": 13,
+   "tileSize": 512,
+   "options": {
+    "high": {
+     "url": "high.pmtiles"
+    },
+    "low": {
+     "url": "low.pmtiles"
+    }
+   },
+   "cover": [
+    [
+     -7.0313,
+     53.3308,
+     -5.625,
+     54.1625
+    ]
+   ],
+   "stations": [
+    {
+     "id": "Bray_Harbour_MODELLED",
+     "name": "Bray Harbour",
+     "lonLat": [
+      -6.0901,
+      53.2191
+     ],
+     "high": 3.72,
+     "low": 1.27
+    },
+    {
+     "id": "Dublin_Port",
+     "name": "Dublin Port",
+     "lonLat": [
+      -6.22166,
+      53.34574
+     ],
+     "high": 4.05,
+     "low": 1.5
+    },
+    {
+     "id": "Howth",
+     "name": "Howth",
+     "lonLat": [
+      -6.0683,
+      53.39148
+     ],
+     "high": 4.21,
+     "low": 1.49
+    },
+    {
+     "id": "Port_Oriel",
+     "name": "Port Oriel",
+     "lonLat": [
+      -6.221713,
+      53.79899
+     ],
+     "high": 5.02,
+     "low": 1.72
+    },
+    {
+     "id": "Skerries",
+     "name": "Skerries",
+     "lonLat": [
+      -6.108117,
+      53.585
+     ],
+     "high": 4.73,
+     "low": 1.65
+    }
+   ]
+  }
+ ]
+}

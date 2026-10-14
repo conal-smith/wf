@@ -92,6 +92,16 @@ describe("ArchiveSource", () => {
     expect(asked).toHaveLength(1);
   });
 
+  it("refuses the whole file where it is to be read by range only", async () => {
+    const { asked, load } = host(false);
+    const source = new ArchiveSource(URL_, load, true);
+    await expect(
+      new PMTiles(source).getZxy(at.z, at.x, at.y),
+    ).rejects.toThrow(/whole file/);
+    expect(source.isWhole).toBe(false);
+    expect(asked).toHaveLength(1);
+  });
+
   it("is what pmtiles' own reader refuses on such a host", async () => {
     // The fault this works round: FetchSource throws on a 200 to a range, and
     // the map, which listens for errors itself, says nothing.

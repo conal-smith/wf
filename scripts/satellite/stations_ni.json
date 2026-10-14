@@ -1,0 +1,17 @@
+{
+  "about": "Tide stations for Northern Ireland's coast, which no Marine Institute station predicts (the foil-depth regions stop 45 km from the last of them). Each is EOT20 at the point (Hart-Davis et al. 2021, DGFI-TUM, CC BY 4.0). Where an open gauge is there (UK National Tide Gauge Network via the Copernicus Marine in-situ TAC, served on EMODnet Physics' ERDDAP), the model is fitted to it (timing, scale, datum) and the gauge's own levels are used when it has them; elsewhere the model's own Lowest Astronomical Tide (the lowest level it predicts over 19 years) is the datum. A pixel goes to one of these only if no Marine Institute station is within 45 km, so the Republic's regions are cut exactly as the foil-depth layer's.",
+  "stations": {
+    "Portrush": {"name": "Portrush", "lon": -6.6567, "lat": 55.2067, "model": [-6.665, 55.215],
+                 "gauge": {"source": "emodnet", "platform": "Portrush"}},
+    "Ballycastle_MODELLED": {"name": "Ballycastle", "lon": -6.2420, "lat": 55.2060, "model": [-6.235, 55.215]},
+    "Larne_MODELLED": {"name": "Larne", "lon": -5.7900, "lat": 54.8530, "model": [-5.775, 54.860]},
+    "Bangor": {"name": "Bangor", "lon": -5.6692, "lat": 54.6650, "model": [-5.660, 54.672],
+               "gauge": {"source": "emodnet", "platform": "Bangor"}},
+    "Killard_MODELLED": {"name": "Killard Point", "lon": -5.5250, "lat": 54.3150, "model": [-5.495, 54.312]},
+    "Strangford_MODELLED": {"name": "Strangford Lough", "lon": -5.6200, "lat": 54.4800, "model": [-5.495, 54.312],
+                            "lagOf": "Killard_MODELLED", "lagMinutes": 100,
+                            "polygon": [[-5.600, 54.385], [-5.530, 54.385], [-5.500, 54.450], [-5.520, 54.550],
+                                        [-5.620, 54.625], [-5.760, 54.600], [-5.770, 54.500], [-5.720, 54.385]]}
+  },
+  "basins": "A station with a polygon (Strangford Lough, behind the Narrows) is its parent's tide (lagOf) lagMinutes later, the lag read off the imagery by lag.py (Strangford: 100 min, median misfit 0.065 against 0.26 on Killard's own timing); it takes every pixel in its polygon and none outside."
+}

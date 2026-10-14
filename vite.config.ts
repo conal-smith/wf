@@ -104,12 +104,14 @@ function preloadTheMap(): Plugin {
 
 /**
  * The chart's static archives, which deployments read from the data host
- * (scripts/foildepth/publish.py: bathy/v…/, foildepth/v…/), served by the dev
- * and preview servers at the same paths from `public-data/`, by range, so the
- * map works offline. They are not in `public/`, so no build ships them to
+ * (scripts/foildepth/publish.py: bathy/v…/, foildepth/v…/;
+ * scripts/satellite/publish.py: satellite/v…/, intertidal/v…/), served by the
+ * dev and preview servers at the same paths from `public-data/`, by range, so
+ * the map works offline. They are not in `public/`, so no build ships them to
  * Pages. An archive that is not on disk (the national foilable-depth regions,
- * too large to commit) is fetched from the data host in dev, range and all,
- * when it is reachable; the e2e site stages its own (scripts/e2e-site.mjs).
+ * the satellite imagery and the intertidal heights, too large to commit) is
+ * fetched from the data host in dev, range and all, when it is reachable; the
+ * e2e site stages its own (scripts/e2e-site.mjs).
  */
 function staticData(): Plugin {
   const root = fileURLToPath(new URL("./public-data/", import.meta.url));
@@ -119,9 +121,10 @@ function staticData(): Plugin {
     (proxy: boolean): Connect.NextHandleFunction =>
     (req, res, next) => {
       const path = decodeURIComponent((req.url ?? "").split("?")[0]);
-      const match = /^\/((?:foildepth|bathy)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
-        path,
-      );
+      const match =
+        /^\/((?:foildepth|bathy|satellite|intertidal)\/v[0-9a-f]+\/[\w.-]+)$/.exec(
+          path,
+        );
       if (!match || (req.method !== "GET" && req.method !== "HEAD"))
         return next();
       const file = join(root, match[1]);

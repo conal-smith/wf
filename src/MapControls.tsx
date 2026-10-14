@@ -3,8 +3,15 @@ import { useEffect, useRef, type ReactNode } from "react";
 import type { RideStop } from "../force5/src/chartStyle";
 import { MODELS, type ModelId } from "../force5/src/models";
 import type { Rider } from "../force5/src/stars";
+import {
+  approxMetres,
+  SATELLITE_LABEL,
+  SATELLITE_OPTIONS,
+  type SatelliteOption,
+} from "../force5/src/satellite";
 import type { ChartLayers } from "../force5/src/WindMap";
 import type { WindStyle } from "../force5/src/windLayer";
+import { Segmented } from "../ui/Segmented";
 import { InfoButton } from "./InfoPop";
 import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
@@ -27,7 +34,8 @@ export type MapPanel = "layers" | "spots" | "options" | null;
 
 /**
  * Top right: zoom, the layers (the wind's style, the chart's
- * parts, and which model the map draws), and under them your spots, the
+ * parts, the satellite image under it, and which model the map draws), and
+ * under them your spots, the
  * display options (units, the rider, the blend's models) and the "i" that
  * opens the map's information: its key, the stars, the foil layer and the
  * sources. The layers, your spots and the options open beside the controls,
@@ -47,6 +55,9 @@ export default function MapControls({
   onWindStyle,
   layers,
   onLayersChange,
+  satellite,
+  onSatellite,
+  satelliteTides,
   rideStops,
   rider,
   model,
@@ -67,6 +78,11 @@ export default function MapControls({
   onWindStyle: (style: WindStyle) => void;
   layers: ChartLayers;
   onLayersChange: (layers: ChartLayers) => void;
+  /** The satellite image under the chart: off, or which tide's. */
+  satellite: SatelliteOption;
+  onSatellite: (option: SatelliteOption) => void;
+  /** The images' tides at the station nearest the map's centre, once known. */
+  satelliteTides: { name: string; high: number; low: number } | null;
   rideStops: readonly RideStop[];
   rider: Rider;
   model: string | undefined;
@@ -224,6 +240,24 @@ export default function MapControls({
               box
             );
           })}
+          <h3>Satellite</h3>
+          <div className="layer-sat">
+            <Segmented
+              aria-label="Satellite"
+              options={SATELLITE_OPTIONS.map((option) => ({
+                value: option,
+                label: SATELLITE_LABEL[option],
+              }))}
+              value={satellite}
+              onChange={onSatellite}
+            />
+            {satellite !== "off" && satelliteTides && (
+              <small>
+                {satelliteTides.name}: high {approxMetres(satelliteTides.high)},
+                low {approxMetres(satelliteTides.low)}
+              </small>
+            )}
+          </div>
           <h3>Model on the map</h3>
           <div className="models" role="group" aria-label="Weather model">
             {MODELS.map((entry) => (
