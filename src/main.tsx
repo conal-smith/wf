@@ -63,6 +63,11 @@ const isGallery = /^\/ui\/?$/.test(window.location.pathname);
 // meanwhile, as nothing was while the single bundle was being parsed.
 const loadMap = () => import("./App");
 
+// The forecast as tools for an agent working in this tab (WebMCP), on every
+// page: a bundle of its own, fetched only by a browser that has a model context.
+if ("modelContext" in document || "modelContext" in navigator)
+  void import("../mcp/web/webmcp").then(({ startWebMcp }) => startWebMcp());
+
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 if (Gallery && isGallery)
