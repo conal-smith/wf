@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ForecastProvider } from "../data/forecast";
+import { useVerifyHarness } from "../dev/useVerifyHarness";
 import { PrefsProvider } from "../data/prefs";
 import { useNotificationRouting } from "../features/alerts/useNotificationRouting";
 import { UpdateNotice } from "../features/updates/UpdateNotice";
@@ -21,6 +22,7 @@ export const unstable_settings = { anchor: "(tabs)" };
 
 function Routes() {
   useNotificationRouting();
+  useVerifyHarness();
   return (
     <Stack
       screenOptions={{
