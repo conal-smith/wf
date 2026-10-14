@@ -1,4 +1,6 @@
-// The device's localStorage first: the stores below read it as they load.
+// What the site's forecast code expects of the platform, then the device's
+// localStorage: the stores below read it as they load.
+import "../config/polyfills";
 import "../data/storage";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Stack } from "expo-router";
