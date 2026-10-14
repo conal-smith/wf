@@ -93,20 +93,23 @@ export const hitTarget = 44;
 export const controlHeight = { sm: 30, md: 40, lg: 46 } as const;
 
 /**
- * Font families as embedded by expo-font (app.config.ts): on iOS a font is
- * named by its PostScript name, on Android by its file name, and the Google
- * Fonts packages make the two the same.
+ * Font families as embedded by expo-font (app.config.ts). iOS finds a font by
+ * its PostScript name, Android by its file name; babel-preset-expo inlines
+ * EXPO_OS for each platform's bundle (and it is unset in the Node tests).
  */
+const ios = process.env.EXPO_OS === "ios";
+const face = (postScript: string, file: string) => (ios ? postScript : file);
+
 export const fonts = {
-  display: "Fraunces_400Regular",
-  displayItalic: "Fraunces_400Regular_Italic",
-  displayBold: "Fraunces_600SemiBold",
-  body: "Newsreader_400Regular",
-  bodyItalic: "Newsreader_400Regular_Italic",
-  mono: "IBMPlexMono_400Regular",
-  monoMedium: "IBMPlexMono_500Medium",
-  monoBold: "IBMPlexMono_600SemiBold",
-  hand: "Kalam_400Regular",
+  display: face("Fraunces-Regular", "Fraunces_400Regular"),
+  displayItalic: face("Fraunces-Italic", "Fraunces_400Regular_Italic"),
+  displayBold: face("Fraunces-SemiBold", "Fraunces_600SemiBold"),
+  body: face("Newsreader-Regular", "Newsreader_400Regular"),
+  bodyItalic: face("Newsreader-Italic", "Newsreader_400Regular_Italic"),
+  mono: face("IBMPlexMono-Regular", "IBMPlexMono_400Regular"),
+  monoMedium: face("IBMPlexMono-Medium", "IBMPlexMono_500Medium"),
+  monoBold: face("IBMPlexMono-SemiBold", "IBMPlexMono_600SemiBold"),
+  hand: face("Kalam-Regular", "Kalam_400Regular"),
 } as const;
 
 /**
