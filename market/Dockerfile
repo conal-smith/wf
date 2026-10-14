@@ -11,11 +11,14 @@ COPY site/ ./site/
 COPY community/ ./community/
 COPY mcp/ ./mcp/
 COPY companion/ ./companion/
+COPY alerts/ ./alerts/
 # The MCP server reuses the map's unit and sunrise maths, and Gust (the
 # companion) the star ratings and the shore facings; all dependency-free.
 COPY force5/src/units.ts force5/src/sun.ts force5/src/stars.ts force5/src/weights.ts \
      force5/src/spotData.ts force5/src/squares.ts ./force5/src/
 COPY data/locations/shore-facing.json ./data/locations/
+# Alerts rate the published catalogue's places (alerts/api/forecast.ts).
+COPY public/riding-locations.json ./public/
 RUN npx tsc -p market/api/tsconfig.json
 
 FROM node:22-slim
@@ -30,6 +33,7 @@ COPY --from=build /app/market/api/dist ./market/api/dist
 COPY market/api/migrations ./market/api/migrations
 COPY community/api/migrations ./community/api/migrations
 COPY companion/api/migrations ./companion/api/migrations
+COPY alerts/api/migrations ./alerts/api/migrations
 USER 10001:10001
 EXPOSE 8787
 # Only used with MARKET_STORAGE=local; mount a volume here.

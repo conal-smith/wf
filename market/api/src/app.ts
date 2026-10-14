@@ -1,8 +1,8 @@
 /**
  * The HTTP surface. The marketplace lives under /api/market, the community
  * under /api/community, the forecast for AI assistants under /api/mcp, Gust
- * the in-app companion under /api/companion and the
- * site's own routes (/api/me) beside them, so
+ * the in-app companion under /api/companion, the app's star-condition
+ * alerts under /api/alerts and the site's own routes (/api/me) beside them, so
  * the same routes work behind a same-origin proxy in development and on their
  * own Railway domain in production.
  */
@@ -22,6 +22,10 @@ import type { Features } from "./env.js";
 import { ID_PATTERN, newId } from "./ids.js";
 import type { PhotoRow, Repo } from "./repo.js";
 import { keyBelongsTo, type Storage } from "./storage.js";
+import {
+  createAlertsRouter,
+  type AlertsDeps,
+} from "../../../alerts/api/router.js";
 import type { Hub } from "../../../community/api/hub.js";
 import type { Limiter } from "../../../community/api/limits.js";
 import type { Repo as CommunityRepo } from "../../../community/api/repo.js";
@@ -92,6 +96,11 @@ export interface AppDeps {
    * for its routes; Gust says he is off from /api/companion/status.
    */
   features?: Partial<Features>;
+  /**
+   * The app's star-condition alerts (alerts/api). Left out, /api/alerts is
+   * not mounted; with FEATURE_ALERTS off it answers 404 off.
+   */
+  alerts?: AlertsDeps;
 }
 
 type Env = { Variables: AuthVariables };
@@ -105,6 +114,7 @@ export function createApp(deps: AppDeps) {
     gust: true,
     market: true,
     community: true,
+    alerts: true,
     ...deps.features,
   };
 
@@ -125,6 +135,7 @@ export function createApp(deps: AppDeps) {
       off("marketplace", /^\/api\/market\/(health$|uploads\/)/),
     );
   if (!features.community) app.use("/api/community/*", off("community", null));
+  if (!features.alerts) app.use("/api/alerts/*", off("alerts service", null));
 
   for (const path of ["/api/market/*", "/api/community/*", "/api/me"]) {
     app.use(
@@ -586,6 +597,7 @@ export function createApp(deps: AppDeps) {
       enabled: features.gust,
     }),
   );
+  if (deps.alerts) app.route("/api/alerts", createAlertsRouter(deps.alerts));
   app.route("/api", createSiteRouter(people));
   return app;
 }

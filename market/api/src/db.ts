@@ -70,9 +70,17 @@ export const COMPANION_MIGRATIONS_DIR = firstExisting([
   ),
 ]);
 
+/** alerts/api/migrations: the app's star-condition alerts. */
+export const ALERTS_MIGRATIONS_DIR = firstExisting([
+  process.env.ALERTS_MIGRATIONS_DIR,
+  join(here, "..", "..", "..", "alerts", "api", "migrations"),
+  join(here, "..", "..", "..", "..", "..", "..", "alerts", "api", "migrations"),
+]);
+
 export const MARKET_LEDGER = "market_migrations";
 export const COMMUNITY_LEDGER = "community_migrations";
 export const COMPANION_LEDGER = "companion_migrations";
+export const ALERTS_LEDGER = "alerts_migrations";
 
 /**
  * Apply every *.sql file in `dir` not yet recorded in the `ledger` table, in

@@ -20,11 +20,13 @@ const EFFORTS: readonly CompanionEffort[] = [
  * The parts of the site that are switched on. Each is off unless its variable
  * is "1" (FEATURE_GUST, FEATURE_MARKET, FEATURE_COMMUNITY); the website has
  * the same switches at build time (VITE_FEATURE_*, shared/web/features.ts).
+ * FEATURE_ALERTS is the app's star-condition alerts (alerts/README.md).
  */
 export interface Features {
   gust: boolean;
   market: boolean;
   community: boolean;
+  alerts: boolean;
 }
 
 export interface Config {
@@ -55,6 +57,15 @@ export interface Config {
      * Required with a real key; null only for the fake.
      */
     monthlyBudgetUsd: number | null;
+  };
+  /** Star-condition alerts (alerts/api), with FEATURE_ALERTS=1. */
+  alerts: {
+    /** ALERTS_EVALUATE=1: this instance evaluates rules and sends (one at a time across instances). */
+    evaluate: boolean;
+    /** ALERTS_ADMIN_TOKEN: the release pipeline's bearer token for /api/alerts/announce. */
+    adminToken: string | null;
+    /** EXPO_ACCESS_TOKEN: sent to Expo's push service when push security is on. */
+    expoAccessToken: string | null;
   };
   db: { mode: DbMode; url: string | null };
   auth: {
@@ -157,7 +168,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     gust: env.FEATURE_GUST === "1",
     market: env.FEATURE_MARKET === "1",
     community: env.FEATURE_COMMUNITY === "1",
+    alerts: env.FEATURE_ALERTS === "1",
   };
+
+  const adminToken = env.ALERTS_ADMIN_TOKEN?.trim() || null;
+  if (adminToken && adminToken.length < 24) {
+    throw new Error("ALERTS_ADMIN_TOKEN must be at least 24 characters");
+  }
 
   const apiKey = env.ANTHROPIC_API_KEY?.trim() || null;
   const model = env.COMPANION_MODEL?.trim() || "claude-haiku-5-5";
@@ -197,6 +214,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       effort,
       fake: companionFake,
       monthlyBudgetUsd,
+    },
+    alerts: {
+      evaluate: env.ALERTS_EVALUATE === "1",
+      adminToken,
+      expoAccessToken: env.EXPO_ACCESS_TOKEN?.trim() || null,
     },
     db: { mode: dbMode, url: dbUrl },
     auth: {

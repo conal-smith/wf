@@ -2,6 +2,8 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { clerkVerifier, devVerifier } from "./auth.js";
 import {
+  ALERTS_LEDGER,
+  ALERTS_MIGRATIONS_DIR,
   COMMUNITY_LEDGER,
   COMMUNITY_MIGRATIONS_DIR,
   COMPANION_LEDGER,
@@ -14,6 +16,15 @@ import { memoryRepo } from "./repo-memory.js";
 import { pgRepo } from "./repo-pg.js";
 import { localStorage, s3Storage } from "./storage.js";
 import { dirSource, httpSource } from "../../../mcp/api/source.js";
+import {
+  deliver,
+  memoryLock,
+  startEvaluator,
+} from "../../../alerts/api/evaluate.js";
+import { expoPush } from "../../../alerts/api/push.js";
+import type { AlertsRepo } from "../../../alerts/api/repo.js";
+import { memoryAlertsRepo } from "../../../alerts/api/repo-memory.js";
+import { pgAlertsRepo, pgEvaluatorLock } from "../../../alerts/api/repo-pg.js";
 import { anthropicClient } from "../../../companion/api/agent.js";
 import { fakeClient } from "../../../companion/api/fake.js";
 import {
@@ -34,6 +45,8 @@ async function main() {
 
   let repo, community, users, hub;
   let ledger: UsageLedger;
+  let alertsRepo: AlertsRepo;
+  let alertsLock: <T>(work: () => Promise<T>) => Promise<T | null>;
   if (config.db.mode === "postgres") {
     const sql = connect(config.db.url!);
     const ran = await migrate(sql);
@@ -53,6 +66,11 @@ async function main() {
     );
     if (ranCompanion.length)
       console.log(`companion: applied migrations ${ranCompanion.join(", ")}`);
+    const ranAlerts = await migrate(sql, ALERTS_MIGRATIONS_DIR, ALERTS_LEDGER);
+    if (ranAlerts.length)
+      console.log(`alerts: applied migrations ${ranAlerts.join(", ")}`);
+    alertsRepo = pgAlertsRepo(sql);
+    alertsLock = pgEvaluatorLock(sql);
     ledger = pgLedger(sql);
     repo = pgRepo(sql);
     community = pgCommunityRepo(sql);
@@ -70,6 +88,8 @@ async function main() {
     users = memoryUsers;
     hub = memoryHub();
     ledger = memoryLedger();
+    alertsRepo = memoryAlertsRepo();
+    alertsLock = memoryLock();
   }
 
   const verify =
@@ -123,6 +143,22 @@ async function main() {
   if (!features.community)
     console.warn("market: FEATURE_COMMUNITY is not 1, /api/community is off");
 
+  // Star-condition alerts for the app: rules and devices always served when
+  // switched on; evaluated and sent only where ALERTS_EVALUATE=1.
+  const alertsDeps = {
+    repo: alertsRepo,
+    source: forecast ?? null,
+    push: expoPush({ accessToken: config.alerts.expoAccessToken }),
+  };
+  const evaluating = features.alerts && config.alerts.evaluate;
+  if (!features.alerts)
+    console.warn("market: FEATURE_ALERTS is not 1, /api/alerts is off");
+  else if (!evaluating)
+    console.warn("market: ALERTS_EVALUATE is not 1, alerts are kept but not sent");
+  const stopEvaluator = evaluating
+    ? startEvaluator(alertsDeps, { lock: alertsLock })
+    : () => {};
+
   const app = createApp({
     repo,
     community,
@@ -135,6 +171,18 @@ async function main() {
     hub,
     forecast,
     features,
+    alerts: {
+      repo: alertsRepo,
+      source: forecast ?? null,
+      adminToken: config.alerts.adminToken,
+      evaluating,
+      // An announcement goes out now rather than at the next pass, from
+      // whichever instance received it, under the same lock.
+      kick: () =>
+        void alertsLock(() => deliver(alertsDeps)).catch((error) =>
+          console.error(`alerts: delivery failed: ${String(error)}`),
+        ),
+    },
     companion: {
       client: companionClient,
       model: companion.model,
@@ -162,9 +210,15 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`market: ${signal}, shutting down`);
     server.close();
-    // On Postgres both repos close the one pool, which ends once. The hub
+    stopEvaluator();
+    // On Postgres the repos close the one pool, which ends once. The hub
     // ends its own listening connection.
-    await Promise.all([repo.close(), community.close(), hub.close()]);
+    await Promise.all([
+      repo.close(),
+      community.close(),
+      hub.close(),
+      alertsRepo.close(),
+    ]);
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));

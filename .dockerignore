@@ -33,6 +33,8 @@ market/api/dist
 # The MCP server, Gust and the AI page, which the API serves and the site imports.
 !mcp/**
 !companion/**
+# The app's star-condition alerts, which the API serves (alerts/api, alerts/shared).
+!alerts/**
 !ai/**
 # The spot pages, a lazy bundle of the site.
 !spot/**

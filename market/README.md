@@ -172,6 +172,13 @@ and `PUT /api/me` (`site/api/router.ts`): your `users` row, whichever section
 you are in. Every write route answers 403 `suspended` while the caller's
 `suspended_until` is in the future.
 
+The same process also serves the app's star-condition alerts under
+`/api/alerts` when `FEATURE_ALERTS=1`, and evaluates them where
+`ALERTS_EVALUATE=1`: see [`alerts/README.md`](../alerts/README.md) for the
+routes, the evaluator, the release pipeline's announce contract and what is
+stored. Its tables are prefixed `alerts_` with their own ledger,
+`alerts_migrations`.
+
 Photo flow: the browser resizes, calls `POST /uploads`, `PUT`s the bytes to
 the returned URL, then includes `{ key, width, height }` in the listing. The
 API only accepts keys it issued to that user (`market/<userId>/…`). Photos

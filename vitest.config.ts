@@ -13,6 +13,7 @@ export default defineConfig({
       "ai/**/*.test.ts",
       "companion/**/*.test.ts",
       "spot/**/*.test.ts",
+      "alerts/**/*.test.ts",
       "ui/**/*.test.{ts,tsx}",
     ],
   },
