@@ -18,6 +18,7 @@ import {
   type AnyManifest,
   type ModelAvailability,
 } from "../force5/src/manifests";
+import { onPageReturn, pageVisible } from "../force5/src/pageLife";
 import { shouldRevalidate } from "../force5/src/revalidate";
 import { spotSeries } from "../force5/src/series";
 import {
@@ -135,7 +136,7 @@ export function useModelAvailability(
         !shouldRevalidate(
           lastCheck.current,
           Date.now(),
-          document.visibilityState === "visible",
+          pageVisible(),
           busyNow.current,
         )
       )
@@ -146,13 +147,11 @@ export function useModelAvailability(
     // A minute's heartbeat, so a check that comes due mid-gesture is retried
     // shortly afterwards instead of waiting out another whole interval.
     const timer = window.setInterval(tick, 60000);
-    document.addEventListener("visibilitychange", tick);
-    window.addEventListener("focus", tick);
+    const stopListening = onPageReturn(tick);
     return () => {
       controller.abort();
       clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-      window.removeEventListener("focus", tick);
+      stopListening();
     };
   }, [enabled]);
   return { models, resolved };

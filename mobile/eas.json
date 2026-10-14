@@ -1,0 +1,51 @@
+{
+  "cli": {
+    "version": ">= 24.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "base": {
+      "node": "22.12.0",
+      "env": { "EAS_PROJECT_ID": "$EAS_PROJECT_ID" }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "environment": "development",
+      "env": { "APP_VARIANT": "development" },
+      "ios": { "simulator": false }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": { "simulator": true }
+    },
+    "staging": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "staging",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": { "APP_VARIANT": "staging" }
+    },
+    "production": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": { "APP_VARIANT": "production" }
+    }
+  },
+  "submit": {
+    "staging": {
+      "ios": { "ascAppId": "$ASC_APP_ID_STAGING" },
+      "android": { "track": "internal", "releaseStatus": "completed" }
+    },
+    "production": {
+      "ios": { "ascAppId": "$ASC_APP_ID" },
+      "android": { "track": "production", "releaseStatus": "draft" }
+    }
+  }
+}
