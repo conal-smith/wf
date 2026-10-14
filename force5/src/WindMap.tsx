@@ -6,14 +6,14 @@ import { loopPath } from "../../ui/penPaths";
 import {
   BATHY_PATH,
   CHART_LAYERS,
+  IRELAND,
   PLACE_CLASSES,
   TILES_URL,
   chartColours,
   chartStyle,
-  registerPmtiles,
   type RideStop,
 } from "./chartStyle";
-import { archiveUrl } from "./archives";
+import { archiveUrl, pmtilesTile } from "./archives";
 import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
@@ -29,11 +29,19 @@ import type { Frame, Spot } from "./weather";
 maplibregl.setWorkerUrl(workerUrl);
 maplibregl.setWorkerCount(2);
 
-/** All of Ireland, as the map opens on it. */
-export const IRELAND: [[number, number], [number, number]] = [
-  [-10.75, 51.38],
-  [-5.42, 55.42],
-];
+/** All of Ireland, as the map opens on it (chartStyle.ts, the app's too). */
+export { IRELAND };
+
+let registered = false;
+/**
+ * MapLibre reads `pmtiles://` URLs through the pmtiles package, once a page,
+ * over the archives archives.ts opens (whether or not the host serves ranges).
+ */
+export function registerPmtiles() {
+  if (registered) return;
+  maplibregl.addProtocol("pmtiles", pmtilesTile);
+  registered = true;
+}
 
 /** Which parts of the chart are drawn. */
 export interface ChartLayers {
@@ -253,7 +261,7 @@ export default function WindMap(props: Props) {
     try {
       map = new maplibregl.Map({
         container: container.current,
-        style: chartStyle(colours, bathy),
+        style: chartStyle(colours, archiveUrl(bathy)),
         bounds: IRELAND,
         fitBoundsOptions: { padding: 20 },
         minZoom: 4.5,

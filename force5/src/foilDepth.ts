@@ -487,6 +487,25 @@ export function tilePixel(
   };
 }
 
+/**
+ * What a height read out of an archive means (FoilPoint): land at or over
+ * the archive's land value, its no-survey and deep values, else a height.
+ * The map's probe (foilProbe.ts) and the app's read it the same way.
+ */
+export function foilPoint(
+  z: number,
+  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres" | "deepMetres">,
+): FoilPoint {
+  if (z >= manifest.landMetres - 1) return null;
+  if (Math.abs(z - manifest.noSurveyMetres) < 1) return "unsurveyed";
+  if (
+    manifest.deepMetres !== undefined &&
+    Math.abs(z - manifest.deepMetres) < 1
+  )
+    return "deep";
+  return z;
+}
+
 /** Mapbox's Terrarium: metres = R·256 + G + B/256 − 32768. */
 export const terrariumHeight = (r: number, g: number, b: number) =>
   r * 256 + g + b / 256 - 32768;
