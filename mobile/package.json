@@ -61,7 +61,8 @@
     "export:check": "expo export --platform ios --platform android --output-dir dist --max-workers 2",
     "fingerprint": "expo-updates fingerprint:generate",
     "brand:icons": "node scripts/brand-icons.mjs",
-    "tokens": "node scripts/build-tokens.mjs"
+    "tokens": "node scripts/build-tokens.mjs",
+    "verify": "node scripts/verify-route.mjs"
   },
   "private": true,
   "license": "AGPL-3.0-only",
