@@ -240,7 +240,7 @@ def coastal_part(ctx, i, j, keep, rows):
             for arr, v in ((z, zz), (misfit, mf), (nvalid, nv), (state, sst), (drybelow, db), (wetabove, wa)):
                 arr[mine] = v[mine]
         seen = (st >= 0).sum(0)
-        res["station"] = nearest.astype(np.int8)
+        res["station"] = nearest.astype(np.int16)  # Great Britain has 138 stations: more than an int8 holds
         res["z"], res["misfit"], res["nvalid"], res["state"] = z, misfit, nvalid, state
         res["drybelow"], res["wetabove"] = drybelow, wetabove
         res["freq"] = ((st == 1).sum(0) / np.maximum(seen, 1)).astype(np.float32)
@@ -330,7 +330,7 @@ def _block_worker(job):
 FIELDS = {"z": (np.float32, np.nan), "misfit": (np.float32, np.nan), "nvalid": (np.int16, 0),
           "state": (np.int8, 0), "drybelow": (np.int16, 0), "wetabove": (np.int16, 0),
           "freq": (np.float32, np.nan), "lush": (np.float32, np.nan), "seen": (np.int16, 0),
-          "station": (np.int8, -1), "high_tide": (np.float32, np.nan), "low_tide": (np.float32, np.nan),
+          "station": (np.int16, -1), "high_tide": (np.float32, np.nan), "low_tide": (np.float32, np.nan),
           "high_n": (np.float32, 0), "low_n": (np.float32, 0)}
 
 
