@@ -6,6 +6,7 @@
  */
 import { archive } from "./archives";
 import {
+  foilPoint,
   terrariumHeight,
   tilePixel,
   type FoilArea,
@@ -43,13 +44,5 @@ export async function elevationAt(
   context.drawImage(bitmap, -at.px, -at.py);
   bitmap.close();
   const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
-  const z = terrariumHeight(r, g, b);
-  if (z >= manifest.landMetres - 1) return null;
-  if (Math.abs(z - manifest.noSurveyMetres) < 1) return "unsurveyed";
-  if (
-    manifest.deepMetres !== undefined &&
-    Math.abs(z - manifest.deepMetres) < 1
-  )
-    return "deep";
-  return z;
+  return foilPoint(terrariumHeight(r, g, b), manifest);
 }

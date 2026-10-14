@@ -8,15 +8,18 @@
  * The coast, the water and the places are OpenStreetMap's, through
  * OpenFreeMap's planet tiles; the glyphs (Noto Sans) are theirs too. The
  * chart's own faces (Fraunces, Plex Mono) are for the HTML over the map.
+ *
+ * Pure: nothing here loads MapLibre GL or the archives, so the app's native
+ * map (React Native) builds the very same chart from it. The browser's map
+ * registers the `pmtiles://` protocol itself (WindMap.tsx) and hands
+ * `chartStyle` the depth archive's source URL.
  */
-import * as maplibregl from "maplibre-gl";
 import type {
   ExpressionSpecification,
   FilterSpecification,
   LayerSpecification,
   StyleSpecification,
 } from "maplibre-gl";
-import { archiveUrl, pmtilesTile } from "./archives";
 import { basemapColours } from "./basemap";
 import { windBand, type Rider } from "./stars";
 
@@ -29,6 +32,12 @@ export const GLYPHS_URL = `${OPENFREEMAP}/fonts/{fontstack}/{range}.pbf`;
  * range (archives.ts). Written by scripts/foildepth/publish.py --bathy.
  */
 export const BATHY_PATH = "bathy/v7a4f9286f579/ireland.pmtiles";
+
+/** All of Ireland, as the map opens on it: west-south, east-north. */
+export const IRELAND: [[number, number], [number, number]] = [
+  [-10.75, 51.38],
+  [-5.42, 55.42],
+];
 
 const FONT = ["Noto Sans Italic"];
 const FONT_UP = ["Noto Sans Regular"];
@@ -71,17 +80,6 @@ export function chartColours(
   };
 }
 
-let registered = false;
-/**
- * MapLibre reads `pmtiles://` URLs through the pmtiles package, once a page,
- * over the archives archives.ts opens (whether or not the host serves ranges).
- */
-export function registerPmtiles() {
-  if (registered) return;
-  maplibregl.addProtocol("pmtiles", pmtilesTile);
-  registered = true;
-}
-
 const zoomed = (...stops: number[]): ExpressionSpecification =>
   ["interpolate", ["linear"], ["zoom"], ...stops] as ExpressionSpecification;
 
@@ -114,9 +112,14 @@ export const PLACE_CLASSES: ExpressionSpecification = [
   ["literal", ["city", "town", "village"]],
 ];
 
+/**
+ * The chart's style. `bathySource` is the depth archive as the map reads it:
+ * `pmtiles://` and its absolute URL (the browser's `archiveUrl`, or the app's
+ * own, which MapLibre Native reads by range itself).
+ */
 export function chartStyle(
   c: ChartColours,
-  bathyUrl: string,
+  bathySource: string,
 ): StyleSpecification {
   const tint = [
     "match",
@@ -154,7 +157,7 @@ export function chartStyle(
       omt: { type: "vector", url: TILES_URL },
       bathy: {
         type: "vector",
-        url: archiveUrl(bathyUrl),
+        url: bathySource,
         minzoom: 5,
         maxzoom: 12,
         attribution: "EMODnet Bathymetry",

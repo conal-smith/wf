@@ -1,11 +1,5 @@
-import { View } from "react-native";
-import { T } from "../../components/Text";
-
-// Placeholder: replaced by the feature that owns this route.
-export default function ChartScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <T variant="title">Chart</T>
-    </View>
-  );
-}
+/**
+ * The chart: the site's map for a phone (features/map/ChartScreen.tsx).
+ * `?spot=<id>&t=<iso>` opens a spot at an hour and flies to it.
+ */
+export { default } from "../../features/map/ChartScreen";
