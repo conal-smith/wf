@@ -4,6 +4,14 @@
  * models in the blend, and the lines a rider pastes into an AI assistant
  * (ai/web/install.ts's own).
  */
+import {
+  claudeCodeCommand,
+  claudeLink,
+  codexConfig,
+  EXAMPLE_PROMPTS,
+  geminiConfig,
+  mcpUrl,
+} from "../../../../ai/web/install";
 import type { ModelAvailability, ModelEntry } from "../../../../force5/src/manifests";
 import { parseRider } from "../../../../force5/src/prefs";
 import {
@@ -141,14 +149,6 @@ export function toggleBlendModel(
 
 // The site's own lines for each assistant (ai/web/install.ts), by the names
 // the AI page reads.
-import {
-  claudeCodeCommand,
-  claudeLink,
-  codexConfig,
-  EXAMPLE_PROMPTS,
-  geminiConfig,
-  mcpUrl,
-} from "../../../../ai/web/install";
 export { DISPLAY_NAME, SERVER_NAME } from "../../../../ai/web/install";
 
 /** The MCP endpoint on the API's origin. */
