@@ -64,6 +64,7 @@ tag only ever moves to a digest that has passed everything before it.
 | `scripts/release/market-image-smoke.sh` | CI `images`, nightly, staging | the compiled API boots |
 | `scripts/release/acceptance.sh` | nightly, staging | the worker fetching **real** HARMONIE and GFS runs, `status.py` calling them fresh, publishing to an S3-compatible bucket with every referenced object present, and the site image drawing them in Chromium (`e2e/smoke`) |
 | `e2e/smoke` against the deployed URL | staging, production (once Pages is set up) | the deployed site reading its environment's data, CORS included |
+| `npm run ci` and both Metro bundles in `mobile/` | CI `mobile`, nightly | the app's types, lints, unit tests and bundles ([MOBILE.md](MOBILE.md), "What tests what") |
 | `scripts/release/monitor.py` | every two hours, against production | a model gone stale, a pointer naming files that are not there, wrong cache headers, the site pointed at the wrong data (see "The production monitor") |
 
 Run any of them locally against an image you built; each script's header says how.
@@ -141,6 +142,21 @@ repository they need a paid plan (GitHub refuses the setting on the free plan).
 The production job keeps `environment: production`, so if the repository is ever
 public — where required reviewers are free — adding yourself as one makes every
 promote wait for a click as well.
+
+### The app
+
+The app ([MOBILE.md](MOBILE.md)) rides the same two dispatches. A nightly
+publishes its JavaScript once, as an EAS update on a branch named for the
+nightly, and attaches `mobile.json`; a release points the `staging` channel at
+that branch (building and submitting a staging binary only when none runs its
+runtime), and you try Wingfoil Staging from TestFlight or Play internal testing
+alongside the staging site; a promote points `production` at the same branch,
+checked to hold exactly the update groups staging ran, publishes
+`app/latest.json` with the site, tells riders, and builds a production binary
+for the stores only when the native code changed. Every app step is a notice
+until `EXPO_TOKEN` and `EAS_PROJECT_ID` exist, so nothing here changes the
+site's train until then. MOBILE.md has the diagram, the setup and how to roll
+the app back.
 
 ### The Mac mini
 

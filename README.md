@@ -36,6 +36,7 @@ npm run test:e2e   # Playwright
 - [Star ratings](docs/STAR_RATINGS.md) and [model verification](docs/VERIFICATION.md)
 - [Design system](docs/DESIGN_SYSTEM.md) and [design principles](docs/DESIGN_PRINCIPLES.md)
 - [Builds and releases](docs/RELEASES.md)
+- [The iOS and Android app](docs/MOBILE.md): running it, its release train and how riders get updates
 - [Running it on one machine](deploy/local/README.md)
 - [Where the riding places come from](data/locations/README.md)
 
