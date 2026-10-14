@@ -23,7 +23,9 @@
     "../../community/shared",
     "../../mcp/api",
     "../../companion/api",
-    "../../companion/shared"
+    "../../companion/shared",
+    "../../alerts/api",
+    "../../alerts/shared"
   ],
   "exclude": [
     "src/**/*.test.ts",
@@ -32,6 +34,8 @@
     "../../community/**/*.test.ts",
     "../../mcp/**/*.test.ts",
     "../../companion/**/*.test.ts",
+    "../../alerts/**/*.test.ts",
+    "../../alerts/api/testing.ts",
     "../../mcp/api/testing.ts"
   ]
 }
