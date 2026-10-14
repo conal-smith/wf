@@ -444,7 +444,7 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
           <T
             variant="lead"
             numberOfLines={1}
-            style={styles.name}
+            style={[styles.name, !spot && styles.nameAlone]}
             accessibilityRole="header"
           >
             {spot ? spot.name : "All of Ireland"}
@@ -775,6 +775,8 @@ const styles = StyleSheet.create({
     minHeight: hitTarget,
   },
   name: { flex: 1, fontFamily: fonts.displayBold },
+  // No star beside it: in line with the sheet's own margin (space.lg).
+  nameAlone: { paddingLeft: space.md },
   chev: { minWidth: hitTarget, minHeight: hitTarget, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.55 },
   pressedRow: { backgroundColor: colors.sunken },
