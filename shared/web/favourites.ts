@@ -79,7 +79,12 @@ export function localFavourites(
     listeners.forEach((l) => l(state));
   };
 
-  if (typeof window !== "undefined")
+  // Another tab's change. React Native has a `window` with no events, so ask
+  // for the method, not only the object.
+  if (
+    typeof window !== "undefined" &&
+    typeof window.addEventListener === "function"
+  )
     window.addEventListener("storage", (e) => {
       if (e.key !== FAVOURITES_KEY) return;
       state = parse(e.newValue);
@@ -140,7 +145,7 @@ export function localFavourites(
 
 function safeStorage(): Storage | null {
   try {
-    return typeof window === "undefined" ? null : window.localStorage;
+    return globalThis.localStorage ?? null;
   } catch {
     return null;
   }

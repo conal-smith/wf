@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readForecastJson } from "../force5/src/manifests";
+import { onPageReturn, pageVisible } from "../force5/src/pageLife";
 import { shouldRevalidate } from "../force5/src/revalidate";
 import { forecastUrl } from "../force5/src/urls";
 import { SQUARE_RETRY_MS } from "./useSpotSquares";
@@ -87,7 +88,7 @@ export function useSpotBlend(busy = false): {
         !shouldRevalidate(
           lastCheck.current,
           Date.now(),
-          document.visibilityState === "visible",
+          pageVisible(),
           busyNow.current,
         )
       )
@@ -96,13 +97,11 @@ export function useSpotBlend(busy = false): {
       void load(false);
     };
     const timer = window.setInterval(tick, 60000);
-    document.addEventListener("visibilitychange", tick);
-    window.addEventListener("focus", tick);
+    const stopListening = onPageReturn(tick);
     return () => {
       controller.abort();
       clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-      window.removeEventListener("focus", tick);
+      stopListening();
     };
   }, []);
   const recheck = useCallback(() => again.current(), []);
