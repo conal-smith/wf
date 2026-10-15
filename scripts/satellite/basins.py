@@ -8,7 +8,13 @@ pixels' median, to 10 minutes) its lagMinutes behind its parent (negative:
 ahead). A basin takes every pixel in its polygon (common.basins: the smaller
 of two that overlap wins, so a basin inside a basin keeps its own), and its
 tide is its parent's fitted model shifted (tides.py calibrate). A group
-smaller than --min-pixels is left alone.
+smaller than --min-pixels is left alone, and so is one whose lag lies at
+the end of the search (the best may be beyond it). --leave-out names
+stations whose lags are not believed: the Bristol Channel's and the
+Severn's (Avonmouth, Newport, Hinkley Point) read 40 to 120 minutes ahead a
+few kilometres apart, where the water is so muddy that its brightness
+follows the currents rather than the level; a shifted curve does not
+describe their tide.
 
 The lags are also the product: local knowledge of when the water covers and
 uncovers a place, against the tide station a sailor would look up.
@@ -17,7 +23,7 @@ Writes the basins into the root's "others" stations file (config stations,
 or stations_ni.json for the island), replacing any the last run wrote (id
 *_LAG<n>), and work/basins.json: every basin with its cells.
 
-    python -I basins.py [--spread 20] [--min-pixels 15000] [--dry-run]
+    python -I basins.py [--spread 20] [--min-pixels 15000] [--leave-out Avonmouth,Newport,Hinkley_Point] [--dry-run]
 """
 import argparse
 import glob
@@ -52,19 +58,23 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--spread", type=int, default=20, help="minutes: cells further apart in lag are not joined")
     p.add_argument("--min-pixels", type=int, default=15000, help="10 m pixels of flats a basin needs (1.5 km²)")
+    p.add_argument("--leave-out", default="",
+                   help="stations whose basins are not believed, comma-separated (their tide is not a shifted curve)")
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
     cfg = common.config()
     plan = common.read_json(common.path("work", "plan.json"))
     size = plan["blockSize"]
     stations = {s["id"]: s for s in common.stations(include_inactive=True)}
-    cells = []
+    leave_out = {x for x in a.leave_out.split(",") if x}
+    cells, ends = [], None
     for f in sorted(glob.glob(common.path("work", "lagmap", "*.json"))):
         d = common.read_json(f)
+        ends = (min(d["lagsMinutes"]), max(d["lagsMinutes"]))
         if d["tile"] not in plan["tiles"] or "-" in os.path.basename(f)[:-5]:
             continue
         for c in d["cells"]:
-            if lagmap.clear(c):
+            if lagmap.clear(c) and c["station"] not in leave_out:
                 c = dict(c, tile=d["tile"], geom=cell_polygon(plan, d["tile"], c, size, d["cellPixels"]))
                 cells.append(c)
     # Join touching cells of one station with lags within the spread (single linkage).
@@ -93,7 +103,8 @@ def main():
             continue
         lags = np.repeat([c["bestLagMinutes"] for c in g], [c["pixels"] for c in g])
         lag = int(round(float(np.median(lags)) / 10) * 10)
-        if lag == 0:
+        # A lag at the end of the search may lie beyond it: not believed.
+        if lag == 0 or (ends and (lag <= ends[0] + 10 or lag >= ends[1] - 10)):
             continue
         shape = unary_union([c["geom"] for c in g]).buffer(1e-4).buffer(-1e-4)
         parts = list(shape.geoms) if shape.geom_type == "MultiPolygon" else [shape]
