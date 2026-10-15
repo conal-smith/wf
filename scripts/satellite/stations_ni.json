@@ -1,17 +1,1162 @@
 {
-  "about": "Tide stations for Northern Ireland's coast, which no Marine Institute station predicts (the foil-depth regions stop 45 km from the last of them). Each is EOT20 at the point (Hart-Davis et al. 2021, DGFI-TUM, CC BY 4.0). Where an open gauge is there (UK National Tide Gauge Network via the Copernicus Marine in-situ TAC, served on EMODnet Physics' ERDDAP), the model is fitted to it (timing, scale, datum) and the gauge's own levels are used when it has them; elsewhere the model's own Lowest Astronomical Tide (the lowest level it predicts over 19 years) is the datum. A pixel goes to one of these only if no Marine Institute station is within 45 km, so the Republic's regions are cut exactly as the foil-depth layer's.",
-  "stations": {
-    "Portrush": {"name": "Portrush", "lon": -6.6567, "lat": 55.2067, "model": [-6.665, 55.215],
-                 "gauge": {"source": "emodnet", "platform": "Portrush"}},
-    "Ballycastle_MODELLED": {"name": "Ballycastle", "lon": -6.2420, "lat": 55.2060, "model": [-6.235, 55.215]},
-    "Larne_MODELLED": {"name": "Larne", "lon": -5.7900, "lat": 54.8530, "model": [-5.775, 54.860]},
-    "Bangor": {"name": "Bangor", "lon": -5.6692, "lat": 54.6650, "model": [-5.660, 54.672],
-               "gauge": {"source": "emodnet", "platform": "Bangor"}},
-    "Killard_MODELLED": {"name": "Killard Point", "lon": -5.5250, "lat": 54.3150, "model": [-5.495, 54.312]},
-    "Strangford_MODELLED": {"name": "Strangford Lough", "lon": -5.6200, "lat": 54.4800, "model": [-5.495, 54.312],
-                            "lagOf": "Killard_MODELLED", "lagMinutes": 100,
-                            "polygon": [[-5.600, 54.385], [-5.530, 54.385], [-5.500, 54.450], [-5.520, 54.550],
-                                        [-5.620, 54.625], [-5.760, 54.600], [-5.770, 54.500], [-5.720, 54.385]]}
+ "about": "Tide stations for Northern Ireland's coast, which no Marine Institute station predicts (the foil-depth regions stop 45 km from the last of them). Each is EOT20 at the point (Hart-Davis et al. 2021, DGFI-TUM, CC BY 4.0). Where an open gauge is there (UK National Tide Gauge Network via the Copernicus Marine in-situ TAC, served on EMODnet Physics' ERDDAP), the model is fitted to it (timing, scale, datum) and the gauge's own levels are used when it has them; elsewhere the model's own Lowest Astronomical Tide (the lowest level it predicts over 19 years) is the datum. A pixel goes to one of these only if no Marine Institute station is within 45 km, so the Republic's regions are cut exactly as the foil-depth layer's.",
+ "stations": {
+  "Portrush": {
+   "name": "Portrush",
+   "lon": -6.6567,
+   "lat": 55.2067,
+   "model": [
+    -6.665,
+    55.215
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "Portrush"
+   }
   },
-  "basins": "A station with a polygon (Strangford Lough, behind the Narrows) is its parent's tide (lagOf) lagMinutes later, the lag read off the imagery by lag.py (Strangford: 100 min, median misfit 0.065 against 0.26 on Killard's own timing); it takes every pixel in its polygon and none outside."
+  "Ballycastle_MODELLED": {
+   "name": "Ballycastle",
+   "lon": -6.242,
+   "lat": 55.206,
+   "model": [
+    -6.235,
+    55.215
+   ]
+  },
+  "Larne_MODELLED": {
+   "name": "Larne",
+   "lon": -5.79,
+   "lat": 54.853,
+   "model": [
+    -5.775,
+    54.86
+   ]
+  },
+  "Bangor": {
+   "name": "Bangor",
+   "lon": -5.6692,
+   "lat": 54.665,
+   "model": [
+    -5.66,
+    54.672
+   ],
+   "gauge": {
+    "source": "emodnet",
+    "platform": "Bangor"
+   }
+  },
+  "Killard_MODELLED": {
+   "name": "Killard Point",
+   "lon": -5.525,
+   "lat": 54.315,
+   "model": [
+    -5.495,
+    54.312
+   ]
+  },
+  "Strangford_MODELLED": {
+   "name": "Strangford Lough",
+   "lon": -5.62,
+   "lat": 54.48,
+   "model": [
+    -5.495,
+    54.312
+   ],
+   "lagOf": "Killard_MODELLED",
+   "lagMinutes": 100,
+   "polygon": [
+    [
+     -5.6,
+     54.385
+    ],
+    [
+     -5.53,
+     54.385
+    ],
+    [
+     -5.5,
+     54.45
+    ],
+    [
+     -5.52,
+     54.55
+    ],
+    [
+     -5.62,
+     54.625
+    ],
+    [
+     -5.76,
+     54.6
+    ],
+    [
+     -5.77,
+     54.5
+    ],
+    [
+     -5.72,
+     54.385
+    ]
+   ]
+  },
+  "Achill_Island_LAG1": {
+   "name": "Achill Island +100 min",
+   "lon": -9.9392,
+   "lat": 53.946,
+   "model": [
+    -10.1016,
+    53.9522
+   ],
+   "lagOf": "Achill_Island_MODELLED",
+   "lagMinutes": 100,
+   "polygon": [
+    [
+     -9.97957,
+     54.00606
+    ],
+    [
+     -9.94051,
+     54.00637
+    ],
+    [
+     -9.93995,
+     53.98347
+    ],
+    [
+     -9.90112,
+     53.98375
+    ],
+    [
+     -9.89913,
+     53.89164
+    ],
+    [
+     -9.97688,
+     53.89103
+    ],
+    [
+     -9.97741,
+     53.91404
+    ],
+    [
+     -9.93865,
+     53.91436
+    ],
+    [
+     -9.93911,
+     53.93725
+    ],
+    [
+     -9.97795,
+     53.93704
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Achill_Island_LAG2": {
+   "name": "Achill Island +50 min",
+   "lon": -9.8686,
+   "lat": 53.9878,
+   "model": [
+    -10.1016,
+    53.9522
+   ],
+   "lagOf": "Achill_Island_MODELLED",
+   "lagMinutes": 50,
+   "polygon": [
+    [
+     -9.90146,
+     54.00667
+    ],
+    [
+     -9.8235,
+     54.00723
+    ],
+    [
+     -9.82304,
+     53.98422
+    ],
+    [
+     -9.86187,
+     53.98394
+    ],
+    [
+     -9.86145,
+     53.96104
+    ],
+    [
+     -9.90047,
+     53.96075
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Aranmore_LAG1": {
+   "name": "Aranmore +40 min",
+   "lon": -8.3424,
+   "lat": 54.8497,
+   "model": [
+    -8.49562,
+    54.9896
+   ],
+   "lagOf": "Aranmore",
+   "lagMinutes": 40,
+   "polygon": [
+    [
+     -8.36255,
+     54.83826
+    ],
+    [
+     -8.36219,
+     54.86127
+    ],
+    [
+     -8.32231,
+     54.86105
+    ],
+    [
+     -8.3227,
+     54.83805
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Aranmore_LAG2": {
+   "name": "Aranmore +60 min",
+   "lon": -8.3811,
+   "lat": 54.9419,
+   "model": [
+    -8.49562,
+    54.9896
+   ],
+   "lagOf": "Aranmore",
+   "lagMinutes": 60,
+   "polygon": [
+    [
+     -8.4012,
+     54.93049
+    ],
+    [
+     -8.40086,
+     54.95349
+    ],
+    [
+     -8.36089,
+     54.95329
+    ],
+    [
+     -8.36126,
+     54.93028
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Aranmore_LAG3": {
+   "name": "Aranmore +40 min",
+   "lon": -8.3396,
+   "lat": 55.0239,
+   "model": [
+    -8.49562,
+    54.9896
+   ],
+   "lagOf": "Aranmore",
+   "lagMinutes": 40,
+   "polygon": [
+    [
+     -8.35998,
+     55.00091
+    ],
+    [
+     -8.35924,
+     55.04701
+    ],
+    [
+     -8.31918,
+     55.04679
+    ],
+    [
+     -8.31996,
+     55.00069
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Buncranna_LAG1": {
+   "name": "Buncranna +110 min",
+   "lon": -7.0744,
+   "lat": 55.0449,
+   "model": [
+    -7.464125,
+    55.12662
+   ],
+   "lagOf": "Buncranna",
+   "lagMinutes": 110,
+   "polygon": [
+    [
+     -7.11486,
+     55.03401
+    ],
+    [
+     -7.11378,
+     55.057
+    ],
+    [
+     -7.03383,
+     55.05573
+    ],
+    [
+     -7.03496,
+     55.03274
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Buncranna_LAG2": {
+   "name": "Buncranna +110 min",
+   "lon": -7.134,
+   "lat": 55.0574,
+   "model": [
+    -7.464125,
+    55.12662
+   ],
+   "lagOf": "Buncranna",
+   "lagMinutes": 110,
+   "polygon": [
+    [
+     -7.15505,
+     55.03462
+    ],
+    [
+     -7.15293,
+     55.0807
+    ],
+    [
+     -7.11285,
+     55.08008
+    ],
+    [
+     -7.11502,
+     55.03401
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Buncranna_LAG3": {
+   "name": "Buncranna +90 min",
+   "lon": -6.9896,
+   "lat": 55.1356,
+   "model": [
+    -7.464125,
+    55.12662
+   ],
+   "lagOf": "Buncranna",
+   "lagMinutes": 90,
+   "polygon": [
+    [
+     -7.03255,
+     55.07872
+    ],
+    [
+     -7.02915,
+     55.1477
+    ],
+    [
+     -6.98919,
+     55.14708
+    ],
+    [
+     -6.98685,
+     55.19302
+    ],
+    [
+     -6.94666,
+     55.19235
+    ],
+    [
+     -6.95021,
+     55.12338
+    ],
+    [
+     -6.99015,
+     55.12401
+    ],
+    [
+     -6.99247,
+     55.07807
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Dunmore_LAG1": {
+   "name": "Dunmore +50 min",
+   "lon": -7.1077,
+   "lat": 52.1628,
+   "model": [
+    -6.99166,
+    52.14754
+   ],
+   "lagOf": "Dunmore",
+   "lagMinutes": 50,
+   "polygon": [
+    [
+     -7.12689,
+     52.15156
+    ],
+    [
+     -7.12592,
+     52.17457
+    ],
+    [
+     -7.0885,
+     52.17397
+    ],
+    [
+     -7.08949,
+     52.15096
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Dunmore_LAG2": {
+   "name": "Dunmore +50 min",
+   "lon": -6.7669,
+   "lat": 52.2373,
+   "model": [
+    -6.99166,
+    52.14754
+   ],
+   "lagOf": "Dunmore",
+   "lagMinutes": 50,
+   "polygon": [
+    [
+     -6.7868,
+     52.21464
+    ],
+    [
+     -6.78451,
+     52.26073
+    ],
+    [
+     -6.74703,
+     52.26002
+    ],
+    [
+     -6.74936,
+     52.21393
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Dunmore_LAG3": {
+   "name": "Dunmore +30 min",
+   "lon": -6.8045,
+   "lat": 52.238,
+   "model": [
+    -6.99166,
+    52.14754
+   ],
+   "lagOf": "Dunmore",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -6.82439,
+     52.21534
+    ],
+    [
+     -6.82214,
+     52.26143
+    ],
+    [
+     -6.78466,
+     52.26073
+    ],
+    [
+     -6.78695,
+     52.21464
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Fenit_LAG1": {
+   "name": "Fenit +30 min",
+   "lon": -9.8819,
+   "lat": 52.1285,
+   "model": [
+    -9.8644,
+    52.27129
+   ],
+   "lagOf": "Fenit",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -9.90131,
+     52.1629
+    ],
+    [
+     -9.86389,
+     52.16318
+    ],
+    [
+     -9.86255,
+     52.09414
+    ],
+    [
+     -9.89992,
+     52.09386
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Fenit_LAG2": {
+   "name": "Fenit +40 min",
+   "lon": -9.826,
+   "lat": 52.1405,
+   "model": [
+    -9.8644,
+    52.27129
+   ],
+   "lagOf": "Fenit",
+   "lagMinutes": 40,
+   "polygon": [
+    [
+     -9.86374,
+     52.16318
+    ],
+    [
+     -9.78904,
+     52.16371
+    ],
+    [
+     -9.78823,
+     52.11777
+    ],
+    [
+     -9.86285,
+     52.11725
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Killard_LAG1": {
+   "name": "Killard Point +30 min",
+   "lon": -5.8156,
+   "lat": 54.2664,
+   "model": [
+    -5.495,
+    54.312
+   ],
+   "lagOf": "Killard_MODELLED",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -5.83606,
+     54.27742
+    ],
+    [
+     -5.79679,
+     54.27834
+    ],
+    [
+     -5.79523,
+     54.25536
+    ],
+    [
+     -5.83448,
+     54.25445
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Killard_LAG2": {
+   "name": "Killard Point +100 min",
+   "lon": -5.6457,
+   "lat": 54.3739,
+   "model": [
+    -5.495,
+    54.312
+   ],
+   "lagOf": "Killard_MODELLED",
+   "lagMinutes": 100,
+   "polygon": [
+    [
+     -5.68646,
+     54.39602
+    ],
+    [
+     -5.60784,
+     54.39775
+    ],
+    [
+     -5.60492,
+     54.35169
+    ],
+    [
+     -5.68345,
+     54.34997
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Killybegs_LAG1": {
+   "name": "Killybegs +50 min",
+   "lon": -8.4631,
+   "lat": 54.7813,
+   "model": [
+    -8.3949,
+    54.6364
+   ],
+   "lagOf": "Killybegs",
+   "lagMinutes": 50,
+   "polygon": [
+    [
+     -8.48316,
+     54.76991
+    ],
+    [
+     -8.48287,
+     54.79291
+    ],
+    [
+     -8.44306,
+     54.79274
+    ],
+    [
+     -8.44337,
+     54.76973
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Kilrush_LAG1": {
+   "name": "Kilrush +30 min",
+   "lon": -9.2298,
+   "lat": 52.6051,
+   "model": [
+    -9.50208,
+    52.63191
+   ],
+   "lagOf": "Kilrush",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -9.26771,
+     52.62806
+    ],
+    [
+     -9.19221,
+     52.6282
+    ],
+    [
+     -9.19201,
+     52.58209
+    ],
+    [
+     -9.26743,
+     52.58194
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Kilrush_LAG2": {
+   "name": "Kilrush +40 min",
+   "lon": -9.0724,
+   "lat": 52.6475,
+   "model": [
+    -9.50208,
+    52.63191
+   ],
+   "lagOf": "Kilrush",
+   "lagMinutes": 40,
+   "polygon": [
+    [
+     -9.11654,
+     52.67433
+    ],
+    [
+     -9.07885,
+     52.6744
+    ],
+    [
+     -9.07891,
+     52.72039
+    ],
+    [
+     -9.04101,
+     52.72041
+    ],
+    [
+     -9.04088,
+     52.58223
+    ],
+    [
+     -9.07866,
+     52.58222
+    ],
+    [
+     -9.07875,
+     52.6053
+    ],
+    [
+     -9.11636,
+     52.60529
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Kilrush_LAG3": {
+   "name": "Kilrush +50 min",
+   "lon": -9.003,
+   "lat": 52.6629,
+   "model": [
+    -9.50208,
+    52.63191
+   ],
+   "lagOf": "Kilrush",
+   "lagMinutes": 50,
+   "polygon": [
+    [
+     -9.04086,
+     52.72041
+    ],
+    [
+     -8.96521,
+     52.72041
+    ],
+    [
+     -8.9653,
+     52.60534
+    ],
+    [
+     -9.04076,
+     52.60534
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Kilrush_LAG4": {
+   "name": "Kilrush +40 min",
+   "lon": -8.9273,
+   "lat": 52.6743,
+   "model": [
+    -9.50208,
+    52.63191
+   ],
+   "lagOf": "Kilrush",
+   "lagMinutes": 40,
+   "polygon": [
+    [
+     -8.96511,
+     52.65137
+    ],
+    [
+     -8.96508,
+     52.69731
+    ],
+    [
+     -8.88946,
+     52.69726
+    ],
+    [
+     -8.88958,
+     52.65132
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Lahinch_LAG1": {
+   "name": "Lahinch +60 min",
+   "lon": -8.9386,
+   "lat": 52.7319,
+   "model": [
+    -9.3899,
+    52.911
+   ],
+   "lagOf": "Lahinch_MODELLED",
+   "lagMinutes": 60,
+   "polygon": [
+    [
+     -8.96508,
+     52.6974
+    ],
+    [
+     -8.965,
+     52.78936
+    ],
+    [
+     -8.92704,
+     52.78935
+    ],
+    [
+     -8.92719,
+     52.69736
+    ],
+    [
+     -8.88946,
+     52.69726
+    ],
+    [
+     -8.88952,
+     52.67425
+    ],
+    [
+     -8.92738,
+     52.67428
+    ],
+    [
+     -8.92739,
+     52.69736
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Lahinch_LAG2": {
+   "name": "Lahinch +70 min",
+   "lon": -9.0003,
+   "lat": 52.7385,
+   "model": [
+    -9.3899,
+    52.911
+   ],
+   "lagOf": "Lahinch_MODELLED",
+   "lagMinutes": 70,
+   "polygon": [
+    [
+     -9.04091,
+     52.76644
+    ],
+    [
+     -9.00316,
+     52.76646
+    ],
+    [
+     -9.00311,
+     52.78937
+    ],
+    [
+     -8.96515,
+     52.78936
+    ],
+    [
+     -8.96523,
+     52.6974
+    ],
+    [
+     -9.04084,
+     52.6974
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Malin_Head_LAG1": {
+   "name": "Malin Head +70 min",
+   "lon": -7.3052,
+   "lat": 55.2897,
+   "model": [
+    -7.33432,
+    55.37168
+   ],
+   "lagOf": "Malin_Head",
+   "lagMinutes": 70,
+   "polygon": [
+    [
+     -7.34858,
+     55.26748
+    ],
+    [
+     -7.34762,
+     55.29048
+    ],
+    [
+     -7.34463,
+     55.29052
+    ],
+    [
+     -7.34367,
+     55.31352
+    ],
+    [
+     -7.2632,
+     55.3124
+    ],
+    [
+     -7.26521,
+     55.26632
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Port_Oriel_LAG1": {
+   "name": "Port Oriel +20 min",
+   "lon": -6.1228,
+   "lat": 54.0562,
+   "model": [
+    -6.221713,
+    53.79899
+   ],
+   "lagOf": "Port_Oriel",
+   "lagMinutes": 20,
+   "polygon": [
+    [
+     -6.14313,
+     54.04514
+    ],
+    [
+     -6.14155,
+     54.06812
+    ],
+    [
+     -6.10248,
+     54.06718
+    ],
+    [
+     -6.10408,
+     54.04421
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Skerries_LAG1": {
+   "name": "Skerries +30 min",
+   "lon": -6.1411,
+   "lat": 53.5042,
+   "model": [
+    -6.108117,
+    53.585
+   ],
+   "lagOf": "Skerries",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -6.18036,
+     53.49358
+    ],
+    [
+     -6.17883,
+     53.51656
+    ],
+    [
+     -6.10187,
+     53.51472
+    ],
+    [
+     -6.10343,
+     53.49174
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Sligo_LAG1": {
+   "name": "Sligo +60 min",
+   "lon": -8.5748,
+   "lat": 54.2372,
+   "model": [
+    -8.5689,
+    54.3046
+   ],
+   "lagOf": "Sligo",
+   "lagMinutes": 60,
+   "polygon": [
+    [
+     -8.60771,
+     54.2182
+    ],
+    [
+     -8.60727,
+     54.26412
+    ],
+    [
+     -8.56797,
+     54.26399
+    ],
+    [
+     -8.56815,
+     54.24108
+    ],
+    [
+     -8.52908,
+     54.24093
+    ],
+    [
+     -8.52934,
+     54.21792
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Sligo_LAG2": {
+   "name": "Sligo +20 min",
+   "lon": -8.5086,
+   "lat": 54.2983,
+   "model": [
+    -8.5689,
+    54.3046
+   ],
+   "lagOf": "Sligo",
+   "lagMinutes": 20,
+   "polygon": [
+    [
+     -8.5284,
+     54.28685
+    ],
+    [
+     -8.52814,
+     54.30986
+    ],
+    [
+     -8.48879,
+     54.3097
+    ],
+    [
+     -8.48908,
+     54.28669
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Strangford_LAG1": {
+   "name": "Strangford Lough +20 min",
+   "lon": -5.6735,
+   "lat": 54.4998,
+   "model": [
+    -5.495,
+    54.312
+   ],
+   "lagOf": "Strangford_MODELLED",
+   "lagMinutes": 20,
+   "polygon": [
+    [
+     -5.69399,
+     54.51084
+    ],
+    [
+     -5.6545,
+     54.51172
+    ],
+    [
+     -5.65301,
+     54.48873
+    ],
+    [
+     -5.69248,
+     54.48786
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Tory_Island_LAG1": {
+   "name": "Tory Island +100 min",
+   "lon": -8.1373,
+   "lat": 55.1262,
+   "model": [
+    -8.1962,
+    55.2508
+   ],
+   "lagOf": "Tory_Island_MODELLED",
+   "lagMinutes": 100,
+   "polygon": [
+    [
+     -8.15764,
+     55.1148
+    ],
+    [
+     -8.15715,
+     55.1378
+    ],
+    [
+     -8.117,
+     55.13751
+    ],
+    [
+     -8.11751,
+     55.11451
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Tory_Island_LAG2": {
+   "name": "Tory Island +60 min",
+   "lon": -8.1571,
+   "lat": 55.1378,
+   "model": [
+    -8.1962,
+    55.2508
+   ],
+   "lagOf": "Tory_Island_MODELLED",
+   "lagMinutes": 60,
+   "polygon": [
+    [
+     -8.19761,
+     55.11507
+    ],
+    [
+     -8.19715,
+     55.13807
+    ],
+    [
+     -8.15721,
+     55.13781
+    ],
+    [
+     -8.15667,
+     55.16071
+    ],
+    [
+     -8.1165,
+     55.16043
+    ],
+    [
+     -8.117,
+     55.13742
+    ],
+    [
+     -8.15695,
+     55.1377
+    ],
+    [
+     -8.15748,
+     55.1148
+    ]
+   ],
+   "fromLagmap": true
+  },
+  "Union_Hall_LAG1": {
+   "name": "Union Hall +30 min",
+   "lon": -8.8833,
+   "lat": 51.6101,
+   "model": [
+    -9.1335,
+    51.559
+   ],
+   "lagOf": "Union_Hall",
+   "lagMinutes": 30,
+   "polygon": [
+    [
+     -8.92638,
+     51.59089
+    ],
+    [
+     -8.92634,
+     51.61391
+    ],
+    [
+     -8.88954,
+     51.61392
+    ],
+    [
+     -8.88946,
+     51.63699
+    ],
+    [
+     -8.85247,
+     51.63695
+    ],
+    [
+     -8.85262,
+     51.59082
+    ]
+   ],
+   "fromLagmap": true
+  }
+ },
+ "basins": "A station with a polygon (Strangford Lough, behind the Narrows) is its parent's tide (lagOf) lagMinutes later, the lag read off the imagery by lag.py (Strangford: 100 min, median misfit 0.065 against 0.26 on Killard's own timing); it takes every pixel in its polygon and none outside."
 }
