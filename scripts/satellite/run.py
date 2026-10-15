@@ -80,12 +80,17 @@ def main():
                                stdout=fh, stderr=subprocess.STDOUT)
         print(f"{t}: fetched ({r.returncode}) in {time.time() - t0:.0f} s", flush=True)
         if composing is not None:
+            # --overlap: the tile before, composed while this one was read.
             composing.wait()
+            print(f"{prev}: composed ({composing.returncode}) in {time.time() - t1:.0f} s", flush=True)
+            if not a.keep_downloads:
+                drop_downloads(prev)
         fh = open(os.path.join(logs, f"compose-{t}.log"), "a")
         t1 = time.time()
         composing = subprocess.Popen([py, "-I", os.path.join(HERE, "compose.py"), "--tile", t, "--jobs",
                                       str(a.compose_jobs)], stdout=fh, stderr=subprocess.STDOUT)
         print(f"{t}: composing", flush=True)
+        prev = t
         if not a.overlap:
             composing.wait()
             print(f"{t}: composed ({composing.returncode}) in {time.time() - t1:.0f} s", flush=True)
@@ -94,6 +99,9 @@ def main():
                 drop_downloads(t)
     if composing is not None:
         composing.wait()
+        print(f"{prev}: composed ({composing.returncode}) in {time.time() - t1:.0f} s", flush=True)
+        if not a.keep_downloads:
+            drop_downloads(prev)
     print("all done", flush=True)
 
 

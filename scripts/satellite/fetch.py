@@ -25,7 +25,8 @@ Only windows of the bands are read (HTTP ranges on the COGs, signed per read
 by planetary_computer; no account), and nothing but these bytes is kept:
 <root>/downloads/s2/<tile>/{coast,summer}/<stamp>.npz, one member per block
 (c<row>_<col> codes, (512, 512); r<row>_<col> colour, (3, 512, 512)), and
-log.jsonl. A scene already written is not read again.
+log.jsonl. A scene already written is not read again, unless its .npz has
+since been dropped.
 
     python -I fetch.py --tile 29UPV [--workers 24] [--summer-only] [--every-look]
 """
@@ -331,7 +332,7 @@ def chosen(items, stations, plan, tide_levels, done, sel):
     return pick
 
 
-def run(tile, workers, summer_only=False, every_look=False):
+def run(tile, workers, summer_only=False, every_look=False, coast_only=False):
     cfg = common.config()
     plan = common.read_json(common.path("work", "plan.json"))
     pt = common.scouted(plan["tiles"][tile], tile)
@@ -347,6 +348,9 @@ def run(tile, workers, summer_only=False, every_look=False):
         with open(log_path) as fh:
             for line in fh:
                 r = json.loads(line)
+                # A look kept but since dropped (its .npz removed once composed) is read again.
+                if r.get("status") == "kept" and not os.path.exists(os.path.join(base, r["kind"], f"{r['stamp']}.npz")):
+                    continue
                 if r.get("status") in ("kept", "cloudy"):
                     done[(r["kind"], r["stamp"])] = r
     coastal = bool(pt["coastalBlocks"]) and not summer_only
@@ -378,7 +382,7 @@ def run(tile, workers, summer_only=False, every_look=False):
         return out
 
     jobs = coast_jobs()
-    for it in summer_items(items, cfg):
+    for it in ([] if coast_only else summer_items(items, cfg)):
         if ("summer", it["stamp"]) not in done:
             jobs.append(("summer", it, None))
     print(f"{tile}: {len(jobs)} reads to do ({len(pt['coastalBlocks'])} coastal, "
@@ -426,9 +430,10 @@ def main():
     p.add_argument("--workers", type=int, default=24)
     p.add_argument("--summer-only", action="store_true")
     p.add_argument("--every-look", action="store_true", help="read every acquisition, not the selection (config select)")
+    p.add_argument("--coast-only", action="store_true", help="only the coastal looks (lagmap.py and lag.py need no more)")
     a = p.parse_args()
     for t in a.tile:
-        run(t, a.workers, a.summer_only, a.every_look)
+        run(t, a.workers, a.summer_only, a.every_look, a.coast_only)
 
 
 if __name__ == "__main__":

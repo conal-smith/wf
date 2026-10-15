@@ -121,9 +121,19 @@ def in_polygon(lon, lat, ring):
     return out
 
 
+def ring_area(ring):
+    """A lon/lat ring's area in square degrees (shoelace): enough to order basins."""
+    x, y = np.asarray(ring, dtype=np.float64).T
+    return abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))) / 2
+
+
 def basins(stations_, lon, lat):
-    """[(index, mask)] of the stations with a polygon, over these points."""
-    return [(k, in_polygon(lon, lat, s["polygon"])) for k, s in enumerate(stations_) if s.get("polygon")]
+    """[(index, mask)] of the stations with a polygon, over these points, the
+    largest first: applied in turn, the smaller of two that overlap wins (a
+    basin found inside a basin keeps its own tide)."""
+    ks = sorted((k for k, s in enumerate(stations_) if s.get("polygon")),
+                key=lambda k: -ring_area(stations_[k]["polygon"]))
+    return [(k, in_polygon(lon, lat, stations_[k]["polygon"])) for k in ks]
 
 
 def region_id(station_id, prefix="tide-"):
