@@ -119,8 +119,8 @@ class BacalhauStateTest(unittest.TestCase):
 class ColimaStateTest(unittest.TestCase):
     def state(self, colima_list):
         def run(command, **options):
-            if command[0] == "brew":
-                return finished(0, '[{"loaded": true}]')
+            if command[0] == "launchctl":
+                return finished(0, "")
             if isinstance(colima_list, BaseException):
                 raise colima_list
             return finished(*colima_list)
@@ -129,11 +129,20 @@ class ColimaStateTest(unittest.TestCase):
             return panel.colima_state()
 
     def test_a_running_profile_is_running(self):
-        answer = self.state((0, '{"status": "Running", "cpus": 4, "memory": 8589934592}\n'))
+        answer = self.state((0, '{"name": "home-compute", "status": "Running", "cpus": 4, "memory": 8589934592}\n'))
         self.assertEqual(answer, {"state": "running", "cpus": 4, "memoryGiB": 8.0, "autostart": True})
 
     def test_a_stopped_profile_is_stopped(self):
-        self.assertEqual(self.state((0, '{"status": "Stopped"}\n'))["state"], "stopped")
+        self.assertEqual(self.state((0, '{"name": "home-compute", "status": "Stopped"}\n'))["state"], "stopped")
+
+    def test_only_the_jobs_profile_counts(self):
+        listed = ('{"name": "default", "status": "Running", "cpus": 8}\n'
+                  '{"name": "home-compute", "status": "Stopped", "cpus": 2}\n')
+        answer = self.state((0, listed))
+        self.assertEqual((answer["state"], answer["cpus"]), ("stopped", 2))
+
+    def test_no_profile_yet_is_stopped(self):
+        self.assertEqual(self.state((0, ""))["state"], "stopped")
 
     def test_colima_list_timing_out_is_unknown(self):
         answer = self.state(subprocess.TimeoutExpired(["colima"], 10))

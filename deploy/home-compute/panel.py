@@ -40,9 +40,13 @@ AGENTS = HOME / "Library" / "LaunchAgents"
 MENUBAR_CONFIG = HOME / ".config" / "home-compute" / "menubar.json"
 BACALHAU_LABEL = "dev.sprintengine.bacalhau"
 CONTROLLER_LABEL = "dev.sprintengine.home-compute"
+VM_LABEL = "dev.sprintengine.home-compute-vm"
 IMAGE = "wingfoil-forecast:local"
 SOURCE_LABEL = "wingfoil.source-hash"
-DOCKER_HOST = f"unix://{HOME}/.colima/default/docker.sock"
+# The jobs' own Colima VM, in home-compute-vm/ beside the checkout (macmini.sh).
+COLIMA_HOME = Path(os.environ.get("HOME_COMPUTE_VM_DIR", WINGFOIL.parent / "home-compute-vm"))
+COLIMA_PROFILE = "home-compute"
+DOCKER_HOST = f"unix://{COLIMA_HOME}/{COLIMA_PROFILE}/docker.sock"
 PATH = f"{BIN}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
 SETTINGS = ["S3_BUCKET", "S3_ENDPOINT_URL", "S3_PREFIX", "AWS_REGION", "ECMWF_SOURCE",
@@ -61,7 +65,8 @@ class Refusal(Exception):
 
 
 def run(*command, timeout=10, **options):
-    environment = {**os.environ, "PATH": PATH, "DOCKER_HOST": DOCKER_HOST}
+    environment = {**os.environ, "PATH": PATH, "DOCKER_HOST": DOCKER_HOST,
+                   "COLIMA_HOME": str(COLIMA_HOME)}
     try:
         return subprocess.run(command, capture_output=True, text=True, timeout=timeout,
                               env=environment, **options)
@@ -287,18 +292,13 @@ def colima_state():
     result = run("colima", "list", "--json")
     profile = {}
     listed = bool(result and result.returncode == 0)
-    if listed and result.stdout.strip():
+    if listed:
         try:
-            profile = json.loads(result.stdout.splitlines()[0])
+            profiles = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+            profile = next((p for p in profiles if p.get("name") == COLIMA_PROFILE), {})
         except ValueError:
             listed = False
-    services = run("brew", "services", "info", "colima", "--json")
-    autostart = False
-    if services and services.returncode == 0:
-        try:
-            autostart = bool(json.loads(services.stdout)[0].get("loaded"))
-        except (ValueError, IndexError):
-            pass
+    autostart = bool(launchd_loaded(VM_LABEL))
     state = ("running" if profile.get("status") == "Running" else "stopped") if listed else "unknown"
     return {"state": state,
             "cpus": profile.get("cpus"),
