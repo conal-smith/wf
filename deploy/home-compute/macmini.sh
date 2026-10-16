@@ -12,6 +12,7 @@
 #   deploy/home-compute/macmini.sh image    # rebuild the worker image after a code change
 #   deploy/home-compute/macmini.sh pull [REF]   # run a released image instead (default: :production)
 #   deploy/home-compute/macmini.sh restart controller   # only the scheduler, to apply a change
+#   deploy/home-compute/macmini.sh vm       # start the jobs' Colima VM if it is not running
 #   deploy/home-compute/macmini.sh colima-autostart on|off
 #
 # For the Home Compute Bar app, each printing one JSON object (see panel.py):
@@ -32,6 +33,7 @@ LOGS="$HOME/Library/Logs/home-compute"
 AGENTS="$HOME/Library/LaunchAgents"
 BACALHAU_LABEL="dev.sprintengine.bacalhau"
 CONTROLLER_LABEL="dev.sprintengine.home-compute"
+VM_LABEL="dev.sprintengine.home-compute-vm"
 export PATH="$BIN:/opt/homebrew/bin:/usr/local/bin:$PATH"
 PYTHON="$WINGFOIL/.venv/bin/python"
 panel() { "$PYTHON" -I "$HERE/panel.py" "$@"; }
@@ -45,8 +47,20 @@ schedules() { "$PYTHON" -I "$WINGFOIL/deploy/schedules.py" "$@"; }
 # BACALHAU_MEMORY (e.g. 2Gb) advertise less than the VM instead, for a VM that
 # other containers share.
 RECOMMENDED_VM="--cpu 2 --memory 3"
-colima_socket() { echo "unix://$HOME/.colima/default/docker.sock"; }
-vm_field() { colima list --json 2>/dev/null | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['$1'])"; }
+# The jobs get a Colima VM of their own, kept in home-compute-vm/ beside the
+# checkout: its disk grows on the drive the checkout is on, not the Mac's startup
+# disk, and no other project's containers share it. Outside the checkout, so the
+# image build never sends it as context. HOME_COMPUTE_VM_DIR moves it.
+export COLIMA_HOME="${HOME_COMPUTE_VM_DIR:-$(cd "$WINGFOIL/.." && pwd)/home-compute-vm}"
+COLIMA_PROFILE="home-compute"
+VM_DISK_GB=60
+colima_socket() { echo "unix://$COLIMA_HOME/$COLIMA_PROFILE/docker.sock"; }
+vm_field() { colima list --json 2>/dev/null | python3 -c "
+import json, sys
+for line in sys.stdin:
+    vm = json.loads(line)
+    if vm['name'] == '$COLIMA_PROFILE':
+        print(vm['$1'])"; }
 
 # Bacalhau never starts a job asking for more than it was told it has: the job
 # queues for its hour and fails. Name every enabled job that could never fit.
@@ -70,9 +84,16 @@ need() { command -v "$1" >/dev/null || { echo "Missing $1. $2" >&2; exit 1; }; }
 
 ensure_colima() {
   need colima "Install it with: brew install colima"
-  if ! colima status >/dev/null 2>&1; then
-    say "Starting Colima"
-    colima start
+  mkdir -p "$COLIMA_HOME"
+  if ! colima status --profile "$COLIMA_PROFILE" >/dev/null 2>&1; then
+    say "Starting Colima's $COLIMA_PROFILE VM in $COLIMA_HOME"
+    # Starting a profile makes it Docker's current context; the jobs name their
+    # socket, so give the context back to whatever else was using it.
+    local context
+    context="$(docker context show 2>/dev/null || true)"
+    # The size only applies when the VM is created; afterwards it is the VM's own.
+    colima start --profile "$COLIMA_PROFILE" $RECOMMENDED_VM --disk "$VM_DISK_GB" --vm-type vz
+    [ -z "$context" ] || docker context use "$context" >/dev/null
   fi
 }
 
@@ -141,8 +162,25 @@ write_agents() {
   check_capacity "$cpus" "$memory"
   if python3 -c "import sys; sys.exit(0 if $vm_gib > 3 else 1)"; then
     say "Colima's VM has ${vm_gib} GiB, all of it taken from macOS while it runs; 3 is enough for the jobs."
-    echo "  To give the rest back: colima stop && colima start $RECOMMENDED_VM && $0 setup"
+    echo "  To give the rest back: COLIMA_HOME=$COLIMA_HOME colima stop -p $COLIMA_PROFILE && COLIMA_HOME=$COLIMA_HOME colima start -p $COLIMA_PROFILE $RECOMMENDED_VM && $0 setup"
   fi
+  # Starts the VM at login, and again when a drive mounts, for a checkout on an
+  # external drive that comes up after login. Nothing happens while it is away.
+  cat > "$AGENTS/$VM_LABEL.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$VM_LABEL</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/sh</string><string>-c</string>
+    <string>test -d "$COLIMA_HOME/$COLIMA_PROFILE" || exit 0; exec "$HERE/macmini.sh" vm</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>StartOnMount</key><true/>
+  <key>StandardOutPath</key><string>$LOGS/vm.log</string>
+  <key>StandardErrorPath</key><string>$LOGS/vm.log</string>
+</dict></plist>
+PLIST
   cat > "$AGENTS/$BACALHAU_LABEL.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -195,6 +233,9 @@ loaded() { launchctl print "gui/$(id -u)/$1" >/dev/null 2>&1; }
 
 start() {
   ensure_colima
+  if [ -f "$AGENTS/$VM_LABEL.plist" ] && ! loaded "$VM_LABEL"; then
+    launchctl bootstrap "gui/$(id -u)" "$AGENTS/$VM_LABEL.plist"
+  fi
   for label in "$BACALHAU_LABEL" "$CONTROLLER_LABEL"; do
     [ -f "$AGENTS/$label.plist" ] || { echo "Run setup first" >&2; exit 1; }
     loaded "$label" || launchctl bootstrap "gui/$(id -u)" "$AGENTS/$label.plist"
@@ -252,6 +293,7 @@ case "${1:-help}" in
     say "Ready. Start it with: $0 start"
     ;;
   start) start ;;
+  vm) ensure_colima ;;
   stop) stop ;;
   restart)
     if [ "${2:-}" = controller ]; then
@@ -263,8 +305,11 @@ case "${1:-help}" in
     fi ;;
   colima-autostart)
     case "${2:-}" in
-      on) brew services start colima ;;
-      off) brew services stop colima ;;
+      on) [ -f "$AGENTS/$VM_LABEL.plist" ] || { echo "Run setup first" >&2; exit 1; }
+          loaded "$VM_LABEL" || launchctl bootstrap "gui/$(id -u)" "$AGENTS/$VM_LABEL.plist"
+          say "Colima's $COLIMA_PROFILE VM starts at login" ;;
+      off) if loaded "$VM_LABEL"; then launchctl bootout "gui/$(id -u)/$VM_LABEL"; fi
+           say "Colima's $COLIMA_PROFILE VM no longer starts at login" ;;
       *) echo "Usage: $0 colima-autostart on|off" >&2; exit 1 ;;
     esac ;;
   state|env|r2-test|token|source-hash) panel "$@" ;;
