@@ -6,8 +6,8 @@
   {
    "id": "ireland",
    "name": "Ireland",
-   "base": "satellite/v4eacd48c3fe5/",
-   "generatedAt": "2026-10-13T04:16:50Z",
+   "base": "satellite/v7d2f74f0389f/",
+   "generatedAt": "2026-10-15T13:30:03Z",
    "bounds": [
     -10.8984,
     51.1793,
@@ -131,8 +131,8 @@
       -7.464125,
       55.12662
      ],
-     "high": 3.25,
-     "low": 0.68
+     "high": 3.26,
+     "low": 0.69
     },
     {
      "id": "Castletownbere",
@@ -201,7 +201,7 @@
       -6.99166,
       52.14754
      ],
-     "high": 3.33,
+     "high": 3.32,
      "low": 0.71
     },
     {
@@ -232,7 +232,7 @@
       53.39148
      ],
      "high": 4.34,
-     "low": 1.33
+     "low": 1.34
     },
     {
      "id": "Killybegs",
@@ -272,7 +272,7 @@
       52.911
      ],
      "high": 3.68,
-     "low": 0.62
+     "low": 0.63
     },
     {
      "id": "Letterfrack_MODELLED",
@@ -351,7 +351,7 @@
       -6.108117,
       53.585
      ],
-     "high": 4.8,
+     "high": 4.81,
      "low": 1.54
     },
     {
@@ -372,7 +372,7 @@
       55.2508
      ],
      "high": 3.06,
-     "low": 0.47
+     "low": 0.48
     },
     {
      "id": "Union_Hall",
@@ -395,24 +395,164 @@
      "low": 0.36
     },
     {
+     "id": "Achill_Island_LAG1",
+     "name": "Achill Island +100 min",
+     "lonLat": [
+      -9.9392,
+      53.946
+     ],
+     "high": 1.08,
+     "low": 0.29
+    },
+    {
+     "id": "Achill_Island_LAG2",
+     "name": "Achill Island +50 min",
+     "lonLat": [
+      -9.8686,
+      53.9878
+     ],
+     "high": 3.6,
+     "low": 1.23
+    },
+    {
+     "id": "Aranmore_LAG1",
+     "name": "Aranmore +40 min",
+     "lonLat": [
+      -8.3424,
+      54.8497
+     ],
+     "high": 5.37,
+     "low": 1.88
+    },
+    {
+     "id": "Aranmore_LAG2",
+     "name": "Aranmore +60 min",
+     "lonLat": [
+      -8.3811,
+      54.9419
+     ],
+     "high": 3.07,
+     "low": 1.0
+    },
+    {
+     "id": "Aranmore_LAG3",
+     "name": "Aranmore +40 min",
+     "lonLat": [
+      -8.3396,
+      55.0239
+     ],
+     "high": 1.9,
+     "low": 0.6
+    },
+    {
      "id": "Ballycastle_MODELLED",
      "name": "Ballycastle",
      "lonLat": [
       -6.242,
       55.206
      ],
-     "high": 0.88,
-     "low": 0.24
+     "high": 4.98,
+     "low": 1.68
     },
     {
-     "id": "Bangor",
-     "name": "Bangor",
+     "id": "Buncranna_LAG1",
+     "name": "Buncranna +110 min",
      "lonLat": [
-      -5.6692,
-      54.665
+      -7.0744,
+      55.0449
      ],
-     "high": 3.62,
-     "low": 1.26
+     "high": 3.61,
+     "low": 1.16
+    },
+    {
+     "id": "Buncranna_LAG2",
+     "name": "Buncranna +110 min",
+     "lonLat": [
+      -7.134,
+      55.0574
+     ],
+     "high": 3.61,
+     "low": 1.16
+    },
+    {
+     "id": "Buncranna_LAG3",
+     "name": "Buncranna +90 min",
+     "lonLat": [
+      -6.9896,
+      55.1356
+     ],
+     "high": 3.58,
+     "low": 1.06
+    },
+    {
+     "id": "Dunmore_LAG1",
+     "name": "Dunmore +50 min",
+     "lonLat": [
+      -7.1077,
+      52.1628
+     ],
+     "high": 3.36,
+     "low": 0.75
+    },
+    {
+     "id": "Dunmore_LAG2",
+     "name": "Dunmore +50 min",
+     "lonLat": [
+      -6.7669,
+      52.2373
+     ],
+     "high": 3.38,
+     "low": 0.75
+    },
+    {
+     "id": "Dunmore_LAG3",
+     "name": "Dunmore +30 min",
+     "lonLat": [
+      -6.8045,
+      52.238
+     ],
+     "high": 3.33,
+     "low": 0.71
+    },
+    {
+     "id": "Fenit_LAG1",
+     "name": "Fenit +30 min",
+     "lonLat": [
+      -9.8819,
+      52.1285
+     ],
+     "high": 3.64,
+     "low": 0.79
+    },
+    {
+     "id": "Fenit_LAG2",
+     "name": "Fenit +40 min",
+     "lonLat": [
+      -9.826,
+      52.1405
+     ],
+     "high": 3.65,
+     "low": 0.81
+    },
+    {
+     "id": "Killard_LAG1",
+     "name": "Killard Point +30 min",
+     "lonLat": [
+      -5.8156,
+      54.2664
+     ],
+     "high": 5.25,
+     "low": 1.86
+    },
+    {
+     "id": "Killard_LAG2",
+     "name": "Killard Point +100 min",
+     "lonLat": [
+      -5.6457,
+      54.3739
+     ],
+     "high": 4.98,
+     "low": 1.73
     },
     {
      "id": "Killard_MODELLED",
@@ -421,8 +561,78 @@
       -5.525,
       54.315
      ],
-     "high": 5.39,
+     "high": 5.37,
      "low": 1.89
+    },
+    {
+     "id": "Killybegs_LAG1",
+     "name": "Killybegs +50 min",
+     "lonLat": [
+      -8.4631,
+      54.7813
+     ],
+     "high": 3.17,
+     "low": 0.74
+    },
+    {
+     "id": "Kilrush_LAG1",
+     "name": "Kilrush +30 min",
+     "lonLat": [
+      -9.2298,
+      52.6051
+     ],
+     "high": 3.91,
+     "low": 0.88
+    },
+    {
+     "id": "Kilrush_LAG2",
+     "name": "Kilrush +40 min",
+     "lonLat": [
+      -9.0724,
+      52.6475
+     ],
+     "high": 3.97,
+     "low": 0.89
+    },
+    {
+     "id": "Kilrush_LAG3",
+     "name": "Kilrush +50 min",
+     "lonLat": [
+      -9.003,
+      52.6629
+     ],
+     "high": 3.91,
+     "low": 0.92
+    },
+    {
+     "id": "Kilrush_LAG4",
+     "name": "Kilrush +40 min",
+     "lonLat": [
+      -8.9273,
+      52.6743
+     ],
+     "high": 3.9,
+     "low": 0.92
+    },
+    {
+     "id": "Lahinch_LAG1",
+     "name": "Lahinch +60 min",
+     "lonLat": [
+      -8.9386,
+      52.7319
+     ],
+     "high": 3.59,
+     "low": 0.81
+    },
+    {
+     "id": "Lahinch_LAG2",
+     "name": "Lahinch +70 min",
+     "lonLat": [
+      -9.0003,
+      52.7385
+     ],
+     "high": 3.58,
+     "low": 0.75
     },
     {
      "id": "Larne_MODELLED",
@@ -431,18 +641,68 @@
       -5.79,
       54.853
      ],
-     "high": 3.07,
-     "low": 1.01
+     "high": 3.08,
+     "low": 1.02
     },
     {
-     "id": "Portrush",
-     "name": "Portrush",
+     "id": "Malin_Head_LAG1",
+     "name": "Malin Head +70 min",
      "lonLat": [
-      -6.6567,
-      55.2067
+      -7.3052,
+      55.2897
      ],
-     "high": 1.82,
-     "low": 0.59
+     "high": 2.98,
+     "low": 0.89
+    },
+    {
+     "id": "Port_Oriel_LAG1",
+     "name": "Port Oriel +20 min",
+     "lonLat": [
+      -6.1228,
+      54.0562
+     ],
+     "high": 5.14,
+     "low": 1.58
+    },
+    {
+     "id": "Skerries_LAG1",
+     "name": "Skerries +30 min",
+     "lonLat": [
+      -6.1411,
+      53.5042
+     ],
+     "high": 4.8,
+     "low": 1.55
+    },
+    {
+     "id": "Sligo_LAG1",
+     "name": "Sligo +60 min",
+     "lonLat": [
+      -8.5748,
+      54.2372
+     ],
+     "high": 3.2,
+     "low": 0.81
+    },
+    {
+     "id": "Sligo_LAG2",
+     "name": "Sligo +20 min",
+     "lonLat": [
+      -8.5086,
+      54.2983
+     ],
+     "high": 3.19,
+     "low": 0.67
+    },
+    {
+     "id": "Strangford_LAG1",
+     "name": "Strangford Lough +20 min",
+     "lonLat": [
+      -5.6735,
+      54.4998
+     ],
+     "high": 4.99,
+     "low": 1.71
     },
     {
      "id": "Strangford_MODELLED",
@@ -451,8 +711,38 @@
       -5.62,
       54.48
      ],
-     "high": 4.98,
+     "high": 5.0,
      "low": 1.68
+    },
+    {
+     "id": "Tory_Island_LAG1",
+     "name": "Tory Island +100 min",
+     "lonLat": [
+      -8.1373,
+      55.1262
+     ],
+     "high": 3.31,
+     "low": 0.96
+    },
+    {
+     "id": "Tory_Island_LAG2",
+     "name": "Tory Island +60 min",
+     "lonLat": [
+      -8.1571,
+      55.1378
+     ],
+     "high": 3.15,
+     "low": 0.77
+    },
+    {
+     "id": "Union_Hall_LAG1",
+     "name": "Union Hall +30 min",
+     "lonLat": [
+      -8.8833,
+      51.6101
+     ],
+     "high": 2.68,
+     "low": 0.44
     }
    ]
   }

@@ -379,6 +379,20 @@ Great Britain is another area: `publish.py --area great-britain --imagery …
 --intertidal …` uploads its sets and adds its entries to both indexes beside
 Ireland's (a run replaces only its own area's), with no change to the app.
 
+**Published** (17 October 2026): `satellite/v7d2f74f0389f/` (high and low,
+234 MB each, 16,480 tiles each over the 22 Sentinel-2 tiles) and
+`intertidal/ve71a2a306bca/` (66 regions, 19.5 MB: the 33 Marine Institute
+stations', 31 basin stations' (`tide-<station>-lag<n>`), Killard's and
+Strangford's), from the national rebuild of 15 October with the tide's lag,
+the basin stations and the deep-water guard. They replace
+`satellite/v4eacd48c3fe5/` and `intertidal/vd340d553a223/` (13 October, 39
+regions), which stay in the bucket for any page still holding the old index.
+Portrush's, Ballycastle's, Larne's and Bangor's regions are not in the
+rebuild's set (it wrote no heights there, and lists no Portrush or Bangor
+station in the imagery's index): Northern Ireland's east and north coasts
+have no foil layer either, so the map loses nothing, but the next run should
+look at why.
+
 ## Findings
 
 (See the numbers below, filled in from the national run.)

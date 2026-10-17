@@ -5,9 +5,9 @@
  "areas": [
   {
    "id": "ireland",
-   "name": "low.pmtiles",
-   "base": "satellite/vd18c86648416/",
-   "generatedAt": "2026-10-12T16:29:57Z",
+   "name": "Ireland",
+   "base": "satellite/vcdc8eab899f6/",
+   "generatedAt": "2026-10-15T13:30:03Z",
    "bounds": [
     -6.24,
     53.36,
@@ -41,8 +41,8 @@
       -6.0901,
       53.2191
      ],
-     "high": 3.72,
-     "low": 1.27
+     "high": 3.83,
+     "low": 1.2
     },
     {
      "id": "Dublin_Port",
@@ -51,8 +51,8 @@
       -6.22166,
       53.34574
      ],
-     "high": 4.05,
-     "low": 1.5
+     "high": 4.11,
+     "low": 1.4
     },
     {
      "id": "Howth",
@@ -61,8 +61,8 @@
       -6.0683,
       53.39148
      ],
-     "high": 4.21,
-     "low": 1.49
+     "high": 4.34,
+     "low": 1.34
     },
     {
      "id": "Port_Oriel",
@@ -71,8 +71,8 @@
       -6.221713,
       53.79899
      ],
-     "high": 5.02,
-     "low": 1.72
+     "high": 5.09,
+     "low": 1.58
     },
     {
      "id": "Skerries",
@@ -81,8 +81,8 @@
       -6.108117,
       53.585
      ],
-     "high": 4.73,
-     "low": 1.65
+     "high": 4.81,
+     "low": 1.54
     }
    ]
   }

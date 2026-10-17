@@ -321,8 +321,8 @@ def main():
                     shutil.rmtree(os.path.join(data, old))
         dest = os.path.join(a.repo, "public-data", base)
         os.makedirs(dest, exist_ok=True)
-        for name, path in files.items():
-            shutil.copyfile(path, os.path.join(dest, name))
+        for archive_name, path in files.items():
+            shutil.copyfile(path, os.path.join(dest, archive_name))
         write_site_imagery(os.path.join(dest, "index.json"), index, base, a.area, name,
                            {n: os.path.join(dest, n) for n in files})
         total = sum(os.path.getsize(f) for f in files.values())
