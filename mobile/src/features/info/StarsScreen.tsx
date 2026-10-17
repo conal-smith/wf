@@ -84,13 +84,15 @@ export function StarsScreen() {
           </KeyLine>
         </View>
 
-        <Section n={1} title="Gusts help," soft="up to a point">
+        <Section n={1} title="The steady wind," soft="not the gusts">
           <P>
-            On a light day the gusts are what get you up on the foil, and once
-            you are up you can glide through the lulls. So in light wind we
-            count the wind as a little stronger than its average. The stronger
-            the wind, the less we add, and once you are well powered we add
-            nothing: there, gusts are just more power to hold.
+            The stars rate the steady wind, the average: it is what holds you up
+            on the foil. Only on a light day do the gusts add to it, because
+            then they are what get you up, and once up you glide through the
+            lulls. So below your sweet spot we count the wind as a little
+            stronger than its average, the more the lighter it is; from the
+            sweet spot on we add nothing, and the gusts can only cost you stars
+            (section 4).
           </P>
           <P>
             Learners get the smallest boost, because they still drop off the
@@ -99,8 +101,8 @@ export function StarsScreen() {
           {(
             [
               [9, 17],
-              [14, 22],
-              [20, 30],
+              [12, 20],
+              [18, 28],
             ] as const
           ).map(([w, g]) => (
             <T key={w} variant="prose" color="ink2">
@@ -166,7 +168,7 @@ export function StarsScreen() {
         </Section>
 
         <T variant="caption" color="muted" style={styles.italic}>
-          wingfoil.ie star rating, version 2.
+          wingfoil.ie star rating, version 3.
         </T>
       </ScrollView>
     </>
@@ -622,16 +624,15 @@ function OtherTable({ rider }: { rider: Rider }) {
     <Table
       head={["If", "Riding or advanced", "Learning"]}
       rows={[
-        ["Gusts stronger than your maximum", "−1", "−1"],
         [
-          "Gusts 70% over the average, when you are already well powered",
-          "−½",
-          "none",
+          "Gusts past the top of your sweet spot",
+          "up to −1½ by your maximum, up to −3 past it",
+          "the same",
         ],
         [
-          "Gusts 35%, 50% or 70% over the average, at any wind speed",
-          "none",
-          "−¾, −1½ or −2¼",
+          "Gusts more than 35% over the average",
+          "−½ for every 10% more (−0.4 advanced), as much as you are powered: none at your minimum, all of it from the top of your sweet spot",
+          "−0.6 for every 10% more, at least 60% of it at any wind speed",
         ],
         ["The forecast models disagree", "−1", "−1"],
         ["The models differ a little", "−¼", "−¼"],

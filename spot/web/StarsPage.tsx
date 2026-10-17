@@ -149,14 +149,16 @@ export default function StarsPage() {
 
         <section className={s.section()} aria-labelledby="ride">
           <SectionHeading id="ride">
-            1. Gusts help, <em className="font-normal">up to a point</em>
+            1. The steady wind, <em className="font-normal">not the gusts</em>
           </SectionHeading>
           <p className={s.p()}>
-            On a light day the gusts are what get you up on the foil, and once
-            you are up you can glide through the lulls. So in light wind we
-            count the wind as a little stronger than its average. The stronger
-            the wind, the less we add, and once you are well powered we add
-            nothing: there, gusts are just more power to hold.
+            The stars rate the steady wind, the average: it is what holds you up
+            on the foil. Only on a light day do the gusts add to it, because
+            then they are what get you up, and once up you glide through the
+            lulls. So below your sweet spot we count the wind as a little
+            stronger than its average, the more the lighter it is; from the
+            sweet spot on we add nothing, and the gusts can only cost you stars
+            (section 4).
           </p>
           <p className={s.p()}>
             Learners get the smallest boost, because they still drop off the
@@ -235,7 +237,7 @@ export default function StarsPage() {
           <WorkedExample spotId={spotId} rider={rider} />
         </section>
 
-        <p className={s.small()}>wingfoil.ie star rating, version 2.</p>
+        <p className={s.small()}>wingfoil.ie star rating, version 3.</p>
       </main>
     </SpotFrame>
   );
@@ -245,8 +247,8 @@ function RideExamples({ rider }: { rider: Rider }) {
   const s = styles();
   const pairs: [number, number][] = [
     [9, 17],
-    [14, 22],
-    [20, 30],
+    [12, 20],
+    [18, 28],
   ];
   return (
     <ul className={s.examples()} data-ride-examples>
@@ -718,16 +720,15 @@ function OtherTable({ rider }: { rider: Rider }) {
   const s = styles();
   const learning = rider.skill === "beginner";
   const rows: [string, string, string][] = [
-    ["Gusts stronger than your maximum", "−1\u00a0star", "−1\u00a0star"],
     [
-      "Gusts 70% over the average, when you are already well powered",
-      "−½\u00a0star",
-      "none",
+      "Gusts past the top of your sweet spot",
+      "up to −1½\u00a0stars by your maximum, up to −3 past it",
+      "the same",
     ],
     [
-      "Gusts 35%, 50% or 70% over the average, at any wind speed",
-      "none",
-      "−¾, −1½ or −2¼\u00a0stars",
+      "Gusts more than 35% over the average",
+      "−½\u00a0star for every 10% more (−0.4 advanced), as much as you are powered: none at your minimum, all of it from the top of your sweet spot",
+      "−0.6\u00a0star for every 10% more, at least 60% of it at any wind speed",
     ],
     ["The forecast models disagree", "−1\u00a0star", "−1\u00a0star"],
     ["The models differ a little", "−¼\u00a0star", "−¼\u00a0star"],

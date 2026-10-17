@@ -57,7 +57,7 @@ describe("the worked example's ledger", () => {
     )!;
     expect(worked.lines[0]).toEqual({
       what: "12.6 kn gusting 18.9 is rated as",
-      figure: "14.1 kn",
+      figure: "13.3 kn",
     });
     expect(worked.lines.map((line) => line.what)).toContain(
       "The models differ a little",

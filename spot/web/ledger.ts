@@ -8,6 +8,7 @@
  */
 import {
   SHORE_LABEL,
+  gustCost,
   rateHour,
   rideableWind,
   shoreAngle,
@@ -105,31 +106,23 @@ export function ledger(
       figure: "none",
     });
 
-  if (gustKn !== null && windKn > 0) {
-    const factor = gustKn / windKn;
-    if (gustKn > band.max) {
-      score -= 1;
-      lines.push({
-        what: `Gusts over your ${Math.round(band.max)} kn maximum`,
-        figure: "−1",
-      });
-    } else if (beginner) {
-      const penalty =
-        factor > 1.7 ? 1.5 : factor > 1.5 ? 1 : factor > 1.35 ? 0.5 : 0;
-      if (penalty) {
-        score -= penalty * 1.5;
-        lines.push({
-          what: `Gusty for a learner: gusts ${over(factor)} over the average`,
-          figure: minus(penalty * 1.5),
-        });
-      }
-    } else if (factor > 1.7 && windKn >= band.sweetLow) {
-      score -= 0.5;
-      lines.push({
-        what: `Gusty when already powered: gusts ${over(factor)} over the average`,
-        figure: "−0.5",
-      });
-    }
+  const gusts = gustCost(windKn, gustKn, rider);
+  if (gusts?.strength) {
+    score -= gusts.strength;
+    lines.push({
+      what:
+        gustKn! > band.max
+          ? `Gusts past your ${Math.round(band.max)} kn maximum`
+          : `Gusts past the top of your ${Math.round(band.sweetHigh)} kn sweet spot`,
+      figure: minus(gusts.strength),
+    });
+  }
+  if (gusts?.gustiness) {
+    score -= gusts.gustiness;
+    lines.push({
+      what: `Gusts ${over(gusts.factor)} over the average, with the wind ${Math.round(gusts.power * 100)}% of the way to powered`,
+      figure: minus(gusts.gustiness),
+    });
   }
 
   if (hour.agreement === "low") {

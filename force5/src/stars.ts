@@ -8,8 +8,11 @@
 //   potential  what the wind alone is worth to this rider (the faded stars)
 //   stars      what is left once the spot and the forecast have their say:
 //              the shore angle, the gusts and whether the models agree (solid)
-// Both read the rideable wind: the mean lifted part of the way to the gusts,
-// because on a foil the gusts get you up and you glide through the lulls.
+// Both rate the steady wind, the mean: it is what holds you on the foil. Only
+// on a light day do the gusts add to it, because then they are what get you up.
+// Once the mean is enough, gusts only cost: the gustier the wind and the more
+// powered the rider already is, the more they cost, and gusts past what the
+// rider can hold cost most of all.
 // `stars` never exceeds `potential`, so the faded stars are always the upside a
 // better direction or a steadier breeze would have delivered.
 
@@ -64,8 +67,9 @@ const GUST_SHARE: Record<Skill, number> = {
 
 /**
  * The mean wind lifted toward the gusts by the share this rider can use. The
- * lift matters on a light day, when the gusts are what get you foiling; it
- * fades out toward the top of the sweet spot, where a gust is only more power.
+ * lift is for a light day, when the gusts are what get you foiling: it is whole
+ * at the floor and gone by the sweet spot, so gusts can make a light day
+ * rideable but never make a day better than its steady wind.
  */
 export function rideableWind(
   windKn: number,
@@ -73,11 +77,71 @@ export function rideableWind(
   rider: Rider,
 ): number {
   if (gustKn === null || gustKn <= windKn) return windKn;
-  const { min, sweetHigh } = windBand(rider);
-  const fade = clamp((sweetHigh - windKn) / (sweetHigh - min), 0, 1);
+  const { min, sweetLow } = windBand(rider);
+  const fade = clamp((sweetLow - windKn) / (sweetLow - min), 0, 1);
   return (
     windKn + GUST_SHARE[rider.skill] * fade * Math.min(gustKn - windKn, windKn)
   );
+}
+
+/**
+ * Gust over mean that still reads as a steady wind. The models' gust is the
+ * hour's strongest, so even a steady breeze comes with one about a third over
+ * its mean: the steadiest quarter of the published daylight hours at 14–19 kn
+ * sit under 1.35, the middle at 1.5.
+ */
+export const STEADY_GUST_FACTOR = 1.35;
+
+/** Stars a gust factor costs per 1.0 over the steady one, fully powered. */
+const GUSTINESS: Record<Skill, number> = {
+  beginner: 6,
+  intermediate: 5,
+  advanced: 4,
+};
+
+/** What the gusts cost an hour, before rounding, and what they were read from. */
+export interface GustCost {
+  /** Gust over mean. */
+  factor: number;
+  /** How powered the steady wind already has the rider: 0 at the floor, 1 from the top of the sweet spot. */
+  power: number;
+  /** Stars off for a wind that comes and goes. */
+  gustiness: number;
+  /** Stars off for gusts past the sweet spot, harder past the ceiling. */
+  strength: number;
+}
+
+/**
+ * What the gusts take away. Two things, both read against the rider's band:
+ *
+ * - **Gustiness**, the gust factor past a steady wind's, weighed by how powered
+ *   the mean already has the rider. Near the floor a gust is a lift, not a
+ *   cost; at the top of the sweet spot every lull and every hit is felt. A
+ *   learner, who falls off in the lulls, pays at least 0.6 of it at any speed.
+ * - **Strength**, the gusts past the sweet spot's top: one and a half stars by
+ *   the ceiling, as much again for every gap as wide past it, at most three.
+ *   A strong wind with strong gusts is hard to ride on any wing.
+ */
+export function gustCost(
+  windKn: number,
+  gustKn: number | null,
+  rider: Rider,
+): GustCost | null {
+  if (gustKn === null || windKn <= 0) return null;
+  const { min, sweetHigh, max } = windBand(rider);
+  const factor = gustKn / windKn;
+  const power = Math.max(
+    clamp((windKn - min) / (sweetHigh - min), 0, 1),
+    rider.skill === "beginner" ? 0.6 : 0,
+  );
+  const gustiness =
+    clamp(factor - STEADY_GUST_FACTOR, 0, 0.6) * GUSTINESS[rider.skill] * power;
+  const strength = clamp(
+    (1.5 * (gustKn - sweetHigh)) / (max - sweetHigh),
+    0,
+    3,
+  );
+  return { factor, power, gustiness, strength };
 }
 
 export interface WindBand {
@@ -315,28 +379,12 @@ export function rateHour(
     reasons.push("Cross-shore: fine, but cross-onshore is kinder to learn in.");
   }
 
-  if (hour.gustKn !== null && hour.windKn > 0) {
-    const gust = Math.round(hour.gustKn);
-    const mean = Math.round(hour.windKn);
-    const factor = hour.gustKn / hour.windKn;
-    if (hour.gustKn > band.max) {
-      // Gusts past what any wing in the bag can hold down.
-      score -= 1;
-      reasons.push(`Gusts to ${gust} kn: more than you will want to hold.`);
-    } else if (beginner) {
-      // Still learning: every lull is a fall, so gustiness costs at any speed.
-      const penalty =
-        factor > 1.7 ? 1.5 : factor > 1.5 ? 1 : factor > 1.35 ? 0.5 : 0;
-      if (penalty) {
-        score -= penalty * 1.5;
-        reasons.push(`Gusty: gusts ${gust} kn on a ${mean} kn mean.`);
-      }
-    } else if (factor > 1.7 && hour.windKn >= band.sweetLow) {
-      // Already powered, and the gusts come in hard on top.
-      score -= 0.5;
-      reasons.push(`Gusty: gusts ${gust} kn on a ${mean} kn mean.`);
-    }
-  }
+  // The gusts' reasons wait until the end, to go in here: they are given only
+  // when the gusts cost a whole star, as the models' small spread is.
+  const gustsAt = reasons.length;
+  const gusts = gustCost(hour.windKn, hour.gustKn, rider);
+  const gustTotal = gusts ? gusts.strength + gusts.gustiness : 0;
+  score -= gustTotal;
 
   // Models that differ a little cost a quarter, which only shows when it tips
   // the hour below a whole star; it is a reason only then.
@@ -365,6 +413,22 @@ export function rateHour(
   const starsFrom = (x: number) =>
     clamp(Math.round(Math.min(x, cap)), 0, potential);
   const stars = starsFrom(score);
+  if (gusts && stars < starsFrom(score + gustTotal)) {
+    const gust = Math.round(hour.gustKn!);
+    const mean = Math.round(hour.windKn);
+    const told: string[] = [];
+    if (gusts.strength >= 0.25)
+      told.push(
+        hour.gustKn! > band.max
+          ? `Gusts to ${gust} kn: more than you will want to hold.`
+          : `Gusts to ${gust} kn: a handful on top of the wind.`,
+      );
+    if (gusts.gustiness >= 0.25)
+      told.push(
+        `Gusty: gusts ${gust} kn on a ${mean} kn mean, so it comes and goes.`,
+      );
+    reasons.splice(gustsAt, 0, ...told);
+  }
   if (doubt && stars < starsFrom(score + 0.25))
     reasons.push("The models differ a little, enough to hold back a star.");
   return {

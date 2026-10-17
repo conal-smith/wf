@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RIDER,
   bestWindow,
+  gustCost,
   noStarsWhy,
   pickWing,
   rateHour,
@@ -184,6 +185,55 @@ describe("hour rating", () => {
     )!;
     expect(wild.stars).toBeLessThan(steady.stars);
     expect(wild.reasons[0]).toMatch(/Gusts to 34 kn/);
+  });
+  it("rates the steady wind: gusts never lift a day already in the sweet spot", () => {
+    expect(rideableWind(14, 24, DEFAULT_RIDER)).toBe(14);
+    expect(rideableWind(18, 30, DEFAULT_RIDER)).toBe(18);
+  });
+  it("rates the steadier of two equal winds higher", () => {
+    // The same 18 kn mean, gusting a little, typically and a lot.
+    const stars = [24, 27, 29].map(
+      (gustKn) =>
+        rateHour(hour({ gustKn, from: 200 }), WEST, DEFAULT_RIDER)!.stars,
+    );
+    expect(stars).toEqual([5, 4, 3]);
+  });
+  it("rates strong gusts on a strong wind low, and big gusts on a light one as a chance", () => {
+    const strong = rateHour(
+      hour({ windKn: 25, gustKn: 38, from: 200 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(strong.stars).toBeLessThanOrEqual(1);
+    expect(strong.reasons.join(" ")).toMatch(
+      /Gusts to 38 kn: more than you will want to hold.*Gusty/,
+    );
+    const light = rateHour(
+      hour({ windKn: 12, gustKn: 20, from: 200 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(light.stars).toBeGreaterThanOrEqual(3);
+  });
+  it("charges gustiness by how powered the rider already is", () => {
+    // The same gust factor, 1.6, at the floor and at the top of the sweet spot.
+    expect(gustCost(10, 16, DEFAULT_RIDER)!.gustiness).toBe(0);
+    expect(gustCost(24, 38.4, DEFAULT_RIDER)!.gustiness).toBeCloseTo(1.25, 5);
+    // Inside a steady wind's factor it costs nothing at any speed.
+    expect(gustCost(24, 32, DEFAULT_RIDER)!.gustiness).toBe(0);
+    // A learner falls off in the lulls, so pays some of it even when light.
+    expect(
+      gustCost(10, 16, rider({ skill: "beginner" }))!.gustiness,
+    ).toBeGreaterThan(0);
+  });
+  it("names the gusts only when they cost a star", () => {
+    const rating = rateHour(
+      hour({ windKn: 20, gustKn: 26, from: 200 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(rating.stars).toBe(5);
+    expect(rating.reasons).toEqual([]);
   });
   it("treats a gust no stronger than the mean as no gust", () => {
     expect(rideableWind(15, null, DEFAULT_RIDER)).toBe(15);
