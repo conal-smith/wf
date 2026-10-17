@@ -325,7 +325,7 @@ test("the stars open nothing on hover, and their explanation is the map's i", as
   ).toHaveAttribute("href", "/stars?spot=brandon");
 });
 
-test("the head is the spot and its buttons, and the pen loops each day's best, untitled", async ({
+test("the head is the spot and its buttons, and no day is rated", async ({
   page,
 }) => {
   await openDock(page);
@@ -342,12 +342,16 @@ test("the head is the spot and its buttons, and the pen loops each day's best, u
   await expect(
     head.getByRole("button", { name: /Play forecast|Pause forecast/ }),
   ).toHaveCount(0);
-  // The pen loops each day's best still worth riding; the day's heading
-  // says its stars and no times, which the loop already shows.
-  const days = await page.locator(".dock tr.tt-day td").count();
-  const loops = await page.locator(".dock .tt-pen .pen-loop").count();
-  expect(loops).toBeLessThanOrEqual(days);
+  // No day is rated: a day's heading is its name and date, with no stars
+  // and no best stretch, and the pen loops no day's best. The hours carry
+  // the stars.
+  await expect(page.locator(".dock tr.tt-day svg")).toHaveCount(0);
   await expect(page.locator(".dock tr.tt-day")).not.toContainText("best");
+  await expect(page.locator(".dock tr.tt-day td").first()).not.toHaveAttribute(
+    "title",
+    /star/,
+  );
+  await expect(page.locator(".dock .tt-pen .pen-loop")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Spot page →" }).first(),
   ).toHaveAttribute("href", "/spot/brandon");
@@ -388,6 +392,11 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await yours.click();
   await expect(panel).toContainText("Often opened");
   await expect(panel).toContainText("Dollymount");
+  // Each spot at the hour the map shows, never a day's best.
+  await expect(panel).not.toContainText(/best|done for the day|no stars/);
+  await expect(panel.locator(".side-head .when")).toHaveText(
+    /^[A-Z]{3} \d+ \d\d:\d\d$/,
+  );
   await expect(panel).not.toContainText("1×");
   await expect(
     panel.locator(".fvl li", { hasText: "Dollymount" }).locator(".fv-go span"),

@@ -12,7 +12,6 @@ import {
   pageDays,
   pageRows,
   parseTimeParam,
-  penBest,
   rowAt,
   shareContent,
   tideCeiling,
@@ -72,20 +71,19 @@ describe("days", () => {
   const rows = pageRows(cols, hours, NOW, 270, null);
   const days = pageDays(rows, PLACE.lat, PLACE.lon);
 
-  it("groups a week of Irish days, each with its window", () => {
+  it("groups a week of Irish days, and rates none of them", () => {
     expect(days.length).toBe(7);
     expect(days[0].day.date).toBe("2026-10-17");
-    expect(days[1].window?.stars).toBeGreaterThanOrEqual(2);
-    expect(penBest(days)).not.toBeNull();
+    expect(days[1].day.rows.some((r) => r.rating && r.rating.stars >= 2)).toBe(true);
+    expect(days[1]).not.toHaveProperty("window");
+    expect(days[1].day).not.toHaveProperty("stars");
   });
 
-  it("folds the night and rings the window", () => {
+  it("folds the night, and marks no stretch of the day", () => {
     const items = dayItems(days[1], false, (edge, run) => foldText(edge, run, days[1].sun, true));
     expect(items[0].kind).toBe("fold");
     expect(items.at(-1)!.kind).toBe("tide");
-    const ringed = items.filter((i) => i.kind === "row" && i.ringed);
-    expect(ringed.length).toBeGreaterThanOrEqual(2);
-    expect(ringed[0].kind === "row" && ringed[0].first).toBe(true);
+    expect(items.some((i) => "ringed" in i)).toBe(false);
     const open = dayItems(days[1], true, () => "");
     expect(open.filter((i) => i.kind === "row").length).toBe(days[1].day.rows.length);
   });
@@ -129,8 +127,8 @@ describe("tide", () => {
 
 describe("share", () => {
   it("links the site's page for the spot", () => {
-    const s = shareContent("Inch Strand", "inch", "Sat ★★★★ 13–16");
+    const s = shareContent("Inch Strand", "inch");
     expect(s.url).toBe("https://wingfoil.ie/spot/inch");
-    expect(s.message).toContain("https://wingfoil.ie/spot/inch");
+    expect(s.message).toBe("Inch Strand wing foil forecast https://wingfoil.ie/spot/inch");
   });
 });

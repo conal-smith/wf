@@ -25,7 +25,6 @@ import { Button } from "../ui/Button";
 import { Count } from "../ui/Count";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
-import { loopPath } from "../ui/penPaths";
 // Only when asked for: the chart's Blend view.
 const BlendChart = lazy(() => import("./BlendChart"));
 import { SeaTempGlyph, StarToggle, WindArrow, WingGlyph } from "./glyphs";
@@ -41,7 +40,6 @@ import WeatherGlyph from "./WeatherGlyph";
 import {
   clock,
   columnAtX,
-  dayBest,
   dayLong,
   dayStep,
   dayShort,
@@ -49,7 +47,6 @@ import {
   rainColumns,
   stripGeometry,
   stripTrack,
-  type DayBest,
   type StripColumn,
   type StripDay,
   type StripGeometry,
@@ -188,22 +185,8 @@ const RAIN_FULL_MM = 4;
 const starSize = (width: number, full: number) =>
   Math.max(4, Math.min(full < 60 ? 8.6 : 9.5, (width - 6) / 5.4));
 
-/**
- * The fewest stars the pen will loop. A day whose best is one star still has
- * a best stretch, and it is usually the longest (a whole day of barely
- * anything), so looping every day's best gave the weakest days the biggest
- * rings. A loop says "go then"; a window that is not worth riding gets none.
- * The spot page's pen keeps the same rule.
- */
-const LOOP_MIN_STARS = 2;
-
 /** The mono face's advance at the tide labels' 9.5px, for laying them out. */
 const TIDE_CHAR = 5.75;
-
-const range = (cols: readonly StripColumn[], best: DayBest) =>
-  best.from === best.to
-    ? clock(cols[best.from].time)
-    : `${clock(cols[best.from].time)}–${clock(cols[best.to].time)}`;
 
 /**
  * Where the wind goes, as one arrow and no letters: red where it blows off
@@ -307,55 +290,25 @@ const StripTable = memo(function StripTable({
       <tbody>
         <tr className="tt-day">
           {days.map((day) => {
-            const best = hours
-              ? dayBest(
-                  hours.map((h) => h.rating),
-                  day,
-                )
-              : null;
             const end = day.start + day.count - 1;
             const width = g.x[end] + g.w[end] - g.x[day.start];
-            // What the day's heading has room for, before it runs into the
-            // next day's: the name, its best stars, then when. A day of two or
-            // three coarse steps keeps its name and stars and drops the
-            // "best"; a single column keeps the weekday. The cell clips
-            // whatever is left, and its title still says it all.
-            const fit =
-              width >= 190
-                ? "all"
-                : width >= 120
-                  ? "stars"
-                  : width >= 66
-                    ? "name"
-                    : "day";
-            const starred = best && best.stars > 0;
+            // A day's heading is its name and date and nothing more: the
+            // hours under it are what a rider goes by. A single column keeps
+            // the weekday; the cell clips whatever is left, and its title
+            // still says it all.
+            const fit = width >= 66 ? "name" : "day";
             return (
               <td
                 key={day.date}
                 colSpan={day.count}
                 className={`d0 fit-${fit}`}
-                title={`${dayLong(day.noon)} ${Number(day.date.slice(8))}${
-                  starred
-                    ? ` · best ${range(columns, best)}, ${best.stars} of 5 stars`
-                    : ""
-                }`}
+                title={`${dayLong(day.noon)} ${Number(day.date.slice(8))}`}
               >
                 <span>
                   <b>
                     {dayShort(day.noon)}
                     <small> {Number(day.date.slice(8))}</small>
                   </b>
-                  {starred && (
-                    <>
-                      <em>
-                        <StarGlyphs
-                          stars={best.stars}
-                          potential={hours![best.from]!.rating!.potential}
-                          size={8}
-                        />
-                      </em>
-                    </>
-                  )}
                 </span>
               </td>
             );
@@ -909,7 +862,6 @@ export default function ForecastDock(props: Props) {
   useEffect(() => {
     if (view === "blend" && !isPoint && spot) onWantModels?.();
   }, [view, isPoint, !spot]);
-  const penClip = `pen-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
   // The scroll that brings each hour under the cursor, and where the cursor
   // stands at a scroll: still in the middle through the week, walking out to
   // the ends so the first hour sits against the labels (see `stripTrack`).
@@ -1124,44 +1076,6 @@ export default function ForecastDock(props: Props) {
       td.classList.add("c-sel"),
     );
   });
-
-  const ratings = hours?.map((h) => h.rating);
-
-  // The red pen: a loop round each day's best stretch worth riding, round the
-  // stars and the wind. It keeps below the hours' rule: the loop's own
-  // wobble and overshoot (ui/penPaths.ts) reach a sixth past its radii, so
-  // the radii are held inside the two rows and the sheet is clipped at the
-  // rule for the odd stroke that still reaches it.
-  const loopTop = ROWS.day + ROWS.hour;
-  const loops = useMemo(() => {
-    if (!ratings || view !== "table") return [];
-    const top = loopTop;
-    const bottom = top + ROWS.stars + ROWS.wind;
-    return days.flatMap((day, d) => {
-      const best = dayBest(
-        ratings,
-        day,
-        now,
-        columns.map((c) => c.time),
-      );
-      if (!best || best.stars < LOOP_MIN_STARS) return [];
-      const x0 = g.x[best.from];
-      const x1 = g.x[best.to] + g.w[best.to];
-      return [
-        {
-          key: `${day.date}-${best.from}`,
-          d: loopPath(
-            (x0 + x1) / 2,
-            (top + bottom) / 2 + 1,
-            (x1 - x0) / 2 + 4,
-            (bottom - top) / 2 - 2,
-            d * 13 + best.from,
-          ),
-          delay: d * 90,
-        },
-      ];
-    });
-  }, [ratings, days, columns, g, now, view]);
 
   const tideDot = useMemo(() => {
     if (!tide || !column) return null;
@@ -1435,20 +1349,6 @@ export default function ForecastDock(props: Props) {
               }
               aria-hidden="true"
             >
-              <clipPath id={penClip}>
-                <rect x="0" y={loopTop + 1} width={g.total} height="400" />
-              </clipPath>
-              <g clipPath={`url(#${penClip})`}>
-                {loops.map((loop) => (
-                  <path
-                    key={`${spot?.id}-${loop.key}`}
-                    className="pen-loop"
-                    d={loop.d}
-                    pathLength={1}
-                    style={{ animationDelay: `${loop.delay}ms` }}
-                  />
-                ))}
-              </g>
               {tideDot && (
                 <circle
                   className="tide-dot"

@@ -200,21 +200,6 @@ function MapKey({
           </svg>
         </dt>
         <dd>Wind, at the hour shown</dd>
-        <dt>
-          <svg
-            width="34"
-            height="24"
-            viewBox="-17 -12 34 24"
-            aria-hidden="true"
-            className="k-loop"
-          >
-            <path
-              d="M-14 4 C-10 -9 10 -10 13 3 C11 10 -10 11 -14 4Z"
-              strokeWidth="1.6"
-            />
-          </svg>
-        </dt>
-        <dd>Best window: two stars or more</dd>
       </dl>
       <h4>Wash and coloured arrows</h4>
       <KnotScale stops={rideStops} rider={rider} />

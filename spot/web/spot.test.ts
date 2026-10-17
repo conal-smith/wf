@@ -3,12 +3,10 @@ import { DEFAULT_RIDER, type Rider } from "../../force5/src/stars";
 import type { ForecastHour, HourWind } from "../../mcp/api/forecast";
 import {
   HOUR,
-  bestIn,
   clock,
   compass,
   darkRuns,
   dayNames,
-  dayWindow,
   daySun,
   foldText,
   dublinDate,
@@ -25,10 +23,8 @@ import {
   tideCurve,
   tideHeightAt,
   tideTrend,
-  weekBest,
   windArcs,
   windIn,
-  windowHours,
   type TideTurn,
 } from "./spot";
 
@@ -195,31 +191,21 @@ describe("days", () => {
     );
   });
 
-  it("summarises each Irish day from its daylight rows", () => {
+  it("summarises each Irish day's wind from its daylight rows, and rates no day", () => {
     const days = groupDays(spotRows(friday, now, 270, rider));
     // 23:00 UTC is already Saturday in Ireland.
     expect(days.map((d) => d.date)).toEqual(["2026-10-09", "2026-10-10"]);
     const [day] = days;
     expect(day.windMin).toBe(12);
     expect(day.windMax).toBe(18);
-    expect(day.stars).toBeGreaterThan(0);
-    expect(day.potential).toBeGreaterThanOrEqual(day.stars);
     expect(compass(day.direction!)).toBe("SW");
-    expect(day.best).not.toBeNull();
-    expect(day.best!.to).toBeGreaterThan(day.best!.from);
+    expect(day.rows.some((row) => row.rating && row.rating.stars > 0)).toBe(
+      true,
+    );
+    expect(day).not.toHaveProperty("stars");
+    expect(day).not.toHaveProperty("best");
     const saturday = days[1];
-    expect(saturday.stars).toBe(0);
     expect(saturday.windMin).toBeNull();
-    expect(saturday.best).toBeNull();
-  });
-
-  it("names the best window's end as the end of its last row", () => {
-    const rows = spotRows(friday, now, 270, rider);
-    const best = bestIn(rows)!;
-    const last = rows.find((row) => row.time === best.to - HOUR);
-    expect(last?.rating?.stars).toBeGreaterThanOrEqual(best.stars);
-    expect(best.wing).toBeGreaterThan(0);
-    expect(best.own).toBe(false);
   });
 
   it("folds the dark rows either side of the light ones", () => {
@@ -338,78 +324,7 @@ describe("daylight", () => {
   });
 });
 
-describe("the day's window and the pen's note", () => {
-  const now = Date.parse("2026-10-09T06:00:00Z");
-  const rider: Rider = { ...DEFAULT_RIDER, wings: [] };
-  // Light all day from the SW onto a beach facing W: cross-onshore. 8 kn in
-  // the morning, a 16 kn sweet spot 13:00–15:00 UTC, then 11 kn till dark.
-  const knots = (h: number) => (h < 12 ? 8 : h <= 15 ? 16 : 11);
-  const rowsFor = (until: number) =>
-    spotRows(
-      Array.from({ length: until - 6 }, (_, i) => {
-        const h = 6 + i;
-        return hour(
-          `2026-10-09T${String(h).padStart(2, "0")}:00:00Z`,
-          knots(h),
-          h >= 7 && h < 18,
-          225,
-        );
-      }),
-      now,
-      270,
-      rider,
-    );
-
-  it("is the longest run at the day's best stars, and the pen says it", () => {
-    const rows = rowsFor(20);
-    const window = dayWindow(rows)!;
-    expect(window.stars).toBe(
-      Math.max(...rows.map((r) => r.rating?.stars ?? 0)),
-    );
-    expect(
-      rows
-        .slice(window.first, window.last + 1)
-        .every((r) => r.rating?.stars === window.stars),
-    ).toBe(true);
-    expect(clock(window.from)).toBe("13:00");
-    expect(clock(window.to)).toBe("17:00");
-    expect(windowHours(window)).toBe("13–16");
-    expect(window.tillDark).toBe(false);
-  });
-
-  it("says a one-hour window as a time, not a bare figure", () => {
-    const window = { ...dayWindow(rowsFor(20))! };
-    window.to = window.from + HOUR;
-    expect(windowHours(window)).toBe("13:00");
-  });
-
-  it("ends a window at last light, not at the end of a three-hour row", () => {
-    const rows = spotRows(
-      [12, 15, 18].map((h) => hour(`2026-10-11T${h}:00:00Z`, 16, true, 225)),
-      Date.parse("2026-10-11T06:00:00Z"),
-      270,
-      rider,
-      // Made three-hourly by hand, as rows from 72 hours on are.
-    ).map((row) => ({ ...row, step: 3 }));
-    const lastLight = Date.parse("2026-10-11T18:29:00Z");
-    expect(clock(dayWindow(rows)!.to)).toBe("22:00");
-    const window = dayWindow(rows, { lastLight })!;
-    expect(window.to).toBe(lastLight);
-    expect(windowHours(window)).toBe("13–19");
-  });
-
-  it("picks the week's best by stars, then length", () => {
-    const rows = rowsFor(20);
-    const window = dayWindow(rows)!;
-    const short = { ...window, last: window.first };
-    const best = weekBest([
-      { date: "2026-10-09", window: short },
-      { date: "2026-10-10", window },
-      { date: "2026-10-11", window: null },
-    ])!;
-    expect(best.date).toBe("2026-10-10");
-  });
-
+describe("gusts", () => {
   it("marks a gust that jumps ten knots or sixty per cent", () => {
     expect(gustJumps(8, 13)).toBe(true);
     expect(gustJumps(20, 29)).toBe(false);

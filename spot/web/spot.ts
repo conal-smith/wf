@@ -1,19 +1,17 @@
 /**
  * The spot page's arithmetic, apart from React so it can be tested on its own:
- * which hours become rows, how they group into Irish days, what each day comes
- * to, what the shore wants from the wind, and the tide and daylight a day's
+ * which hours become rows, how they group into Irish days and the wind each
+ * day has, what the shore wants from the wind, and the tide and daylight a day's
  * chart draws. Everything here is pure; times are UTC milliseconds and every
  * label is Irish local time, as everywhere on the site.
  */
 import {
-  bestWindow,
   rateHour,
   windBand,
   shoreAngle,
   type HourRating,
   type Rider,
   type ShoreAngle,
-  type StarWindow,
 } from "../../force5/src/stars";
 import { sunTimes } from "../../force5/src/sun";
 import { KNOTS, convert, type Units } from "../../force5/src/units";
@@ -294,52 +292,23 @@ export function spotRows(
   }));
 }
 
-export interface WindowSummary {
-  stars: number;
-  /** First row of the window, and the instant it ends (exclusive). */
-  from: number;
-  to: number;
-  /** The wing the window's first hour assumes: the rider's own, or the pick. */
-  wing: number;
-  own: boolean;
-  rating: HourRating;
-}
-
-/** The best stretch in some rows, rated on its weakest, as the dock rates it. */
-export function bestIn(rows: readonly SpotRow[]): WindowSummary | null {
-  const window: StarWindow | null = bestWindow(rows.map((row) => row.rating));
-  if (!window) return null;
-  const first = rows[window.from];
-  const last = rows[window.to];
-  const rating = first.rating!;
-  return {
-    stars: window.stars,
-    from: first.time,
-    to: last.time + last.step * HOUR,
-    wing: rating.wing.own ?? rating.wing.recommended,
-    own: rating.wing.own !== null,
-    rating,
-  };
-}
-
 export interface SpotDay {
   date: string;
   rows: SpotRow[];
-  /** The best solid stars of any daylight row, and the most the wind offered. */
-  stars: number;
-  potential: number;
   /** Daylight wind: lowest mean, highest mean, highest gust, in knots. */
   windMin: number | null;
   windMax: number | null;
   gustMax: number | null;
   /** The day's prevailing wind, from the daylight rows. */
   direction: number | null;
-  best: WindowSummary | null;
   /** Whether any row of the day has a wind reading at all. */
   hasWind: boolean;
 }
 
-/** Rows grouped by Irish calendar day, each with what the day comes to. */
+/**
+ * Rows grouped by Irish calendar day, each with its wind. A day is not rated:
+ * the hours carry the stars, and a rider picks the hours.
+ */
 export function groupDays(rows: readonly SpotRow[]): SpotDay[] {
   const byDate = new Map<string, SpotRow[]>();
   for (const row of rows) {
@@ -353,19 +322,15 @@ export function summariseDay(date: string, rows: SpotRow[]): SpotDay {
   const light = rows.filter((row) => row.hour.daylight && row.hour.wind);
   const winds = light.map((row) => row.hour.wind!);
   const gusts = winds.flatMap((w) => (w.gust_kn === null ? [] : [w.gust_kn]));
-  const rated = rows.flatMap((row) => (row.rating ? [row.rating] : []));
   return {
     date,
     rows,
-    stars: Math.max(0, ...rated.map((r) => r.stars)),
-    potential: Math.max(0, ...rated.map((r) => r.potential)),
     windMin: winds.length ? Math.min(...winds.map((w) => w.wind_kn)) : null,
     windMax: winds.length ? Math.max(...winds.map((w) => w.wind_kn)) : null,
     gustMax: gusts.length ? Math.max(...gusts) : null,
     direction: meanBearing(
       winds.map((w) => ({ deg: w.direction_deg, weight: w.wind_kn })),
     ),
-    best: bestIn(rows),
     hasWind: rows.some((row) => row.hour.wind),
   };
 }
@@ -535,115 +500,6 @@ export function shadeBands(
       to: Math.min(end, band.to),
     }))
     .filter((band) => band.to > band.from);
-}
-
-// ---- the day's window ------------------------------------------------------------
-
-export interface DayWindow {
-  /** Indexes into the day's rows, inclusive. */
-  first: number;
-  last: number;
-  /** The highest solid stars of the day, which every row of the window has. */
-  stars: number;
-  potential: number;
-  from: number;
-  /**
-   * The instant the window ends: the end of its last row, or last light if
-   * that comes first. A three-hourly 18:00 row stands for 18–21, but nobody
-   * rides it after dusk, so the window is not sold as running to 21:00.
-   */
-  to: number;
-  /** The wing the first row of it asks for: the rider's own, or the pick. */
-  wing: number;
-  /** Whether it runs to the last daylight row: "till dark". */
-  tillDark: boolean;
-}
-
-/**
- * The day's best window, as the chart loops it: the longest run of rows at the
- * day's highest solid stars, the earliest of equals. One row will do; null
- * when no row of the day earns a star. With the day's sun, it ends at last
- * light at the latest.
- */
-export function dayWindow(
-  rows: readonly SpotRow[],
-  sun?: Pick<DaySun, "lastLight">,
-): DayWindow | null {
-  const top = Math.max(0, ...rows.map((row) => row.rating?.stars ?? 0));
-  if (top === 0) return null;
-  let best: [number, number] | null = null;
-  let start = -1;
-  for (let i = 0; i <= rows.length; i++) {
-    const on = i < rows.length && rows[i].rating?.stars === top;
-    if (on && start < 0) start = i;
-    if (!on && start >= 0) {
-      if (!best || i - 1 - start > best[1] - best[0]) best = [start, i - 1];
-      start = -1;
-    }
-  }
-  const [first, last] = best!;
-  const rating = rows[first].rating!;
-  let lastLight = rows.length - 1;
-  while (lastLight > 0 && !rows[lastLight].rating) lastLight--;
-  const from = rows[first].time;
-  const end = rows[last].time + rows[last].step * HOUR;
-  const dusk = sun?.lastLight ?? null;
-  return {
-    first,
-    last,
-    stars: top,
-    potential: Math.max(
-      ...rows.slice(first, last + 1).map((row) => row.rating!.potential),
-    ),
-    from,
-    to: dusk !== null && dusk > from && dusk < end ? dusk : end,
-    wing: rating.wing.own ?? rating.wing.recommended,
-    tillDark: last === lastLight && last > first,
-  };
-}
-
-/**
- * "18–19": the window's hours, as the day's header gives them, first to last
- * hour it is rideable in. A window of one hour is a time, "13:00": a bare
- * "13" beside the stars reads as a wind speed.
- */
-export function windowHours(window: DayWindow): string {
-  const first = clock(window.from).slice(0, 2);
-  // The hour the window's last rideable minute falls in.
-  const last = clock(window.to - 60000).slice(0, 2);
-  return first === last ? `${first}:00` : `${first}–${last}`;
-}
-
-/**
- * The fewest stars the pen will praise. Its loop and "best of the week" say
- * "go here", and one star is what a rider gets from offshore wind at best
- * (stars.ts caps it there) or from wind barely over their floor: the best of
- * a poor day, still in the figures and the header, but not worth a ring.
- */
-export const PEN_STARS = 2;
-
-export interface WeekBest {
-  date: string;
-  window: DayWindow;
-}
-
-/** The best window of the week: most stars, then the longest, then the soonest. */
-export function weekBest(
-  days: readonly { date: string; window: DayWindow | null }[],
-): WeekBest | null {
-  let best: WeekBest | null = null;
-  for (const { date, window } of days) {
-    if (!window) continue;
-    const length = window.last - window.first;
-    if (
-      !best ||
-      window.stars > best.window.stars ||
-      (window.stars === best.window.stars &&
-        length > best.window.last - best.window.first)
-    )
-      best = { date, window };
-  }
-  return best;
 }
 
 /**

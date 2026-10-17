@@ -16,7 +16,6 @@ import {
   SpotCard,
   SpotCardView,
   WIND_STOPS,
-  clock,
   forgetSpotCardManifest,
   mapSpotHref,
   readSpotSeries,
@@ -288,28 +287,13 @@ describe("S4: the stars, as the dock and the spot page rate an hour", () => {
     expect(off.now?.potential).toBeGreaterThanOrEqual(4);
   });
 
-  it("finds the best run of what is left of today, on its weakest hour", () => {
-    // Light all day but for 13:00 to 15:59 UTC, which is 14:00 to 17:00 Irish.
-    const knots = Array(24).fill(6);
-    for (const h of [13, 14, 15]) knots[h] = 17;
-    const best = outlook(knots, DAY0 + 9 * HOUR).best;
-    expect(best).not.toBeNull();
-    expect(clock(best!.from)).toBe("14:00");
-    expect(clock(best!.to)).toBe("17:00");
-    expect(best!.stars).toBeGreaterThanOrEqual(4);
-    expect(best!.wing).toBeGreaterThan(0);
-    // Once it has gone by, it is not sold.
-    expect(outlook(knots, DAY0 + 17 * HOUR).best).toBeNull();
-  });
-
   it("is nothing without a run to rate", () => {
     expect(spotOutlook([], dollymount, DAY0, DEFAULT_RIDER, null)).toEqual({
       now: null,
-      best: null,
     });
   });
 
-  it("draws the stars now and the best of today, and calls the dark dark", () => {
+  it("draws the stars now, calls the dark dark, and gives no verdict on the day", () => {
     const view = (outlook: SpotOutlook) =>
       html(
         createElement(SpotCardView, {
@@ -318,23 +302,11 @@ describe("S4: the stars, as the dock and the spot page rate an hour", () => {
           outlook,
         }),
       );
-    const markup = view({
-      now: { stars: 3, potential: 4 },
-      best: {
-        stars: 4,
-        from: Date.parse("2026-09-19T12:00:00Z"),
-        to: Date.parse("2026-09-19T15:00:00Z"),
-        wing: 5.5,
-      },
-    });
+    const markup = view({ now: { stars: 3, potential: 4 } });
     expect(markup).toContain('aria-label="3 of 5 stars, 4 on the wind alone"');
-    expect(markup).toContain('aria-label="4 of 5 stars"');
-    expect(markup).toContain(">Best today<");
-    expect(markup).toContain(">13:00–16:00<");
-    expect(markup).toContain('aria-label="on a 5.5 square metre wing"');
-    const dark = view({ now: null, best: null });
+    expect(markup).not.toContain("Best today");
+    const dark = view({ now: null });
     expect(dark).toContain(">dark<");
-    expect(dark).not.toContain("Best today");
   });
 });
 

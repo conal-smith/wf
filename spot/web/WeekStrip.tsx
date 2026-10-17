@@ -1,11 +1,11 @@
 /**
- * The week across one ruled strip, a column a day: its name, its best stars
- * and the hours of its best window. The day being read is set on the second
- * sheet with an ink rule under it; choosing one takes the page down to it.
+ * The week across one ruled strip, a column a day: its name and its date, and
+ * no verdict on it, since the hours under each day are what a rider goes by.
+ * The day being read is set on the second sheet with an ink rule under it;
+ * choosing one takes the page down to it.
  */
-import { StarGlyphs } from "../../ui";
 import { RING, tv } from "../../ui/tv";
-import { dayNames, windowHours, type DayWindow } from "./spot";
+import { dayNames } from "./spot";
 
 const styles = tv({
   slots: {
@@ -19,16 +19,11 @@ const styles = tv({
     ],
     name: "flex items-baseline gap-1 font-display text-prose font-semibold",
     date: "font-mono text-eyebrow font-normal text-ink-muted max-sm:hidden",
-    hours: "font-mono text-caption font-semibold text-ink tabular-nums",
-    none: "font-mono text-caption text-ink-muted",
   },
 });
 
 export interface WeekDay {
   date: string;
-  window: DayWindow | null;
-  stars: number;
-  potential: number;
 }
 
 export function WeekStrip({
@@ -55,11 +50,7 @@ export function WeekStrip({
               className={s.card()}
               aria-current={on}
               data-current={on ? "" : undefined}
-              aria-label={`${names.full}: ${
-                day.window
-                  ? `${day.window.stars} of 5 stars, ${windowHours(day.window)}`
-                  : "no stars"
-              }`}
+              aria-label={names.full}
               data-day-card={day.date}
               onClick={() => onSelect(day.date)}
             >
@@ -67,20 +58,6 @@ export function WeekStrip({
                 {names.short}
                 <span className={s.date()}>{names.date.split(" ")[0]}</span>
               </span>
-              {/* The button's own label says the stars; the glyphs are for
-                  the eye only, not an image with no name. */}
-              <span className="flex" aria-hidden="true">
-                <StarGlyphs
-                  stars={day.window ? day.window.stars : 0}
-                  potential={day.window ? day.window.potential : day.potential}
-                  size={8}
-                />
-              </span>
-              {day.window ? (
-                <span className={s.hours()}>{windowHours(day.window)}</span>
-              ) : (
-                <span className={s.none()}>–</span>
-              )}
             </button>
           </li>
         );

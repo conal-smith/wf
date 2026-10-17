@@ -4,8 +4,8 @@
  * the app reads the same consensus already rated for every screen
  * (`useSpotHours`), so the page, the dock and the chart's light can never
  * disagree about an hour. This module puts those hours into the shape the
- * site's own page arithmetic takes (spot/web/spot.ts: the days, their best
- * windows, the folds of night, the light) and reuses it as it stands.
+ * site's own page arithmetic takes (spot/web/spot.ts: the days, the folds of
+ * night, the light) and reuses it as it stands.
  */
 import { shoreAngle } from "../../../../force5/src/stars";
 import { eventsBetween, tideAt, type TideCurve } from "../../../../force5/src/tides";
@@ -17,22 +17,17 @@ import {
   FORECAST_DAYS,
   HOUR,
   HOURLY_AHEAD_HOURS,
-  PEN_STARS,
   clock,
   darkRuns,
-  dayWindow,
   daySun,
   dublinDate,
   dublinHour,
   dublinMidnight,
   groupDays,
   nextMidnight,
-  weekBest,
   type DaySun,
-  type DayWindow,
   type SpotDay,
   type SpotRow,
-  type WeekBest,
 } from "../../../../spot/web/spot";
 import type { MoreCells, RainCell, SkyCell, WaveCell } from "../dock/dockLogic";
 
@@ -128,56 +123,31 @@ export function pageRows(
 export interface PageDay {
   day: SpotDay & { rows: PageRow[] };
   sun: DaySun;
-  window: DayWindow | null;
 }
 
-/** The week, a day at a time, with each day's light and best window. */
+/** The week, a day at a time, with each day's light. No day is rated: its hours are. */
 export function pageDays(rows: readonly PageRow[], lat: number, lon: number): PageDay[] {
   return groupDays(rows)
     .filter((day) => day.hasWind)
     .slice(0, FORECAST_DAYS)
-    .map((day) => {
-      const sun = daySun(lat, lon, day.date);
-      return { day: day as PageDay["day"], sun, window: dayWindow(day.rows, sun) };
-    });
-}
-
-/** The pen's note for the week, only when its best is worth riding. */
-export function penBest(days: readonly PageDay[]): WeekBest | null {
-  const top = weekBest(days.map(({ day, window }) => ({ date: day.date, window })));
-  return top && top.window.stars >= PEN_STARS ? top : null;
+    .map((day) => ({ day: day as PageDay["day"], sun: daySun(lat, lon, day.date) }));
 }
 
 /** What a day's list holds: its folds of night, its hours, and its tide. */
 export type DayItem =
   | { kind: "fold"; edge: "before" | "after"; text: string; key: string }
-  | { kind: "row"; row: PageRow; first: boolean; last: boolean; ringed: boolean; key: string }
+  | { kind: "row"; row: PageRow; key: string }
   | { kind: "tide"; key: string };
 
-/**
- * A day's items, the night folded either side unless it is shown, the rows
- * of the day's best window marked for the pen when it is worth riding.
- */
+/** A day's items, the night folded either side unless it is shown. */
 export function dayItems(
   entry: PageDay,
   showNight: boolean,
   foldText: (edge: "before" | "after", run: readonly SpotRow[]) => string,
 ): DayItem[] {
-  const { day, window } = entry;
+  const { day } = entry;
   const { before, light, after } = darkRuns(day.rows);
-  const ringed = window && window.stars >= PEN_STARS ? window : null;
-  const row = (r: PageRow): DayItem => {
-    const index = day.rows.indexOf(r);
-    const inWindow = !!ringed && index >= ringed.first && index <= ringed.last;
-    return {
-      kind: "row",
-      row: r,
-      ringed: inWindow,
-      first: inWindow && index === ringed!.first,
-      last: inWindow && index === ringed!.last,
-      key: `r${r.time}`,
-    };
-  };
+  const row = (r: PageRow): DayItem => ({ kind: "row", row: r, key: `r${r.time}` });
   const items: DayItem[] = [];
   if (before.length) items.push({ kind: "fold", edge: "before", text: foldText("before", before), key: `fb${day.date}` });
   if (showNight) items.push(...(before as PageRow[]).map(row));
@@ -271,11 +241,11 @@ export function tideWords(turns: readonly TideTurnRow[], note: string | null): s
 export const spotUrl = (id: string) => `https://wingfoil.ie/spot/${encodeURIComponent(id)}`;
 
 /** What the share sheet carries. */
-export function shareContent(name: string, id: string, best: string | null) {
+export function shareContent(name: string, id: string) {
   const url = spotUrl(id);
   return {
     title: `${name} wing foil forecast`,
-    message: `${name} wing foil forecast${best ? `: ${best}` : ""} ${url}`,
+    message: `${name} wing foil forecast ${url}`,
     url,
   };
 }

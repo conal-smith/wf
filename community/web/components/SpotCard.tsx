@@ -2,7 +2,8 @@
  * The spot a thread names, as the chart writes a spot up: its name in the
  * display face's italic, the county in the mono label, and, when the map's
  * data can be had, the hour now in figures (its stars, the wind and the gust
- * raised over it, where it comes from) and the best run of hours left today.
+ * raised over it, where it comes from). No verdict on the day: a rider goes
+ * by the hours, and the chart has them.
  * The whole card is the way to the spot on the chart.
  *
  * The forecast is the one piece of weather the community touches, and the
@@ -21,7 +22,6 @@ import { readForecastJson } from "../../../force5/src/manifests";
 import { loadPrefs } from "../../../force5/src/prefs";
 import { shoreFacing } from "../../../force5/src/shoreFacing";
 import {
-  bestWindow,
   rateHour,
   type HourRating,
   type Rider,
@@ -70,9 +70,6 @@ export const spotCardStyles = tv({
     from: "font-mono text-caption text-ink-2",
     label: ["text-ink-muted", MONO_LABEL],
     dark: "font-mono text-caption text-ink-muted italic",
-    // The best of what is left today.
-    best: "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
-    bestTimes: "font-mono text-caption font-semibold text-ink tabular-nums",
     meta: "font-body text-body text-ink-muted italic",
     hidden: "sr-only",
   },
@@ -161,42 +158,18 @@ export function readingLine(reading: SpotReading): string {
 
 const WHERE = "Forecast on the wind map";
 
-/** What the stars make of the spot today, for the reader's rider. */
+/** What the stars make of the spot's hour now, for the reader's rider. */
 export interface SpotOutlook {
   /** The hour now, rated. Null in the dark, or with no wind to rate. */
   now: Pick<HourRating, "stars" | "potential"> | null;
-  /** The best run of hours left today, rated on its weakest. */
-  best: {
-    stars: number;
-    /** The first hour and the instant the run ends, in ms. */
-    from: number;
-    to: number;
-    /** The wing it takes, in m²: the rider's own, or the one picked. */
-    wing: number;
-  } | null;
 }
 
 const HOUR_MS = 3600000;
-const dublinDay = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/Dublin",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-const dublinClock = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/Dublin",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-/** "13:00", Irish time: the clock the rest of the site keeps. */
-export const clock = (time: number) => dublinClock.format(new Date(time));
 
 /**
- * The hour now and the best of what is left of today, rated as the dock rates
- * an hour: the run's wind and gust, where it blows from against the way the
- * shore faces, and the dark left unrated. One model's run, so the models'
+ * The hour now, rated as the dock rates an hour: the run's wind and gust,
+ * where it blows from against the way the shore faces, and the dark left
+ * unrated. One model's run, so the models'
  * agreement is not known and costs nothing.
  */
 export function spotOutlook(
@@ -209,7 +182,7 @@ export function spotOutlook(
   const hours = (series ?? []).filter(
     (hour) => Number.isFinite(hour.u) && Number.isFinite(hour.v),
   );
-  if (!hours.length) return { now: null, best: null };
+  if (!hours.length) return { now: null };
   const times = hours.map((hour) => Date.parse(hour.validTime));
   const nights =
     place.lat === undefined || place.lon === undefined
@@ -244,30 +217,7 @@ export function spotOutlook(
   const nearest = nearestFrame(hours, now);
   const covered = Math.abs(times[nearest] - now) <= NOW_WINDOW_MS;
   const rated = covered ? rate(nearest) : null;
-
-  // What is left of today: from the top of this hour to Irish midnight.
-  const today = dublinDay.format(new Date(now));
-  const from = now - (now % HOUR_MS);
-  const left = times
-    .map((time, at) => ({ time, at }))
-    .filter(
-      ({ time }) => time >= from && dublinDay.format(new Date(time)) === today,
-    );
-  const ratings = left.map(({ at }) => rate(at));
-  const window = bestWindow(ratings);
-  const first = window ? ratings[window.from] : null;
-  return {
-    now: rated && { stars: rated.stars, potential: rated.potential },
-    best:
-      window && first
-        ? {
-            stars: window.stars,
-            from: left[window.from].time,
-            to: left[window.to].time + HOUR_MS,
-            wing: first.wing.own ?? first.wing.recommended,
-          }
-        : null,
-  };
+  return { now: rated && { stars: rated.stars, potential: rated.potential } };
 }
 
 export interface SpotCardViewProps {
@@ -281,7 +231,6 @@ export function SpotCardView({ spot, reading, outlook }: SpotCardViewProps) {
   const styles = spotCardStyles({
     wind: reading ? windStop(reading.knots) : undefined,
   });
-  const best = outlook?.best ?? null;
   return (
     <a className={styles.base()} href={mapSpotHref(spot.id)}>
       <span className={styles.head()}>
@@ -320,21 +269,6 @@ export function SpotCardView({ spot, reading, outlook }: SpotCardViewProps) {
         </span>
       ) : (
         <span className={styles.meta()}>{WHERE}</span>
-      )}
-      {best && (
-        <span className={styles.best()}>
-          <span className={styles.label()}>Best today</span>
-          <StarGlyphs stars={best.stars} size={12} />
-          <span className={styles.bestTimes()}>
-            {clock(best.from)}–{clock(best.to)}
-          </span>
-          <Figure
-            value={best.wing}
-            unit="m"
-            size="sm"
-            label={`on a ${best.wing} square metre wing`}
-          />
-        </span>
       )}
     </a>
   );

@@ -1,16 +1,16 @@
 /**
  * One Irish day, as the broadsheet's table sets it: a header that sticks while
- * its hours scroll under it, with the day's best stars and window; then a row per daylight hour, the dark folded either side;
+ * its hours scroll under it, naming the day and never rating it; then a row
+ * per daylight hour, the dark folded either side;
  * then the tide and the light. Each row is figures, not words: the time, the
  * stars, the wind with its gust raised, where it comes from, the waves with
  * the way they come from, and the sky. The rows do not open: the hour's wind
  * against the rider's range is a frame of its own (RangeBar.tsx), and a tap on
  * it opens the hour's wind broken down, model by model. A phone has no room for
- * the frame, so there the wind figure opens it. The pen loops the day's best
- * window, when it is worth riding.
+ * the frame, so there the wind figure opens it.
  *
  * A day off the screen draws only its header and a space its height: the
- * rows, the curve and the loop arrive as it scrolls near, or all at once when
+ * rows and the curve arrive as it scrolls near, or all at once when
  * the page is printed.
  */
 import { useLayoutEffect, useRef, useState } from "react";
@@ -21,8 +21,7 @@ import {
   type HourRating,
 } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
-import { Figure, PenNote, RatingTip, StarGlyphs } from "../../ui";
-import { penStyles } from "../../ui/Pen";
+import { Figure, RatingTip, StarGlyphs } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 import { DayTide } from "./DayTide";
 import { ShoreGlyph, SkyGlyph, WindArrow } from "./glyphs";
@@ -35,7 +34,6 @@ import {
 } from "./RangeBar";
 import {
   HOUR,
-  PEN_STARS,
   clock,
   compass,
   darkRuns,
@@ -43,9 +41,7 @@ import {
   foldText,
   gustJumps,
   windIn,
-  windowHours,
   type DaySun,
-  type DayWindow,
   type SpotDay,
   type SpotRow,
   type TideTurn,
@@ -59,10 +55,6 @@ const styles = tv({
     headLine: "flex flex-wrap items-center gap-x-2.5 gap-y-0.5",
     title: "m-0 font-display text-lead text-ink",
     when: ["ml-2 align-middle text-ink-muted", MONO_LABEL],
-    best: "inline-flex items-center gap-1.5 font-mono text-caption font-medium text-ink tabular-nums",
-    none: "font-mono text-caption text-ink-muted",
-    wrap: "relative",
-    pen: "pointer-events-none absolute inset-0 size-full overflow-visible",
     table: "w-full border-collapse font-mono tabular-nums",
     th: [
       "border-0 border-b border-ink px-1 pt-1.5 pb-1 text-left align-bottom whitespace-nowrap text-ink-muted",
@@ -120,9 +112,6 @@ const styles = tv({
 
 export interface DaySectionProps {
   day: SpotDay;
-  window: DayWindow | null;
-  /** The week's best: the pen says so beside the day's name. */
-  weekBest: boolean;
   now: number;
   units: Units;
   unitText: string;
@@ -161,73 +150,8 @@ function estimate(rows: readonly SpotRow[], wide: boolean): number {
   return head + folds * 32 + light.length * (wide ? 36 : 40) + 209;
 }
 
-/** A seeded hand in [0, 1), as the kit's pen has: the same day, the same ring. */
-function hand(seed: number): () => number {
-  let s = seed * 9301 + 49297;
-  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
-}
-
-/**
- * The pen's ring round a run of rows, kept to the rows it rings. The kit's
- * `loopPath` is an ellipse whose wobble and overshoot are a share of its size:
- * round an hour or two that is a pen's flourish, but round a whole day of
- * rows it is a tall oval that narrows across the first and last hours,
- * cutting their figures, and overshoots by tens of pixels, up through the
- * night's fold and the column heads. This ring is a superellipse instead: an
- * ellipse round a row, squarer the taller it gets, just square enough that
- * its sides still clear the hour and the stars at the middle of the first and
- * last rows (`clear` from the top and bottom). Its wobble and overshoot are
- * a few pixels, mostly inward, so it never strays more than that outside
- * the box.
- */
-function ringPath({
-  left,
-  top,
-  right,
-  bottom,
-  clear,
-  seed,
-}: {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-  clear: number;
-  seed: number;
-}): string {
-  const rnd = hand(seed);
-  const cx = (left + right) / 2;
-  const cy = (top + bottom) / 2;
-  const rx = (right - left) / 2;
-  const ry = (bottom - top) / 2;
-  // How far up the ring the end rows' middles sit (0 at its waist), and how
-  // much of its half-width must be left there: all but the 5px the wobble
-  // can take in and the margin the box was given.
-  const v = Math.max(0, 1 - clear / ry);
-  const need = 1 - 5 / rx;
-  let n = 2;
-  while (n < 12 && (1 - v ** n) ** (1 / n) < need) n += 0.5;
-  const start = rnd() * Math.PI * 2;
-  const turns = 1.1 + rnd() * 0.08;
-  const steps = 96;
-  const bend = (value: number) => Math.sign(value) * Math.abs(value) ** (2 / n);
-  let d = "";
-  for (let i = 0; i <= steps; i++) {
-    const t = start + (i / steps) * turns * Math.PI * 2;
-    // Between 2.4px in and 1.2px out, growing 2px as it goes, so its end
-    // crosses its start rather than meeting it, as a pen's does.
-    const wob =
-      1.2 * Math.sin(t * 3 + seed) + 0.6 * Math.sin(t * 7 + seed * 2) - 0.6;
-    const grow = 2 * (i / steps);
-    const x = cx + bend(Math.cos(t)) * (rx + wob + grow);
-    const y = cy + bend(Math.sin(t)) * (ry + wob + grow);
-    d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
-  }
-  return d;
-}
-
 export function DaySection(props: DaySectionProps) {
-  const { day, window, weekBest, now, eager } = props;
+  const { day, now, eager } = props;
   const s = styles();
   const names = dayNames(day.date, now);
   const ref = useRef<HTMLElement>(null);
@@ -280,25 +204,6 @@ export function DaySection(props: DaySectionProps) {
               <span className={s.when()}> {names.relative}</span>
             )}
           </h2>
-          {window ? (
-            <span className={s.best()} data-day-best>
-              <StarGlyphs
-                stars={window.stars}
-                potential={window.potential}
-                size={10}
-              />
-              {windowHours(window)}
-            </span>
-          ) : (
-            <span className={s.none()}>
-              {day.rows.some((row) => row.rating) ? "no stars" : "dark"}
-            </span>
-          )}
-          {weekBest && (
-            <PenNote as="span" size="sm">
-              best of the week
-            </PenNote>
-          )}
         </div>
       </header>
       {shown ? (
@@ -316,7 +221,6 @@ export function DaySection(props: DaySectionProps) {
 
 function DayBody({
   day,
-  window,
   now,
   units,
   unitText,
@@ -334,52 +238,8 @@ function DayBody({
   const s = styles();
   const names = dayNames(day.date, now);
   const [showNight, setShowNight] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-  const [loop, setLoop] = useState<string | null>(null);
   const { before, light, after } = darkRuns(day.rows);
   const nowHour = Math.floor(now / HOUR) * HOUR;
-  // The pen's loop round the window: measured once the rows are laid out, and
-  // again whenever something moves them (the width, the night unfolding, the web fonts arriving). Only round a window worth
-  // riding: the pen ringing a one-star day would be praising it.
-  const ringed = window && window.stars >= PEN_STARS ? window : null;
-  useLayoutEffect(() => {
-    const box = wrap.current;
-    if (!box || !ringed) {
-      setLoop(null);
-      return;
-    }
-    const draw = () => {
-      const first = box.querySelector<HTMLElement>(
-        `[data-row="${day.rows[ringed.first].time}"]`,
-      );
-      const last = box.querySelector<HTMLElement>(
-        `[data-row="${day.rows[ringed.last].time}"]`,
-      );
-      const stars = last?.querySelector<HTMLElement>("[data-stars]");
-      if (!first || !last || !stars) return setLoop(null);
-      // From just into the page's margin, round the hour and the stars, to
-      // just short of the wind figure: the stars cell ends a few pixels past
-      // its five glyphs.
-      setLoop(
-        ringPath({
-          left: -5,
-          top: first.offsetTop,
-          right: stars.offsetLeft + stars.offsetWidth - 2,
-          bottom: last.offsetTop + last.offsetHeight,
-          clear: Math.min(first.offsetHeight, last.offsetHeight) / 2,
-          seed: day.rows[ringed.first].time / HOUR,
-        }),
-      );
-    };
-    draw();
-    let live = true;
-    void document.fonts?.ready.then(() => {
-      if (live) draw();
-    });
-    return () => {
-      live = false;
-    };
-  }, [ringed, width, showNight, day.rows]);
 
   const fold = (rows: SpotRow[], edge: "before" | "after") =>
     rows.length > 0 && (
@@ -613,72 +473,58 @@ function DayBody({
 
   return (
     <>
-      <div ref={wrap} className={s.wrap()}>
-        <table className={s.table()}>
-          <caption className="sr-only">
-            {spotName}, {names.full}: by the hour, rated for {riderText}. Wind
-            in {unitText}, gusts raised. Times are Irish.
-          </caption>
-          {/* Heads only over hours: a day already dark has just its fold,
+      <table className={s.table()}>
+        <caption className="sr-only">
+          {spotName}, {names.full}: by the hour, rated for {riderText}. Wind in{" "}
+          {unitText}, gusts raised. Times are Irish.
+        </caption>
+        {/* Heads only over hours: a day already dark has just its fold,
               and heads over no rows, sized by their own words, would not
               line up with the days below. */}
-          {drawn.length > 0 && (
-            <thead>
-              <tr>
-                <th scope="col" className={s.th()}>
-                  IST
-                </th>
-                <th scope="col" className={s.th()}>
-                  <a href={STARS_HREF} className={s.tipLink()}>
-                    Stars
-                  </a>
-                </th>
-                <th scope="col" className={s.th()}>
-                  Wind <span className="normal-case">{unitText}</span>
-                </th>
-                <th scope="col" className={s.th()}>
-                  From
-                </th>
-                <th scope="col" className={s.th({ className: s.range() })}>
-                  <span className="sr-only">The wind against your range</span>
-                  <RangeAxis band={band} units={units} />
-                </th>
-                <th scope="col" className={s.th({ className: s.shore() })}>
-                  Shore
-                </th>
-                <th scope="col" className={s.th({ className: s.wing() })}>
-                  Wing
-                </th>
-                <th scope="col" className={s.th({ className: s.waves() })}>
-                  Waves
-                </th>
-                <th scope="col" className={s.th()}>
-                  Sky
-                </th>
-              </tr>
-            </thead>
-          )}
-          <tbody>
-            {fold(before, "before")}
-            {showNight && before.map(hourRow)}
-            {light.map(hourRow)}
-            {fold(after, "after")}
-            {showNight && after.map(hourRow)}
-          </tbody>
-        </table>
-        {loop && (
-          <svg className={s.pen()} aria-hidden="true" focusable="false">
-            <path
-              className={penStyles().stroke()}
-              d={loop}
-              pathLength={1}
-              strokeDasharray="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        {drawn.length > 0 && (
+          <thead>
+            <tr>
+              <th scope="col" className={s.th()}>
+                IST
+              </th>
+              <th scope="col" className={s.th()}>
+                <a href={STARS_HREF} className={s.tipLink()}>
+                  Stars
+                </a>
+              </th>
+              <th scope="col" className={s.th()}>
+                Wind <span className="normal-case">{unitText}</span>
+              </th>
+              <th scope="col" className={s.th()}>
+                From
+              </th>
+              <th scope="col" className={s.th({ className: s.range() })}>
+                <span className="sr-only">The wind against your range</span>
+                <RangeAxis band={band} units={units} />
+              </th>
+              <th scope="col" className={s.th({ className: s.shore() })}>
+                Shore
+              </th>
+              <th scope="col" className={s.th({ className: s.wing() })}>
+                Wing
+              </th>
+              <th scope="col" className={s.th({ className: s.waves() })}>
+                Waves
+              </th>
+              <th scope="col" className={s.th()}>
+                Sky
+              </th>
+            </tr>
+          </thead>
         )}
-      </div>
+        <tbody>
+          {fold(before, "before")}
+          {showNight && before.map(hourRow)}
+          {light.map(hourRow)}
+          {fold(after, "after")}
+          {showNight && after.map(hourRow)}
+        </tbody>
+      </table>
       <DayTide
         date={day.date}
         turns={turns}

@@ -2,8 +2,8 @@
  * A riding place's own page (spot/web/SpotApp.tsx), set as the chart's
  * broadsheet: the place's shore and sea in one line, who the stars are rated
  * for, the week in one strip, then day after day down the page under sticky
- * heads, every daylight hour a row of figures with the pen down the best of
- * it, the night folded either side, and the tide and the light under each day.
+ * heads, every daylight hour a row of figures, the night folded either side,
+ * and the tide and the light under each day. No day is rated: the hours are.
  *
  * It reads the app's one forecast (`useSpotHours`), so its stars are the
  * dock's and the chart's light's. `?t=<iso>` opens it on that hour.
@@ -33,7 +33,6 @@ import {
   goodWindArcs,
   gustJumps,
   windIn,
-  windowHours,
 } from "../../../../spot/web/spot";
 import { Button } from "../../components/Button";
 import { SkyGlyph, StarToggle, WindArrow } from "../../components/Glyphs";
@@ -57,7 +56,6 @@ import {
   pageDays,
   pageRows,
   parseTimeParam,
-  penBest,
   rowAt,
   shareContent,
   tideCeiling,
@@ -106,7 +104,6 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
     () => pageDays(rows, spot.lat, spot.lon),
     [rows, spot.lat, spot.lon],
   );
-  const best = useMemo(() => penBest(days), [days]);
   // `?t=` names an hour: its day's night is unfolded if it is dark, and its
   // detail opened. A tap flips either from there.
   const wanted = useMemo(() => parseTimeParam(t, now), [t, now]);
@@ -212,16 +209,13 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
 
   const share = useCallback(() => {
     tick();
-    const top = best
-      ? `${dayNames(best.date, now).short} ${"★".repeat(best.window.stars)} ${windowHours(best.window)}`
-      : null;
-    const content = shareContent(spot.name, id, top);
+    const content = shareContent(spot.name, id);
     void Share.share({
       title: content.title,
       message: content.message,
       url: content.url,
     }).catch(() => undefined);
-  }, [best, now, spot.name, id]);
+  }, [spot.name, id]);
 
   const toggleRow = useCallback((time: number) => {
     tick();
@@ -401,7 +395,6 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
           renderSectionHeader={({ section }) => (
             <DayHeader
               entry={section.entry}
-              weekBest={best?.date === section.key}
               now={now}
               unit={units}
             />
@@ -437,17 +430,14 @@ function SpotPage({ id, t }: { id: string; t?: string | string[] }) {
 /** A day's head, sticky while its hours scroll under it, with the columns' names. */
 const DayHeader = memo(function DayHeader({
   entry,
-  weekBest,
   now,
   unit,
 }: {
   entry: PageDay;
-  weekBest: boolean;
   now: number;
   unit: string;
 }) {
   const names = dayNames(entry.day.date, now);
-  const window = entry.window;
   return (
     <View style={styles.dayHead}>
       <View style={styles.dayLine}>
@@ -457,32 +447,6 @@ const DayHeader = memo(function DayHeader({
         {names.relative === "Today" || names.relative === "Tomorrow" ? (
           <T variant="eyebrow" caps color="muted">
             {names.relative}
-          </T>
-        ) : null}
-        {window ? (
-          <View
-            style={styles.dayBest}
-            accessible
-            accessibilityLabel={`Best ${window.stars} of 5 stars, ${windowHours(window)}`}
-          >
-            <Stars
-              stars={window.stars}
-              potential={window.potential}
-              size={10}
-              best
-            />
-            <T variant="figureSm" tabular>
-              {windowHours(window)}
-            </T>
-          </View>
-        ) : (
-          <T variant="caption" color="muted">
-            {entry.day.rows.some((r) => r.rating) ? "no stars" : "dark"}
-          </T>
-        )}
-        {weekBest ? (
-          <T variant="pen" color="penInk">
-            best of the week
           </T>
         ) : null}
       </View>
@@ -573,7 +537,6 @@ const HourRow = memo(function HourRow({
         }}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
-        {item.ringed ? <PenMark first={item.first} last={item.last} /> : null}
         <T
           variant="figureSm"
           tabular
@@ -696,28 +659,6 @@ const HourRow = memo(function HourRow({
     </View>
   );
 });
-
-/** The pen down the day's best window: a bracket drawn by hand, rows of it at a time. */
-function PenMark({ first, last }: { first: boolean; last: boolean }) {
-  return (
-    <View pointerEvents="none" style={styles.pen}>
-      <Svg
-        width={8}
-        height="100%"
-        preserveAspectRatio="none"
-        viewBox="0 0 8 40"
-      >
-        <Path
-          d={`${first ? "M7 3 Q2 4 2 10" : "M2 0"} L2 ${last ? 30 : 40}${last ? " Q2 36 7 37" : ""}`}
-          fill="none"
-          stroke={colors.pen}
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
-      </Svg>
-    </View>
-  );
-}
 
 function ShareGlyph() {
   return (
@@ -868,7 +809,6 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingBottom: space.xs,
   },
-  dayBest: { flexDirection: "row", alignItems: "center", gap: space.xs },
   heads: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -904,13 +844,6 @@ const styles = StyleSheet.create({
   },
   moreFacts: { flexDirection: "row", flexWrap: "wrap", columnGap: space.md },
   reason: { fontFamily: fonts.bodyItalic },
-  pen: {
-    position: "absolute",
-    left: -space.md,
-    top: 0,
-    bottom: 0,
-    width: space.sm,
-  },
   fold: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,14 +1,13 @@
 /**
  * The week across one ruled strip, a column a day (spot/web/WeekStrip.tsx):
- * its name, its best stars and the hours of its best window. The day being
- * read is on the second sheet with an ink rule under it; a tap takes the page
- * down to it.
+ * its name and date, and no verdict on it, since the hours under each day
+ * are what a rider goes by. The day being read is on the second sheet with
+ * an ink rule under it; a tap takes the page down to it.
  */
 import { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { dayNames, windowHours } from "../../../../spot/web/spot";
+import { dayNames } from "../../../../spot/web/spot";
 import { tick } from "../../components/haptics";
-import { Stars } from "../../components/Stars";
 import { T } from "../../components/Text";
 import { colors, fonts, hitTarget, space } from "../../theme/tokens";
 import type { PageDay } from "./spotLogic";
@@ -26,7 +25,7 @@ export const WeekStrip = memo(function WeekStrip({
 }) {
   return (
     <View style={styles.base} accessibilityRole="tablist" accessibilityLabel="The week">
-      {days.map(({ day, window }) => {
+      {days.map(({ day }) => {
         const names = dayNames(day.date, now);
         const on = day.date === current;
         return (
@@ -34,9 +33,7 @@ export const WeekStrip = memo(function WeekStrip({
             key={day.date}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={`${names.full}: ${
-              window ? `${window.stars} of 5 stars, ${windowHours(window)}` : "no stars"
-            }`}
+            accessibilityLabel={names.full}
             onPress={() => {
               tick();
               onSelect(day.date);
@@ -46,14 +43,8 @@ export const WeekStrip = memo(function WeekStrip({
             <T variant="body" style={styles.name} numberOfLines={1} maxFontSizeMultiplier={1.3}>
               {names.short}
             </T>
-            <Stars
-              stars={window ? window.stars : 0}
-              potential={window ? window.potential : day.potential}
-              size={7}
-              best
-            />
-            <T variant="caption" tabular style={styles.hours} numberOfLines={1} maxFontSizeMultiplier={1.3}>
-              {window ? windowHours(window) : "–"}
+            <T variant="caption" tabular color="muted" style={styles.date} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+              {names.date.split(" ")[0]}
             </T>
           </Pressable>
         );
@@ -72,7 +63,7 @@ const styles = StyleSheet.create({
   },
   day: {
     flex: 1,
-    minHeight: hitTarget + space.lg,
+    minHeight: hitTarget,
     paddingHorizontal: space["2xs"],
     paddingVertical: space.xs,
     alignItems: "center",
@@ -85,5 +76,5 @@ const styles = StyleSheet.create({
   on: { backgroundColor: colors.sunken, borderBottomColor: colors.ink },
   pressed: { backgroundColor: colors.sunken },
   name: { fontFamily: fonts.displayBold },
-  hours: { fontFamily: fonts.monoBold },
+  date: { fontFamily: fonts.mono },
 });

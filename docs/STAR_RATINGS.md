@@ -216,10 +216,14 @@ given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
   row leads to [How the stars work](/stars).
 - The **wing** row gives each rated hour's wing, the rider's own if they have
   one that fits, else the recommended size.
-- The head says the day's **best** stretch still ahead ("Best today
-  13:00–16:00 · ★★★★ · 6.5 m"), and the red pen loops each day's best on the
-  strip. The map's lights read the same stars for the selected hour
-  (`src/ratings.ts`).
+- The map's lights read the same stars for the selected hour
+  (`src/ratings.ts`), and so do the rows that list places (the search, Your
+  spots, the note beside the selected light): each gives the place's stars and
+  wind at that hour.
+
+Days are not rated. A day's heading is its name and date: a "best today" or a
+day's stars would sell a day on its one good hour, and a rider reads the hours
+and picks a window themselves.
 
 ## On the spot page
 
@@ -231,16 +235,11 @@ so the stars there are the stars an assistant would be given. The dock follows
 the same rule, so the two agree unless a reader has left models out in Display
 options.
 
-- **The headline** is the week's verdict: its best window, most stars first,
-  then the longest, then the soonest ("Brandon Bay: a five-star Friday
-  afternoon on a 5.5 m").
-- **The week strip**, a column a day for seven Irish days: the day's best
-  stars and the hours of its best window. Choosing a day takes the page to it.
-- **Each day** under a header that sticks while its hours scroll: the best
-  stars and window, and the pen's note ("Go 18:00 till dark. Four stars on a
-  6.5 m."; "Leave it on the roof." when no hour earns a star). The window is
-  the longest run of rows at the day's highest solid stars, the earliest of
-  equals; one row will do. The pen loops it in the table.
+- **The week strip**, a column a day for seven Irish days, by name and date.
+  Choosing a day takes the page to it. No day is rated: the stars are the
+  hours'.
+- **Each day** under a header that sticks while its hours scroll: its name
+  and date.
 - **A row per daylight hour**, the dark folded either side and never rated:
   the stars, the wind with its gust raised (in the pen's red when it jumps),
   where it comes from, the waves and the sky. Rows are hourly
@@ -262,8 +261,8 @@ options.
 
 There is no "chance it rides" column. It was the share of ensemble members
 (ECMWF ENS and GEFS) windy enough for the rider; it was removed on 11 October
-2026, with both ensembles retired to save downloads, since the stars and the
-pen's window already say when to go.
+2026, with both ensembles retired to save downloads, since the hours' stars
+already say when to go.
 
 Where an ensemble does publish its members for the spot (`spotMembers`), the
 hour's second line gives the members' 10th to 90th percentile wind beside the

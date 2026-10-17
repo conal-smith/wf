@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { areaAt, foilReadout, nearestArea } from "../../../../force5/src/foilDepth";
 import type { Spot } from "../../../../force5/src/weather";
 import { pointHours } from "../../../../src/ratings";
-import { clock, dayBest, dayShort } from "../../../../src/strip";
+import { clock, dayShort } from "../../../../src/strip";
 import { usePointSeries } from "../../../../src/usePointSeries";
 import { done, refused, tick } from "../../components/haptics";
 import { T } from "../../components/Text";
@@ -475,15 +475,13 @@ export default function ChartScreen() {
     [focusAt?.lon, focusAt?.lat, camera?.zoom, size, tabInset],
   );
 
-  /* ---- what the search list shows ---- */
-  const selectedDay = days.find((d) => selected >= d.start && selected < d.start + d.count);
-  const dayStars = useCallback(
+  /* ---- what the search list shows: each place at the hour the lights show ---- */
+  const hourAt = useCallback(
     (id: string) => {
-      const row = table.hours.get(id);
-      if (!row || !selectedDay) return null;
-      return dayBest(row.map((h) => h.rating), selectedDay)?.stars ?? null;
+      const hour = table.hours.get(id)?.[selected];
+      return hour?.rating ? hour : null;
     },
-    [table, selectedDay],
+    [table, selected],
   );
   const starredSpots = useMemo(() => starred.flatMap((id) => (spotById(id) ? [spotById(id)!] : [])), [starred]);
 
@@ -533,7 +531,8 @@ export default function ChartScreen() {
           inputRef={searchRef}
           spots={spots}
           starred={starred}
-          dayStars={dayStars}
+          hourAt={hourAt}
+          units={prefs.units}
           me={me}
           open={searchOpen}
           onOpen={setSearchOpen}

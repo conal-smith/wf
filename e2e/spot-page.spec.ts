@@ -61,7 +61,7 @@ const ratings = (page: Page) =>
 const heading = (page: Page) =>
   page.getByRole("heading", { level: 1, name: "Brandon Bay", exact: true });
 
-test("a spot page is the week day by day: hours in figures, the pen, the tide and the light", async ({
+test("a spot page is the week day by day: hours in figures, the tide and the light", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -79,10 +79,13 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
     /Faces|rated on the wind alone/,
   );
 
-  // The week: a column per Irish day the models reach, today first.
+  // The week: a column per Irish day the models reach, today first, each
+  // named and never rated: no stars, no best window.
   const cards = page.locator("[data-day-card]");
   expect(await cards.count()).toBeGreaterThanOrEqual(3);
   await expect(cards.first()).toHaveAttribute("aria-current", "true");
+  await expect(page.locator("[data-day-card] svg")).toHaveCount(0);
+  await expect(cards.first()).not.toHaveAttribute("aria-label", /star/);
 
   // Today opens at night: its rows are folded away and none is rated.
   const today = page.locator("[data-day]").first();
@@ -110,8 +113,12 @@ test("a spot page is the week day by day: hours in figures, the pen, the tide an
   await expect(
     tomorrow.getByRole("img", { name: /of 5 stars/ }).first(),
   ).toBeAttached();
-  // No "chance it rides" column: the stars and the pen say when to go.
+  // No "chance it rides" column: the hours' stars say when to go. The day's
+  // heading names the day and rates nothing.
   await expect(tomorrow.locator("[data-chance]")).toHaveCount(0);
+  await expect(page.locator("[data-day-best]")).toHaveCount(0);
+  await expect(tomorrow.locator("header svg")).toHaveCount(0);
+  await expect(tomorrow.locator("header")).not.toContainText(/best|no stars/);
 
   // The stars explain themselves: hovering them opens the chart's box with
   // the verdict, the reasons and who it is rated for; Escape closes it.

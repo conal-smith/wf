@@ -171,8 +171,12 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
         .evaluate((el) => Number(getComputedStyle(el).opacity)),
     )
     .toBe(1);
-  // The pen rings it and writes the day's best beside it.
+  // The pen rings it and writes beside it the hour the map shows, rated:
+  // the hour's stars and wind, never a day's best (and nothing in the dark).
   await expect(page.locator(".map-pen .map-pen-loop")).toHaveCount(1);
+  const notes = await page.locator(".map-pen .map-pen-note").allTextContents();
+  for (const note of notes)
+    expect(note).toMatch(/^[A-Z][a-z]{2} \d\d:\d\d (★+|no stars)(, |$)/);
   // The wind stays at full strength.
   await expect(page.locator(".particle-canvas")).toHaveCSS("opacity", "1");
 

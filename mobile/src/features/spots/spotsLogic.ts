@@ -1,62 +1,44 @@
 /**
- * The Spots tab's arithmetic: each of a rider's places with every day's best
- * stars (the dock's `dayBest`, after now), the places they keep opening, and
- * the nearest places to them.
+ * The Spots tab's arithmetic: each of a rider's places at the hour the chart
+ * shows (its stars and wind, never a day's best), the places they keep
+ * opening, and the nearest places to them.
  */
+import type { HourRating } from "../../../../force5/src/stars";
+import type { Units } from "../../../../force5/src/units";
 import type { Spot } from "../../../../force5/src/weather";
 import type { PlaceHour } from "../../../../src/ratings";
-import { dayBest, dayShort, type StripColumn, type StripDay } from "../../../../src/strip";
+import { clock, dayShort, type StripColumn } from "../../../../src/strip";
+import { windFigures } from "../dock/dockLogic";
 
-/** One day's verdict at a place: unknown until its hours are read, never "no stars". */
-export type DayStars =
-  | { kind: "unread"; date: string; label: string }
-  | { kind: "dark"; date: string; label: string }
-  | { kind: "rated"; date: string; label: string; stars: number; potential: number };
+/** A place at one hour: unknown until its hours are read, nothing where the hour is not rated. */
+export type SpotHour =
+  | { kind: "unread" }
+  | { kind: "unrated" }
+  | { kind: "rated"; rating: HourRating; wind: string };
 
-/** The days a row shows: today and the six after it. */
-export const WEEK = 7;
-
-/** Each day's best stars still ahead at one place. */
-export function weekStars(
+/** A place's hour at the chart's selected column. */
+export function spotHour(
   hours: readonly PlaceHour[] | null | undefined,
-  days: readonly StripDay[],
-  strip: readonly StripColumn[],
-  now: number,
-  count = WEEK,
-): DayStars[] {
-  const times = strip.map((c) => c.time);
-  const ratings = hours?.map((h) => h.rating) ?? null;
-  return days.slice(0, count).map((day) => {
-    const label = dayShort(day.noon);
-    if (!ratings) return { kind: "unread", date: day.date, label };
-    const best = dayBest(ratings, day, now, times);
-    if (!best) return { kind: "dark", date: day.date, label };
-    return {
-      kind: "rated",
-      date: day.date,
-      label,
-      stars: best.stars,
-      potential: ratings[best.from]?.potential ?? best.stars,
-    };
-  });
+  column: number,
+  units: Units,
+): SpotHour {
+  if (!hours) return { kind: "unread" };
+  const hour = hours[column];
+  if (!hour?.rating) return { kind: "unrated" };
+  return { kind: "rated", rating: hour.rating, wind: windFigures(hour, units) };
 }
 
-/** "Sat 4 stars, Sun 2 stars, Mon not read yet": the week, spoken. */
-export function weekWords(week: readonly DayStars[]): string {
-  return week
-    .map((d) =>
-      d.kind === "rated"
-        ? `${d.label} ${d.stars} star${d.stars === 1 ? "" : "s"}`
-        : d.kind === "dark"
-          ? `${d.label} nothing left to ride`
-          : `${d.label} not read yet`,
-    )
-    .join(", ");
-}
+/** "Sat 15:00": the hour the list is read at. */
+export const whenLabel = (column: Pick<StripColumn, "time"> | undefined) =>
+  column ? `${dayShort(column.time)} ${clock(column.time)}` : "";
 
-/** The week's best day at a place, for the row's summary. */
-export const weekTop = (week: readonly DayStars[]) =>
-  week.reduce((top, d) => (d.kind === "rated" && d.stars > top ? d.stars : top), 0);
+/** "Sat 15:00, 4 stars, wind 14 g22 · WSW": the hour, spoken. */
+export function hourWords(at: SpotHour, label: string): string {
+  if (at.kind === "unread") return `${label} not read yet`;
+  if (at.kind === "unrated") return `${label} not rated`;
+  const { stars } = at.rating;
+  return `${label}, ${stars} star${stars === 1 ? "" : "s"}, wind ${at.wind}`;
+}
 
 /** Great-circle kilometres. */
 export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {

@@ -38,7 +38,7 @@ import { dayNights } from "../../../../force5/src/sun";
 import { tideAt } from "../../../../force5/src/tides";
 import { unitLabel } from "../../../../force5/src/units";
 import { daylightOn } from "../../../../src/ratings";
-import { clock, dayBest, dayShort, stripGeometry, stripTrack, type StripDay } from "../../../../src/strip";
+import { clock, dayShort, stripGeometry, stripTrack, type StripDay } from "../../../../src/strip";
 import { bandKnots } from "../../../../spot/web/spot";
 import { Button } from "../../components/Button";
 import {
@@ -70,10 +70,8 @@ import { DockDay } from "./DockDay";
 import {
   COMMIT_MS,
   beyondMapModel,
-  bestLine,
   columnWidths,
   commitDue,
-  dayOf,
   dayTide,
   dockRowOn,
   hourReading,
@@ -173,20 +171,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
   }, [tide.tide, layout.at.tide, days, strip, g]);
   const tideNote = tide.loading ? "" : (tide.error ?? (tide.tide ? null : "No tide station near"));
   const nowHour = now - (now % 3600000);
-  const bests = useMemo(
-    () =>
-      hours
-        ? days.map((d) =>
-            dayBest(
-              hours.map((h) => h.rating),
-              d,
-              nowHour,
-              strip.map((c) => c.time),
-            ),
-          )
-        : null,
-    [hours, days, nowHour, strip],
-  );
   const drawing = useMemo(() => {
     if (!layout.at.blend || !spot || !axis.length) return null;
     return blendDrawing({
@@ -370,7 +354,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
         facing={spot?.facing ?? null}
         spot={!!spot}
         nowHour={nowHour}
-        best={bests?.[index] ?? null}
         tide={tides?.[index] ?? null}
         tideNote={tideNote}
         more={cells}
@@ -381,7 +364,7 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
         onStars={onStars}
       />
     ),
-    [strip, g, hours, daylight, layout, units, spot, nowHour, bests, tides, tideNote, cells, drawing, view, blend.lines.length, scale, choose, onStars],
+    [strip, g, hours, daylight, layout, units, spot, nowHour, tides, tideNote, cells, drawing, view, blend.lines.length, scale, choose, onStars],
   );
   const getItemLayout = useCallback(
     (_: ArrayLike<StripDay> | null | undefined, index: number) => ({
@@ -401,10 +384,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
   const Scroll = sheet ? BottomSheetScrollView : ScrollView;
   const isStarred = !!spot && starred.includes(spot.id);
   const column = strip[selected];
-  const best = useMemo(
-    () => (spot ? bestLine(hours, strip, dayOf(days, selected), now) : null),
-    [spot, hours, strip, days, selected, now],
-  );
   const reach = open && onShowOnChart && beyondMapModel(column) ? modelEntry(column!.model) : null;
 
   if (!strip.length)
@@ -486,30 +465,6 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
               onPress={() => onOpenSpotPage(spot.id)}
             />
           </View>
-        ) : null}
-
-        {open && best ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${best.label}: ${best.stars} of 5 stars, ${best.when}${best.wing ? `, on a ${best.wing} square metre wing` : ""}. Show it.`}
-            onPress={() => choose(best.from)}
-            style={({ pressed }) => [styles.best, pressed && styles.pressedRow]}
-          >
-            <T variant="eyebrow" caps color="muted">
-              {best.label}
-            </T>
-            {best.stars > 0 ? (
-              <Stars stars={best.stars} potential={best.potential} size={11} best />
-            ) : (
-              <T variant="caption" color="muted">
-                no stars
-              </T>
-            )}
-            <T variant="figureSm" tabular>
-              {best.stars > 0 ? best.when : ""}
-              {best.stars > 0 && best.wing ? ` · ${best.wing} m²` : ""}
-            </T>
-          </Pressable>
         ) : null}
 
         {reach ? (
@@ -794,13 +749,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.xs,
     gap: space.sm,
-  },
-  best: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    minHeight: hitTarget,
   },
   reach: {
     alignSelf: "flex-start",

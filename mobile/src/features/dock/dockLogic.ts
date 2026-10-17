@@ -30,12 +30,9 @@ import { compass } from "../../../../force5/src/weather";
 import type { PlaceHour } from "../../../../src/ratings";
 import {
   clock,
-  dayBest,
   dayLong,
   dayShort,
-  irishDate,
   rainColumns,
-  type DayBest,
   type StripColumn,
   type StripDay,
   type StripGeometry,
@@ -434,55 +431,6 @@ export function darkRuns(
 export const dayHead = (day: Pick<StripDay, "noon" | "date">) =>
   `${dayShort(day.noon)} ${Number(day.date.slice(8))}`;
 
-export interface BestLine {
-  /** "Best today", "Best Sat". */
-  label: string;
-  /** "13–16", "13:00". */
-  when: string;
-  stars: number;
-  potential: number;
-  wing: number | null;
-  /** The first column of the stretch: a tap goes there. */
-  from: number;
-}
-
-/**
- * The selected day's best stretch still ahead, as the pen's note on the site
- * says it ("Sat ★★★★ 13–16, 5 m²"); null for a day with nothing rated.
- */
-export function bestLine(
-  hours: readonly PlaceHour[] | null | undefined,
-  strip: readonly StripColumn[],
-  day: StripDay | undefined,
-  now: number,
-): BestLine | null {
-  if (!hours || !day) return null;
-  const best: DayBest | null = dayBest(
-    hours.map((h) => h.rating),
-    day,
-    now,
-    strip.map((c) => c.time),
-  );
-  if (!best) return null;
-  const rating = hours[best.from]?.rating ?? null;
-  const today = irishDate(now) === day.date;
-  return {
-    label: today ? "Best today" : `Best ${dayShort(day.noon)}`,
-    when:
-      best.from === best.to
-        ? clock(strip[best.from].time)
-        : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`,
-    stars: best.stars,
-    potential: rating?.potential ?? best.stars,
-    wing: wingFor(rating),
-    from: best.from,
-  };
-}
-
-/** The day a column falls in. */
-export const dayOf = (days: readonly StripDay[], column: number) =>
-  days.find((d) => column >= d.start && column < d.start + d.count);
-
 /**
  * Whether the chart can draw the selected hour: past the map model's run the
  * dock offers the run that reaches it (src/App.tsx `reachable`).
@@ -635,44 +583,6 @@ export function dayTide(
     turns,
   };
 }
-
-/* ------------------------------------------------------------------ pen */
-
-/** A seeded hand in [0, 1): the same day, the same ring. */
-function hand(seed: number): () => number {
-  let s = Math.abs(Math.floor(seed)) * 9301 + 49297;
-  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
-}
-
-/**
- * The pen's loop round a stretch: an ellipse drawn in one stroke that runs a
- * little past its start, with a small wobble, as a hand rings an hour.
- */
-export function penLoop(
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  seed: number,
-): string {
-  const rnd = hand(seed);
-  const start = rnd() * Math.PI * 2;
-  const turns = 1.08 + rnd() * 0.08;
-  const steps = 64;
-  let d = "";
-  for (let i = 0; i <= steps; i++) {
-    const t = start + (i / steps) * turns * Math.PI * 2;
-    const wob = 0.8 * Math.sin(t * 3 + seed) + 0.4 * Math.sin(t * 7 + seed * 2);
-    const grow = 1.6 * (i / steps);
-    const x = cx + Math.cos(t) * (rx + wob + grow);
-    const y = cy + Math.sin(t) * (ry + wob * 0.5 + grow * 0.5);
-    d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }
-  return d;
-}
-
-/** The fewest stars the pen will loop (the site's LOOP_MIN_STARS). */
-export const LOOP_MIN_STARS = 2;
 
 /* ------------------------------------------------------------------ more rows */
 

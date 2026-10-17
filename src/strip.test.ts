@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   columnAtX,
-  dayBest,
   dayStep,
   stripGeometry,
   nearestColumn,
@@ -174,25 +173,6 @@ describe("dayStep", () => {
       at("2026-10-08", 3),
     );
     expect(dayStep(strip, days, 0, -1)).toBe(0);
-  });
-});
-
-describe("dayBest", () => {
-  const day = { date: "x", noon: 0, start: 0, count: 6 };
-  const r = (...stars: (number | null)[]) =>
-    stars.map((s) => (s === null ? null : { stars: s }));
-  it("is the longest run of the day's top rating", () => {
-    expect(dayBest(r(2, 4, 4, 3, 4, null), day)).toEqual({ from: 1, to: 2, stars: 4 });
-    expect(dayBest(r(0, 0, null, null, null, null), day)).toEqual({ from: 0, to: 1, stars: 0 });
-    expect(dayBest(r(null, null, null, null, null, null), day)).toBe(null);
-  });
-  it("leaves out the hours already gone", () => {
-    const times = [0, 1, 2, 3, 4, 5].map((h) => h * 3600000);
-    expect(dayBest(r(5, 3, 3, 2, 1, 1), day, 1.5 * 3600000, times)).toEqual({
-      from: 1,
-      to: 2,
-      stars: 3,
-    });
   });
 });
 

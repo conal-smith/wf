@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_RIDER, rateHour } from "../../../../force5/src/stars";
 import type { Spot } from "../../../../force5/src/weather";
 import { daylightOn, type PlaceHour } from "../../../../src/ratings";
-import { stripColumns, stripDays } from "../../../../src/strip";
-import { distanceKm, kmText, nearest, placesFor, weekStars, weekTop, weekWords } from "./spotsLogic";
+import { stripColumns } from "../../../../src/strip";
+import { distanceKm, hourWords, kmText, nearest, placesFor, spotHour, whenLabel } from "./spotsLogic";
 
 const NOW = Date.parse("2026-10-17T07:20:00Z");
 const columns = Array.from({ length: 24 * 8 }, (_, i) => ({
@@ -11,7 +11,6 @@ const columns = Array.from({ length: 24 * 8 }, (_, i) => ({
   model: "harmonie",
 }));
 const strip = stripColumns(columns, NOW, 8);
-const days = stripDays(strip);
 const place = { lat: 52.13, lon: -9.98 };
 
 function hours(wind: (i: number) => number): PlaceHour[] {
@@ -22,25 +21,29 @@ function hours(wind: (i: number) => number): PlaceHour[] {
   });
 }
 
-describe("a place's week", () => {
-  it("is unknown until its hours are read, never no stars", () => {
-    const week = weekStars(null, days, strip, NOW);
-    expect(week).toHaveLength(7);
-    expect(week.every((d) => d.kind === "unread")).toBe(true);
-    expect(weekWords(week)).toMatch(/^Sat not read yet/);
-    expect(weekTop(week)).toBe(0);
+describe("a place at the chart's hour", () => {
+  // 14:00 UTC on Saturday 17 October: 15:00 in Ireland, in daylight.
+  const at = strip.findIndex((c) => c.time === Date.parse("2026-10-17T14:00:00Z"));
+  const night = strip.findIndex((c) => c.time === Date.parse("2026-10-17T22:00:00Z"));
+
+  it("is unknown until its hours are read", () => {
+    const hour = spotHour(null, at, "kn");
+    expect(hour.kind).toBe("unread");
+    expect(hourWords(hour, whenLabel(strip[at]))).toBe("Sat 15:00 not read yet");
   });
 
-  it("gives each day's best stars", () => {
-    const week = weekStars(hours((i) => (i % 24 === 13 ? 18 : 5)), days, strip, NOW);
-    expect(week[0]).toMatchObject({ kind: "rated", label: "Sat" });
-    expect(weekTop(week)).toBeGreaterThanOrEqual(3);
-    expect(weekWords(week)).toMatch(/Sat \d stars?/);
+  it("gives that hour's stars and wind, and no day's best", () => {
+    // Windy only at 03:00 UTC, in the dark: the hour shown is what counts.
+    const place = hours((i) => (strip[i].time === Date.parse("2026-10-17T03:00:00Z") ? 18 : 15));
+    const hour = spotHour(place, at, "kn");
+    expect(hour).toMatchObject({ kind: "rated", rating: place[at].rating, wind: "15 g20 · SW" });
+    expect(hourWords(hour, whenLabel(strip[at]))).toMatch(/^Sat 15:00, \d stars?, wind 15 g20 · SW$/);
   });
 
-  it("says when a day has nothing left", () => {
-    const late = Date.parse("2026-10-17T20:00:00Z");
-    expect(weekStars(hours(() => 15), days, strip, late)[0].kind).toBe("dark");
+  it("shows nothing for an hour not rated", () => {
+    const hour = spotHour(hours(() => 15), night, "kn");
+    expect(hour.kind).toBe("unrated");
+    expect(hourWords(hour, whenLabel(strip[night]))).toBe("Sat 23:00 not rated");
   });
 });
 

@@ -1,8 +1,9 @@
 /**
  * The rider's places: every one of the 148 to search, the ones they star and
- * the ones they keep opening, each with every day's best stars, and the
- * nearest to them when they ask. A swipe or a long press stars or unstars a
- * place; a tap opens its page.
+ * the ones they keep opening, each with its stars and wind at the hour the
+ * chart shows, and the nearest to them when they ask. The lists keep their
+ * own order (the rider's, the most opened, the nearest), never a rating's.
+ * A swipe or a long press stars or unstars a place; a tap opens its page.
  */
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -19,9 +20,10 @@ import { Stars } from "../../components/Stars";
 import { T } from "../../components/Text";
 import { useFavourites } from "../../data/favourites";
 import { useForecast } from "../../data/forecast";
+import { usePrefs } from "../../data/prefs";
 import { allSpots, searchSpots, spotById } from "../../data/spots";
 import { colors, fonts, hitTarget, radius, space, type as scale } from "../../theme/tokens";
-import { kmText, nearest, placesFor, weekStars, weekWords, type DayStars } from "./spotsLogic";
+import { hourWords, kmText, nearest, placesFor, spotHour, whenLabel, type SpotHour } from "./spotsLogic";
 
 type Row = { spot: Spot; km?: number };
 type Section = { key: string; title: string; data: Row[]; note?: string };
@@ -71,7 +73,7 @@ export function SpotsScreen() {
       key: "starred",
       title: "Starred",
       data: kept.map((spot) => ({ spot })),
-      note: kept.length ? undefined : "Star a place, here or on the chart, and its week is kept here.",
+      note: kept.length ? undefined : "Star a place, here or on the chart, and it is kept here.",
     });
     const opened = placesFor(
       frequent.map((v) => v.id).filter((id) => !starred.includes(id)),
@@ -174,7 +176,7 @@ function SearchField({ value, onChange }: { value: string; onChange: (text: stri
   );
 }
 
-/** One place: its name, its county or distance, and its week of best stars. */
+/** One place: its name, its county or distance, and its stars and wind at the chart's hour. */
 const SpotRow = memo(function SpotRow({
   spot,
   km,
@@ -186,14 +188,16 @@ const SpotRow = memo(function SpotRow({
   starred: boolean;
   onToggle: (spot: Spot) => boolean;
 }) {
-  const { hours, version, days, strip, now } = useForecast();
+  const { hours, version, strip, selected } = useForecast();
+  const { prefs } = usePrefs();
   const place = hours.get(spot.id) ?? null;
-  const week = useMemo(
-    () => weekStars(place, days, strip, now),
+  const at = useMemo(
+    () => spotHour(place, selected, prefs.units),
     // `hours` is one Map filled in place; `version` says when it moved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [place, days, strip, now, version],
+    [place, selected, prefs.units, version],
   );
+  const when = whenLabel(strip[selected]);
   const swipe = useRef<SwipeableMethods>(null);
   const open = () => router.push({ pathname: "/spot/[id]", params: { id: spot.id } });
   const flip = () => {
@@ -219,7 +223,7 @@ const SpotRow = memo(function SpotRow({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${spot.name}, ${where}${starred ? ", starred" : ""}. ${weekWords(week)}`}
+        accessibilityLabel={`${spot.name}, ${where}${starred ? ", starred" : ""}. ${hourWords(at, when)}`}
         accessibilityHint="Opens its week, day by day"
         accessibilityActions={[{ name: "activate" }, { name: "star", label: starred ? "Unstar" : "Star" }]}
         onAccessibilityAction={(event) => {
@@ -240,37 +244,30 @@ const SpotRow = memo(function SpotRow({
             {where}
           </T>
         </View>
-        <Week week={week} />
+        <HourLine at={at} when={when} />
       </Pressable>
     </ReanimatedSwipeable>
   );
 });
 
-const Week = memo(function Week({ week }: { week: readonly DayStars[] }) {
+/** The place at the chart's hour: its stars and wind, or nothing where the hour is not rated. */
+const HourLine = memo(function HourLine({ at, when }: { at: SpotHour; when: string }) {
+  if (at.kind === "unrated") return null;
   return (
-    <View style={styles.week}>
-      {week.map((day) => (
-        <View key={day.date} style={styles.day}>
-          <T variant="eyebrow" caps color="muted" maxFontSizeMultiplier={1.2}>
-            {day.label}
+    <View style={styles.hour}>
+      <T variant="eyebrow" caps color="muted" maxFontSizeMultiplier={1.2}>
+        {when}
+      </T>
+      {at.kind === "rated" ? (
+        <>
+          <Stars stars={at.rating.stars} potential={at.rating.potential} size={9} best />
+          <T variant="caption" tabular color="muted" numberOfLines={1}>
+            {at.wind}
           </T>
-          {day.kind === "rated" ? (
-            day.potential > 0 ? (
-              <Stars stars={day.stars} potential={day.potential} size={6.5} best />
-            ) : (
-              <T variant="eyebrow" color="muted">
-                –
-              </T>
-            )
-          ) : day.kind === "dark" ? (
-            <T variant="eyebrow" color="muted">
-              ·
-            </T>
-          ) : (
-            <View style={styles.bone} />
-          )}
-        </View>
-      ))}
+        </>
+      ) : (
+        <View style={styles.bone} />
+      )}
     </View>
   );
 });
@@ -319,8 +316,7 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.sunken },
   rowHead: { flexDirection: "row", alignItems: "baseline", gap: space.sm },
   name: { flexShrink: 1 },
-  week: { flexDirection: "row", justifyContent: "space-between" },
-  day: { alignItems: "center", gap: space["2xs"], minWidth: space["3xl"] },
+  hour: { flexDirection: "row", alignItems: "center", gap: space.sm },
   bone: { width: space["3xl"], height: space.sm, backgroundColor: colors.sunken, borderRadius: radius.control },
   action: {
     width: 104,

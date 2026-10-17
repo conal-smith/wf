@@ -4,6 +4,7 @@ import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import type { Spot } from "../force5/src/weather";
+import { hourWind, type PlaceHour } from "./ratings";
 
 const fold = (s: string) =>
   s
@@ -18,7 +19,7 @@ const fold = (s: string) =>
 export default function MapHead({
   spots,
   starred,
-  dayStars,
+  hourAt,
   onPick,
   inputRef,
 }: {
@@ -26,8 +27,8 @@ export default function MapHead({
   inputRef?: RefObject<HTMLInputElement | null>;
   spots: readonly Spot[];
   starred: readonly string[];
-  /** The selected day's best stars at a place, where it is known. */
-  dayStars: (id: string) => number | null;
+  /** A place's rated hour at the time the map shows, where there is one. */
+  hourAt: (id: string) => PlaceHour | null;
   onPick: (spot: Spot) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -123,7 +124,7 @@ export default function MapHead({
           <ul id={list} className="results chart-box" role="listbox" aria-label="Spots">
             {hits.length ? (
               hits.map((spot, i) => {
-                const stars = dayStars(spot.id);
+                const hour = hourAt(spot.id);
                 return (
                   <li
                     key={spot.id}
@@ -138,8 +139,15 @@ export default function MapHead({
                   >
                     <b>{spot.name}</b>
                     <small>{spot.county}</small>
-                    {stars !== null && (
-                      <StarGlyphs stars={stars} potential={stars} size={10} />
+                    {hour?.rating && (
+                      <span className="spot-hour">
+                        <StarGlyphs
+                          stars={hour.rating.stars}
+                          potential={hour.rating.potential}
+                          size={10}
+                        />
+                        <span>{hourWind(hour)}</span>
+                      </span>
                     )}
                   </li>
                 );

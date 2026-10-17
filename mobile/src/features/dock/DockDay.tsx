@@ -1,7 +1,7 @@
 /**
- * One Irish day of the dock: its heading, then a column per hour down the
- * rows, the night hatched behind them, the tide's curve and the pen's loop
- * over its best stretch. A day is one item of the strip's list, so only the
+ * One Irish day of the dock: its heading (the day's name and date, no
+ * rating: the hours carry the stars), then a column per hour down the rows,
+ * the night hatched behind them, and the tide's curve. A day is one item of the strip's list, so only the
  * days near the screen are drawn, and it is redrawn when its data changes,
  * never as the time scrolls (the cursor is drawn over the list).
  *
@@ -15,18 +15,16 @@ import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop, Text as SvgText
 import { SHORE_LABEL, shoreAngle } from "../../../../force5/src/stars";
 import type { Units } from "../../../../force5/src/units";
 import type { PlaceHour } from "../../../../src/ratings";
-import type { DayBest, StripColumn, StripDay, StripGeometry } from "../../../../src/strip";
+import type { StripColumn, StripDay, StripGeometry } from "../../../../src/strip";
 import { ArrowMark, SkyGlyph, StarsMark } from "../../components/Glyphs";
 import { T } from "../../components/Text";
 import { colors, fonts, space, withAlpha } from "../../theme/tokens";
 import type { BlendDrawing } from "./blendLogic";
 import {
-  LOOP_MIN_STARS,
   darkRuns,
   dayHead,
   hatchPath,
   hourReading,
-  penLoop,
   speedIn,
   starSize,
   windInk,
@@ -50,7 +48,6 @@ export interface DockDayProps {
   spot: boolean;
   /** The top of the hour now: earlier hours are faded. */
   nowHour: number;
-  best: DayBest | null;
   tide: DayTidePaths | null;
   tideNote: string | null;
   more: MoreCells | null;
@@ -65,7 +62,7 @@ export interface DockDayProps {
 const PAST = 0.42;
 
 export const DockDay = memo(function DockDay(props: DockDayProps) {
-  const { day, strip, g, hours, daylight, layout, units, facing, spot, nowHour, best, scale } = props;
+  const { day, strip, g, hours, daylight, layout, units, facing, spot, nowHour, scale } = props;
   const origin = g.x[day.start];
   const end = day.start + day.count - 1;
   const width = g.x[end] + g.w[end] - origin;
@@ -90,14 +87,6 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
   const past = (i: number) => strip[i].time + 3600000 <= nowHour;
   const read = !!hours;
 
-  const loop = useMemo(() => {
-    if (!best || best.stars < LOOP_MIN_STARS || !at.stars || !at.wind) return null;
-    const x0 = g.x[best.from] - origin;
-    const x1 = g.x[best.to] + g.w[best.to] - origin;
-    const h = at.stars.h + at.wind.h;
-    return { d: penLoop((x0 + x1) / 2, h / 2 + 1, (x1 - x0) / 2 + 3, h / 2 - 2, day.start + best.from), h };
-  }, [best, at.stars, at.wind, g, origin, day.start]);
-
   const press = (i: number) => (event: GestureResponderEvent) => {
     const y = event.nativeEvent.locationY + bodyTop;
     if (at.stars && y >= at.stars.y && y < at.stars.y + at.stars.h && hours?.[i]?.rating)
@@ -114,24 +103,12 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
         </Svg>
       ) : null}
 
-      {/* The day's heading: its name and its best stars. */}
+      {/* The day's heading: its name and date, and no verdict on the day. */}
       {at.day && (
         <View style={[styles.head, { height: at.day.h }]} pointerEvents="none">
           <T allowFontScaling={false} style={[styles.headName, fs(13)]} numberOfLines={1}>
             {dayHead(day)}
           </T>
-          {best && best.stars > 0 && width >= 110 ? (
-            <Svg width={5 * 9} height={10}>
-              <StarsMark
-                stars={best.stars}
-                potential={hours?.[best.from]?.rating?.potential ?? best.stars}
-                cx={(5 * 9) / 2}
-                cy={5}
-                size={8}
-                ink={best.stars >= 5 ? colors.magenta : colors.ink}
-              />
-            </Svg>
-          ) : null}
         </View>
       )}
 
@@ -252,26 +229,6 @@ export const DockDay = memo(function DockDay(props: DockDayProps) {
             </View>
           );
         })}
-
-      {/* The pen's loop round the day's best stretch worth riding. */}
-      {loop && at.stars && (
-        <Svg
-          style={[styles.abs, { top: at.stars.y }]}
-          width={width}
-          height={loop.h}
-          pointerEvents="none"
-        >
-          <Path
-            d={loop.d}
-            fill="none"
-            stroke={colors.pen}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={0.9}
-          />
-        </Svg>
-      )}
 
       {/* The hours: a column each, the figures in it, pressable. */}
       {columns.map((i) => {

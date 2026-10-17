@@ -1,8 +1,8 @@
 /**
  * A riding place's own page, at /spot/<id>, set as the chart's broadsheet: the
  * place's name, the week in one strip, then day after day
- * down the page, every daylight hour a row of figures with the pen round the
- * best of it, and the tide and the light under each day. `src/main.tsx`
+ * down the page, every daylight hour a row of figures, and the tide and the
+ * light under each day. No day is rated: the hours carry the stars. `src/main.tsx`
  * lazy-loads it, so it never carries the map, MapLibre or the other sections;
  * it reads the published forecast through the MCP server's own reduction, so
  * the page and an agent can never be told two different forecasts.
@@ -50,16 +50,13 @@ import { FacingGlyph, KeepStar } from "./glyphs";
 import { RiderSwitch, riderWords } from "./RiderSwitch";
 import {
   FORECAST_DAYS,
-  PEN_STARS,
   bandKnots,
   compass,
-  dayWindow,
   daySun,
   goodWindArcs,
   groupDays,
   spotRows,
   tideTurns,
-  weekBest,
 } from "./spot";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
@@ -325,19 +322,9 @@ function SpotPage({
       groupDays(rows)
         .filter((day) => day.hasWind)
         .slice(0, FORECAST_DAYS)
-        .map((day) => {
-          const sun = daySun(spot.lat, spot.lon, day.date);
-          return { day, sun, window: dayWindow(day.rows, sun) };
-        }),
+        .map((day) => ({ day, sun: daySun(spot.lat, spot.lon, day.date) })),
     [rows, spot.lat, spot.lon],
   );
-  // The pen's note, as its loop: only for a week whose best is worth riding.
-  const best = useMemo(() => {
-    const top = weekBest(
-      days.map(({ day, window }) => ({ date: day.date, window })),
-    );
-    return top && top.window.stars >= PEN_STARS ? top : null;
-  }, [days]);
   const band = useMemo(() => bandKnots(rider), [rider]);
   const turns = useMemo(() => tideTurns(forecast), [forecast]);
   const ceiling = Math.max(4.5, ...turns.map((t) => t.height)) + 0.3;
@@ -436,23 +423,16 @@ function SpotPage({
       </p>
       <RiderSwitch rider={rider} onChange={changeRider} />
       <WeekStrip
-        days={days.map(({ day, window }) => ({
-          date: day.date,
-          window,
-          stars: day.stars,
-          potential: day.potential,
-        }))}
+        days={days.map(({ day }) => ({ date: day.date }))}
         current={shown}
         now={now}
         onSelect={showDay}
       />
       <div className={s.days()} ref={daysRef}>
-        {days.map(({ day, sun, window }, index) => (
+        {days.map(({ day, sun }, index) => (
           <DaySection
             key={day.date}
             day={day}
-            window={window}
-            weekBest={best?.date === day.date}
             now={now}
             units={units}
             unitText={unitText}

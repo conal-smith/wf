@@ -170,52 +170,6 @@ export function dayStep(
   return best;
 }
 
-/** A day's best stretch: the longest run of its best-rated hours. */
-export interface DayBest {
-  /** Columns, inclusive. */
-  from: number;
-  to: number;
-  stars: number;
-}
-
-/**
- * The best stretch of one day: the longest run of the hours that carry its
- * highest rating, as the chart's dock and its pen loop read it. Only the
- * daylight counts: a night hour has no rating, so it is neither a day's best
- * nor part of one, and a stretch never runs through a night. A day whose
- * best is no stars has a best of zero and no stretch worth a loop; a day with
- * nothing rated (all dark, or not reached) has none. `after` drops the hours
- * already gone, so "best today" never sells this morning.
- */
-export function dayBest(
-  ratings: readonly ({ stars: number } | null)[],
-  day: StripDay,
-  after = -Infinity,
-  times?: readonly number[],
-): DayBest | null {
-  let top = -1;
-  for (let i = day.start; i < day.start + day.count; i++) {
-    const r = ratings[i];
-    if (!r || (times && times[i] + 3600000 <= after)) continue;
-    top = Math.max(top, r.stars);
-  }
-  if (top < 0) return null;
-  let best: DayBest | null = null;
-  let run: DayBest | null = null;
-  for (let i = day.start; i < day.start + day.count; i++) {
-    const r = ratings[i];
-    const ok = !!r && r.stars === top && !(times && times[i] + 3600000 <= after);
-    if (!ok) {
-      run = null;
-      continue;
-    }
-    if (run && run.to === i - 1) run.to = i;
-    else run = { from: i, to: i, stars: top };
-    if (!best || run.to - run.from > best.to - best.from) best = { ...run };
-  }
-  return best;
-}
-
 /** Where each column sits along the strip, and how wide it is. */
 export interface StripGeometry {
   x: number[];

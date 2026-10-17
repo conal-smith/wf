@@ -73,6 +73,7 @@ import { useViewBounds } from "./useViewBounds";
 import { squaresToRead } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
+  hourNote,
   offshoreMark,
   pointHours as pointHoursFrom,
   type PlaceHour,
@@ -80,7 +81,6 @@ import {
 } from "./ratings";
 import {
   clock,
-  dayBest,
   dayShort,
   nearestColumn,
   openingColumn,
@@ -771,9 +771,6 @@ export default function App() {
     () => rideStopsFor(rider, getComputedStyle(document.documentElement)),
     [JSON.stringify(rider)],
   );
-  const selectedDay = days.find(
-    (d) => selected >= d.start && selected < d.start + d.count,
-  );
 
   /* ---- the satellite image under the chart ---- */
   // Its index and code load the first time an image is chosen; then only the
@@ -1150,26 +1147,11 @@ export default function App() {
     : point
       ? hours.get(point.id)
       : undefined;
-  const penNote = useMemo(() => {
-    if (!dockSpot || !pointHours || !selectedDay) return "";
-    const best = dayBest(
-      pointHours.map((h) => h.rating),
-      selectedDay,
-      clockNow,
-      strip.map((c) => c.time),
-    );
-    if (!best) return "";
-    // Which day: the note is the selected day's best, and the dock may be
-    // showing any day of the fortnight.
-    const day = dayShort(selectedDay.noon);
-    if (!best.stars) return `${day}: no stars`;
-    const r = pointHours[best.from].rating!;
-    const span =
-      best.from === best.to
-        ? clock(strip[best.from].time)
-        : `${clock(strip[best.from].time).slice(0, 2)}–${clock(strip[best.to].time).slice(0, 2)}`;
-    return `${day} ${"★".repeat(best.stars)} ${span}, ${r.wing.own ?? r.wing.recommended} m²`;
-  }, [dockSpot?.id, picked, pointHours, selectedDay, strip, clockNow, version]);
+  // The hour the map shows, at the selected place: never a day's best.
+  const penNote = useMemo(
+    () => (dockSpot && column ? hourNote(pointHours?.[selected], column.time) : ""),
+    [dockSpot?.id, picked, pointHours, selected, column?.time, version],
+  );
 
   const marine = useMarineModels(more && mapReady);
   const focusAt =
@@ -1193,15 +1175,10 @@ export default function App() {
     () => new Map(spots.map((s) => [s.id, s] as const)),
     [spots],
   );
-  const dayStars = (id: string) => {
-    const row = hours.get(id);
-    if (!row || !selectedDay) return null;
-    return (
-      dayBest(
-        row.map((h) => h.rating),
-        selectedDay,
-      )?.stars ?? null
-    );
+  /** A place's hour at the time the map shows, where it is rated. */
+  const hourAt = (id: string) => {
+    const hour = hours.get(id)?.[selected];
+    return hour?.rating ? hour : null;
   };
 
   const sources = (
@@ -1285,7 +1262,7 @@ export default function App() {
               inputRef={search}
               spots={spots}
               starred={starred}
-              dayStars={dayStars}
+              hourAt={hourAt}
               onPick={(spot) => selectSpot(spot)}
             />
             <MapControls
@@ -1300,8 +1277,7 @@ export default function App() {
                   frequent={frequent}
                   hours={hours}
                   columns={strip}
-                  day={selectedDay}
-                  now={clockNow}
+                  selected={selected}
                   onGo={(spot) => {
                     // Chosen: the panel's work is done, and the chart under
                     // it is where the spot is about to be.

@@ -540,9 +540,16 @@
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-.results li svg {
+/* The place's hour at the time the map shows: its stars, its wind under them. */
+.results li .spot-hour {
   grid-row: 1 / 3;
   grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font: 10px var(--font-mono);
+  color: var(--color-ink-muted);
 }
 .results li[aria-selected="true"] {
   background: color-mix(in srgb, var(--color-chart-magenta) 8%, transparent);
@@ -929,11 +936,6 @@
 }
 .k-wind path.faint {
   stroke: color-mix(in srgb, var(--color-ink) 30%, transparent);
-}
-.k-loop path {
-  fill: none;
-  stroke: var(--color-pen);
-  stroke-linecap: round;
 }
 .key .tints {
   display: flex;

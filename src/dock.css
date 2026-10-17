@@ -202,22 +202,10 @@ table.tt {
   font: 650 13px var(--font-display);
   color: var(--color-ink);
 }
-.tt tr.tt-day td i,
-.tt tr.tt-day td em {
-  font-style: normal;
-}
-.tt tr.tt-day td em {
-  display: inline-flex;
-}
 .tt tr.tt-day td small {
   font-size: inherit;
 }
 /* What a narrow day's heading leaves out (ForecastDock's `fit`). */
-.tt tr.tt-day td.fit-stars i,
-.tt tr.tt-day td.fit-name i,
-.tt tr.tt-day td.fit-name em,
-.tt tr.tt-day td.fit-day i,
-.tt tr.tt-day td.fit-day em,
 .tt tr.tt-day td.fit-day small {
   display: none;
 }
@@ -359,16 +347,6 @@ table.tt {
   overflow: visible;
   pointer-events: none;
 }
-.pen-loop {
-  fill: none;
-  stroke: var(--color-pen);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.9;
-  stroke-dasharray: 1;
-  animation: chart-ink 900ms cubic-bezier(0.5, 0.1, 0.3, 1) both;
-}
 .tide-dot {
   fill: var(--color-chart-magenta);
 }
@@ -381,11 +359,6 @@ table.tt {
   border-left: 1.5px solid color-mix(in srgb, var(--color-pen) 85%, transparent);
   pointer-events: none;
   z-index: 3;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pen-loop {
-    animation: none;
-  }
 }
 
 /* ---------- no spot chosen: the hours, and the ask for a spot ---------- */

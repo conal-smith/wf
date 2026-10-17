@@ -20,8 +20,9 @@ import {
 import { modelSeries, spotSeries } from "../force5/src/series";
 import { dayNights } from "../force5/src/sun";
 import { KNOTS } from "../force5/src/units";
-import { direction, type Manifest } from "../force5/src/weather";
+import { compass, direction, type Manifest } from "../force5/src/weather";
 import { rateHour, type HourRating, type Rider } from "../force5/src/stars";
+import { clock, dayShort } from "./strip";
 
 /** What one place is rated as: where it is and which way its shore faces. */
 export interface RatedPlace {
@@ -494,4 +495,31 @@ export function pointHours(
       rating: null,
     };
   });
+}
+
+/** "SW 18g24": an hour's wind as a list of spots gives it, in knots; "" with none. */
+export function hourWind(
+  hour: Pick<PlaceHour, "windKn" | "gustKn" | "from">,
+): string {
+  if (hour.windKn === null) return "";
+  const kn = `${Math.round(hour.windKn)}${hour.gustKn === null ? "" : `g${Math.round(hour.gustKn)}`}`;
+  return hour.from === null ? kn : `${compass(hour.from)} ${kn}`;
+}
+
+/**
+ * What the pen writes beside the selected light: the hour the map shows, its
+ * stars, its wind and the wing they assume ("Sat 15:00 ★★★, SW 18g24, 5 m²").
+ * An hour with no rating (dark, or not reached) gets no note. It names the
+ * hour and never a day: a rider picks the hours, not a day's best.
+ */
+export function hourNote(hour: PlaceHour | undefined, time: number): string {
+  const rating = hour?.rating;
+  if (!hour || !rating) return "";
+  const stars = rating.stars ? "★".repeat(rating.stars) : "no stars";
+  const wing = rating.potential
+    ? `${rating.wing.own ?? rating.wing.recommended} m²`
+    : "";
+  return [`${dayShort(time)} ${clock(time)} ${stars}`, hourWind(hour), wing]
+    .filter(Boolean)
+    .join(", ");
 }

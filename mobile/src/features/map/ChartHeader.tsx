@@ -2,24 +2,30 @@
  * The chart's head, top left (src/MapHead.tsx): "Find a spot…", whose list
  * opens under it as the rider types; with nothing typed it offers the
  * rider's starred spots and, once the phone has said where it is, the
- * nearest ones. A box of paper in an ink rule, never glass over the map.
+ * nearest ones. Each place carries its stars and wind at the hour the
+ * chart's lights show, never a day's best. A box of paper in an ink rule,
+ * never glass over the map.
  */
 import { memo, useMemo, useState, type RefObject } from "react";
 import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import type { Units } from "../../../../force5/src/units";
 import type { Spot } from "../../../../force5/src/weather";
+import type { PlaceHour } from "../../../../src/ratings";
 import { tick } from "../../components/haptics";
 import { Stars } from "../../components/Stars";
 import { T } from "../../components/Text";
 import { distanceKm, searchSpots, spotById } from "../../data/spots";
 import { colors, fonts, hitTarget, radius, shadow, space } from "../../theme/tokens";
+import { windFigures } from "../dock/dockLogic";
 import { CloseGlyph, SearchGlyph } from "./ChartControls";
 
 interface Props {
   inputRef: RefObject<TextInput | null>;
   spots: readonly Spot[];
   starred: readonly string[];
-  /** The selected day's best stars at a place, where known. */
-  dayStars: (id: string) => number | null;
+  /** A place's rated hour at the time the lights show, where there is one. */
+  hourAt: (id: string) => PlaceHour | null;
+  units: Units;
   me: { lat: number; lon: number } | null;
   /** Open the list (after locating, to show the nearest). */
   open: boolean;
@@ -36,7 +42,8 @@ export const ChartHeader = memo(function ChartHeader({
   inputRef,
   spots,
   starred,
-  dayStars,
+  hourAt,
+  units,
   me,
   open,
   onOpen,
@@ -144,12 +151,14 @@ export const ChartHeader = memo(function ChartHeader({
                   </T>
                 ) : null}
                 {section.rows.map(({ spot, note }) => {
-                  const stars = dayStars(spot.id);
+                  const hour = hourAt(spot.id);
+                  const rating = hour?.rating ?? null;
+                  const wind = hour ? windFigures(hour, units) : "";
                   return (
                     <Pressable
                       key={spot.id}
                       accessibilityRole="button"
-                      accessibilityLabel={`${spot.name}${spot.county ? `, ${spot.county}` : ""}${note ? `, ${note} away` : ""}${stars !== null ? `, best ${stars} star${stars === 1 ? "" : "s"} on the day` : ""}`}
+                      accessibilityLabel={`${spot.name}${spot.county ? `, ${spot.county}` : ""}${note ? `, ${note} away` : ""}${rating ? `, ${rating.stars} star${rating.stars === 1 ? "" : "s"} at this hour, wind ${wind}` : ""}`}
                       onPress={() => pick(spot)}
                       style={({ pressed }) => [styles.row, pressed && styles.rowDown]}
                     >
@@ -161,7 +170,14 @@ export const ChartHeader = memo(function ChartHeader({
                           {[spot.county, note].filter(Boolean).join(" · ")}
                         </T>
                       </View>
-                      {stars !== null && <Stars stars={stars} size={10} best />}
+                      {rating ? (
+                        <View style={styles.hour}>
+                          <Stars stars={rating.stars} potential={rating.potential} size={10} best />
+                          <T variant="caption" tabular color="muted" numberOfLines={1}>
+                            {wind}
+                          </T>
+                        </View>
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -219,4 +235,5 @@ const styles = StyleSheet.create({
   },
   rowDown: { backgroundColor: colors.sunken },
   rowText: { flex: 1, paddingVertical: space.xs },
+  hour: { alignItems: "flex-end", gap: space["2xs"] },
 });

@@ -11,7 +11,6 @@ import {
 } from "../../../../src/strip";
 import { windScale } from "../../theme/tokens";
 import {
-  bestLine,
   beyondMapModel,
   columnWidths,
   commitDue,
@@ -22,7 +21,6 @@ import {
   hatchPath,
   hourReading,
   nearestCentre,
-  penLoop,
   prefsView,
   rowLayout,
   speedIn,
@@ -223,28 +221,9 @@ describe("ink and paper", () => {
     expect(runs[0].x).toBe(0);
     expect(runs.length).toBe(2);
   });
-
-  it("loops in one closed-ish stroke", () => {
-    const d = penLoop(50, 20, 30, 10, 3);
-    expect(d.startsWith("M")).toBe(true);
-    expect(d.split("L").length).toBe(65);
-  });
 });
 
 describe("the day", () => {
-  it("finds the best stretch still ahead", () => {
-    const cols = columns(24);
-    const days = stripDays(cols);
-    const hours = cols.map((c) =>
-      c.hour >= 12 && c.hour < 15 ? hour({ windKn: 18 }) : c.hour >= 8 && c.hour < 19 ? hour({ windKn: 7, gustKn: 9 }) : hour({ daylight: false, rating: null }),
-    );
-    const line = bestLine(hours, cols, days[0], T0)!;
-    expect(line.label).toBe("Best today");
-    expect(line.when).toBe("12–14");
-    expect(line.stars).toBe(hours[12].rating!.stars);
-    expect(bestLine(null, cols, days[0], T0)).toBeNull();
-  });
-
   it("offers the chart's other run past the map model's", () => {
     const cols = columns(60);
     expect(beyondMapModel(cols[10])).toBe(false);
