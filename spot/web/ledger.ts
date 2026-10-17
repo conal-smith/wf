@@ -45,8 +45,6 @@ export interface LedgerHour {
 const minus = (value: number) =>
   value === 0 ? "none" : `−${Number(value.toFixed(2))}`;
 const atMost = (cap: number) => (cap ? `${cap} star at most` : "no stars");
-/** 1.62 → "62%". */
-const over = (factor: number) => `${Math.round((factor - 1) * 100)}%`;
 const one = (value: number) => value.toFixed(1);
 
 /** Null in the dark or without wind, as rateHour is. */
@@ -107,21 +105,18 @@ export function ledger(
     });
 
   const gusts = gustCost(windKn, gustKn, rider);
-  if (gusts?.strength) {
-    score -= gusts.strength;
-    lines.push({
-      what:
-        gustKn! > band.max
-          ? `Gusts past your ${Math.round(band.max)} kn maximum`
-          : `Gusts past the top of your ${Math.round(band.sweetHigh)} kn sweet spot`,
-      figure: minus(gusts.strength),
-    });
-  }
   if (gusts?.gustiness) {
     score -= gusts.gustiness;
     lines.push({
-      what: `Gusts ${over(gusts.factor)} over the average, with the wind ${Math.round(gusts.power * 100)}% of the way to powered`,
+      what: `Gusts ${Math.round(gusts.spreadKn)} kn over the average, past the ${gusts.allowedKn} kn you take in your stride`,
       figure: minus(gusts.gustiness),
+    });
+  }
+  if (gusts?.strength) {
+    score -= gusts.strength;
+    lines.push({
+      what: `Gusts past your ${Math.round(band.max)} kn maximum`,
+      figure: minus(gusts.strength),
     });
   }
 

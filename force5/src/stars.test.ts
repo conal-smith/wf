@@ -145,90 +145,90 @@ describe("hour rating", () => {
     expect(rating.session).toBe("drills");
     expect(rating.wing.recommended).toBe(7);
   });
-  it("lifts a gusty light day toward its gusts: on a foil they get you up", () => {
-    // Dublin Bay, 4 Oct 2026: 9 kn gusting 17, cross-shore. Rated nothing
-    // when gusts only cost stars; riders were out on big wings all afternoon.
+  it("gives a light day with big gusts one star: a chance to get up, no more", () => {
+    // Dublin Bay, 4 Oct 2026: 9 kn gusting 17, cross-shore, riders out on big
+    // wings. The gusts lift it to the floor, never past it.
     const gusty = hour({ windKn: 9, gustKn: 17, from: 210 });
     const rating = rateHour(gusty, { facing: 125 }, DEFAULT_RIDER)!;
-    expect(rating.rideKn).toBeCloseTo(11.4, 1);
-    expect(rating.stars).toBeGreaterThanOrEqual(2);
+    expect(rating.rideKn).toBe(11);
+    expect(rating.stars).toBe(1);
     expect(rating.reasons).toEqual([]);
     expect(rating.wing.recommended).toBe(8);
-    // Steady at the same mean is worth less than gusty.
+    // Steady at the same mean is not even that.
     expect(
       rateHour(
         hour({ windKn: 9, gustKn: 10, from: 210 }),
         { facing: 125 },
         DEFAULT_RIDER,
       )!.stars,
-    ).toBeLessThan(rating.stars);
+    ).toBe(0);
   });
-  it("still costs a learner stars for gusts at any speed", () => {
+  it("rates the mean, not the gusts: 12 gusting 20 is a light day", () => {
     const rating = rateHour(
-      hour({ windKn: 14, gustKn: 22, from: 200 }),
+      hour({ windKn: 12, gustKn: 20, from: 200 }),
       WEST,
-      rider({ skill: "beginner" }),
+      DEFAULT_RIDER,
+    )!;
+    expect(rating.rideKn).toBe(12);
+    expect(rating.stars).toBe(2);
+  });
+  it("takes an ordinary gust in its stride", () => {
+    // The models' gust is the hour's strongest: 8 or 9 knots over is usual.
+    const stars = [24, 27, 28].map(
+      (gustKn) =>
+        rateHour(hour({ gustKn, from: 200 }), WEST, DEFAULT_RIDER)!.stars,
+    );
+    expect(stars).toEqual([5, 5, 5]);
+  });
+  it("costs half a star a knot once the gusts run more than ten over", () => {
+    expect(gustCost(18, 28, DEFAULT_RIDER)!.gustiness).toBe(0);
+    expect(gustCost(18, 31, DEFAULT_RIDER)!.gustiness).toBe(1.5);
+    expect(gustCost(10, 40, DEFAULT_RIDER)!.gustiness).toBe(2);
+    const rating = rateHour(
+      hour({ windKn: 15, gustKn: 27, from: 200 }),
+      WEST,
+      DEFAULT_RIDER,
+    )!;
+    expect(rating.stars).toBe(3);
+    expect(rating.reasons.join(" ")).toMatch(/Gusty: gusts 27 kn on a 15 kn/);
+  });
+  it("lets a learner take less of a spread", () => {
+    const learner = rider({ skill: "beginner" });
+    expect(gustCost(16, 22, learner)!.gustiness).toBe(0);
+    expect(gustCost(16, 25, learner)!.gustiness).toBe(1);
+    const rating = rateHour(
+      hour({ windKn: 16, gustKn: 25, from: 200 }),
+      WEST,
+      learner,
     )!;
     expect(rating.stars).toBeLessThan(rating.potential);
     expect(rating.reasons.join(" ")).toMatch(/Gusty/);
   });
-  it("costs a star when the gusts pass what the rider can hold", () => {
+  it("costs a little more when the gusts pass what the rider can hold", () => {
     const steady = rateHour(
       hour({ windKn: 22, gustKn: 28, from: 200 }),
       WEST,
       DEFAULT_RIDER,
     )!;
-    const wild = rateHour(
-      hour({ windKn: 22, gustKn: 34, from: 200 }),
+    const past = rateHour(
+      hour({ windKn: 22, gustKn: 32, from: 200 }),
       WEST,
       DEFAULT_RIDER,
     )!;
-    expect(wild.stars).toBeLessThan(steady.stars);
-    expect(wild.reasons[0]).toMatch(/Gusts to 34 kn/);
+    expect(steady.stars).toBe(5);
+    expect(past.stars).toBe(4);
+    expect(past.reasons).toEqual([
+      "Gusts to 32 kn: more than you will want to hold.",
+    ]);
   });
-  it("rates the steady wind: gusts never lift a day already in the sweet spot", () => {
-    expect(rideableWind(14, 24, DEFAULT_RIDER)).toBe(14);
-    expect(rideableWind(18, 30, DEFAULT_RIDER)).toBe(18);
-  });
-  it("rates the steadier of two equal winds higher", () => {
-    // The same 18 kn mean, gusting a little, typically and a lot.
-    const stars = [24, 27, 29].map(
-      (gustKn) =>
-        rateHour(hour({ gustKn, from: 200 }), WEST, DEFAULT_RIDER)!.stars,
-    );
-    expect(stars).toEqual([5, 4, 3]);
-  });
-  it("rates strong gusts on a strong wind low, and big gusts on a light one as a chance", () => {
-    const strong = rateHour(
-      hour({ windKn: 25, gustKn: 38, from: 200 }),
-      WEST,
-      DEFAULT_RIDER,
-    )!;
-    expect(strong.stars).toBeLessThanOrEqual(1);
-    expect(strong.reasons.join(" ")).toMatch(
-      /Gusts to 38 kn: more than you will want to hold.*Gusty/,
-    );
-    const light = rateHour(
-      hour({ windKn: 12, gustKn: 20, from: 200 }),
-      WEST,
-      DEFAULT_RIDER,
-    )!;
-    expect(light.stars).toBeGreaterThanOrEqual(3);
-  });
-  it("charges gustiness by how powered the rider already is", () => {
-    // The same gust factor, 1.6, at the floor and at the top of the sweet spot.
-    expect(gustCost(10, 16, DEFAULT_RIDER)!.gustiness).toBe(0);
-    expect(gustCost(24, 38.4, DEFAULT_RIDER)!.gustiness).toBeCloseTo(1.25, 5);
-    // Inside a steady wind's factor it costs nothing at any speed.
-    expect(gustCost(24, 32, DEFAULT_RIDER)!.gustiness).toBe(0);
-    // A learner falls off in the lulls, so pays some of it even when light.
-    expect(
-      gustCost(10, 16, rider({ skill: "beginner" }))!.gustiness,
-    ).toBeGreaterThan(0);
+  it("rates a strong, gusty wind low but not as nothing", () => {
+    const strong = hour({ windKn: 25, gustKn: 38, from: 200 });
+    expect(rateHour(strong, WEST, DEFAULT_RIDER)!.stars).toBe(2);
+    expect(rateHour(strong, WEST, rider({ skill: "advanced" }))!.stars).toBe(3);
   });
   it("names the gusts only when they cost a star", () => {
     const rating = rateHour(
-      hour({ windKn: 20, gustKn: 26, from: 200 }),
+      hour({ windKn: 18, gustKn: 29, from: 200 }),
       WEST,
       DEFAULT_RIDER,
     )!;
@@ -239,14 +239,12 @@ describe("hour rating", () => {
     expect(rideableWind(15, null, DEFAULT_RIDER)).toBe(15);
     expect(rideableWind(15, 14, DEFAULT_RIDER)).toBe(15);
   });
-  it("lifts a light day most and a strong one not at all", () => {
+  it("never lifts a wind past the floor, nor one already over it", () => {
     const expert = rider({ skill: "advanced" });
-    // At the floor the whole share counts, capped at the mean again.
-    expect(rideableWind(8, 40, expert)).toBeCloseTo(10.8, 5);
+    expect(rideableWind(6, 40, expert)).toBe(8);
+    expect(rideableWind(7, 9, expert)).toBeCloseTo(7.7, 5);
+    expect(rideableWind(14, 24, DEFAULT_RIDER)).toBe(14);
     expect(rideableWind(28, 40, expert)).toBe(28);
-    expect(rideableWind(18, 26, DEFAULT_RIDER) - 18).toBeLessThan(
-      rideableWind(10, 18, DEFAULT_RIDER) - 10,
-    );
   });
   it("takes a star when the models disagree", () => {
     const agreed = rateHour(hour({ from: 200 }), WEST, DEFAULT_RIDER)!;

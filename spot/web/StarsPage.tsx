@@ -153,16 +153,16 @@ export default function StarsPage() {
           </SectionHeading>
           <p className={s.p()}>
             The stars rate the steady wind, the average: it is what holds you up
-            on the foil. Only on a light day do the gusts add to it, because
-            then they are what get you up, and once up you glide through the
-            lulls. So below your sweet spot we count the wind as a little
-            stronger than its average, the more the lighter it is; from the
-            sweet spot on we add nothing, and the gusts can only cost you stars
-            (section 4).
+            on the foil, and what decides whether a session is on. The gusts
+            barely move them. Below your minimum a gust is a chance to get up,
+            so it can lift the hour to your minimum, worth a star, and no
+            further. Above it, ordinary gusts cost nothing; only gusts running
+            well clear of the average, or past what you can hold, take anything
+            off (section 4).
           </p>
           <p className={s.p()}>
             Learners get the smallest boost, because they still drop off the
-            foil in the lulls. Advanced riders get the most.
+            foil in the lulls, and feel a gusty wind sooner.
           </p>
           <RideExamples rider={rider} />
         </section>
@@ -248,7 +248,7 @@ function RideExamples({ rider }: { rider: Rider }) {
   const pairs: [number, number][] = [
     [9, 17],
     [12, 20],
-    [18, 28],
+    [18, 27],
   ];
   return (
     <ul className={s.examples()} data-ride-examples>
@@ -721,15 +721,11 @@ function OtherTable({ rider }: { rider: Rider }) {
   const learning = rider.skill === "beginner";
   const rows: [string, string, string][] = [
     [
-      "Gusts past the top of your sweet spot",
-      "up to −1½\u00a0stars by your maximum, up to −3 past it",
-      "the same",
+      "Gusts more than 10\u00a0knots over the average (7 for a learner)",
+      "−½\u00a0star a knot past 10, at most −2",
+      "−½\u00a0star a knot past 7, at most −2",
     ],
-    [
-      "Gusts more than 35% over the average",
-      "−½\u00a0star for every 10% more (−0.4 advanced), as much as you are powered: none at your minimum, all of it from the top of your sweet spot",
-      "−0.6\u00a0star for every 10% more, at least 60% of it at any wind speed",
-    ],
+    ["Gusts past your maximum", "−½\u00a0star", "−1\u00a0star"],
     ["The forecast models disagree", "−1\u00a0star", "−1\u00a0star"],
     ["The models differ a little", "−¼\u00a0star", "−¼\u00a0star"],
     ["None of your wings suits the wind", "−1\u00a0star", "−1\u00a0star"],

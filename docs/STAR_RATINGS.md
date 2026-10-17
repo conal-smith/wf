@@ -20,23 +20,23 @@ Stars never exceed potential, so the faded stars are always the upside a
 kinder direction, a steadier breeze or better model agreement would have given.
 Solid and faded differ by shape (filled against outline) as well as by tone.
 
-### Rideable wind: the steady wind, lifted only on a light day
+### Rideable wind: the steady wind, lifted only to the floor
 
-The steady wind, the mean, is what holds a rider on the foil, so it is what
-the stars rate. On a light day a gust is also what gets you up, and once up a
-lull is glide, so below the sweet spot a rider uses part of the gap between
-mean and gust:
+The steady wind, the mean, is what holds a rider on the foil and what decides
+whether a session is on, so it is what the stars rate. Below the rider's floor
+a gust is still a chance to get up, so there it may lift the hour, and only as
+far as the floor:
 
 ```
-rideable = mean + share × fade × min(gust − mean, mean)
+rideable = mean                                              at or above the floor
+rideable = min(floor, mean + share × min(gust − mean, mean))  below it
 ```
 
-where the share is 0.2 learning, 0.3 riding and 0.35 advanced (a learner still
-falls off in the lulls), and `fade` runs from 1 at the floor to 0 at the bottom
-of the sweet spot. Gusts can make a light day rideable; they never make a day
-better than its steady wind. A 9 kn mean gusting 17 is rated as 11.4 kn for an
-intermediate, 12 gusting 20 as 13.2, and 18 gusting 28 as 18. The lift stays
-inside the rating: no page names it as a wind of its own.
+where the share is 0.2 learning, 0.3 riding and 0.35 advanced. A light day with
+big gusts is worth a star at most, a chance to get up; it is never rated as a
+windier day than it is. A 9 kn mean gusting 17 is rated as 11 kn (the floor)
+for an intermediate, one star; 12 gusting 20 as 12, two. The lift stays inside
+the rating: no page names it as a wind of its own.
 
 ### Potential: the rideable wind against the rider's band
 
@@ -44,8 +44,8 @@ Each level has a band of wind, in knots, for an 80 kg rider:
 
 | Level    | Floor | Sweet spot | Ceiling |
 | -------- | ----- | ---------- | ------- |
-| Learning | 12    | 14–20      | 24      |
-| Riding   | 10    | 14–24      | 30      |
+| Learning | 13    | 15–20      | 24      |
+| Riding   | 11    | 14–24      | 30      |
 | Advanced | 8     | 13–28      | 35      |
 
 A heavier rider needs more wind to get going — a wing's power rises with the
@@ -58,16 +58,16 @@ at the ceiling, falling to none six knots past it.
 
 Each deduction is a sentence in the cell's tooltip, so a rider can argue with it.
 
-| Condition                                                                       | Riding / Advanced                     | Learning                     |
-| ------------------------------------------------------------------------------- | ------------------------------------- | ---------------------------- |
-| Offshore (wind from within 30° of straight off the beach)                       | capped at 1                           | capped at 0                  |
-| Cross-offshore                                                                  | −1.5 / −1 (adv.)                      | −3                           |
-| Onshore                                                                         | −1                                    | −1                           |
-| Cross-shore                                                                     | —                                     | −0.5                         |
-| Gusts past the top of the sweet spot (strength, below)                          | up to −1.5 by the ceiling, −3 past it | same                         |
-| Gust factor past 1.35 (gustiness, below)                                        | −0.5 / −0.4 (adv.) per 0.1, × power   | −0.6 per 0.1, × at least 0.6 |
-| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25                            | same                         |
-| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                                    | −1                           |
+| Condition                                                                       | Riding / Advanced               | Learning    |
+| ------------------------------------------------------------------------------- | ------------------------------- | ----------- |
+| Offshore (wind from within 30° of straight off the beach)                       | capped at 1                     | capped at 0 |
+| Cross-offshore                                                                  | −1.5 / −1 (adv.)                | −3          |
+| Onshore                                                                         | −1                              | −1          |
+| Cross-shore                                                                     | —                               | −0.5        |
+| Gusts more than 10 kn over the mean (7 learning; below)                         | −0.5 a knot past it, at most −2 | same        |
+| Gusts past the rider's ceiling                                                  | −0.5                            | −1          |
+| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25                      | same        |
+| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                              | −1          |
 
 Every deduction that costs a star is given as a reason. The quarter for some
 spread among the models is the one that usually costs nothing; when it does tip
@@ -77,67 +77,54 @@ cost a whole star.
 
 ### The gusts (`gustCost`)
 
-Fewer gusts is better: a steady wind is one you can settle into, and a gusty
-one throws you about. How much that costs depends on how powered the steady
-wind already has you. Near your floor a big gust is a chance to get up; at the
-top of your sweet spot every hit and every lull is felt; with a strong wind and
-strong gusts it is hard to ride on any wing. So the gusts cost two things:
+The mean decides the stars; the gusts are a footnote. Riders, size guides and
+forecast guides agree that what matters about gusts is how many knots they run
+over the mean: up to about 8 a session is fine, 8–10 gets stop-start, and past
+10 it is unsteady (a 16 kn mean gusting 28 is "a small-wing day, not a 16 kn
+day"). The models' gust is the hour's strongest, and in the published blend of
+17 October 2026 the middle daylight hour at 14–24 kn ran 8 to 9.5 kn over its
+mean, so a gust up to ten over costs nothing. Past that:
 
-- **Strength**: gusts past the top of the sweet spot, 1.5 × (gust − sweet top)
-  / (ceiling − sweet top), at most 3. One and a half stars by the ceiling.
-- **Gustiness**: the gust factor past 1.35, at most 0.6 past it, × 5 riding
-  (4 advanced, 6 learning) × power, where power runs from 0 at the floor to 1
-  at the top of the sweet spot. A learner, who falls off in the lulls, pays at
-  least 0.6 of it at any wind.
-
-1.35 is a steady wind's factor _in the models_: their gust is the hour's
-strongest, so even a steady breeze has one about a third over its mean. In the
-published blend of 17 October 2026 the steadiest quarter of the daylight hours
-at 14–19 kn were under 1.35 and the middle of them at 1.5.
+- **Gusty**: half a star for every knot past ten over the mean, at most two.
+  A learner, who drops off in every lull, counts from seven.
+- **Past the ceiling**: half a star (a whole one learning) when the gusts pass
+  the most the rider can hold.
 
 For an intermediate 80 kg rider, nothing else taken off:
 
-| Wind       | v2  | v3  | Why                                   |
-| ---------- | --- | --- | ------------------------------------- |
-| 9 gust 17  | 2   | 2   | light and gusty: the gusts get you up |
-| 12 gust 20 | 4   | 3   | light and gusty, lifted a little less |
-| 18 gust 24 | 5   | 5   | steady                                |
-| 18 gust 27 | 5   | 4   | the usual Irish gust factor           |
-| 18 gust 29 | 5   | 3   | gusty, and gusts past the sweet spot  |
-| 22 gust 32 | 4   | 2   | powered, gusts past the ceiling       |
-| 25 gust 38 | 3   | 0   | strong wind, strong gusts             |
-
-Agreement is the standard deviation of the models' speeds (each ensemble as its
-member mean), read more strictly the further ahead the hour is: "high" under
-1.7 kn today, 1.55 tomorrow, 1.2 on day 2 and 0.8 from day 3; "low" from 3.05,
-2.9, 2.55 and 2.15 kn. Fewer than three models are never "high". The lines are
-fitted so a "high" hour is about a 2 kn forecast whichever day it is on
-(`agreementFrom`, `force5/src/weights.ts`; docs/VERIFICATION.md, "Blend
-weights"). So a day-5 hour now loses a quarter or a star that it used to keep:
-the old range rule called far-off hours "high" more often than near ones.
-
-Dark hours are not rated: the cell stays empty rather than showing a zero.
+| Wind       | v2  | v3  | Why                                              |
+| ---------- | --- | --- | ------------------------------------------------ |
+| 9 gust 17  | 2   | 1   | under the floor: the gusts are a chance, no more |
+| 12 gust 20 | 4   | 2   | a light day; the gusts don't make it windier     |
+| 18 gust 24 | 5   | 5   | steady                                           |
+| 18 gust 27 | 5   | 5   | an ordinary gust                                 |
+| 18 gust 29 | 5   | 5   | 11 over: half a star, not enough to round down   |
+| 15 gust 27 | 5   | 3   | 12 over: stop-start                              |
+| 22 gust 32 | 4   | 4   | gusts past the ceiling                           |
+| 25 gust 38 | 3   | 2   | strong, gusty and past the ceiling               |
 
 ### Why v3 (17 October 2026)
 
-v2 lifted the mean toward the gust as far as the top of the sweet spot and
-took little for gustiness once a rider was off the learning level, so the more
-a powered day gusted the better it rated: 18 kn gusting 29 was five stars for
-an intermediate, and 25 gusting 38 three. The owner's rule is that the steady
-wind matters most and fewer gusts is better, with big gusts a chance on a light
-day and trouble on a strong one. v3 lifts only below the sweet spot and charges
-the gusts as above. Replaying the published blend of 17 October 2026 (every
-riding place, 08–17 UTC, shore not counted), hours at 0 / 1 / 2 / 3 / 4 / 5 ★:
+v2 rated a light day on its gusts as much as its mean, lifting the mean toward
+the gust as far as the top of the sweet spot, so 12 kn gusting 20 read as four
+stars for an intermediate. The owner's rule, and the forums' and size guides',
+is that the baseline wind is what matters: 12 kn is a light day whatever it
+gusts, and ordinary gusts shouldn't move the stars, while gusts running well
+clear of the mean, or past what you can hold, make a session harder. v3 rates
+the mean, lets gusts lift only a sub-floor hour to the floor, raises the
+intermediate floor from 10 to 11 kn and the learner's to 13 (sweet spot from
+15), and charges only the spread past ten knots and gusts past the ceiling.
+Replaying the published blend of 17 October 2026 (every riding place, 08–17
+UTC, shore not counted), hours at 0 / 1 / 2 / 3 / 4 / 5 ★:
 
-| Level    | v2                                    | v3                                     |
-| -------- | ------------------------------------- | -------------------------------------- |
-| Learning | 5334 / 413 / 492 / 633 / 1123 / 293   | 6127 / 583 / 555 / 515 / 397 / 111     |
-| Riding   | 3654 / 749 / 568 / 668 / 1094 / 1555  | 4014 / 824 / 773 / 1329 / 829 / 519    |
-| Advanced | 2265 / 1142 / 803 / 712 / 1149 / 2217 | 2348 / 1198 / 1044 / 1444 / 1350 / 904 |
+| Level    | v2                                    | v3                                    |
+| -------- | ------------------------------------- | ------------------------------------- |
+| Learning | 5334 / 413 / 492 / 633 / 1123 / 293   | 5873 / 804 / 625 / 393 / 287 / 306    |
+| Riding   | 3654 / 749 / 568 / 668 / 1094 / 1555  | 4170 / 1152 / 557 / 659 / 757 / 993   |
+| Advanced | 2265 / 1142 / 803 / 712 / 1149 / 2217 | 2310 / 2006 / 694 / 891 / 1068 / 1319 |
 
-Five stars is now for a steady, powered wind; a gusty powered hour reads three
-or four, and a light gusty one keeps its lift, a little less of it near
-the sweet spot.
+Most of the change is light days: hours v2 lifted on their gusts now sit at
+one or two stars. Five stars stays for a good mean with ordinary gusts.
 
 ### Why v2 (October 2026)
 
