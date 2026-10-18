@@ -171,11 +171,17 @@ Met Éireann publishes no wave data. Met Office DataHub has no wave product.
   coverage to 2029, CC BY 4.0, no key. Ingest nightly; map each spot to its nearest
   station; publish a per-spot JSON. Show datum on every reading. Optionally add
   `imiSurgePrediction` as a separate line.
-- **Tides (Northern Ireland):** no MI station east of 6.01°W. Options: UKHO Admiralty
-  API Discovery tier (free, 10k calls/month, no caching allowed, Crown copyright
-  line), or UTide harmonic constants fitted to BODC Bangor/Portrush gauge records
-  and evaluated locally (verify BODC licence). Do not transcribe Admiralty secondary-port
-  offsets. Avoid TPXO for a public site.
+- **Tides (Northern Ireland):** no MI station east of 6.01°W, so done (October 2026)
+  with our own harmonic constants, committed in `force5/ingest/tide_stations_ni.json`
+  and predicted at ingest in plain numpy (`harmonics.py`, `tides_ni.py`): Portrush and
+  Bangor from a month of the Environment Agency's open gauge levels (OGL v3.0), seven
+  more stations round to Dundrum Bay from EOT20 (CC BY 4.0), Strangford Lough as
+  Killard's tide 100 minutes later. 0.19–0.21 m RMS against the gauges' 2012–2024
+  record (the weather alone leaves 0.17–0.19), high water within 13–20 minutes RMS;
+  the same methods are 0.06–0.10 m from the MI's own predictions at Malin Head, Howth,
+  Port Oriel and Skerries. Method, licences and numbers: `scripts/tides/README.md`.
+  Neither the UKHO's data nor BODC's copies are used; no Admiralty offsets are transcribed.
+  Freshwater lakes (Lough Neagh, Lough Derg, Blessington, Keel Lough) say "No tide".
 - **Sunrise/sunset/civil twilight:** pure algorithm (`suncalc` in the browser or
   `astral` in Python). Compute in UTC, format with `Europe/Dublin`.
 - **Weather variables:** delivered for ICON-EU as the `icon-eu-weather` adapter

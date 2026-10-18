@@ -51,7 +51,7 @@ DESCRIPTIONS = {
     "harmonie-eps": "HARMONIE ensemble (Met Éireann)",
     "gfs-wave": "GFS-Wave (NOAA)",
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
-    "tides": "Tide predictions (Marine Institute)",
+    "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
     "sea-temperature": "Sea temperature observations",
     "blend": "Every spot's wind blend, for the map's stars",
     "wind-obs": "Wind observations (Met Éireann stations, Marine Institute buoys)",

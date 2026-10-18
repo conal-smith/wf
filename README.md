@@ -52,7 +52,9 @@ The code is licensed under the [GNU Affero General Public License v3.0](LICENSE)
 (`AGPL-3.0-only`): if you run a modified version as a service, you must offer
 its source to the people using it. Data the site reads keeps its own licence,
 credited where it is shown: forecasts from Met Éireann, DWD, ECMWF, NOAA,
-Météo-France and the Marine Institute; places from Fáilte Ireland (CC BY 4.0),
+Météo-France and the Marine Institute; Northern Ireland's tides from the
+Environment Agency's tide gauges (Open Government Licence v3.0) and the EOT20
+ocean tide model (DGFI-TUM, CC BY 4.0); places from Fáilte Ireland (CC BY 4.0),
 OpenStreetMap (ODbL) and the sources listed in
 [`data/locations/README.md`](data/locations/README.md); depths from EMODnet
 Bathymetry (CC BY 4.0).

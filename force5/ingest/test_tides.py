@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import fetch_tides
+import tides_ni
 from fetch_tides import (assign_stations, distance_km, main, read_curve, read_events,
                          station_catalogue, station_payload)
 from publish_s3 import publish, validate_bundle
@@ -24,6 +25,16 @@ Dublin_Port,-6.22166,53.34574
 SPOTS = [{"id": "brandon", "name": "Brandon Bay", "county": "Kerry", "lat": 52.276, "lon": -10.024},
          {"id": "keel", "name": "Keel Beach", "county": "Mayo", "lat": 53.971, "lon": -10.067},
          {"id": "ballyholme", "name": "Ballyholme", "county": "Down", "lat": 54.67, "lon": -5.645}]
+NI_SPOTS = [{"id": "portrush", "name": "Portrush", "county": "Antrim", "lat": 55.2023468, "lon": -6.6564811},
+            {"id": "newtownards", "name": "Newtownards — Strangford Lough", "county": "Down",
+             "lat": 54.56012, "lon": -5.62772},
+            {"id": "killard", "name": "Killard", "county": "Down", "lat": 54.320084, "lon": -5.541111},
+            {"id": "newcastle", "name": "Newcastle — Dundrum Bay", "county": "Down",
+             "lat": 54.209745, "lon": -5.885668},
+            {"id": "oxford-island", "name": "Lough Neagh — Oxford Island", "county": "Armagh",
+             "lat": 54.489371, "lon": -6.3668812}]
+NI_STATIONS = ["Ardglass_MODELLED", "Ballycastle_MODELLED", "Bangor", "Dundrum_Bay_MODELLED",
+               "Killard_MODELLED", "Larne_MODELLED", "Portavogie_MODELLED", "Portrush", "Strangford_MODELLED"]
 
 
 def height(at, start):
@@ -113,6 +124,42 @@ class TideTests(unittest.TestCase):
         self.assertEqual(assign_stations(SPOTS, self.catalogue(), 500)["ballyholme"]["station"], "Dublin_Port")
         self.assertIsNone(assign_stations(SPOTS, self.catalogue(), 5)["brandon"]["station"])
 
+    def test_northern_ireland_spots_take_the_nearest_station_of_either_provider(self):
+        catalogue = self.catalogue()
+        catalogue.update(fetch_tides.ni_catalogue(tides_ni.load()))
+        assignments = assign_stations(SPOTS + NI_SPOTS, catalogue)
+        self.assertEqual(assignments["brandon"]["station"], "Fenit")
+        self.assertEqual(assignments["ballyholme"]["station"], "Bangor")
+        self.assertEqual(assignments["portrush"]["station"], "Portrush")
+        self.assertEqual(assignments["newtownards"]["station"], "Strangford_MODELLED")
+        self.assertEqual(assignments["killard"]["station"], "Killard_MODELLED")
+        self.assertEqual(assignments["newcastle"]["station"], "Dundrum_Bay_MODELLED")
+        self.assertEqual(catalogue["Bangor"]["provider"], "wingfoil.ie")
+        self.assertEqual(catalogue["Fenit"]["provider"], "Marine Institute")
+
+    def test_a_near_tie_keeps_the_marine_institutes_station(self):
+        catalogue = self.catalogue()
+        catalogue["Port_Oriel"] = {"lat": 53.79899, "lon": -6.221713, "modelled": False,
+                                   "provider": "Marine Institute"}
+        catalogue.update(fetch_tides.ni_catalogue(tides_ni.load()))
+        spots = [{"id": "warrenpoint", "lat": 54.0993169, "lon": -6.2554859},
+                 {"id": "newcastle", "lat": 54.209745, "lon": -5.885668}]
+        assignments = assign_stations(spots, catalogue)
+        # 33.5 km down the coast against 31.0 km across the Mournes.
+        self.assertEqual(assignments["warrenpoint"]["station"], "Port_Oriel")
+        self.assertEqual(assignments["newcastle"]["station"], "Dundrum_Bay_MODELLED")
+
+    def test_a_freshwater_lake_has_no_tide_rather_than_a_far_station(self):
+        catalogue = self.catalogue()
+        catalogue.update(fetch_tides.ni_catalogue(tides_ni.load()))
+        lake = assign_stations(NI_SPOTS, catalogue)["oxford-island"]
+        self.assertIsNone(lake["station"])
+        self.assertTrue(lake["noTide"])
+        self.assertEqual(lake["reason"], "No tide: a freshwater lake.")
+        # Every lake the catalogue knows is a real riding location.
+        ids = {spot["id"] for spot in json.loads((Path(__file__).parents[2] / "public/riding-locations.json").read_text())}
+        self.assertLessEqual(set(fetch_tides.NON_TIDAL), ids)
+
     def test_great_circle_distance_matches_a_known_separation(self):
         self.assertAlmostEqual(distance_km(53.0, -9.0, 54.0, -9.0), 111.2, places=0)
 
@@ -177,16 +224,41 @@ class TideTests(unittest.TestCase):
     def test_a_full_run_publishes_a_manifest_the_publisher_accepts(self):
         manifest = self.run_main()
         self.assertEqual((manifest["kind"], manifest["model"], manifest["datum"]), ("tide", "tides", "LAT"))
-        self.assertEqual(sorted(manifest["stations"]), ["Achill_Island_MODELLED", "Fenit"])
-        self.assertEqual(manifest["spots"]["ballyholme"]["station"], None)
+        self.assertEqual(sorted(manifest["stations"]), sorted(["Achill_Island_MODELLED", "Fenit"] + NI_STATIONS))
+        self.assertEqual(manifest["spots"]["ballyholme"]["station"], "Bangor")
         self.assertIn("Subtract 2.680 m", manifest["stations"]["Fenit"]["datumNote"])
-        self.assertEqual(manifest["attribution"], "Tidal predictions © Marine Institute, CC BY 4.0")
+        self.assertTrue(manifest["attribution"].startswith("Tidal predictions © Marine Institute, CC BY 4.0"))
         _, _, objects = validate_bundle(self.root / "public", "tides", max_age_hours=30)
-        self.assertEqual(len(objects), 2)
+        self.assertEqual(len(objects), 2 + len(NI_STATIONS))
         s3 = FakeS3()
         self.assertEqual(publish(s3, self.root / "public", "tides", "test", max_age_hours=30), "published")
         self.assertEqual(s3.writes[-1], "marine/tides.json")
-        self.assertEqual(len(s3.writes), 3)  # two stations, then the pointer
+        self.assertEqual(len(s3.writes), 3 + len(NI_STATIONS))  # every station, then the pointer
+
+    def test_each_station_credits_its_own_source(self):
+        manifest = self.run_main()
+        fenit = manifest["stations"]["Fenit"]
+        self.assertEqual((fenit["provider"], fenit["attribution"]),
+                         ("Marine Institute", "Tidal predictions © Marine Institute, CC BY 4.0"))
+        for identifier in NI_STATIONS:
+            with self.subTest(station=identifier):
+                station = manifest["stations"][identifier]
+                self.assertEqual(station["provider"], "wingfoil.ie")
+                self.assertNotIn("Marine Institute", station["attribution"])
+                self.assertNotIn("odMalinOffsetMetres", station)
+                self.assertIn("Lowest Astronomical Tide", station["datumNote"])
+        self.assertIn("Environment Agency", manifest["stations"]["Bangor"]["attribution"])
+        self.assertIn("EOT20", manifest["stations"]["Larne_MODELLED"]["attribution"])
+        self.assertIn("100 minutes later", manifest["stations"]["Strangford_MODELLED"]["datumNote"])
+
+    def test_northern_ireland_station_files_are_predicted_curves_and_turns(self):
+        manifest = self.run_main()
+        station = json.loads((self.root / "public" / manifest["stations"]["Bangor"]["url"]).read_text())
+        self.assertEqual((station["station"], station["datum"], station["stepMinutes"]), ("Bangor", "LAT", 10))
+        self.assertEqual((station["from"], station["to"]), (manifest["coverage"]["from"], manifest["coverage"]["to"]))
+        self.assertEqual(len(station["curve"]), 9 * 144 + 1)
+        self.assertTrue(-0.1 < min(station["curve"]) < max(station["curve"]) < 4.5)
+        self.assertGreaterEqual(len(station["events"]), 30)
 
     def test_station_files_are_immutable_and_named_by_window_and_content(self):
         manifest = self.run_main()

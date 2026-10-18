@@ -862,7 +862,7 @@
     },
     {
       "id": "tides",
-      "description": "Tide predictions (Marine Institute)",
+      "description": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
       "schedule": {
         "at": {
           "hours": [

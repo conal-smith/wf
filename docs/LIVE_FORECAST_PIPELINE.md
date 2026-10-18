@@ -471,7 +471,10 @@ MI-SWAN:  --models mi-swan --bucket YOUR_FORECAST_BUCKET
 ```
 
 Tides need one nightly run: predictions extend to 2029, so the schedule only refreshes the
-published nine-day window. The manifest's `run` is the ingest hour, which keeps the
+published nine-day window. Northern Ireland's nine stations are predicted in the same run
+from the harmonic constants the image carries (`force5/ingest/tide_stations_ni.json`,
+`scripts/tides/README.md`), with no download; a failed Marine Institute fetch still fails
+the whole run and keeps the last published predictions. The manifest's `run` is the ingest hour, which keeps the
 existing staleness and compare-and-swap rules working unchanged; its default age limit is
 30 hours.
 

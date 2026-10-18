@@ -1,0 +1,596 @@
+{
+ "generatedAt": "2026-10-18T08:30:14Z",
+ "method": "heightRmsMetres: RMS of series minus prediction after removing their mean difference (datumOffsetMetres, series minus prediction). Turn times: each predicted high or low water against the series' own turn (a parabola through its samples within 45 minutes, or 1.5 steps), minutes, series minus prediction. Observed series carry the weather; the ownFourYearAnalysis line is what a full analysis of the record leaves against itself.",
+ "results": {
+  "Portrush": {
+   "published": {
+    "label": "observed, hourly (EMODnet)",
+    "from": "2012-10-04T09:00:00Z",
+    "to": "2024-11-24T23:00:00Z",
+    "samples": 60613,
+    "datumOffsetMetres": 0.082,
+    "heightRmsMetres": 0.189,
+    "highTimeMinutes": {
+     "n": 4698,
+     "mean": 0.349,
+     "rms": 19.554,
+     "meanAbs": 13.293,
+     "p95Abs": 42.177
+    },
+    "highHeightMetres": {
+     "n": 4698,
+     "mean": 0.006,
+     "rms": 0.187,
+     "meanAbs": 0.145,
+     "p95Abs": 0.366
+    },
+    "lowTimeMinutes": {
+     "n": 4529,
+     "mean": 1.479,
+     "rms": 21.633,
+     "meanAbs": 15.343,
+     "p95Abs": 45.619
+    },
+    "lowHeightMetres": {
+     "n": 4529,
+     "mean": 0.001,
+     "rms": 0.188,
+     "meanAbs": 0.146,
+     "p95Abs": 0.361
+    }
+   },
+   "eot20Only": {
+    "label": "observed, hourly (EMODnet)",
+    "from": "2012-10-04T09:00:00Z",
+    "to": "2024-11-24T23:00:00Z",
+    "samples": 60617,
+    "datumOffsetMetres": 0.35,
+    "heightRmsMetres": 0.206,
+    "highTimeMinutes": {
+     "n": 4699,
+     "mean": -4.435,
+     "rms": 22.171,
+     "meanAbs": 17.072,
+     "p95Abs": 43.003
+    },
+    "highHeightMetres": {
+     "n": 4699,
+     "mean": 0.118,
+     "rms": 0.233,
+     "meanAbs": 0.177,
+     "p95Abs": 0.476
+    },
+    "lowTimeMinutes": {
+     "n": 4524,
+     "mean": 0.435,
+     "rms": 24.086,
+     "meanAbs": 17.56,
+     "p95Abs": 51.0
+    },
+    "lowHeightMetres": {
+     "n": 4524,
+     "mean": -0.093,
+     "rms": 0.212,
+     "meanAbs": 0.174,
+     "p95Abs": 0.394
+    }
+   },
+   "ownFourYearAnalysis": {
+    "label": "observed, hourly, in sample (the weather's floor)",
+    "from": "2020-12-21T09:00:00Z",
+    "to": "2024-11-24T23:00:00Z",
+    "samples": 27835,
+    "datumOffsetMetres": -0.0,
+    "heightRmsMetres": 0.173,
+    "highTimeMinutes": {
+     "n": 2159,
+     "mean": -1.016,
+     "rms": 14.216,
+     "meanAbs": 9.561,
+     "p95Abs": 29.19
+    },
+    "highHeightMetres": {
+     "n": 2159,
+     "mean": 0.004,
+     "rms": 0.177,
+     "meanAbs": 0.139,
+     "p95Abs": 0.357
+    },
+    "lowTimeMinutes": {
+     "n": 2155,
+     "mean": 0.64,
+     "rms": 16.0,
+     "meanAbs": 10.771,
+     "p95Abs": 33.0
+    },
+    "lowHeightMetres": {
+     "n": 2155,
+     "mean": -0.004,
+     "rms": 0.173,
+     "meanAbs": 0.134,
+     "p95Abs": 0.335
+    }
+   },
+   "publishedVsFourYearAnalysis": {
+    "label": "four-year analysis of the hourly record, predicted 2026-2027",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2028-01-01T11:50:00Z",
+    "samples": 105192,
+    "datumOffsetMetres": 0.104,
+    "heightRmsMetres": 0.068,
+    "highTimeMinutes": {
+     "n": 1411,
+     "mean": 3.741,
+     "rms": 14.067,
+     "meanAbs": 9.99,
+     "p95Abs": 27.797
+    },
+    "highHeightMetres": {
+     "n": 1411,
+     "mean": -0.003,
+     "rms": 0.072,
+     "meanAbs": 0.057,
+     "p95Abs": 0.14
+    },
+    "lowTimeMinutes": {
+     "n": 1411,
+     "mean": 4.082,
+     "rms": 16.97,
+     "meanAbs": 11.821,
+     "p95Abs": 30.896
+    },
+    "lowHeightMetres": {
+     "n": 1411,
+     "mean": 0.004,
+     "rms": 0.07,
+     "meanAbs": 0.057,
+     "p95Abs": 0.137
+    }
+   },
+   "chartDatumAboveLatMetres": -0.082
+  },
+  "Bangor": {
+   "published": {
+    "label": "observed, hourly (EMODnet)",
+    "from": "2020-08-28T12:00:00Z",
+    "to": "2024-11-26T01:00:00Z",
+    "samples": 28933,
+    "datumOffsetMetres": 0.138,
+    "heightRmsMetres": 0.212,
+    "highTimeMinutes": {
+     "n": 2234,
+     "mean": 0.498,
+     "rms": 12.959,
+     "meanAbs": 9.891,
+     "p95Abs": 26.379
+    },
+    "highHeightMetres": {
+     "n": 2234,
+     "mean": 0.031,
+     "rms": 0.212,
+     "meanAbs": 0.165,
+     "p95Abs": 0.425
+    },
+    "lowTimeMinutes": {
+     "n": 2239,
+     "mean": -1.396,
+     "rms": 13.067,
+     "meanAbs": 9.815,
+     "p95Abs": 27.007
+    },
+    "lowHeightMetres": {
+     "n": 2239,
+     "mean": -0.044,
+     "rms": 0.214,
+     "meanAbs": 0.173,
+     "p95Abs": 0.4
+    }
+   },
+   "eot20Only": {
+    "label": "observed, hourly (EMODnet)",
+    "from": "2020-08-28T12:00:00Z",
+    "to": "2024-11-26T01:00:00Z",
+    "samples": 28936,
+    "datumOffsetMetres": 0.013,
+    "heightRmsMetres": 0.215,
+    "highTimeMinutes": {
+     "n": 2233,
+     "mean": -1.216,
+     "rms": 9.272,
+     "meanAbs": 6.88,
+     "p95Abs": 19.523
+    },
+    "highHeightMetres": {
+     "n": 2233,
+     "mean": 0.016,
+     "rms": 0.226,
+     "meanAbs": 0.179,
+     "p95Abs": 0.447
+    },
+    "lowTimeMinutes": {
+     "n": 2240,
+     "mean": -3.956,
+     "rms": 13.81,
+     "meanAbs": 11.124,
+     "p95Abs": 26.648
+    },
+    "lowHeightMetres": {
+     "n": 2240,
+     "mean": -0.035,
+     "rms": 0.219,
+     "meanAbs": 0.174,
+     "p95Abs": 0.423
+    }
+   },
+   "ownFourYearAnalysis": {
+    "label": "observed, hourly, in sample (the weather's floor)",
+    "from": "2020-11-26T01:00:00Z",
+    "to": "2024-11-26T01:00:00Z",
+    "samples": 27524,
+    "datumOffsetMetres": -0.0,
+    "heightRmsMetres": 0.188,
+    "highTimeMinutes": {
+     "n": 2123,
+     "mean": 1.464,
+     "rms": 7.451,
+     "meanAbs": 5.593,
+     "p95Abs": 15.484
+    },
+    "highHeightMetres": {
+     "n": 2123,
+     "mean": 0.001,
+     "rms": 0.19,
+     "meanAbs": 0.151,
+     "p95Abs": 0.368
+    },
+    "lowTimeMinutes": {
+     "n": 2126,
+     "mean": -0.838,
+     "rms": 6.937,
+     "meanAbs": 5.153,
+     "p95Abs": 14.0
+    },
+    "lowHeightMetres": {
+     "n": 2126,
+     "mean": -0.01,
+     "rms": 0.192,
+     "meanAbs": 0.15,
+     "p95Abs": 0.373
+    }
+   },
+   "publishedVsFourYearAnalysis": {
+    "label": "four-year analysis of the hourly record, predicted 2026-2027",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2028-01-01T11:50:00Z",
+    "samples": 105192,
+    "datumOffsetMetres": 0.14,
+    "heightRmsMetres": 0.087,
+    "highTimeMinutes": {
+     "n": 1411,
+     "mean": -0.51,
+     "rms": 8.244,
+     "meanAbs": 6.272,
+     "p95Abs": 17.653
+    },
+    "highHeightMetres": {
+     "n": 1411,
+     "mean": 0.027,
+     "rms": 0.079,
+     "meanAbs": 0.064,
+     "p95Abs": 0.154
+    },
+    "lowTimeMinutes": {
+     "n": 1411,
+     "mean": 0.073,
+     "rms": 8.51,
+     "meanAbs": 6.436,
+     "p95Abs": 18.14
+    },
+    "lowHeightMetres": {
+     "n": 1411,
+     "mean": -0.031,
+     "rms": 0.083,
+     "meanAbs": 0.067,
+     "p95Abs": 0.16
+    }
+   },
+   "chartDatumAboveLatMetres": -0.138
+  },
+  "Malin_Head": {
+   "eot20Only": {
+    "label": "Marine Institute prediction, 5-minute (imiTidePrediction)",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-30T23:55:00Z",
+    "samples": 78624,
+    "datumOffsetMetres": 0.171,
+    "heightRmsMetres": 0.108,
+    "highTimeMinutes": {
+     "n": 528,
+     "mean": -5.253,
+     "rms": 10.27,
+     "meanAbs": 8.697,
+     "p95Abs": 17.604
+    },
+    "highHeightMetres": {
+     "n": 528,
+     "mean": 0.088,
+     "rms": 0.11,
+     "meanAbs": 0.093,
+     "p95Abs": 0.205
+    },
+    "lowTimeMinutes": {
+     "n": 527,
+     "mean": -4.827,
+     "rms": 9.213,
+     "meanAbs": 6.339,
+     "p95Abs": 20.403
+    },
+    "lowHeightMetres": {
+     "n": 527,
+     "mean": -0.1,
+     "rms": 0.127,
+     "meanAbs": 0.107,
+     "p95Abs": 0.235
+    }
+   },
+   "gaugeMonth": {
+    "label": "Marine Institute prediction; constants from its gauge 2026-09-13 to 2026-10-12",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-13T07:40:00Z",
+    "samples": 73533,
+    "datumOffsetMetres": 0.01,
+    "heightRmsMetres": 0.073,
+    "highTimeMinutes": {
+     "n": 493,
+     "mean": 0.573,
+     "rms": 10.185,
+     "meanAbs": 7.012,
+     "p95Abs": 24.872
+    },
+    "highHeightMetres": {
+     "n": 493,
+     "mean": 0.002,
+     "rms": 0.071,
+     "meanAbs": 0.059,
+     "p95Abs": 0.131
+    },
+    "lowTimeMinutes": {
+     "n": 493,
+     "mean": -0.284,
+     "rms": 6.467,
+     "meanAbs": 5.076,
+     "p95Abs": 13.349
+    },
+    "lowHeightMetres": {
+     "n": 493,
+     "mean": -0.01,
+     "rms": 0.072,
+     "meanAbs": 0.061,
+     "p95Abs": 0.132
+    }
+   },
+   "gaugeMonthVsObserved2025": {
+    "label": "Marine Institute gauge 2025, 5-minute",
+    "from": "2025-01-01T00:00:00Z",
+    "to": "2025-12-31T23:55:00Z",
+    "samples": 104794,
+    "datumOffsetMetres": 0.069,
+    "heightRmsMetres": 0.196,
+    "highTimeMinutes": {
+     "n": 698,
+     "mean": 3.077,
+     "rms": 15.026,
+     "meanAbs": 10.561,
+     "p95Abs": 31.027
+    },
+    "highHeightMetres": {
+     "n": 698,
+     "mean": -0.004,
+     "rms": 0.186,
+     "meanAbs": 0.145,
+     "p95Abs": 0.356
+    },
+    "lowTimeMinutes": {
+     "n": 694,
+     "mean": 1.348,
+     "rms": 15.369,
+     "meanAbs": 10.055,
+     "p95Abs": 28.44
+    },
+    "lowHeightMetres": {
+     "n": 694,
+     "mean": -0.001,
+     "rms": 0.197,
+     "meanAbs": 0.158,
+     "p95Abs": 0.368
+    }
+   }
+  },
+  "Port_Oriel": {
+   "eot20Only": {
+    "label": "Marine Institute prediction, 5-minute (imiTidePrediction)",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-30T23:55:00Z",
+    "samples": 78624,
+    "datumOffsetMetres": -0.098,
+    "heightRmsMetres": 0.099,
+    "highTimeMinutes": {
+     "n": 527,
+     "mean": 4.165,
+     "rms": 7.066,
+     "meanAbs": 5.648,
+     "p95Abs": 13.863
+    },
+    "highHeightMetres": {
+     "n": 527,
+     "mean": 0.069,
+     "rms": 0.102,
+     "meanAbs": 0.08,
+     "p95Abs": 0.203
+    },
+    "lowTimeMinutes": {
+     "n": 527,
+     "mean": 2.882,
+     "rms": 9.384,
+     "meanAbs": 7.424,
+     "p95Abs": 19.602
+    },
+    "lowHeightMetres": {
+     "n": 527,
+     "mean": -0.085,
+     "rms": 0.108,
+     "meanAbs": 0.091,
+     "p95Abs": 0.206
+    }
+   }
+  },
+  "Howth": {
+   "eot20Only": {
+    "label": "Marine Institute prediction, 5-minute (imiTidePrediction)",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-30T23:55:00Z",
+    "samples": 78624,
+    "datumOffsetMetres": -0.09,
+    "heightRmsMetres": 0.093,
+    "highTimeMinutes": {
+     "n": 527,
+     "mean": 1.782,
+     "rms": 7.884,
+     "meanAbs": 6.098,
+     "p95Abs": 15.702
+    },
+    "highHeightMetres": {
+     "n": 527,
+     "mean": 0.062,
+     "rms": 0.103,
+     "meanAbs": 0.084,
+     "p95Abs": 0.192
+    },
+    "lowTimeMinutes": {
+     "n": 527,
+     "mean": 1.608,
+     "rms": 11.568,
+     "meanAbs": 9.368,
+     "p95Abs": 23.16
+    },
+    "lowHeightMetres": {
+     "n": 527,
+     "mean": -0.059,
+     "rms": 0.082,
+     "meanAbs": 0.07,
+     "p95Abs": 0.152
+    }
+   },
+   "gaugeMonth": {
+    "label": "Marine Institute prediction; constants from its gauge 2026-09-13 to 2026-10-12",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-13T07:40:00Z",
+    "samples": 73533,
+    "datumOffsetMetres": -0.114,
+    "heightRmsMetres": 0.063,
+    "highTimeMinutes": {
+     "n": 493,
+     "mean": -0.58,
+     "rms": 6.406,
+     "meanAbs": 4.828,
+     "p95Abs": 13.017
+    },
+    "highHeightMetres": {
+     "n": 493,
+     "mean": 0.033,
+     "rms": 0.061,
+     "meanAbs": 0.049,
+     "p95Abs": 0.117
+    },
+    "lowTimeMinutes": {
+     "n": 492,
+     "mean": 0.241,
+     "rms": 5.092,
+     "meanAbs": 4.062,
+     "p95Abs": 9.633
+    },
+    "lowHeightMetres": {
+     "n": 492,
+     "mean": -0.029,
+     "rms": 0.061,
+     "meanAbs": 0.049,
+     "p95Abs": 0.119
+    }
+   },
+   "gaugeMonthVsObserved2025": {
+    "label": "Marine Institute gauge 2025, 5-minute",
+    "from": "2025-01-01T00:00:00Z",
+    "to": "2025-12-31T23:55:00Z",
+    "samples": 103487,
+    "datumOffsetMetres": 0.024,
+    "heightRmsMetres": 0.167,
+    "highTimeMinutes": {
+     "n": 697,
+     "mean": -0.136,
+     "rms": 9.788,
+     "meanAbs": 7.258,
+     "p95Abs": 20.657
+    },
+    "highHeightMetres": {
+     "n": 697,
+     "mean": 0.039,
+     "rms": 0.173,
+     "meanAbs": 0.132,
+     "p95Abs": 0.339
+    },
+    "lowTimeMinutes": {
+     "n": 697,
+     "mean": -0.584,
+     "rms": 11.511,
+     "meanAbs": 7.809,
+     "p95Abs": 22.195
+    },
+    "lowHeightMetres": {
+     "n": 697,
+     "mean": -0.025,
+     "rms": 0.164,
+     "meanAbs": 0.131,
+     "p95Abs": 0.319
+    }
+   }
+  },
+  "Skerries": {
+   "eot20Only": {
+    "label": "Marine Institute prediction, 5-minute (imiTidePrediction)",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-09-30T23:55:00Z",
+    "samples": 78624,
+    "datumOffsetMetres": -0.113,
+    "heightRmsMetres": 0.086,
+    "highTimeMinutes": {
+     "n": 527,
+     "mean": 3.621,
+     "rms": 6.392,
+     "meanAbs": 5.153,
+     "p95Abs": 11.771
+    },
+    "highHeightMetres": {
+     "n": 527,
+     "mean": 0.008,
+     "rms": 0.09,
+     "meanAbs": 0.074,
+     "p95Abs": 0.164
+    },
+    "lowTimeMinutes": {
+     "n": 527,
+     "mean": 1.823,
+     "rms": 9.823,
+     "meanAbs": 7.879,
+     "p95Abs": 20.614
+    },
+    "lowHeightMetres": {
+     "n": 527,
+     "mean": -0.023,
+     "rms": 0.062,
+     "meanAbs": 0.047,
+     "p95Abs": 0.122
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,1293 @@
+{
+ "about": "Tide stations for Northern Ireland, which the Marine Institute does not predict (scripts/tides/build_ni.py). Harmonic constants (amplitude metres, Greenwich phase lag degrees) predicted by force5/ingest/harmonics.py; the gauges' from a month of the Environment Agency's open levels, the rest from EOT20. Validation: scripts/tides/validation.json.",
+ "datum": "LAT: each station's z0 is its mean level above the lowest level its constants predict every 10 minutes over the 18.61 years from 2026-01-01 (a full nodal cycle).",
+ "generatedAt": "2026-10-18T08:28:57Z",
+ "sources": {
+  "Environment Agency": {
+   "what": "Portrush and Bangor gauge levels, 15-minute, chart datum and mAOD",
+   "url": "https://environment.data.gov.uk/flood-monitoring/doc/tidegauge",
+   "licence": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+   "attribution": "This uses Environment Agency flood and river level data from the real-time data API (Beta). Contains public sector information licensed under the Open Government Licence v3.0."
+  },
+  "EOT20": {
+   "what": "Global ocean tide model, 1/8 degree, 17 constituents (pyTMD infers the minor ones)",
+   "url": "https://doi.org/10.17882/79489",
+   "licence": "https://creativecommons.org/licenses/by/4.0/",
+   "attribution": "Hart-Davis, M. G., Piccioni, G., Dettmering, D., Schwatke, C., Passaro, M., Seitz, F. (2021): EOT20: a global ocean tide model from multi-mission satellite altimetry. Earth System Science Data 13, 3869-3884."
+  },
+  "Sentinel-2": {
+   "what": "Strangford Lough's lag behind Killard Point, read off the imagery",
+   "url": "https://sentinels.copernicus.eu/",
+   "attribution": "Contains modified Copernicus Sentinel data"
+  }
+ },
+ "stations": {
+  "Portrush": {
+   "name": "Portrush",
+   "lat": 55.2011,
+   "lon": -6.6512,
+   "modelled": false,
+   "kind": "gauge",
+   "method": "Harmonic analysis of the Environment Agency's 15-minute levels at the Portrush gauge, 2026-09-19T00:00Z to 2026-10-14T11:00Z (25.5 days, 2441 readings; 10 spikes and the gauge's dropouts left out), solving {', '.join(SOLVED)}; the rest inferred from EOT20's ratios to them at the gauge, and SA, SSA, MM and MF taken from EOT20.",
+   "gauge": {
+    "provider": "Environment Agency (UK National Tide Gauge Network)",
+    "measure": "https://environment.data.gov.uk/flood-monitoring/id/measures/E73924-level-tidal_level-Mean-15_min-m",
+    "from": "2026-09-19T00:00:00Z",
+    "to": "2026-10-14T11:00:00Z",
+    "readings": 2441,
+    "residualRmsMetres": 0.138,
+    "chartDatumAboveOrdnanceDatumMetres": -1.24,
+    "meanLevelAboveChartDatumMetres": 1.394,
+    "chartDatumAboveLatMetres": -0.158
+   },
+   "attribution": "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data from the real-time flood-monitoring API (Open Government Licence v3.0) and the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+   "sourceUrl": "https://environment.data.gov.uk/flood-monitoring/id/measures/E73924-level-tidal_level-Mean-15_min-m",
+   "z0": 1.2355,
+   "hatMetres": 2.524,
+   "constituents": {
+    "M2": [
+     0.5439,
+     197.94
+    ],
+    "S2": [
+     0.2243,
+     211.98
+    ],
+    "N2": [
+     0.1171,
+     168.53
+    ],
+    "O1": [
+     0.0941,
+     33.85
+    ],
+    "K1": [
+     0.078,
+     177.0
+    ],
+    "MU2": [
+     0.0761,
+     106.38
+    ],
+    "K2": [
+     0.0633,
+     212.62
+    ],
+    "M3": [
+     0.0407,
+     103.45
+    ],
+    "SA": [
+     0.0398,
+     322.42
+    ],
+    "L2B": [
+     0.0277,
+     198.18
+    ],
+    "2MS6": [
+     0.0276,
+     149.32
+    ],
+    "Q1": [
+     0.0256,
+     335.04
+    ],
+    "P1": [
+     0.022,
+     179.39
+    ],
+    "NU2": [
+     0.0212,
+     171.34
+    ],
+    "M4": [
+     0.019,
+     94.51
+    ],
+    "MM": [
+     0.0184,
+     198.6
+    ],
+    "MO3": [
+     0.0176,
+     73.41
+    ],
+    "MF": [
+     0.0168,
+     216.28
+    ],
+    "2N2": [
+     0.0158,
+     122.12
+    ],
+    "M6": [
+     0.0122,
+     124.58
+    ],
+    "S1": [
+     0.0119,
+     15.77
+    ],
+    "MK3": [
+     0.0112,
+     245.08
+    ],
+    "T2": [
+     0.0101,
+     257.53
+    ],
+    "SSA": [
+     0.0091,
+     185.27
+    ],
+    "MS4": [
+     0.009,
+     60.03
+    ],
+    "MN4": [
+     0.0079,
+     72.48
+    ],
+    "2MN6": [
+     0.0079,
+     105.46
+    ],
+    "L2": [
+     0.0078,
+     4.16
+    ],
+    "OO1": [
+     0.0076,
+     190.91
+    ],
+    "SIGMA1": [
+     0.0069,
+     322.46
+    ],
+    "EPS2": [
+     0.0064,
+     96.11
+    ],
+    "2Q1": [
+     0.006,
+     321.37
+    ],
+    "RHO1": [
+     0.0044,
+     338.66
+    ],
+    "J1": [
+     0.0042,
+     157.45
+    ],
+    "ETA2": [
+     0.004,
+     214.85
+    ],
+    "LAMBDA2": [
+     0.0039,
+     210.03
+    ],
+    "THETA1": [
+     0.0013,
+     193.08
+    ],
+    "PHI1": [
+     0.0013,
+     179.84
+    ],
+    "M1": [
+     0.0013,
+     12.51
+    ],
+    "PI1": [
+     0.0012,
+     170.49
+    ]
+   }
+  },
+  "Ballycastle_MODELLED": {
+   "name": "Ballycastle",
+   "lat": 55.206,
+   "lon": -6.242,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -6.235,
+    55.215
+   ],
+   "method": "EOT20 at 55.215 N 6.235 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 0.5 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 0.6149,
+   "hatMetres": 1.274,
+   "constituents": {
+    "M2": [
+     0.25,
+     244.15
+    ],
+    "S2": [
+     0.1014,
+     212.47
+    ],
+    "K1": [
+     0.0894,
+     179.51
+    ],
+    "O1": [
+     0.0841,
+     32.38
+    ],
+    "N2": [
+     0.0609,
+     213.6
+    ],
+    "SA": [
+     0.0396,
+     323.02
+    ],
+    "Q1": [
+     0.0316,
+     332.68
+    ],
+    "K2": [
+     0.0288,
+     220.21
+    ],
+    "MM": [
+     0.0285,
+     203.27
+    ],
+    "P1": [
+     0.0264,
+     184.8
+    ],
+    "MF": [
+     0.0219,
+     220.64
+    ],
+    "M4": [
+     0.0164,
+     164.62
+    ],
+    "S1": [
+     0.0158,
+     12.98
+    ],
+    "MU2": [
+     0.0146,
+     190.8
+    ],
+    "L2B": [
+     0.0116,
+     234.2
+    ],
+    "NU2": [
+     0.0109,
+     218.01
+    ],
+    "SSA": [
+     0.0103,
+     185.61
+    ],
+    "OO1": [
+     0.0087,
+     192.54
+    ],
+    "SIGMA1": [
+     0.0085,
+     319.61
+    ],
+    "2Q1": [
+     0.0075,
+     318.48
+    ],
+    "T2": [
+     0.0073,
+     301.76
+    ],
+    "L2": [
+     0.0058,
+     234.59
+    ],
+    "RHO1": [
+     0.0054,
+     336.44
+    ],
+    "J1": [
+     0.0053,
+     157.1
+    ],
+    "2N2": [
+     0.0041,
+     143.27
+    ],
+    "EPS2": [
+     0.0024,
+     92.02
+    ],
+    "ETA2": [
+     0.0018,
+     204.42
+    ],
+    "LAMBDA2": [
+     0.0017,
+     251.05
+    ],
+    "THETA1": [
+     0.0015,
+     194.99
+    ],
+    "PHI1": [
+     0.0015,
+     182.18
+    ],
+    "PI1": [
+     0.0013,
+     173.31
+    ],
+    "M1": [
+     0.0011,
+     10.81
+    ]
+   }
+  },
+  "Larne_MODELLED": {
+   "name": "Larne",
+   "lat": 54.853,
+   "lon": -5.79,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -5.775,
+    54.86
+   ],
+   "method": "EOT20 at 54.860 N 5.775 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 0.9 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 1.8613,
+   "hatMetres": 3.623,
+   "constituents": {
+    "M2": [
+     0.997,
+     317.81
+    ],
+    "S2": [
+     0.2375,
+     2.0
+    ],
+    "N2": [
+     0.197,
+     291.69
+    ],
+    "K1": [
+     0.1021,
+     187.47
+    ],
+    "O1": [
+     0.096,
+     37.94
+    ],
+    "K2": [
+     0.0701,
+     356.38
+    ],
+    "L2B": [
+     0.043,
+     324.59
+    ],
+    "SA": [
+     0.04,
+     321.79
+    ],
+    "NU2": [
+     0.0369,
+     295.69
+    ],
+    "P1": [
+     0.0365,
+     190.82
+    ],
+    "MU2": [
+     0.0339,
+     263.68
+    ],
+    "Q1": [
+     0.0329,
+     335.4
+    ],
+    "MM": [
+     0.0244,
+     200.29
+    ],
+    "2N2": [
+     0.0243,
+     276.76
+    ],
+    "T2": [
+     0.023,
+     352.78
+    ],
+    "L2": [
+     0.0183,
+     342.86
+    ],
+    "MF": [
+     0.0176,
+     223.72
+    ],
+    "S1": [
+     0.0162,
+     25.83
+    ],
+    "M4": [
+     0.0117,
+     94.55
+    ],
+    "OO1": [
+     0.01,
+     199.55
+    ],
+    "SSA": [
+     0.0092,
+     187.92
+    ],
+    "SIGMA1": [
+     0.0089,
+     320.76
+    ],
+    "2Q1": [
+     0.0078,
+     319.51
+    ],
+    "EPS2": [
+     0.0069,
+     262.66
+    ],
+    "LAMBDA2": [
+     0.0066,
+     333.95
+    ],
+    "RHO1": [
+     0.0056,
+     339.62
+    ],
+    "ETA2": [
+     0.0042,
+     28.09
+    ],
+    "J1": [
+     0.0035,
+     159.35
+    ],
+    "THETA1": [
+     0.0017,
+     202.29
+    ],
+    "PHI1": [
+     0.0017,
+     189.95
+    ],
+    "PI1": [
+     0.0015,
+     181.63
+    ],
+    "M1": [
+     0.0011,
+     15.98
+    ]
+   }
+  },
+  "Bangor": {
+   "name": "Bangor",
+   "lat": 54.6652,
+   "lon": -5.6705,
+   "modelled": false,
+   "kind": "gauge",
+   "method": "Harmonic analysis of the Environment Agency's 15-minute levels at the Bangor gauge, 2026-09-19T00:00Z to 2026-10-18T07:30Z (29.3 days, 2810 readings; 0 spikes and the gauge's dropouts left out), solving {', '.join(SOLVED)}; the rest inferred from EOT20's ratios to them at the gauge, and SA, SSA, MM and MF taken from EOT20.",
+   "gauge": {
+    "provider": "Environment Agency (UK National Tide Gauge Network)",
+    "measure": "https://environment.data.gov.uk/flood-monitoring/id/measures/E73824-level-tidal_level-Mean-15_min-m",
+    "from": "2026-09-19T00:00:00Z",
+    "to": "2026-10-18T07:30:00Z",
+    "readings": 2810,
+    "residualRmsMetres": 0.166,
+    "chartDatumAboveOrdnanceDatumMetres": -2.01,
+    "meanLevelAboveChartDatumMetres": 2.188,
+    "chartDatumAboveLatMetres": -0.142
+   },
+   "attribution": "Tidal predictions by wingfoil.ie from Environment Agency tide gauge data from the real-time flood-monitoring API (Open Government Licence v3.0) and the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+   "sourceUrl": "https://environment.data.gov.uk/flood-monitoring/id/measures/E73824-level-tidal_level-Mean-15_min-m",
+   "z0": 2.0466,
+   "hatMetres": 4.066,
+   "constituents": {
+    "M2": [
+     1.1492,
+     317.53
+    ],
+    "S2": [
+     0.3056,
+     2.62
+    ],
+    "N2": [
+     0.1972,
+     291.34
+    ],
+    "O1": [
+     0.1064,
+     44.43
+    ],
+    "K1": [
+     0.1034,
+     193.64
+    ],
+    "K2": [
+     0.0886,
+     358.51
+    ],
+    "MU2": [
+     0.0697,
+     129.08
+    ],
+    "L2B": [
+     0.0503,
+     324.36
+    ],
+    "SA": [
+     0.0405,
+     321.47
+    ],
+    "P1": [
+     0.0379,
+     195.46
+    ],
+    "NU2": [
+     0.037,
+     295.27
+    ],
+    "M3": [
+     0.0274,
+     119.72
+    ],
+    "T2": [
+     0.0258,
+     353.09
+    ],
+    "2N2": [
+     0.0248,
+     272.38
+    ],
+    "Q1": [
+     0.0239,
+     340.44
+    ],
+    "MM": [
+     0.0235,
+     200.61
+    ],
+    "MS4": [
+     0.0209,
+     85.66
+    ],
+    "MF": [
+     0.0168,
+     223.37
+    ],
+    "L2": [
+     0.0163,
+     78.0
+    ],
+    "S1": [
+     0.0155,
+     38.61
+    ],
+    "MO3": [
+     0.0137,
+     90.86
+    ],
+    "2MS6": [
+     0.0115,
+     216.82
+    ],
+    "M4": [
+     0.011,
+     93.11
+    ],
+    "MK3": [
+     0.0105,
+     237.53
+    ],
+    "OO1": [
+     0.0101,
+     205.93
+    ],
+    "SSA": [
+     0.0091,
+     187.92
+    ],
+    "LAMBDA2": [
+     0.0077,
+     333.67
+    ],
+    "EPS2": [
+     0.0074,
+     255.65
+    ],
+    "SIGMA1": [
+     0.0065,
+     325.37
+    ],
+    "M6": [
+     0.0062,
+     209.5
+    ],
+    "2Q1": [
+     0.0057,
+     324.09
+    ],
+    "ETA2": [
+     0.0054,
+     27.47
+    ],
+    "MN4": [
+     0.0049,
+     119.67
+    ],
+    "RHO1": [
+     0.0041,
+     344.8
+    ],
+    "J1": [
+     0.0027,
+     158.93
+    ],
+    "M8": [
+     0.0021,
+     256.72
+    ],
+    "THETA1": [
+     0.0018,
+     208.59
+    ],
+    "PHI1": [
+     0.0017,
+     196.16
+    ],
+    "PI1": [
+     0.0015,
+     187.74
+    ],
+    "2MN6": [
+     0.0013,
+     79.95
+    ],
+    "M1": [
+     0.0013,
+     22.82
+    ]
+   }
+  },
+  "Portavogie_MODELLED": {
+   "name": "Portavogie",
+   "lat": 54.458,
+   "lon": -5.438,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -5.415,
+    54.46
+   ],
+   "method": "EOT20 at 54.460 N 5.415 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 1.4 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 2.8723,
+   "hatMetres": 5.68,
+   "constituents": {
+    "M2": [
+     1.5749,
+     320.55
+    ],
+    "S2": [
+     0.4517,
+     1.28
+    ],
+    "N2": [
+     0.3081,
+     294.86
+    ],
+    "K2": [
+     0.128,
+     358.47
+    ],
+    "K1": [
+     0.1079,
+     187.99
+    ],
+    "O1": [
+     0.1012,
+     41.17
+    ],
+    "L2B": [
+     0.0708,
+     327.59
+    ],
+    "NU2": [
+     0.0577,
+     298.73
+    ],
+    "MU2": [
+     0.0523,
+     267.98
+    ],
+    "SA": [
+     0.0406,
+     319.83
+    ],
+    "P1": [
+     0.0401,
+     189.82
+    ],
+    "2N2": [
+     0.0392,
+     271.94
+    ],
+    "T2": [
+     0.0336,
+     349.09
+    ],
+    "Q1": [
+     0.0327,
+     337.18
+    ],
+    "L2": [
+     0.0314,
+     345.92
+    ],
+    "MM": [
+     0.0219,
+     200.17
+    ],
+    "MF": [
+     0.0156,
+     221.85
+    ],
+    "S1": [
+     0.0152,
+     44.06
+    ],
+    "EPS2": [
+     0.0122,
+     252.93
+    ],
+    "LAMBDA2": [
+     0.0107,
+     336.87
+    ],
+    "OO1": [
+     0.0105,
+     201.12
+    ],
+    "SIGMA1": [
+     0.0089,
+     321.46
+    ],
+    "SSA": [
+     0.0088,
+     187.08
+    ],
+    "M4": [
+     0.0088,
+     96.0
+    ],
+    "ETA2": [
+     0.0079,
+     23.39
+    ],
+    "2Q1": [
+     0.0078,
+     320.12
+    ],
+    "RHO1": [
+     0.0056,
+     341.72
+    ],
+    "THETA1": [
+     0.0018,
+     203.49
+    ],
+    "PHI1": [
+     0.0018,
+     190.63
+    ],
+    "PI1": [
+     0.0016,
+     181.78
+    ],
+    "J1": [
+     0.0015,
+     116.9
+    ],
+    "M1": [
+     0.0013,
+     19.95
+    ]
+   }
+  },
+  "Killard_MODELLED": {
+   "name": "Killard Point",
+   "lat": 54.315,
+   "lon": -5.525,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -5.495,
+    54.312
+   ],
+   "method": "EOT20 at 54.312 N 5.495 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 1.6 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 3.1542,
+   "hatMetres": 6.227,
+   "constituents": {
+    "M2": [
+     1.726,
+     319.85
+    ],
+    "S2": [
+     0.5088,
+     359.14
+    ],
+    "N2": [
+     0.3372,
+     294.01
+    ],
+    "K2": [
+     0.1439,
+     356.4
+    ],
+    "K1": [
+     0.1097,
+     188.27
+    ],
+    "O1": [
+     0.1033,
+     42.59
+    ],
+    "L2B": [
+     0.0784,
+     326.66
+    ],
+    "NU2": [
+     0.0631,
+     297.9
+    ],
+    "MU2": [
+     0.0575,
+     267.17
+    ],
+    "2N2": [
+     0.0433,
+     269.65
+    ],
+    "P1": [
+     0.0406,
+     190.1
+    ],
+    "SA": [
+     0.0405,
+     317.76
+    ],
+    "T2": [
+     0.0365,
+     345.22
+    ],
+    "L2": [
+     0.035,
+     344.85
+    ],
+    "Q1": [
+     0.0325,
+     340.81
+    ],
+    "M4": [
+     0.029,
+     68.83
+    ],
+    "MM": [
+     0.0182,
+     195.44
+    ],
+    "S1": [
+     0.0147,
+     46.48
+    ],
+    "EPS2": [
+     0.0137,
+     250.1
+    ],
+    "MF": [
+     0.0135,
+     218.45
+    ],
+    "LAMBDA2": [
+     0.0118,
+     336.03
+    ],
+    "OO1": [
+     0.0107,
+     201.87
+    ],
+    "ETA2": [
+     0.0088,
+     19.88
+    ],
+    "SIGMA1": [
+     0.0087,
+     324.79
+    ],
+    "SSA": [
+     0.0084,
+     186.68
+    ],
+    "2Q1": [
+     0.0077,
+     323.4
+    ],
+    "RHO1": [
+     0.0056,
+     345.35
+    ],
+    "THETA1": [
+     0.0019,
+     204.08
+    ],
+    "PHI1": [
+     0.0018,
+     191.0
+    ],
+    "PI1": [
+     0.0016,
+     181.88
+    ],
+    "M1": [
+     0.0014,
+     21.24
+    ],
+    "J1": [
+     0.0009,
+     80.22
+    ]
+   }
+  },
+  "Strangford_MODELLED": {
+   "name": "Strangford Lough",
+   "lat": 54.48,
+   "lon": -5.62,
+   "modelled": true,
+   "kind": "lag",
+   "lagOf": "Killard_MODELLED",
+   "lagMinutes": 100,
+   "method": "Killard Point's predicted tide 100 minutes later: the lag the satellite run read off the lough's flats (Sentinel-2 looks, scripts/satellite/lag.py: the median misfit of the flats' wet and dry looks falls from 0.26 at no lag to 0.065 at 100 minutes). Heights and datum are Killard Point's: no open gauge inside the Narrows says how much smaller the lough's range is.",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0), lagged for the lough from Copernicus Sentinel-2 imagery",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489"
+  },
+  "Ardglass_MODELLED": {
+   "name": "Ardglass",
+   "lat": 54.262,
+   "lon": -5.607,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -5.58,
+    54.25
+   ],
+   "method": "EOT20 at 54.250 N 5.580 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 1.6 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 3.1652,
+   "hatMetres": 6.244,
+   "constituents": {
+    "M2": [
+     1.7318,
+     319.77
+    ],
+    "S2": [
+     0.5107,
+     358.84
+    ],
+    "N2": [
+     0.3374,
+     294.0
+    ],
+    "K2": [
+     0.1447,
+     356.04
+    ],
+    "K1": [
+     0.1097,
+     188.69
+    ],
+    "O1": [
+     0.1035,
+     42.89
+    ],
+    "L2B": [
+     0.0788,
+     326.48
+    ],
+    "NU2": [
+     0.0632,
+     297.9
+    ],
+    "MU2": [
+     0.0574,
+     267.1
+    ],
+    "2N2": [
+     0.0437,
+     269.6
+    ],
+    "SA": [
+     0.0406,
+     317.93
+    ],
+    "P1": [
+     0.0405,
+     190.01
+    ],
+    "T2": [
+     0.0362,
+     345.24
+    ],
+    "M4": [
+     0.0352,
+     64.29
+    ],
+    "L2": [
+     0.0351,
+     344.69
+    ],
+    "Q1": [
+     0.0324,
+     341.63
+    ],
+    "MM": [
+     0.0177,
+     194.39
+    ],
+    "S1": [
+     0.0145,
+     45.72
+    ],
+    "EPS2": [
+     0.0139,
+     250.27
+    ],
+    "MF": [
+     0.0133,
+     217.85
+    ],
+    "LAMBDA2": [
+     0.0118,
+     335.85
+    ],
+    "OO1": [
+     0.0107,
+     202.26
+    ],
+    "ETA2": [
+     0.0088,
+     19.33
+    ],
+    "SIGMA1": [
+     0.0087,
+     325.56
+    ],
+    "SSA": [
+     0.0084,
+     186.9
+    ],
+    "2Q1": [
+     0.0076,
+     324.17
+    ],
+    "RHO1": [
+     0.0056,
+     346.16
+    ],
+    "THETA1": [
+     0.0019,
+     204.48
+    ],
+    "PHI1": [
+     0.0018,
+     191.41
+    ],
+    "PI1": [
+     0.0016,
+     182.29
+    ],
+    "M1": [
+     0.0014,
+     21.36
+    ],
+    "J1": [
+     0.0006,
+     79.92
+    ]
+   }
+  },
+  "Dundrum_Bay_MODELLED": {
+   "name": "Dundrum Bay",
+   "lat": 54.225,
+   "lon": -5.83,
+   "modelled": true,
+   "kind": "model",
+   "model": [
+    -5.8,
+    54.215
+   ],
+   "method": "EOT20 at 54.215 N 5.800 W: its constants read off a two-year pyTMD prediction there (minor constituents inferred) by harmonic analysis (fit 1.6 mm RMS).",
+   "attribution": "Tidal predictions by wingfoil.ie from the EOT20 ocean tide model, Hart-Davis et al. 2021, DGFI-TUM (CC BY 4.0)",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+   "sourceUrl": "https://doi.org/10.17882/79489",
+   "z0": 3.17,
+   "hatMetres": 6.244,
+   "constituents": {
+    "M2": [
+     1.7311,
+     319.94
+    ],
+    "S2": [
+     0.5103,
+     358.64
+    ],
+    "N2": [
+     0.3376,
+     294.08
+    ],
+    "K2": [
+     0.1452,
+     356.12
+    ],
+    "K1": [
+     0.1098,
+     188.81
+    ],
+    "O1": [
+     0.1039,
+     43.6
+    ],
+    "L2B": [
+     0.0789,
+     326.64
+    ],
+    "NU2": [
+     0.0632,
+     297.99
+    ],
+    "MU2": [
+     0.0576,
+     267.2
+    ],
+    "M4": [
+     0.0445,
+     62.61
+    ],
+    "2N2": [
+     0.0439,
+     269.1
+    ],
+    "SA": [
+     0.0404,
+     317.13
+    ],
+    "P1": [
+     0.0401,
+     189.56
+    ],
+    "T2": [
+     0.036,
+     344.25
+    ],
+    "L2": [
+     0.0351,
+     344.7
+    ],
+    "Q1": [
+     0.0322,
+     343.35
+    ],
+    "MM": [
+     0.0166,
+     191.51
+    ],
+    "EPS2": [
+     0.0141,
+     249.56
+    ],
+    "S1": [
+     0.0139,
+     45.16
+    ],
+    "MF": [
+     0.0126,
+     214.75
+    ],
+    "LAMBDA2": [
+     0.0119,
+     336.05
+    ],
+    "OO1": [
+     0.0107,
+     202.64
+    ],
+    "ETA2": [
+     0.0088,
+     19.24
+    ],
+    "SIGMA1": [
+     0.0086,
+     327.16
+    ],
+    "SSA": [
+     0.0082,
+     186.96
+    ],
+    "2Q1": [
+     0.0075,
+     325.75
+    ],
+    "RHO1": [
+     0.0056,
+     347.88
+    ],
+    "THETA1": [
+     0.0019,
+     204.78
+    ],
+    "PHI1": [
+     0.0018,
+     191.58
+    ],
+    "PI1": [
+     0.0016,
+     182.31
+    ],
+    "M1": [
+     0.0014,
+     21.89
+    ]
+   }
+  }
+ }
+}
