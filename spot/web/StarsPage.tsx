@@ -15,6 +15,8 @@ import { shoreFacing } from "../../force5/src/shoreFacing";
 import { mapSpotHref, spotHref } from "../../force5/src/siteNav";
 import {
   SKILLS,
+  directionCosts,
+  gustCurve,
   rideableWind,
   starsText,
   windBand,
@@ -153,16 +155,14 @@ export default function StarsPage() {
           </SectionHeading>
           <p className={s.p()}>
             The stars rate the steady wind, the average: it is what holds you up
-            on the foil, and what decides whether a session is on. The gusts
-            barely move them. Below your minimum a gust is a chance to get up,
-            so it can lift the hour to your minimum, worth a star, and no
-            further. Above it, ordinary gusts cost nothing; only gusts running
-            well clear of the average, or past what you can hold, take anything
-            off (section 4).
+            on the foil, and what decides whether a session is on. Below your
+            minimum a gust is a chance to get up, so it can lift the hour to
+            your minimum, worth a star, and no further. Above it, the gusts take
+            stars off only when they are strong (section 4).
           </p>
           <p className={s.p()}>
             Learners get the smallest boost, because they still drop off the
-            foil in the lulls, and feel a gusty wind sooner.
+            foil in the lulls.
           </p>
           <RideExamples rider={rider} />
         </section>
@@ -195,8 +195,8 @@ export default function StarsPage() {
           <p className={s.p()}>
             Cross-offshore costs learners the most, because a learner drifts
             downwind and ends up further out. An advanced rider can get back
-            upwind, so it costs them least. Straight offshore never gets more
-            than one star, and none for a learner.
+            upwind, so it costs them least. Offshore costs the most stars of
+            all.
           </p>
         </section>
 
@@ -204,7 +204,13 @@ export default function StarsPage() {
           <SectionHeading id="off">
             4. What else <em className="font-normal">takes stars off</em>
           </SectionHeading>
-          <OtherTable rider={rider} />
+          <p className={s.p()}>
+            Strong gusts. It is how strong a gust is that counts, not how far it
+            runs over the average: up to the first figure it costs nothing, then
+            more and more, to the most from the second.
+          </p>
+          <GustTable rider={rider} />
+          <OtherTable />
           <p className={s.small()}>
             Hover over or tap an hour&rsquo;s stars to see what it lost, and
             why.
@@ -237,7 +243,7 @@ export default function StarsPage() {
           <WorkedExample spotId={spotId} rider={rider} />
         </section>
 
-        <p className={s.small()}>wingfoil.ie star rating, version 3.</p>
+        <p className={s.small()}>wingfoil.ie star rating, version 4.</p>
       </main>
     </SpotFrame>
   );
@@ -431,31 +437,35 @@ function BandTable({ rider }: { rider: Rider }) {
           </tr>
         </thead>
         <tbody>
-          {SKILLS.map((skill) => {
-            const band = windBand({ ...rider, skill });
-            const you = skill === rider.skill;
-            return (
-              <tr key={skill} className={you ? s.you() : undefined}>
-                <td className={s.td()}>
-                  {SKILL_LABEL[skill]}{" "}
-                  {you && (
-                    <PenNote as="span" size="sm">
-                      you
-                    </PenNote>
-                  )}
-                </td>
-                <td className={s.td({ className: s.num() })}>
-                  {Math.round(band.min)}
-                </td>
-                <td className={s.td({ className: s.num() })}>
-                  {Math.round(band.sweetLow)}–{Math.round(band.sweetHigh)}
-                </td>
-                <td className={s.td({ className: s.num() })}>
-                  {Math.round(band.max)}
-                </td>
-              </tr>
-            );
-          })}
+          {[...SKILLS, ...(rider.custom ? (["yours"] as const) : [])].map(
+            (skill) => {
+              const band = windBand(
+                skill === "yours" ? rider : standard(rider, skill),
+              );
+              const you = skill === (rider.custom ? "yours" : rider.skill);
+              return (
+                <tr key={skill} className={you ? s.you() : undefined}>
+                  <td className={s.td()}>
+                    {skill === "yours" ? "Your own" : SKILL_LABEL[skill]}{" "}
+                    {you && (
+                      <PenNote as="span" size="sm">
+                        you
+                      </PenNote>
+                    )}
+                  </td>
+                  <td className={s.td({ className: s.num() })}>
+                    {Math.round(band.min)}
+                  </td>
+                  <td className={s.td({ className: s.num() })}>
+                    {Math.round(band.sweetLow)}–{Math.round(band.sweetHigh)}
+                  </td>
+                  <td className={s.td({ className: s.num() })}>
+                    {Math.round(band.max)}
+                  </td>
+                </tr>
+              );
+            },
+          )}
         </tbody>
       </table>
       <p className={s.figures()}>
@@ -466,12 +476,33 @@ function BandTable({ rider }: { rider: Rider }) {
   );
 }
 
+/** A level's own rating for this rider's weight, without their custom one. */
+const standard = (rider: Rider, skill: Skill): Rider => ({
+  ...rider,
+  skill,
+  custom: null,
+});
+
+/** The levels as columns, and the rider's own after them when they have one. */
+type Column = Skill | "yours";
+const columns = (rider: Rider): Column[] => [
+  ...SKILLS,
+  ...(rider.custom ? (["yours"] as const) : []),
+];
+const columnRider = (rider: Rider, column: Column) =>
+  column === "yours" ? rider : standard(rider, column);
+const isYou = (rider: Rider, column: Column) =>
+  column === (rider.custom ? "yours" : rider.skill);
+const columnName = (column: Column) =>
+  column === "yours" ? "Yours" : SKILL_LABEL[column];
+
 /** The five ways the wind meets a beach, as stars.ts `shoreAngle` cuts them. */
 const SECTORS = [
   {
     from: 0,
     to: 30,
     name: "onshore",
+    key: "onshore",
     words: "Onshore",
     away: false,
     tint: 0.55,
@@ -480,6 +511,7 @@ const SECTORS = [
     from: 30,
     to: 70,
     name: "cross-on",
+    key: "crossOn",
     words: "Cross-onshore",
     away: false,
     tint: 0.32,
@@ -488,6 +520,7 @@ const SECTORS = [
     from: 70,
     to: 110,
     name: "cross",
+    key: "cross",
     words: "Cross-shore",
     away: false,
     tint: 0.16,
@@ -496,6 +529,7 @@ const SECTORS = [
     from: 110,
     to: 150,
     name: "cross-off",
+    key: "crossOff",
     words: "Cross-offshore",
     away: true,
     tint: 0.22,
@@ -504,6 +538,7 @@ const SECTORS = [
     from: 150,
     to: 180,
     name: "offshore",
+    key: "offshore",
     words: "Offshore",
     away: true,
     tint: 0.42,
@@ -511,32 +546,16 @@ const SECTORS = [
 ] as const;
 
 /**
- * What each angle costs each level: a figure off, or a cap. A non-breaking
- * space holds each figure to its word, so a phone's narrow column can wrap a
- * cost but never ends a line on "−1".
+ * Stars off as the table sets them: "−1½ stars", "none". A non-breaking space
+ * holds each figure to its word, so a phone's narrow column can wrap a cost
+ * but never ends a line on "−1".
  */
-const SHORE_COST: Record<
-  (typeof SECTORS)[number]["name"],
-  Record<Skill, string>
-> = {
-  onshore: {
-    beginner: "−1\u00a0star",
-    intermediate: "−1\u00a0star",
-    advanced: "−1\u00a0star",
-  },
-  "cross-on": { beginner: "none", intermediate: "none", advanced: "none" },
-  cross: { beginner: "−½\u00a0star", intermediate: "none", advanced: "none" },
-  "cross-off": {
-    beginner: "−3\u00a0stars",
-    intermediate: "−1½\u00a0stars",
-    advanced: "−1\u00a0star",
-  },
-  offshore: {
-    beginner: "no\u00a0stars",
-    intermediate: "1\u00a0star at\u00a0most",
-    advanced: "1\u00a0star at\u00a0most",
-  },
-};
+function starsOff(off: number): string {
+  if (!off) return "none";
+  const whole = Math.floor(off);
+  const figure = `−${whole || ""}${off % 1 ? "½" : ""}`;
+  return `${figure}\u00a0star${off === 1 ? "" : "s"}`;
+}
 
 const sectorStyles = tv({
   slots: {
@@ -674,14 +693,14 @@ function ShoreTable({ rider }: { rider: Rider }) {
       <thead>
         <tr>
           <th className={s.th()}>Wind</th>
-          {SKILLS.map((skill) => (
+          {columns(rider).map((column) => (
             <th
-              key={skill}
+              key={column}
               className={s.th({
-                className: skill === rider.skill ? s.you() : undefined,
+                className: isYou(rider, column) ? s.you() : undefined,
               })}
             >
-              {SKILL_LABEL[skill]}
+              {columnName(column)}
             </th>
           ))}
         </tr>
@@ -695,18 +714,20 @@ function ShoreTable({ rider }: { rider: Rider }) {
                 {sector.from}–{sector.to}°
               </span>
             </td>
-            {SKILLS.map((skill) => (
+            {columns(rider).map((column) => (
               <td
-                key={skill}
+                key={column}
                 className={s.td({
                   className: [
                     s.num(),
                     s.wraps(),
-                    skill === rider.skill ? s.you() : "",
+                    isYou(rider, column) ? s.you() : "",
                   ],
                 })}
               >
-                {SHORE_COST[sector.name][skill]}
+                {starsOff(
+                  directionCosts(columnRider(rider, column))[sector.key],
+                )}
               </td>
             ))}
           </tr>
@@ -716,54 +737,89 @@ function ShoreTable({ rider }: { rider: Rider }) {
   );
 }
 
-function OtherTable({ rider }: { rider: Rider }) {
+/** The gusts' curve for each level, at this rider's weight, and theirs. */
+function GustTable({ rider }: { rider: Rider }) {
   const s = styles();
-  const learning = rider.skill === "beginner";
-  const rows: [string, string, string][] = [
+  const rows: [string, (column: Column) => string][] = [
     [
-      "Gusts more than 10\u00a0knots over the average (7 for a learner)",
-      "−½\u00a0star a knot past 10, at most −2",
-      "−½\u00a0star a knot past 7, at most −2",
+      "No effect up to",
+      (column) =>
+        `${Math.round(gustCurve(columnRider(rider, column)).fine)}\u00a0kn`,
     ],
-    ["Gusts past your maximum", "−½\u00a0star", "−1\u00a0star"],
-    ["The forecast models disagree", "−1\u00a0star", "−1\u00a0star"],
-    ["The models differ a little", "−¼\u00a0star", "−¼\u00a0star"],
-    ["None of your wings suits the wind", "−1\u00a0star", "−1\u00a0star"],
+    [
+      "Most off from",
+      (column) =>
+        `${Math.round(gustCurve(columnRider(rider, column)).worst)}\u00a0kn`,
+    ],
+    [
+      "Most off",
+      (column) => starsOff(gustCurve(columnRider(rider, column)).most),
+    ],
+  ];
+  return (
+    <table className={s.table()} data-gust-table>
+      <thead>
+        <tr>
+          <th className={s.th()}>Gusts</th>
+          {columns(rider).map((column) => (
+            <th
+              key={column}
+              className={s.th({
+                className: isYou(rider, column) ? s.you() : undefined,
+              })}
+            >
+              {columnName(column)}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([what, figure]) => (
+          <tr key={what}>
+            <td className={s.td()}>{what}</td>
+            {columns(rider).map((column) => (
+              <td
+                key={column}
+                className={s.td({
+                  className: [
+                    s.num(),
+                    s.wraps(),
+                    isYou(rider, column) ? s.you() : "",
+                  ],
+                })}
+              >
+                {figure(column)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** The rest, the same for every level. */
+function OtherTable() {
+  const s = styles();
+  const rows: [string, string][] = [
+    ["The forecast models disagree", "−1\u00a0star"],
+    ["The models differ a little", "−¼\u00a0star"],
+    ["None of your wings suits the wind", "−1\u00a0star"],
   ];
   return (
     <table className={s.table()} data-other-table>
       <thead>
         <tr>
           <th className={s.th({ className: s.when() })}>If</th>
-          <th
-            className={s.th({
-              className: [s.wraps(), learning ? "" : s.you()],
-            })}
-          >
-            Riding or advanced
-          </th>
-          <th className={s.th({ className: learning ? s.you() : undefined })}>
-            Learning
-          </th>
+          <th className={s.th()}>Every level</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map(([when, riding, learner]) => (
+        {rows.map(([when, cost]) => (
           <tr key={when}>
             <td className={s.td()}>{when}</td>
-            <td
-              className={s.td({
-                className: [s.num(), s.wraps(), learning ? "" : s.you()],
-              })}
-            >
-              {riding}
-            </td>
-            <td
-              className={s.td({
-                className: [s.num(), s.wraps(), learning ? s.you() : ""],
-              })}
-            >
-              {learner}
+            <td className={s.td({ className: [s.num(), s.wraps()] })}>
+              {cost}
             </td>
           </tr>
         ))}

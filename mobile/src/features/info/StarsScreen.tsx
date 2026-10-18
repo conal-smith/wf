@@ -87,16 +87,14 @@ export function StarsScreen() {
         <Section n={1} title="The steady wind," soft="not the gusts">
           <P>
             The stars rate the steady wind, the average: it is what holds you up
-            on the foil, and what decides whether a session is on. The gusts
-            barely move them. Below your minimum a gust is a chance to get up,
-            so it can lift the hour to your minimum, worth a star, and no
-            further. Above it, ordinary gusts cost nothing; only gusts running
-            well clear of the average, or past what you can hold, take anything
-            off (section 4).
+            on the foil, and what decides whether a session is on. Below your
+            minimum a gust is a chance to get up, so it can lift the hour to
+            your minimum, worth a star, and no further. Above it, the gusts take
+            stars off only when they are strong (section 4).
           </P>
           <P>
             Learners get the smallest boost, because they still drop off the
-            foil in the lulls, and feel a gusty wind sooner.
+            foil in the lulls.
           </P>
           {(
             [
@@ -136,8 +134,8 @@ export function StarsScreen() {
           <P>
             Cross-offshore costs learners the most, because a learner drifts
             downwind and ends up further out. An advanced rider can get back
-            upwind, so it costs them least. Straight offshore never gets more
-            than one star, and none for a learner.
+            upwind, so it costs them least. Offshore costs the most stars of
+            all.
           </P>
         </Section>
 
@@ -168,7 +166,7 @@ export function StarsScreen() {
         </Section>
 
         <T variant="caption" color="muted" style={styles.italic}>
-          wingfoil.ie star rating, version 3.
+          wingfoil.ie star rating, version 4.
         </T>
       </ScrollView>
     </>
@@ -493,11 +491,7 @@ const SHORE_COST: Record<
   "cross-on": { beginner: "none", intermediate: "none", advanced: "none" },
   cross: { beginner: "−½", intermediate: "none", advanced: "none" },
   "cross-off": { beginner: "−3", intermediate: "−1½", advanced: "−1" },
-  offshore: {
-    beginner: "no stars",
-    intermediate: "1 at most",
-    advanced: "1 at most",
-  },
+  offshore: { beginner: "−5", intermediate: "−4", advanced: "−4" },
 };
 
 function Sectors({ width }: { width: number }) {
@@ -625,11 +619,10 @@ function OtherTable({ rider }: { rider: Rider }) {
       head={["If", "Riding or advanced", "Learning"]}
       rows={[
         [
-          "Gusts more than 10 knots over the average (7 for a learner)",
-          "−½ a knot past 10, at most −2",
-          "−½ a knot past 7, at most −2",
+          "Strong gusts: none off up to 28 knots (33 advanced, 20 learning), the most from 40 (45, 28)",
+          "at most −2",
+          "at most −3",
         ],
-        ["Gusts past your maximum", "−½", "−1"],
         ["The forecast models disagree", "−1", "−1"],
         ["The models differ a little", "−¼", "−¼"],
         ["None of your wings suits the wind", "−1", "−1"],

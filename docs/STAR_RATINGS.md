@@ -56,52 +56,99 @@ at the ceiling, falling to none six knots past it.
 
 ### Stars: what the spot and the forecast take away
 
-Each deduction is a sentence in the cell's tooltip, so a rider can argue with it.
+```
+stars = round(wind − gusts − direction − agreement − wing), from 0 to potential
+```
 
-| Condition                                                                       | Riding / Advanced               | Learning    |
-| ------------------------------------------------------------------------------- | ------------------------------- | ----------- |
-| Offshore (wind from within 30° of straight off the beach)                       | capped at 1                     | capped at 0 |
-| Cross-offshore                                                                  | −1.5 / −1 (adv.)                | −3          |
-| Onshore                                                                         | −1                              | −1          |
-| Cross-shore                                                                     | —                               | −0.5        |
-| Gusts more than 10 kn over the mean (7 learning; below)                         | −0.5 a knot past it, at most −2 | same        |
-| Gusts past the rider's ceiling                                                  | −0.5                            | −1          |
-| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25                      | same        |
-| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1                              | −1          |
+Each deduction is a sentence in the cell's tooltip when it costs a whole star,
+so a rider can argue with it.
 
-Every deduction that costs a star is given as a reason. The quarter for some
-spread among the models is the one that usually costs nothing; when it does tip
-an hour under a whole star, the reason says so ("The models differ a little,
-enough to hold back a star"). The gusts are named the same way: only when they
-cost a whole star.
+| Condition                                                                       | Learning   | Riding | Advanced |
+| ------------------------------------------------------------------------------- | ---------- | ------ | -------- |
+| Onshore (wind within 30° of straight onshore)                                   | −1         | −1     | −1       |
+| Cross-onshore                                                                   | —          | —      | —        |
+| Cross-shore                                                                     | −0.5       | —      | —        |
+| Cross-offshore                                                                  | −3         | −1.5   | −1       |
+| Offshore (wind within 30° of straight off the beach)                            | −5         | −4     | −4       |
+| Gusts, by how strong they are (below)                                           | to −3      | to −2  | to −2    |
+| Models disagree / differ a little (agreement low / moderate, below)             | −1 / −0.25 | same   | same     |
+| Your wings don't fit (biggest < 75% or smallest > 135% of the recommended size) | −1         | −1     | −1       |
 
-### The gusts (`gustCost`)
+Offshore is a deduction like the others, not a cap: the faded stars still say
+what the wind is worth, and a rider's own rating may set it as they like.
 
-The mean decides the stars; the gusts are a footnote. Riders, size guides and
-forecast guides agree that what matters about gusts is how many knots they run
-over the mean: up to about 8 a session is fine, 8–10 gets stop-start, and past
-10 it is unsteady (a 16 kn mean gusting 28 is "a small-wing day, not a 16 kn
-day"). The models' gust is the hour's strongest, and in the published blend of
-17 October 2026 the middle daylight hour at 14–24 kn ran 8 to 9.5 kn over its
-mean, so a gust up to ten over costs nothing. Past that:
+The quarter for some spread among the models is the one that usually costs
+nothing; when it does tip an hour under a whole star, the reason says so ("The
+models differ a little, enough to hold back a star"). The gusts and the
+direction are named the same way: only when they cost a whole star.
 
-- **Gusty**: half a star for every knot past ten over the mean, at most two.
-  A learner, who drops off in every lull, counts from seven.
-- **Past the ceiling**: half a star (a whole one learning) when the gusts pass
-  the most the rider can hold.
+### The gusts (`gustLoss`, `gustCurve`)
 
-For an intermediate 80 kg rider, nothing else taken off:
+The mean decides the stars; what a gust costs depends on how strong it is,
+not on how far it runs over the mean. The models' gust is the hour's
+strongest, so a riding day's 8 or 9 knots over is ordinary; what makes a
+session hard is a gust past what you can hold. Each level has a curve: no loss
+up to `fine`, a straight ramp to `most` stars off at `worst`, and flat past it.
 
-| Wind       | v2  | v3  | Why                                              |
+| Level    | No effect up to (fine) | Most off from (worst) | Most off |
+| -------- | ---------------------- | --------------------- | -------- |
+| Learning | 20 kn                  | 28 kn                 | 3        |
+| Riding   | 28 kn                  | 40 kn                 | 2        |
+| Advanced | 33 kn                  | 45 kn                 | 2        |
+
+The knots are for 80 kg and move with weight as the top of the band does
+(fourth root of weight / 80).
+
+The owner's calibration, for Riding at 80 kg, cross-onshore, no wings listed,
+the models agreeing (`force5/src/stars.test.ts` asserts every line, and the
+mockup's figures for the other two levels):
+
+| Wind       | v3  | v4  | Why                                              |
 | ---------- | --- | --- | ------------------------------------------------ |
-| 9 gust 17  | 2   | 1   | under the floor: the gusts are a chance, no more |
-| 12 gust 20 | 4   | 2   | a light day; the gusts don't make it windier     |
+| 9 gust 17  | 1   | 1   | under the floor: the gusts are a chance, no more |
+| 12 gust 20 | 2   | 2   | a light day; the gusts don't make it windier     |
+| 15 gust 27 | 3   | 4   | an ordinary gust on a good wind                  |
 | 18 gust 24 | 5   | 5   | steady                                           |
 | 18 gust 27 | 5   | 5   | an ordinary gust                                 |
-| 18 gust 29 | 5   | 5   | 11 over: half a star, not enough to round down   |
-| 15 gust 27 | 5   | 3   | 12 over: stop-start                              |
-| 22 gust 32 | 4   | 4   | gusts past the ceiling                           |
-| 25 gust 38 | 3   | 2   | strong, gusty and past the ceiling               |
+| 22 gust 32 | 4   | 4   | a third of a star for a 32 kn gust               |
+| 25 gust 38 | 2   | 2   | strong, with gusts nearly at the worst           |
+
+Learning: 12g20 1, 15g22 3, 15g27 1, 18g24 4, 18g27 2, 22g32 0. Advanced:
+9g17 2, 12g20 3, 15g22 to 22g32 5, 25g38 4.
+
+### A rider's own rating (`CustomRating`)
+
+A rider can set their own stars ("Star rating" in Display options, or the
+"Custom stars" chip in the dock): the four wind handles, the gust curve and the
+stars each direction takes off, starting from a level.
+
+```ts
+{ version: 1, base: Skill,
+  wind: { min, sweetLow, sweetHigh, max },        // knots
+  gust: { fine, worst, most },                    // knots, knots, stars
+  direction: { onshore, crossOn, cross, crossOff, offshore } } // stars off
+```
+
+It rides on the rider (`Rider.custom`), so every page and service that rates
+for a rider (`rateHour`) uses it. It replaces the level's band, gust curve and
+direction costs, with no weight scaling; `base` keeps the level's share of a
+gust below the floor and its wing sizes. `parseCustomRating` is the one place
+it is made safe, whoever wrote it: another version or a missing number drops
+it; knots are held to the tenth, the wind handles in order a knot apart within
+2–40 kn, the gust's a knot apart within 1–50 kn, and every star figure 0–5 in
+half stars. `standardRating(rider, level)` is a level's own rating for that
+rider's weight, where "Start from" begins, so saving it unchanged rates as the
+level does.
+
+### Why v4 (18 October 2026)
+
+v3 charged the gusts for running more than ten knots over the mean, which cost
+a 15 kn mean gusting 27 two stars though nothing about it is hard, and took
+another half star for any gust past the ceiling. Riders judge a gust by how
+strong it is, so v4 rates that, on a curve per level. Offshore was a cap of one
+star (none for a learner); it is now four stars off (five for a learner), so it
+reads the same on a good wind and can be set like any other direction in a
+rider's own rating.
 
 ### Why v3 (17 October 2026)
 
@@ -141,7 +188,7 @@ out on big wings. Replaying the published runs through both versions
 | Sat 4 Oct, SW 15–21 kn west, 8–11 kn east                             | 30 / 22 / 36 / 21 / 27 / 10 | 2 / 21 / 10 / 34 / 34 / 45 |
 | Mon 6 Oct, N 6–14 kn                                                  | 126 / 16 / 2 / 2 / 0 / 0    | 44 / 54 / 26 / 15 / 6 / 1  |
 
-A light day still reads as light, and offshore is still capped; what changed is
+A light day still reads as light, and offshore was still capped; what changed is
 that a gusty 9–12 kn day is now "drills" at two stars instead of nothing.
 
 ### The shore
@@ -189,10 +236,11 @@ does: "too light", "too strong" or "offshore" (`noStarsWhy`).
 
 ## The rider
 
-Weight, level and wings live in the display preferences (`force5.prefs.v1`,
-this device only), validated field by field on load: a weight outside 30–160 kg
-or a wing outside 1.5–10 m² is dropped rather than rated. Until a weight is
-given the stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
+Weight, level, wings and any custom rating live in the display preferences
+(`force5.prefs.v1`), validated field by field on load: a weight outside
+30–160 kg or a wing outside 1.5–10 m² is dropped rather than rated, and a
+custom rating goes through `parseCustomRating`. Until a weight is given the
+stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 
 ## In the dock
 

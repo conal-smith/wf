@@ -368,7 +368,11 @@ test("How the stars work draws the bands, the shore sectors and a live hour work
   const shore = page.locator("[data-shore-table]");
   for (const range of ["0–30°", "30–70°", "70–110°", "110–150°", "150–180°"])
     await expect(shore).toContainText(range);
-  await expect(shore).toContainText("1 star at most");
+  // Offshore takes stars off as every other direction does.
+  await expect(shore.locator("tr", { hasText: "150–180°" })).toContainText(
+    "−4\u00a0stars",
+  );
+  await expect(page.locator("[data-gust-table]")).toContainText("28\u00a0kn");
   const ledger = page.locator("[data-ledger]");
   await expect(ledger).toContainText("is rated as");
   await expect(ledger).toContainText(/Rating.*, so \d solid/);
