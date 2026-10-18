@@ -64,6 +64,7 @@ import { useForecast, useSpotHours } from "../../data/forecast";
 import { usePrefs } from "../../data/prefs";
 import { colors, fonts, hitTarget, radius, space, withAlpha } from "../../theme/tokens";
 import { riderWords } from "../settings/settingsLogic";
+import { CustomStarsChip } from "../stars/StarRating";
 import { holdUpdates } from "../updates/hold";
 import { blendDrawing } from "./blendLogic";
 import { DockDay } from "./DockDay";
@@ -428,6 +429,7 @@ export function ForecastDock({ detent, onOpenSpotPage, onShowOnChart }: Forecast
           >
             {spot ? spot.name : "All of Ireland"}
           </T>
+          {spot ? <CustomStarsChip /> : null}
           {spot && open ? (
             <Pressable
               accessibilityRole="button"

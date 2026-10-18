@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DEFAULTS, type AlertMatch } from "../../../../alerts/shared/protocol";
+import { defaultPrefs, withCustomStars } from "../../../../force5/src/prefs";
+import { DEFAULT_RIDER, standardRating } from "../../../../force5/src/stars";
 import {
   deviceFingerprint,
   draftProblem,
@@ -150,5 +152,17 @@ describe("the lines on the screen", () => {
   it("fingerprints device fields whatever their order", () => {
     expect(deviceFingerprint({ a: 1, b: [2] })).toBe(deviceFingerprint({ b: [2], a: 1 }));
     expect(deviceFingerprint({ a: 1 })).not.toBe(deviceFingerprint({ a: 2 }));
+  });
+
+  it("sends the rider again when their own stars are set or reset", () => {
+    // The device's fields carry the whole rider (sync.ts), so the alerts
+    // server rates with the rider's own stars once the phone has them.
+    const standard = { rider: DEFAULT_RIDER, quietHours: true };
+    const prefs = withCustomStars(defaultPrefs(), standardRating(DEFAULT_RIDER, "beginner"));
+    const own = { rider: prefs.rider, quietHours: true };
+    expect(deviceFingerprint(own)).not.toBe(deviceFingerprint(standard));
+    expect(JSON.parse(deviceFingerprint(own))).toContainEqual(["rider", prefs.rider]);
+    const reset = withCustomStars(prefs, null);
+    expect(deviceFingerprint({ rider: reset.rider, quietHours: true })).toBe(deviceFingerprint(standard));
   });
 });

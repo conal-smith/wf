@@ -19,6 +19,7 @@ import { useForecast } from "../../data/forecast";
 import { usePrefs } from "../../data/prefs";
 import { colors, fonts, hitTarget, space } from "../../theme/tokens";
 import { DOCK_ROWS, dockRowOn } from "../dock/dockLogic";
+import { StarRatingRow } from "../stars/StarRating";
 import { LevelSwitch, WeightField, WingChips, useRider } from "./RiderFields";
 import { SettingsPage, openLink } from "./SettingsPage";
 import { CREDITS, LICENCE_URL, SOURCE_CODE_URL, modelRows, riderWords, runText, toggleBlendModel } from "./settingsLogic";
@@ -36,6 +37,9 @@ export function RiderScreen() {
             is the sweet spot; past {band.max} kn is more than you will want to hold.
           </T>
         </View>
+      </ListSection>
+      <ListSection title="Star rating">
+        <StarRatingRow />
       </ListSection>
       <ListSection
         title="Weight"

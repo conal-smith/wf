@@ -20,23 +20,24 @@ import {
   MAX_WING_M2,
   MIN_WEIGHT_KG,
   MIN_WING_M2,
+  SKILL_LABEL,
   type Rider,
-  type Skill,
 } from "../../../../force5/src/stars";
 
-/** The site's names for the levels (spot/web/RiderSwitch.tsx). */
-export const SKILL_LABEL: Record<Skill, string> = {
-  beginner: "Learning",
-  intermediate: "Riding",
-  advanced: "Advanced",
-};
+/** The site's names for the levels (force5/src/stars.ts). */
+export { SKILL_LABEL };
 
 /** "~80 kg" until a weight is given. */
 export const weightText = (rider: Rider) =>
   `${rider.weightKg === null ? "~" : ""}${rider.weightKg ?? ESTIMATE_WEIGHT_KG} kg`;
 
-/** "Riding · ~80 kg": who the stars are for. */
-export const riderWords = (rider: Rider) => `${SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
+/** "Riding · ~80 kg", or "Custom stars · ~80 kg": who the stars are for (spot/web/RiderSwitch.tsx). */
+export const riderWords = (rider: Rider) =>
+  `${rider.custom ? "Custom stars" : SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
+
+/** The rider settings' Star rating row: "Standard for Riding", or "Custom". */
+export const starRatingText = (rider: Rider) =>
+  rider.custom ? "Custom" : `Standard for ${SKILL_LABEL[rider.skill]}`;
 
 /** "Riding · ~80 kg · 4, 5.5 m²": the More tab's summary. */
 export const riderSummary = (rider: Rider) =>

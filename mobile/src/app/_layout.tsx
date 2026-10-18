@@ -40,6 +40,11 @@ function Routes() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="spot/[id]" options={{ title: "" }} />
       <Stack.Screen name="alert/[id]" options={{ presentation: "modal", title: "Alert" }} />
+      {/* Cancel or Save closes it: a swipe down would lose the edits without a word. */}
+      <Stack.Screen
+        name="your-stars"
+        options={{ presentation: "modal", title: "Your star rating", gestureEnabled: false }}
+      />
     </Stack>
   );
 }

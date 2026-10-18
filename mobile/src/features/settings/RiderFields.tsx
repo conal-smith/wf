@@ -5,7 +5,8 @@
  * the dock and the spot page rate for at once.
  *
  * `compact` is the spot page's line (spot/web/RiderSwitch.tsx): the level,
- * and the weight and wings behind a fold that opens in place.
+ * or the rider's own stars, and the weight and wings behind a fold that
+ * opens in place.
  */
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
@@ -15,6 +16,7 @@ import { tick } from "../../components/haptics";
 import { Segmented } from "../../components/Segmented";
 import { T } from "../../components/Text";
 import { usePrefs } from "../../data/prefs";
+import { CustomStarsChip } from "../stars/StarRating";
 import { colors, fonts, hitTarget, radius, space, type as scale } from "../../theme/tokens";
 import {
   SKILL_LABEL,
@@ -26,12 +28,10 @@ import {
   weightText,
 } from "./settingsLogic";
 
+/** The rider, and a change of weight, level or wings (`saveRider`: the star rating stays). */
 export function useRider(): [Rider, (change: Partial<Rider>) => void] {
-  const { prefs, update } = usePrefs();
-  return [
-    prefs.rider,
-    (change) => update((p) => ({ ...p, rider: changeRider(p.rider, change) })),
-  ];
+  const { prefs, changeRider: save } = usePrefs();
+  return [prefs.rider, (change) => save((rider) => changeRider(rider, change))];
 }
 
 export function LevelSwitch({ rider, onChange }: { rider: Rider; onChange: (change: Partial<Rider>) => void }) {
@@ -96,13 +96,26 @@ export function WeightField({ rider, onChange }: { rider: Rider; onChange: (chan
   );
 }
 
-function StepButton({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
+/** A round − or +, a step at a time. */
+export function StepButton({
+  label,
+  a11y,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  a11y: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={a11y}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.step, pressed && styles.stepOn]}
+      style={({ pressed }) => [styles.step, pressed && styles.stepOn, disabled && styles.stepOff]}
     >
       <T variant="figure">{label}</T>
     </Pressable>
@@ -147,7 +160,8 @@ export function RiderLine() {
         <T variant="eyebrow" caps color="muted">
           Rated for
         </T>
-        <LevelSwitch rider={rider} onChange={change} />
+        {/* A rider's own stars stand for the level: the chip says so, and changes them. */}
+        {rider.custom ? <CustomStarsChip /> : <LevelSwitch rider={rider} onChange={change} />}
       </View>
       <Pressable
         accessibilityRole="button"
@@ -208,6 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepOn: { backgroundColor: colors.sunken, borderColor: colors.magenta },
+  stepOff: { opacity: 0.35 },
   clear: { minHeight: hitTarget, justifyContent: "center", paddingHorizontal: space.sm },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   chip: {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as install from "../../../../ai/web/install";
 import { windModels, type ModelAvailability } from "../../../../force5/src/manifests";
-import { DEFAULT_RIDER } from "../../../../force5/src/stars";
+import { DEFAULT_RIDER, standardRating } from "../../../../force5/src/stars";
 import {
   changeRider,
   claudeCodeLine,
@@ -15,6 +15,7 @@ import {
   parseWings,
   riderSummary,
   riderWords,
+  starRatingText,
   toggleBlendModel,
   toggleWing,
   WING_SIZES,
@@ -26,6 +27,22 @@ describe("the rider", () => {
     expect(riderSummary({ weightKg: 72, skill: "beginner", wings: [4, 5.5] })).toBe(
       "Learning · 72 kg · 4, 5.5 m²",
     );
+  });
+
+  it("names a rider's own stars where the level was", () => {
+    const custom = { ...DEFAULT_RIDER, custom: standardRating(DEFAULT_RIDER, "advanced") };
+    expect(starRatingText(DEFAULT_RIDER)).toBe("Standard for Riding");
+    expect(starRatingText({ ...DEFAULT_RIDER, skill: "beginner" })).toBe("Standard for Learning");
+    expect(starRatingText(custom)).toBe("Custom");
+    expect(riderWords(custom)).toBe("Custom stars · ~80 kg");
+    // A rider stored before custom ratings, or reset: the level.
+    expect(starRatingText({ ...DEFAULT_RIDER, custom: null })).toBe("Standard for Riding");
+  });
+
+  it("keeps the rider's own stars through a change of weight, level or wings", () => {
+    const custom = standardRating(DEFAULT_RIDER, "advanced");
+    const changed = changeRider({ ...DEFAULT_RIDER, custom }, { weightKg: 90, skill: "beginner" });
+    expect(changed.custom).toEqual(custom);
   });
 
   it("takes only what a person and a wing can be", () => {
