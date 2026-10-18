@@ -23,10 +23,13 @@ import Svg, {
 } from "react-native-svg";
 import {
   SKILLS,
+  directionCosts,
+  gustCurve,
   rideableWind,
   starsText,
   windBand,
   windScore,
+  type DirectionKey,
   type Rider,
   type Skill,
 } from "../../../../force5/src/stars";
@@ -140,7 +143,13 @@ export function StarsScreen() {
         </Section>
 
         <Section n={4} title="What else" soft="takes stars off">
-          <OtherTable rider={rider} />
+          <P>
+            Strong gusts. It is how strong a gust is that counts, not how far it
+            runs over the average: up to the first figure it costs nothing, then
+            more and more, to the most from the second.
+          </P>
+          <GustTable rider={rider} />
+          <OtherTable />
           <T variant="body" color="muted" style={styles.italic}>
             Tap an hour&rsquo;s stars, in the dock or on a spot&rsquo;s page, to
             see what it lost, and why.
@@ -218,6 +227,9 @@ function Section({
   );
 }
 
+/** About how wide a character of the chart's mono is, at its size. */
+const EYEBROW_CHAR = 6.4;
+
 /** Stars on the wind alone, against the wind you can ride: tap along it to read a speed. */
 function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
   const band = windBand(rider);
@@ -236,6 +248,24 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
     band.sweetLow + quarter,
   )} to ${Math.round(band.sweetHigh - quarter)}, two at ${Math.round(band.max)}, none past ${Math.round(band.max + 6)}.`;
   const mono = { fontFamily: fonts.monoMedium, fontSize: 10 };
+  // The floor, the sweet spot and the ceiling are named in one row over the
+  // plot, where the curve never reaches (spot/web/StarsPage.tsx): the floor's
+  // name ends at its line and the ceiling's starts at its own, each kept
+  // inside the chart, and the sweet spot's sits between them, clear of both.
+  const minText = `min ${Math.round(band.min)}`;
+  const maxText = `max ${Math.round(band.max)}`;
+  const textWidth = (text: string) => text.length * EYEBROW_CHAR;
+  const minEnd = Math.max(X(0) + textWidth(minText), X(band.min) - 4);
+  const maxStart = Math.min(W - 2 - textWidth(maxText), X(band.max) + 4);
+  const half = textWidth("sweet spot") / 2;
+  const names = {
+    min: minEnd,
+    max: maxStart,
+    sweet: Math.min(
+      Math.max((X(band.sweetLow) + X(band.sweetHigh)) / 2, minEnd + 8 + half),
+      maxStart - 8 - half,
+    ),
+  };
   return (
     <View
       onStartShouldSetResponder={() => true}
@@ -312,21 +342,25 @@ function ScoreChart({ rider, width }: { rider: Rider; width: number }) {
           />
         ))}
         <SvgText
-          x={X(band.min) - 4}
+          x={names.min}
           y={Y(5) - 5}
           textAnchor="end"
           fill={colors.magenta}
           {...mono}
         >
-          {`min ${Math.round(band.min)}`}
+          {minText}
         </SvgText>
         <SvgText
-          x={X(band.max) + 4}
+          x={names.sweet}
           y={Y(5) - 5}
+          textAnchor="middle"
           fill={colors.magenta}
           {...mono}
         >
-          {`max ${Math.round(band.max)}`}
+          sweet spot
+        </SvgText>
+        <SvgText x={names.max} y={Y(5) - 5} fill={colors.magenta} {...mono}>
+          {maxText}
         </SvgText>
         {hover !== null && hover >= 0 && hover <= 40 && (
           <>
@@ -417,20 +451,22 @@ function Table({
 }
 
 function BandTable({ rider }: { rider: Rider }) {
+  const cols = columns(rider);
   return (
     <>
       <Table
-        head={["Level", "Min", "Sweet spot", "Max"]}
-        rows={SKILLS.map((skill) => {
-          const band = windBand({ ...rider, skill });
+        head={["Level", "Minimum", "Sweet spot", "Maximum"]}
+        rows={cols.map((column) => {
+          const band = windBand(columnRider(rider, column));
           return [
-            SKILL_LABEL[skill] + (skill === rider.skill ? " · you" : ""),
+            (column === "yours" ? "Your own" : SKILL_LABEL[column]) +
+              (isYou(rider, column) ? " · you" : ""),
             String(Math.round(band.min)),
             `${Math.round(band.sweetLow)}–${Math.round(band.sweetHigh)}`,
             String(Math.round(band.max)),
           ];
         })}
-        you={{ row: SKILLS.indexOf(rider.skill) }}
+        you={{ row: cols.findIndex((column) => isYou(rider, column)) }}
       />
       <T variant="caption" color="muted">
         In knots, for someone who weighs {rider.weightKg ?? 80} kg. Heavier
@@ -440,11 +476,44 @@ function BandTable({ rider }: { rider: Rider }) {
   );
 }
 
+/** A level's own rating for this rider's weight, without their custom one. */
+const standard = (rider: Rider, skill: Skill): Rider => ({
+  ...rider,
+  skill,
+  custom: null,
+});
+
+/** The levels as columns, and the rider's own after them when they have one. */
+type Column = Skill | "yours";
+const columns = (rider: Rider): Column[] => [
+  ...SKILLS,
+  ...(rider.custom ? (["yours"] as const) : []),
+];
+const columnRider = (rider: Rider, column: Column) =>
+  column === "yours" ? rider : standard(rider, column);
+const isYou = (rider: Rider, column: Column) =>
+  column === (rider.custom ? "yours" : rider.skill);
+const columnName = (column: Column) =>
+  column === "yours" ? "Yours" : SKILL_LABEL[column];
+
+/**
+ * Stars off as the tables set them: "−1½ stars", "none". A non-breaking
+ * space holds each figure to its word, so a narrow column never ends a line
+ * on "−1".
+ */
+function starsOff(off: number): string {
+  if (!off) return "none";
+  const whole = Math.floor(off);
+  const figure = `−${whole || ""}${off % 1 ? "½" : ""}`;
+  return `${figure}\u00a0star${off === 1 ? "" : "s"}`;
+}
+
 const SECTORS = [
   {
     from: 0,
     to: 30,
     name: "onshore",
+    key: "onshore" as DirectionKey,
     words: "Onshore",
     away: false,
     tint: 0.55,
@@ -453,6 +522,7 @@ const SECTORS = [
     from: 30,
     to: 70,
     name: "cross-on",
+    key: "crossOn" as DirectionKey,
     words: "Cross-onshore",
     away: false,
     tint: 0.32,
@@ -461,6 +531,7 @@ const SECTORS = [
     from: 70,
     to: 110,
     name: "cross",
+    key: "cross" as DirectionKey,
     words: "Cross-shore",
     away: false,
     tint: 0.16,
@@ -469,6 +540,7 @@ const SECTORS = [
     from: 110,
     to: 150,
     name: "cross-off",
+    key: "crossOff" as DirectionKey,
     words: "Cross-offshore",
     away: true,
     tint: 0.22,
@@ -477,22 +549,12 @@ const SECTORS = [
     from: 150,
     to: 180,
     name: "offshore",
+    key: "offshore" as DirectionKey,
     words: "Offshore",
     away: true,
     tint: 0.42,
   },
 ] as const;
-
-const SHORE_COST: Record<
-  (typeof SECTORS)[number]["name"],
-  Record<Skill, string>
-> = {
-  onshore: { beginner: "−1", intermediate: "−1", advanced: "−1" },
-  "cross-on": { beginner: "none", intermediate: "none", advanced: "none" },
-  cross: { beginner: "−½", intermediate: "none", advanced: "none" },
-  "cross-off": { beginner: "−3", intermediate: "−1½", advanced: "−1" },
-  offshore: { beginner: "−5", intermediate: "−4", advanced: "−4" },
-};
 
 function Sectors({ width }: { width: number }) {
   const R = 118;
@@ -600,34 +662,59 @@ function Sectors({ width }: { width: number }) {
 }
 
 function ShoreTable({ rider }: { rider: Rider }) {
+  const cols = columns(rider);
   return (
     <Table
-      head={["Wind", ...SKILLS.map((s) => SKILL_LABEL[s])]}
+      head={["Wind", ...cols.map(columnName)]}
       rows={SECTORS.map((s) => [
         `${s.words} ${s.from}–${s.to}°`,
-        ...SKILLS.map((k) => SHORE_COST[s.name][k]),
+        ...cols.map((column) =>
+          starsOff(directionCosts(columnRider(rider, column))[s.key]),
+        ),
       ])}
-      you={{ column: SKILLS.indexOf(rider.skill) + 1 }}
+      you={{ column: cols.findIndex((column) => isYou(rider, column)) + 1 }}
     />
   );
 }
 
-function OtherTable({ rider }: { rider: Rider }) {
-  const learning = rider.skill === "beginner";
+/** The gusts' curve for each level, at this rider's weight, and theirs. */
+function GustTable({ rider }: { rider: Rider }) {
+  const cols = columns(rider);
+  const rows: [string, (column: Column) => string][] = [
+    [
+      "No effect up to",
+      (column) =>
+        `${Math.round(gustCurve(columnRider(rider, column)).fine)}\u00a0kn`,
+    ],
+    [
+      "Most off from",
+      (column) =>
+        `${Math.round(gustCurve(columnRider(rider, column)).worst)}\u00a0kn`,
+    ],
+    [
+      "Most off",
+      (column) => starsOff(gustCurve(columnRider(rider, column)).most),
+    ],
+  ];
   return (
     <Table
-      head={["If", "Riding or advanced", "Learning"]}
+      head={["Gusts", ...cols.map(columnName)]}
+      rows={rows.map(([what, figure]) => [what, ...cols.map(figure)])}
+      you={{ column: cols.findIndex((column) => isYou(rider, column)) + 1 }}
+    />
+  );
+}
+
+/** The rest, the same for every level. */
+function OtherTable() {
+  return (
+    <Table
+      head={["If", "Every level"]}
       rows={[
-        [
-          "Strong gusts: none off up to 28 knots (33 advanced, 20 learning), the most from 40 (45, 28)",
-          "at most −2",
-          "at most −3",
-        ],
-        ["The forecast models disagree", "−1", "−1"],
-        ["The models differ a little", "−¼", "−¼"],
-        ["None of your wings suits the wind", "−1", "−1"],
+        ["The forecast models disagree", "−1\u00a0star"],
+        ["The models differ a little", "−¼\u00a0star"],
+        ["None of your wings suits the wind", "−1\u00a0star"],
       ]}
-      you={{ column: learning ? 2 : 1 }}
     />
   );
 }

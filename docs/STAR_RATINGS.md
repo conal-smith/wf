@@ -120,7 +120,10 @@ Learning: 12g20 1, 15g22 3, 15g27 1, 18g24 4, 18g27 2, 22g32 0. Advanced:
 
 A rider can set their own stars ("Star rating" in Display options, or the
 "Custom stars" chip in the dock): the four wind handles, the gust curve and the
-stars each direction takes off, starting from a level.
+stars each direction takes off, starting from a level. The app has the same
+dialog as a screen of its own (`mobile/src/features/stars`), from the Star
+rating row in More › Rider and the chip in the dock and on a spot's page, on
+the site's arithmetic (`spot/web/yourStars.ts`).
 
 ```ts
 { version: 1, base: Skill,
@@ -252,7 +255,9 @@ newer wins, a reset included. A copy last matched with another account on a
 shared device is never sent to the next one who signs in. The community and
 the marketplace run it inside their sign-in; the map and the spot pages load
 it on their own (`shared/web/AccountRider.tsx`), only on a device that has
-signed in before, so nobody else downloads the identity provider.
+signed in before, so nobody else downloads the identity provider. The app has
+no sign-in yet, so its rating stays on the phone; it reaches the alerts server
+with the rest of the rider when the phone registers.
 
 ## In the dock
 
