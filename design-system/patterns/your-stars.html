@@ -3,9 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Your stars — wingfoil-chart pattern</title>
+    <title>Your star rating — wingfoil-chart pattern</title>
     <link rel="stylesheet" href="../foundations/tokens.css" />
     <link rel="stylesheet" href="../components/button/component.css" />
+    <link rel="stylesheet" href="../components/dialog/component.css" />
     <link rel="stylesheet" href="../components/segmented/component.css" />
     <link rel="stylesheet" href="../components/kicker/component.css" />
     <link rel="stylesheet" href="../components/link/component.css" />
@@ -39,78 +40,47 @@
         gap: var(--sem-space-x6);
         padding: 0 var(--sem-space-x3);
       }
-      .pt__note {
-        max-width: calc(var(--sem-space-step) * 90);
-        margin: 0 var(--sem-space-x3) var(--sem-space-x3);
-        color: var(--sem-color-ink-muted);
-        font-size: var(--sem-font-size-body);
-        line-height: var(--sem-font-line-body);
+      .pt__col {
+        display: grid;
+        gap: var(--sem-space-x3);
       }
 
-      /* ---- the panel: the chart's box, as the display options are ---- */
-      .ys {
-        width: calc(var(--sem-space-step) * 116);
+      /* ---- the dialog: the system's own, sized for the page and for a phone ---- */
+      .ys.wf-dialog {
+        position: static;
+        width: calc(var(--sem-space-step) * 124);
         max-width: 100%;
         box-sizing: border-box;
-        padding: var(--sem-space-x4);
-        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
-        box-shadow: var(--sem-shadow-frame);
-        background-color: var(--sem-color-card);
-        background-image: var(--sem-texture-grain);
       }
-      .ys--phone {
-        width: calc(var(--sem-space-step) * 89.5);
+      .ys--phone.wf-dialog {
+        width: calc(var(--sem-space-step) * 97.5);
       }
-      .ys__head {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: var(--sem-space-x2);
-        margin: 0 0 var(--sem-space-x3);
-        padding-bottom: var(--sem-space-x1);
-        border-bottom: var(--sem-rule-heavy) solid var(--sem-color-ink);
+      .ys__block + .ys__block {
+        padding-top: var(--sem-space-x3);
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
       }
-      .ys__title {
-        margin: 0;
-        font-family: var(--sem-font-family-display);
-        font-size: var(--sem-font-size-lead);
-        line-height: var(--sem-font-line-lead);
-        font-weight: var(--sem-font-weight-lead);
+      .ys__presets {
+        margin-top: var(--sem-space-x1);
       }
-      .ys__lede {
-        margin: var(--sem-space-x2) 0 var(--sem-space-x3);
+      .ys__plain {
+        margin: var(--sem-space-x2) 0 0;
         font-size: var(--sem-font-size-body);
         line-height: var(--sem-font-line-body);
         color: var(--sem-color-ink-2);
       }
-      .ys__section {
-        margin-top: var(--sem-space-x4);
-        padding-top: var(--sem-space-x2);
-        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
-      }
-      .ys__presets {
-        margin: var(--sem-space-x1) 0 0;
-      }
-      .ys[data-own="false"] .ys__own {
-        display: none;
-      }
-      .ys[data-own="true"] .ys__ours {
-        display: none;
-      }
 
-      /* ---- what each wind is worth: the curve over the knots ---- */
+      /* ---- stars for each wind speed ---- */
       .curve {
         display: block;
         width: 100%;
         height: auto;
-        margin-top: var(--sem-space-x2);
         overflow: visible;
       }
       .curve__grid {
         stroke: var(--sem-color-line);
         stroke-width: 1;
       }
-      .curve__ours {
+      .curve__base {
         fill: none;
         stroke: var(--sem-color-line-strong);
         stroke-width: 1.25;
@@ -130,21 +100,32 @@
         font-size: 10px; /* ds-lint-allow: SVG user units at the eyebrow's size */
         fill: var(--sem-color-ink-muted);
       }
-      .curve__gust {
-        stroke: var(--sem-color-pen);
-        stroke-width: 1.25;
+      .legend {
+        display: flex;
+        gap: var(--sem-space-x4);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
       }
-      .curve__gust-label {
-        font-family: var(--sem-font-family-hand);
-        font-size: 13px; /* ds-lint-allow: the pen's note in SVG user units */
-        fill: var(--sem-color-pen-ink);
+      .legend__key {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 5);
+        margin-right: var(--sem-space-x1);
+        vertical-align: middle;
+        border-top: 2px solid var(--sem-color-ink); /* ds-lint-allow: the curve's own stroke width */
+      }
+      .legend__key--base {
+        border-top: 1.25px dashed var(--sem-color-line-strong); /* ds-lint-allow: the curve's own stroke */
       }
 
-      /* ---- the band: four thumbs on one wind scale ---- */
+      /* ---- the wind range: four handles on one wind scale ---- */
       .band {
         position: relative;
         height: var(--sem-size-touch);
-        margin-top: var(--sem-space-x1);
+        margin-top: var(--sem-space-x2);
       }
       .band__scale {
         position: absolute;
@@ -169,7 +150,8 @@
         );
         opacity: 0.35;
       }
-      .band__fill {
+      .band__fill,
+      .band__edge {
         position: absolute;
         top: 50%;
         height: calc(var(--sem-space-step) * 1);
@@ -177,11 +159,6 @@
         background: var(--sem-color-ink);
       }
       .band__edge {
-        position: absolute;
-        top: 50%;
-        height: calc(var(--sem-space-step) * 1);
-        transform: translateY(-50%);
-        background: var(--sem-color-ink);
         opacity: 0.35;
       }
       .band input[type="range"] {
@@ -220,6 +197,9 @@
         cursor: ew-resize;
         pointer-events: auto;
       }
+      .band input[type="range"]:focus-visible {
+        outline: none;
+      }
       .band input[type="range"]:focus-visible::-webkit-slider-thumb {
         outline: var(--sem-ring-width) solid var(--sem-color-focus);
         outline-offset: var(--sem-ring-offset);
@@ -228,16 +208,11 @@
         outline: var(--sem-ring-width) solid var(--sem-color-focus);
         outline-offset: var(--sem-ring-offset);
       }
-      .band input[type="range"]:focus-visible {
-        outline: none;
-      }
-
-      /* The four figures under the band, each named. */
       .figs {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: var(--sem-space-x2);
-        margin: var(--sem-space-x1) 0 0;
+        margin-top: var(--sem-space-x1);
       }
       .fig {
         display: flex;
@@ -253,45 +228,34 @@
         text-transform: uppercase;
         color: var(--sem-color-ink-muted);
       }
-      .fig__value {
+      .fig__value,
+      .slider__value {
         font-family: var(--sem-font-family-mono);
         font-size: var(--sem-font-size-figure);
         line-height: var(--sem-font-line-figure);
         font-weight: var(--sem-font-weight-figure);
         font-variant-numeric: tabular-nums;
       }
-      .fig__value small {
+      .fig__value small,
+      .slider__value small {
         font-size: var(--sem-font-size-label);
         color: var(--sem-color-ink-muted);
       }
-      .fig__what {
-        font-size: var(--sem-font-size-caption);
-        line-height: var(--sem-font-line-caption);
-        color: var(--sem-color-ink-muted);
-      }
 
-      /* ---- the gusts: two single sliders and what passing costs ---- */
+      /* ---- the gusts ---- */
       .slider {
         display: grid;
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: var(--sem-space-x1) var(--sem-space-x3);
-        margin-top: var(--sem-space-x3);
+        margin-top: var(--sem-space-x2);
       }
       .slider__label {
         font-size: var(--sem-font-size-body);
         line-height: var(--sem-font-line-body);
       }
       .slider__value {
-        font-family: var(--sem-font-family-mono);
-        font-size: var(--sem-font-size-figure);
-        line-height: var(--sem-font-line-figure);
-        font-variant-numeric: tabular-nums;
         text-align: right;
-      }
-      .slider__value small {
-        font-size: var(--sem-font-size-label);
-        color: var(--sem-color-ink-muted);
       }
       .slider input[type="range"] {
         grid-column: 1 / -1;
@@ -309,16 +273,14 @@
         flex-wrap: wrap;
         align-items: center;
         gap: var(--sem-space-x2);
-        margin-top: var(--sem-space-x2);
-      }
-      .past__label {
+        margin-top: var(--sem-space-x1);
         font-size: var(--sem-font-size-body);
       }
 
-      /* ---- how it rates: example hours, ours against yours ---- */
+      /* ---- examples: the level they started from, against theirs ---- */
       .rates {
         width: 100%;
-        margin-top: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
         border-collapse: collapse;
         font-family: var(--sem-font-family-mono);
         font-size: var(--sem-font-size-label);
@@ -337,23 +299,21 @@
       .rates td {
         padding: var(--sem-space-x1) 0;
         border-bottom: var(--sem-rule-hairline) solid var(--sem-color-line);
+        white-space: nowrap;
         vertical-align: middle;
       }
       .rates tr:last-child td {
         border-bottom: 0;
       }
       .rates__w {
-        width: 22%;
+        width: 30%;
       }
       .rates__s {
-        width: 26%;
-      }
-      .rates td {
-        white-space: nowrap;
+        width: 28%;
       }
       .rates__why {
+        display: block;
         white-space: normal;
-        margin-left: var(--sem-space-x1);
         font-family: var(--sem-font-family-body);
         font-size: var(--sem-font-size-caption);
         line-height: var(--sem-font-line-caption);
@@ -363,24 +323,45 @@
         font-weight: var(--sem-font-weight-semibold);
       }
 
-      .ys__foot {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--sem-space-x3);
-        margin-top: var(--sem-space-x4);
-        padding-top: var(--sem-space-x3);
-        border-top: var(--sem-rule-double) double var(--sem-color-ink);
+      /* ---- where it opens from: the rider settings' row ---- */
+      .settings {
+        width: calc(var(--sem-space-step) * 90);
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--sem-space-x3) var(--sem-space-x4);
+        border: var(--sem-rule-hairline) solid var(--sem-color-ink);
+        box-shadow: var(--sem-shadow-frame);
+        background-color: var(--sem-color-card);
+        background-image: var(--sem-texture-grain);
       }
-      .ys__saved {
-        flex-basis: 100%;
-        margin: 0;
-        font-size: var(--sem-font-size-caption);
-        line-height: var(--sem-font-line-caption);
+      .settings__row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: var(--sem-space-x1) var(--sem-space-x3);
+        padding: var(--sem-space-x2) 0;
+      }
+      .settings__row + .settings__row {
+        border-top: var(--sem-rule-hairline) solid var(--sem-color-line);
+      }
+      .settings__name {
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        font-weight: var(--sem-font-weight-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
         color: var(--sem-color-ink-muted);
       }
+      .settings__value {
+        font-size: var(--sem-font-size-body);
+      }
+      .settings__actions {
+        display: flex;
+        gap: var(--sem-space-x3);
+        align-items: center;
+      }
 
-      /* ---- the dock's head, saying whose stars these are ---- */
+      /* ---- the dock's head, when the stars are the rider's own ---- */
       .dockhead {
         width: calc(var(--sem-space-step) * 150);
         max-width: 100%;
@@ -450,154 +431,150 @@
         width: calc(var(--sem-space-step) * 14);
         height: auto;
       }
-      @media (pointer: coarse) {
-        .band input[type="range"]::-webkit-slider-thumb {
-          width: calc(var(--sem-space-step) * 3.5);
-        }
-      }
     </style>
   </head>
   <body>
-    <p class="pt__label">Your stars · the rider options, desktop · set to “steady 20, gusts no more than 25”</p>
-    <p class="pt__note">
-      The rider options (Display ▸ You) gain a choice: our stars, worked out from your level and weight,
-      or your own band. Every slider below moves the real rating
-      (<code>force5/src/stars.ts</code>’s <code>windScore</code> and <code>gustCost</code>, restated in this
-      page’s script), so the table under it is what the dock would say.
-    </p>
+    <p class="pt__label">1 · Where it opens: the rider settings (Display ▸ You), before and after</p>
     <div class="pt__row">
-      <div data-ys data-preset="steady20" data-own="true"></div>
-      <div>
-        <p class="pt__label" style="margin-left: 0">The dock’s head, with your own stars on</p>
-        <div class="dockhead" data-dock>
+      <div class="settings" aria-label="Rider settings, standard stars">
+        <div class="settings__row">
+          <span class="settings__name">Level</span>
+          <span class="settings__value">Riding</span>
+        </div>
+        <div class="settings__row">
+          <span class="settings__name">Star rating</span>
+          <span class="settings__actions"><span class="settings__value">Standard for Riding</span><a class="wf-link" href="#">Customise</a></span>
+        </div>
+      </div>
+      <div class="settings" aria-label="Rider settings, custom stars">
+        <div class="settings__row">
+          <span class="settings__name">Level</span>
+          <span class="settings__value">Riding</span>
+        </div>
+        <div class="settings__row">
+          <span class="settings__name">Star rating</span>
+          <span class="settings__actions"><span class="settings__value">Custom</span><a class="wf-link" href="#">Edit</a><a class="wf-link" href="#">Reset</a></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and gusts no higher than 25</p>
+    <div class="pt__row">
+      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"spread":5,"gustMax":25,"past":1}'></div>
+      <div class="pt__col">
+        <p class="pt__label" style="margin: 0">3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
+        <div class="dockhead">
           <div class="dockhead__top">
             <span class="dockhead__spot">Dollymount Strand</span>
-            <button class="whose" type="button" aria-label="Rated with your own stars: change them">
+            <button class="whose" type="button" aria-label="Custom star rating: edit">
               <svg width="10" height="10" viewBox="-5 -5 10 10" aria-hidden="true"><path fill="currentColor" d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z" /></svg>
-              Your stars
+              Custom stars
             </button>
           </div>
           <div class="hours" data-hours></div>
         </div>
-        <p class="pt__label" style="margin-left: 0">
-          The chip says the stars are yours wherever they are drawn, and opens the panel.
-        </p>
       </div>
     </div>
 
-    <p class="pt__label">Phone, 390 · our stars (the default), before a rider sets their own</p>
+    <p class="pt__label">4 · The dialog on a phone, 390 wide · opened from a Learning level, nothing changed yet</p>
     <div class="pt__row">
-      <div data-ys data-preset="intermediate" data-own="false" data-phone></div>
-      <div data-ys data-preset="beginner" data-own="true" data-phone></div>
+      <div data-ys data-start="beginner" data-phone></div>
     </div>
 
     <template id="ys">
-      <section class="ys" aria-labelledby="">
-        <div class="ys__head">
-          <h2 class="ys__title" data-title>Your stars</h2>
-          <span class="wf-kicker">How we rate an hour</span>
+      <div class="wf-dialog wf-dialog--wide ys" role="dialog" aria-modal="true">
+        <div class="wf-dialog__head">
+          <h2 class="wf-dialog__title" data-title>Your star rating</h2>
+          <button class="wf-button wf-button--icon wf-button--sm" type="button" aria-label="Close">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
         </div>
-        <div class="wf-segmented" role="group" aria-label="Whose stars">
-          <button class="wf-segmented__item" type="button" data-whose="ours">Ours</button>
-          <button class="wf-segmented__item" type="button" data-whose="own">Your own</button>
-        </div>
-
-        <div class="ys__ours">
-          <p class="ys__lede" data-ours-lede></p>
-          <svg class="curve" viewBox="0 0 400 92" role="img" data-curve-ours></svg>
-          <p class="ys__lede">
-            Want a different band, or less patience with gusts? Set your own: the map, the dock, the spot pages
-            and your alerts all follow it.
-          </p>
-        </div>
-
-        <div class="ys__own">
-          <p class="ys__lede">
-            Drag the band to the wind you like. Stars follow the steady wind; the gusts only take a little off.
-          </p>
-          <span class="wf-kicker">Start from</span>
-          <div class="wf-segmented ys__presets" role="group" aria-label="Start from">
-            <button class="wf-segmented__item" type="button" data-preset-pick="beginner">Learning</button>
-            <button class="wf-segmented__item" type="button" data-preset-pick="intermediate">Riding</button>
-            <button class="wf-segmented__item" type="button" data-preset-pick="advanced">Advanced</button>
-            <button class="wf-segmented__item" type="button" data-preset-pick="steady20">Steady 20</button>
+        <div class="wf-dialog__body">
+          <div class="ys__block">
+            <span class="wf-kicker">Start from</span>
+            <div class="wf-segmented ys__presets" role="group" aria-label="Start from">
+              <button class="wf-segmented__item" type="button" data-preset="beginner">Learning</button>
+              <button class="wf-segmented__item" type="button" data-preset="intermediate">Riding</button>
+              <button class="wf-segmented__item" type="button" data-preset="advanced">Advanced</button>
+            </div>
           </div>
 
-          <div class="ys__section">
-            <span class="wf-kicker wf-kicker--ink">The steady wind</span>
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Wind speed</span>
             <svg class="curve" viewBox="0 0 400 92" role="img" data-curve></svg>
-            <div class="band" data-band>
+            <div class="legend" aria-hidden="true">
+              <span><span class="legend__key"></span>Yours</span>
+              <span><span class="legend__key legend__key--base"></span><span data-base-name></span></span>
+            </div>
+            <div class="band">
               <div class="band__scale"></div>
               <div class="band__edge" data-edge-low></div>
               <div class="band__fill" data-fill></div>
               <div class="band__edge" data-edge-high></div>
-              <input type="range" min="0" max="40" step="1" data-k="min" aria-label="Least wind you can ride, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="sweetLow" aria-label="Comfortable from, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="sweetHigh" aria-label="Comfortable to, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="max" aria-label="Most wind you will ride, knots" />
+              <input type="range" min="0" max="40" step="1" data-k="min" aria-label="Minimum wind speed, knots" />
+              <input type="range" min="0" max="40" step="1" data-k="sweetLow" aria-label="Ideal wind speed from, knots" />
+              <input type="range" min="0" max="40" step="1" data-k="sweetHigh" aria-label="Ideal wind speed to, knots" />
+              <input type="range" min="0" max="40" step="1" data-k="max" aria-label="Maximum wind speed, knots" />
             </div>
             <div class="figs">
-              <div class="fig"><span class="fig__name">Least</span><span class="fig__value" data-v="min"></span><span class="fig__what">one star: you can stay up</span></div>
-              <div class="fig"><span class="fig__name">Comfy from</span><span class="fig__value" data-v="sweetLow"></span><span class="fig__what">four stars from here</span></div>
-              <div class="fig"><span class="fig__name">Comfy to</span><span class="fig__value" data-v="sweetHigh"></span><span class="fig__what">five in the middle</span></div>
-              <div class="fig"><span class="fig__name">Most</span><span class="fig__value" data-v="max"></span><span class="fig__what">two stars, then none</span></div>
+              <div class="fig"><span class="fig__name">Minimum</span><span class="fig__value" data-v="min"></span></div>
+              <div class="fig"><span class="fig__name">Ideal from</span><span class="fig__value" data-v="sweetLow"></span></div>
+              <div class="fig"><span class="fig__name">Ideal to</span><span class="fig__value" data-v="sweetHigh"></span></div>
+              <div class="fig"><span class="fig__name">Maximum</span><span class="fig__value" data-v="max"></span></div>
             </div>
+            <p class="ys__plain" data-wind-plain></p>
           </div>
 
-          <div class="ys__section">
-            <span class="wf-kicker wf-kicker--ink">The gusts</span>
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Gusts</span>
             <label class="slider">
-              <span class="slider__label">Gusts I take in my stride, over the steady wind</span>
+              <span class="slider__label">Gusts up to this much above the wind speed are fine</span>
               <span class="slider__value" data-v="spread"></span>
               <input type="range" min="3" max="15" step="1" data-k="spread" />
             </label>
+            <p class="ys__plain" data-spread-plain></p>
             <label class="slider">
-              <span class="slider__label">The strongest gust I want to hold</span>
+              <span class="slider__label">Maximum gust</span>
               <span class="slider__value" data-v="gustMax"></span>
               <input type="range" min="12" max="50" step="1" data-k="gustMax" />
             </label>
             <div class="past">
-              <span class="past__label">A gust past it costs</span>
-              <div class="wf-segmented" role="group" aria-label="A gust past it costs">
+              <span data-past-label></span>
+              <div class="wf-segmented" role="group" data-past-group>
                 <button class="wf-segmented__item" type="button" data-past="0.5">½ star</button>
-                <button class="wf-segmented__item" type="button" data-past="1">1</button>
-                <button class="wf-segmented__item" type="button" data-past="2">2</button>
+                <button class="wf-segmented__item" type="button" data-past="1">1 star</button>
+                <button class="wf-segmented__item" type="button" data-past="2">2 stars</button>
                 <button class="wf-segmented__item" type="button" data-past="5">All</button>
               </div>
             </div>
           </div>
 
-          <div class="ys__section">
-            <span class="wf-kicker wf-kicker--ink">How it rates</span>
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Examples</span>
             <table class="rates">
               <thead>
-                <tr><th scope="col" class="rates__w">Wind</th><th scope="col" class="rates__s">Ours</th><th scope="col">Yours</th></tr>
+                <tr><th scope="col" class="rates__w">Forecast, kn</th><th scope="col" class="rates__s" data-base-name></th><th scope="col">Yours</th></tr>
               </thead>
               <tbody data-rates></tbody>
             </table>
           </div>
-
-          <div class="ys__foot">
-            <button class="wf-button wf-button--primary" type="button">Use my stars</button>
-            <a class="wf-link" href="#" data-back>Back to ours</a>
-            <a class="wf-link" href="#">Share this band</a>
-            <p class="ys__saved">
-              Saved on this device, like your weight and wings. A shared link opens these sliders for a friend.
-            </p>
-          </div>
         </div>
-      </section>
+        <div class="wf-dialog__actions">
+          <button class="wf-button wf-button--pill" type="button">Cancel</button>
+          <button class="wf-button wf-button--primary" type="button">Save</button>
+        </div>
+      </div>
     </template>
 
     <script>
       // The rating, restated from force5/src/stars.ts so the sliders move real stars.
-      const BANDS = {
-        beginner: { min: 13, sweetLow: 15, sweetHigh: 20, max: 24, spread: 7, gustMax: 24, past: 1, share: 0.2, name: "Learning" },
-        intermediate: { min: 11, sweetLow: 14, sweetHigh: 24, max: 30, spread: 10, gustMax: 30, past: 0.5, share: 0.3, name: "Riding" },
-        advanced: { min: 8, sweetLow: 13, sweetHigh: 28, max: 35, spread: 10, gustMax: 35, past: 0.5, share: 0.35, name: "Advanced" },
-        // The owner's example: a steady 20, and nothing much over 25.
-        steady20: { min: 15, sweetLow: 18, sweetHigh: 23, max: 27, spread: 5, gustMax: 25, past: 1, share: 0.35, name: "Steady 20" },
+      const LEVELS = {
+        beginner: { name: "Learning", min: 13, sweetLow: 15, sweetHigh: 20, max: 24, spread: 7, gustMax: 24, past: 1, share: 0.2 },
+        intermediate: { name: "Riding", min: 11, sweetLow: 14, sweetHigh: 24, max: 30, spread: 10, gustMax: 30, past: 0.5, share: 0.3 },
+        advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, spread: 10, gustMax: 35, past: 0.5, share: 0.35 },
       };
+      const KEYS = ["min", "sweetLow", "sweetHigh", "max"];
+      const SETTINGS = [...KEYS, "spread", "gustMax", "past"];
       const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
       const ramp = (x, x0, x1, y0, y1) => y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
       function windScore(kn, b) {
@@ -617,16 +594,16 @@
         const ride = gust > wind && wind < b.min ? Math.min(b.min, wind + b.share * Math.min(gust - wind, wind)) : wind;
         const base = windScore(ride, b);
         const potential = Math.round(base);
-        const spread = Math.max(0, gust - wind);
-        const gusty = Math.min(2, Math.max(0, spread - b.spread) * 0.5);
+        const above = Math.max(0, gust - wind);
+        const gusty = Math.min(2, Math.max(0, above - b.spread) * 0.5);
         const strong = gust > b.gustMax ? b.past : 0;
         const stars = clamp(Math.round(base - gusty - strong), 0, potential);
         const why = [];
-        if (stars < potential) {
-          if (gusty) why.push(`gusts ${Math.round(spread)} over`);
-          if (strong) why.push(`past ${b.gustMax} kn`);
-        }
         if (!potential) why.push(ride < b.min ? "too light" : "too strong");
+        else if (stars < potential) {
+          if (gusty) why.push(`gusts ${Math.round(above)} kn above the wind`);
+          if (strong) why.push(`gusts above ${b.gustMax} kn`);
+        }
         return { stars, potential, why: why.join(", ") };
       }
 
@@ -643,26 +620,33 @@
         return `<svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="${label}">${parts}</svg>`;
       }
 
-      // The curve: what each steady wind is worth, 0 to 40 knots.
+      // Stars for each wind speed, 0 to 40 knots: theirs solid, the level they started from dashed.
       const X = (kn) => (kn / 40) * 400;
       const Y = (s) => 74 - (s / 5) * 64;
-      function curve(svg, b, ours) {
-        const pts = [];
-        for (let kn = 0; kn <= 40; kn += 0.25) pts.push(`${X(kn).toFixed(1)},${Y(windScore(kn, b)).toFixed(1)}`);
+      const line = (b) => {
+        const p = [];
+        for (let kn = 0; kn <= 40; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(windScore(kn, b)).toFixed(1)}`);
+        return p.join(" ");
+      };
+      function curve(svg, b, base) {
         let grid = "";
-        for (let s = 1; s <= 5; s++) grid += `<line class="curve__grid" x1="0" x2="400" y1="${Y(s)}" y2="${Y(s)}"/>`;
-        let axis = "";
-        for (let kn = 0; kn <= 40; kn += 10) axis += `<text class="curve__axis" x="${X(kn)}" y="90" text-anchor="${kn ? (kn === 40 ? "end" : "middle") : "start"}">${kn}${kn === 40 ? " kn" : ""}</text>`;
-        let stars = "";
-        for (let s = 1; s <= 5; s++) stars += `<text class="curve__axis" x="402" y="${Y(s) + 3}">${s}★</text>`;
-        const oursLine = ours ? `<polyline class="curve__ours" points="${(() => { const p = []; for (let kn = 0; kn <= 40; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(windScore(kn, ours)).toFixed(1)}`); return p.join(" "); })()}"/>` : "";
-        const gust = b.gustMax <= 40 ? `<line class="curve__gust" x1="${X(b.gustMax)}" x2="${X(b.gustMax)}" y1="4" y2="74"/><text class="curve__gust-label" x="${X(b.gustMax) - 4}" y="12" text-anchor="end">gusts ≤ ${b.gustMax}</text>` : "";
-        svg.innerHTML = grid + `<polygon class="curve__under" points="0,74 ${pts.join(" ")} 400,74"/>` + oursLine + `<polyline class="curve__yours" points="${pts.join(" ")}"/>` + gust + axis + stars;
-        svg.setAttribute("aria-label", `Stars for each steady wind: none under ${b.min - 2} kn, five from ${Math.round(b.sweetLow + (b.sweetHigh - b.sweetLow) / 4)} to ${Math.round(b.sweetHigh - (b.sweetHigh - b.sweetLow) / 4)} kn, none past ${b.max + 6} kn`);
+        for (let s = 1; s <= 5; s++) grid += `<line class="curve__grid" x1="0" x2="400" y1="${Y(s)}" y2="${Y(s)}"/><text class="curve__axis" x="404" y="${Y(s) + 3}">${s}★</text>`;
+        for (let kn = 0; kn <= 40; kn += 10) grid += `<text class="curve__axis" x="${X(kn)}" y="90" text-anchor="${kn ? (kn === 40 ? "end" : "middle") : "start"}">${kn}${kn === 40 ? " kn" : ""}</text>`;
+        const yours = line(b);
+        svg.innerHTML = grid + `<polygon class="curve__under" points="0,74 ${yours} 400,74"/><polyline class="curve__base" points="${line(base)}"/><polyline class="curve__yours" points="${yours}"/>`;
+        svg.setAttribute("aria-label", "Stars for each wind speed, yours against the level you started from");
+      }
+
+      // The four handles in plain words, worked out from the curve itself.
+      function windPlain(b) {
+        const q = (b.sweetHigh - b.sweetLow) / 4;
+        const fiveFrom = Math.ceil(b.sweetLow + q), fiveTo = Math.floor(b.sweetHigh - q);
+        return `No stars under ${b.min - 2} kn. 1 star at ${b.min} kn, 4 stars at ${b.sweetLow} kn, ` +
+          `5 stars from ${fiveFrom} to ${fiveTo} kn, back to 4 stars at ${b.sweetHigh} kn and 2 at ${b.max} kn. ` +
+          `No stars over ${b.max + 6} kn.`;
       }
 
       const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [20, 25], [20, 28], [22, 32], [25, 38]];
-      const KEYS = ["min", "sweetLow", "sweetHigh", "max"];
 
       document.querySelectorAll("[data-ys]").forEach((host, n) => {
         const node = document.getElementById("ys").content.firstElementChild.cloneNode(true);
@@ -671,79 +655,65 @@
         node.setAttribute("aria-labelledby", id);
         if (host.hasAttribute("data-phone")) {
           node.classList.add("ys--phone");
-          // Four choices are too wide for a phone's capsule: a stack of rows.
-          node.querySelector(".ys__presets").classList.add("wf-segmented--stack");
+          node.querySelector(".figs").style.gridTemplateColumns = "repeat(2, 1fr)";
         }
         host.replaceWith(node);
-        const ours = { ...BANDS.intermediate };
-        let b = { ...BANDS[host.dataset.preset] };
-        node.dataset.own = host.dataset.own;
+        let start = host.dataset.start;
+        let b = { ...LEVELS[start], ...(host.dataset.custom ? JSON.parse(host.dataset.custom) : {}) };
+        const isDock = Boolean(host.dataset.custom);
 
         const draw = () => {
-          node.querySelectorAll("[data-whose]").forEach((el) =>
-            el.setAttribute("aria-pressed", String((el.dataset.whose === "own") === (node.dataset.own === "true"))),
-          );
-          node.querySelector("[data-ours-lede]").textContent =
-            `Rated for a Riding level at 80 kg: four stars from ${ours.sweetLow} kn, five from ${Math.round(ours.sweetLow + 2.5)} to ${Math.round(ours.sweetHigh - 2.5)}, gusts costing a little past ${ours.spread} kn over the steady wind.`;
-          curve(node.querySelector("[data-curve-ours]"), ours, null);
-          curve(node.querySelector("[data-curve]"), b, ours);
-          KEYS.forEach((k) => (node.querySelector(`[data-k="${k}"]`).value = b[k]));
-          node.querySelector('[data-k="spread"]').value = b.spread;
-          node.querySelector('[data-k="gustMax"]').value = b.gustMax;
-          KEYS.forEach((k) => (node.querySelector(`[data-v="${k}"]`).innerHTML = `${b[k]}<small> kn</small>`));
-          node.querySelector('[data-v="spread"]').innerHTML = `${b.spread}<small> kn</small>`;
-          node.querySelector('[data-v="gustMax"]').innerHTML = `${b.gustMax}<small> kn</small>`;
-          node.querySelectorAll("[data-past]").forEach((el) => el.setAttribute("aria-pressed", String(Number(el.dataset.past) === b.past)));
-          node.querySelectorAll("[data-preset-pick]").forEach((el) => {
-            const p = BANDS[el.dataset.presetPick];
-            const same = ["min", "sweetLow", "sweetHigh", "max", "spread", "gustMax", "past"].every((k) => p[k] === b[k]);
-            el.setAttribute("aria-pressed", String(same));
+          const base = LEVELS[start];
+          node.querySelectorAll("[data-base-name]").forEach((el) => (el.textContent = base.name));
+          node.querySelectorAll("[data-preset]").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.preset === start)));
+          curve(node.querySelector("[data-curve]"), b, base);
+          KEYS.forEach((k) => {
+            node.querySelector(`[data-k="${k}"]`).value = b[k];
+            node.querySelector(`[data-v="${k}"]`).innerHTML = `${b[k]}<small> kn</small>`;
           });
+          node.querySelector("[data-wind-plain]").textContent = windPlain(b);
+          node.querySelector('[data-k="spread"]').value = b.spread;
+          node.querySelector('[data-v="spread"]').innerHTML = `${b.spread}<small> kn</small>`;
+          const w = 18;
+          node.querySelector("[data-spread-plain]").textContent =
+            `Each knot more takes off ½ star, up to 2 stars. So ${w} kn gusting ${w + b.spread} loses nothing, and ${w} kn gusting ${w + b.spread + 2} loses 1 star.`;
+          node.querySelector('[data-k="gustMax"]').value = b.gustMax;
+          node.querySelector('[data-v="gustMax"]').innerHTML = `${b.gustMax}<small> kn</small>`;
+          node.querySelector("[data-past-label]").textContent = `Gusts over ${b.gustMax} kn take off`;
+          node.querySelector("[data-past-group]").setAttribute("aria-label", `Gusts over ${b.gustMax} kn take off`);
+          node.querySelectorAll("[data-past]").forEach((el) => el.setAttribute("aria-pressed", String(Number(el.dataset.past) === b.past)));
           const pct = (kn) => `${(kn / 40) * 100}%`;
-          const fill = node.querySelector("[data-fill]");
-          fill.style.left = pct(b.sweetLow);
-          fill.style.width = `${((b.sweetHigh - b.sweetLow) / 40) * 100}%`;
-          const lo = node.querySelector("[data-edge-low]");
-          lo.style.left = pct(b.min);
-          lo.style.width = `${((b.sweetLow - b.min) / 40) * 100}%`;
-          const hi = node.querySelector("[data-edge-high]");
-          hi.style.left = pct(b.sweetHigh);
-          hi.style.width = `${((b.max - b.sweetHigh) / 40) * 100}%`;
-          node.querySelector("[data-rates]").innerHTML = EXAMPLES.map(([w, g]) => {
-            const o = rate(w, g, ours);
-            const y = rate(w, g, b);
-            const moved = o.stars !== y.stars;
-            return `<tr><td class="${moved ? "rates__moved" : ""}">${w} g${g}</td><td>${glyphs(o)}</td><td>${glyphs(y)} <span class="rates__why">${y.why}</span></td></tr>`;
+          const span = (from, to, el) => { el.style.left = pct(from); el.style.width = `${((to - from) / 40) * 100}%`; };
+          span(b.sweetLow, b.sweetHigh, node.querySelector("[data-fill]"));
+          span(b.min, b.sweetLow, node.querySelector("[data-edge-low]"));
+          span(b.sweetHigh, b.max, node.querySelector("[data-edge-high]"));
+          node.querySelector("[data-rates]").innerHTML = EXAMPLES.map(([wind, gust]) => {
+            const o = rate(wind, gust, base);
+            const y = rate(wind, gust, b);
+            return `<tr><td class="${o.stars !== y.stars ? "rates__moved" : ""}">${wind} gusting ${gust}</td><td>${glyphs(o)}</td><td>${glyphs(y)}<span class="rates__why">${y.why}</span></td></tr>`;
           }).join("");
-          if (node.dataset.own === "true" && host.dataset.preset === "steady20") drawDock(b);
+          if (isDock) drawDock(b);
         };
 
-        // Thumbs keep their order, a knot apart: least < comfy from < comfy to < most.
+        // Handles keep their order, a knot apart: minimum < ideal from < ideal to < maximum.
         KEYS.forEach((k, i) =>
           node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => {
             let v = Number(e.target.value);
-            const below = KEYS[i - 1], above = KEYS[i + 1];
-            if (below) v = Math.max(v, b[below] + 1);
-            if (above) v = Math.min(v, b[above] - 1);
-            b[k] = clamp(v, i, 40 - (3 - i));
-            if (k === "max" && b.gustMax < b.max) b.gustMax = b.max;
+            if (KEYS[i - 1]) v = Math.max(v, b[KEYS[i - 1]] + 1);
+            if (KEYS[i + 1]) v = Math.min(v, b[KEYS[i + 1]] - 1);
+            b[k] = clamp(v, 2 + i, 40 - (3 - i));
             draw();
           }),
         );
         ["spread", "gustMax"].forEach((k) =>
-          node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => {
-            b[k] = Number(e.target.value);
-            draw();
-          }),
+          node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = Number(e.target.value); draw(); }),
         );
         node.querySelectorAll("[data-past]").forEach((el) => el.addEventListener("click", () => { b.past = Number(el.dataset.past); draw(); }));
-        node.querySelectorAll("[data-preset-pick]").forEach((el) => el.addEventListener("click", () => { b = { ...BANDS[el.dataset.presetPick] }; draw(); }));
-        node.querySelectorAll("[data-whose]").forEach((el) => el.addEventListener("click", () => { node.dataset.own = String(el.dataset.whose === "own"); draw(); }));
-        node.querySelector("[data-back]").addEventListener("click", (e) => { e.preventDefault(); node.dataset.own = "false"; draw(); });
+        node.querySelectorAll("[data-preset]").forEach((el) => el.addEventListener("click", () => { start = el.dataset.preset; b = { ...LEVELS[start] }; draw(); }));
         draw();
       });
 
-      // A Saturday afternoon at Dollymount, rated with the band in the first panel.
+      // A Saturday afternoon at Dollymount, rated with the custom stars in the first dialog.
       function drawDock(b) {
         const HOURS = [[11, 14, 19], [12, 17, 23], [13, 19, 24], [14, 20, 25], [15, 21, 28], [16, 22, 31], [17, 19, 27], [18, 16, 22]];
         document.querySelector("[data-hours]").innerHTML = HOURS.map(([h, w, g]) =>
