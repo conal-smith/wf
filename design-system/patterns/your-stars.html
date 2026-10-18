@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="../components/kicker/component.css" />
     <link rel="stylesheet" href="../components/link/component.css" />
     <link rel="stylesheet" href="../components/star-glyphs/component.css" />
+    <link rel="stylesheet" href="../components/field/component.css" />
+    <link rel="stylesheet" href="../components/text-input/component.css" />
+    <link rel="stylesheet" href="../components/select/component.css" />
     <style>
       /* The page: one sheet of paper with its grain; a mono label names each instance. */
       body {
@@ -260,6 +263,84 @@
         align-self: flex-start;
       }
 
+      /* ---- wind direction: the beach, and the stars each direction costs ---- */
+      .shore {
+        display: block;
+        width: 100%;
+        max-width: calc(var(--sem-space-step) * 64);
+        height: auto;
+        margin: var(--sem-space-x1) auto 0;
+      }
+      .shore__land {
+        fill: var(--sem-color-land);
+      }
+      .shore__sea {
+        fill: var(--sem-color-depth);
+        opacity: 0.35;
+      }
+      .shore__line {
+        stroke: var(--sem-color-ink);
+        stroke-width: 2;
+      }
+      .shore__wedge {
+        fill: var(--sem-color-ink);
+        stroke: var(--sem-color-card);
+        stroke-width: 1;
+      }
+      .shore__wedge--locked {
+        fill: var(--sem-color-pen);
+      }
+      .shore__ring {
+        fill: none;
+        stroke: var(--sem-color-ink);
+        stroke-width: 1;
+      }
+      .shore__word {
+        font-family: var(--sem-font-family-mono);
+        font-size: 9px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink);
+      }
+      .shore__word--on-dark {
+        fill: var(--sem-color-ink-inverse);
+      }
+      .dirs {
+        display: grid;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x2);
+      }
+      .dir {
+        display: grid;
+        grid-template-columns: minmax(calc(var(--sem-space-step) * 30), 1fr) auto;
+        align-items: center;
+        gap: var(--sem-space-x1) var(--sem-space-x3);
+      }
+      .dir__name {
+        font-size: var(--sem-font-size-body);
+        line-height: var(--sem-font-line-body);
+      }
+      .dir__note {
+        display: block;
+        font-size: var(--sem-font-size-caption);
+        line-height: var(--sem-font-line-caption);
+        color: var(--sem-color-ink-muted);
+      }
+      .ys--phone .dir {
+        grid-template-columns: 1fr;
+      }
+      .ys--phone .dir .wf-segmented {
+        justify-self: start;
+      }
+      .together__for {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
+        font-size: var(--sem-font-size-body);
+      }
+
       /* ---- together: every wind and gust, rated ---- */
       .grid {
         display: block;
@@ -500,7 +581,7 @@
 
     <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and no gusts much over 25</p>
     <div class="pt__row">
-      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3}'></div>
+      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3,"dir":{"onshore":0.5,"crossOn":0,"cross":0,"crossOff":2,"offshore":1}}'></div>
       <div class="pt__col">
         <p class="pt__label" style="margin: 0">3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
         <div class="dockhead">
@@ -593,7 +674,20 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Together: wind speed and gusts</span>
+            <span class="wf-kicker wf-kicker--ink">Wind direction: stars taken off</span>
+            <svg class="shore" viewBox="-120 -112 240 224" role="img" data-shore></svg>
+            <div class="dirs" data-dirs></div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Together: wind speed, gusts and direction</span>
+            <div class="together__for">
+              <span>For wind that is</span>
+              <div class="wf-control wf-control--select">
+                <select class="wf-control__input" aria-label="Show the stars for wind that is" data-for></select>
+                <svg class="wf-control__adornment" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              </div>
+            </div>
             <svg class="grid" viewBox="0 -18 400 278" role="img" data-grid></svg>
             <div class="grid__key" aria-hidden="true">
               <span>Blank: no stars ·</span><span>1★</span><span class="grid__swatch" style="opacity: 0.08"></span><span class="grid__swatch" style="opacity: 0.25"></span><span class="grid__swatch" style="opacity: 0.45"></span><span class="grid__swatch" style="opacity: 0.65"></span><span class="grid__swatch" style="opacity: 0.85"></span><span>5★</span>
@@ -623,10 +717,23 @@
       // stars for how strong the gusts are, both curves set by the rider. Below the minimum a
       // gust still lifts the wind towards it: a light day with gusts is a chance to get up.
       const LEVELS = {
-        beginner: { name: "Learning", min: 13, sweetLow: 15, sweetHigh: 20, max: 24, fine: 20, worst: 28, most: 3, share: 0.2 },
-        intermediate: { name: "Riding", min: 11, sweetLow: 14, sweetHigh: 24, max: 30, fine: 28, worst: 40, most: 2, share: 0.3 },
-        advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, fine: 33, worst: 45, most: 2, share: 0.35 },
+        beginner: { name: "Learning", min: 13, sweetLow: 15, sweetHigh: 20, max: 24, fine: 20, worst: 28, most: 3, share: 0.2,
+          dir: { onshore: 1, crossOn: 0, cross: 0.5, crossOff: 3, offshore: 0 } },
+        intermediate: { name: "Riding", min: 11, sweetLow: 14, sweetHigh: 24, max: 30, fine: 28, worst: 40, most: 2, share: 0.3,
+          dir: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1.5, offshore: 1 } },
+        advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, fine: 33, worst: 45, most: 2, share: 0.35,
+          dir: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1, offshore: 1 } },
       };
+      // How the wind meets the beach, as stars.ts's shoreAngle reads it: degrees off straight onshore.
+      const DIRS = [
+        { key: "onshore", name: "Onshore", note: "Straight in from the sea. Slow to get out through the chop.", from: 0, to: 30 },
+        { key: "crossOn", name: "Cross-onshore", note: "In at an angle: the easiest, and it brings you home.", from: 30, to: 70 },
+        { key: "cross", name: "Cross-shore", note: "Along the beach.", from: 70, to: 110 },
+        { key: "crossOff", name: "Cross-offshore", note: "Out at an angle: a drift downwind takes you out.", from: 110, to: 150 },
+        { key: "offshore", name: "Offshore", note: "Straight off the land. Never more than 1 star, whatever you set: it blows you out to sea.", from: 150, to: 180 },
+      ];
+      const OFF = [0, 0.5, 1, 2, 3]; // the stars a direction may take off
+      const DIR_WORD = { onshore: "onshore", crossOn: "cross-on", cross: "cross", crossOff: "cross-off", offshore: "offshore" };
       const WIND_KEYS = ["min", "sweetLow", "sweetHigh", "max"];
       const GUST_KEYS = ["fine", "worst"];
       const WIND_TOP = 40, GUST_TOP = 50; // knots: the ends of the two scales
@@ -646,13 +753,40 @@
         return ramp(kn, b.max, b.max + 6, 2, 0);
       }
       const gustLoss = (kn, b) => (kn <= b.fine ? 0 : ramp(kn, b.fine, b.worst, 0, b.most));
-      function rate(wind, gust, b) {
+      function rate(wind, gust, b, dir = "crossOn") {
         const ride = gust > wind && wind < b.min ? Math.min(b.min, wind + b.share * Math.min(gust - wind, wind)) : wind;
         const base = windScore(ride, b);
         const potential = Math.round(base);
         const loss = gustLoss(gust, b);
-        const stars = clamp(Math.round(base - loss), 0, potential);
-        return { stars, potential, base, loss };
+        const off = dir === "offshore" ? 0 : b.dir[dir];
+        const cap = dir === "offshore" ? b.dir.offshore : 5;
+        const stars = clamp(Math.round(Math.min(base - loss - off, cap)), 0, potential);
+        return { stars, potential, base, loss, off, cap };
+      }
+
+      // The beach from above: sea up, land down, and the wind's directions round it as wedges,
+      // darker for more stars off; offshore in the pen, as the shore glyph draws it.
+      function shore(svg, b) {
+        const R = 96, pt = (a, r) => [r * Math.sin((a * Math.PI) / 180), -r * Math.cos((a * Math.PI) / 180)];
+        const wedge = (a1, a2) => { const [x1, y1] = pt(a1, R), [x2, y2] = pt(a2, R); return `M0,0 L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)}Z`; };
+        let out = `<rect class="shore__sea" x="-120" y="-112" width="240" height="112"/><rect class="shore__land" x="-120" y="0" width="240" height="112"/>`;
+        DIRS.forEach((d) => {
+          const locked = d.key === "offshore";
+          const v = locked ? null : b.dir[d.key];
+          const shade = locked ? 0.9 : [0.06, 0.2, 0.38, 0.6, 0.82][OFF.indexOf(v)] ?? 0.82;
+          const cls = `shore__wedge${locked ? " shore__wedge--locked" : ""}`;
+          const arcs = d.from === 0 ? [[-30, 30]] : locked ? [[150, 210]] : [[d.from, d.to], [-d.to, -d.from]];
+          arcs.forEach(([a1, a2]) => (out += `<path class="${cls}" d="${wedge(a1, a2)}" opacity="${shade}"/>`));
+          const label = locked ? (b.dir.offshore ? "≤1★" : "0★") : v ? `−${v === 0.5 ? "½" : v}★` : "0";
+          const dark = shade > 0.5 ? " shore__word--on-dark" : "";
+          if (locked) out += `<text class="shore__word shore__word--on-dark" x="0" y="${R * 0.62}" text-anchor="middle">${label}</text>`;
+          else if (d.from === 0) out += `<text class="shore__word${dark}" x="0" y="${-R * 0.72}" text-anchor="middle">${label}</text>`;
+          else [1, -1].forEach((side) => { const [lx, ly] = pt(side * (d.from + d.to) / 2, R * 0.68); out += `<text class="shore__word${dark}" x="${lx.toFixed(1)}" y="${(Math.abs(ly) < 6 ? -6 : ly + 3).toFixed(1)}" text-anchor="middle">${label}</text>`; });
+        });
+        out += `<circle class="shore__ring" r="${R}"/><line class="shore__line" x1="-120" x2="120" y1="0" y2="0"/>`;
+        out += `<text class="shore__word" x="-116" y="-102">sea</text><text class="shore__word" x="-116" y="106">land</text>`;
+        svg.innerHTML = out;
+        svg.setAttribute("aria-label", DIRS.map((d) => `${d.name}: ${d.key === "offshore" ? (b.dir.offshore ? "at most 1 star" : "no stars") : `${b.dir[d.key]} stars off`}`).join("; "));
       }
 
       // Units: everything is kept in knots and shown in the rider's unit.
@@ -716,7 +850,7 @@
 
       // Every wind speed along the bottom and every gust up the side, shaded by the stars.
       const STEP = 2; // knots a square
-      function grid(svg, b) {
+      function grid(svg, b, dir) {
         const left = 30, w = 360, h = 230;
         const X = (kn) => left + (kn / WIND_TOP) * w, Y = (kn) => h - (kn / GUST_TOP) * h;
         let cells = "";
@@ -724,7 +858,7 @@
           for (let gust = 0; gust < GUST_TOP; gust += STEP) {
             const x = X(wind), y = Y(gust + STEP), cw = X(wind + STEP) - x, ch = Y(gust) - y;
             if (gust + STEP <= wind) { cells += `<rect class="grid__none" x="${x}" y="${y}" width="${cw}" height="${ch}"/>`; continue; }
-            const r = rate(wind + STEP / 2, Math.max(gust + STEP / 2, wind + STEP / 2), b);
+            const r = rate(wind + STEP / 2, Math.max(gust + STEP / 2, wind + STEP / 2), b, dir);
             cells += `<rect class="grid__cell" x="${x}" y="${y}" width="${cw + 0.3}" height="${ch + 0.3}" opacity="${[0, 0.08, 0.25, 0.45, 0.65, 0.85][r.stars]}"/>`;
           }
         }
@@ -733,13 +867,13 @@
         for (let v = 0; v <= topW + 1e-6; v += tick()) axes += `<text class="curve__axis" x="${left + (v / topW) * w}" y="${h + 14}" text-anchor="middle">${v}</text>`;
         for (let v = tick(); v <= topG + 1e-6; v += tick()) axes += `<text class="curve__axis" x="${left - 4}" y="${h - (v / topG) * h + 3}" text-anchor="end">${v}</text>`;
         axes += `<text class="curve__axis" x="${left + w}" y="${h + 28}" text-anchor="end">wind speed, ${unit.label} →</text>`;
-        axes += `<text class="curve__axis" x="${left - 4}" y="-8" text-anchor="end">gusts,</text><text class="curve__axis" x="${left + 2}" y="-8" text-anchor="start">${unit.label} ↑</text>`;
+        axes += `<text class="curve__axis" x="0" y="-8" text-anchor="start">gusts, ${unit.label} ↑</text>`;
         svg.innerHTML = cells + axes + `<rect class="grid__pick" data-pick width="0" height="0"/>`;
         svg.setAttribute("aria-label", "Stars for every wind speed and gust: darker is more stars");
         svg.dataset.geom = JSON.stringify({ left, w, h });
       }
 
-      const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [18, 27], [20, 25], [22, 32], [25, 38]];
+      const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [18, 27], [22, 32], [25, 38], [18, 24, "onshore"], [18, 24, "crossOff"], [18, 24, "offshore"]];
 
       const dialogs = [];
       document.querySelectorAll("[data-ys]").forEach((host, n) => {
@@ -753,9 +887,11 @@
         }
         host.replaceWith(node);
         let start = host.dataset.start;
-        let b = { ...LEVELS[start], ...(host.dataset.custom ? JSON.parse(host.dataset.custom) : {}) };
+        let b = { ...LEVELS[start], dir: { ...LEVELS[start].dir }, ...(host.dataset.custom ? JSON.parse(host.dataset.custom) : {}) };
         const isDock = Boolean(host.dataset.custom);
         let picked = [18, 27];
+        let showFor = "crossOn";
+        node.querySelector("[data-for]").innerHTML = DIRS.map((d) => `<option value="${d.key}"${d.key === showFor ? " selected" : ""}>${d.name.toLowerCase()}</option>`).join("");
 
         const setRange = (k, topKn) => {
           const el = node.querySelector(`[data-k="${k}"]`);
@@ -766,8 +902,8 @@
         };
         const readout = () => {
           const [w, g] = picked;
-          const r = rate(w, g, b);
-          const off = r.loss ? `, gusts −${Number(r.loss.toFixed(1))}` : "";
+          const r = rate(w, g, b, showFor);
+          const off = (r.loss ? `, gusts −${Number(r.loss.toFixed(1))}` : "") + (r.off ? `, direction −${r.off}` : "") + (r.cap < 5 ? `, offshore: at most ${r.cap}★` : "");
           node.querySelector("[data-readout]").innerHTML =
             `<span>${show(w)} gusting ${show(g)} ${unit.label}</span>${glyphs(r)}<span class="readout__why">wind ${Number(r.base.toFixed(1))}★${off}</span>`;
           const { left, w: gw, h } = JSON.parse(node.querySelector("[data-grid]").dataset.geom);
@@ -782,7 +918,15 @@
           node.querySelectorAll("[data-preset]").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.preset === start)));
           windCurve(node.querySelector('[data-curve="wind"]'), b, base);
           gustCurve(node.querySelector('[data-curve="gust"]'), b, base);
-          grid(node.querySelector("[data-grid]"), b);
+          grid(node.querySelector("[data-grid]"), b, showFor);
+          shore(node.querySelector("[data-shore]"), b);
+          node.querySelector("[data-dirs]").innerHTML = DIRS.map((d) => {
+            const choices = d.key === "offshore"
+              ? [[1, "At most 1★"], [0, "No stars"]].map(([v, t]) => `<button class="wf-segmented__item" type="button" data-dir="${d.key}" data-val="${v}" aria-pressed="${b.dir.offshore === v}">${t}</button>`).join("")
+              : OFF.map((v) => `<button class="wf-segmented__item" type="button" data-dir="${d.key}" data-val="${v}" aria-pressed="${b.dir[d.key] === v}">${v ? "−" + (v === 0.5 ? "½" : v) : "0"}</button>`).join("");
+            return `<div class="dir"><span class="dir__name">${d.name}<span class="dir__note">${d.note}</span></span><div class="wf-segmented" role="group" aria-label="${d.name}: stars taken off">${choices}</div></div>`;
+          }).join("");
+
           WIND_KEYS.forEach((k) => setRange(k, WIND_TOP));
           GUST_KEYS.forEach((k) => setRange(k, GUST_TOP));
           [...WIND_KEYS, ...GUST_KEYS].forEach((k) => (node.querySelector(`[data-v="${k}"]`).innerHTML = `${show(b[k])}<small> ${unit.label}</small>`));
@@ -794,9 +938,9 @@
             el.style.width = `${((b[to] - b[from]) / top) * 100}%`;
           });
           node.querySelector("[data-forecast-head]").textContent = `Forecast, ${unit.label}`;
-          node.querySelector("[data-rates]").innerHTML = EXAMPLES.map(([wind, gust]) => {
-            const o = rate(wind, gust, base), y = rate(wind, gust, b);
-            return `<tr><td class="${o.stars !== y.stars ? "rates__moved" : ""}">${show(wind)} gusting ${show(gust)}</td><td>${glyphs(o)}</td><td>${glyphs(y)}</td></tr>`;
+          node.querySelector("[data-rates]").innerHTML = EXAMPLES.map(([wind, gust, dir = "crossOn"]) => {
+            const o = rate(wind, gust, base, dir), y = rate(wind, gust, b, dir);
+            return `<tr><td class="${o.stars !== y.stars ? "rates__moved" : ""}">${show(wind)} gusting ${show(gust)}${dir === "crossOn" ? "" : ", " + DIR_WORD[dir]}</td><td>${glyphs(o)}</td><td>${glyphs(y)}</td></tr>`;
           }).join("");
           readout();
           if (isDock) drawDock(b);
@@ -811,7 +955,17 @@
         WIND_KEYS.forEach((k, i) => node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = clamp(order(WIND_KEYS, i, toKn(Number(e.target.value))), 2 + i, WIND_TOP - (3 - i)); draw(); }));
         GUST_KEYS.forEach((k, i) => node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = clamp(order(GUST_KEYS, i, toKn(Number(e.target.value))), 1 + i, GUST_TOP - (1 - i)); draw(); }));
         node.querySelectorAll("[data-most]").forEach((el) => el.addEventListener("click", () => { b.most = Number(el.dataset.most); draw(); }));
-        node.querySelectorAll("[data-preset]").forEach((el) => el.addEventListener("click", () => { start = el.dataset.preset; b = { ...LEVELS[start] }; draw(); }));
+        node.querySelectorAll("[data-preset]").forEach((el) => el.addEventListener("click", () => { start = el.dataset.preset; b = { ...LEVELS[start], dir: { ...LEVELS[start].dir } }; draw(); }));
+        node.querySelector("[data-dirs]").addEventListener("click", (e) => {
+          const el = e.target.closest("[data-dir]");
+          if (!el) return;
+          b.dir = { ...b.dir, [el.dataset.dir]: Number(el.dataset.val) };
+          draw();
+        });
+        node.querySelector("[data-for]").addEventListener("change", (e) => {
+          showFor = e.target.value;
+          draw();
+        });
         const gridEl = node.querySelector("[data-grid]");
         const pickAt = (e) => {
           const { left, w, h } = JSON.parse(gridEl.dataset.geom);
@@ -837,9 +991,9 @@
 
       // A Saturday afternoon at Dollymount, rated with the custom stars in the first dialog.
       function drawDock(b) {
-        const HOURS = [[11, 14, 19], [12, 17, 23], [13, 19, 24], [14, 20, 25], [15, 21, 28], [16, 22, 31], [17, 19, 27], [18, 16, 22]];
-        document.querySelector("[data-hours]").innerHTML = HOURS.map(([h, w, g]) =>
-          `<div class="hour"><span class="hour__ist">${h}</span>${glyphs(rate(w, g, b))}<span>${show(w)}g${show(g)}</span></div>`,
+        const HOURS = [[11, 14, 19, "cross"], [12, 17, 23, "crossOn"], [13, 19, 24, "crossOn"], [14, 20, 25, "crossOn"], [15, 21, 28, "onshore"], [16, 22, 31, "onshore"], [17, 19, 27, "cross"], [18, 16, 22, "crossOff"]];
+        document.querySelector("[data-hours]").innerHTML = HOURS.map(([h, w, g, d]) =>
+          `<div class="hour"><span class="hour__ist">${h}</span>${glyphs(rate(w, g, b, d))}<span>${show(w)}g${show(g)}</span></div>`,
         ).join("");
       }
     </script>
