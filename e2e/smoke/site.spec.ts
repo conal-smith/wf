@@ -56,10 +56,14 @@ test("the chart draws every riding place and reads this deployment's forecast", 
     }, url);
     expect(answer, url).toEqual({ status: 200, json: true });
   }
-  if (manifests.length)
+  // A first visit is the chart alone; a spot brings the dock and its hours.
+  await expect(page.locator(".dock")).toHaveCount(0);
+  if (manifests.length) {
+    await page.goto("/?spot=brandon");
     await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible({
       timeout: 30000,
     });
+  }
   expect(errors).toEqual([]);
 });
 
