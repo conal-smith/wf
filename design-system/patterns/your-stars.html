@@ -287,9 +287,6 @@
         stroke: var(--sem-color-card);
         stroke-width: 1;
       }
-      .shore__wedge--locked {
-        fill: var(--sem-color-pen);
-      }
       .shore__ring {
         fill: none;
         stroke: var(--sem-color-ink);
@@ -329,10 +326,6 @@
       .web__slice--on {
         fill: var(--sem-color-ink);
         fill-opacity: 0.1;
-      }
-      .web__slice--locked {
-        fill: var(--sem-color-pen);
-        fill-opacity: 0.18;
       }
       .web__dot {
         fill: var(--sem-color-card);
@@ -796,8 +789,6 @@
         { key: "crossOff", name: "Cross-offshore", from: 110, to: 150, at: [130, -130] },
         { key: "offshore", name: "Offshore", from: 150, to: 180, at: [180] },
       ];
-      // Offshore blows a rider out to sea: it always takes at least 4 stars off.
-      const OFF_FLOOR = { offshore: 4 };
       const half = (v) => (v ? `−${Math.floor(v) || ""}${v % 1 ? "½" : ""}` : "0");
       const DIR_WORD = { onshore: "onshore", crossOn: "cross-on", cross: "cross", crossOff: "cross-off", offshore: "offshore" };
       const WIND_KEYS = ["min", "sweetLow", "sweetHigh", "max"];
@@ -841,7 +832,7 @@
         let out = `<rect class="shore__sea" x="-190" y="-150" width="380" height="150"/><rect class="shore__land" x="-190" y="0" width="380" height="150"/>`;
         // The slices: tap one to bring its dot to the top. Offshore's is in the pen.
         DIRS.forEach((d) => arcs(d).forEach(([a1, a2]) => {
-          const cls = d.key === picked ? "web__slice web__slice--on" : d.key === "offshore" ? "web__slice web__slice--locked" : "web__slice";
+          const cls = d.key === picked ? "web__slice web__slice--on" : "web__slice";
           out += `<path class="${cls}" d="${wedge(a1, a2)}" data-slice="${d.key}"><title>${d.name}</title></path>`;
         }));
         for (let off = 1; off <= 5; off++) out += `<circle class="web__ringline" r="${radius(off) || 0.01}"/>`;
@@ -870,7 +861,7 @@
           const [x, y] = polar(a, radius(b.dir[d.key]));
           const on = d.key === picked;
           out += `<circle class="web__dot${on ? " web__dot--on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${on ? 6 : 5}" data-dot="${d.key}"` +
-            (n === 0 ? ` tabindex="0" role="slider" aria-label="${d.name}: stars taken off" aria-valuemin="${OFF_FLOOR[d.key] ?? 0}" aria-valuemax="5" aria-valuenow="${b.dir[d.key]}" aria-valuetext="${half(b.dir[d.key])} stars"` : ` aria-hidden="true"`) + `/>`;
+            (n === 0 ? ` tabindex="0" role="slider" aria-label="${d.name}: stars taken off" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${b.dir[d.key]}" aria-valuetext="${half(b.dir[d.key])} stars"` : ` aria-hidden="true"`) + `/>`;
         }));
         svg.innerHTML = out;
       }
@@ -1042,7 +1033,7 @@
         node.querySelectorAll("[data-preset]").forEach((el) => el.addEventListener("click", () => { start = el.dataset.preset; b = { ...LEVELS[start], dir: { ...LEVELS[start].dir } }; draw(); }));
         const webEl = node.querySelector("[data-shore]");
         const setOff = (key, off) => {
-          b.dir = { ...b.dir, [key]: clamp(Math.round(off * 2) / 2, OFF_FLOOR[key] ?? 0, 5) };
+          b.dir = { ...b.dir, [key]: clamp(Math.round(off * 2) / 2, 0, 5) };
           draw();
         };
         const at = (e) => { const pt = webEl.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(webEl.getScreenCTM().inverse()); };
