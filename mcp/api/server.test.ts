@@ -121,7 +121,6 @@ describe("the MCP endpoint", () => {
     );
     expect(found.sources.map((s: { id: string }) => s.id).sort()).toEqual([
       "ecmwf",
-      "gfs",
     ]);
     const backwards = await call("find_wind", { min_kn: 20, max_kn: 10 });
     expect(backwards.isError).toBe(true);
@@ -132,7 +131,6 @@ describe("the MCP endpoint", () => {
     const sources = (await call("forecast_sources")).json();
     expect(sources.wind.map((r: { id: string }) => r.id).sort()).toEqual([
       "ecmwf",
-      "gfs",
     ]);
     expect(sources.waves[0]).toMatchObject({ id: "gfs-wave" });
     expect(sources.wind[0].attribution).toEqual(expect.any(String));

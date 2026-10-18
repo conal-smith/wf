@@ -12,7 +12,7 @@ blend riders see beats any one of its models. Three jobs fix that:
 | `verify`           | daily at 07:25 | the archive                         | `archive/verify/sums/…`, `verify/scores.json`       |
 
 All three are ordinary registry entries (`force5/ingest/registry.py`) run by the worker,
-so they run the same way locally, on Home Compute and on Cloudflare Containers. The
+so they run the same way locally and on Home Compute (the Mac mini or Cloudflare Containers). The
 archive and verification jobs are `readsBucket`: with a bucket they read what it serves
 and write its archive, and without one they read and write the work directory's
 `public/`.

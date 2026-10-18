@@ -20,7 +20,9 @@ import tomllib
 from registry import MODELS
 
 DEFAULT_JOBS_FILE = "/app/deploy/local/jobs.toml"
-KNOWN_COMMANDS = {"worker": "worker.py", "prune": "prune.py", "status": "status.py"}
+# Freshness (status.py) is not one: it is run on demand (`npm run deploy:status`),
+# and the hosted control plane alerts on a stale model itself.
+KNOWN_COMMANDS = {"worker": "worker.py", "prune": "prune.py"}
 # `memory` is a container ceiling for Home Compute and Cloudflare (deploy/schedules.py);
 # this scheduler runs jobs in its own process and has no use for it.
 JOB_KEYS = {"id", "enabled", "command", "models", "args", "hours", "minutes", "timeout_seconds", "memory"}

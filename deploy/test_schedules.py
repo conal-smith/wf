@@ -66,7 +66,7 @@ class EditTest(unittest.TestCase):
 
 
 class SetTest(unittest.TestCase):
-    """apply_set against copies: jobs.toml and both generated files in a temp folder."""
+    """apply_set against copies: jobs.toml and home-compute.json in a temp folder."""
 
     def setUp(self):
         self.folder = Path(tempfile.mkdtemp())
@@ -74,8 +74,7 @@ class SetTest(unittest.TestCase):
         self.jobs = self.folder / "jobs.toml"
         self.jobs.write_text(TOML)
         for name, value in (("JOBS_FILE", self.jobs),
-                            ("HOME_COMPUTE_FILE", self.folder / "home-compute.json"),
-                            ("CLOUDFLARE_FILE", self.folder / "jobs.json")):
+                            ("HOME_COMPUTE_FILE", self.folder / "home-compute.json")):
             patcher = mock.patch.object(schedules, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -84,16 +83,15 @@ class SetTest(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_an_edit_reaches_both_generated_files(self):
+    def test_an_edit_reaches_the_generated_file(self):
         schedules.apply_set(arguments("harmonie", minutes="5,35", memory="3Gb"))
         self.assertIn("minutes = [5, 35]", self.jobs.read_text())
         home = json.loads((self.folder / "home-compute.json").read_text())["jobs"][0]
         self.assertEqual(home["schedule"]["at"], {"minutes": [5, 35]})
         self.assertEqual(home["task"]["resources"]["memory"], "3Gb")
-        cloudflare = json.loads((self.folder / "jobs.json").read_text())["jobs"][0]
-        self.assertEqual((cloudflare["minutes"], cloudflare["size"]), ([5, 35], "large"))
+        self.assertEqual(home["task"]["entrypoint"], ["python", "/app/force5/ingest/worker.py"])
 
-    def test_a_minute_off_cloudflares_tick_is_refused_and_nothing_is_written(self):
+    def test_a_minute_off_the_five_minute_marks_is_refused_and_nothing_is_written(self):
         with self.assertRaisesRegex(ValueError, "5-minute mark"):
             schedules.apply_set(arguments("harmonie", minutes="7"))
         self.assertEqual(self.jobs.read_text(), TOML)

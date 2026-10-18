@@ -8,9 +8,10 @@
 #   docker compose -f deploy/local/docker-compose.yml run --rm scheduler --list
 #
 # command = "worker" (default) runs force5/ingest/worker.py --models <models> <args>.
-# command = "prune" or "status" runs the retention and freshness scripts instead.
-# `memory = "3Gb"` overrides a job's container ceiling for Home Compute and Cloudflare
-# (deploy/schedules.py, which also checks every minute is a multiple of 5); this
+# command = "prune" runs the retention script instead. Freshness is not scheduled:
+# `npm run deploy:status` prints it on demand, and the hosted control plane alerts on it.
+# `memory = "3Gb"` overrides a job's container ceiling for Home Compute, on the Mac mini
+# and on Cloudflare (deploy/schedules.py, which also checks every minute is a multiple of 5); this
 # scheduler ignores it. Model ids are the ones in force5/ingest/registry.py. An id with no registry entry
 # disables only its own job; the rest keep running, so you can write entries for
 # harmonie-eps, gfs-wave or mi-swan now and enable them by adding the adapter.
@@ -75,9 +76,10 @@ enabled = false             # Retired to keep downloads near 80 GB a month.
 id = "gfs"
 models = ["gfs"]
 args = ["--step", "3"]
-hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag. :45 is a
-minutes = [0, 45]           # retry for a cycle not yet complete at :00 (the 06Z on 18
-timeout_seconds = 2400      # October); it reads the bucket and stops once :00 has published.
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag.
+minutes = [0]
+timeout_seconds = 2400
+enabled = false             # Retired: judged not useful (18 October 2026).
 
 [[jobs]]
 id = "gefs"
@@ -110,7 +112,8 @@ enabled = false             # Retired to keep downloads near 80 GB a month.
 id = "gfs-wave"
 models = ["gfs-wave"]
 hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag. :55
-minutes = [30, 55]          # is a retry for a cycle not out at :30, as GFS's :45.
+minutes = [30, 55]          # is a retry for a cycle not yet complete at :30; it reads the
+                            # bucket and stops once :30 has published.
 timeout_seconds = 2400
 
 [[jobs]]
@@ -176,12 +179,6 @@ minutes = [10]              # Deletes a superseded run an hour after the new one
                             # (the worker keeps it that long for readers still holding
                             # the old pointer), and ages the raw cache.
 timeout_seconds = 900
-
-[[jobs]]
-id = "status"
-command = "status"
-minutes = [55]              # Hourly freshness line in the scheduler log.
-timeout_seconds = 120
 
 # An example for an adapter that does not exist yet. It stays rejected, with one
 # log line, until the model is registered in force5/ingest/registry.py.

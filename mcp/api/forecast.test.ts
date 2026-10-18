@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { MODEL_CATALOG } from "../../force5/src/manifests";
 import { KNOTS } from "../../force5/src/units";
 import {
-  agreementFrom,
   leadHours,
   modelWeight,
   weightedMedian,
@@ -150,11 +149,8 @@ describe("spotForecast", () => {
 
   it("reads only the runs that are still live", async () => {
     const forecast = await dollymount();
-    // ARPEGE is in the fixtures but retired, so it is not read.
-    expect(forecast.sources.wind.map((r) => r.id).sort()).toEqual([
-      "ecmwf",
-      "gfs",
-    ]);
+    // GFS and ARPEGE are in the fixtures but retired, so they are not read.
+    expect(forecast.sources.wind.map((r) => r.id).sort()).toEqual(["ecmwf"]);
     const gone = forecast.sources.unavailable.map(
       (u) => `${u.id}: ${u.reason}`,
     );
@@ -162,11 +158,14 @@ describe("spotForecast", () => {
       "harmonie: The latest published run has already ended.",
     );
     expect(gone.some((reason) => reason.startsWith("arpege"))).toBe(false);
+    expect(gone.some((reason) => reason.startsWith("gfs:"))).toBe(false);
     expect(forecast.sources.wind.find((r) => r.id === "ecmwf")?.stale).toBe(
       true,
     );
   });
 
+  // With GFS retired, ECMWF is the one fixture run still live at FIXTURE_NOW,
+  // so this is the reduction over one model; hourWind below has several.
   it("gives the weighted median, range and agreement of the models in knots where HARMONIE has ended", async () => {
     const forecast = await dollymount();
     const first = forecast.hours[0];
@@ -176,7 +175,7 @@ describe("spotForecast", () => {
     // The same hour straight from the fixture files, one model at a time.
     const valid = Date.parse("2026-09-16T18:00:00Z");
     const rows = await Promise.all(
-      ["ecmwf", "gfs"].map(async (model) => {
+      ["ecmwf"].map(async (model) => {
         // The pointer, and the square holding Dollymount, through the loader.
         const path = `weather/${model}.json`;
         const m = (await withSpotSquares(
@@ -204,7 +203,7 @@ describe("spotForecast", () => {
     );
     const speeds = rows.map((r) => r.speed).sort((a, b) => a - b);
     const wind = first.wind!;
-    expect(wind.models).toBe(2);
+    expect(wind.models).toBe(1);
     expect(wind.wind_kn).toBeCloseTo(
       weightedMedian(
         rows.map((r) => r.speed),
@@ -215,14 +214,10 @@ describe("spotForecast", () => {
     expect(wind.lead).toBeNull();
     expect(wind.gust_lead).toBeNull();
     expect(wind.min_kn).toBeCloseTo(speeds[0], 1);
-    expect(wind.max_kn).toBeCloseTo(speeds[1], 1);
-    expect(wind.agreement).toBe(
-      agreementFrom(speeds, Math.min(...rows.map((r) => r.lead))),
-    );
-    expect(Object.keys(wind.by_model!).sort()).toEqual([
-      "ecmwf",
-      "gfs",
-    ]);
+    expect(wind.max_kn).toBeCloseTo(speeds.at(-1)!, 1);
+    // One model agrees with nobody: there is no agreement to give.
+    expect(wind.agreement).toBeNull();
+    expect(Object.keys(wind.by_model!).sort()).toEqual(["ecmwf"]);
   });
 
   it("adds waves, weather, daylight and sunrise beside the wind", async () => {
@@ -543,7 +538,7 @@ describe("which spot squares are read", () => {
       windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
       { now: FIXTURE_NOW },
     );
-    expect(forecast.hours[0].wind?.models).toBe(2);
+    expect(forecast.hours[0].wind?.models).toBe(1);
     expect(squares.length).toBeGreaterThan(0);
     expect(squares.every((path) => path.endsWith("/spots/n52w008.json"))).toBe(
       true,
@@ -577,7 +572,7 @@ describe("which spot squares are read", () => {
       { now: FIXTURE_NOW },
     );
     expect(forgotten).toEqual(["weather/ecmwf.json"]);
-    expect(forecast.hours[0].wind?.models).toBe(2);
+    expect(forecast.hours[0].wind?.models).toBe(1);
     // A source that cannot forget still answers, without that model.
     const plain = { json: source.json };
     forgotten.length = 0;
@@ -587,7 +582,9 @@ describe("which spot squares are read", () => {
       windowFor(FIXTURE_NOW, { hours: 6, stepHours: 3 }),
       { now: FIXTURE_NOW },
     );
-    expect(without.hours[0].wind?.models).toBe(1);
+    // ECMWF is the one live wind run here, so without it the hour has none.
+    expect(without.hours).toHaveLength(forecast.hours.length);
+    expect(without.hours[0].wind ?? null).toBeNull();
   });
 
   it("forgets a cached read when asked", async () => {

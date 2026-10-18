@@ -60,11 +60,9 @@ open http://127.0.0.1:8080/
 never overwrites data that is already there.
 
 Nothing is fresh until a worker job has run. Fetch one immediately instead of waiting
-for the next cadence slot — GFS is the quickest at roughly a minute and under a
-megabyte:
+for the next cadence slot:
 
 ```sh
-npm run deploy:run -- --models gfs --step 3
 npm run deploy:run -- --models harmonie --step 1
 npm run deploy:run -- --models icon-eu --step 1
 npm run deploy:run -- --models ecmwf
@@ -96,11 +94,11 @@ in UTC. The shipped schedule is:
 | `harmonie-eps`    | off                | lagged control members; enable knowingly              |
 | `ecmwf-ens`       | off (retired)      | 00 UTC run, 10 members, +60h–+144h when enabled       |
 | `aifs`            | off (retired)      | all four AIFS cycles when enabled                     |
-| `gfs`             | 04/10/16/22 at :00 | 6-hourly cycles plus ~4 h publication lag             |
+| `gfs`             | off (retired)      | 6-hourly cycles plus ~4 h publication lag             |
 | `gefs`            | off (retired)      | the 0.25° members finish 4.5–6 h after run time       |
 | `arpege`          | off (retired)      | 6-hourly cycles plus ~4 h 50 m; ~107 MB per run       |
 | `arome`           | off (retired)      | eight cycles a day plus ~4 h 55 m; ~109 MB per run    |
-| `gfs-wave`        | 04/10/16/22 at :30 | same cycles, published about 3 h 50 m after each      |
+| `gfs-wave`        | 04/10/16/22 at :30 | NOAA's 6-hourly wave cycles, ~3 h 50 m late; :55 retry |
 | `mi-swan`         | 10/14/18 at :15    | one SWAN run a day, published ~09 UTC, sometimes late |
 | `ecmwf-wave`      | off (retired)      | the 00/12 wave stream, ~707 MB per run                |
 | `tides`           | 01:05 daily        | predictions, not a forecast cycle                     |
@@ -109,13 +107,13 @@ in UTC. The shipped schedule is:
 | `forecast-archive`| every hour at :15  | copies served wind runs and observations to archive/  |
 | `verify`          | 07:25 daily        | model and blend scores (docs/VERIFICATION.md)         |
 | `prune`           | every hour at :10  | retention (see below)                                 |
-| `status`          | every hour at :55  | a freshness line in the log                           |
 
-Six models are **retired** to keep the home connection's downloads near 80 GB a
-month: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME and ECMWF waves. Their jobs
-ship disabled and `force5/src/manifests.ts` marks them `retired`, so the site,
-the blend, the verification replica and the forecast server neither fetch nor list
-them. Their adapters are unchanged: to bring one back, enable its job, clear
+Seven models are **retired**: the ECMWF ensemble, AIFS, GEFS, ARPEGE, AROME and
+ECMWF waves to keep the home connection's downloads near 80 GB a month, and GFS
+(18 October 2026) as not useful. GFS-Wave, NOAA's wave model, is a separate job
+and still runs. Their jobs ship disabled and `force5/src/catalog.ts` marks them
+`retired`, so the site, the blend, the verification replica and the forecast
+server neither fetch nor list them. Their adapters are unchanged: to bring one back, enable its job, clear
 `retired`, and add it back to `MAP_MODEL_IDS`, `consensus.BLEND_MODELS` and the
 forecast server's lists as the tests direct.
 
@@ -128,7 +126,7 @@ already published download nothing):
 | `icon-eu-weather` | ~300 MB | 1 | ~9 GB |
 | `icon-eu` | ~250 MB | 1 | ~7.5 GB |
 | `ecmwf` | ~245 MB | 1 | ~7.4 GB |
-| `gfs`, `gfs-wave`, `mi-swan`, observations, tides | 1-6 MB each | 4-24 | ~1 GB |
+| `gfs-wave`, `mi-swan`, observations, tides | 1-6 MB each | 4-24 | ~1 GB |
 | **Total** | | | **~72-74 GB** |
 
 Edit the file, then check and apply it:
@@ -163,7 +161,7 @@ disk), `stale` (older than the registry's limit for that model: 12 h for most re
 models, 30 h for HARMONIE, ICON-EU and tides, 36 h for the daily SWAN run, 40 h
 for ECMWF's once-a-day run) or `expired` (its coverage has
 already ended). `--json` emits one object per line for a monitoring script, and
-`--models gfs` narrows it to the models you actually serve. `web` also has a Docker
+`--models harmonie ecmwf` narrows it to the models you actually serve. `web` also has a Docker
 health check on `/healthz`; that only proves the server is up, so judge freshness with
 `status`, never with the health check.
 

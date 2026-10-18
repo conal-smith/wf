@@ -1,21 +1,20 @@
-"""Write the Home Compute and Cloudflare schedules from deploy/local/jobs.toml.
+"""Write the Home Compute schedule from deploy/local/jobs.toml.
 
 One timetable drives every way the forecast is run: the local Compose scheduler
-reads jobs.toml itself, and this script translates it for the other two, so a
-model's slots, arguments and timeout are only ever edited in one place.
+reads jobs.toml itself, and this script translates it for Home Compute (the Mac
+mini, and Cloudflare Containers through the hosted control plane), so a model's
+slots, arguments and timeout are only ever edited in one place.
 
-    .venv/bin/python deploy/schedules.py           # rewrite both files
-    .venv/bin/python deploy/schedules.py --check   # fail if either is stale
+    .venv/bin/python deploy/schedules.py           # rewrite home-compute.json
+    .venv/bin/python deploy/schedules.py --check   # fail if it is stale
     .venv/bin/python deploy/schedules.py --list    # the timetable as JSON
     .venv/bin/python deploy/schedules.py --set harmonie --minutes 40 --memory 3Gb
 
 `--set` edits jobs.toml in place, line by line, so its comments survive, then
-rewrites both files; the Home Compute Bar app's Timetable tab is built on it.
+rewrites home-compute.json; the Home Compute Bar app's Timetable tab is built on it.
 
 Jobs are parsed with the local scheduler's own loader, so a job it would reject
-is rejected here too. The `status` job is left out of both: it prints a
-freshness line for the Compose log, and Home Compute's snapshot (and the menu
-bar app reading it) already says when each model last published.
+is rejected here too.
 """
 import argparse
 import contextlib
@@ -34,7 +33,6 @@ from scheduler import load_jobs  # noqa: E402
 
 JOBS_FILE = ROOT / "deploy" / "local" / "jobs.toml"
 HOME_COMPUTE_FILE = ROOT / "deploy" / "home-compute" / "home-compute.json"
-CLOUDFLARE_FILE = ROOT / "deploy" / "cloudflare" / "jobs.json"
 
 DESCRIPTIONS = {
     "harmonie": "HARMONIE-AROME (Met Éireann), hourly DINI cycle",
@@ -73,20 +71,28 @@ DESCRIPTIONS = {
 # Bacalhau is told it has one CPU (macmini.sh), so the jobs run one at a time:
 # the sweep asks for a whole CPU too, though it needs less, so it never runs
 # beside another job.
-MODEL = {"cpu": "1", "memory": "1Gb", "disk": "12Gb"}      # Peaks 290-360 MB.
-FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "12Gb"}  # Peaks of about 225 MB.
-FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}       # Peaks of 130-220 MB.
+#
+# Disk is what a run writes on its empty disk: the fields it caches from the
+# model's files and the frames it publishes. The largest, measured from the
+# worker's cache on 18 October 2026, are ICON-EU 369 MB, ECMWF 242 MB, HARMONIE
+# 10 MB (it keeps only the 10 m wind and gust), GFS-Wave 5 MB and MI-SWAN 3 MB,
+# so 2 GB is five times the largest. Every live job then fits Cloudflare's
+# `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk are billed
+# for the whole run; Home Compute's executor picks the smallest size that fits.
+MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-360 MB.
+FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}  # Peaks of about 225 MB.
+FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}      # Peaks of 130-220 MB.
 # The retired adapters were never measured: they keep the 4 GB the worker was
 # sized at on Fargate, more than the recommended VM gives Bacalhau, so enabling
 # one means measuring it first (deploy/home-compute/README.md).
 UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
-    "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": {**MODEL, "disk": "6Gb"},
+    "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
     "icon-eu-weather": FORECAST, "gfs": FORECAST,
     "ecmwf-ens": ENSEMBLE, "ecmwf-wave": ENSEMBLE, "harmonie-eps": ENSEMBLE, "gefs": ENSEMBLE,
     "tides": FEED, "sea-temperature": FEED, "blend": FEED, "wind-obs": FEED,
-    "mi-swan": {**FEED, "disk": "4Gb"},
+    "mi-swan": FEED,
     # The archive decodes a new run's frames one at a time into Python lists, and
     # verification holds sixteen days of archived runs while it scores a day.
     "forecast-archive": {**FEED, "disk": "4Gb"},
@@ -108,16 +114,6 @@ SWEEP = {"cpu": "1", "memory": "512Mb", "disk": "1Gb"}
 # When the bucket sweep runs, every hour (scheduled()).
 SWEEP_MINUTES = [10]
 
-# Cloudflare sizes, named here and defined in deploy/cloudflare/src/index.ts.
-# Memory and disk are billed for the whole run, so each job gets the smallest
-# that fits, and only the ensembles pay for a 20 GB disk.
-def cloudflare_size(resources):
-    if resources["disk"] == "20Gb":
-        return "ensemble"
-    megabytes = memory_mb(resources["memory"])
-    return "small" if megabytes <= 1024 else "medium" if megabytes <= 2048 else "large"
-
-
 # What `memory = "..."` in jobs.toml may say. Bacalhau is told the Colima VM's size
 # less half a GiB (macmini.sh), 1.5 GB in the recommended 2 GiB VM: a ceiling
 # larger than that queues until its timeout, and `macmini.sh setup` warns of it.
@@ -129,8 +125,13 @@ def memory_mb(value):
     return int(number) * (1024 if unit == "Gb" else 1)
 
 
-# The Worker wakes every five minutes and runs the jobs whose slot it is.
+# Every minute in the timetable falls on a five-minute mark: the menu bar app's
+# Timetable editor offers those (`--list` tells it), and it keeps slots easy to read.
 CRON_STEP_MINUTES = 5
+# The image's own ENTRYPOINT (force5/Dockerfile), named on every job: Cloudflare
+# Containers run a job's command under a wrapper that reads its output, which
+# cannot wrap an image's default entrypoint. On the Mac mini it changes nothing.
+WORKER_ENTRYPOINT = ["python", "/app/force5/ingest/worker.py"]
 
 BUCKET_ENV = ["S3_BUCKET", "S3_ENDPOINT_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
 # FORCE5_SIDECARS=0 is required, not optional: a bucket serves one encoding per
@@ -172,10 +173,8 @@ def describe(job):
 
 
 def scheduled(jobs):
-    """The jobs both targets run, in timetable order, without `status`."""
+    """The jobs both targets run, in timetable order."""
     for job in jobs:
-        if job["command"] == "status":
-            continue
         if job["command"] == "prune":
             # The bucket sweep is what deletes a superseded run directory once its
             # grace period is over: the publisher deletes nothing. Run once a day, it
@@ -202,7 +201,8 @@ def home_compute(jobs):
         if job["command"] == "prune":
             task = {**task, "entrypoint": ["sh", "-c", PRUNE_SCRIPT], "requiredEnv": BUCKET_ENV}
         else:
-            task = {**task, "parameters": ["--models", *job["models"], *job["args"]],
+            task = {**task, "entrypoint": WORKER_ENTRYPOINT,
+                    "parameters": ["--models", *job["models"], *job["args"]],
                     "report": {"format": "json-lines", "trackEvent": "forecast_complete",
                                "trackBy": "model"}}
         entries.append({
@@ -230,25 +230,11 @@ def home_compute(jobs):
     }
 
 
-def cloudflare(jobs):
-    entries = []
+def check_steps(jobs):
     for job in scheduled(jobs):
         off_step = [minute for minute in job["minutes"] if minute % CRON_STEP_MINUTES]
         if off_step:
-            raise ValueError(f"{job['id']}: minutes must fall on a {CRON_STEP_MINUTES}-minute mark"
-                             f" (Cloudflare's schedule ticks every {CRON_STEP_MINUTES}); {off_step} do not")
-        entries.append({
-            "id": job["id"],
-            "enabled": job["enabled"],
-            "description": describe(job),
-            **slots(job),
-            "size": cloudflare_size(resources_for(job)),
-            "timeoutSeconds": job["timeout_seconds"] or 2700,
-            **({"entrypoint": ["sh", "-c", PRUNE_SCRIPT]} if job["command"] == "prune"
-               else {"args": ["--models", *job["models"], *job["args"]]}),
-        })
-    return {"$comment": "Generated by deploy/schedules.py from deploy/local/jobs.toml. Edit that, then rerun.",
-            "cronStepMinutes": CRON_STEP_MINUTES, "jobs": entries}
+            raise ValueError(f"{job['id']}: minutes must fall on a {CRON_STEP_MINUTES}-minute mark; {off_step} do not")
 
 
 def load(path=JOBS_FILE):
@@ -373,7 +359,7 @@ def apply_set(args):
         jobs = load(Path(handle.name))
         if args.set not in {job["id"] for job in jobs}:
             raise ValueError(f"That change would make {args.set} invalid")
-        outputs = generated(jobs)  # Raises on a minute off Cloudflare's tick.
+        outputs = generated(jobs)  # Raises on a minute off the five-minute marks.
     finally:
         Path(handle.name).unlink()
     JOBS_FILE.write_text(text)
@@ -382,7 +368,8 @@ def apply_set(args):
 
 
 def generated(jobs):
-    return ((HOME_COMPUTE_FILE, home_compute(jobs)), (CLOUDFLARE_FILE, cloudflare(jobs)))
+    check_steps(jobs)
+    return ((HOME_COMPUTE_FILE, home_compute(jobs)),)
 
 
 def main():

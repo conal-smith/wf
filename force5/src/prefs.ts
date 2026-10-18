@@ -1,7 +1,7 @@
 // Display preferences for the forecast dock. Persistence is best effort:
 // private browsing, blocked storage and quota errors must never break the page.
 import { isUnits, type Units } from "./units";
-import { windModels } from "./manifests";
+import { modelEntry, windModels } from "./manifests";
 import {
   DEFAULT_RIDER,
   MAX_WEIGHT_KG,
@@ -320,6 +320,12 @@ export function loadPrefs(
     const added = known
       ? defaults.blendModels.filter((id) => !known.has(id))
       : [];
+    // A model retired since the list was saved is no longer published, so it
+    // is no longer a choice: it is dropped rather than counted. Were it ever
+    // switched back on, `blendKnown` (saved without it) brings it back as new.
+    const kept = Array.isArray(stored.blendModels)
+      ? stored.blendModels.filter((id) => !modelEntry(id)?.retired)
+      : null;
     return {
       rows: mergeRows(stored.rows, defaults.rows),
       touchedRows: Array.isArray(stored.touchedRows)
@@ -327,9 +333,10 @@ export function loadPrefs(
         : defaults.touchedRows,
       units: isUnits(stored.units) ? stored.units : defaults.units,
       blendModels:
-        Array.isArray(stored.blendModels) &&
-        stored.blendModels.every((id) => typeof id === "string")
-          ? [...new Set([...stored.blendModels, ...added])]
+        kept &&
+        kept.every((id) => typeof id === "string") &&
+        kept.length + added.length > 0
+          ? [...new Set([...kept, ...added])]
           : defaults.blendModels,
       view:
         stored.view && VIEWS.includes(stored.view)

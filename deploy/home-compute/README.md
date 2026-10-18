@@ -76,7 +76,7 @@ Home Compute Bar (`../home-compute/macos`, `./build-app.sh --install`) runs this
 script for you: its window sets up and starts the services, edits the R2 settings
 and tests the bucket, rebuilds the image when the code has moved on, and edits the
 timetable. A timetable edit is written to `deploy/local/jobs.toml` (comments kept)
-and regenerated for Home Compute and Cloudflare by `deploy/schedules.py --set`;
+and regenerated for Home Compute by `deploy/schedules.py --set`;
 restart the scheduler to apply it, as for an `.env` change.
 
 ## Run it

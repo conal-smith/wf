@@ -25,8 +25,8 @@ export interface ModelEntry {
   /** No adapter publishes this yet; show it, do not fetch it. */
   planned?: boolean;
   /**
-   * Switched off to save downloads: its job no longer runs, so the site neither
-   * fetches nor lists it. The adapter stays, and clearing this brings it back.
+   * Switched off, to save downloads or as not useful: its job no longer runs, so
+   * the site neither fetches nor lists it. The adapter stays, and clearing this brings it back.
    */
   retired?: boolean;
 }
@@ -74,6 +74,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     kind: "wind",
     hue: { wind: "#2c8f6f", gust: "#d98a2b" },
     mapCapable: true,
+    retired: true,
   },
   {
     id: "ecmwf-ens",
