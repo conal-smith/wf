@@ -21,7 +21,12 @@ import { modelSeries, spotSeries } from "../force5/src/series";
 import { dayNights } from "../force5/src/sun";
 import { KNOTS } from "../force5/src/units";
 import { compass, direction, type Manifest } from "../force5/src/weather";
-import { rateHour, type HourRating, type Rider } from "../force5/src/stars";
+import {
+  directionCost,
+  rateHour,
+  type HourRating,
+  type Rider,
+} from "../force5/src/stars";
 import { clock, dayShort } from "./strip";
 
 /** What one place is rated as: where it is and which way its shore faces. */
@@ -418,19 +423,18 @@ export function placeHours(
 }
 
 /**
- * The light's verdict on an hour's shore: struck through only for a true
- * offshore, and for a learner a cross-offshore too; any other cross-offshore
- * hour carries a quieter mark.
+ * The light's verdict on an hour's shore, for a wind that blows out from the
+ * beach: struck through where the rider's rating takes three stars or more off
+ * for it (a true offshore on a level's rating, and a cross-offshore for a
+ * learner), and otherwise a quieter mark.
  */
 export function offshoreMark(
   rating: HourRating | null,
   rider: Rider,
 ): "struck" | "cross-off" | null {
-  if (!rating?.shore) return null;
-  if (rating.shore === "offshore") return "struck";
-  if (rating.shore === "cross-off")
-    return rider.skill === "beginner" ? "struck" : "cross-off";
-  return null;
+  if (rating?.shore !== "offshore" && rating?.shore !== "cross-off")
+    return null;
+  return directionCost(rider, rating.shore) >= 3 ? "struck" : "cross-off";
 }
 
 /**

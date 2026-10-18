@@ -11,17 +11,14 @@ import {
   ESTIMATE_WEIGHT_KG,
   MAX_WEIGHT_KG,
   MIN_WEIGHT_KG,
+  SKILL_LABEL,
   type Rider,
   type Skill,
 } from "../../force5/src/stars";
 import { Kicker, Segmented, TextInput } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 
-export const SKILL_LABEL: Record<Skill, string> = {
-  beginner: "Learning",
-  intermediate: "Riding",
-  advanced: "Advanced",
-};
+export { SKILL_LABEL };
 
 const styles = tv({
   slots: {
@@ -46,9 +43,9 @@ const styles = tv({
 export const weightText = (rider: Rider) =>
   `${rider.weightKg === null ? "~" : ""}${rider.weightKg ?? ESTIMATE_WEIGHT_KG} kg`;
 
-/** "Riding · ~80 kg": who the stars are for, in the page's words. */
+/** "Riding · ~80 kg", or "Custom stars · ~80 kg": who the stars are for, in the page's words. */
 export const riderWords = (rider: Rider) =>
-  `${SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
+  `${rider.custom ? "Custom stars" : SKILL_LABEL[rider.skill]} · ${weightText(rider)}`;
 
 export function RiderSwitch({
   rider,

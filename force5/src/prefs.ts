@@ -9,6 +9,7 @@ import {
   MIN_WEIGHT_KG,
   MIN_WING_M2,
   SKILLS,
+  parseCustomRating,
   type Rider,
 } from "./stars";
 
@@ -165,7 +166,9 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
 /**
  * A stored rider, field by field: a weight or a wing outside what a person or a
  * wing can be is dropped rather than rated, and a missing weight stays missing so
- * the dock can say the stars assume the estimate.
+ * the dock can say the stars assume the estimate. A custom star rating goes
+ * through its own validation (stars.ts `parseCustomRating`); one that does not
+ * pass, or was stored in another version, is left out and the level rates.
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
@@ -192,8 +195,12 @@ export function parseRider(value: unknown): Rider {
         ),
       ),
     ].sort((a, b) => a - b),
+    ...withCustom(parseCustomRating(raw.custom)),
   };
 }
+
+/** A rider carries `custom` only when there is one, so a standard rider stays as it always was. */
+const withCustom = (custom: Rider["custom"]) => (custom ? { custom } : {});
 
 /** Stored preferences merged over the defaults; anything invalid is ignored. */
 export function loadPrefs(

@@ -8,7 +8,10 @@
  */
 import {
   SHORE_LABEL,
-  gustCost,
+  SKILL_LABEL,
+  directionCost,
+  gustCurve,
+  gustLoss,
   rateHour,
   rideableWind,
   shoreAngle,
@@ -44,7 +47,6 @@ export interface LedgerHour {
 
 const minus = (value: number) =>
   value === 0 ? "none" : `−${Number(value.toFixed(2))}`;
-const atMost = (cap: number) => (cap ? `${cap} star at most` : "no stars");
 const one = (value: number) => value.toFixed(1);
 
 /** Null in the dark or without wind, as rateHour is. */
@@ -56,9 +58,14 @@ export function ledger(
   const rating = rateHour({ ...hour, daylight: true }, { facing }, rider);
   if (!rating) return null;
   const band = windBand(rider);
-  const beginner = rider.skill === "beginner";
   const { windKn, gustKn } = hour;
   const lines: LedgerLine[] = [];
+
+  if (rider.custom)
+    lines.push({
+      what: `Your own star rating, started from ${SKILL_LABEL[rider.custom.base]}`,
+      figure: "custom",
+    });
 
   const ride = rideableWind(windKn, gustKn, rider);
   if (gustKn !== null && gustKn > windKn) {
@@ -79,24 +86,28 @@ export function ledger(
     figure: `${base.toFixed(1)}, so ${potential} outlined`,
   });
 
-  let score = base;
-  let cap = 5;
+  const curve = gustCurve(rider);
+  const gusts = gustLoss(gustKn, curve);
+  const fine = Math.round(curve.fine);
+  lines.push({
+    what:
+      gustKn === null
+        ? "No gusts forecast"
+        : gustKn <= curve.fine
+          ? `Gusts to ${one(gustKn)} kn, no more than the ${fine} kn that costs nothing`
+          : `Gusts to ${one(gustKn)} kn, past the ${fine} kn that costs nothing`,
+    figure: minus(gusts),
+  });
+
   const angle = facing === null ? null : shoreAngle(hour.from, facing);
+  const direction = angle ? directionCost(rider, angle) : 0;
   if (angle) {
     const off = Math.round(
       Math.abs(((((hour.from - facing!) % 360) + 540) % 360) - 180),
     );
-    const what = `Wind ${SHORE_LABEL[angle].toLowerCase()}, ${off}° from straight onshore`;
-    let cost = 0;
-    if (angle === "offshore") cap = beginner ? 0 : 1;
-    else if (angle === "cross-off")
-      cost = beginner ? 3 : rider.skill === "advanced" ? 1 : 1.5;
-    else if (angle === "onshore") cost = 1;
-    else if (angle === "cross" && beginner) cost = 0.5;
-    score -= cost;
     lines.push({
-      what,
-      figure: angle === "offshore" ? atMost(cap) : minus(cost),
+      what: `Wind ${SHORE_LABEL[angle].toLowerCase()}, ${off}° from straight onshore`,
+      figure: minus(direction),
     });
   } else
     lines.push({
@@ -104,45 +115,28 @@ export function ledger(
       figure: "none",
     });
 
-  const gusts = gustCost(windKn, gustKn, rider);
-  if (gusts?.gustiness) {
-    score -= gusts.gustiness;
-    lines.push({
-      what: `Gusts ${Math.round(gusts.spreadKn)} kn over the average, past the ${gusts.allowedKn} kn you take in your stride`,
-      figure: minus(gusts.gustiness),
-    });
-  }
-  if (gusts?.strength) {
-    score -= gusts.strength;
-    lines.push({
-      what: `Gusts past your ${Math.round(band.max)} kn maximum`,
-      figure: minus(gusts.strength),
-    });
-  }
-
+  let agreement = 0;
   if (hour.agreement === "low") {
-    score -= 1;
+    agreement = 1;
     lines.push({ what: "The forecast models disagree", figure: "−1" });
   } else if (hour.agreement === "moderate") {
-    score -= 0.25;
+    agreement = 0.25;
     lines.push({ what: "The models differ a little", figure: "−0.25" });
   }
 
-  if (rating.wing.fit !== "fits") {
-    score -= 1;
+  const quiver = rating.wing.fit === "fits" ? 0 : 1;
+  if (quiver)
     lines.push({
       what: `None of your wings suits it: about ${rating.wing.recommended} m² would`,
       figure: "−1",
     });
-  }
 
-  const stars = Math.min(
-    potential,
-    Math.max(0, Math.round(Math.min(score, cap))),
-  );
+  // Taken off in rateHour's order, so the two round alike.
+  const score = base - direction - gusts - agreement - quiver;
+  const stars = Math.min(potential, Math.max(0, Math.round(score)));
   lines.push({
     what: "Rating",
-    figure: `${Math.max(0, score).toFixed(1)}${cap < 5 ? `, ${atMost(cap)}` : ""}, so ${stars} solid`,
+    figure: `${Math.max(0, score).toFixed(1)}, so ${stars} solid`,
     total: true,
   });
   lines.push({
