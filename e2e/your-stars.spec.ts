@@ -184,6 +184,53 @@ test("on a phone the dialog fits the width, and the web drags", async ({
   ).toHaveAttribute("aria-valuetext", "0 stars");
 });
 
+test("on a phone a finger scrolls the page over the web and the grid, unless it lands on a dot", async ({
+  page,
+}) => {
+  await openMap(page, 390, 844);
+  await options(page).click();
+  await page
+    .locator("[data-star-rating]")
+    .getByRole("button", { name: "Customise" })
+    .click();
+  const box = dialog(page);
+  const web = box.locator("[data-direction-web]");
+  await web.scrollIntoViewIfNeeded();
+  // A touchstart the page may not scroll from is one whose default was prevented.
+  const held = (x: number, y: number) =>
+    page.evaluate(
+      ([cx, cy]) => {
+        const target = document.elementFromPoint(cx, cy)!;
+        const touch = new Touch({
+          identifier: 1,
+          target,
+          clientX: cx,
+          clientY: cy,
+        });
+        const event = new TouchEvent("touchstart", {
+          touches: [touch],
+          targetTouches: [touch],
+          changedTouches: [touch],
+          bubbles: true,
+          cancelable: true,
+        });
+        target.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+      [x, y],
+    );
+  const dot = (await box
+    .locator('circle[data-dot="cross"][tabindex]')
+    .boundingBox())!;
+  expect(await held(dot.x + dot.width / 2, dot.y + dot.height / 2)).toBe(true);
+  const rim = (await web.boundingBox())!;
+  expect(await held(rim.x + 6, rim.y + rim.height - 6)).toBe(false);
+  for (const svg of [web, box.locator("[data-stars-grid]")])
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe(
+      "pan-y",
+    );
+});
+
 test("How the stars work says when the rating is the rider's own", async ({
   page,
 }) => {

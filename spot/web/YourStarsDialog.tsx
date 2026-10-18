@@ -100,7 +100,9 @@ const styles = tv({
     figValue: "font-mono text-figure text-ink tabular-nums",
     figUnit: "font-mono text-label text-ink-muted",
     most: "self-start",
-    web: "mx-auto mt-1 block h-auto w-full max-w-96 touch-none select-none",
+    // A finger scrolls the page over the web; only one that lands on a dot
+    // drags it (the touchstart below holds the page still for that one).
+    web: "mx-auto mt-1 block h-auto w-full max-w-96 touch-pan-y select-none",
     sea: "pointer-events-none fill-depth opacity-22",
     land: "pointer-events-none fill-land opacity-70",
     slice: "cursor-pointer fill-transparent",
@@ -122,7 +124,7 @@ const styles = tv({
     pickedValue: "min-w-10 text-center font-mono text-figure tabular-nums",
     together: "mt-1 flex flex-wrap items-center gap-2 text-body",
     gridSvg:
-      "mt-1 block h-auto w-full cursor-crosshair touch-none overflow-visible select-none",
+      "mt-1 block h-auto w-full cursor-crosshair touch-pan-y overflow-visible select-none",
     cell: "fill-ink",
     none: "fill-sunken",
     pick: "fill-none stroke-focus",
@@ -754,24 +756,44 @@ function DirectionWeb({
   // picked direction's are drawn again over the others.
   const picks = DIRS.find((d) => d.key === picked)!;
 
-  const down = (event: PointerEvent<SVGSVGElement>) => {
-    const p = at(event);
-    // A dot under the finger: the picked direction's first, since it is on top.
-    const hits = DIRS.flatMap((d) =>
+  // The dot under a pointer, the picked direction's first since it is drawn
+  // on top; a finger is given a wider reach than a mouse.
+  const dotAt = (p: { x: number; y: number }, reach: number) =>
+    DIRS.flatMap((d) =>
       d.at.map((a) => {
         const [x, y] = polar(a, radius(off[d.key]));
         return { key: d.key, dist: Math.hypot(p.x - x, p.y - y) };
       }),
     )
-      .filter((h) => h.dist < 12)
+      .filter((h) => h.dist < reach)
       .sort(
         (x, y) =>
           Number(y.key === picked) - Number(x.key === picked) ||
           x.dist - y.dist,
-      );
-    if (hits.length) {
-      setPicked(hits[0].key);
-      dragging.current = hits[0].key;
+      )[0]?.key ?? null;
+  const TOUCH_REACH = 18;
+
+  // The page scrolls under a finger (touch-pan-y) unless it lands on a dot:
+  // then the touch is the drag's, and the page holds still. A listener of its
+  // own, since React's touch handlers are passive and cannot prevent it.
+  useEffect(() => {
+    const el = svg.current;
+    if (!el) return;
+    const hold = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (event.touches.length === 1 && dotAt(at(touch), TOUCH_REACH))
+        event.preventDefault();
+    };
+    el.addEventListener("touchstart", hold, { passive: false });
+    return () => el.removeEventListener("touchstart", hold);
+  });
+
+  const down = (event: PointerEvent<SVGSVGElement>) => {
+    const p = at(event);
+    const hit = dotAt(p, event.pointerType === "touch" ? TOUCH_REACH : 12);
+    if (hit) {
+      setPicked(hit);
+      dragging.current = hit;
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
