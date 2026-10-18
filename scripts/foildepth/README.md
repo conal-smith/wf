@@ -369,7 +369,12 @@ site's stations, within a few millimetres of theirs.
   linearly (the build's padding keeps that clean: "Smooth edges" above). A layer
   shows from half a zoom under its archive's min zoom: MapLibre rounds a
   raster's zoom to the nearest whole one, so that is where its tiles start
-  (and where a region's cut-out for a pilot's box starts).
+  (and where a region's cut-out for a pilot's box starts). Its opacity has no
+  transition: any paint change starts the style's 300 ms fade on it, and the
+  whole map drew every frame of it, 17 frames for each new hour. And MapLibre
+  6.9 keeps a color-relief layer's newest ramp textures without deleting the
+  ones they replace, so `force5/src/colorRelief.ts` deletes them (two a layer
+  an hour). `npm run perf` measures both (scripts/perf/run.mjs).
 - `src/useFoilDepth.ts`: loads `index.json` (from the site) the first time
   the layer is on, and the tide curve (`tideForStation` in
   `force5/src/tides.ts`) of each station whose area comes into view, once,

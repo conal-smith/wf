@@ -14,6 +14,7 @@ import {
   type RideStop,
 } from "./chartStyle";
 import { archiveUrl, pmtilesTile } from "./archives";
+import { releaseReplacedColorRamps } from "./colorRelief";
 import { forecastUrl } from "./urls";
 import { createLights, type LightState, type Lights } from "./lights";
 import { drawNeatline } from "./neatline";
@@ -508,7 +509,7 @@ export default function WindMap(props: Props) {
           maxzoom: area.maxzoom,
           attribution: area.attribution,
         });
-      if (!map.getLayer(id))
+      if (!map.getLayer(id)) {
         map.addLayer(
           {
             id,
@@ -518,6 +519,11 @@ export default function WindMap(props: Props) {
             paint: {
               "color-relief-color": area.color,
               "color-relief-opacity": 1,
+              // No fade: the ramp is not transitioned anyway, but any paint
+              // change starts the style's 300 ms transition on the opacity,
+              // and the whole map is drawn every frame until it ends. A new
+              // hour drew 17 frames for one change (scripts/perf).
+              "color-relief-opacity-transition": { duration: 0, delay: 0 },
               // Heights interpolated between pixels, so the edges and the
               // waterline are smooth. The build keeps reserved values from
               // meeting where that would sweep through the ramp: land beside
@@ -528,7 +534,14 @@ export default function WindMap(props: Props) {
           },
           map.getLayer("rivers") ? "rivers" : undefined,
         );
-      else map.setPaintProperty(id, "color-relief-color", area.color);
+        // Each hour's ramp is two new textures: the old pair is deleted.
+        releaseReplacedColorRamps(map.getLayer(id));
+      } else
+        // foilRamp's own stops: valid by construction, so not validated
+        // again for every area at every hour.
+        map.setPaintProperty(id, "color-relief-color", area.color, {
+          validate: false,
+        });
       map.setLayoutProperty(id, "visibility", "visible");
     }
     for (const id of map.getLayersOrder())
