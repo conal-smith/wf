@@ -1,6 +1,7 @@
 import type { Sql } from "postgres";
 import { HandleTakenError, type NewUser, type UsersRepo } from "./repo.js";
-import type { User } from "../shared/types.js";
+import { parseCustomRating } from "../../force5/src/stars.js";
+import type { RiderProfile, User } from "../shared/types.js";
 import type { UserInputParsed } from "../shared/validate.js";
 
 interface UserRow {
@@ -41,6 +42,17 @@ function toUser(r: UserRow): User {
   };
 }
 
+interface RiderRow {
+  custom_stars: unknown;
+  updated_at: Date;
+}
+
+/** What is kept, read back through the same validation it was written through. */
+const toRiderProfile = (r: RiderRow | undefined): RiderProfile => ({
+  customStars: r ? parseCustomRating(r.custom_stars) : null,
+  updatedAt: r ? iso(r.updated_at) : null,
+});
+
 /** Postgres reports a broken unique constraint as 23505 and names the constraint. */
 function isHandleClash(err: unknown): boolean {
   const e = err as { code?: string; constraint_name?: string };
@@ -48,6 +60,12 @@ function isHandleClash(err: unknown): boolean {
 }
 
 export function pgUsersRepo(sql: Sql): UsersRepo {
+  const riderProfile = async (id: string) => {
+    const rows = await sql<RiderRow[]>`
+      select custom_stars, updated_at from rider_profiles where user_id = ${id}`;
+    return toRiderProfile(rows[0]);
+  };
+
   return {
     async getUser(id) {
       const rows = await sql<UserRow[]>`select * from users where id = ${id}`;
@@ -97,6 +115,25 @@ export function pgUsersRepo(sql: Sql): UsersRepo {
           throw new HandleTakenError(input.handle);
         throw err;
       }
+    },
+
+    getRiderProfile: riderProfile,
+
+    async putRiderProfile(id, input) {
+      // The newer wins: an older write, from a device that was offline or
+      // behind, leaves the row as it is.
+      const stars =
+        input.customStars === null
+          ? null
+          : sql.json(input.customStars as never);
+      await sql`
+        insert into rider_profiles (user_id, custom_stars, updated_at)
+        values (${id}, ${stars}, ${input.updatedAt})
+        on conflict (user_id) do update
+          set custom_stars = excluded.custom_stars,
+              updated_at = excluded.updated_at
+          where rider_profiles.updated_at < excluded.updated_at`;
+      return riderProfile(id);
     },
 
     async setSuspendedUntil(id, until) {

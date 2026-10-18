@@ -10,11 +10,16 @@ import { requireAuth, type AuthVariables } from "../../market/api/src/auth.js";
 import { HandleTakenError, type UsersRepo } from "./repo.js";
 import { ensureUser, type People } from "./users.js";
 import type { User } from "../shared/types.js";
-import { userInputSchema } from "../shared/validate.js";
+import {
+  riderProfileInputSchema,
+  userInputSchema,
+} from "../shared/validate.js";
 
 type Env = { Variables: AuthVariables };
 
 const JSON_LIMIT = 64 * 1024;
+/** A star rating is a few dozen numbers. */
+const RIDER_LIMIT = 4 * 1024;
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -82,5 +87,29 @@ export function createSiteRouter(people: People) {
   r.use("/me", blockSuspended(people.users));
   r.get("/me", requireAuth, me.get);
   r.put("/me", requireAuth, bodyLimit({ maxSize: JSON_LIMIT }), me.put);
+  // The rider the stars are rated for, kept with the account so it follows
+  // them across devices (docs/STAR_RATINGS.md). Not behind a suspension:
+  // it is the rider's own setting, seen by nobody else.
+  r.get("/me/rider", requireAuth, async (c) => {
+    const user = await ensureUser(people, c.var.userId!);
+    return c.json(await people.users.getRiderProfile(user.id));
+  });
+  r.put(
+    "/me/rider",
+    requireAuth,
+    bodyLimit({ maxSize: RIDER_LIMIT }),
+    async (c) => {
+      const input = riderProfileInputSchema.parse(await c.req.json());
+      const user = await ensureUser(people, c.var.userId!);
+      // A device whose clock runs ahead must not win every later change: no
+      // write is newer than the moment it arrives.
+      const updatedAt = new Date(
+        Math.min(Date.parse(input.updatedAt), Date.now()),
+      ).toISOString();
+      return c.json(
+        await people.users.putRiderProfile(user.id, { ...input, updatedAt }),
+      );
+    },
+  );
   return r;
 }

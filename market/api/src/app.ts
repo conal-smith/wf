@@ -137,7 +137,12 @@ export function createApp(deps: AppDeps) {
   if (!features.community) app.use("/api/community/*", off("community", null));
   if (!features.alerts) app.use("/api/alerts/*", off("alerts service", null));
 
-  for (const path of ["/api/market/*", "/api/community/*", "/api/me"]) {
+  for (const path of [
+    "/api/market/*",
+    "/api/community/*",
+    "/api/me",
+    "/api/me/*",
+  ]) {
     app.use(
       path,
       cors({
