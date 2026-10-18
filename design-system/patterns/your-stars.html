@@ -267,16 +267,19 @@
       .shore {
         display: block;
         width: 100%;
-        max-width: calc(var(--sem-space-step) * 84);
+        max-width: calc(var(--sem-space-step) * 96);
         height: auto;
         margin: var(--sem-space-x1) auto 0;
       }
       .shore__land {
         fill: var(--sem-color-land);
+        opacity: 0.7;
+        pointer-events: none;
       }
       .shore__sea {
         fill: var(--sem-color-depth);
-        opacity: 0.35;
+        opacity: 0.22;
+        pointer-events: none;
       }
       .shore__line {
         stroke: var(--sem-color-ink);
@@ -303,21 +306,25 @@
         fill: var(--sem-color-ink-inverse);
       }
       .web__spoke {
-        stroke: var(--sem-color-card);
-        stroke-width: 1;
+        stroke: var(--sem-color-ink);
+        stroke-width: 0.5;
+        opacity: 0.12;
+        pointer-events: none;
       }
       .web__ringline {
         fill: none;
         stroke: var(--sem-color-ink);
         stroke-width: 0.5;
-        opacity: 0.35;
+        opacity: 0.18;
+        pointer-events: none;
       }
       .web__shape {
         fill: var(--sem-color-ink);
-        fill-opacity: 0.12;
+        fill-opacity: 0.07;
         stroke: var(--sem-color-ink);
-        stroke-width: 1.5;
+        stroke-width: 1.25;
         stroke-linejoin: round;
+        pointer-events: none;
       }
       .web__slice {
         fill: transparent;
@@ -325,7 +332,7 @@
       }
       .web__slice--on {
         fill: var(--sem-color-ink);
-        fill-opacity: 0.1;
+        fill-opacity: 0.08;
       }
       .web__dot {
         fill: var(--sem-color-card);
@@ -341,20 +348,27 @@
         stroke: var(--sem-color-focus);
         stroke-width: 3;
       }
-      .web__arrow {
-        fill: var(--sem-color-ink);
+      .web__half {
+        font-family: var(--sem-font-family-mono);
+        font-size: 7.5px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        fill: var(--sem-color-ink-muted);
+        pointer-events: none;
       }
       .web__name {
         font-family: var(--sem-font-family-mono);
-        font-size: 8.5px; /* ds-lint-allow: SVG user units, under the eyebrow */
-        letter-spacing: 0.04em;
+        font-size: 8px; /* ds-lint-allow: SVG user units, under the eyebrow */
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        fill: var(--sem-color-ink);
+        fill: var(--sem-color-ink-2);
+        pointer-events: none;
       }
       .web__ring-label {
         font-family: var(--sem-font-family-mono);
-        font-size: 7px; /* ds-lint-allow: SVG user units, the rings' small figures */
+        font-size: 6.5px; /* ds-lint-allow: SVG user units, the rings' small figures */
         fill: var(--sem-color-ink-muted);
+        pointer-events: none;
       }
       .web .shore__word {
         pointer-events: none;
@@ -726,7 +740,7 @@
 
           <div class="ys__block">
             <span class="wf-kicker wf-kicker--ink">Wind direction: stars taken off</span>
-            <svg class="shore web" viewBox="-190 -150 380 300" role="group" aria-label="Stars taken off for each wind direction" data-shore></svg>
+            <svg class="shore web" viewBox="-180 -128 360 256" role="group" aria-label="Stars taken off for each wind direction" data-shore></svg>
             <div class="picked" data-picked>
               <span class="picked__name" data-picked-name></span>
               <button class="wf-button wf-button--icon wf-button--sm" type="button" data-step="1" aria-label="Take off half a star more">−</button>
@@ -780,14 +794,16 @@
         advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, fine: 33, worst: 45, most: 2, share: 0.35,
           dir: { onshore: 1, crossOn: 0, cross: 0, crossOff: 1, offshore: 4 } },
       };
-      // How the wind meets the beach, as stars.ts's shoreAngle reads it: degrees off straight onshore.
-      // `at` is where its dot sits, on each side of the beach for the four that come from either side.
+      // How the wind meets the beach, as stars.ts's shoreAngle reads it, drawn the way the wind
+      // blows: offshore points out over the sea (up), onshore in over the land (down). `from`/`to`
+      // are degrees off straight out to sea; `at` is where its dot sits, on each side for the
+      // four that come from either side.
       const DIRS = [
-        { key: "onshore", name: "Onshore", from: 0, to: 30, at: [0] },
-        { key: "crossOn", name: "Cross-onshore", from: 30, to: 70, at: [50, -50] },
+        { key: "offshore", name: "Offshore", from: 0, to: 30, at: [0] },
+        { key: "crossOff", name: "Cross-offshore", from: 30, to: 70, at: [50, -50] },
         { key: "cross", name: "Cross-shore", from: 70, to: 110, at: [90, -90] },
-        { key: "crossOff", name: "Cross-offshore", from: 110, to: 150, at: [130, -130] },
-        { key: "offshore", name: "Offshore", from: 150, to: 180, at: [180] },
+        { key: "crossOn", name: "Cross-onshore", from: 110, to: 150, at: [130, -130] },
+        { key: "onshore", name: "Onshore", from: 150, to: 180, at: [180] },
       ];
       const half = (v) => (v ? `−${Math.floor(v) || ""}${v % 1 ? "½" : ""}` : "0");
       const DIR_WORD = { onshore: "onshore", crossOn: "cross-on", cross: "cross", crossOff: "cross-off", offshore: "offshore" };
@@ -820,47 +836,41 @@
         return { stars, potential, base, loss, off };
       }
 
-      // The beach from above, sea up and land down, with a dot for each way the wind can come
-      // from: on the rim it takes nothing off, at the middle all five stars, in half stars. The
-      // arrows round the rim blow in towards the beach: the wind comes from where they start.
+      // The beach from above, sea up and land down, and a dot for each way the wind can blow,
+      // drawn where it blows to: on the rim it takes nothing off, at the middle all five stars,
+      // in half stars. A line through the dots shows the directions the rider likes.
       const R = 100;
       const polar = (a, r) => [r * Math.sin((a * Math.PI) / 180), -r * Math.cos((a * Math.PI) / 180)];
       const radius = (off) => R * (1 - off / 5);
       function web(svg, b, picked) {
-        const wedge = (a1, a2, r = R) => { const [x1, y1] = polar(a1, r), [x2, y2] = polar(a2, r); return `M0,0 L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)}Z`; };
+        const f = (n) => n.toFixed(1);
+        const wedge = (a1, a2) => { const [x1, y1] = polar(a1, R), [x2, y2] = polar(a2, R); return `M0,0 L${f(x1)},${f(y1)} A${R},${R} 0 0 1 ${f(x2)},${f(y2)}Z`; };
         const arcs = (d) => (d.from === 0 ? [[-30, 30]] : d.to === 180 ? [[150, 210]] : [[d.from, d.to], [-d.to, -d.from]]);
-        let out = `<rect class="shore__sea" x="-190" y="-150" width="380" height="150"/><rect class="shore__land" x="-190" y="0" width="380" height="150"/>`;
-        // The slices: tap one to bring its dot to the top. Offshore's is in the pen.
+        // Sea and land only inside the circle; paper round it.
+        let out = `<path class="shore__sea" d="M${-R},0 A${R},${R} 0 0 1 ${R},0Z"/><path class="shore__land" d="M${R},0 A${R},${R} 0 0 1 ${-R},0Z"/>`;
         DIRS.forEach((d) => arcs(d).forEach(([a1, a2]) => {
-          const cls = d.key === picked ? "web__slice web__slice--on" : "web__slice";
-          out += `<path class="${cls}" d="${wedge(a1, a2)}" data-slice="${d.key}"><title>${d.name}</title></path>`;
+          out += `<path class="web__slice${d.key === picked ? " web__slice--on" : ""}" d="${wedge(a1, a2)}" data-slice="${d.key}"><title>${d.name}</title></path>`;
         }));
-        for (let off = 1; off <= 5; off++) out += `<circle class="web__ringline" r="${radius(off) || 0.01}"/>`;
-        [30, 70, 110, 150].forEach((a) => [a, -a].forEach((aa) => { const [x, y] = polar(aa, R); out += `<line class="web__spoke" x1="0" y1="0" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }));
-        for (let off = 1; off <= 4; off++) { const [x, y] = polar(30, radius(off)); out += `<text class="web__ring-label" x="${(x + 2).toFixed(1)}" y="${(y - 2).toFixed(1)}">−${off}</text>`; }
-        out += `<circle class="shore__ring" r="${R}"/><line class="shore__line" x1="-190" x2="190" y1="0" y2="0"/>`;
-        // The web through every dot.
+        for (let off = 1; off <= 4; off++) out += `<circle class="web__ringline" r="${radius(off)}"/>`;
+        [30, 70, 110, 150].forEach((a) => [a, -a].forEach((aa) => { const [x, y] = polar(aa, R); out += `<line class="web__spoke" x1="0" y1="0" x2="${f(x)}" y2="${f(y)}"/>`; }));
+        for (let off = 1; off <= 4; off++) { const [x, y] = polar(-30, radius(off)); out += `<text class="web__ring-label" x="${f(x - 2)}" y="${f(y - 2)}" text-anchor="end">−${off}</text>`; }
+        out += `<circle class="shore__ring" r="${R}"/><line class="shore__line" x1="${-R - 8}" x2="${R + 8}" y1="0" y2="0"/>`;
+        out += `<text class="web__half" x="${-R + 14}" y="-8">sea</text><text class="web__half" x="${-R + 14}" y="15">land</text>`;
         const ring = [0, 50, 90, 130, 180, -130, -90, -50].map((a) => { const d = DIRS.find((x) => x.at.includes(a)); return polar(a, radius(b.dir[d.key])); });
-        out += `<polygon class="web__shape" points="${ring.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}"/>`;
-        // The wind: an arrow outside the rim on each dot's line, blowing in towards the beach.
-        DIRS.forEach((d) => d.at.forEach((a) => {
-          const [tx, ty] = polar(a, R + 3), [lx, ly] = polar(a + 7, R + 15), [rx, ry] = polar(a - 7, R + 15), [sx, sy] = polar(a, R + 22);
-          out += `<line class="web__ringline" style="opacity:1" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}"/>`;
-          out += `<path class="web__arrow" d="M${tx.toFixed(1)},${ty.toFixed(1)} L${lx.toFixed(1)},${ly.toFixed(1)} L${rx.toFixed(1)},${ry.toFixed(1)}Z"/>`;
-        }));
-        // Names: once on the right for the four that come from either side.
+        out += `<polygon class="web__shape" points="${ring.map(([x, y]) => `${f(x)},${f(y)}`).join(" ")}"/>`;
+        // Names round the outside: once, on the right, for the four that come from either side.
         DIRS.forEach((d) => {
-          const a = d.at[0], [x, y] = polar(a, R + 28);
-          const anchor = a === 0 || a === 180 ? "middle" : "start";
-          out += `<text class="web__name" x="${(a === 0 || a === 180 ? 0 : x - 4).toFixed(1)}" y="${(a === 0 ? y - 2 : a === 180 ? y + 8 : a === 90 ? y - 6 : y + 3).toFixed(1)}" text-anchor="${anchor}">${d.name}</text>`;
+          const a = d.at[0], [x, y] = polar(a, R + 12);
+          if (a === 0) out += `<text class="web__name" x="0" y="${f(y - 2)}" text-anchor="middle">${d.name}</text>`;
+          else if (a === 180) out += `<text class="web__name" x="0" y="${f(y + 9)}" text-anchor="middle">${d.name}</text>`;
+          else out += `<text class="web__name" x="${f(x)}" y="${f(a === 90 ? y - 5 : y + 3)}">${d.name}</text>`;
         });
-        out += `<text class="shore__word" x="-184" y="-140">sea</text><text class="shore__word" x="-184" y="144">land</text>`;
         // The dots last, the picked direction's on top.
         const order = [...DIRS].sort((x, y) => (x.key === picked) - (y.key === picked));
         order.forEach((d) => d.at.forEach((a, n) => {
           const [x, y] = polar(a, radius(b.dir[d.key]));
           const on = d.key === picked;
-          out += `<circle class="web__dot${on ? " web__dot--on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${on ? 6 : 5}" data-dot="${d.key}"` +
+          out += `<circle class="web__dot${on ? " web__dot--on" : ""}" cx="${f(x)}" cy="${f(y)}" r="${on ? 5 : 4}" data-dot="${d.key}"` +
             (n === 0 ? ` tabindex="0" role="slider" aria-label="${d.name}: stars taken off" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${b.dir[d.key]}" aria-valuetext="${half(b.dir[d.key])} stars"` : ` aria-hidden="true"`) + `/>`;
         }));
         svg.innerHTML = out;
