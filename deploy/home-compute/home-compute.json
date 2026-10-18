@@ -446,7 +446,8 @@
             22
           ],
           "minutes": [
-            0
+            0,
+            45
           ]
         },
         "timezone": "UTC"
@@ -695,7 +696,8 @@
             22
           ],
           "minutes": [
-            30
+            30,
+            55
           ]
         },
         "timezone": "UTC"

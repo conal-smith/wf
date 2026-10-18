@@ -75,9 +75,9 @@ enabled = false             # Retired to keep downloads near 80 GB a month.
 id = "gfs"
 models = ["gfs"]
 args = ["--step", "3"]
-hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag.
-minutes = [0]
-timeout_seconds = 2400
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~4 h publication lag. :45 is a
+minutes = [0, 45]           # retry for a cycle not yet complete at :00 (the 06Z on 18
+timeout_seconds = 2400      # October); it reads the bucket and stops once :00 has published.
 
 [[jobs]]
 id = "gefs"
@@ -109,8 +109,8 @@ enabled = false             # Retired to keep downloads near 80 GB a month.
 [[jobs]]
 id = "gfs-wave"
 models = ["gfs-wave"]
-hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag.
-minutes = [30]
+hours = [4, 10, 16, 22]     # 00/06/12/18 UTC cycles plus ~3 h 50 m publication lag. :55
+minutes = [30, 55]          # is a retry for a cycle not out at :30, as GFS's :45.
 timeout_seconds = 2400
 
 [[jobs]]

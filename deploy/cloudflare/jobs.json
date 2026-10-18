@@ -143,7 +143,8 @@
         22
       ],
       "minutes": [
-        0
+        0,
+        45
       ],
       "size": "small",
       "timeoutSeconds": 2400,
@@ -233,7 +234,8 @@
         22
       ],
       "minutes": [
-        30
+        30,
+        55
       ],
       "size": "small",
       "timeoutSeconds": 2400,
