@@ -44,6 +44,12 @@
         display: grid;
         gap: var(--sem-space-x3);
       }
+      .pt__units {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x2);
+        padding: 0 var(--sem-space-x3);
+      }
 
       /* ---- the dialog: the system's own, sized for the page and for a phone ---- */
       .ys.wf-dialog {
@@ -62,18 +68,13 @@
       .ys__presets {
         margin-top: var(--sem-space-x1);
       }
-      .ys__plain {
-        margin: var(--sem-space-x2) 0 0;
-        font-size: var(--sem-font-size-body);
-        line-height: var(--sem-font-line-body);
-        color: var(--sem-color-ink-2);
-      }
 
-      /* ---- stars for each wind speed ---- */
+      /* ---- the two curves: stars for the wind, stars off for the gusts ---- */
       .curve {
         display: block;
         width: 100%;
         height: auto;
+        margin-top: var(--sem-space-x1);
         overflow: visible;
       }
       .curve__grid {
@@ -121,11 +122,11 @@
         border-top: 1.25px dashed var(--sem-color-line-strong); /* ds-lint-allow: the curve's own stroke */
       }
 
-      /* ---- the wind range: four handles on one wind scale ---- */
+      /* ---- a scale of handles under each curve ---- */
       .band {
         position: relative;
         height: var(--sem-size-touch);
-        margin-top: var(--sem-space-x2);
+        margin-top: var(--sem-space-x1);
       }
       .band__scale {
         position: absolute;
@@ -134,12 +135,14 @@
         top: 50%;
         height: calc(var(--sem-space-step) * 1);
         transform: translateY(-50%);
-        /* The wind's own colours along the knots, faint: 0 to 40 kn. */
+        opacity: 0.35;
+      }
+      /* The wind's own colours along the knots, faint: 0 to 40 kn under the wind, 0 to 50 under the gusts. */
+      .band__scale--wind {
         background: linear-gradient(
           to right,
           var(--sem-color-wind-k00) 0%,
           var(--sem-color-wind-k05) 12.5%,
-          var(--sem-color-wind-k09) 22.5%,
           var(--sem-color-wind-k10) 25%,
           var(--sem-color-wind-k15) 37.5%,
           var(--sem-color-wind-k20) 50%,
@@ -148,7 +151,18 @@
           var(--sem-color-wind-k35) 87.5%,
           var(--sem-color-wind-k40) 100%
         );
-        opacity: 0.35;
+      }
+      .band__scale--gust {
+        background: linear-gradient(
+          to right,
+          var(--sem-color-wind-k00) 0%,
+          var(--sem-color-wind-k10) 20%,
+          var(--sem-color-wind-k20) 40%,
+          var(--sem-color-wind-k30) 60%,
+          var(--sem-color-wind-k40) 80%,
+          var(--sem-color-wind-k45) 90%,
+          var(--sem-color-wind-k50) 100%
+        );
       }
       .band__fill,
       .band__edge {
@@ -214,6 +228,9 @@
         gap: var(--sem-space-x2);
         margin-top: var(--sem-space-x1);
       }
+      .figs--three {
+        grid-template-columns: repeat(3, 1fr);
+      }
       .fig {
         display: flex;
         flex-direction: column;
@@ -228,53 +245,74 @@
         text-transform: uppercase;
         color: var(--sem-color-ink-muted);
       }
-      .fig__value,
-      .slider__value {
+      .fig__value {
         font-family: var(--sem-font-family-mono);
         font-size: var(--sem-font-size-figure);
         line-height: var(--sem-font-line-figure);
         font-weight: var(--sem-font-weight-figure);
         font-variant-numeric: tabular-nums;
       }
-      .fig__value small,
-      .slider__value small {
+      .fig__value small {
         font-size: var(--sem-font-size-label);
         color: var(--sem-color-ink-muted);
       }
+      .fig .wf-segmented {
+        align-self: flex-start;
+      }
 
-      /* ---- the gusts ---- */
-      .slider {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: var(--sem-space-x1) var(--sem-space-x3);
-        margin-top: var(--sem-space-x2);
-      }
-      .slider__label {
-        font-size: var(--sem-font-size-body);
-        line-height: var(--sem-font-line-body);
-      }
-      .slider__value {
-        text-align: right;
-      }
-      .slider input[type="range"] {
-        grid-column: 1 / -1;
+      /* ---- together: every wind and gust, rated ---- */
+      .grid {
+        display: block;
         width: 100%;
-        height: var(--sem-size-touch);
-        margin: 0;
-        accent-color: var(--sem-color-ink);
+        height: auto;
+        margin-top: var(--sem-space-x1);
+        overflow: visible;
+        touch-action: none;
+        cursor: crosshair;
       }
-      .slider input[type="range"]:focus-visible {
-        outline: var(--sem-ring-width) solid var(--sem-color-focus);
-        outline-offset: var(--sem-ring-offset);
+      .grid__cell {
+        fill: var(--sem-color-ink);
       }
-      .past {
+      .grid__none {
+        fill: var(--sem-color-sunken);
+      }
+      .grid__pick {
+        fill: none;
+        stroke: var(--sem-color-focus);
+        stroke-width: 2;
+      }
+      .grid__key {
+        display: flex;
+        align-items: center;
+        gap: var(--sem-space-x1);
+        margin-top: var(--sem-space-x1);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-eyebrow);
+        letter-spacing: var(--sem-font-tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--sem-color-ink-muted);
+      }
+      .grid__swatch {
+        display: inline-block;
+        width: calc(var(--sem-space-step) * 4);
+        height: calc(var(--sem-space-step) * 3);
+        background: var(--sem-color-ink);
+      }
+      .readout {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: var(--sem-space-x2);
+        min-height: var(--sem-size-control-sm);
         margin-top: var(--sem-space-x1);
-        font-size: var(--sem-font-size-body);
+        font-family: var(--sem-font-family-mono);
+        font-size: var(--sem-font-size-label);
+        font-variant-numeric: tabular-nums;
+      }
+      .readout__why {
+        font-family: var(--sem-font-family-body);
+        font-size: var(--sem-font-size-caption);
+        color: var(--sem-color-ink-muted);
       }
 
       /* ---- examples: the level they started from, against theirs ---- */
@@ -306,18 +344,10 @@
         border-bottom: 0;
       }
       .rates__w {
-        width: 30%;
+        width: 34%;
       }
       .rates__s {
-        width: 28%;
-      }
-      .rates__why {
-        display: block;
-        white-space: normal;
-        font-family: var(--sem-font-family-body);
-        font-size: var(--sem-font-size-caption);
-        line-height: var(--sem-font-line-caption);
-        color: var(--sem-color-ink-muted);
+        width: 30%;
       }
       .rates__moved {
         font-weight: var(--sem-font-weight-semibold);
@@ -434,6 +464,16 @@
     </style>
   </head>
   <body>
+    <p class="pt__label">Mockup only · the rider's unit setting, which every figure, axis and handle follows</p>
+    <div class="pt__units">
+      <div class="wf-segmented" role="group" aria-label="Wind units">
+        <button class="wf-segmented__item" type="button" data-unit="kn" aria-pressed="true">kn</button>
+        <button class="wf-segmented__item" type="button" data-unit="mph" aria-pressed="false">mph</button>
+        <button class="wf-segmented__item" type="button" data-unit="kmh" aria-pressed="false">km/h</button>
+        <button class="wf-segmented__item" type="button" data-unit="ms" aria-pressed="false">m/s</button>
+      </div>
+    </div>
+
     <p class="pt__label">1 · Where it opens: the rider settings (Display ▸ You), before and after</p>
     <div class="pt__row">
       <div class="settings" aria-label="Rider settings, standard stars">
@@ -458,9 +498,9 @@
       </div>
     </div>
 
-    <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and gusts no higher than 25</p>
+    <p class="pt__label">2 · The dialog, desktop · a rider who wants about 20 knots, and no gusts much over 25</p>
     <div class="pt__row">
-      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"spread":5,"gustMax":25,"past":1}'></div>
+      <div data-ys data-start="intermediate" data-custom='{"min":15,"sweetLow":18,"sweetHigh":23,"max":27,"fine":24,"worst":30,"most":3}'></div>
       <div class="pt__col">
         <p class="pt__label" style="margin: 0">3 · The forecast, once saved: a chip says the stars are custom, and opens the dialog</p>
         <div class="dockhead">
@@ -500,21 +540,21 @@
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Wind speed</span>
-            <svg class="curve" viewBox="0 0 400 92" role="img" data-curve></svg>
+            <span class="wf-kicker wf-kicker--ink">Wind speed: stars</span>
+            <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="wind"></svg>
             <div class="legend" aria-hidden="true">
               <span><span class="legend__key"></span>Yours</span>
               <span><span class="legend__key legend__key--base"></span><span data-base-name></span></span>
             </div>
             <div class="band">
-              <div class="band__scale"></div>
-              <div class="band__edge" data-edge-low></div>
-              <div class="band__fill" data-fill></div>
-              <div class="band__edge" data-edge-high></div>
-              <input type="range" min="0" max="40" step="1" data-k="min" aria-label="Minimum wind speed, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="sweetLow" aria-label="Ideal wind speed from, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="sweetHigh" aria-label="Ideal wind speed to, knots" />
-              <input type="range" min="0" max="40" step="1" data-k="max" aria-label="Maximum wind speed, knots" />
+              <div class="band__scale band__scale--wind"></div>
+              <div class="band__edge" data-span="min-sweetLow"></div>
+              <div class="band__fill" data-span="sweetLow-sweetHigh"></div>
+              <div class="band__edge" data-span="sweetHigh-max"></div>
+              <input type="range" data-k="min" aria-label="Minimum wind speed" />
+              <input type="range" data-k="sweetLow" aria-label="Ideal wind speed from" />
+              <input type="range" data-k="sweetHigh" aria-label="Ideal wind speed to" />
+              <input type="range" data-k="max" aria-label="Maximum wind speed" />
             </div>
             <div class="figs">
               <div class="fig"><span class="fig__name">Minimum</span><span class="fig__value" data-v="min"></span></div>
@@ -522,38 +562,50 @@
               <div class="fig"><span class="fig__name">Ideal to</span><span class="fig__value" data-v="sweetHigh"></span></div>
               <div class="fig"><span class="fig__name">Maximum</span><span class="fig__value" data-v="max"></span></div>
             </div>
-            <p class="ys__plain" data-wind-plain></p>
           </div>
 
           <div class="ys__block">
-            <span class="wf-kicker wf-kicker--ink">Gusts</span>
-            <label class="slider">
-              <span class="slider__label">Gusts up to this much above the wind speed are fine</span>
-              <span class="slider__value" data-v="spread"></span>
-              <input type="range" min="3" max="15" step="1" data-k="spread" />
-            </label>
-            <p class="ys__plain" data-spread-plain></p>
-            <label class="slider">
-              <span class="slider__label">Maximum gust</span>
-              <span class="slider__value" data-v="gustMax"></span>
-              <input type="range" min="12" max="50" step="1" data-k="gustMax" />
-            </label>
-            <div class="past">
-              <span data-past-label></span>
-              <div class="wf-segmented" role="group" data-past-group>
-                <button class="wf-segmented__item" type="button" data-past="0.5">½ star</button>
-                <button class="wf-segmented__item" type="button" data-past="1">1 star</button>
-                <button class="wf-segmented__item" type="button" data-past="2">2 stars</button>
-                <button class="wf-segmented__item" type="button" data-past="5">All</button>
+            <span class="wf-kicker wf-kicker--ink">Gusts: stars taken off</span>
+            <svg class="curve" viewBox="0 0 400 92" role="img" data-curve="gust"></svg>
+            <div class="legend" aria-hidden="true">
+              <span><span class="legend__key"></span>Yours</span>
+              <span><span class="legend__key legend__key--base"></span><span data-base-name></span></span>
+            </div>
+            <div class="band">
+              <div class="band__scale band__scale--gust"></div>
+              <div class="band__fill" data-span="fine-worst" data-scale="gust"></div>
+              <input type="range" data-k="fine" aria-label="Gusts have no effect up to" />
+              <input type="range" data-k="worst" aria-label="Gusts take off the most from" />
+            </div>
+            <div class="figs figs--three">
+              <div class="fig"><span class="fig__name">No effect up to</span><span class="fig__value" data-v="fine"></span></div>
+              <div class="fig"><span class="fig__name">Most off from</span><span class="fig__value" data-v="worst"></span></div>
+              <div class="fig">
+                <span class="fig__name">Most off</span>
+                <div class="wf-segmented" role="group" aria-label="The most the gusts take off">
+                  <button class="wf-segmented__item" type="button" data-most="1">1★</button>
+                  <button class="wf-segmented__item" type="button" data-most="2">2★</button>
+                  <button class="wf-segmented__item" type="button" data-most="3">3★</button>
+                  <button class="wf-segmented__item" type="button" data-most="5">All</button>
+                </div>
               </div>
             </div>
+          </div>
+
+          <div class="ys__block">
+            <span class="wf-kicker wf-kicker--ink">Together: wind speed and gusts</span>
+            <svg class="grid" viewBox="0 -18 400 278" role="img" data-grid></svg>
+            <div class="grid__key" aria-hidden="true">
+              <span>Blank: no stars ·</span><span>1★</span><span class="grid__swatch" style="opacity: 0.08"></span><span class="grid__swatch" style="opacity: 0.25"></span><span class="grid__swatch" style="opacity: 0.45"></span><span class="grid__swatch" style="opacity: 0.65"></span><span class="grid__swatch" style="opacity: 0.85"></span><span>5★</span>
+            </div>
+            <div class="readout" aria-live="polite" data-readout></div>
           </div>
 
           <div class="ys__block">
             <span class="wf-kicker wf-kicker--ink">Examples</span>
             <table class="rates">
               <thead>
-                <tr><th scope="col" class="rates__w">Forecast, kn</th><th scope="col" class="rates__s" data-base-name></th><th scope="col">Yours</th></tr>
+                <tr><th scope="col" class="rates__w" data-forecast-head></th><th scope="col" class="rates__s" data-base-name></th><th scope="col">Yours</th></tr>
               </thead>
               <tbody data-rates></tbody>
             </table>
@@ -567,14 +619,17 @@
     </template>
 
     <script>
-      // The rating, restated from force5/src/stars.ts so the sliders move real stars.
+      // The proposed rating (a change to force5/src/stars.ts): stars for the wind speed, less
+      // stars for how strong the gusts are, both curves set by the rider. Below the minimum a
+      // gust still lifts the wind towards it: a light day with gusts is a chance to get up.
       const LEVELS = {
-        beginner: { name: "Learning", min: 13, sweetLow: 15, sweetHigh: 20, max: 24, spread: 7, gustMax: 24, past: 1, share: 0.2 },
-        intermediate: { name: "Riding", min: 11, sweetLow: 14, sweetHigh: 24, max: 30, spread: 10, gustMax: 30, past: 0.5, share: 0.3 },
-        advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, spread: 10, gustMax: 35, past: 0.5, share: 0.35 },
+        beginner: { name: "Learning", min: 13, sweetLow: 15, sweetHigh: 20, max: 24, fine: 20, worst: 28, most: 3, share: 0.2 },
+        intermediate: { name: "Riding", min: 11, sweetLow: 14, sweetHigh: 24, max: 30, fine: 28, worst: 40, most: 2, share: 0.3 },
+        advanced: { name: "Advanced", min: 8, sweetLow: 13, sweetHigh: 28, max: 35, fine: 33, worst: 45, most: 2, share: 0.35 },
       };
-      const KEYS = ["min", "sweetLow", "sweetHigh", "max"];
-      const SETTINGS = [...KEYS, "spread", "gustMax", "past"];
+      const WIND_KEYS = ["min", "sweetLow", "sweetHigh", "max"];
+      const GUST_KEYS = ["fine", "worst"];
+      const WIND_TOP = 40, GUST_TOP = 50; // knots: the ends of the two scales
       const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
       const ramp = (x, x0, x1, y0, y1) => y0 + ((clamp(x, x0, x1) - x0) / (x1 - x0)) * (y1 - y0);
       function windScore(kn, b) {
@@ -590,22 +645,27 @@
         if (kn <= b.max) return ramp(kn, b.sweetHigh, b.max, 4, 2);
         return ramp(kn, b.max, b.max + 6, 2, 0);
       }
+      const gustLoss = (kn, b) => (kn <= b.fine ? 0 : ramp(kn, b.fine, b.worst, 0, b.most));
       function rate(wind, gust, b) {
         const ride = gust > wind && wind < b.min ? Math.min(b.min, wind + b.share * Math.min(gust - wind, wind)) : wind;
         const base = windScore(ride, b);
         const potential = Math.round(base);
-        const above = Math.max(0, gust - wind);
-        const gusty = Math.min(2, Math.max(0, above - b.spread) * 0.5);
-        const strong = gust > b.gustMax ? b.past : 0;
-        const stars = clamp(Math.round(base - gusty - strong), 0, potential);
-        const why = [];
-        if (!potential) why.push(ride < b.min ? "too light" : "too strong");
-        else if (stars < potential) {
-          if (gusty) why.push(`gusts ${Math.round(above)} kn above the wind`);
-          if (strong) why.push(`gusts above ${b.gustMax} kn`);
-        }
-        return { stars, potential, why: why.join(", ") };
+        const loss = gustLoss(gust, b);
+        const stars = clamp(Math.round(base - loss), 0, potential);
+        return { stars, potential, base, loss };
       }
+
+      // Units: everything is kept in knots and shown in the rider's unit.
+      const UNITS = {
+        kn: { label: "kn", per: 1, step: 1, dp: 0 },
+        mph: { label: "mph", per: 1.15078, step: 1, dp: 0 },
+        kmh: { label: "km/h", per: 1.852, step: 1, dp: 0 },
+        ms: { label: "m/s", per: 0.514444, step: 0.5, dp: 1 },
+      };
+      let unit = UNITS.kn;
+      const show = (kn) => (kn * unit.per).toFixed(unit.dp);
+      const toKn = (v) => v / unit.per;
+      const tick = () => ({ kn: 10, mph: 10, "km/h": 20, "m/s": 5 })[unit.label];
 
       const STAR = "M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z";
       function glyphs({ stars, potential }) {
@@ -620,34 +680,68 @@
         return `<svg class="wf-star-glyphs" width="68" height="12" viewBox="0 0 68 12" role="img" aria-label="${label}">${parts}</svg>`;
       }
 
-      // Stars for each wind speed, 0 to 40 knots: theirs solid, the level they started from dashed.
-      const X = (kn) => (kn / 40) * 400;
-      const Y = (s) => 74 - (s / 5) * 64;
-      const line = (b) => {
-        const p = [];
-        for (let kn = 0; kn <= 40; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(windScore(kn, b)).toFixed(1)}`);
-        return p.join(" ");
-      };
-      function curve(svg, b, base) {
+      // An axis along the bottom in the rider's unit, every `tick` of it.
+      function xAxis(topKn, y) {
+        let out = "";
+        const topU = topKn * unit.per;
+        for (let v = 0; v <= topU + 1e-6; v += tick()) {
+          const x = (v / topU) * 400;
+          const end = x > 380;
+          out += `<text class="curve__axis" x="${end ? 400 : x}" y="${y}" text-anchor="${v ? (end ? "end" : "middle") : "start"}">${v}${end ? " " + unit.label : ""}</text>`;
+        }
+        return out;
+      }
+
+      // Stars for each wind speed, 0 to 40 kn: theirs solid, the level they started from dashed.
+      function windCurve(svg, b, base) {
+        const X = (kn) => (kn / WIND_TOP) * 400, Y = (s) => 74 - (s / 5) * 64;
+        const line = (bb) => { const p = []; for (let kn = 0; kn <= WIND_TOP; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(windScore(kn, bb)).toFixed(1)}`); return p.join(" "); };
         let grid = "";
         for (let s = 1; s <= 5; s++) grid += `<line class="curve__grid" x1="0" x2="400" y1="${Y(s)}" y2="${Y(s)}"/><text class="curve__axis" x="404" y="${Y(s) + 3}">${s}★</text>`;
-        for (let kn = 0; kn <= 40; kn += 10) grid += `<text class="curve__axis" x="${X(kn)}" y="90" text-anchor="${kn ? (kn === 40 ? "end" : "middle") : "start"}">${kn}${kn === 40 ? " kn" : ""}</text>`;
         const yours = line(b);
-        svg.innerHTML = grid + `<polygon class="curve__under" points="0,74 ${yours} 400,74"/><polyline class="curve__base" points="${line(base)}"/><polyline class="curve__yours" points="${yours}"/>`;
+        svg.innerHTML = grid + `<polygon class="curve__under" points="0,74 ${yours} 400,74"/><polyline class="curve__base" points="${line(base)}"/><polyline class="curve__yours" points="${yours}"/>` + xAxis(WIND_TOP, 90);
         svg.setAttribute("aria-label", "Stars for each wind speed, yours against the level you started from");
       }
 
-      // The four handles in plain words, worked out from the curve itself.
-      function windPlain(b) {
-        const q = (b.sweetHigh - b.sweetLow) / 4;
-        const fiveFrom = Math.ceil(b.sweetLow + q), fiveTo = Math.floor(b.sweetHigh - q);
-        return `No stars under ${b.min - 2} kn. 1 star at ${b.min} kn, 4 stars at ${b.sweetLow} kn, ` +
-          `5 stars from ${fiveFrom} to ${fiveTo} kn, back to 4 stars at ${b.sweetHigh} kn and 2 at ${b.max} kn. ` +
-          `No stars over ${b.max + 6} kn.`;
+      // Stars taken off for each gust speed, 0 to 50 kn, hanging down from the top line.
+      function gustCurve(svg, b, base) {
+        const X = (kn) => (kn / GUST_TOP) * 400, Y = (s) => 8 + (s / 5) * 64;
+        const line = (bb) => { const p = []; for (let kn = 0; kn <= GUST_TOP; kn += 0.25) p.push(`${X(kn).toFixed(1)},${Y(gustLoss(kn, bb)).toFixed(1)}`); return p.join(" "); };
+        let grid = "";
+        for (let s = 0; s <= 5; s++) grid += `<line class="curve__grid" x1="0" x2="400" y1="${Y(s)}" y2="${Y(s)}"/><text class="curve__axis" x="404" y="${Y(s) + 3}">${s ? "−" + s + "★" : "0"}</text>`;
+        const yours = line(b);
+        svg.innerHTML = grid + `<polygon class="curve__under" points="0,${Y(0)} ${yours} 400,${Y(0)}"/><polyline class="curve__base" points="${line(base)}"/><polyline class="curve__yours" points="${yours}"/>` + xAxis(GUST_TOP, 90);
+        svg.setAttribute("aria-label", "Stars the gusts take off for each gust speed, yours against the level you started from");
       }
 
-      const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [20, 25], [20, 28], [22, 32], [25, 38]];
+      // Every wind speed along the bottom and every gust up the side, shaded by the stars.
+      const STEP = 2; // knots a square
+      function grid(svg, b) {
+        const left = 30, w = 360, h = 230;
+        const X = (kn) => left + (kn / WIND_TOP) * w, Y = (kn) => h - (kn / GUST_TOP) * h;
+        let cells = "";
+        for (let wind = 0; wind < WIND_TOP; wind += STEP) {
+          for (let gust = 0; gust < GUST_TOP; gust += STEP) {
+            const x = X(wind), y = Y(gust + STEP), cw = X(wind + STEP) - x, ch = Y(gust) - y;
+            if (gust + STEP <= wind) { cells += `<rect class="grid__none" x="${x}" y="${y}" width="${cw}" height="${ch}"/>`; continue; }
+            const r = rate(wind + STEP / 2, Math.max(gust + STEP / 2, wind + STEP / 2), b);
+            cells += `<rect class="grid__cell" x="${x}" y="${y}" width="${cw + 0.3}" height="${ch + 0.3}" opacity="${[0, 0.08, 0.25, 0.45, 0.65, 0.85][r.stars]}"/>`;
+          }
+        }
+        let axes = "";
+        const topW = WIND_TOP * unit.per, topG = GUST_TOP * unit.per;
+        for (let v = 0; v <= topW + 1e-6; v += tick()) axes += `<text class="curve__axis" x="${left + (v / topW) * w}" y="${h + 14}" text-anchor="middle">${v}</text>`;
+        for (let v = tick(); v <= topG + 1e-6; v += tick()) axes += `<text class="curve__axis" x="${left - 4}" y="${h - (v / topG) * h + 3}" text-anchor="end">${v}</text>`;
+        axes += `<text class="curve__axis" x="${left + w}" y="${h + 28}" text-anchor="end">wind speed, ${unit.label} →</text>`;
+        axes += `<text class="curve__axis" x="${left - 4}" y="-8" text-anchor="end">gusts,</text><text class="curve__axis" x="${left + 2}" y="-8" text-anchor="start">${unit.label} ↑</text>`;
+        svg.innerHTML = cells + axes + `<rect class="grid__pick" data-pick width="0" height="0"/>`;
+        svg.setAttribute("aria-label", "Stars for every wind speed and gust: darker is more stars");
+        svg.dataset.geom = JSON.stringify({ left, w, h });
+      }
 
+      const EXAMPLES = [[10, 16], [12, 20], [15, 22], [18, 24], [18, 27], [20, 25], [22, 32], [25, 38]];
+
+      const dialogs = [];
       document.querySelectorAll("[data-ys]").forEach((host, n) => {
         const node = document.getElementById("ys").content.firstElementChild.cloneNode(true);
         const id = `ys-title-${n}`;
@@ -655,69 +749,97 @@
         node.setAttribute("aria-labelledby", id);
         if (host.hasAttribute("data-phone")) {
           node.classList.add("ys--phone");
-          node.querySelector(".figs").style.gridTemplateColumns = "repeat(2, 1fr)";
+          node.querySelectorAll(".figs").forEach((f) => (f.style.gridTemplateColumns = "repeat(2, 1fr)"));
         }
         host.replaceWith(node);
         let start = host.dataset.start;
         let b = { ...LEVELS[start], ...(host.dataset.custom ? JSON.parse(host.dataset.custom) : {}) };
         const isDock = Boolean(host.dataset.custom);
+        let picked = [18, 27];
 
+        const setRange = (k, topKn) => {
+          const el = node.querySelector(`[data-k="${k}"]`);
+          el.min = 0;
+          el.max = (topKn * unit.per).toFixed(unit.dp);
+          el.step = unit.step;
+          el.value = show(b[k]);
+        };
+        const readout = () => {
+          const [w, g] = picked;
+          const r = rate(w, g, b);
+          const off = r.loss ? `, gusts −${Number(r.loss.toFixed(1))}` : "";
+          node.querySelector("[data-readout]").innerHTML =
+            `<span>${show(w)} gusting ${show(g)} ${unit.label}</span>${glyphs(r)}<span class="readout__why">wind ${Number(r.base.toFixed(1))}★${off}</span>`;
+          const { left, w: gw, h } = JSON.parse(node.querySelector("[data-grid]").dataset.geom);
+          const sx = left + (Math.floor(w / STEP) * STEP / WIND_TOP) * gw, sy = h - ((Math.floor(g / STEP) + 1) * STEP / GUST_TOP) * h;
+          const pick = node.querySelector("[data-pick]");
+          pick.setAttribute("x", sx); pick.setAttribute("y", sy);
+          pick.setAttribute("width", (STEP / WIND_TOP) * gw); pick.setAttribute("height", (STEP / GUST_TOP) * h);
+        };
         const draw = () => {
           const base = LEVELS[start];
           node.querySelectorAll("[data-base-name]").forEach((el) => (el.textContent = base.name));
           node.querySelectorAll("[data-preset]").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.preset === start)));
-          curve(node.querySelector("[data-curve]"), b, base);
-          KEYS.forEach((k) => {
-            node.querySelector(`[data-k="${k}"]`).value = b[k];
-            node.querySelector(`[data-v="${k}"]`).innerHTML = `${b[k]}<small> kn</small>`;
+          windCurve(node.querySelector('[data-curve="wind"]'), b, base);
+          gustCurve(node.querySelector('[data-curve="gust"]'), b, base);
+          grid(node.querySelector("[data-grid]"), b);
+          WIND_KEYS.forEach((k) => setRange(k, WIND_TOP));
+          GUST_KEYS.forEach((k) => setRange(k, GUST_TOP));
+          [...WIND_KEYS, ...GUST_KEYS].forEach((k) => (node.querySelector(`[data-v="${k}"]`).innerHTML = `${show(b[k])}<small> ${unit.label}</small>`));
+          node.querySelectorAll("[data-most]").forEach((el) => el.setAttribute("aria-pressed", String(Number(el.dataset.most) === b.most)));
+          node.querySelectorAll("[data-span]").forEach((el) => {
+            const [from, to] = el.dataset.span.split("-");
+            const top = el.dataset.scale === "gust" ? GUST_TOP : WIND_TOP;
+            el.style.left = `${(b[from] / top) * 100}%`;
+            el.style.width = `${((b[to] - b[from]) / top) * 100}%`;
           });
-          node.querySelector("[data-wind-plain]").textContent = windPlain(b);
-          node.querySelector('[data-k="spread"]').value = b.spread;
-          node.querySelector('[data-v="spread"]').innerHTML = `${b.spread}<small> kn</small>`;
-          const w = 18;
-          node.querySelector("[data-spread-plain]").textContent =
-            `Each knot more takes off ½ star, up to 2 stars. So ${w} kn gusting ${w + b.spread} loses nothing, and ${w} kn gusting ${w + b.spread + 2} loses 1 star.`;
-          node.querySelector('[data-k="gustMax"]').value = b.gustMax;
-          node.querySelector('[data-v="gustMax"]').innerHTML = `${b.gustMax}<small> kn</small>`;
-          node.querySelector("[data-past-label]").textContent = `Gusts over ${b.gustMax} kn take off`;
-          node.querySelector("[data-past-group]").setAttribute("aria-label", `Gusts over ${b.gustMax} kn take off`);
-          node.querySelectorAll("[data-past]").forEach((el) => el.setAttribute("aria-pressed", String(Number(el.dataset.past) === b.past)));
-          const pct = (kn) => `${(kn / 40) * 100}%`;
-          const span = (from, to, el) => { el.style.left = pct(from); el.style.width = `${((to - from) / 40) * 100}%`; };
-          span(b.sweetLow, b.sweetHigh, node.querySelector("[data-fill]"));
-          span(b.min, b.sweetLow, node.querySelector("[data-edge-low]"));
-          span(b.sweetHigh, b.max, node.querySelector("[data-edge-high]"));
+          node.querySelector("[data-forecast-head]").textContent = `Forecast, ${unit.label}`;
           node.querySelector("[data-rates]").innerHTML = EXAMPLES.map(([wind, gust]) => {
-            const o = rate(wind, gust, base);
-            const y = rate(wind, gust, b);
-            return `<tr><td class="${o.stars !== y.stars ? "rates__moved" : ""}">${wind} gusting ${gust}</td><td>${glyphs(o)}</td><td>${glyphs(y)}<span class="rates__why">${y.why}</span></td></tr>`;
+            const o = rate(wind, gust, base), y = rate(wind, gust, b);
+            return `<tr><td class="${o.stars !== y.stars ? "rates__moved" : ""}">${show(wind)} gusting ${show(gust)}</td><td>${glyphs(o)}</td><td>${glyphs(y)}</td></tr>`;
           }).join("");
+          readout();
           if (isDock) drawDock(b);
         };
 
-        // Handles keep their order, a knot apart: minimum < ideal from < ideal to < maximum.
-        KEYS.forEach((k, i) =>
-          node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => {
-            let v = Number(e.target.value);
-            if (KEYS[i - 1]) v = Math.max(v, b[KEYS[i - 1]] + 1);
-            if (KEYS[i + 1]) v = Math.min(v, b[KEYS[i + 1]] - 1);
-            b[k] = clamp(v, 2 + i, 40 - (3 - i));
-            draw();
-          }),
-        );
-        ["spread", "gustMax"].forEach((k) =>
-          node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = Number(e.target.value); draw(); }),
-        );
-        node.querySelectorAll("[data-past]").forEach((el) => el.addEventListener("click", () => { b.past = Number(el.dataset.past); draw(); }));
+        // Handles keep their order, a knot apart: minimum < ideal from < ideal to < maximum; no effect < most off.
+        const order = (keys, i, kn) => {
+          if (keys[i - 1]) kn = Math.max(kn, b[keys[i - 1]] + 1);
+          if (keys[i + 1]) kn = Math.min(kn, b[keys[i + 1]] - 1);
+          return kn;
+        };
+        WIND_KEYS.forEach((k, i) => node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = clamp(order(WIND_KEYS, i, toKn(Number(e.target.value))), 2 + i, WIND_TOP - (3 - i)); draw(); }));
+        GUST_KEYS.forEach((k, i) => node.querySelector(`[data-k="${k}"]`).addEventListener("input", (e) => { b[k] = clamp(order(GUST_KEYS, i, toKn(Number(e.target.value))), 1 + i, GUST_TOP - (1 - i)); draw(); }));
+        node.querySelectorAll("[data-most]").forEach((el) => el.addEventListener("click", () => { b.most = Number(el.dataset.most); draw(); }));
         node.querySelectorAll("[data-preset]").forEach((el) => el.addEventListener("click", () => { start = el.dataset.preset; b = { ...LEVELS[start] }; draw(); }));
+        const gridEl = node.querySelector("[data-grid]");
+        const pickAt = (e) => {
+          const { left, w, h } = JSON.parse(gridEl.dataset.geom);
+          const pt = gridEl.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+          const p = pt.matrixTransform(gridEl.getScreenCTM().inverse());
+          const wind = clamp(((p.x - left) / w) * WIND_TOP, 0, WIND_TOP - 0.01), gust = clamp(((h - p.y) / h) * GUST_TOP, 0, GUST_TOP - 0.01);
+          picked = [Math.round(wind), Math.max(Math.round(gust), Math.round(wind))];
+          readout();
+        };
+        gridEl.addEventListener("pointermove", pickAt);
+        gridEl.addEventListener("pointerdown", pickAt);
+        dialogs.push(draw);
         draw();
       });
+
+      document.querySelectorAll("[data-unit]").forEach((el) =>
+        el.addEventListener("click", () => {
+          unit = UNITS[el.dataset.unit];
+          document.querySelectorAll("[data-unit]").forEach((u) => u.setAttribute("aria-pressed", String(u === el)));
+          dialogs.forEach((draw) => draw());
+        }),
+      );
 
       // A Saturday afternoon at Dollymount, rated with the custom stars in the first dialog.
       function drawDock(b) {
         const HOURS = [[11, 14, 19], [12, 17, 23], [13, 19, 24], [14, 20, 25], [15, 21, 28], [16, 22, 31], [17, 19, 27], [18, 16, 22]];
         document.querySelector("[data-hours]").innerHTML = HOURS.map(([h, w, g]) =>
-          `<div class="hour"><span class="hour__ist">${h}</span>${glyphs(rate(w, g, b))}<span>${w}g${g}</span></div>`,
+          `<div class="hour"><span class="hour__ist">${h}</span>${glyphs(rate(w, g, b))}<span>${show(w)}g${show(g)}</span></div>`,
         ).join("");
       }
     </script>
