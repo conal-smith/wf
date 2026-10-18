@@ -75,8 +75,20 @@ listing, not an import.
 Bacalhau is told the Colima VM's size, less half a GiB for Docker and the kernel,
 and each job's memory is a hard ceiling (`RESOURCES` in `deploy/schedules.py`): 1 GB
 for HARMONIE, ICON-EU, ECMWF and GFS-Wave, 512 MB for everything else. Every job asks
-for one CPU. In the recommended VM (2 CPUs, 3 GiB: Bacalhau gets 2 CPUs and 2.5 GB) at
-most two jobs run at once and the rest queue, for up to an hour each.
+for one CPU, and Bacalhau is told it has one, so only one job runs at a time (below).
+
+## One job at a time
+
+Since 18 October 2026 the jobs never run side by side: two at once was more memory
+than the owner wanted this Mac to give up for something meant to run in the
+background. `macmini.sh setup` gives Bacalhau one CPU (`BACALHAU_DEFAULT_CPUS`), and
+every job, the bucket sweep included, asks for a whole one, so a job whose slot
+comes while another is running queues until it has finished (`test_schedules.py`
+holds every enabled job to that). No run takes long: on 18 October the longest
+was ICON-EU at 5½ minutes, HARMONIE 3½, GFS 4, and the hourly feeds about 30
+seconds, so the slots that share a minute (sea temperature, the archive and SWAN
+at :15) wait seconds, and nothing comes near the hour a job may queue. To let two
+run at once again, in a 3 GiB VM: `BACALHAU_CPUS=2 deploy/home-compute/macmini.sh setup`.
 
 ## What a job uses
 
@@ -125,33 +137,34 @@ recommended VM offers: measure one before enabling it, or Bacalhau leaves it que
 The VM's memory is what macOS loses while Colima runs, not what the jobs use: Colima's
 `vz` VM takes memory from macOS as Linux touches it and does not give it back, and
 Linux fills whatever is spare with page cache. So the VM's size, not Bacalhau's, is
-what the Mac gives up. The jobs need 3 GiB (two of the largest at once, plus Docker);
-2 GiB also works, one large job and one small at a time, with slower image builds.
+what the Mac gives up. One job at a time needs 2 GiB (the largest job's 1 GB ceiling,
+plus Docker and the kernel); two at once needed 3.
 
 `macmini.sh setup` reads the VM's size and writes it into Bacalhau's launch agent,
 warns if an enabled job could never fit, and says so if the VM is larger than the
-jobs need. To shrink it from 6 GiB to 3, when `macmini.sh status` shows no job
+jobs need. To shrink it to 2 GiB, when `macmini.sh status` shows no job
 running:
 
 ```sh
 deploy/home-compute/macmini.sh stop      # the scheduler and Bacalhau
 export COLIMA_HOME=../home-compute-vm      # beside the checkout
 colima stop -p home-compute
-colima start -p home-compute --cpu 2 --memory 3   # kept in home-compute-vm/home-compute/colima.yaml
-deploy/home-compute/macmini.sh setup     # rebuilds the image; Bacalhau gets 2 CPUs, 2.5Gb
+colima start -p home-compute --cpu 2 --memory 2   # kept in home-compute-vm/home-compute/colima.yaml
+deploy/home-compute/macmini.sh setup     # rebuilds the image; Bacalhau gets 1 CPU, 1.5Gb
 deploy/home-compute/macmini.sh start
-deploy/home-compute/macmini.sh status    # Bacalhau's node should list 2 CPUs and 2.5 GB
+deploy/home-compute/macmini.sh status    # Bacalhau's node should list 1 CPU and 1.5 GB
 ```
 
-The login agent starts the same profile, so it comes back at 3 GiB after a reboot.
-To give Bacalhau less than the VM, set `BACALHAU_CPUS` and `BACALHAU_MEMORY` (e.g.
+The login agent starts the same profile, so it comes back at 2 GiB after a reboot.
+The VM keeps two CPUs for the image build; Bacalhau still runs one job at a time.
+To give Bacalhau a different share of the VM, set `BACALHAU_CPUS` and `BACALHAU_MEMORY` (e.g.
 `2Gb`) when running `setup`.
 
 ## Keeping the jobs in the background
 
 Every job asks for one CPU, which Bacalhau hands to Docker as the container's CPU
-limit, and the VM has two: whatever runs, the jobs never use more than two of the
-Mac's ten cores. They rarely use one: no job spends more than 25 CPU seconds a run,
+limit, and only one job runs at a time: whatever runs, the jobs never use more than
+one of the Mac's ten cores. They rarely use one: no job spends more than 25 CPU seconds a run,
 and most of a run is spent waiting on a download or an upload.
 
 `nice` inside the container would only order processes within the VM; macOS

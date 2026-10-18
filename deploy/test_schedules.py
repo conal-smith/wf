@@ -120,9 +120,10 @@ class SetTest(unittest.TestCase):
 class ResourcesTest(unittest.TestCase):
     """The shipped ceilings: measured, with headroom, and small enough to share the VM."""
 
-    # Bacalhau's capacity in the recommended Colima VM (2 CPUs, 3 GiB, half a GiB kept
-    # back for Docker and the kernel): deploy/home-compute/README.md.
-    CPUS, MEMORY_MB = 2, 2560
+    # Bacalhau's capacity in the recommended Colima VM (2 GiB, half a GiB kept back
+    # for Docker and the kernel; one CPU, so one job at a time):
+    # deploy/home-compute/README.md.
+    CPUS, MEMORY_MB = 1, 1536
 
     def test_every_enabled_job_is_measured_and_has_twice_its_peak(self):
         for job in schedules.scheduled(schedules.load()):
@@ -133,12 +134,20 @@ class ResourcesTest(unittest.TestCase):
                 ceiling = schedules.memory_mb(schedules.resources_for(job)["memory"])
                 self.assertGreaterEqual(ceiling, 2 * peak)
 
-    def test_two_of_the_largest_enabled_jobs_fit_the_recommended_vm_at_once(self):
+    def test_the_largest_enabled_job_fits_the_recommended_vm(self):
         enabled = [schedules.resources_for(job) for job in schedules.scheduled(schedules.load())
                    if job["enabled"]]
         largest = max(schedules.memory_mb(resources["memory"]) for resources in enabled)
-        self.assertLessEqual(2 * largest, self.MEMORY_MB)
-        self.assertTrue(all(float(resources["cpu"]) <= self.CPUS / 2 for resources in enabled))
+        self.assertLessEqual(largest, self.MEMORY_MB)
+
+    def test_no_two_enabled_jobs_run_at_once(self):
+        for job in schedules.scheduled(schedules.load()):
+            if not job["enabled"]:
+                continue
+            with self.subTest(job=job["id"]):
+                cpu = float(schedules.resources_for(job)["cpu"])
+                self.assertLessEqual(cpu, self.CPUS)
+                self.assertGreater(2 * cpu, self.CPUS)
 
 
 class SweepTest(unittest.TestCase):

@@ -1224,7 +1224,7 @@
           "FORCE5_BROTLI_QUALITY"
         ],
         "resources": {
-          "cpu": "0.5",
+          "cpu": "1",
           "memory": "512Mb",
           "disk": "1Gb"
         },

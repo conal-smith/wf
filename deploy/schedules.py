@@ -70,6 +70,9 @@ DESCRIPTIONS = {
 # adapters each ran whole in the image under a 384 MB limit). Every job is
 # CPU-light, under 25 CPU seconds a run, and mostly waits on the network, so each
 # gets one CPU, which Bacalhau passes to Docker as the container's CPU limit.
+# Bacalhau is told it has one CPU (macmini.sh), so the jobs run one at a time:
+# the sweep asks for a whole CPU too, though it needs less, so it never runs
+# beside another job.
 MODEL = {"cpu": "1", "memory": "1Gb", "disk": "12Gb"}      # Peaks 290-360 MB.
 FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "12Gb"}  # Peaks of about 225 MB.
 FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}       # Peaks of 130-220 MB.
@@ -101,7 +104,7 @@ MEASURED_PEAK_MB = {
 }
 # A ceiling an edit may not go below: an OOM kill stops a model without a word.
 MIN_HEADROOM = 1.5
-SWEEP = {"cpu": "0.5", "memory": "512Mb", "disk": "1Gb"}
+SWEEP = {"cpu": "1", "memory": "512Mb", "disk": "1Gb"}
 # When the bucket sweep runs, every hour (scheduled()).
 SWEEP_MINUTES = [10]
 
@@ -116,7 +119,7 @@ def cloudflare_size(resources):
 
 
 # What `memory = "..."` in jobs.toml may say. Bacalhau is told the Colima VM's size
-# less half a GiB (macmini.sh), 2.5 GB in the recommended 3 GiB VM: a ceiling
+# less half a GiB (macmini.sh), 1.5 GB in the recommended 2 GiB VM: a ceiling
 # larger than that queues until its timeout, and `macmini.sh setup` warns of it.
 MEMORY_CHOICES = ["512Mb", "1Gb", "2Gb", "3Gb", "4Gb", "5Gb"]
 

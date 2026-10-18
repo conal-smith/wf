@@ -43,10 +43,13 @@ schedules() { "$PYTHON" -I "$WINGFOIL/deploy/schedules.py" "$@"; }
 # so Bacalhau is told the VM's size less a margin and never overcommits it. The
 # VM's memory is also what macOS gives up while Colima runs, whatever the jobs
 # use, so size the VM, not Bacalhau: `colima stop && colima start --cpu 2
-# --memory 3`, then `setup` again (README.md, "Sizing the VM"). BACALHAU_CPUS and
-# BACALHAU_MEMORY (e.g. 2Gb) advertise less than the VM instead, for a VM that
-# other containers share.
-RECOMMENDED_VM="--cpu 2 --memory 3"
+# --memory 2`, then `setup` again (README.md, "Sizing the VM").
+RECOMMENDED_VM="--cpu 2 --memory 2"
+# One job at a time: every job asks for one CPU, so Bacalhau, told it has one,
+# starts the next only when the last has finished (README.md, "One job at a
+# time"). BACALHAU_CPUS=2 lets two run at once again, in a VM with room for
+# both; BACALHAU_MEMORY (e.g. 1Gb) advertises less memory than the VM has.
+BACALHAU_DEFAULT_CPUS=1
 # The jobs get a Colima VM of their own, kept in home-compute-vm/ beside the
 # checkout: its disk grows on the drive the checkout is on, not the Mac's startup
 # disk, and no other project's containers share it. Outside the checkout, so the
@@ -155,13 +158,13 @@ write_agents() {
   need node "Install Node 22 or newer"
   mkdir -p "$AGENTS" "$LOGS"
   local cpus memory vm_gib
-  cpus="${BACALHAU_CPUS:-$(vm_field cpus)}"
+  cpus="${BACALHAU_CPUS:-$BACALHAU_DEFAULT_CPUS}"
   vm_gib="$(python3 -c "print(f'{int($(vm_field memory)) / 2**30:g}')")"
   # GiB to the VM, a half GiB left to Docker and the kernel.
   memory="${BACALHAU_MEMORY:-$(python3 -c "print(f'{$vm_gib - 0.5:g}Gb')")}"
   check_capacity "$cpus" "$memory"
-  if python3 -c "import sys; sys.exit(0 if $vm_gib > 3 else 1)"; then
-    say "Colima's VM has ${vm_gib} GiB, all of it taken from macOS while it runs; 3 is enough for the jobs."
+  if python3 -c "import sys; sys.exit(0 if $vm_gib > 2 and float('$cpus') < 2 else 1)"; then
+    say "Colima's VM has ${vm_gib} GiB, all of it taken from macOS while it runs; 2 is enough for one job at a time."
     echo "  To give the rest back: COLIMA_HOME=$COLIMA_HOME colima stop -p $COLIMA_PROFILE && COLIMA_HOME=$COLIMA_HOME colima start -p $COLIMA_PROFILE $RECOMMENDED_VM && $0 setup"
   fi
   # Starts the VM at login, and again when a drive mounts, for a checkout on an
