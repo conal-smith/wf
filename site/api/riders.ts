@@ -14,6 +14,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { requireAuth, type AuthVariables } from "../../market/api/src/auth.js";
 import {
+  profileOf,
   riderProfileInputSchema,
   type RiderProfile,
   type RiderProfileInput,
@@ -36,17 +37,16 @@ export interface RidersRepo {
 export function memoryRidersRepo(users: UsersRepo): RidersRepo {
   const kept = new Map<string, RiderProfile>();
   const get = async (id: string): Promise<RiderProfile> =>
-    structuredClone(kept.get(id) ?? { customStars: null, updatedAt: null });
+    structuredClone(
+      kept.get(id) ?? { customStars: null, keptStars: null, updatedAt: null },
+    );
   return {
     get,
     async put(id, input) {
       if (!(await users.getUser(id))) throw new Error(`No user ${id}`);
       const was = kept.get(id);
       if (!was || Date.parse(was.updatedAt!) < Date.parse(input.updatedAt))
-        kept.set(id, {
-          customStars: structuredClone(input.customStars),
-          updatedAt: new Date(input.updatedAt).toISOString(),
-        });
+        kept.set(id, structuredClone(profileOf(input)));
       return get(id);
     },
   };

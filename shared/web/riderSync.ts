@@ -1,7 +1,9 @@
 /**
  * A signed-in rider's own star rating, kept on the device (force5.prefs.v1)
  * and with their account (GET and PUT /api/me/rider), so it follows them
- * from device to device. Each copy carries the moment it was set or reset;
+ * from device to device: the rating, and whether it rates or is kept while a
+ * level does. Each copy carries the moment it was saved, deleted, or switched
+ * on or off;
  * when the two differ the newer wins, whichever side it is on, and the
  * account itself never takes a write older than what it keeps.
  *
@@ -16,7 +18,11 @@ import {
   type Prefs,
   type PrefsStorage,
 } from "../../force5/src/prefs";
-import { parseCustomRating, sameCustomRating } from "../../force5/src/stars";
+import {
+  parseCustomRating,
+  sameCustomRating,
+  type Rider,
+} from "../../force5/src/stars";
 import type { RiderProfile, RiderProfileInput } from "../../site/shared/rider";
 import { request, type ApiSettings } from "./http";
 
@@ -81,6 +87,11 @@ export type Reconciled =
 
 const time = (iso: string | null) => (iso === null ? null : Date.parse(iso));
 
+/** Whether the account's copy and the device's rate, and keep, the same. */
+const sameStars = (profile: RiderProfile, rider: Rider) =>
+  sameCustomRating(profile.customStars, rider.custom) &&
+  sameCustomRating(profile.keptStars ?? null, rider.keptCustom);
+
 /**
  * Which way a device's copy and its account's go. `account` is who is signed
  * in now: a copy last matched with another account on this device is not
@@ -95,9 +106,7 @@ export function reconcile(
   const remote = time(profile.updatedAt);
   const ours = prefs.starsAccount === null || prefs.starsAccount === account;
   if (remote !== null && (local === null || remote > local || !ours))
-    return sameCustomRating(profile.customStars, prefs.rider.custom) &&
-      remote === local &&
-      ours
+    return sameStars(profile, prefs.rider) && remote === local && ours
       ? { kind: "same" }
       : { kind: "adopt", profile };
   if (local !== null && ours && (remote === null || local > remote))
@@ -105,23 +114,33 @@ export function reconcile(
       kind: "push",
       input: {
         customStars: prefs.rider.custom ?? null,
+        keptStars: prefs.rider.keptCustom ?? null,
         updatedAt: prefs.starsUpdatedAt!,
       },
     };
   return { kind: "same" };
 }
 
-/** The account's copy, taken as this device's, and matched with that account. */
+/**
+ * The account's copy, taken as this device's, and matched with that account.
+ * An account written only by devices from before `keptStars` has none: its
+ * rating is saved and in use, or there is none.
+ */
 export function adopt(
   prefs: Prefs,
   profile: RiderProfile,
   account: string,
 ): Prefs {
-  const { custom: _was, ...rider } = prefs.rider;
+  const { custom: _was, keptCustom: _kept, ...rider } = prefs.rider;
   const custom = parseCustomRating(profile.customStars);
+  const kept = custom ? null : parseCustomRating(profile.keptStars);
   return {
     ...prefs,
-    rider: custom ? { ...rider, custom } : rider,
+    rider: custom
+      ? { ...rider, custom }
+      : kept
+        ? { ...rider, keptCustom: kept }
+        : rider,
     starsUpdatedAt: profile.updatedAt,
     starsAccount: account,
   };
@@ -175,7 +194,9 @@ export async function syncRider(
   const now = loadPrefs(storage);
   if (now.starsUpdatedAt !== before.starsUpdatedAt) return false;
   const next = adopt(now, kept, account);
-  const changed = !sameCustomRating(next.rider.custom, now.rider.custom);
+  const changed =
+    !sameCustomRating(next.rider.custom, now.rider.custom) ||
+    !sameCustomRating(next.rider.keptCustom, now.rider.keptCustom);
   savePrefs(next, storage);
   // Said even when the rating is the same: a page holding the preferences
   // in its state must not write back the stamps this round replaced.

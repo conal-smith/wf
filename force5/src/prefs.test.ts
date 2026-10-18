@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   PREFS_KEY,
+  PREFS_VERSION,
   defaultPrefs,
   loadPrefs,
   parseRider,
   rowOn,
   savePrefs,
   setRow,
+  saveRider,
   withCustomStars,
+  withStarsOn,
   type Prefs,
   type PrefsStorage,
 } from "./prefs";
@@ -242,5 +245,103 @@ describe("display preferences", () => {
         .custom!.direction.offshore,
     ).toBe(5);
     expect(load(own).starsUpdatedAt).toBeNull();
+  });
+
+  it("keeps the rider's own rating while a level rates, and goes back to it", () => {
+    const storage = fakeStorage();
+    const own = standardRating(DEFAULT_RIDER, "advanced");
+    const saved = withCustomStars(
+      defaultPrefs(),
+      own,
+      new Date("2026-10-18T10:00:00Z"),
+    );
+    // A level picked: it rates, the rating is kept, and the change stamped.
+    const level = withStarsOn(
+      saved,
+      "beginner",
+      new Date("2026-10-18T11:00:00Z"),
+    );
+    expect(level.rider).toEqual({
+      ...DEFAULT_RIDER,
+      skill: "beginner",
+      keptCustom: own,
+    });
+    expect(level.starsUpdatedAt).toBe("2026-10-18T11:00:00.000Z");
+    savePrefs(level, storage);
+    expect(JSON.parse(storage.data.get(PREFS_KEY)!).version).toBe(
+      PREFS_VERSION,
+    );
+    expect(loadPrefs(storage).rider).toEqual(level.rider);
+    // Another level: still off the rider's own, so nothing for the account.
+    const other = withStarsOn(
+      level,
+      "advanced",
+      new Date("2026-10-18T12:00:00Z"),
+    );
+    expect(other.rider.keptCustom).toEqual(own);
+    expect(other.starsUpdatedAt).toBe(level.starsUpdatedAt);
+    // Custom again: the same rating rates, the level stays as it was.
+    const back = withStarsOn(other, "custom", new Date("2026-10-18T13:00:00Z"));
+    expect(back.rider).toEqual({
+      ...DEFAULT_RIDER,
+      skill: "advanced",
+      custom: own,
+    });
+    expect(back.starsUpdatedAt).toBe("2026-10-18T13:00:00.000Z");
+    // Custom with none saved changes nothing.
+    expect(withStarsOn(defaultPrefs(), "custom").rider).toEqual(DEFAULT_RIDER);
+    // Saving makes it rate; deleting leaves neither behind.
+    const edited = standardRating(DEFAULT_RIDER, "beginner");
+    expect(withCustomStars(level, edited).rider).toEqual({
+      ...DEFAULT_RIDER,
+      skill: "beginner",
+      custom: edited,
+    });
+    const gone = withCustomStars(level, null);
+    expect("custom" in gone.rider || "keptCustom" in gone.rider).toBe(false);
+  });
+
+  it("keeps the stored rating, rating or kept, through a change of weight, level or wings", () => {
+    const own = standardRating(DEFAULT_RIDER, "advanced");
+    const storage = fakeStorage();
+    savePrefs(
+      withStarsOn(withCustomStars(defaultPrefs(), own), "beginner"),
+      storage,
+    );
+    const next = saveRider({ ...DEFAULT_RIDER, weightKg: 70 }, storage);
+    expect(next.rider).toEqual({
+      ...DEFAULT_RIDER,
+      weightKg: 70,
+      keptCustom: own,
+    });
+  });
+
+  it("reads a version 1 rider's own rating as saved and in use", () => {
+    const own = standardRating(DEFAULT_RIDER, "advanced");
+    const v1 = (rider: object) =>
+      loadPrefs(
+        fakeStorage({
+          [PREFS_KEY]: JSON.stringify({
+            rider: { ...DEFAULT_RIDER, ...rider },
+            starsUpdatedAt: "2026-10-18T10:00:00.000Z",
+          }),
+        }),
+      );
+    expect(v1({ custom: own }).rider).toEqual({
+      ...DEFAULT_RIDER,
+      custom: own,
+    });
+    // Version 1 never wrote a kept rating: one there is not read.
+    expect(v1({ keptCustom: own }).rider).toEqual(DEFAULT_RIDER);
+    // Version 2: both read, and never both at once.
+    const v2 = loadPrefs(
+      fakeStorage({
+        [PREFS_KEY]: JSON.stringify({
+          version: 2,
+          rider: { ...DEFAULT_RIDER, custom: own, keptCustom: own },
+        }),
+      }),
+    );
+    expect(v2.rider).toEqual({ ...DEFAULT_RIDER, custom: own });
   });
 });

@@ -22,6 +22,7 @@ import {
   SKILLS,
   SKILL_LABEL,
   gustLoss,
+  savedCustom,
   standardRating,
   windScore,
   type CustomRating,
@@ -149,10 +150,15 @@ const styles = tv({
 
 export interface YourStarsDialogProps {
   open: boolean;
-  /** The rider as they are: their own rating, if any, is where the dialog starts. */
+  /**
+   * The rider as they are: their own rating, rating or kept, is where the
+   * dialog starts, else their level's.
+   */
   rider: Rider;
   units: Units;
   onSave: (custom: CustomRating) => void;
+  /** Delete the rider's own rating, offered only when they have one. */
+  onDelete?: () => void;
   onClose: () => void;
 }
 
@@ -161,16 +167,18 @@ export default function YourStarsDialog({
   rider,
   units,
   onSave,
+  onDelete,
   onClose,
 }: YourStarsDialogProps) {
   const s = styles();
   const unit = unitScale(units);
   const [draft, setDraft] = useState<CustomRating>(
-    () => rider.custom ?? standardRating(rider),
+    () => savedCustom(rider) ?? standardRating(rider),
   );
+  const saved = !!savedCustom(rider);
   // Each opening starts again from what is saved: Cancel keeps nothing.
   useEffect(() => {
-    if (open) setDraft(rider.custom ?? standardRating(rider));
+    if (open) setDraft(savedCustom(rider) ?? standardRating(rider));
     // The rider is read as it was when the dialog opened.
   }, [open]);
 
@@ -188,6 +196,17 @@ export default function YourStarsDialog({
       onClose={onClose}
       actions={
         <>
+          {saved && onDelete && (
+            <Button
+              variant="link"
+              size="sm"
+              className="mr-auto"
+              onClick={onDelete}
+              data-stars-delete
+            >
+              Delete
+            </Button>
+          )}
           <Button variant="pill" onClick={onClose}>
             Cancel
           </Button>

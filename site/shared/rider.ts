@@ -15,17 +15,35 @@ import {
  * device: for now their own star rating. GET and PUT /api/me/rider.
  */
 export interface RiderProfile {
-  /** Null when the rider rates on their level, or reset their own rating. */
+  /**
+   * The rider's own rating while it rates; null while a level rates, or when
+   * they have none. A device from before `keptStars` reads only this, which
+   * is what it should rate with.
+   */
   customStars: CustomRating | null;
-  /** When the rating was last set or reset, on whichever device; null if never. */
+  /** Their own rating, kept while a level rates in its place; null otherwise. Never both. */
+  keptStars: CustomRating | null;
+  /** When the rating was last saved or deleted, or switched on or off, on whichever device; null if never. */
   updatedAt: string | null;
 }
 
-/** PUT /api/me/rider: kept only when it is newer than what the account has. */
+/**
+ * PUT /api/me/rider: kept only when it is newer than what the account has. A
+ * device from before `keptStars` sends none: its `customStars` is then saved
+ * and in use, or with null, deleted, as it meant.
+ */
 export interface RiderProfileInput {
   customStars: CustomRating | null;
+  keptStars?: CustomRating | null;
   updatedAt: string;
 }
+
+/** What the account keeps of an input: never a kept rating beside one that rates. */
+export const profileOf = (input: RiderProfileInput): RiderProfile => ({
+  customStars: input.customStars,
+  keptStars: input.customStars ? null : (input.keptStars ?? null),
+  updatedAt: new Date(input.updatedAt).toISOString(),
+});
 
 /**
  * A rider's own star rating, wherever the API is sent one: the shape is
@@ -45,5 +63,6 @@ export const customRatingSchema = z.unknown().transform((value, ctx) => {
 /** PUT /api/me/rider. */
 export const riderProfileInputSchema = z.object({
   customStars: customRatingSchema.nullable(),
+  keptStars: customRatingSchema.nullable().optional(),
   updatedAt: z.iso.datetime({ offset: true }),
 });

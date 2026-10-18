@@ -10,8 +10,10 @@ import {
   MIN_WING_M2,
   SKILLS,
   parseCustomRating,
+  rateOn,
   type CustomRating,
   type Rider,
+  type StarsOn,
 } from "./stars";
 
 export type RowKey =
@@ -49,12 +51,16 @@ export interface Prefs {
   /** Models feeding the blend, separate from the single map model. */
   blendModels: string[];
   view: ForecastView;
-  /** Who the stars are rated for: weight, level, the wings they own, and their own star rating. */
+  /**
+   * Who the stars are rated for: weight, level, the wings they own, and their
+   * own star rating, rating or kept (stars.ts `Rider`).
+   */
   rider: Rider;
   /**
-   * When the rider last set or reset their own star rating on this device,
-   * ISO; null if never. A signed-in rider's device and account copies are
-   * compared on it, the newer winning (shared/web/riderSync.ts).
+   * When the rider last saved or deleted their own star rating on this
+   * device, or went on or off it, ISO; null if never. A signed-in rider's
+   * device and account copies are compared on it, the newer winning
+   * (shared/web/riderSync.ts).
    */
   starsUpdatedAt: string | null;
   /** The account this device's star rating was last matched with; null if none. */
@@ -83,6 +89,17 @@ export const ROW_KEYS: readonly RowKey[] = [
 ];
 export const VIEWS: readonly ForecastView[] = ["table", "blend", "candles"];
 export const PREFS_KEY = "force5.prefs.v1";
+/**
+ * The shape stored under PREFS_KEY, written with it as `version`.
+ *   1 (no `version`)  `rider.custom` was the rider's own star rating, always
+ *                     in use while it was there
+ *   2                 the rider's own rating may also be kept while a level
+ *                     rates (`rider.keptCustom`)
+ * A version 1 rider's `custom` is theirs saved and in use, as it is read in
+ * version 2, so it comes over as it is and only a `keptCustom` it never
+ * wrote is left out.
+ */
+export const PREFS_VERSION = 2;
 
 /**
  * Per-model wind and gust rows start off: the blend replaces them by default.
@@ -129,8 +146,9 @@ export const defaultPrefs = (): Prefs => ({
 });
 
 /**
- * The rider's own star rating set, or reset with null, and stamped now: the
- * one way a device changes it, so the stamp the account compares is always
+ * The rider's own star rating saved, and rating from now on; or deleted with
+ * null, and the level rates. Stamped now, as `withStarsOn` is: the two ways a
+ * device changes what the account keeps, so the stamp it compares is always
  * the moment of the change.
  */
 export function withCustomStars(
@@ -138,16 +156,36 @@ export function withCustomStars(
   custom: CustomRating | null,
   now: Date = new Date(),
 ): Prefs {
-  const { custom: _old, ...rider } = prefs.rider;
-  return {
-    ...prefs,
-    rider: custom ? { ...rider, custom } : rider,
-    starsUpdatedAt: now.toISOString(),
-    // Made on this device: it is whoever is signed in's to keep, and the
-    // sync marks it as theirs once their account has it.
-    starsAccount: null,
-  };
+  const { custom: _old, keptCustom: _kept, ...rider } = prefs.rider;
+  return stamped(
+    { ...prefs, rider: custom ? { ...rider, custom } : rider },
+    now,
+  );
 }
+
+/**
+ * The level pill: rated on a level, or on the rider's own rating ("custom"),
+ * which is kept either way. Stamped only when the rider goes on or off their
+ * own rating, which the account keeps; a level alone is this device's.
+ */
+export function withStarsOn(
+  prefs: Prefs,
+  on: StarsOn,
+  now: Date = new Date(),
+): Prefs {
+  const next = { ...prefs, rider: rateOn(prefs.rider, on) };
+  return !!next.rider.custom === !!prefs.rider.custom
+    ? next
+    : stamped(next, now);
+}
+
+const stamped = (prefs: Prefs, now: Date): Prefs => ({
+  ...prefs,
+  starsUpdatedAt: now.toISOString(),
+  // Made on this device: it is whoever is signed in's to keep, and the
+  // sync marks it as theirs once their account has it.
+  starsAccount: null,
+});
 
 const isoOrNull = (value: unknown): string | null =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
@@ -203,9 +241,10 @@ function mergeRows(value: unknown, defaults: Record<RowKey, boolean>) {
 /**
  * A stored rider, field by field: a weight or a wing outside what a person or a
  * wing can be is dropped rather than rated, and a missing weight stays missing so
- * the dock can say the stars assume the estimate. A custom star rating goes
- * through its own validation (stars.ts `parseCustomRating`); one that does not
- * pass, or was stored in another version, is left out and the level rates.
+ * the dock can say the stars assume the estimate. A custom star rating, rating
+ * or kept, goes through its own validation (stars.ts `parseCustomRating`); one
+ * that does not pass, or was stored in another version, is left out and the
+ * level rates. Given both, the one rating wins and the kept one is dropped.
  */
 export function parseRider(value: unknown): Rider {
   if (!value || typeof value !== "object") return DEFAULT_RIDER;
@@ -232,12 +271,19 @@ export function parseRider(value: unknown): Rider {
         ),
       ),
     ].sort((a, b) => a - b),
-    ...withCustom(parseCustomRating(raw.custom)),
+    ...withCustom(
+      parseCustomRating(raw.custom),
+      parseCustomRating(raw.keptCustom),
+    ),
   };
 }
 
-/** A rider carries `custom` only when there is one, so a standard rider stays as it always was. */
-const withCustom = (custom: Rider["custom"]) => (custom ? { custom } : {});
+/** A rider carries `custom` or `keptCustom` only when there is one, so a standard rider stays as it always was. */
+const withCustom = (
+  custom: CustomRating | null,
+  kept: CustomRating | null,
+): Pick<Rider, "custom" | "keptCustom"> =>
+  custom ? { custom } : kept ? { keptCustom: kept } : {};
 
 /** Stored preferences merged over the defaults; anything invalid is ignored. */
 export function loadPrefs(
@@ -254,8 +300,16 @@ export function loadPrefs(
   try {
     const stored = JSON.parse(raw) as Partial<Prefs> & {
       blendKnown?: unknown;
+      version?: unknown;
     };
     if (!stored || typeof stored !== "object") return defaults;
+    // Version 1 never kept a rating aside: its `custom` is saved and in use.
+    const rider =
+      stored.version === PREFS_VERSION ||
+      !stored.rider ||
+      typeof stored.rider !== "object"
+        ? stored.rider
+        : { ...stored.rider, keptCustom: undefined };
     // The models there were to choose from when the list was saved. One that
     // has been published since is not one the reader left out: it joins the
     // blend as it would for anyone else. A list saved before this was recorded
@@ -281,7 +335,7 @@ export function loadPrefs(
         stored.view && VIEWS.includes(stored.view)
           ? stored.view
           : defaults.view,
-      rider: parseRider(stored.rider),
+      rider: parseRider(rider),
       starsUpdatedAt: isoOrNull(stored.starsUpdatedAt),
       starsAccount:
         typeof stored.starsAccount === "string" ? stored.starsAccount : null,
@@ -301,6 +355,7 @@ export function savePrefs(
       PREFS_KEY,
       JSON.stringify({
         ...prefs,
+        version: PREFS_VERSION,
         blendKnown: windModels().map((model) => model.id),
       }),
     );
@@ -313,20 +368,24 @@ export function savePrefs(
 /**
  * A change of weight, level or wings, saved over what is stored now, so a
  * change made in another tab or adopted from the account is not undone. The
- * rider's own star rating is the stored one: it changes only through
- * `withCustomStars`.
+ * rider's own star rating, rating or kept, is the stored one: it changes only
+ * through `withCustomStars` and `withStarsOn`.
  */
 export function saveRider(
   rider: Rider,
   storage: PrefsStorage | null = browserStorage(),
 ): Prefs {
   const stored = loadPrefs(storage);
-  const { custom: _ignored, ...fields } = rider;
+  const { custom: _ignored, keptCustom: _kept, ...fields } = rider;
   const next: Prefs = {
     ...stored,
-    rider: stored.rider.custom
-      ? { ...fields, custom: stored.rider.custom }
-      : fields,
+    rider: {
+      ...fields,
+      ...(stored.rider.custom ? { custom: stored.rider.custom } : {}),
+      ...(stored.rider.keptCustom
+        ? { keptCustom: stored.rider.keptCustom }
+        : {}),
+    },
   };
   savePrefs(next, storage);
   return next;

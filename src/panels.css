@@ -256,36 +256,27 @@
   font-style: italic;
   color: var(--color-ink-muted);
 }
-/* The rider's star rating: the level's, or their own, and the way to change it. */
-.rider-stars {
+/* The level, or the rider's own stars, and under it the way to make or
+   change their own. */
+.rider-level {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
-.rider-stars-what {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 12px;
+/* Four choices once the rider has their own stars: the capsule takes the
+   panel's width and its words sit closer, so Custom fits beside Advanced. */
+.rider-level .filter-units {
+  align-self: stretch;
+  margin-top: 0;
 }
-.rider-stars-name {
-  flex: none;
-  min-width: 96px;
-  font: 500 10px var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.rider-stars-value {
-  font: 14px var(--font-body);
-  color: var(--color-ink);
-}
-.rider-stars-acts {
-  display: inline-flex;
-  gap: 12px;
+.rider-level .filter-units button {
+  flex: 1 1 auto;
+  padding: 5px 4px;
+  letter-spacing: 0.03em;
 }
 /* The kit's link, in the words' own face, as the settings' links are drawn. */
-.rider-stars-acts button {
+.rider-customise {
   font: 14px var(--font-body);
   letter-spacing: 0;
   text-transform: none;

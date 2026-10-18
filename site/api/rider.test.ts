@@ -58,6 +58,7 @@ function contract(
     it("keeps nothing until the rider sets something", async () => {
       expect(await riders.get(await someone())).toEqual({
         customStars: null,
+        keptStars: null,
         updatedAt: null,
       });
     });
@@ -66,7 +67,7 @@ function contract(
       const id = await someone();
       const at = "2026-10-18T10:00:00.000Z";
       expect(await riders.put(id, { customStars: OWN, updatedAt: at })).toEqual(
-        { customStars: OWN, updatedAt: at },
+        { customStars: OWN, keptStars: null, updatedAt: at },
       );
       const reset = "2026-10-18T11:00:00.000Z";
       expect(
@@ -74,9 +75,10 @@ function contract(
           customStars: null,
           updatedAt: reset,
         }),
-      ).toEqual({ customStars: null, updatedAt: reset });
+      ).toEqual({ customStars: null, keptStars: null, updatedAt: reset });
       expect(await riders.get(id)).toEqual({
         customStars: null,
+        keptStars: null,
         updatedAt: reset,
       });
     });
@@ -93,6 +95,7 @@ function contract(
       });
       expect(stale).toEqual({
         customStars: OWN,
+        keptStars: null,
         updatedAt: "2026-10-18T12:00:00.000Z",
       });
       // The same moment again is not newer either.
@@ -104,6 +107,49 @@ function contract(
           })
         ).customStars,
       ).toEqual(OWN);
+    });
+
+    it("keeps a rating aside while a level rates, and a write from before that as it meant", async () => {
+      const id = await someone();
+      expect(
+        await riders.put(id, {
+          customStars: null,
+          keptStars: OWN,
+          updatedAt: "2026-10-18T10:00:00.000Z",
+        }),
+      ).toEqual({
+        customStars: null,
+        keptStars: OWN,
+        updatedAt: "2026-10-18T10:00:00.000Z",
+      });
+      // Never both: the one that rates wins.
+      expect(
+        await riders.put(id, {
+          customStars: OTHER,
+          keptStars: OWN,
+          updatedAt: "2026-10-18T11:00:00.000Z",
+        }),
+      ).toEqual({
+        customStars: OTHER,
+        keptStars: null,
+        updatedAt: "2026-10-18T11:00:00.000Z",
+      });
+      // An older device knows only `customStars`: its null deletes what is kept.
+      await riders.put(id, {
+        customStars: null,
+        keptStars: OWN,
+        updatedAt: "2026-10-18T12:00:00.000Z",
+      });
+      expect(
+        await riders.put(id, {
+          customStars: null,
+          updatedAt: "2026-10-18T13:00:00.000Z",
+        }),
+      ).toEqual({
+        customStars: null,
+        keptStars: null,
+        updatedAt: "2026-10-18T13:00:00.000Z",
+      });
     });
 
     it("keeps each rider's own", async () => {
@@ -213,7 +259,7 @@ describe("GET and PUT /api/me/rider", () => {
     const res = await call("GET", undefined, "niamh");
     expect(res).toEqual({
       status: 200,
-      body: { customStars: null, updatedAt: null },
+      body: { customStars: null, keptStars: null, updatedAt: null },
     });
     expect(await users.getUser("dev_niamh")).not.toBeNull();
   });
@@ -226,6 +272,7 @@ describe("GET and PUT /api/me/rider", () => {
     expect(put.status).toBe(200);
     expect(put.body as RiderProfile).toEqual({
       customStars: OWN,
+      keptStars: null,
       updatedAt: "2026-10-18T10:00:00.000Z",
     });
     const older = await call("PUT", {

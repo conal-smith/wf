@@ -1252,7 +1252,12 @@ export default function App() {
                       close();
                       openStars();
                     }}
-                    onResetStars={() => setCustomStars(null)}
+                    onStarsOn={(next) => {
+                      changePrefs(next);
+                      // On or off the rider's own: the account keeps that.
+                      if (next.starsUpdatedAt !== prefs.starsUpdatedAt)
+                        announcePrefs("device");
+                    }}
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
@@ -1409,6 +1414,10 @@ export default function App() {
             onClose={() => setStarsOpen(false)}
             onSave={(custom) => {
               setCustomStars(custom);
+              setStarsOpen(false);
+            }}
+            onDelete={() => {
+              setCustomStars(null);
               setStarsOpen(false);
             }}
           />

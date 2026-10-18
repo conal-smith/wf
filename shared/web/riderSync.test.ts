@@ -5,6 +5,7 @@ import {
   loadPrefs,
   savePrefs,
   withCustomStars,
+  withStarsOn,
   type Prefs,
 } from "../../force5/src/prefs";
 import {
@@ -38,6 +39,7 @@ const kept = (
   at: number | null,
 ): RiderProfile => ({
   customStars: custom,
+  keptStars: null,
   updatedAt: at === null ? null : T(at),
 });
 
@@ -50,7 +52,7 @@ describe("which copy wins", () => {
   it("sends the device's when the account has none, or an older one", () => {
     expect(reconcile(device(OWN, 10), kept(null, null), "a")).toEqual({
       kind: "push",
-      input: { customStars: OWN, updatedAt: T(10) },
+      input: { customStars: OWN, keptStars: null, updatedAt: T(10) },
     });
     expect(reconcile(device(OWN, 10, "a"), kept(OTHER, 9), "a").kind).toBe(
       "push",
@@ -58,7 +60,7 @@ describe("which copy wins", () => {
     // A reset on the device is newer news too.
     expect(reconcile(device(null, 11, "a"), kept(OWN, 10), "a")).toEqual({
       kind: "push",
-      input: { customStars: null, updatedAt: T(11) },
+      input: { customStars: null, keptStars: null, updatedAt: T(11) },
     });
   });
   it("takes the account's when it is newer, or the device has none", () => {
@@ -98,7 +100,7 @@ function fakes(prefs: Prefs, profile: RiderProfile) {
     put: async (input) => {
       sent.push(input);
       if (account.updatedAt === null || input.updatedAt > account.updatedAt)
-        account = { ...input };
+        account = { ...input, keptStars: input.keptStars ?? null };
       return account;
     },
   };
@@ -168,5 +170,39 @@ describe("a round of sync", () => {
     await syncRider(f.api, "b", f.storage);
     expect(f.account().customStars).toEqual(OTHER);
     expect(loadPrefs(f.storage).starsAccount).toBe("b");
+  });
+  it("carries a rating kept while a level rates, and back on again", async () => {
+    // Off on this device: the account keeps it aside, not rating.
+    const off = withStarsOn(device(OWN, 10, "a"), "beginner", new Date(T(11)));
+    const f = fakes(off, kept(OWN, 10));
+    await syncRider(f.api, "a", f.storage);
+    expect(f.sent).toEqual([
+      { customStars: null, keptStars: OWN, updatedAt: T(11) },
+    ]);
+    // Another device takes it as kept, on its own level.
+    const g = fakes(device(null, null), f.account());
+    expect(await syncRider(g.api, "a", g.storage)).toBe(true);
+    expect(loadPrefs(g.storage).rider).toEqual({
+      ...DEFAULT_RIDER,
+      keptCustom: OWN,
+    });
+    // On again there, and so on the account.
+    savePrefs(
+      withStarsOn(loadPrefs(g.storage), "custom", new Date(T(12))),
+      g.storage,
+    );
+    await syncRider(g.api, "a", g.storage);
+    expect(g.account()).toMatchObject({ customStars: OWN, keptStars: null });
+  });
+  it("reads an account written before kept ratings as saved and in use", async () => {
+    const before = { customStars: OWN, updatedAt: T(10) } as RiderProfile;
+    const f = fakes(device(null, null), before);
+    await syncRider(f.api, "a", f.storage);
+    expect(loadPrefs(f.storage).rider).toEqual({
+      ...DEFAULT_RIDER,
+      custom: OWN,
+    });
+    // And agrees with it afterwards, with nothing to send.
+    expect(reconcile(loadPrefs(f.storage), before, "a").kind).toBe("same");
   });
 });

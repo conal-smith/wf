@@ -3,7 +3,7 @@ import { expect, rememberSpot, test, type Page } from "./fixtures";
 /**
  * "Your star rating" (spot/web/YourStarsDialog.tsx): opened from Display
  * options, set with the keyboard as well as the pointer, saved to the rider
- * the whole site rates for, and reset.
+ * the whole site rates for, kept while a level rates, and deleted.
  */
 
 async function openMap(page: Page, width = 1440, height = 1000) {
@@ -19,12 +19,15 @@ const options = (page: Page) =>
   page.getByRole("button", { name: "Display options", exact: true });
 const dialog = (page: Page) =>
   page.getByRole("dialog", { name: "Your star rating" });
+const levels = (page: Page) =>
+  page.getByRole("group", { name: "Riding level" });
+const customise = (page: Page) => page.locator("[data-customise-stars]");
 const stars = (page: Page) =>
   page
     .locator(".dock tr.tt-stars td[data-i]")
     .evaluateAll((cells) => cells.map((cell) => cell.innerHTML).join("|"));
 
-test("a rider sets their own stars, which the dock then rates with, and resets them", async ({
+test("a rider sets their own stars, which the dock then rates with, keeps them while a level rates, and deletes them", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -36,12 +39,28 @@ test("a rider sets their own stars, which the dock then rates with, and resets t
   const before = await stars(page);
 
   await options(page).click();
-  const row = page.locator("[data-star-rating]");
-  await expect(row).toContainText("Standard for Riding");
-  await row.getByRole("button", { name: "Customise" }).click();
+  // The three levels, Riding pressed, and no Custom until there is one.
+  await expect(levels(page).getByRole("button")).toHaveText([
+    "Learning",
+    "Riding",
+    "Advanced",
+  ]);
+  await expect(
+    levels(page).getByRole("button", { name: "Riding" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-star-rating]")).toHaveCount(0);
+  await expect(customise(page)).toHaveText("Customise");
+  await customise(page).click();
   const box = dialog(page);
   await expect(box).toBeVisible();
 
+  // Started from the level picked, with nothing to delete.
+  await expect(
+    box
+      .getByRole("group", { name: "Start from" })
+      .getByRole("button", { name: "Riding" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(box.getByRole("button", { name: "Delete" })).toHaveCount(0);
   // The handles, from the keyboard: a knot a step, and a knot apart.
   const min = box.getByRole("slider", { name: "Minimum wind speed" });
   await expect(min).toHaveAttribute("aria-valuetext", "11 kn");
@@ -95,8 +114,11 @@ test("a rider sets their own stars, which the dock then rates with, and resets t
   await box.getByRole("button", { name: "Save" }).click();
   await expect(box).toBeHidden();
   await expect.poll(() => stars(page)).not.toBe(before);
+  const own = await stars(page);
   await options(page).click();
-  await expect(row).toContainText("Custom");
+  const custom = levels(page).getByRole("button", { name: "Custom" });
+  await expect(custom).toHaveAttribute("aria-pressed", "true");
+  await expect(customise(page)).toHaveText("Edit custom");
   await options(page).click();
 
   // The dock's chip says so, and opens the dialog on what was saved.
@@ -112,17 +134,44 @@ test("a rider sets their own stars, which the dock then rates with, and resets t
   await expect(min).toHaveAttribute("aria-valuetext", "13 kn");
   await box.getByRole("button", { name: "Close" }).click();
 
-  // Kept on reload, and reset from the settings.
+  // Kept on reload.
   await page.reload();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
     timeout: 30000,
   });
   await expect(chip).toBeVisible();
+
+  // A level picked: it rates, and the rider's own is kept to go back to.
   await options(page).click();
-  await row.getByRole("button", { name: "Reset" }).click();
-  await expect(row).toContainText("Standard for Riding");
+  await levels(page).getByRole("button", { name: "Riding" }).click();
+  await expect(custom).toHaveAttribute("aria-pressed", "false");
+  await expect(customise(page)).toHaveText("Edit custom");
   await expect(chip).toHaveCount(0);
   await expect.poll(() => stars(page)).toBe(before);
+  // "Edit custom" opens what was kept, not the level.
+  await customise(page).click();
+  await expect(min).toHaveAttribute("aria-valuetext", "13 kn");
+  await box.getByRole("button", { name: "Cancel" }).click();
+  await options(page).click();
+  await custom.click();
+  await expect(custom).toHaveAttribute("aria-pressed", "true");
+  await expect(chip).toBeVisible();
+  await expect.poll(() => stars(page)).toBe(own);
+
+  // Deleted from the dialog: no Custom to pick, and the level rates.
+  await customise(page).click();
+  await box.getByRole("button", { name: "Delete" }).click();
+  await expect(box).toBeHidden();
+  await expect(chip).toHaveCount(0);
+  await expect.poll(() => stars(page)).toBe(before);
+  await options(page).click();
+  await expect(custom).toHaveCount(0);
+  await expect(customise(page)).toHaveText("Customise");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("force5.prefs.v1")!).rider,
+    ),
+  ).not.toHaveProperty("keptCustom");
   expect(errors).toEqual([]);
 });
 
@@ -132,10 +181,7 @@ test("the dialog speaks the rider's unit and keeps knots", async ({ page }) => {
   );
   await openMap(page);
   await options(page).click();
-  await page
-    .locator("[data-star-rating]")
-    .getByRole("button", { name: "Customise" })
-    .click();
+  await customise(page).click();
   const box = dialog(page);
   const max = box.getByRole("slider", { name: "Maximum wind speed" });
   // 30 kn is 34.5 mph, shown whole.
@@ -161,10 +207,7 @@ test("on a phone the dialog fits the width, and the web drags", async ({
 }) => {
   await openMap(page, 390, 844);
   await options(page).click();
-  await page
-    .locator("[data-star-rating]")
-    .getByRole("button", { name: "Customise" })
-    .click();
+  await customise(page).click();
   const box = dialog(page);
   await expect(box).toBeVisible();
   const wide = await box.evaluate((el) => el.scrollWidth - el.clientWidth);
@@ -189,10 +232,7 @@ test("on a phone a finger scrolls the page over the web and the grid, unless it 
 }) => {
   await openMap(page, 390, 844);
   await options(page).click();
-  await page
-    .locator("[data-star-rating]")
-    .getByRole("button", { name: "Customise" })
-    .click();
+  await customise(page).click();
   const box = dialog(page);
   const web = box.locator("[data-direction-web]");
   await web.scrollIntoViewIfNeeded();

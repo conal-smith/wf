@@ -11,10 +11,14 @@ import {
   parseCustomRating,
   pickWing,
   rateHour,
+  rateOn,
+  ratedRider,
   rideableWind,
   sameCustomRating,
+  savedCustom,
   shoreAngle,
   standardRating,
+  starsOn,
   starsText,
   windBand,
   windScore,
@@ -631,5 +635,38 @@ describe("noStarsWhy", () => {
     expect(noStarsWhy({ session: "offshore" })).toBe("offshore");
     expect(noStarsWhy({ session: "pump" })).toBeNull();
     expect(noStarsWhy({ session: "cruising" })).toBeNull();
+  });
+});
+
+describe("a rider's own rating, rating or kept", () => {
+  const own = standardRating(DEFAULT_RIDER, "advanced");
+  const onOwn: Rider = { ...DEFAULT_RIDER, custom: own };
+  it("goes to a level and back, keeping the rating", () => {
+    const level = rateOn(onOwn, "beginner");
+    expect(level).toEqual({
+      ...DEFAULT_RIDER,
+      skill: "beginner",
+      keptCustom: own,
+    });
+    expect(starsOn(level)).toBe("beginner");
+    expect(savedCustom(level)).toEqual(own);
+    // Rated as the level, not as the rating kept.
+    expect(windBand(level)).toEqual(
+      windBand({ ...DEFAULT_RIDER, skill: "beginner" }),
+    );
+    const back = rateOn(level, "custom");
+    expect(back).toEqual({ ...DEFAULT_RIDER, skill: "beginner", custom: own });
+    expect(starsOn(back)).toBe("custom");
+  });
+  it("has no custom to go to without one", () => {
+    expect(rateOn(DEFAULT_RIDER, "custom")).toEqual(DEFAULT_RIDER);
+    expect(savedCustom(DEFAULT_RIDER)).toBeNull();
+  });
+  it("hands a server only the rating in use", () => {
+    expect(ratedRider(rateOn(onOwn, "beginner"))).toEqual({
+      ...DEFAULT_RIDER,
+      skill: "beginner",
+    });
+    expect(ratedRider(onOwn)).toEqual(onOwn);
   });
 });

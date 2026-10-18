@@ -118,12 +118,13 @@ Learning: 12g20 1, 15g22 3, 15g27 1, 18g24 4, 18g27 2, 22g32 0. Advanced:
 
 ### A rider's own rating (`CustomRating`)
 
-A rider can set their own stars ("Star rating" in Display options, or the
-"Custom stars" chip in the dock): the four wind handles, the gust curve and the
-stars each direction takes off, starting from a level. The app has the same
-dialog as a screen of its own (`mobile/src/features/stars`), from the Star
-rating row in More › Rider and the chip in the dock and on a spot's page, on
-the site's arithmetic (`spot/web/yourStars.ts`).
+A rider can set their own stars ("Customise" or "Edit custom" under the level
+pill in Display options, or the "Custom stars" chip in the dock): the four
+wind handles, the gust curve and the stars each direction takes off, starting
+from a level. The app has the same dialog as a screen of its own
+(`mobile/src/features/stars`), from the same link under the pill in More ›
+Rider and the chip in the dock, on the site's arithmetic
+(`spot/web/yourStars.ts`).
 
 ```ts
 { version: 1, base: Skill,
@@ -245,13 +246,22 @@ Weight, level, wings and any custom rating live in the display preferences
 custom rating goes through `parseCustomRating`. Until a weight is given the
 stars assume 80 kg, and the row label says `~80 kg` so it is obvious.
 
-A rider's own rating is set and reset through `withCustomStars`, which stamps
-the moment (`starsUpdatedAt`). For a signed-in rider it is also kept with
+A rider's own rating is saved, which puts it in use, or deleted through
+`withCustomStars`. The level pill (Learning, Riding, Advanced, and Custom once
+there is a rating of their own) goes through `withStarsOn`: picking a level
+keeps the rating aside (`rider.keptCustom`) so Custom can be picked again, and
+only the rating in use (`rider.custom`) rates, here, in the alerts and in
+Gust. Both stamp the moment the rating is saved, deleted, or goes on or off
+(`starsUpdatedAt`). Preferences from before the kept rating (no `version`, or
+version 1) read a rider's `custom` as saved and in use. For a signed-in rider it is also kept with
 their account (`GET`/`PUT /api/me/rider`, `site/api/riders.ts`, the
 `rider_profiles` table), so it follows them across devices:
 `shared/web/riderSync.ts` compares the device's copy with the account's when
 the page knows who is signed in and after every change on the device, and the
-newer wins, a reset included. A copy last matched with another account on a
+newer wins, a deletion included. The account keeps the rating in use as
+`customStars` and one kept aside as `keptStars`, so a device from before the
+kept rating reads only what it should rate with, and its `PUT` without
+`keptStars` means what it meant then: saved and in use, or deleted. A copy last matched with another account on a
 shared device is never sent to the next one who signs in. The community and
 the marketplace run it inside their sign-in; the map and the spot pages load
 it on their own (`shared/web/AccountRider.tsx`), only on a device that has
@@ -262,7 +272,8 @@ with the rest of the rider when the phone registers.
 ## In the dock
 
 - The **stars** are the dock's first row, over wind, direction, wing and tide,
-  for every hour of the fortnight's strip. Hover or tap them for the chart's
+  for every hour of the fortnight's strip, and over the chart in the Blend
+  view, rated from the same hours as the map's lights. Hover or tap them for the chart's
   box with the session, the shore, the wing and every reason a star came off
   (`ui/RatingTip.tsx`, the same card as the spot page's); the "?" beside the
   row leads to [How the stars work](/stars).

@@ -1,20 +1,30 @@
 /**
- * Who the stars are rated for, in one line: the level as three choices, and
+ * Who the stars are rated for, in one line: the level as three choices, a
+ * fourth for the rider's own stars once they have them, and
  * the weight and wings behind a fold that opens in place. The same rider as
  * the dock's Display options, read and written through the same preference
  * (force5.prefs.v1) and the same validation, so a change here is the rider the
  * map rates for too.
  */
 import { useId, useState } from "react";
-import { parseRider } from "../../force5/src/prefs";
+import {
+  loadPrefs,
+  parseRider,
+  savePrefs,
+  withStarsOn,
+} from "../../force5/src/prefs";
 import {
   ESTIMATE_WEIGHT_KG,
   MAX_WEIGHT_KG,
   MIN_WEIGHT_KG,
+  SKILLS,
   SKILL_LABEL,
+  savedCustom,
+  starsOn,
   type Rider,
-  type Skill,
+  type StarsOn,
 } from "../../force5/src/stars";
+import { announcePrefs } from "../../shared/web/riderSync";
 import { Kicker, Segmented, TextInput } from "../../ui";
 import { MONO_LABEL, RING, tv } from "../../ui/tv";
 
@@ -65,20 +75,34 @@ export function RiderSwitch({
   const [wings, setWings] = useState(rider.wings.join(", "));
   const set = (change: Partial<Rider>) =>
     onChange(parseRider({ ...rider, ...change }));
+  // A level, or the rider's own stars: kept as Display options keep it, and
+  // told to the account when it goes on or off their own.
+  const choose = (on: StarsOn) => {
+    const before = loadPrefs();
+    const next = withStarsOn(before, on);
+    savePrefs(next);
+    if (next.starsUpdatedAt !== before.starsUpdatedAt) announcePrefs("device");
+    onChange(next.rider);
+  };
   return (
     <div className={s.base()} role="group" aria-labelledby={`${panel}-for`}>
       <div className={s.line()}>
         <Kicker as="span" id={`${panel}-for`} className={s.kicker()}>
           Rated for
         </Kicker>
-        <Segmented
+        <Segmented<StarsOn>
           aria-label="Riding level"
-          value={rider.skill}
-          onChange={(skill) => set({ skill })}
-          options={(Object.keys(SKILL_LABEL) as Skill[]).map((skill) => ({
-            value: skill,
-            label: SKILL_LABEL[skill],
-          }))}
+          value={starsOn(rider)}
+          onChange={choose}
+          options={[
+            ...SKILLS.map((skill) => ({
+              value: skill as StarsOn,
+              label: SKILL_LABEL[skill],
+            })),
+            ...(savedCustom(rider)
+              ? [{ value: "custom" as StarsOn, label: "Custom" }]
+              : []),
+          ]}
         />
         <button
           type="button"

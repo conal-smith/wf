@@ -88,8 +88,48 @@ export interface Rider {
   skill: Skill;
   /** Wing sizes the rider owns, in square metres; empty means "recommend one". */
   wings: number[];
-  /** The rider's own star rating, in place of the level's; absent for the standard one. */
+  /** The rider's own star rating while it rates, in place of the level's; absent while a level rates. */
   custom?: CustomRating | null;
+  /**
+   * The rider's own star rating, kept while a level rates in its place, so
+   * they can go back to it. Absent when they have none, and while it rates
+   * (then it is `custom`): the two are never both set.
+   */
+  keptCustom?: CustomRating | null;
+}
+
+/** The rider's own star rating, whether it rates now or is kept: null when they have none. */
+export const savedCustom = (rider: Rider): CustomRating | null =>
+  rider.custom ?? rider.keptCustom ?? null;
+
+/** What the stars are rated on: one of the levels, or the rider's own rating. */
+export type StarsOn = Skill | "custom";
+
+/** The level, or "custom" while the rider's own rating rates. */
+export const starsOn = (rider: Rider): StarsOn =>
+  rider.custom ? "custom" : rider.skill;
+
+/**
+ * The rider rated on a level, or on their own rating ("custom", when they
+ * have one), their own rating kept either way: the level pill's four choices.
+ */
+export function rateOn(rider: Rider, on: StarsOn): Rider {
+  const { custom: _custom, keptCustom: _kept, ...fields } = rider;
+  const saved = savedCustom(rider);
+  if (on === "custom")
+    return saved ? { ...fields, custom: saved } : { ...fields };
+  return saved
+    ? { ...fields, skill: on, keptCustom: saved }
+    : { ...fields, skill: on };
+}
+
+/**
+ * The rider as a rating, or another server, reads one: the rating in use and
+ * nothing kept beside it.
+ */
+export function ratedRider(rider: Rider): Rider {
+  const { keptCustom: _kept, ...rated } = rider;
+  return rated;
 }
 
 /** The rider every estimate assumes until the reader says otherwise. */
@@ -265,7 +305,7 @@ export function standardRating(
   rider: Rider,
   skill: Skill = rider.skill,
 ): CustomRating {
-  const standard: Rider = { ...rider, skill, custom: null };
+  const standard: Rider = { ...rider, skill, custom: null, keptCustom: null };
   return normalCustomRating({
     version: CUSTOM_RATING_VERSION,
     base: skill,

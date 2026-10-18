@@ -175,7 +175,8 @@ you are in. Every write route answers 403 `suspended` while the caller's
 It also serves `GET /api/me/rider` and `PUT /api/me/rider`
 (`site/api/riders.ts`): what the account keeps of the rider so it follows
 them across devices, for now their own star rating, `{ customStars,
-updatedAt }`, in the `rider_profiles` table (migration 0005). A `PUT` is kept
+keptStars, updatedAt }` (the rating in use, and one kept aside while a level
+rates), in the `rider_profiles` table (migrations 0005 and 0006). A `PUT` is kept
 only when its `updatedAt` is newer than the stored one, and none is taken as
 newer than the moment it arrives; the answer is what is kept after. These two
 are not behind a suspension: nobody else sees them.

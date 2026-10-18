@@ -4,7 +4,7 @@ import {
   modelHue,
   type ModelAvailability,
 } from "../force5/src/manifests";
-import { parseRider, type Prefs } from "../force5/src/prefs";
+import { parseRider, withStarsOn, type Prefs } from "../force5/src/prefs";
 import { UNITS, type Units } from "../force5/src/units";
 import {
   ESTIMATE_WEIGHT_KG,
@@ -12,7 +12,10 @@ import {
   MIN_WEIGHT_KG,
   SKILLS,
   SKILL_LABEL,
+  savedCustom,
+  starsOn,
   type Rider,
+  type StarsOn,
 } from "../force5/src/stars";
 import { Button } from "../ui/Button";
 
@@ -24,8 +27,11 @@ interface Props {
   models: readonly ModelAvailability[];
   /** Open "Your star rating", to make one or to change the rider's own. */
   onCustomiseStars: () => void;
-  /** Back to the level's own stars. */
-  onResetStars: () => void;
+  /**
+   * A level picked, or the rider's own rating: a change to the preferences
+   * the account may keep (force5/src/prefs.ts `withStarsOn`).
+   */
+  onStarsOn: (prefs: Prefs) => void;
 }
 
 /**
@@ -39,7 +45,7 @@ export default function DisplayFilter({
   onClose,
   models,
   onCustomiseStars,
-  onResetStars,
+  onStarsOn,
 }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
@@ -58,6 +64,9 @@ export default function DisplayFilter({
   const [wingsText, setWingsText] = useState(prefs.rider.wings.join(", "));
   const setRider = (rider: Partial<Rider>) =>
     onChange({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
+  const saved = savedCustom(prefs.rider);
+  const on = starsOn(prefs.rider);
+  const choices: StarsOn[] = saved ? [...SKILLS, "custom"] : [...SKILLS];
   const planned = MODEL_CATALOG.filter(
     (entry) => entry.planned && entry.kind === "wind",
   );
@@ -112,43 +121,28 @@ export default function DisplayFilter({
           />
           <small>kg</small>
         </label>
-        <div className="filter-units" role="group" aria-label="Riding level">
-          {SKILLS.map((skill) => (
-            <button
-              key={skill}
-              data-skill={skill}
-              aria-pressed={prefs.rider.skill === skill}
-              onClick={() => setRider({ skill })}
-            >
-              {SKILL_LABEL[skill]}
-            </button>
-          ))}
-        </div>
-        <div className="rider-stars" data-star-rating>
-          <span className="rider-stars-name">Star rating</span>
-          <span className="rider-stars-what">
-            <span className="rider-stars-value">
-              {prefs.rider.custom
-                ? "Custom"
-                : `Standard for ${SKILL_LABEL[prefs.rider.skill]}`}
-            </span>
-            <span className="rider-stars-acts">
-              {prefs.rider.custom ? (
-                <>
-                  <Button variant="link" size="sm" onClick={onCustomiseStars}>
-                    Edit
-                  </Button>
-                  <Button variant="link" size="sm" onClick={onResetStars}>
-                    Reset
-                  </Button>
-                </>
-              ) : (
-                <Button variant="link" size="sm" onClick={onCustomiseStars}>
-                  Customise
-                </Button>
-              )}
-            </span>
-          </span>
+        <div className="rider-level">
+          <div className="filter-units" role="group" aria-label="Riding level">
+            {choices.map((choice) => (
+              <button
+                key={choice}
+                data-skill={choice}
+                aria-pressed={on === choice}
+                onClick={() => onStarsOn(withStarsOn(prefs, choice))}
+              >
+                {choice === "custom" ? "Custom" : SKILL_LABEL[choice]}
+              </button>
+            ))}
+          </div>
+          <Button
+            variant="link"
+            size="sm"
+            className="rider-customise"
+            onClick={onCustomiseStars}
+            data-customise-stars
+          >
+            {saved ? "Edit custom" : "Customise"}
+          </Button>
         </div>
         <label className="rider-field">
           <span>Wings you own</span>
