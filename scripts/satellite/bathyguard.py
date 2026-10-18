@@ -117,7 +117,8 @@ def apply(tiles, dry_run=False):
             print(f"{tile}: done before ({stats['bathyGuardKm2']} km²)", flush=True)
             continue
         with rasterio.open(os.path.join(d, "heights.tif"), "r+") as hs:
-            cls, raw, stn = hs.read(5), hs.read(2), hs.read(6)
+            cls, raw = hs.read(5), hs.read(2)
+            stn = common.to_current_stations(hs.read(6), common.station_ids_of(hs), stations)
             sea = np.full(cls.shape, 99.0, np.float32)
             reproject(shallow.astype(np.float32), sea, src_transform=dtm_tf, src_crs=dtm_crs,
                       dst_transform=hs.transform, dst_crs=hs.crs, resampling=Resampling.nearest)

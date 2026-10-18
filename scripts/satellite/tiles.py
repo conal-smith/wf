@@ -429,7 +429,8 @@ def intertidal_chunk(job):
     transform, n, k = chunk_grid(x, y, zmax, size)
     best_w = np.zeros((n, n), np.float32)
     value = np.full((n, n), np.nan, np.float32)
-    stn = np.full((n, n), -1, np.float32)
+    stn = np.full((n, n), -1, np.int16)
+    stations = common.stations()
     for t in srcs:
         d = common.path("work", "tiles", t)
         w = np.zeros((n, n), np.float32)
@@ -443,13 +444,14 @@ def intertidal_chunk(job):
                       resampling=Resampling.nearest, src_nodata=np.nan, dst_nodata=np.nan)
             reproject(rasterio.band(src, 6), s, dst_transform=transform, dst_crs="EPSG:3857",
                       resampling=Resampling.nearest, src_nodata=-99, dst_nodata=-1)
+            # In the station list as it is now, not as it was when the tile was composed.
+            s = common.to_current_stations(s, common.station_ids_of(src), stations)
         better = (w > best_w) & np.isfinite(v)
         best_w = np.where(better, w, best_w)
         value = np.where(better, v, value)
         stn = np.where(better, s, stn)
     if not is_height(np.nan_to_num(value, nan=99), ia).any():
         return x, y, {}
-    stations = common.stations()
     xs = transform.c + (np.arange(n) + 0.5) * transform.a
     ys = transform.f + (np.arange(n) + 0.5) * transform.e
     lon, _ = common.lonlat_of_merc(xs, np.zeros_like(xs))

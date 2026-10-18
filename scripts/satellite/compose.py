@@ -241,6 +241,8 @@ def coastal_part(ctx, i, j, keep, rows):
                 arr[mine] = v[mine]
         seen = (st >= 0).sum(0)
         res["station"] = nearest.astype(np.int16)  # Great Britain has 138 stations: more than an int8 holds
+        # The list the indices are into: a station added later moves the ones after it (mosaic).
+        res["station_ids"] = np.array(ctx.sid)
         res["z"], res["misfit"], res["nvalid"], res["state"] = z, misfit, nvalid, state
         res["drybelow"], res["wetabove"] = drybelow, wetabove
         res["freq"] = ((st == 1).sum(0) / np.maximum(seen, 1)).astype(np.float32)
@@ -361,6 +363,11 @@ def mosaic(ctx, names):
                     if name == "station" and v.dtype == np.int8:
                         # A block from before the station was kept in an int16: past 127 it wrapped.
                         v = np.where(v <= -2, v.astype(np.int16) + 256, v)
+                    if name == "station" and "station_ids" in z.files:
+                        # Into the station list as it is now. A block without
+                        # its list is taken as written with this one: if a
+                        # station has been added since, restation.py says so.
+                        v = common.to_current_stations(v, [str(i) for i in z["station_ids"]], ctx.stations)
                     if a.ndim == 3:
                         a[:, i * size:(i + 1) * size, j * size:(j + 1) * size] = v
                     else:
@@ -453,6 +460,8 @@ def finish(ctx, strip=1024):
         for k, name in enumerate(["archive_metres_lat", "flip_level_raw", "misfit", "looks", "class",
                                   "station_index"], 1):
             dst.set_band_description(k, name)
+        # What band 6's indices are into (common.station_ids_of).
+        dst.update_tags(STATIONS=json.dumps(ctx.sid))
         for r0 in range(0, TILE_PX, strip):
             r1 = min(TILE_PX, r0 + strip)
             rows = slice(r0, r1)

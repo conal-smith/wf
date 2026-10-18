@@ -108,6 +108,35 @@ def stations(foil_stations=None, ni_stations=None, include_inactive=False):
     return out
 
 
+def station_lut(ids, stations_):
+    """Station indices written under the list `ids` (a block's, or heights.tif's
+    STATIONS tag) as indices into `stations_`, the list as it is now: index the
+    result with the written index + 1. No station (-1), and one no longer in
+    the list, are -1. The list is sorted by id, so a station added (the basin
+    stations of 15 October) moves every one after it: an index is only good
+    with the list it was written with."""
+    now = {s["id"]: k for k, s in enumerate(stations_)}
+    return np.array([-1] + [now.get(i, -1) for i in ids], np.int16)
+
+
+def station_ids_of(ds):
+    """The station list a tile's heights.tif was written with (its STATIONS
+    tag), or None for one written before the tag (restation.py adds it)."""
+    tag = ds.tags().get("STATIONS")
+    return None if tag is None else json.loads(tag)
+
+
+def to_current_stations(values, ids, stations_):
+    """heights.tif band 6 values (or any array of them, -1 or NaN for none),
+    written under `ids`, as indices into `stations_`. With no `ids` (a tile
+    from before the tag) they are taken as they are."""
+    v = np.where(np.isfinite(values), values, -1).astype(np.int32)
+    if ids is None:
+        return v.astype(np.int16)
+    lut = station_lut(ids, stations_)
+    return lut[np.clip(v, -1, len(lut) - 2) + 1]
+
+
 def in_polygon(lon, lat, ring):
     """Points in a lon/lat polygon (even-odd rule)."""
     lon, lat = np.broadcast_arrays(np.asarray(lon, dtype=np.float64), np.asarray(lat, dtype=np.float64))

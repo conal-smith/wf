@@ -82,7 +82,7 @@ def main():
                     "bounds": src.bounds}
             raw = src.read(2)
             cls = src.read(5)
-            stn = src.read(6)
+            stn = common.to_current_stations(src.read(6), common.station_ids_of(src), stations)
         with rasterio.open(os.path.join(tiles_dir, tile, "weight.tif")) as src:
             own = src.read(1) > 127
         observed = (cls == 1) & np.isfinite(raw) & own

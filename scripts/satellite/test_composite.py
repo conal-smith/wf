@@ -149,6 +149,18 @@ class StationTest(unittest.TestCase):
         self.assertEqual(common.region_id("Achill_Island_MODELLED"), "tide-achill-island")
         self.assertEqual(common.region_id("Dublin_Port"), "tide-dublin-port")
 
+    def test_an_index_is_read_with_the_list_it_was_written_with(self):
+        # Before the basins: N was 2. A basin sorting in before it moves it to 3,
+        # and a block written before still says 2 (the 15 October rebuild's NI regions).
+        before = ["A", "B", "N"]
+        now = STATIONS[:2] + [{"id": "B_LAG1", "name": "B", "lon": -6.0, "lat": 53.4, "ni": True}, STATIONS[2]]
+        written = np.array([[0, 1], [2, -1]], np.float32)
+        moved = common.to_current_stations(written, before, now)
+        self.assertEqual(moved.tolist(), [[0, 1], [3, -1]])
+        # A station gone from the list is no station; NaN is none; no list is taken as it is.
+        self.assertEqual(common.to_current_stations(np.array([2.0, np.nan]), before, STATIONS[:2]).tolist(), [-1, -1])
+        self.assertEqual(common.to_current_stations(written, None, now).tolist(), [[0, 1], [2, -1]])
+
 
 if __name__ == "__main__":
     unittest.main()
