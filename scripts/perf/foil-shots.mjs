@@ -70,6 +70,11 @@ await page.evaluate(() => {
   if (!window.__map) throw new Error("No map found.");
 });
 const slider = page.locator('input[aria-label="Forecast time"]');
+if (!(await slider.count())) {
+  // A first visit opens on the chart alone: a light brings the dock's hours.
+  await page.locator(".spot-marker").first().click({ force: true });
+  await slider.waitFor({ state: "attached", timeout: 30000 });
+}
 await slider.focus();
 await page.keyboard.press("Home");
 for (let i = 0; i < hour; i++) await page.keyboard.press("ArrowRight");

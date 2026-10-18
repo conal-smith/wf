@@ -857,6 +857,37 @@ const SCENARIOS = {
 };
 
 /** Where each scenario starts from, once the previous one has finished. */
+/**
+ * The dock's hours, for the hour steps. A first visit opens on the chart
+ * alone, and a spot brings the dock: the light nearest Dublin Bay is
+ * chosen, as a rider would tap it. A page that already has them is left be.
+ */
+async function openHours(page) {
+  const slider = page.locator('input[aria-label="Forecast time"]');
+  if (await slider.count()) return;
+  await jump(page, { center: AT.dublinBay, zoom: 11 });
+  await idle(page, 15000);
+  const at = await page.evaluate(() => {
+    const box = window.__perf.map().getContainer().getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    let best = null;
+    for (const el of document.querySelectorAll(".spot-marker")) {
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const d = Math.hypot(x - cx, y - cy);
+      if (!best || d < best.d) best = { x, y, d };
+    }
+    return best;
+  });
+  if (!at) throw new Error("No light to open the dock with.");
+  await page.mouse.click(at.x, at.y);
+  await slider.waitFor({ state: "attached", timeout: 30000 });
+  await page.evaluate(() => window.__perf.map().stop());
+}
+
 const START = {
   idle: async (page) => {
     await page.evaluate(() => {
@@ -866,7 +897,10 @@ const START = {
   },
   zoom: (page) => jump(page, { center: AT.between, zoom: 9 }),
   pan: (page) => jump(page, { center: AT.eastCoast[0], zoom: 11 }),
-  hours: (page) => jump(page, { center: AT.dublinBay, zoom: 12 }),
+  hours: async (page) => {
+    await openHours(page);
+    await jump(page, { center: AT.dublinBay, zoom: 12 });
+  },
   taps: async (page) => {
     await page.evaluate(() => {
       const map = window.__perf.map();
