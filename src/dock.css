@@ -57,6 +57,15 @@
 .dk-chev svg {
   stroke: currentColor;
 }
+/* "Custom stars": the kit's pill at the switch's height, like the chevron,
+   so a rider's own stars do not make the head taller. */
+.dk-head .dk-custom {
+  flex: none;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: 10px;
+}
 .tt-wrap:focus-visible,
 .dock:has(.dk-time:focus-visible) .tt-wrap {
   outline: 2px solid var(--color-focus);

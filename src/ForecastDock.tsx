@@ -127,6 +127,8 @@ interface Props {
   onMore: (more: boolean) => void;
   /** The wave and weather manifests, once the rows have been opened. */
   marine: readonly ModelAvailability[];
+  /** Open "Your star rating", from the chip a rider's own stars put in the head. */
+  onCustomStars?: () => void;
 }
 
 const ROWS = {
@@ -866,6 +868,7 @@ export default function ForecastDock(props: Props) {
     more,
     onMore,
     marine,
+    onCustomStars,
     onFindSpot,
   } = props;
   const cw = phone ? 52 : 62;
@@ -1148,6 +1151,31 @@ export default function ForecastDock(props: Props) {
             />
           )}
           <h2 className="dk-name">{spot.name}</h2>
+          {/* The stars are the rider's own: said once, where they are read,
+            and the way to change them. */}
+          {prefs.rider.custom && !isPoint && (
+            <Button
+              variant="pill"
+              size="sm"
+              className="dk-custom"
+              aria-label="Custom star rating: edit"
+              onClick={onCustomStars}
+              data-custom-stars
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="-5 -5 10 10"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
+                />
+              </svg>
+              Custom stars
+            </Button>
+          )}
           {/* A point's place name is a guess at where it is, so its
             coordinates stay; a riding place's name is enough on its own. */}
           {isPoint && spot.county && (

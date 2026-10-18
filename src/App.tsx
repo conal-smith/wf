@@ -104,8 +104,18 @@ const DisplayFilter = lazy(() => import("./DisplayFilter"));
 const Companion = lazy(() =>
   import("../companion/web/Companion").then((m) => ({ default: m.Companion })),
 );
+// A rider's own star rating, set in a dialog of its own, only when asked for.
+const YourStarsDialog = lazy(() => import("../spot/web/YourStarsDialog"));
+// The account's copy of the rider, on a device that has signed in before.
+const AccountRider = lazy(() => import("../shared/web/AccountRider"));
 import type { MapAction } from "../companion/shared/protocol";
-import { parseRider } from "../force5/src/prefs";
+import { parseRider, withCustomStars } from "../force5/src/prefs";
+import type { CustomRating } from "../force5/src/stars";
+import {
+  announcePrefs,
+  onPrefsChange,
+  signedInHint,
+} from "../shared/web/riderSync";
 import {
   dockColumns,
   frameForTime,
@@ -210,10 +220,27 @@ function useThrottled<T>(value: T, ms: number): T {
 export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   useEffect(() => setPrefs(loadPrefs()), []);
+  // A rating adopted from the account, or changed in another tab.
+  useEffect(() => onPrefsChange(() => setPrefs(loadPrefs())), []);
   const changePrefs = (next: Prefs) => {
     setPrefs(next);
     savePrefs(next);
   };
+  // The rider's own star rating: the dialog, once opened, stays mounted so
+  // it can hand the focus back as it closes.
+  const [starsOpen, setStarsOpen] = useState(false);
+  const [starsWanted, setStarsWanted] = useState(false);
+  const openStars = () => {
+    setStarsWanted(true);
+    setStarsOpen(true);
+  };
+  const setCustomStars = (custom: CustomRating | null) => {
+    changePrefs(withCustomStars(prefs, custom));
+    announcePrefs("device");
+  };
+  const [syncAccount] = useState(
+    () => signedInHint() || Boolean(import.meta.env.VITE_MARKET_DEV_USER),
+  );
   const rider = prefs.rider;
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -1224,6 +1251,11 @@ export default function App() {
                   <DisplayFilter
                     prefs={prefs}
                     onChange={changePrefs}
+                    onCustomiseStars={() => {
+                      close();
+                      openStars();
+                    }}
+                    onResetStars={() => setCustomStars(null)}
                     models={models.filter(
                       (model) => model.entry.kind === "wind",
                     )}
@@ -1344,6 +1376,7 @@ export default function App() {
                   onSelect={(at) => selectColumn(at)}
                   now={clockNow}
                   prefs={prefs}
+                  onCustomStars={openStars}
                   models={models}
                   onWantModels={() => setWantModels(true)}
                   starred={
@@ -1367,6 +1400,25 @@ export default function App() {
             </div>
           </section>
         </main>
+      )}
+      {starsWanted && (
+        <Suspense fallback={null}>
+          <YourStarsDialog
+            open={starsOpen}
+            rider={prefs.rider}
+            units={prefs.units}
+            onClose={() => setStarsOpen(false)}
+            onSave={(custom) => {
+              setCustomStars(custom);
+              setStarsOpen(false);
+            }}
+          />
+        </Suspense>
+      )}
+      {syncAccount && (
+        <Suspense fallback={null}>
+          <AccountRider />
+        </Suspense>
       )}
       {!error && gustDue && FEATURES.gust && (
         <Suspense fallback={null}>

@@ -11,14 +11,10 @@ import {
   MAX_WEIGHT_KG,
   MIN_WEIGHT_KG,
   SKILLS,
+  SKILL_LABEL,
   type Rider,
 } from "../force5/src/stars";
-
-const SKILL_LABEL: Record<Rider["skill"], string> = {
-  beginner: "Learning",
-  intermediate: "Riding",
-  advanced: "Advanced",
-};
+import { Button } from "../ui/Button";
 
 interface Props {
   prefs: Prefs;
@@ -26,6 +22,10 @@ interface Props {
   onClose: () => void;
   /** Live wind models and whether their manifest answered. */
   models: readonly ModelAvailability[];
+  /** Open "Your star rating", to make one or to change the rider's own. */
+  onCustomiseStars: () => void;
+  /** Back to the level's own stars. */
+  onResetStars: () => void;
 }
 
 /**
@@ -38,6 +38,8 @@ export default function DisplayFilter({
   onChange,
   onClose,
   models,
+  onCustomiseStars,
+  onResetStars,
 }: Props) {
   const setUnits = (units: Units) => onChange({ ...prefs, units });
   const toggleModel = (id: string, on: boolean) =>
@@ -121,6 +123,32 @@ export default function DisplayFilter({
               {SKILL_LABEL[skill]}
             </button>
           ))}
+        </div>
+        <div className="rider-stars" data-star-rating>
+          <span className="rider-stars-name">Star rating</span>
+          <span className="rider-stars-what">
+            <span className="rider-stars-value">
+              {prefs.rider.custom
+                ? "Custom"
+                : `Standard for ${SKILL_LABEL[prefs.rider.skill]}`}
+            </span>
+            <span className="rider-stars-acts">
+              {prefs.rider.custom ? (
+                <>
+                  <Button variant="link" size="sm" onClick={onCustomiseStars}>
+                    Edit
+                  </Button>
+                  <Button variant="link" size="sm" onClick={onResetStars}>
+                    Reset
+                  </Button>
+                </>
+              ) : (
+                <Button variant="link" size="sm" onClick={onCustomiseStars}>
+                  Customise
+                </Button>
+              )}
+            </span>
+          </span>
         </div>
         <label className="rider-field">
           <span>Wings you own</span>

@@ -256,6 +256,40 @@
   font-style: italic;
   color: var(--color-ink-muted);
 }
+/* The rider's star rating: the level's, or their own, and the way to change it. */
+.rider-stars {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.rider-stars-what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+.rider-stars-name {
+  flex: none;
+  min-width: 96px;
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.rider-stars-value {
+  font: 14px var(--font-body);
+  color: var(--color-ink);
+}
+.rider-stars-acts {
+  display: inline-flex;
+  gap: 12px;
+}
+/* The kit's link, in the words' own face, as the settings' links are drawn. */
+.rider-stars-acts button {
+  font: 14px var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
 .filter-models {
   display: flex;
   flex-direction: column;
