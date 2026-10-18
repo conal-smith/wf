@@ -94,6 +94,10 @@ def stations(foil_stations=None, ni_stations=None, include_inactive=False):
     ni = read_json(ni_stations or os.path.join(HERE, files.get("others", "stations_ni.json")))["stations"]
     out = []
     for sid, s in sorted(foil.items()):
+        if s.get("northernIreland"):
+            # The site's own Northern Ireland stations (force5/ingest/tides_ni.py),
+            # which the foil regions are drawn on: this run's are stations_ni.json's.
+            continue
         out.append({"id": sid, "name": s["name"], "lon": float(s["lon"]), "lat": float(s["lat"]), "ni": False,
                     "model": [float(s["lon"]), float(s["lat"])], "modelled": bool(s.get("modelled")),
                     "hat": s.get("hatMetres"), "msl": s.get("mslMetres")})

@@ -39,6 +39,7 @@ $PY -I $S/tides.py scenes       # every station's level at every acquisition
 $PY -I $S/coarse.py             # the island at 100 m: coverage, coast, sea (1 min)
 $PY -I $S/plan.py               # blocks, stations and tide thresholds per tile
 $PY -I $S/run.py --all          # scout.py, fetch.py then compose.py, tile by tile (hours)
+$PY -I $S/restation.py --tile <t> --was <older stations_ni.json>   # only for a tile composed before stations were added
 $PY -I $S/bathyguard.py fetch   # EMODnet Bathymetry's DTM over the box
 $PY -I $S/bathyguard.py apply   # deep open water read as foreshore, put back as water
 $PY -I $S/fetch.py --tile <t> --coast-only && $PY -I $S/lagmap.py --tile <t>   # the tide's lag, per 2.56 km cell
@@ -57,6 +58,19 @@ The offline imagery can also be cut from the national archives with
 `publish.clip` (the box `-6.24,53.36,-6.06,53.49`, 51 tiles a tide), as the
 set in `public-data/satellite/` now is. `--offline-intertidal` still cuts a
 small heights set, but nothing reads one since the overlay was retired.
+
+**Station numbers.** compose.py keeps each pixel's tide station as an index
+into `common.stations()`, which is sorted by id, so adding stations (the 31
+basin stations of 15 October sorted in among Northern Ireland's) moves every
+one after them. heights.tif carries the list its indices are into (its
+`STATIONS` tag, and each block its `station_ids`), and tiles.py, bathyguard.py
+and validate.py read them through it (`common.to_current_stations`). A tile
+composed before the tag is repaired by `restation.py`, which finds per block
+the list it was written with (the station each pixel gets under each list)
+and moves its indices into the list now. Stations in
+`scripts/foildepth/stations.json` marked `northernIreland` (the site's own,
+`force5/ingest/tides_ni.py`) are not this run's: its Northern Ireland
+stations are `stations_ni.json`'s.
 
 Each step is resumable: the catalog by month, the fetch by acquisition, the
 compose by block, and `run.py` skips a tile that has its `stats.json`.
@@ -391,11 +405,35 @@ Strangford's), from the national rebuild of 15 October with the tide's lag,
 the basin stations and the deep-water guard. They replace
 `satellite/v4eacd48c3fe5/` and `intertidal/vd340d553a223/` (13 October, 39
 regions), which stay in the bucket for any page still holding the old index.
-Portrush's, Ballycastle's, Larne's and Bangor's regions are not in the
-rebuild's set (it wrote no heights there, and lists no Portrush or Bangor
-station in the imagery's index): Northern Ireland's east and north coasts
-have no foil layer either, so the map loses nothing, but the next run should
-look at why.
+Portrush's, Ballycastle's, Larne's and Bangor's regions were not in that
+set, and Killard's and Strangford's held only part of their water (143,000
+and 383,000 height pixels at z13). The cause was the station numbers (above):
+the rebuild recomposed only the blocks round the new basins, and every other
+block in Northern Ireland (62 of 70 in 30UUF, 27 of 65 in 29UPB, 12 of 22 in
+29UPA, all 3 in 30UUG) still gave Ballycastle, Bangor, Killard, Larne,
+Portrush and Strangford their old numbers 33-38, which after the basins name
+Achill_Island_LAG1, Achill_Island_LAG2, Aranmore_LAG1, Aranmore_LAG2,
+Aranmore_LAG3 and Ballycastle. tiles.py took those pixels for "measured
+against another station" and wrote no fit. (The imagery index's per-station
+tides, stats.json's, carry the same wrong labels.) The heights themselves were
+right. Northern Ireland's coast is in Sentinel-2 tiles 29UNB (Lough Foyle's
+west), 29UPB (the north coast), 30UUG (Fair Head and Rathlin), 29UPA and 30UUF
+(the east coast, Belfast Lough to Dundrum Bay) and 29UPV and 30UUE (Mourne and
+Carlingford), all among the 22 read.
+
+So on 18 October the seven tiles' composed outputs (copied back from the VM
+on 15 October) were restationed (restation.py, against the list before the
+basins, `git show 7c45f5a:scripts/satellite/stations_ni.json`), the deep-water
+guard undone and applied again on the right stations' lowest tides, and
+tiles.py intertidal run over them on this Mac, nothing read again: published
+as `intertidal/v293c9dd4de9c/` (70 regions). It is the 15 October set with
+Northern Ireland's six regions cut again: tide-killard (621,500 height
+pixels at z13), tide-strangford (1,070,435), tide-bangor (378,149),
+tide-larne (205,886), tide-ballycastle (68,980) and tide-portrush (53,612).
+Every region whose tiles were all among the seven came out with the same
+tiles as the published set (Howth, Dublin Port, Port Oriel, Malin Head, the
+Killard, Strangford, Skerries, Buncrana and Tory basins), which checks the
+repair.
 
 ## Findings
 
