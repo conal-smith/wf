@@ -38,8 +38,8 @@ export const SATELLITE_INDEX_PATH = "satellite/index.json";
 
 /**
  * The credit, until the index (which carries its own) is loaded: the sources'
- * information names it whether or not the image is on. The intertidal
- * heights over the foil layer come from the same looks at the same tides.
+ * information names it whether or not the image is on. The foreshore's
+ * heights in the foil layer come from the same looks at the same tides.
  */
 export const SATELLITE_ATTRIBUTION =
   "Contains modified Copernicus Sentinel data 2017–2026, composited for " +

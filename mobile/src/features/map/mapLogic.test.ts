@@ -132,7 +132,9 @@ describe("the chart's style, from the app's tokens", () => {
 
   it("reads the foil layer's and the rider's colours", () => {
     const foil = appFoilColours();
-    expect([foil.deep, foil.shallow, foil.dry, foil.unsurveyed].every(Boolean)).toBe(true);
+    expect(
+      [foil.edge, foil.shallow, foil.enough, foil.deep, foil.deeper, foil.line, foil.dry, foil.unsurveyed].every(Boolean),
+    ).toBe(true);
     const stops = appRideStops(DEFAULT_RIDER);
     expect(stops).toHaveLength(9);
     expect(stops.every((s) => s.rgb.join() !== "128,128,128")).toBe(true);

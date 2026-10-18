@@ -1,14 +1,11 @@
 /**
  * The seabed under a point tapped while the foil layer is on (src/App.tsx
- * `probeFoil`): where the intertidal heights are drawn and have one there,
- * theirs, read against the foil region on the same station; else the first
- * foil archive with water under the point.
+ * `probeFoil`): the first foil archive with water under the point.
  */
 import { useEffect, useMemo, useState } from "react";
 import { areasAt, type FoilManifest, type FoilPoint } from "../../../../force5/src/foilDepth";
-import { isIntertidalHeight, type IntertidalManifest } from "../../../../force5/src/intertidal";
 import { elevationAt } from "./probe";
-import { foilArchiveUrl, intertidalArchiveUrl } from "./useChartLayers";
+import { foilArchiveUrl } from "./useChartLayers";
 
 export interface Probe {
   lon: number;
@@ -23,7 +20,6 @@ export function useFoilProbe(
   point: { lon: number; lat: number } | null,
   on: boolean,
   manifest: FoilManifest | null,
-  intertidal: IntertidalManifest | null,
 ): Probe | null {
   const lon = point?.lon;
   const lat = point?.lat;
@@ -37,13 +33,6 @@ export function useFoilProbe(
     if (!candidates?.length || !manifest || lon === undefined || lat === undefined) return;
     let live = true;
     (async (): Promise<{ area: string; z: FoilPoint }> => {
-      if (intertidal)
-        for (const area of areasAt(intertidal.areas, lon, lat)) {
-          const region = manifest.areas.find((a) => a.kind === "region" && a.station === area.station);
-          if (!region) continue;
-          const z = await elevationAt(area, intertidalArchiveUrl(area), lon, lat, intertidal);
-          if (isIntertidalHeight(intertidal, z)) return { area: region.id, z };
-        }
       let last: FoilPoint = null;
       for (const area of candidates) {
         const z = await elevationAt(area, foilArchiveUrl(manifest, area), lon, lat, manifest);
@@ -61,7 +50,7 @@ export function useFoilProbe(
     return () => {
       live = false;
     };
-  }, [candidates, manifest, intertidal, lon, lat]);
+  }, [candidates, manifest, lon, lat]);
 
   if (!candidates || lon === undefined || lat === undefined) return null;
   if (!candidates.length) return { lon, lat, area: null, z: null, done: true };

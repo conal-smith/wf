@@ -65,11 +65,6 @@ export interface FoilView {
   /** The `color-relief-color` for the selected tide (foilRamp). */
   color: ExpressionSpecification;
   attribution: string;
-  /**
-   * Drawn over every foil area: the Sentinel-2 intertidal heights
-   * (force5/src/intertidal.ts), which leave clear where they have none.
-   */
-  over?: boolean;
 }
 
 /**
@@ -495,14 +490,12 @@ export default function WindMap(props: Props) {
   // coast's ink and every name. A layer shows from half a zoom under its
   // archive's min zoom: MapLibre rounds a raster's zoom, so that is where its
   // tiles start, and where a region's cut-out for a pilot's box starts too.
-  // The intertidal heights (`over`) are layers of the same kind, kept above
-  // every foil area's.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const shown = new Set<string>();
     for (const area of foil ?? []) {
-      const id = `${area.over ? "intertidal" : "foil"}-${area.id}`;
+      const id = `foil-${area.id}`;
       shown.add(id);
       if (!map.getSource(id))
         map.addSource(id, {
@@ -533,16 +526,13 @@ export default function WindMap(props: Props) {
               resampling: "linear",
             },
           },
-          // A foil area under the intertidal heights, whenever it is added.
-          (!area.over &&
-            map.getLayersOrder().find((l) => l.startsWith("intertidal-"))) ||
-            (map.getLayer("rivers") ? "rivers" : undefined),
+          map.getLayer("rivers") ? "rivers" : undefined,
         );
       else map.setPaintProperty(id, "color-relief-color", area.color);
       map.setLayoutProperty(id, "visibility", "visible");
     }
     for (const id of map.getLayersOrder())
-      if (/^(foil|intertidal)-/.test(id) && !shown.has(id))
+      if (id.startsWith("foil-") && !shown.has(id))
         map.setLayoutProperty(id, "visibility", "none");
   }, [ready, foil]);
 

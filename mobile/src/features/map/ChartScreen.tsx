@@ -36,8 +36,6 @@ import {
   foilLayers,
   foilLevels,
   foilInView,
-  intertidalInView,
-  INTERTIDAL_FROM_ZOOM,
   stationsWanted,
   type ChartView,
   type FoilLayer,
@@ -66,7 +64,7 @@ import {
 } from "./mapLogic";
 import { appFoilColours, appRideStops } from "./mapStyle";
 import { PointSheet, type Picked } from "./PointSheet";
-import { foilArchiveUrl, intertidalArchiveUrl, useFoilIndex, useIntertidal, useSatellite, useTides } from "./useChartLayers";
+import { foilArchiveUrl, useFoilIndex, useSatellite, useTides } from "./useChartLayers";
 import { useFoilProbe } from "./useFoilProbe";
 import { useMapModel } from "./useMapModel";
 import { showsLines, useArrows, useFrameTiles, useParticleField, useWash } from "./useWind";
@@ -384,11 +382,10 @@ export default function ChartScreen() {
   /* ---- the satellite, and the foilable depth at the hour's tide ---- */
   const satellite = useSatellite(layers.satellite, chartView);
   const satelliteKept = useKept(satellite.layers);
-  const intertidal = useIntertidal(layers.foil && !!chartView && chartView.zoom >= INTERTIDAL_FROM_ZOOM);
   const foilIndex = useFoilIndex(layers.foil);
   const column = strip[selected];
   const foilTime = column?.time ?? null;
-  const probe = useFoilProbe(picked, layers.foil, foilIndex.manifest, intertidal);
+  const probe = useFoilProbe(picked, layers.foil, foilIndex.manifest);
   const centre = camera?.center ?? null;
   const probeArea = probe?.area ?? null;
   const keyArea = useMemo(() => {
@@ -403,8 +400,7 @@ export default function ChartScreen() {
     );
   }, [foilIndex.manifest, probeArea, picked, centre]);
   const inView = useMemo(() => foilInView(foilIndex.manifest, chartView), [foilIndex.manifest, chartView]);
-  const tidalInView = useMemo(() => intertidalInView(intertidal, chartView), [intertidal, chartView]);
-  const stationKey = layers.foil ? stationsWanted([...inView, ...tidalInView, keyArea]).join("|") : "";
+  const stationKey = layers.foil ? stationsWanted([...inView, keyArea]).join("|") : "";
   const stations = useMemo(() => (stationKey ? stationKey.split("|") : []), [stationKey]);
   const tides = useTides(stations);
   const foilState = useMemo(
@@ -421,16 +417,12 @@ export default function ChartScreen() {
       foilLayers({
         on: layers.foil,
         manifest: foilState.manifest,
-        tides: foilState.tides,
         levels,
         view: chartView,
         palette,
-        time: foilTime,
-        intertidal,
         foilUrl: foilArchiveUrl,
-        intertidalUrl: intertidalArchiveUrl,
       }),
-    [layers.foil, foilState.manifest, foilState.tides, levels, chartView, palette, foilTime, intertidal],
+    [layers.foil, foilState.manifest, levels, chartView, palette],
   );
   const foilKept = useKept(foilNow);
   const foilStation = keyArea ? (foilState.tides[keyArea.station]?.station.name ?? keyArea.station) : null;

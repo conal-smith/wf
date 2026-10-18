@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FoilArea, FoilManifest } from "../../../../force5/src/foilDepth";
-import type { IntertidalArea, IntertidalManifest } from "../../../../force5/src/intertidal";
 import type { TideCurve } from "../../../../force5/src/tides";
-import { foilInView, foilLayers, foilLevels, intertidalInView, stationsWanted, type Tides } from "./foilLogic";
+import { foilInView, foilLayers, foilLevels, stationsWanted, type Tides } from "./foilLogic";
 import { appFoilColours } from "./mapStyle";
 import { LIGHT_BOX, loopShape, RING_DASHED, sdfPixels, shapeDistance, STAR, STRIKE, chartIcons } from "./sdfIcons";
 
@@ -75,73 +74,19 @@ describe("foilable depth at the tide", () => {
     const layers = foilLayers({
       on: true,
       manifest,
-      tides,
       levels,
       view,
       palette: appFoilColours(),
-      time: t0 + 2 * 3600000,
-      intertidal: null,
       foilUrl: (m, a) => `https://data.example/${m.base}${a.url}`,
-      intertidalUrl: () => "",
     });
     expect(layers.map((l) => l.id)).toEqual(["foil-tide-howth", "foil-malahide"]);
     expect(layers[0]).toMatchObject({
       url: "pmtiles://https://data.example/foildepth/v0123/tide-howth.pmtiles",
-      over: false,
       tileSize: 512,
     });
     expect(layers[0].color[0]).toBe("interpolate");
     expect(JSON.stringify(layers[0].color)).not.toBe(JSON.stringify(layers[1].color));
-    expect(foilLayers({ on: false, manifest, tides, levels, view, palette: appFoilColours(), time: 0, intertidal: null, foilUrl: () => "", intertidalUrl: () => "" })).toEqual([]);
-  });
-
-  it("lays the intertidal heights over them from the zoom a bay fills the view", () => {
-    const heights: IntertidalManifest = {
-      schemaVersion: 1,
-      kind: "intertidal",
-      datum: "LAT",
-      encoding: "terrarium",
-      deepMetres: -100,
-      landMetres: 100,
-      noSurveyMetres: -200,
-      belowSeenMetres: 50,
-      attribution: "Sentinel-2",
-      areas: [
-        {
-          id: "tide-howth",
-          set: "ireland",
-          kind: "region",
-          base: "intertidal/v0abc/",
-          url: "tide-howth.pmtiles",
-          bounds: [-6.3, 53.2, -6.0, 53.5],
-          minzoom: 9,
-          maxzoom: 14,
-          tileSize: 512,
-          station: "howth",
-          stationLonLat: [-6.07, 53.39],
-          lowestSeenMetres: 0.2,
-          highestSeenMetres: 4.4,
-        } satisfies IntertidalArea,
-      ],
-    };
-    expect(intertidalInView(heights, { ...view, zoom: 9.5 })).toEqual([]);
-    expect(intertidalInView(heights, view)).toHaveLength(1);
-    const layers = foilLayers({
-      on: true,
-      manifest,
-      tides,
-      levels: foilLevels(manifest.areas, tides, t0),
-      view,
-      palette: appFoilColours(),
-      time: t0,
-      intertidal: heights,
-      foilUrl: () => "https://x/foil.pmtiles",
-      intertidalUrl: (a) => `https://data.example/${a.base}${a.url}`,
-    });
-    const over = layers.filter((l) => l.over);
-    expect(over).toHaveLength(1);
-    expect(over[0]).toMatchObject({ id: "intertidal-tide-howth", minzoom: 10 });
-    expect(layers[layers.length - 1].over).toBe(true);
+    expect(foilLayers({ on: false, manifest, levels, view, palette: appFoilColours(), foilUrl: () => "" })).toEqual([]);
   });
 
   it("asks for each station's curve once", () => {

@@ -389,7 +389,7 @@ export function depthColour(scale: [number, string][], depth: number): string {
  * Rising: with a `deep` value (schema 2), nothing from it up to the floor,
  * then the water fading in over `fade` metres; then the water coloured by
  * its depth at this tide (depthScale: a smooth ramp, with a step where it
- * becomes deep enough); a thin dark waterline just under the tide; a light
+ * becomes deep enough); a thin waterline just under the tide; a light
  * dry tint from the tide to the dry ceiling; nothing above it (land, and
  * the padding the build writes beside it). An older index's no-survey value
  * keeps its own colour, whatever the tide.
@@ -529,7 +529,7 @@ export function areaAt(
  * The areas worth drawing over a view: those whose box meets it, from half a
  * zoom under their min zoom (MapLibre rounds a raster's zoom to the nearest
  * whole one, so that is where their tiles start). Any archive's box will do:
- * the satellite imagery's and the intertidal heights' are read the same way.
+ * the satellite imagery's is read the same way.
  */
 export function areasInView<
   T extends {
@@ -611,9 +611,9 @@ export type FoilReserved = Pick<
  * land the build pads beside the water, from `padMetres`, and anything over
  * the area's dry ceiling); `{ estimate }` where the blue byte is the index's
  * `estimateBlue`; an older set's no-survey value; the deep value (flagged
- * as an estimate: unsurveyed); else a height. The map's probe (foilProbe.ts) and the app's read it the same way;
- * an archive with neither flag (the intertidal heights') is read by its
- * reserved values alone.
+ * as an estimate: unsurveyed); else a height. The map's probe
+ * (foilProbe.ts) and the app's (mobile/src/features/map/probe.ts) read it
+ * the same way; an older set, with neither flag, by its reserved values.
  */
 export function foilPoint(
   z: number,

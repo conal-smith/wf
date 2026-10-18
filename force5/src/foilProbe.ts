@@ -22,12 +22,10 @@ import {
  * is deeper than the index's floor; null where there is no water (land, and
  * the land the build pads beside the water); "none" where the archive has
  * no tile there (it leaves out the tiles with nothing to draw: land, or
- * deep water). The intertidal heights' archives (intertidal.ts) are read
- * the same way, by their reserved values (foilPoint).
+ * deep water). foilPoint (foilDepth.ts) reads the pixel.
  */
 export async function elevationAt(
-  area: Pick<FoilArea, "maxzoom" | "tileSize"> &
-    Partial<Pick<FoilArea, "dryCeilingMetres">>,
+  area: Pick<FoilArea, "maxzoom" | "tileSize" | "dryCeilingMetres">,
   url: string,
   lon: number,
   lat: number,

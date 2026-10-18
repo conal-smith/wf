@@ -9,13 +9,14 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { memo, type ReactNode, type Ref } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, G, Line, Path, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from "react-native-svg";
 import { DEPTHS, type RideStop } from "../../../../force5/src/chartStyle";
 import {
   FOIL_CLEARANCE_METRES,
   levelLine,
   surveyLine,
   type FoilArea,
+  type FoilColours,
 } from "../../../../force5/src/foilDepth";
 import { SATELLITE_ATTRIBUTION } from "../../../../force5/src/satellite";
 import type { Rider } from "../../../../force5/src/stars";
@@ -107,6 +108,64 @@ function Link({ label, url }: { label: string; url: string }) {
   );
 }
 
+/**
+ * The map's depth scale, 0 to 6 m of water at this tide (depthScale), as the
+ * site's key draws it (src/FoilLegend.tsx `fk-scale`).
+ */
+function DepthScale({ palette }: { palette: FoilColours }) {
+  const c = FOIL_CLEARANCE_METRES;
+  const stops: [number, string][] = [
+    [0, palette.edge],
+    [(c - 0.02) / 6, palette.shallow],
+    [c / 6, palette.enough],
+    [0.5, palette.deep],
+    [1, palette.deeper],
+  ];
+  const ticks: [string, number][] = [
+    ["0", 0],
+    [`${c} m`, c / 6],
+    ["3 m", 0.5],
+    ["6 m+", 1],
+  ];
+  return (
+    <View
+      accessible
+      accessibilityLabel={`Depth of water at this tide: pale at the edge, green while too shallow, teal from ${c} m, blue to 6 m`}
+    >
+      <T variant="caption" color="muted">
+        Depth of water at this tide
+      </T>
+      <Svg width="100%" height={12}>
+        <Defs>
+          <LinearGradient id="foil-scale" x1="0" y1="0" x2="1" y2="0">
+            {stops.map(([at, colour]) => (
+              <Stop key={at} offset={at} stopColor={colour} />
+            ))}
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width="100%" height={12} fill="url(#foil-scale)" stroke={colors.ink} strokeWidth={1} />
+      </Svg>
+      <View style={styles.ticks}>
+        {ticks.map(([label, at]) => (
+          <T
+            key={label}
+            variant="caption"
+            color="muted"
+            style={[
+              styles.tick,
+              { left: `${at * 100}%`, transform: [{ translateX: at === 0 ? 0 : at === 1 ? -36 : -18 }] },
+              at === 0 && styles.tickStart,
+              at === 1 && styles.tickEnd,
+            ]}
+          >
+            {label}
+          </T>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export interface FoilKeyProps {
   on: boolean;
   area: FoilArea | null;
@@ -137,17 +196,18 @@ export function FoilKey(p: FoilKeyProps) {
                 : `${p.when} · ${levelLine(p.tide, p.station, p.sea ?? undefined)}`
               : "Loading the survey…"}
       </T>
-      <KeyRow mark={swatch(palette.deep)}>{`Deep enough, ${FOIL_CLEARANCE_METRES} m or more`}</KeyRow>
+      <DepthScale palette={palette} />
+      <KeyRow mark={swatch(palette.enough)}>{`Deep enough, ${FOIL_CLEARANCE_METRES} m or more`}</KeyRow>
       <KeyRow mark={swatch(palette.shallow)}>Wet, too shallow for the mast</KeyRow>
+      <KeyRow mark={<View style={[styles.line, { borderTopColor: palette.line }]} />}>The waterline at this tide</KeyRow>
       <KeyRow mark={swatch(palette.dry)}>Dry at this tide</KeyRow>
-      <KeyRow mark={swatch(palette.unsurveyed)}>Always wet, depth not surveyed</KeyRow>
       {p.on ? (
         <T variant="pen" color="penInk">
           {p.readout ?? "Tap the water on the chart, and its depth at this hour is read out."}
         </T>
       ) : null}
       <T variant="caption" color="muted">
-        {`Approximate: astronomical tide, no surge or waves${p.on && p.area ? `; survey ${surveyLine(p.area)}` : ""}. Each stretch of coast follows its nearest tide station. Water more than ${-p.floor} m deep at the lowest tide is not drawn: it is deep enough at any tide. Not for navigation.`}
+        {`Approximate: astronomical tide, no surge or waves${p.on && p.area ? `; survey ${surveyLine(p.area)}` : ""}. Each stretch of coast follows its nearest tide station. The shore is OpenStreetMap’s coastline; the foreshore’s heights come from satellite images at known tides where there are some, and where no survey reached the depth is estimated from the surveys round it (a tap says so). Water more than ${-p.floor} m deep at the lowest tide is not drawn: it is deep enough at any tide. Not for navigation.`}
       </T>
     </View>
   );
@@ -292,6 +352,11 @@ const styles = StyleSheet.create({
   keyRow: { flexDirection: "row", alignItems: "center", gap: space.md, minHeight: 34 },
   mark: { width: 40, alignItems: "center" },
   swatch: { width: 22, height: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line },
+  line: { width: 22, height: 0, borderTopWidth: 2 },
+  ticks: { height: 16, marginTop: space.xs },
+  tick: { position: "absolute", width: 36, textAlign: "center" },
+  tickStart: { textAlign: "left" },
+  tickEnd: { textAlign: "right" },
   tints: { flexDirection: "row", borderWidth: StyleSheet.hairlineWidth, borderColor: colors.depth },
   tint: { flex: 1, alignItems: "center", paddingVertical: space.xs },
   start: { alignSelf: "flex-start" },

@@ -10,17 +10,17 @@ import {
   terrariumHeight,
   tilePixel,
   type FoilArea,
-  type FoilManifest,
   type FoilPoint,
+  type FoilReserved,
 } from "../../../../force5/src/foilDepth";
 import { archiveAt } from "./pmtiles";
 
 export async function elevationAt(
-  area: Pick<FoilArea, "maxzoom" | "tileSize">,
+  area: Pick<FoilArea, "maxzoom" | "tileSize" | "dryCeilingMetres">,
   url: string,
   lon: number,
   lat: number,
-  manifest: Pick<FoilManifest, "noSurveyMetres" | "landMetres" | "deepMetres">,
+  manifest: FoilReserved,
 ): Promise<FoilPoint> {
   const at = tilePixel(lon, lat, area.maxzoom, area.tileSize);
   const bytes = await archiveAt(url).tile(at.z, at.x, at.y);
@@ -36,5 +36,6 @@ export async function elevationAt(
   });
   image.dispose?.();
   if (!pixel || pixel.length < 3) return null;
-  return foilPoint(terrariumHeight(pixel[0], pixel[1], pixel[2]), manifest);
+  // The blue byte flags an estimate (the index's estimateBlue).
+  return foilPoint(terrariumHeight(pixel[0], pixel[1], pixel[2]), manifest, pixel[2], area.dryCeilingMetres);
 }

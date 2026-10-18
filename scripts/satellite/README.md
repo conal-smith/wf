@@ -9,15 +9,16 @@ Two products from one national pass over Sentinel-2 L2A, 2017-01 to 2026-10:
    (low) of the levels seen at Sentinel-2's overpass; inland, both share one
    summer composite. Our own composites of open Copernicus data: free to
    publish, and no map provider's account.
-2. **Intertidal heights** for the foil-depth layer (`scripts/foildepth`, branch
-   `foildepth-coast`): per 10 m pixel, the tide level at which it covers and
-   uncovers, by the rocks pilot's method (`scripts/rockspilot`, branch
-   `rocks-pilot`), one archive per tide station's region, in the foil-depth
+2. **Intertidal heights** for the foil-depth layer (`scripts/foildepth`): per
+   10 m pixel, the tide level at which it covers and uncovers, by the rocks
+   pilot's method (`scripts/rockspilot`, branch `rocks-pilot`), one archive
+   per tide station's region (and per basin station), in the foil-depth
    layer's own encoding.
 
-The app draws the heights over the foil-depth layer from zoom 10, with the
-foil layer's colours at the same tide (`force5/src/intertidal.ts`), until the
-foil-depth build takes them in itself.
+The foil-depth build takes the heights in (`scripts/foildepth/satellite.py
+from-archives`), and the map draws them only as part of the foil layer: the
+separate overlay that drew these archives over it (`force5/src/intertidal.ts`,
+October 2026) is retired.
 
 ## Steps
 
@@ -50,9 +51,12 @@ $PY -I $S/bedtype.py apply      # rocky.tif per tile: rock or weed, percent
 $PY -I $S/tiles.py imagery --tiles 29UPV --bbox -6.26,53.34,-6.04,53.50 --out <root>/out/satellite-offline
 $PY -I $S/publish.py --area ireland --imagery <root>/out/satellite --intertidal <root>/out/intertidal \
     --offline <root>/out/satellite-offline --env deploy/home-compute/.env --upload
-$PY -I $S/publish.py --offline-intertidal <root>/out/intertidal --offline-bbox=-6.24,53.36,-6.06,53.49 \
-    --offline-areas tide-howth
 ```
+
+The offline imagery can also be cut from the national archives with
+`publish.clip` (the box `-6.24,53.36,-6.06,53.49`, 51 tiles a tide), as the
+set in `public-data/satellite/` now is. `--offline-intertidal` still cuts a
+small heights set, but nothing reads one since the overlay was retired.
 
 Each step is resumable: the catalog by month, the fetch by acquisition, the
 compose by block, and `run.py` skips a tile that has its `stats.json`.
@@ -368,12 +372,12 @@ immutable`), read by HTTP range a tile at a time.
   an area whose cover meets the view is opened. The archives are opened
   ranges-only (`force5/src/archives.ts`): a host that answered a range with
   the whole file would be refused, never downloaded.
-- **Intertidal heights**: with the foil layer on, from zoom 10, the index and
-  `force5/src/intertidal.ts` load, and the regions in view are drawn over the
-  foil areas on their station's tide, every reserved value clear (the foil
-  archive shows there). A tap reads them first. A region whose station has no
-  Marine Institute prediction in the app (Northern Ireland's five, and Great
-  Britain's) has no tide to draw at, so it is not drawn.
+- **Intertidal heights**: not read by the app. The foil-depth archives carry
+  them (`scripts/foildepth/README.md`, "Satellite intertidal heights"): built
+  in under OpenStreetMap's coastline, on the foil layer's one smooth ramp, and
+  read by a tap like any other height. `public/intertidal/index.json` stays as
+  the record of the published sets (`publish.py` merges each run's areas into
+  it), and the foil build is fed from the set it names.
 
 Great Britain is another area: `publish.py --area great-britain --imagery …
 --intertidal …` uploads its sets and adds its entries to both indexes beside

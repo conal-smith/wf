@@ -16,7 +16,7 @@ export const endpoints = endpointsFor(variant, {
 
 export { variant };
 
-/** A site file (spots.json, the satellite, intertidal and foil indexes). */
+/** A site file (spots.json, the satellite and foil indexes). */
 export const siteUrl = (path: string) => `${endpoints.site}${path.replace(/^\//, "")}`;
 
 /** An API route, e.g. apiUrl("api/alerts/devices"). */

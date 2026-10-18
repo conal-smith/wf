@@ -163,7 +163,6 @@ export const ChartMap = memo(function ChartMap({
     () => (focus ? focusFeatures(focus.lon, focus.lat, focus.radius) : EMPTY),
     [focus],
   );
-  const intertidalFirst = foil.find((f) => f.over)?.id;
 
   return (
     <View
@@ -229,10 +228,13 @@ export const ChartMap = memo(function ChartMap({
               {...asLayer({
                 id: f.id,
                 type: "color-relief",
-                beforeId: f.over ? "rivers" : (intertidalFirst ?? "rivers"),
+                beforeId: "rivers",
                 minzoom: Math.max(0, f.minzoom - 0.5),
                 layout: { visibility: f.visible ? "visible" : "none" },
-                paint: { "color-relief-color": f.color, "color-relief-opacity": 0.82 },
+                // The ramp's colours carry their own alpha (ui/theme.css). The
+                // heights are sampled linearly, as on the site: the build pads
+                // the land beside the water so nothing sweeps the ramp.
+                paint: { "color-relief-color": f.color, "color-relief-opacity": 1 },
               })}
             />
           </RasterDEMSource>

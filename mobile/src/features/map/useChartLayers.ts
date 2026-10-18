@@ -1,26 +1,23 @@
 /**
  * What the chart lays under and over its lines, each loaded only once it is
  * asked for and then only for the view (src/useSatellite.ts,
- * src/useFoilDepth.ts, src/useIntertidal.ts, for the app): the satellite's
- * index the first time an image is chosen, the foilable-depth index the
- * first time that layer is on and a tide curve per station in view, and the
- * intertidal heights' index once the map is zoomed in to the shore.
+ * src/useFoilDepth.ts, for the app): the satellite's index the first time an
+ * image is chosen, and the foilable-depth index the first time that layer is
+ * on and a tide curve per station in view.
  *
- * The three indexes ship inside the app, as the riding places do: they are
+ * The two indexes ship inside the app, as the riding places do: they are
  * the site's own files (public/), they change only with a release, and the
  * archives they name are content-versioned on the data host, so an index in
  * the bundle never points at a file that has gone. Read when first wanted.
  */
 import { useEffect, useMemo, useState } from "react";
 import foilJson from "../../../../public/foildepth/index.json";
-import intertidalJson from "../../../../public/intertidal/index.json";
 import satelliteJson from "../../../../public/satellite/index.json";
 import {
   validateFoilManifest,
   type FoilArea,
   type FoilManifest,
 } from "../../../../force5/src/foilDepth";
-import { validateIntertidalManifest, type IntertidalArea, type IntertidalManifest } from "../../../../force5/src/intertidal";
 import type { SatelliteOption } from "../../../../force5/src/satellite";
 import {
   nearestSatelliteStation,
@@ -39,7 +36,6 @@ import type { ChartView, Tides } from "./foilLogic";
 // Metro's inlineRequires reads each file the first time it is used.
 const satelliteIndex = () => Promise.resolve<unknown>(satelliteJson);
 const foilIndex = () => Promise.resolve<unknown>(foilJson);
-const intertidalIndex = () => Promise.resolve<unknown>(intertidalJson);
 
 /* ---- the satellite ---- */
 
@@ -116,8 +112,6 @@ export function useSatellite(option: SatelliteOption, view: ChartView | null): S
 export const foilArchiveUrl = (manifest: FoilManifest, area: FoilArea) =>
   manifest.base ? forecastUrl(`${manifest.base}${area.url}`) : siteUrl(area.url);
 
-export const intertidalArchiveUrl = (area: IntertidalArea) => forecastUrl(`${area.base}${area.url}`);
-
 const TIDE_ERROR = "Tide predictions are unavailable, so the depths cannot follow the tide.";
 
 /** The foilable-depth index, loaded the first time the layer is on and kept after. */
@@ -174,24 +168,4 @@ export function useTides(stations: readonly string[]): { tides: Tides; error: st
     return () => controller.abort();
   }, [key]);
   return state;
-}
-
-export function useIntertidal(wanted: boolean): IntertidalManifest | null {
-  const [manifest, setManifest] = useState<IntertidalManifest | null>(null);
-  const [failed, setFailed] = useState(false);
-  const load = wanted && !manifest && !failed;
-  useEffect(() => {
-    if (!load) return;
-    const controller = new AbortController();
-    intertidalIndex()
-      .then((raw) => {
-        if (!controller.signal.aborted) setManifest(validateIntertidalManifest(raw));
-      })
-      // Not shown: the foil archives' own foreshore stands in.
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true);
-      });
-    return () => controller.abort();
-  }, [load]);
-  return manifest;
 }

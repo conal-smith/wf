@@ -16,7 +16,7 @@ export function variantOf(applicationId: string | null | undefined): Variant {
 export interface Endpoints {
   /** The forecast data host (the site's <meta name="wingfoil:forecast-base">). */
   data: string;
-  /** The site, which serves spots.json and the satellite, intertidal and foil indexes. */
+  /** The site, which serves spots.json and the satellite and foil indexes. */
   site: string;
   /** The API: alerts, and the marketplace's and community's when they are on. */
   api: string;

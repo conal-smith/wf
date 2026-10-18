@@ -100,7 +100,6 @@ function stageStaticData() {
     filter: (path) => !region.test(path),
   });
   stageOffline(data, "satellite");
-  stageOffline(data, "intertidal");
   const indexPath = join(E2E_PUBLIC, "foildepth", "index.json");
   const index = JSON.parse(readFileSync(indexPath, "utf8"));
   if (!index.base) return;
@@ -112,11 +111,10 @@ function stageStaticData() {
 }
 
 /**
- * The satellite imagery and the intertidal heights are the whole coast, far
- * too large to commit: a small set of each (Malahide to Bull Island,
- * scripts/satellite/publish.py --offline and --offline-intertidal) is, with
- * an index of its own, and the e2e site serves that index in place of the
- * national one, so they are read from disk too. With no offline set, no
+ * The satellite imagery is the whole coast, far too large to commit: a small
+ * set (Malahide to Bull Island, scripts/satellite/publish.py --offline) is,
+ * with an index of its own, and the e2e site serves that index in place of
+ * the national one, so it is read from disk too. With no offline set, no
  * index: the e2e site reads nothing from the network.
  */
 function stageOffline(data, name) {
