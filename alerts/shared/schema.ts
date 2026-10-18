@@ -22,7 +22,7 @@ import {
   type Rider,
   type RulesPayload,
 } from "./protocol.js";
-import { customRatingSchema } from "../../site/shared/validate.js";
+import { customRatingSchema } from "../../site/shared/rider.js";
 
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 

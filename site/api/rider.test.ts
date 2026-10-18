@@ -23,7 +23,9 @@ import { devIdentity } from "./identity";
 import { memoryUsersRepo } from "./repo-memory";
 import { pgUsersRepo } from "./repo-pg";
 import type { UsersRepo } from "./repo";
-import type { RiderProfile } from "../shared/types";
+import { memoryRidersRepo, type RidersRepo } from "./riders";
+import { pgRidersRepo } from "./riders-pg";
+import type { RiderProfile } from "../shared/rider";
 
 const OWN: CustomRating = standardRating(DEFAULT_RIDER, "advanced");
 const OTHER: CustomRating = {
@@ -31,9 +33,13 @@ const OTHER: CustomRating = {
   direction: { ...OWN.direction, offshore: 0 },
 };
 
-function contract(name: string, make: () => Promise<UsersRepo>) {
+function contract(
+  name: string,
+  make: () => Promise<{ users: UsersRepo; riders: RidersRepo }>,
+) {
   describe(name, () => {
     let users: UsersRepo;
+    let riders: RidersRepo;
     let n = 0;
     const someone = async () => {
       const id = `dev_rider${++n}_${newId().slice(0, 6).toLowerCase()}`;
@@ -46,11 +52,11 @@ function contract(name: string, make: () => Promise<UsersRepo>) {
       return id;
     };
     beforeAll(async () => {
-      users = await make();
+      ({ users, riders } = await make());
     });
 
     it("keeps nothing until the rider sets something", async () => {
-      expect(await users.getRiderProfile(await someone())).toEqual({
+      expect(await riders.get(await someone())).toEqual({
         customStars: null,
         updatedAt: null,
       });
@@ -59,17 +65,17 @@ function contract(name: string, make: () => Promise<UsersRepo>) {
     it("keeps a rating, and a reset, each when newer", async () => {
       const id = await someone();
       const at = "2026-10-18T10:00:00.000Z";
-      expect(
-        await users.putRiderProfile(id, { customStars: OWN, updatedAt: at }),
-      ).toEqual({ customStars: OWN, updatedAt: at });
+      expect(await riders.put(id, { customStars: OWN, updatedAt: at })).toEqual(
+        { customStars: OWN, updatedAt: at },
+      );
       const reset = "2026-10-18T11:00:00.000Z";
       expect(
-        await users.putRiderProfile(id, {
+        await riders.put(id, {
           customStars: null,
           updatedAt: reset,
         }),
       ).toEqual({ customStars: null, updatedAt: reset });
-      expect(await users.getRiderProfile(id)).toEqual({
+      expect(await riders.get(id)).toEqual({
         customStars: null,
         updatedAt: reset,
       });
@@ -77,11 +83,11 @@ function contract(name: string, make: () => Promise<UsersRepo>) {
 
     it("lets the newer copy stand against an older write", async () => {
       const id = await someone();
-      await users.putRiderProfile(id, {
+      await riders.put(id, {
         customStars: OWN,
         updatedAt: "2026-10-18T12:00:00.000Z",
       });
-      const stale = await users.putRiderProfile(id, {
+      const stale = await riders.put(id, {
         customStars: OTHER,
         updatedAt: "2026-10-18T09:00:00.000Z",
       });
@@ -92,7 +98,7 @@ function contract(name: string, make: () => Promise<UsersRepo>) {
       // The same moment again is not newer either.
       expect(
         (
-          await users.putRiderProfile(id, {
+          await riders.put(id, {
             customStars: OTHER,
             updatedAt: "2026-10-18T12:00:00.000Z",
           })
@@ -104,15 +110,18 @@ function contract(name: string, make: () => Promise<UsersRepo>) {
       const a = await someone();
       const b = await someone();
       const at = "2026-10-18T10:00:00.000Z";
-      await users.putRiderProfile(a, { customStars: OWN, updatedAt: at });
-      await users.putRiderProfile(b, { customStars: OTHER, updatedAt: at });
-      expect((await users.getRiderProfile(a)).customStars).toEqual(OWN);
-      expect((await users.getRiderProfile(b)).customStars).toEqual(OTHER);
+      await riders.put(a, { customStars: OWN, updatedAt: at });
+      await riders.put(b, { customStars: OTHER, updatedAt: at });
+      expect((await riders.get(a)).customStars).toEqual(OWN);
+      expect((await riders.get(b)).customStars).toEqual(OTHER);
     });
   });
 }
 
-contract("memory repo", async () => memoryUsersRepo());
+contract("memory repo", async () => {
+  const users = memoryUsersRepo();
+  return { users, riders: memoryRidersRepo(users) };
+});
 
 const url = process.env.DATABASE_URL;
 
@@ -135,10 +144,14 @@ describe.skipIf(!url)("Postgres", () => {
     await sql.end({ timeout: 5 });
   });
 
-  contract("Postgres repo", async () => pgUsersRepo(sql));
+  contract("Postgres repo", async () => ({
+    users: pgUsersRepo(sql),
+    riders: pgRidersRepo(sql),
+  }));
 
   it("goes with the person", async () => {
     const users = pgUsersRepo(sql);
+    const riders = pgRidersRepo(sql);
     const id = "dev_leaving";
     await users.insertUser({
       id,
@@ -146,7 +159,7 @@ describe.skipIf(!url)("Postgres", () => {
       displayName: "Leaving",
       avatarUrl: null,
     });
-    await users.putRiderProfile(id, {
+    await riders.put(id, {
       customStars: OWN,
       updatedAt: "2026-10-18T10:00:00.000Z",
     });

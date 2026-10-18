@@ -39,12 +39,15 @@ import { pgRepo as pgCommunityRepo } from "../../../community/api/repo-pg.js";
 import { clerkIdentity, devIdentity } from "../../../site/api/identity.js";
 import { memoryUsersRepo } from "../../../site/api/repo-memory.js";
 import { pgUsersRepo } from "../../../site/api/repo-pg.js";
+import { memoryRidersRepo, type RidersRepo } from "../../../site/api/riders.js";
+import { pgRidersRepo } from "../../../site/api/riders-pg.js";
 
 async function main() {
   const config = loadConfig();
 
   let repo, community, users, hub;
   let ledger: UsageLedger;
+  let riders: RidersRepo;
   let alertsRepo: AlertsRepo;
   let alertsLock: <T>(work: () => Promise<T>) => Promise<T | null>;
   if (config.db.mode === "postgres") {
@@ -75,6 +78,7 @@ async function main() {
     repo = pgRepo(sql);
     community = pgCommunityRepo(sql);
     users = pgUsersRepo(sql);
+    riders = pgRidersRepo(sql);
     // A client of its own: the LISTEN keeps a connection for good, and the
     // pool above has five for every query the API makes.
     hub = await pgHub(connect(config.db.url!), sql);
@@ -86,6 +90,7 @@ async function main() {
     repo = memoryRepo(memoryUsers);
     community = memoryCommunityRepo(memoryUsers);
     users = memoryUsers;
+    riders = memoryRidersRepo(memoryUsers);
     hub = memoryHub();
     ledger = memoryLedger();
     alertsRepo = memoryAlertsRepo();
@@ -154,7 +159,9 @@ async function main() {
   if (!features.alerts)
     console.warn("market: FEATURE_ALERTS is not 1, /api/alerts is off");
   else if (!evaluating)
-    console.warn("market: ALERTS_EVALUATE is not 1, alerts are kept but not sent");
+    console.warn(
+      "market: ALERTS_EVALUATE is not 1, alerts are kept but not sent",
+    );
   const stopEvaluator = evaluating
     ? startEvaluator(alertsDeps, { lock: alertsLock })
     : () => {};
@@ -163,6 +170,7 @@ async function main() {
     repo,
     community,
     people: { users, identity },
+    riders,
     verify,
     storage,
     storagePrefix: config.storage.prefix,

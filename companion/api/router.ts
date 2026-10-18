@@ -31,7 +31,7 @@ import {
 } from "../shared/protocol.js";
 import { runTurn, type Effort, type ModelClient } from "./agent.js";
 import type { Budget } from "./budget.js";
-import { customRatingSchema } from "../../site/shared/validate.js";
+import { customRatingSchema } from "../../site/shared/rider.js";
 import { riderFrom, toolNamed, type ToolContext } from "./tools.js";
 
 const SECOND = 1000;

@@ -4,7 +4,7 @@
  * the join its Postgres twin does.
  */
 import { HandleTakenError, type NewUser, type UsersRepo } from "./repo.js";
-import type { RiderProfile, User } from "../shared/types.js";
+import type { User } from "../shared/types.js";
 import type { UserInputParsed } from "../shared/validate.js";
 
 export interface MemoryUsersRepo extends UsersRepo {
@@ -18,9 +18,6 @@ export function memoryUsersRepo(
   now: () => Date = () => new Date(),
 ): MemoryUsersRepo {
   const users = new Map<string, User>();
-  const riders = new Map<string, RiderProfile>();
-  const riderProfile = (id: string): RiderProfile =>
-    structuredClone(riders.get(id) ?? { customStars: null, updatedAt: null });
 
   const handleOwner = (handle: string) =>
     [...users.values()].find((u) => u.handle === handle);
@@ -40,19 +37,6 @@ export function memoryUsersRepo(
 
     async countUsers() {
       return users.size;
-    },
-
-    getRiderProfile: async (id) => riderProfile(id),
-
-    async putRiderProfile(id, input) {
-      if (!users.has(id)) throw new Error(`No user ${id}`);
-      const kept = riders.get(id);
-      if (!kept || Date.parse(kept.updatedAt!) < Date.parse(input.updatedAt))
-        riders.set(id, {
-          customStars: structuredClone(input.customStars),
-          updatedAt: new Date(input.updatedAt).toISOString(),
-        });
-      return riderProfile(id);
     },
 
     async insertUser(row: NewUser) {

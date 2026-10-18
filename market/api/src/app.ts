@@ -41,6 +41,11 @@ import {
   createSiteRouter,
   meHandlers,
 } from "../../../site/api/router.js";
+import {
+  createRiderRouter,
+  memoryRidersRepo,
+  type RidersRepo,
+} from "../../../site/api/riders.js";
 import { ensureUser, type People } from "../../../site/api/users.js";
 import { hasContact } from "../../../site/shared/types.js";
 import {
@@ -69,6 +74,8 @@ export interface AppDeps {
   community: CommunityRepo;
   /** The site's `users` table and where a new row's name comes from. */
   people: People;
+  /** What the account keeps of the rider. Left out, kept in memory. */
+  riders?: RidersRepo;
   verify: Verifier;
   storage: Storage;
   storagePrefix: string;
@@ -603,6 +610,10 @@ export function createApp(deps: AppDeps) {
     }),
   );
   if (deps.alerts) app.route("/api/alerts", createAlertsRouter(deps.alerts));
+  app.route(
+    "/api",
+    createRiderRouter(people, deps.riders ?? memoryRidersRepo(people.users)),
+  );
   app.route("/api", createSiteRouter(people));
   return app;
 }

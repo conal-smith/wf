@@ -4,7 +4,7 @@
  * it on Postgres and `repo-memory.ts` on a plain map for tests and for running
  * the API with no database at all.
  */
-import type { RiderProfile, RiderProfileInput, User } from "../shared/types.js";
+import type { User } from "../shared/types.js";
 import type { UserInputParsed } from "../shared/validate.js";
 
 /** What a first row is made of: everything else takes the table's default. */
@@ -37,12 +37,4 @@ export interface UsersRepo {
   setSuspendedUntil(id: string, until: Date | null): Promise<User | null>;
   /** Everyone with a row: the community's member count. */
   countUsers(): Promise<number>;
-  /** What the account keeps of the rider; nulls when nothing is kept yet. */
-  getRiderProfile(id: string): Promise<RiderProfile>;
-  /**
-   * Keeps `input` only when it is newer than what is kept, and answers what
-   * is kept after: the input, or the newer copy that stood. The user's row
-   * must exist.
-   */
-  putRiderProfile(id: string, input: RiderProfileInput): Promise<RiderProfile>;
 }
