@@ -1,4 +1,4 @@
-import { expect, rememberSpot, test, type Page } from "../fixtures";
+import { expect, rememberSpot, SPOTS_KEY, test, type Page } from "../fixtures";
 import { sampleStrip } from "../columns";
 
 /**
@@ -30,8 +30,9 @@ import { sampleStrip } from "../columns";
 
 test.use({ reducedMotion: "reduce" });
 
-// Every state is a returning visitor's, with Brandon Bay chosen last and so
-// in the dock, as the baseline was drawn: a first visit opens on no spot.
+// Every state but the first visit's is a returning visitor's, with Brandon
+// Bay chosen last and so in the dock: a first visit opens on no spot, and no
+// dock.
 test.beforeEach(({ page }) => rememberSpot(page, "brandon"));
 
 /** Where a shot lands, relative to the repo root Playwright is run from. */
@@ -155,6 +156,16 @@ for (const { width, height } of [
       await shoot(page, "idle", width);
     });
 
+    test("a first visit, with no spot and so no dock", async ({ page }) => {
+      await page.addInitScript(
+        (key) => localStorage.removeItem(key),
+        SPOTS_KEY,
+      );
+      await openMap(page);
+      await expect(page.locator(".dock")).toHaveCount(0);
+      await shoot(page, "first-visit", width);
+    });
+
     test("search open", async ({ page }) => {
       await openMap(page);
       await page.getByRole("combobox", { name: "Find a spot" }).fill("Dublin");
@@ -186,12 +197,20 @@ for (const { width, height } of [
 
     test("the dock's waves, sky and sea", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("button", { name: "Show waves, sky and sea" }).click();
+      await page
+        .getByRole("button", { name: "Show waves, sky and sea" })
+        .click();
       await expect(page.locator(".dock tr.tt-sea")).toHaveCount(1);
       // Inside the sample's weather run, which starts three days on.
-      const noon = sampleStrip.findIndex((c) => c.date === "2026-09-17" && c.hour >= 12);
-      await page.getByRole("slider", { name: "Forecast time" }).fill(String(noon));
-      await expect(page.locator(".dock tr.tt-sky .weather-cell").first()).toBeVisible();
+      const noon = sampleStrip.findIndex(
+        (c) => c.date === "2026-09-17" && c.hour >= 12,
+      );
+      await page
+        .getByRole("slider", { name: "Forecast time" })
+        .fill(String(noon));
+      await expect(
+        page.locator(".dock tr.tt-sky .weather-cell").first(),
+      ).toBeVisible();
       await shoot(page, "dock-more", width);
     });
 
@@ -214,9 +233,13 @@ for (const { width, height } of [
       }, box);
       // The tap needs the canvas under it; it is hidden again for the shot.
       const canvas = page.locator(".maplibregl-canvas");
-      await canvas.evaluate((el) => ((el as HTMLElement).style.visibility = "visible"));
+      await canvas.evaluate(
+        (el) => ((el as HTMLElement).style.visibility = "visible"),
+      );
       await canvas.click({ position: at });
-      await canvas.evaluate((el) => ((el as HTMLElement).style.visibility = ""));
+      await canvas.evaluate(
+        (el) => ((el as HTMLElement).style.visibility = ""),
+      );
       await expect(page.locator(".pick-mark")).toHaveCount(1);
       await expect
         .poll(() => page.locator(".dock tr.tt-wind td .kn").count(), {
@@ -228,7 +251,10 @@ for (const { width, height } of [
 
     test("the dock's blend", async ({ page }) => {
       await openMap(page);
-      await page.locator(".dk-view").getByRole("button", { name: "Blend" }).click();
+      await page
+        .locator(".dk-view")
+        .getByRole("button", { name: "Blend" })
+        .click();
       await expect(page.locator(".dock .blend-chart")).toBeVisible();
       await shoot(page, "dock-blend", width);
     });
@@ -251,7 +277,9 @@ for (const { width, height } of [
       await pick(page, "Dollymount");
       await page.keyboard.press("Escape");
       await expect(page.locator(".map-canvas")).not.toHaveClass(/is-focus/);
-      await page.getByRole("button", { name: "Your spots", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Your spots", exact: true })
+        .click();
       await expect(
         page.getByRole("complementary", { name: "Your spots" }),
       ).toBeVisible();
@@ -267,7 +295,9 @@ for (const { width, height } of [
 
     test("the small print", async ({ page }) => {
       await openMap(page);
-      await page.getByRole("button", { name: "Sources and small print" }).click();
+      await page
+        .getByRole("button", { name: "Sources and small print" })
+        .click();
       await expect(
         page.getByRole("dialog", { name: "Sources and small print" }),
       ).toBeVisible();
@@ -277,7 +307,9 @@ for (const { width, height } of [
     test("site menu open", async ({ page }) => {
       await openMap(page);
       await page.getByRole("button", { name: "Site menu" }).click();
-      await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
+      await expect(
+        page.getByRole("navigation", { name: "Site" }),
+      ).toBeVisible();
       await shoot(page, "site-menu", width);
     });
 
@@ -328,7 +360,9 @@ for (const { width, height } of [
     test("focus ring", async ({ page }) => {
       await openMap(page);
       await page.keyboard.press("Tab");
-      await expect(page.getByRole("button", { name: "Site menu" })).toBeFocused();
+      await expect(
+        page.getByRole("button", { name: "Site menu" }),
+      ).toBeFocused();
       await shoot(page, "focus-ring", width);
     });
   });

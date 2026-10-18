@@ -24,7 +24,8 @@ const turns = Array.from({ length: SAMPLES }, (_, i) => i).filter(
   (i) =>
     i > 0 &&
     i < SAMPLES - 1 &&
-    Math.sign(height(i) - height(i - 1)) !== Math.sign(height(i + 1) - height(i)),
+    Math.sign(height(i) - height(i - 1)) !==
+      Math.sign(height(i + 1) - height(i)),
 );
 const tideCurve = {
   stepMinutes: STEP_MINUTES,
@@ -140,31 +141,40 @@ test("the week is one strip of hours round the clock, with no day slider over it
     await page.locator(".dock tr.tt-stars td[data-i] .hour-stars").count(),
   ).toBeGreaterThan(0);
   expect(
-    await page.locator(".dock tr.tt-stars td.night:not(:has(.hour-stars))").count(),
+    await page
+      .locator(".dock tr.tt-stars td.night:not(:has(.hour-stars))")
+      .count(),
   ).toBeGreaterThan(0);
-  await expect(page.locator(".dock tr.tt-stars td.night .hour-stars")).toHaveCount(0);
-  await expect(page.locator(".dock tr.tt-wind td.night .kn").first()).toHaveText(
-    /^\d+$/,
-  );
-  await expect(page.locator(".dock tr.tt-wind td.night .gu").first()).toHaveText(
-    /g\d+$/,
-  );
+  await expect(
+    page.locator(".dock tr.tt-stars td.night .hour-stars"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".dock tr.tt-wind td.night .kn").first(),
+  ).toHaveText(/^\d+$/);
+  await expect(
+    page.locator(".dock tr.tt-wind td.night .gu").first(),
+  ).toHaveText(/g\d+$/);
   await expect(
     page.locator(".dock tr.tt-from td.night .from-cell").first(),
   ).toBeAttached();
   // Every hour reads its wind and gust, and one arrow for where it goes.
-  await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(/^\d+$/);
+  await expect(page.locator(".dock tr.tt-wind td .kn").first()).toHaveText(
+    /^\d+$/,
+  );
   await expect(
     page.locator(".dock tr.tt-from td .from-cell").first(),
-  ).toHaveAttribute("aria-label", /^From [NSEW]{1,3}, .*(shore|offshore|onshore)$/);
-  await expect(page.locator(".dock tr.tt-from td .g-arrow").first()).toBeVisible();
+  ).toHaveAttribute(
+    "aria-label",
+    /^From [NSEW]{1,3}, .*(shore|offshore|onshore)$/,
+  );
+  await expect(
+    page.locator(".dock tr.tt-from td .g-arrow").first(),
+  ).toBeVisible();
   await expect(page.locator(".dock tr.tt-from")).not.toContainText(/[NSEW]/);
   // The tide's turns are just their times on the curve; the turn and the
   // height in full are in its title.
   const tide = page.locator(".dock .tide-row");
-  await expect(tide.locator(".tide-label").first()).toHaveText(
-    /^\d\d:\d\d$/,
-  );
+  await expect(tide.locator(".tide-label").first()).toHaveText(/^\d\d:\d\d$/);
   await expect(tide.locator("g > title").first()).toHaveText(
     /^(High|Low) tide \d\d:\d\d · \d+\.\d m$/,
   );
@@ -177,7 +187,9 @@ test("the week is one strip of hours round the clock, with no day slider over it
   );
   // Nothing on the page scrolls sideways; the strip carries the hours.
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
   expect(errors).toEqual([]);
 });
@@ -205,16 +217,65 @@ test("the strip and the slider move together, by swipe, wheel and key", async ({
   await expect(
     page.locator(`.dock tr.tt-hour td[data-i="${scrolled}"]`),
   ).toHaveClass(/c-sel/);
-  // A plain wheel, turned up or down, moves the hours sideways.
+  // A plain wheel, turned up or down, moves the hours sideways, eased over
+  // a few frames rather than in one jump, and comes to rest on an hour.
   await wrap.hover();
   const before = await wrap.evaluate((el) => el.scrollLeft);
-  await page.mouse.wheel(0, cw * 3);
-  await expect
-    .poll(() => wrap.evaluate((el) => el.scrollLeft))
-    .toBeGreaterThan(before + cw);
+  const frames = wrap.evaluate(
+    (el) =>
+      new Promise<number[]>((resolve) => {
+        const seen: number[] = [];
+        const start = performance.now();
+        const look = () => {
+          seen.push(el.scrollLeft);
+          if (performance.now() - start < 600) requestAnimationFrame(look);
+          else resolve(seen);
+        };
+        requestAnimationFrame(look);
+      }),
+  );
+  await page.mouse.wheel(0, 100);
+  const path = await frames;
+  const between = new Set(
+    path.filter((left) => left > before + 1 && left < Math.max(...path) - 1),
+  );
+  expect(between.size).toBeGreaterThan(2);
   await expect
     .poll(async () => Number(await slider(page).inputValue()))
     .toBeGreaterThan(scrolled);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // A trackpad's small steps move it as they come, and are not pulled back
+  // to the hour they left.
+  const stepped = await wrap.evaluate((el) => {
+    const from = el.scrollLeft;
+    for (let i = 0; i < 10; i++)
+      el.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: 3.5,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    return el.scrollLeft - from;
+  });
+  expect(stepped).toBeGreaterThan(30);
+  expect(stepped).toBeLessThan(40);
+  await page.waitForTimeout(800);
+  expect(await wrap.evaluate((el) => el.scrollLeft)).toBeGreaterThan(before);
+  await expect.poll(() => offCursor(page)).toBeLessThan(2);
+  // At the start of the strip, a wheel turned back is the page's.
+  await slider(page).press("Home");
+  await expect.poll(() => wrap.evaluate((el) => el.scrollLeft)).toBe(0);
+  const back = await wrap.evaluate((el) => {
+    const event = new WheelEvent("wheel", {
+      deltaY: -100,
+      bubbles: true,
+      cancelable: true,
+    });
+    el.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(back).toBe(false);
   // A sideways swipe (a trackpad's, or a tilted wheel) is the browser's own.
   const prevented = await wrap.evaluate((el) => {
     const event = new WheelEvent("wheel", {
@@ -367,7 +428,10 @@ test("a starred spot is kept on this device: the dock and your spots agree", asy
   await expect(panel).toHaveCount(0);
   await yours.click();
   await expect(panel).toContainText("Tap the red star");
-  await page.locator(".dock").getByRole("button", { name: "Star Brandon Bay" }).click();
+  await page
+    .locator(".dock")
+    .getByRole("button", { name: "Star Brandon Bay" })
+    .click();
   await expect(
     page.locator(".dock").getByRole("button", { name: "Unstar Brandon Bay" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -426,7 +490,8 @@ test("units, the rider and the blend's models are display options, kept on reloa
   page,
 }) => {
   await openDock(page);
-  const wing = () => page.locator(".dock tr.tt-wing td[data-i]").allTextContents();
+  const wing = () =>
+    page.locator(".dock tr.tt-wing td[data-i]").allTextContents();
   const before = await wing();
   // From the map's controls now, not the dock's head.
   await page
@@ -467,7 +532,9 @@ test("units, the rider and the blend's models are display options, kept on reloa
     "aria-pressed",
     "true",
   );
-  await expect(page.locator('input[data-model-toggle="gfs"]')).not.toBeChecked();
+  await expect(
+    page.locator('input[data-model-toggle="gfs"]'),
+  ).not.toBeChecked();
 });
 
 test("the display options open beside the map's controls, one panel at a time", async ({
@@ -535,9 +602,12 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   page,
 }) => {
   await openDock(page);
-  await page.locator(".dock").getByRole("radio", { name: "Blend" }).or(
-    page.locator(".dock").getByRole("button", { name: "Blend" }),
-  ).first().click();
+  await page
+    .locator(".dock")
+    .getByRole("radio", { name: "Blend" })
+    .or(page.locator(".dock").getByRole("button", { name: "Blend" }))
+    .first()
+    .click();
   const chart = page.locator(".dock .blend-chart");
   await expect(chart).toBeVisible();
   expect(await chart.locator(".model-line").count()).toBeGreaterThan(3);
@@ -548,9 +618,12 @@ test("the blend draws every model that covers the spot, on the strip's hours", a
   await expect(scale).toContainText("kn");
   await expect(scale.locator("b").first()).toHaveText(/^\d+$/);
   await expect(page.locator(".dk-labs")).not.toContainText(/Blend|Tide/);
-  await page.locator(".dock").getByRole("radio", { name: "Table" }).or(
-    page.locator(".dock").getByRole("button", { name: "Table" }),
-  ).first().click();
+  await page
+    .locator(".dock")
+    .getByRole("radio", { name: "Table" })
+    .or(page.locator(".dock").getByRole("button", { name: "Table" }))
+    .first()
+    .click();
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
 });
 
@@ -600,7 +673,9 @@ test("on a phone the dock opens on the hours, with no handle to fold them", asyn
   await slider(page).fill("9");
   await expect.poll(() => offCursor(page)).toBeLessThan(2);
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
 });
 
@@ -698,7 +773,9 @@ function newerTile(level: number, x: number, y: number, hour: number) {
     );
     newerTiles.set(
       hour,
-      new Map(tiles.map((tile) => [`${tile.level}/${tile.x}/${tile.y}`, tile.bytes])),
+      new Map(
+        tiles.map((tile) => [`${tile.level}/${tile.x}/${tile.y}`, tile.bytes]),
+      ),
     );
   }
   return newerTiles.get(hour)!.get(`${level}/${x}/${y}`);
@@ -738,7 +815,9 @@ test("an open tab moves to a newer run and keeps the time it was showing", async
   );
   await page.clock.install({ time: SAMPLE_CLOCK });
   await page.goto("/");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
   // An hour ahead: one the clock has already overtaken would go back to now.
   const ahead =
     sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;
@@ -784,13 +863,17 @@ test("a tab whose run's tiles have gone moves to the run its pointer names now",
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.install({ time: SAMPLE_CLOCK });
   await page.goto("/");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
   // An hour of the reader's own, so nothing but the map's view asks for tiles.
   const ahead =
     sampleStrip.findIndex((c) => c.time > SAMPLE_CLOCK.getTime()) + 3;
   await page.locator(`.dock tr.tt-wing td[data-i="${ahead}"]`).click();
   await expect(slider(page)).toHaveValue(String(ahead));
-  await expect(page.locator(".frame-status")).toHaveCount(0, { timeout: 20000 });
+  await expect(page.locator(".frame-status")).toHaveCount(0, {
+    timeout: 20000,
+  });
   await page.waitForTimeout(1500);
   // All of Ireland on a phone is drawn from overview tiles; a bay needs native
   // ones, which nothing has read yet.
@@ -811,7 +894,9 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   const afternoon = Date.parse("2026-09-14T09:00:00Z");
   await page.clock.install({ time: new Date(afternoon) });
   await page.goto("/");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
   const strip = stripAt(afternoon);
   const opening = Number(await slider(page).inputValue());
   expect(strip[opening].time).toBeGreaterThanOrEqual(afternoon - 3600000);
@@ -819,7 +904,9 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   // The tab is left for six hours with the reader on the opening hour: the
   // hour has gone by, and coming back lands on now (15 UTC, 16:00 Irish).
   await page.clock.setSystemTime(new Date(afternoon + 6 * 3600000));
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
   await expect(slider(page)).toHaveAttribute(
     "aria-valuetext",
     /^Monday 1[5-7]:00$/,
@@ -828,7 +915,9 @@ test("a tab coming back lands on now, unless the reader chose a later hour", asy
   const later = Number(await slider(page).getAttribute("max")) - 3;
   await slider(page).fill(String(later));
   await page.clock.setSystemTime(new Date(afternoon + 8 * 3600000));
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
   await expect(slider(page)).toHaveValue(String(later));
 });
 
@@ -846,7 +935,9 @@ test("a failed background check leaves the forecast alone and says nothing", asy
   );
   await page.clock.install({ time: SAMPLE_CLOCK });
   await page.goto("/");
-  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".dock tr.tt-stars")).toBeVisible({
+    timeout: 30000,
+  });
   const showing = (await slider(page).getAttribute("aria-valuetext"))!;
   broken = true;
   await page.clock.fastForward("05:01");
@@ -894,12 +985,14 @@ test("waves, sky, air, rain and sea are one tap away, and stay open", async ({
       timeout: 20000,
     })
     .toBeGreaterThan(0);
-  await expect(page.locator(".dock tr.tt-waves .wave-cell b").first()).toHaveText(
-    /^\d+\.\d$/,
-  );
+  await expect(
+    page.locator(".dock tr.tt-waves .wave-cell b").first(),
+  ).toHaveText(/^\d+\.\d$/);
   // The sample's weather run starts three days on: its hours, and dashes before.
   await expect
-    .poll(() => page.locator(".dock tr.tt-air td").filter({ hasText: /\d+°/ }).count())
+    .poll(() =>
+      page.locator(".dock tr.tt-air td").filter({ hasText: /\d+°/ }).count(),
+    )
     .toBeGreaterThan(0);
   await expect
     .poll(() => page.locator(".dock tr.tt-sky .weather-cell").count())

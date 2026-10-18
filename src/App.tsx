@@ -328,8 +328,6 @@ export default function App() {
   }, [mapReady, gustDue]);
 
   const dock = useRef<HTMLDivElement>(null);
-  /** "Find a spot…", which the dock with no spot in it points to. */
-  const search = useRef<HTMLInputElement>(null);
   const [dockHeight, setDockHeight] = useState(110);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const modelRequest = useRef<AbortController | null>(null);
@@ -1218,7 +1216,6 @@ export default function App() {
         <main className="workspace">
           <section className="map-panel" aria-label="Wind chart">
             <MapHead
-              inputRef={search}
               spots={spots}
               starred={starred}
               hourAt={hourAt}
@@ -1342,7 +1339,10 @@ export default function App() {
                 )}
               </div>
             )}
-            <div className="map-footer" ref={dock}>
+            <div
+              className={`map-footer${opened && dockSpot && strip.length ? "" : " is-bare"}`}
+              ref={dock}
+            >
               {/* The small print rides on the dock's top edge, in the dock's
                   own layout: never a frame behind it (map.css). */}
               <div className="map-print">
@@ -1358,12 +1358,11 @@ export default function App() {
                       : ""}
                 </span>
               </div>
-              {/* With no spot chosen the dock still keeps the time: its hours
-                  drive the chart, and the rows a spot fills ask for one. */}
-              {opened && strip.length > 0 && (
+              {/* With no spot chosen there is no dock: the chart has the
+                  screen, at the hour the page opened on. */}
+              {opened && dockSpot && strip.length > 0 && (
                 <ForecastDock
                   spot={dockSpot}
-                  onFindSpot={() => search.current?.focus()}
                   isPoint={!!picked}
                   pointPending={!!picked && series.pending}
                   more={more}
@@ -1431,7 +1430,10 @@ export default function App() {
             }}
             onAction={companionAction}
             onRiderSaved={(r) =>
-              changePrefs({ ...prefs, rider: parseRider({ ...prefs.rider, ...r }) })
+              changePrefs({
+                ...prefs,
+                rider: parseRider({ ...prefs.rider, ...r }),
+              })
             }
             launcherBottom={dockHeight + 24}
             panelBottom={dockHeight + 12}

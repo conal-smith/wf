@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
 
 declare global {
   interface Window {
@@ -129,6 +129,8 @@ test("particle work stops when hidden or for reduced motion, and resumes", async
 test("dragging carries the arrows with the map and defers field rebuilds until it stops", async ({
   page,
 }) => {
+  // A returning visitor's spot: the dock's slider moves the time at the end.
+  await rememberSpot(page);
   await instrument(page);
   await page.mouse.move(700, 260);
   await page.mouse.down();

@@ -50,24 +50,4 @@ for (const width of [320, 390, 820, 1440]) {
     await page.getByRole("slider", { name: "Forecast time" }).press("End");
     await expect.poll(() => geometry(page)).toEqual(baseline);
   });
-
-  test(`the dock with no spot stands as a spot's does, so choosing one moves nothing, at ${width}px`, async ({
-    page,
-  }) => {
-    await page.clock.setFixedTime(new Date("2026-09-13T21:00:00Z"));
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
-    await expect(page.locator(".dock .dk-none")).toBeVisible({
-      timeout: 30000,
-    });
-    await page.evaluate(() => document.fonts.ready);
-    const none = await geometry(page);
-    await page.getByRole("combobox", { name: "Find a spot" }).fill("Brandon");
-    await page.locator(".spot-row").first().click();
-    await expect(page.locator(".dock tr.tt-stars")).toBeVisible();
-    await expect.poll(() => geometry(page)).toEqual(none);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBe(width);
-  });
 }

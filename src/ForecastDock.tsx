@@ -15,14 +15,12 @@ import {
   CloudSun,
   Layers3,
   Navigation2,
-  Search,
   Thermometer,
   Waves,
   Wind,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "../ui/Button";
-import { Count } from "../ui/Count";
 import { Segmented } from "../ui/Segmented";
 import { StarGlyphs } from "../ui/StarGlyphs";
 // Only when asked for: the chart's Blend view.
@@ -37,6 +35,7 @@ import {
 } from "./chart";
 import type { PlaceHour } from "./ratings";
 import WeatherGlyph from "./WeatherGlyph";
+import { wheelHours, type WheelHours } from "./wheelHours";
 import {
   clock,
   columnAtX,
@@ -83,14 +82,8 @@ import { spotHref } from "../force5/src/siteNav";
 export type DockView = "table" | "blend";
 
 interface Props {
-  /**
-   * The place whose week the dock shows, or null when none has been chosen:
-   * the dock keeps its hours, which drive the chart, and asks for a spot in
-   * place of the rows one would fill.
-   */
-  spot: Spot | null;
-  /** "Find a spot", from the dock with no spot in it. */
-  onFindSpot?: () => void;
+  /** The place whose week the dock shows. With none chosen there is no dock. */
+  spot: Spot;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
@@ -146,16 +139,42 @@ const ROWS = {
   rain: 20,
   sea: 20,
 };
-/** The table's rows under the hours: a point in open water has no stars or wing. */
-const tableRows = (isPoint: boolean) =>
-  (isPoint ? 0 : ROWS.stars + ROWS.wing) + ROWS.wind + ROWS.from;
+type Rows = typeof ROWS;
+/**
+ * A phone's: the rows that stand blank through the night and on a calm day,
+ * the stars and the wing, and the tide's band, drawn tighter. At the narrow
+ * width, the night's blank rows were a gap the height of the figures between
+ * the hours and the tide. dock.css sets the same heights on the cells.
+ */
+const PHONE_ROWS: Rows = { ...ROWS, stars: 16, wing: 16, tide: 30 };
+/**
+ * The rows between the hours and the tide. The stars head both views; the
+ * blend's chart stands in for the table's figures. A point in open water has
+ * no stars or wing, and a week with no hour worth a wing has no wing row.
+ */
+const rowsAboveTide = (
+  rows: Rows,
+  view: DockView,
+  isPoint: boolean,
+  wing: boolean,
+) =>
+  (isPoint ? 0 : rows.stars) +
+  (view === "blend"
+    ? rows.blend
+    : rows.wind + rows.from + (!isPoint && wing ? rows.wing : 0));
 const MORE_ROWS = ["waves", "sky", "air", "rain", "sea"] as const;
 type MoreRow = (typeof MORE_ROWS)[number];
 /** The height of the rows under the hours, as a spot's dock draws them. */
-const rowsUnderHours = (view: DockView, isPoint: boolean, more: boolean) =>
-  (view === "blend" ? ROWS.blend : tableRows(isPoint)) +
-  ROWS.tide +
-  (more ? MORE_ROWS.reduce((h, k) => h + ROWS[k], 0) : 0);
+const rowsUnderHours = (
+  rows: Rows,
+  view: DockView,
+  isPoint: boolean,
+  wing: boolean,
+  more: boolean,
+) =>
+  rowsAboveTide(rows, view, isPoint, wing) +
+  rows.tide +
+  (more ? MORE_ROWS.reduce((h, k) => h + rows[k], 0) : 0);
 /**
  * Each row's name as a glyph, with the name and unit in its title: the rows
  * read by their figures, and a word per row took a column of the dock's
@@ -229,9 +248,10 @@ const StripTable = memo(function StripTable({
   weather,
   sea,
   isPoint,
+  wing,
+  tideHeight,
 }: {
-  /** None chosen: the days and the hours alone. */
-  spot: Spot | null;
+  spot: Spot;
   columns: readonly StripColumn[];
   days: readonly StripDay[];
   hours: PlaceHour[] | undefined;
@@ -248,8 +268,11 @@ const StripTable = memo(function StripTable({
   weather: SpotWeather;
   sea: SeaTemperatureState;
   isPoint: boolean;
+  /** Whether any hour has a wing to show: else the row is left out. */
+  wing: boolean;
+  tideHeight: number;
 }) {
-  const facing = spot?.facing ?? null;
+  const facing = spot.facing ?? null;
   const full = Math.max(...g.w, 0);
   const cells = (
     key: string,
@@ -263,8 +286,7 @@ const StripTable = memo(function StripTable({
       const hour = hours?.[at];
       // The sun's, not the ratings': a night column is hatched from the
       // first paint, before (and whether or not) its hours are worked out.
-      // The dark is a place's: with none chosen, no hour is hatched.
-      const night = !!spot && !daylight[at];
+      const night = !daylight[at];
       const first = at === 0 || columns[at - 1].date !== column.date;
       return (
         <td
@@ -323,7 +345,33 @@ const StripTable = memo(function StripTable({
         <tr className="tt-hour">
           {cells("h", (_, column) => hourLabel(column.time))}
         </tr>
-        {!spot ? null : blend ? (
+        {/* The stars, in either view: the blend's chart is the same hours
+            the stars and the chart's lights are rated from. */}
+        {!isPoint && (
+          <tr className="tt-stars">
+            {cells("s", (hour, column, at) =>
+              hour?.rating ? (
+                // Just the stars: a card on hover covered the chart for
+                // a reading the head and the ? already give.
+                <StarGlyphs
+                  className="hour-stars"
+                  stars={hour.rating.stars}
+                  potential={hour.rating.potential}
+                  size={starSize(g.w[at], full)}
+                  slots="potential"
+                  label={`${clock(column.time)}: ${
+                    hour.rating.potential
+                      ? starsText(hour.rating)
+                      : ["No stars", noStarsWhy(hour.rating)]
+                          .filter(Boolean)
+                          .join(", ")
+                  }`}
+                />
+              ) : null,
+            )}
+          </tr>
+        )}
+        {blend ? (
           <tr className="tt-blend">
             <td colSpan={columns.length} className="d0 blend-cell">
               {blend}
@@ -331,30 +379,6 @@ const StripTable = memo(function StripTable({
           </tr>
         ) : (
           <>
-            {!isPoint && (
-              <tr className="tt-stars">
-                {cells("s", (hour, column, at) =>
-                  hour?.rating ? (
-                    // Just the stars: a card on hover covered the chart for
-                    // a reading the head and the ? already give.
-                    <StarGlyphs
-                      className="hour-stars"
-                      stars={hour.rating.stars}
-                      potential={hour.rating.potential}
-                      size={starSize(g.w[at], full)}
-                      slots="potential"
-                      label={`${clock(column.time)}: ${
-                        hour.rating.potential
-                          ? starsText(hour.rating)
-                          : ["No stars", noStarsWhy(hour.rating)]
-                              .filter(Boolean)
-                              .join(", ")
-                      }`}
-                    />
-                  ) : null,
-                )}
-              </tr>
-            )}
             <tr className="tt-wind">
               {cells("w", (hour) =>
                 hour && hour.windKn !== null ? (
@@ -376,7 +400,7 @@ const StripTable = memo(function StripTable({
                 ) : null,
               )}
             </tr>
-            {!isPoint && (
+            {!isPoint && wing && (
               <tr className="tt-wing">
                 {cells("g", (hour) =>
                   hour?.rating?.potential
@@ -387,21 +411,20 @@ const StripTable = memo(function StripTable({
             )}
           </>
         )}
-        {spot && (
-          <tr className="tt-tide">
-            <td colSpan={columns.length} className="d0">
-              <TideRow
-                tide={tide}
-                note={tideNote}
-                columns={columns}
-                days={days}
-                g={g}
-                daylight={daylight}
-              />
-            </td>
-          </tr>
-        )}
-        {spot && more && (
+        <tr className="tt-tide">
+          <td colSpan={columns.length} className="d0">
+            <TideRow
+              tide={tide}
+              note={tideNote}
+              columns={columns}
+              days={days}
+              g={g}
+              daylight={daylight}
+              height={tideHeight}
+            />
+          </td>
+        </tr>
+        {more && (
           <MoreRows
             columns={columns}
             cells={cells}
@@ -651,6 +674,7 @@ function TideRow({
   days,
   g,
   daylight,
+  height: H,
 }: {
   tide: SpotTide | null;
   note: string | null;
@@ -658,8 +682,8 @@ function TideRow({
   days: readonly StripDay[];
   g: StripGeometry;
   daylight: readonly boolean[];
+  height: number;
 }) {
-  const H = ROWS.tide;
   const width = g.total;
   const hatch = `tide-hatch-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
   // One rect per run of dark columns, edge to edge, as the cells above it.
@@ -708,7 +732,7 @@ function TideRow({
       <svg width={width} height={H} className="tide-row" aria-hidden="true">
         {night}
         {at.map((x) => (
-          <text key={x} className="tide-none" x={x} y="24">
+          <text key={x} className="tide-none" x={x} y={H / 2 + 4}>
             {text}
           </text>
         ))}
@@ -869,10 +893,10 @@ export default function ForecastDock(props: Props) {
     onMore,
     marine,
     onCustomStars,
-    onFindSpot,
   } = props;
   const cw = phone ? 52 : 62;
   const label = phone ? 28 : 32;
+  const rows = phone ? PHONE_ROWS : ROWS;
   // A phone keeps its coarse columns nearly whole: "15 g17" has to fit.
   const g = useMemo(
     () => stripGeometry(columns, cw, phone ? cw - 4 : Math.round(cw * 0.8)),
@@ -882,8 +906,8 @@ export default function ForecastDock(props: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapWidth, setWrapWidth] = useState(0);
   useEffect(() => {
-    if (view === "blend" && !isPoint && spot) onWantModels?.();
-  }, [view, isPoint, !spot]);
+    if (view === "blend" && !isPoint) onWantModels?.();
+  }, [view, isPoint]);
   // The scroll that brings each hour under the cursor, and where the cursor
   // stands at a scroll: still in the middle through the week, walking out to
   // the ends so the first hour sits against the labels (see `stripTrack`).
@@ -903,30 +927,29 @@ export default function ForecastDock(props: Props) {
   // is read for it, and for the waves and weather rows, and nothing else.
   const axis = useMemo(() => columns.map((c) => c.validTime), [columns]);
   const square = useMemo(
-    () => (isPoint || !spot ? null : [spotSquare(spot.lat, spot.lon)]),
-    [isPoint, spot?.lat, spot?.lon],
+    () => (isPoint ? null : [spotSquare(spot.lat, spot.lon)]),
+    [isPoint, spot.lat, spot.lon],
   );
   const blendModels = useSpotSquares(
-    view === "blend" && spot ? models : NO_MODELS,
+    view === "blend" ? models : NO_MODELS,
     square,
   );
-  const marineModels = useSpotSquares(
-    more && spot ? marine : NO_MODELS,
-    square,
-  );
-  const named = isPoint || !spot ? undefined : spot.id;
+  const marineModels = useSpotSquares(more ? marine : NO_MODELS, square);
+  const named = isPoint ? undefined : spot.id;
   const blend = useBlend(
     view === "blend" && named ? blendModels : NO_MODELS,
     prefs.blendModels,
     named,
     axis,
   );
-  // Which columns are dark at this place, by the same sun the stars go by;
-  // with no place chosen, none is.
+  // Which columns are dark at this place, by the same sun the stars go by.
   const daylight = useMemo(
-    () => (spot ? daylightOn(spot, axis) : axis.map(() => true)),
-    [spot?.lat, spot?.lon, axis],
+    () => daylightOn(spot, axis),
+    [spot.lat, spot.lon, axis],
   );
+  // A week with no hour worth a wing, a calm one or one still being rated
+  // at night, leaves out the wing row rather than draw it empty.
+  const wing = !hours || hours.some((hour) => !!hour?.rating?.potential);
   const waves = useSpotWaves(more ? marineModels : NO_MODELS, named, axis);
   const weather = useSpotWeather(more ? marineModels : NO_MODELS, named, axis);
   const sea = useSpotSeaTemperature(more ? named : undefined);
@@ -940,7 +963,7 @@ export default function ForecastDock(props: Props) {
     return niceMax(convert(peak, prefs.units));
   }, [blend.stats, prefs.units]);
   const blendNode = useMemo(() => {
-    if (view !== "blend" || !spot) return null;
+    if (view !== "blend") return null;
     if (!blend.lines.length)
       return <p className="blend-empty">Reading the models…</p>;
     const nights = dayNights(
@@ -976,8 +999,8 @@ export default function ForecastDock(props: Props) {
     g,
     prefs.units,
     reducedMotion,
-    spot?.lat,
-    spot?.lon,
+    spot.lat,
+    spot.lon,
   ]);
 
   useLayoutEffect(() => {
@@ -998,6 +1021,8 @@ export default function ForecastDock(props: Props) {
    * reader's own wheel, touch or key takes over at once.
    */
   const programmatic = useRef<{ left: number; until: number } | null>(null);
+  /** The wheel's hold on the strip (src/wheelHours.ts), let go when the time moves it. */
+  const wheeling = useRef<WheelHours | null>(null);
   const scrollFrame = useRef(0);
   const scrollEnd = useRef(0);
   const scrollTo = (index: number, smooth: boolean) => {
@@ -1015,6 +1040,7 @@ export default function ForecastDock(props: Props) {
     const here = Math.abs(el.scrollLeft - left) < 1;
     if (here && !elsewhere) return placeCursor();
     const animate = smooth && !reducedMotion && !here;
+    wheeling.current?.letGo();
     clearTimeout(scrollEnd.current);
     programmatic.current = { left: reach, until: performance.now() + 1500 };
     el.scrollTo({ left, behavior: animate ? "smooth" : "auto" });
@@ -1024,7 +1050,7 @@ export default function ForecastDock(props: Props) {
     scrollTo(selected, true);
   }, [selected, track, view, more]);
   // A fresh place opens on the same hour, not wherever the last one was left.
-  const placeKey = !spot ? "" : isPoint ? `${spot.lat},${spot.lon}` : spot.id;
+  const placeKey = isPoint ? `${spot.lat},${spot.lon}` : spot.id;
   useLayoutEffect(() => {
     fromScroll.current = -1;
     scrollTo(selected, false);
@@ -1068,21 +1094,25 @@ export default function ForecastDock(props: Props) {
   );
 
   // The wheel moves the hours: the dock scrolls one way only, so an up or
-  // down turn of a mouse wheel goes through time without Shift. A trackpad's
-  // own sideways swipe, and a phone's, are left to the browser.
+  // down turn of a mouse wheel or a trackpad goes through time without Shift
+  // (src/wheelHours.ts). A sideways swipe, and a phone's, are the browser's.
+  const motion = useRef(reducedMotion);
+  motion.current = reducedMotion;
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || !event.deltaY)
-        return;
-      event.preventDefault();
-      const unit =
-        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1;
-      el.scrollLeft += event.deltaY * unit;
+    const wheel = wheelHours(el, {
+      snap: (left) => {
+        const { g, track } = shape.current;
+        return track.scrollFor(columnAtX(g, track.timeAt(left)));
+      },
+      reducedMotion: () => motion.current,
+    });
+    wheeling.current = wheel;
+    return () => {
+      wheel.detach();
+      wheeling.current = null;
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
   // The cursor, where the scroll has put it; and the selected column, marked
@@ -1105,131 +1135,103 @@ export default function ForecastDock(props: Props) {
     if (h === null) return null;
     const lo = Math.min(...tide.curve.curve);
     const hi = Math.max(...tide.curve.curve);
-    if (!spot) return null;
-    const top =
-      ROWS.day +
-      ROWS.hour +
-      (view === "blend" ? ROWS.blend : tableRows(isPoint));
+    const top = rows.day + rows.hour + rowsAboveTide(rows, view, isPoint, wing);
     return {
       x: centre(selected),
-      y: top + ROWS.tide - 6 - ((h - lo) / (hi - lo || 1)) * (ROWS.tide - 14),
+      y: top + rows.tide - 6 - ((h - lo) / (hi - lo || 1)) * (rows.tide - 14),
     };
-  }, [tide, column, selected, g, view]);
+  }, [tide, column, selected, g, view, isPoint, wing, rows]);
 
   return (
-    <section
-      className={`dock${spot ? "" : " is-none"}`}
-      aria-label={
-        spot ? `Forecast for ${spot.name}` : "Forecast, no spot chosen"
-      }
-    >
-      {!spot ? (
-        // The head as a spot's: a name in its place and the one filled action
-        // at the right, so the dock stands just as tall either way.
-        <div className="dk-head">
-          <h2 className="dk-name">All of Ireland</h2>
-          <div className="dk-acts">
+    <section className="dock" aria-label={`Forecast for ${spot.name}`}>
+      <div className="dk-head">
+        {!isPoint && (
+          <StarToggle
+            on={starred}
+            name={spot.name}
+            onToggle={onToggleStar}
+            size={19}
+          />
+        )}
+        <h2 className="dk-name">{spot.name}</h2>
+        {/* The stars are the rider's own: said once, where they are read,
+            and the way to change them. */}
+        {prefs.rider.custom && !isPoint && (
+          <Button
+            variant="pill"
+            size="sm"
+            className="dk-custom"
+            aria-label="Custom star rating: edit"
+            onClick={onCustomStars}
+            data-custom-stars
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="-5 -5 10 10"
+              aria-hidden="true"
+            >
+              <path
+                fill="currentColor"
+                d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
+              />
+            </svg>
+            Custom stars
+          </Button>
+        )}
+        {/* A point's place name is a guess at where it is, so its
+            coordinates stay; a riding place's name is enough on its own. */}
+        {isPoint && spot.county && (
+          <span className="dk-coords">{spot.county}</span>
+        )}
+        <div className="dk-acts">
+          <Segmented
+            className="dk-view"
+            aria-label="Show the hours as"
+            options={[
+              { value: "table", label: "Table" },
+              { value: "blend", label: "Blend", disabled: isPoint },
+            ]}
+            value={view}
+            onChange={onView}
+          />
+          {!isPoint && (
             <Button
               variant="primary"
               size="sm"
-              onClick={onFindSpot}
-              data-find-spot
+              href={spotHref(spot.id)}
+              data-spot-page-link
             >
-              <Search size={13} strokeWidth={1.5} aria-hidden="true" />
-              Find a spot
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="dk-head">
-          {!isPoint && (
-            <StarToggle
-              on={starred}
-              name={spot.name}
-              onToggle={onToggleStar}
-              size={19}
-            />
-          )}
-          <h2 className="dk-name">{spot.name}</h2>
-          {/* The stars are the rider's own: said once, where they are read,
-            and the way to change them. */}
-          {prefs.rider.custom && !isPoint && (
-            <Button
-              variant="pill"
-              size="sm"
-              className="dk-custom"
-              aria-label="Custom star rating: edit"
-              onClick={onCustomStars}
-              data-custom-stars
-            >
-              <svg
-                width="10"
-                height="10"
-                viewBox="-5 -5 10 10"
-                aria-hidden="true"
-              >
-                <path
-                  fill="currentColor"
-                  d="M0,-5 L1.47,-2.02 4.76,-1.55 2.38,0.77 2.94,4.05 0,2.5 -2.94,4.05 -2.38,0.77 -4.76,-1.55 -1.47,-2.02Z"
-                />
-              </svg>
-              Custom stars
+              Spot page →
             </Button>
           )}
-          {/* A point's place name is a guess at where it is, so its
-            coordinates stay; a riding place's name is enough on its own. */}
-          {isPoint && spot.county && (
-            <span className="dk-coords">{spot.county}</span>
-          )}
-          <div className="dk-acts">
-            <Segmented
-              className="dk-view"
-              aria-label="Show the hours as"
-              options={[
-                { value: "table", label: "Table" },
-                { value: "blend", label: "Blend", disabled: isPoint },
-              ]}
-              value={view}
-              onChange={onView}
-            />
-            {!isPoint && (
-              <Button
-                variant="primary"
-                size="sm"
-                href={spotHref(spot.id)}
-                data-spot-page-link
-              >
-                Spot page →
-              </Button>
-            )}
-            {/* The dock's one fold: the waves, the sky, the air, the rain and
+          {/* The dock's one fold: the waves, the sky, the air, the rain and
               the sea, under the rows that are always there. Up to open, as a
               sheet along the foot of the screen grows upwards. */}
-            <Button
-              variant="pill"
-              size="sm"
-              icon
-              className="dk-chev"
-              aria-label={
-                more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
-              }
-              title={more ? "Fewer rows" : "More rows"}
-              aria-expanded={more}
-              onClick={() => onMore(!more)}
-            >
-              <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
-                <path
-                  d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
-                  fill="none"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Button>
-          </div>
+          <Button
+            variant="pill"
+            size="sm"
+            icon
+            className="dk-chev"
+            aria-label={
+              more ? "Hide waves, sky and sea" : "Show waves, sky and sea"
+            }
+            title={more ? "Fewer rows" : "More rows"}
+            aria-expanded={more}
+            onClick={() => onMore(!more)}
+          >
+            <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
+              <path
+                d={more ? "M1 1.5L7 7.5L13 1.5" : "M1 7.5L7 1.5L13 7.5"}
+                fill="none"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* The time, for a keyboard and a screen reader: the hours scrolling
           under the cursor are the slider a finger and a mouse use, and this
@@ -1276,13 +1278,17 @@ export default function ForecastDock(props: Props) {
           style={{ gridTemplateColumns: `${label}px minmax(0, 1fr)` }}
         >
           <div className="dk-labs">
-            <div aria-hidden="true" style={{ height: ROWS.day }} />
-            <div aria-hidden="true" style={{ height: ROWS.hour }} />
-            {!spot ? null : view === "blend" ? (
+            <div aria-hidden="true" style={{ height: rows.day }} />
+            <div aria-hidden="true" style={{ height: rows.hour }} />
+            {/* The stars need no name: they are stars. */}
+            {!isPoint && (
+              <div aria-hidden="true" style={{ height: rows.stars }} />
+            )}
+            {view === "blend" ? (
               <div
                 aria-hidden="true"
                 className="dk-lab-blend"
-                style={{ height: ROWS.blend }}
+                style={{ height: rows.blend }}
               >
                 {/* No name: the chart is plainly the wind. Its unit, and
                       its gridlines numbered here where they stay put while
@@ -1293,7 +1299,7 @@ export default function ForecastDock(props: Props) {
                     .slice(1)
                     .map((tick) => [
                       tick,
-                      valueScale(blendMax, ROWS.blend)(tick),
+                      valueScale(blendMax, rows.blend)(tick),
                     ])
                     .map(([tick, top]) => (
                       <b key={tick} style={{ top }}>
@@ -1303,15 +1309,11 @@ export default function ForecastDock(props: Props) {
               </div>
             ) : (
               <>
-                {/* The stars need no name: they are stars. */}
-                {!isPoint && (
-                  <div aria-hidden="true" style={{ height: ROWS.stars }} />
-                )}
                 {/* The wind keeps its unit, which the reader chooses. */}
                 <div
                   aria-hidden="true"
                   className="dk-lab-wind"
-                  style={{ height: ROWS.wind }}
+                  style={{ height: rows.wind }}
                 >
                   <RowLabel
                     glyph={Wind}
@@ -1319,20 +1321,19 @@ export default function ForecastDock(props: Props) {
                   />
                   <small>{prefs.units}</small>
                 </div>
-                <div aria-hidden="true" style={{ height: ROWS.from }}>
+                <div aria-hidden="true" style={{ height: rows.from }}>
                   <RowLabel glyph={Navigation2} title="Where the wind goes" />
                 </div>
-                {!isPoint && (
-                  <div aria-hidden="true" style={{ height: ROWS.wing }}>
+                {!isPoint && wing && (
+                  <div aria-hidden="true" style={{ height: rows.wing }}>
                     <RowLabel glyph={WingGlyph} title="Wing, m²" />
                   </div>
                 )}
               </>
             )}
             {/* The tide's curve needs no name, nor its times a unit. */}
-            {spot && <div aria-hidden="true" style={{ height: ROWS.tide }} />}
-            {spot &&
-              more &&
+            <div aria-hidden="true" style={{ height: rows.tide }} />
+            {more &&
               MORE_ROWS.map((key) => (
                 <div key={key} aria-hidden="true" style={{ height: ROWS[key] }}>
                   <RowLabel
@@ -1377,6 +1378,8 @@ export default function ForecastDock(props: Props) {
               weather={weather}
               sea={sea}
               isPoint={isPoint}
+              wing={wing}
+              tideHeight={rows.tide}
             />
             {/* Where the scroll comes to rest: one mark per hour, at the
                   scroll that puts it under the cursor. The hours' own cells
@@ -1391,9 +1394,9 @@ export default function ForecastDock(props: Props) {
               className="tt-pen"
               width={g.total}
               height={
-                ROWS.day +
-                ROWS.hour +
-                (spot ? rowsUnderHours(view, isPoint, more) : 0)
+                rows.day +
+                rows.hour +
+                rowsUnderHours(rows, view, isPoint, wing, more)
               }
               aria-hidden="true"
             >
@@ -1413,30 +1416,10 @@ export default function ForecastDock(props: Props) {
           <div
             ref={cursor}
             className="dk-cur"
-            style={{ top: ROWS.day }}
+            style={{ top: rows.day }}
             aria-hidden="true"
           />
         </div>
-        {/* No spot: where its rows would be, the ask for one, as tall as
-            they would stand (the rows a spot opens with, in the same view
-            and with the same fold), so choosing one moves nothing. */}
-        {!spot && (
-          <div
-            className="dk-none"
-            style={{
-              height: rowsUnderHours(view, false, more),
-              paddingLeft: label,
-            }}
-          >
-            <p className="dk-none-ask">
-              Tap a light <Count value={4} tone="strong" className="dk-light" />{" "}
-              on the chart for its week.
-            </p>
-            <p className="dk-none-note">
-              Next time the map opens on the last spot you chose.
-            </p>
-          </div>
-        )}
       </div>
     </section>
   );

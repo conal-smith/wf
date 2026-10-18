@@ -10,6 +10,8 @@ test("ECMWF on the map follows the strip's mixed cadence on a phone, and hands b
   await page.setViewportSize({ width: 390, height: 844 });
   const clock = Date.parse(ecmwf.runTime) + 14 * 3600000;
   await page.clock.setFixedTime(new Date(clock));
+  // A returning visitor's spot, so the dock shows the strip.
+  await rememberSpot(page);
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,

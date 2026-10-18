@@ -19,9 +19,19 @@ const BATHY_PATH = /BATHY_PATH = "([^"]+)"/.exec(
 )![1];
 const harmonie = readSample("harmonie");
 
-/** The chart, up: every light placed and rated, the dock drawn. */
-export async function openChart(page: Page, width = 1440, height = 900) {
+/**
+ * The chart, up: every light placed and rated. As a returning visitor who
+ * chose `spot` last, the dock drawn for it; with null, a first visit, and no
+ * dock until a place is chosen.
+ */
+export async function openChart(
+  page: Page,
+  width = 1440,
+  height = 900,
+  spot: string | null = "brandon",
+) {
   await page.setViewportSize({ width, height });
+  if (spot) await rememberSpot(page, spot);
   await page.goto("/");
   await expect(page.locator(".spot-marker")).toHaveCount(148, {
     timeout: 30000,
@@ -29,7 +39,9 @@ export async function openChart(page: Page, width = 1440, height = 900) {
   await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
     timeout: 30000,
   });
-  await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible();
+  if (spot)
+    await expect(page.locator(".dock tr.tt-day td").first()).toBeVisible();
+  else await expect(page.locator(".dock")).toHaveCount(0);
 }
 
 /** Find a spot by name and take the first result. */
@@ -98,8 +110,8 @@ test("the chart opens on paper: the head, the controls, the lights and a flush d
   expect(dock.x).toBe(0);
   expect(dock.width).toBe(390);
   expect(dock.y + dock.height).toBe(844);
-  // A phone opens on the hours: the head, the week's days over the hours,
-  // and no row of day blocks or folded state between them.
+  // A phone opens on the remembered spot's hours: the head, the week's days
+  // over the hours, and no row of day blocks or folded state between them.
   expect(dock.height).toBeLessThan(844 / 3);
   await expect(page.locator(".dock tr.tt-day td")).toHaveCount(
     new Set(sampleStrip.map((c) => c.date)).size,
@@ -149,7 +161,7 @@ test("the depths are one static file, read by range requests", async ({
 test("finding a spot flies there and focuses it, with no box over the map; Escape clears it", async ({
   page,
 }) => {
-  await openChart(page);
+  await openChart(page, 1440, 900, null);
   const map = page.locator(".map-canvas");
   await expect(map).not.toHaveClass(/is-focus/);
   await findSpot(page, "Dollymount");
@@ -190,7 +202,7 @@ test("finding a spot flies there and focuses it, with no box over the map; Escap
 test("a tap on the open map reads that point's forecast into the dock, focused on it", async ({
   page,
 }) => {
-  await openChart(page);
+  await openChart(page, 1440, 900, null);
   const map = page.locator(".map-canvas");
   await steadyFrames(page);
   const at = await openWater(page);

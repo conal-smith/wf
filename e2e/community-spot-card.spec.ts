@@ -294,11 +294,12 @@ test("the reading keeps up with the clock on a thread left open, and stands down
 test("the map opens as a plain visit would for a spot it does not hold", async ({
   page,
 }) => {
-  // A first visit: no spot, as on `/`.
+  // A first visit: no spot, and so no dock, as on `/`.
   await page.goto("/?spot=atlantis");
-  await expect(page.locator(".dock .dk-name")).toHaveText("All of Ireland", {
+  await expect(page.locator(".spot-marker").first()).toBeAttached({
     timeout: 30000,
   });
+  await expect(page.locator(".dock")).toHaveCount(0);
   await expect(page.locator(".spot-marker.active")).toHaveCount(0);
   // A returning visitor: the spot they chose last, as on `/`, unfocused.
   await rememberSpot(page, "brandon");

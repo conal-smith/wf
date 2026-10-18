@@ -370,46 +370,6 @@ table.tt {
   z-index: 3;
 }
 
-/* ---------- no spot chosen: the hours, and the ask for a spot ---------- */
-/* As tall as the rows a spot would fill (ForecastDock sets the height), so
-   the dock, and the chart's inset above it, stand still when one is chosen.
-   The words start under the day's heading. */
-.dk-none {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  /* The hours' rule is the table's last edge here, and a collapsed border
-     lays half of itself outside the table: give that half back. */
-  margin: -0.5px 0 0 12px;
-  padding-bottom: 6px;
-  overflow: hidden;
-}
-.dk-none p {
-  margin: 0;
-}
-.dk-none-ask {
-  font: 500 15px/1.3 var(--font-body);
-  color: var(--color-ink);
-}
-/* A light as the chart draws one, in the sentence that asks for a tap. */
-.dk-none-ask .dk-light {
-  margin: 0 1px;
-  vertical-align: 1px;
-}
-/* The head keeps the height a spot's has: on a finger its switch is a 44px
-   row inside the switch's own rule, taller than the one button here. */
-@media (pointer: coarse) {
-  .dock.is-none .dk-acts {
-    min-height: calc(var(--spacing-touch) + 2px);
-  }
-}
-.dk-none-note {
-  font: italic 12.5px/1.3 var(--font-body);
-  color: var(--color-ink-muted);
-}
-
 /* ---------- a phone: a sheet along the foot of the screen ---------- */
 @media (max-width: 720px) {
   .dock {
@@ -432,6 +392,15 @@ table.tt {
   .dk-labs div {
     font-size: 8.5px;
     letter-spacing: 0.06em;
+  }
+  /* The rows blank through the night, and the tide's band, drawn tighter
+     (ForecastDock's PHONE_ROWS). */
+  .tt tr.tt-stars td,
+  .tt tr.tt-wing td {
+    height: 16px;
+  }
+  .tt tr.tt-tide td {
+    height: 30px;
   }
 }
 @media (max-width: 720px) {

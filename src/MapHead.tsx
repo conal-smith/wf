@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type RefObject } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { SearchField } from "../ui/SearchField";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
@@ -21,10 +21,7 @@ export default function MapHead({
   starred,
   hourAt,
   onPick,
-  inputRef,
 }: {
-  /** The field itself, for a "Find a spot" elsewhere on the page to focus. */
-  inputRef?: RefObject<HTMLInputElement | null>;
   spots: readonly Spot[];
   starred: readonly string[];
   /** A place's rated hour at the time the map shows, where there is one. */
@@ -34,8 +31,7 @@ export default function MapHead({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const own = useRef<HTMLInputElement>(null);
-  const input = inputRef ?? own;
+  const input = useRef<HTMLInputElement>(null);
   /** The list closes a moment after the field loses focus, so a tap on it lands. */
   const closing = useRef(0);
   const list = useId();

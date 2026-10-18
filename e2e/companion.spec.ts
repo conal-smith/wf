@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures";
+import { expect, rememberSpot, test, type Page } from "./fixtures";
 
 /**
  * Gust, the companion, against the real API with its scripted fake model
@@ -126,6 +126,8 @@ test("the conversation survives a reload, and a new chat clears it", async ({
 test("Ctrl+J toggles Gust and Escape closes him without closing the dock", async ({
   page,
 }) => {
+  // A returning visitor's spot, so there is a dock to keep open.
+  await rememberSpot(page);
   await openMap(page);
   await page.keyboard.press("Control+j");
   await expect(panel(page)).toBeVisible();

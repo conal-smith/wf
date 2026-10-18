@@ -1232,6 +1232,11 @@
   bottom: 0;
   z-index: 25;
 }
+/* No spot chosen, no dock: the small print stands clear of a phone's home
+   indicator on its own. */
+.map-footer.is-bare {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
 .fatal-error {
   position: fixed;
