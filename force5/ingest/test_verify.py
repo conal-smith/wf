@@ -103,9 +103,9 @@ class PairingTests(unittest.TestCase):
         self.assertNotIn("2026-10-05T10:20:00Z", verify.observed_hours(document)["ME_1"])
 
     def test_the_blend_uses_what_had_been_published_by_its_issue_time(self):
-        early = station_record(record("ecmwf", datetime(2026, 10, 4, 0, tzinfo=timezone.utc), [0], 5,
+        early = station_record(record("gfs", datetime(2026, 10, 4, 0, tzinfo=timezone.utc), [0], 5,
                                       available=datetime(2026, 10, 4, 4, tzinfo=timezone.utc)))
-        late = station_record(record("ecmwf", datetime(2026, 10, 4, 6, tzinfo=timezone.utc), [0], 5,
+        late = station_record(record("gfs", datetime(2026, 10, 4, 6, tzinfo=timezone.utc), [0], 5,
                                      available=datetime(2026, 10, 4, 13, tzinfo=timezone.utc)))
         other = station_record(record("not-blended", datetime(2026, 10, 4, 6, tzinfo=timezone.utc),
                                       [0], 5))
@@ -118,16 +118,16 @@ class PairingTests(unittest.TestCase):
         issue = datetime(2026, 10, 4, 18, tzinfo=timezone.utc)
         harmonie = station_record(record("harmonie", datetime(2026, 10, 4, 12, tzinfo=timezone.utc),
                                          range(0, 49), 9.0, gust=13.0, resolution=2))
-        ecmwf = station_record(record("ecmwf", datetime(2026, 10, 4, 12, tzinfo=timezone.utc),
-                                      range(0, 121, 3), 3.0, v=-3.0, gust=6.0))
+        gfs = station_record(record("gfs", datetime(2026, 10, 4, 12, tzinfo=timezone.utc),
+                                    range(0, 121, 3), 3.0, v=-3.0, gust=6.0))
         observed = verify.observed_hours(day_file(OLD_DAY, 7.0, stations=("ME_1",)))
         # Six hours ahead happens once per issue time; the first is the blend issued
         # at 18 UTC on the 4th, valid at 00 UTC on the 5th.
-        pairs = [pair for pair in verify.blend_pairs([harmonie, ecmwf], observed, OLD_DAY)
+        pairs = [pair for pair in verify.blend_pairs([harmonie, gfs], observed, OLD_DAY)
                  if pair[0] == 6]
         self.assertEqual(len(pairs), 4)
         expected = place_consensus(
-            [verify.station_manifest(harmonie, "ME_1"), verify.station_manifest(ecmwf, "ME_1")],
+            [verify.station_manifest(harmonie, "ME_1"), verify.station_manifest(gfs, "ME_1")],
             verify.BLEND_MODELS, "ME_1", ["2026-10-05T00:00:00Z"])
         _, station, forecast, _ = pairs[0]
         self.assertEqual(station, "ME_1")

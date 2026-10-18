@@ -15,15 +15,15 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-/** The sample runs under a scratch root, with ICON-EU's pointer an old version 1 one. */
+/** The sample runs under a scratch root, with GFS's pointer an old version 1 one. */
 function rootWithAnOldPointer(): string {
   const root = mkdtempSync(join(tmpdir(), "blend-"));
   roots.push(root);
   cpSync(FIXTURES, join(root, "weather"), { recursive: true });
-  const iconEu = JSON.parse(readFileSync(join(FIXTURES, "latest.json"), "utf8"));
-  const { base: _base, spots: _spots, tiles: _tiles, ...rest } = iconEu;
+  const gfs = JSON.parse(readFileSync(join(FIXTURES, "gfs.json"), "utf8"));
+  const { base: _base, spots: _spots, tiles: _tiles, ...rest } = gfs;
   writeFileSync(
-    join(root, "weather", "latest.json"),
+    join(root, "weather", "gfs.json"),
     JSON.stringify({
       ...rest,
       schemaVersion: 1,
@@ -38,11 +38,11 @@ describe("the blend's inputs", () => {
   it("leaves out and names a pointer that will not validate, and reads the rest", async () => {
     const root = rootWithAnOldPointer();
     const { manifests, missing, refused } = await readWindRuns(root);
-    expect(refused.map(({ id }) => id)).toEqual(["icon-eu"]);
+    expect(refused.map(({ id }) => id)).toEqual(["gfs"]);
     expect(refused[0].reason).toMatch(/old format/);
-    // GFS is in the fixtures too, but retired, so it is not read at all.
     expect(manifests.map((manifest) => manifest.model)).toEqual([
       "harmonie",
+      "icon-eu",
       "ecmwf",
     ]);
     expect(missing).toEqual([]);
@@ -64,11 +64,12 @@ describe("the blend's inputs", () => {
       ],
       { encoding: "utf8" },
     );
-    expect(log).toMatch(/left out icon-eu, whose pointer will not validate/);
-    expect(log).toMatch(/Pointer refused, left out: icon-eu/);
+    expect(log).toMatch(/left out gfs, whose pointer will not validate/);
+    expect(log).toMatch(/Pointer refused, left out: gfs/);
     const blend = JSON.parse(readFileSync(out, "utf8"));
     expect(blend.sources.map((source: { id: string }) => source.id)).toEqual([
       "harmonie",
+      "icon-eu",
       "ecmwf",
     ]);
   }, 30000);

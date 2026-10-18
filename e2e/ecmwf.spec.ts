@@ -92,7 +92,7 @@ test("an unavailable or mislabelled ECMWF snapshot leaves the map as it was", as
   await rememberSpot(page, "brandon");
   await page.goto("/");
   await expect(page.locator(".dock tr.tt-stars")).toBeVisible({ timeout: 30000 });
-  // Without ECMWF the long range falls to ICON-EU, and the strip says so.
+  // Without ECMWF the long range falls to GFS, and the strip says so.
   await expect(page.locator(".dock tr.tt-hour td[data-i]")).toHaveCount(
     stripAt(SAMPLE_CLOCK.getTime(), sampleColumnsWithoutEcmwf).length,
   );

@@ -75,10 +75,11 @@ DESCRIPTIONS = {
 # Disk is what a run writes on its empty disk: the fields it caches from the
 # model's files and the frames it publishes. The largest, measured from the
 # worker's cache on 18 October 2026, are ICON-EU 369 MB, ECMWF 242 MB, HARMONIE
-# 10 MB (it keeps only the 10 m wind and gust), GFS-Wave 5 MB and MI-SWAN 3 MB,
-# so 2 GB is five times the largest. Every live job then fits Cloudflare's
-# `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk are billed
-# for the whole run; Home Compute's executor picks the smallest size that fits.
+# 10 MB (it keeps only the 10 m wind and gust), GFS-Wave 5 MB, MI-SWAN 3 MB and
+# GFS 1.2 MB, so 2 GB is five times the largest. Every live job then fits
+# Cloudflare's `basic` container (1/4 vCPU, 1 GiB, 4 GB), whose memory and disk
+# are billed for the whole run; Home Compute's executor picks the smallest size
+# that fits.
 MODEL = {"cpu": "1", "memory": "1Gb", "disk": "2Gb"}       # Peaks 290-360 MB.
 FORECAST = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}  # Peaks of about 225 MB.
 FEED = {"cpu": "1", "memory": "512Mb", "disk": "2Gb"}      # Peaks of 130-220 MB.
