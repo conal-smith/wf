@@ -171,7 +171,7 @@ export function blendHours(blend: Blend, place: Place, rider: Rider): RatedColum
 }
 
 export const riderKey = (rider: Rider) =>
-  JSON.stringify([rider.weightKg, rider.skill, [...rider.wings].sort((a, b) => a - b)]);
+  JSON.stringify([rider.weightKg, rider.skill, [...rider.wings].sort((a, b) => a - b), rider.custom ?? null]);
 
 /**
  * A rated-hours lookup per rider, for one blend: many devices share a rider

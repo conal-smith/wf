@@ -21,6 +21,7 @@ import {
   SHORE_LABEL,
   SKILLS,
   bestWindow,
+  parseCustomRating,
   pickWing,
   rateHour,
   shoreAngle,
@@ -96,6 +97,7 @@ export interface CompanionTool {
 export function riderFrom(context: RiderContext | null): Rider {
   if (!context) return DEFAULT_RIDER;
   const weight = context.weightKg;
+  const custom = parseCustomRating(context.custom);
   return {
     weightKg:
       typeof weight === "number" &&
@@ -109,6 +111,7 @@ export function riderFrom(context: RiderContext | null): Rider {
         context.wings.filter((w) => w >= MIN_WING_M2 && w <= MAX_WING_M2),
       ),
     ].sort((a, b) => a - b),
+    ...(custom ? { custom } : {}),
   };
 }
 

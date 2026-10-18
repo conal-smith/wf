@@ -46,9 +46,13 @@ function openMapAt(action: MapAction) {
     window.location.assign(`/?spot=${encodeURIComponent(action.id)}`);
 }
 
-/** The same validation and storage the dock's Display options use. */
+/**
+ * The same validation and storage the dock's Display options use. Gust
+ * proposes a weight, level and wings; the rider's own star rating stays.
+ */
 function saveToPrefs(rider: RiderContext) {
-  savePrefs({ ...loadPrefs(), rider: parseRider(rider) });
+  const prefs = loadPrefs();
+  savePrefs({ ...prefs, rider: parseRider({ ...prefs.rider, ...rider }) });
 }
 
 /**

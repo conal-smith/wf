@@ -4,6 +4,7 @@
  * its listing schema.
  */
 import { z } from "zod";
+import { parseCustomRating } from "../../force5/src/stars.js";
 import { COUNTIES, RESERVED_HANDLES, USER_LIMITS } from "./types.js";
 
 export const trimmed = (max: number) => z.string().trim().max(max);
@@ -75,3 +76,24 @@ export const userInputSchema = z.object({
 });
 
 export type UserInputParsed = z.infer<typeof userInputSchema>;
+
+/**
+ * A rider's own star rating, wherever the API is sent one: the shape is
+ * checked and its figures clamped by stars.ts `parseCustomRating`, the one
+ * place that is done, and anything it will not take is refused.
+ */
+export const customRatingSchema = z.unknown().transform((value, ctx) => {
+  const rating = parseCustomRating(value);
+  if (rating) return rating;
+  ctx.addIssue({
+    code: "custom",
+    message: "Not a star rating this site reads.",
+  });
+  return z.NEVER;
+});
+
+/** PUT /api/me/rider. */
+export const riderProfileInputSchema = z.object({
+  customStars: customRatingSchema.nullable(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});

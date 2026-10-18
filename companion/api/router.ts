@@ -31,6 +31,7 @@ import {
 } from "../shared/protocol.js";
 import { runTurn, type Effort, type ModelClient } from "./agent.js";
 import type { Budget } from "./budget.js";
+import { customRatingSchema } from "../../site/shared/validate.js";
 import { riderFrom, toolNamed, type ToolContext } from "./tools.js";
 
 const SECOND = 1000;
@@ -75,6 +76,7 @@ const riderSchema = z.object({
   weightKg: z.number().min(0).max(500).nullable(),
   skill: z.enum(["beginner", "intermediate", "advanced"]),
   wings: z.array(z.number().min(0).max(50)).max(12),
+  custom: customRatingSchema.nullable().optional(),
 });
 
 const contextSchema = z.object({

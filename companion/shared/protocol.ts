@@ -17,6 +17,8 @@
  *   done      the end of the turn
  */
 
+import type { CustomRating } from "../../force5/src/stars.js";
+
 export const COMPANION_NAME = "Gust";
 
 /** How many past messages the server reads; the browser sends no more than this. */
@@ -59,6 +61,8 @@ export interface RiderContext {
   skill: Skill;
   /** Wing sizes owned, in square metres. */
   wings: number[];
+  /** The rider's own star rating, which Gust then rates with. */
+  custom?: CustomRating | null;
 }
 
 export interface ChatContext {

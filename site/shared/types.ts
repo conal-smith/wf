@@ -7,6 +7,8 @@
  * so both sides can depend on it without pulling in the other's runtime.
  */
 
+import type { CustomRating } from "../../force5/src/stars.js";
+
 /** All 32 counties, so a seller in Derry or Down can list alongside Kerry. */
 export const COUNTIES = [
   "Antrim",
@@ -103,4 +105,21 @@ export function hasContact(
   user: Pick<User, "contactEmail" | "contactPhone">,
 ): boolean {
   return Boolean(user.contactEmail || user.contactPhone);
+}
+
+/**
+ * What the account keeps of the rider, so it follows them from device to
+ * device: for now their own star rating. GET and PUT /api/me/rider.
+ */
+export interface RiderProfile {
+  /** Null when the rider rates on their level, or reset their own rating. */
+  customStars: CustomRating | null;
+  /** When the rating was last set or reset, on whichever device; null if never. */
+  updatedAt: string | null;
+}
+
+/** PUT /api/me/rider: kept only when it is newer than what the account has. */
+export interface RiderProfileInput {
+  customStars: CustomRating | null;
+  updatedAt: string;
 }

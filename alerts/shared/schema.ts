@@ -22,6 +22,7 @@ import {
   type Rider,
   type RulesPayload,
 } from "./protocol.js";
+import { customRatingSchema } from "../../site/shared/validate.js";
 
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 
@@ -29,6 +30,8 @@ export const riderSchema = z.object({
   weightKg: z.number().min(MIN_WEIGHT_KG).max(MAX_WEIGHT_KG).nullable(),
   skill: z.enum(SKILLS as [Rider["skill"], ...Rider["skill"][]]),
   wings: z.array(z.number().min(MIN_WING_M2).max(MAX_WING_M2)).max(12),
+  // The rider's own star rating, which the server then rates with.
+  custom: customRatingSchema.nullable().optional(),
 }) satisfies z.ZodType<Rider>;
 
 /** A place id as the catalogue writes them: `brandon`, `fi-inchydoney-east-beach`. */

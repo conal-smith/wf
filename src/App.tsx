@@ -1379,7 +1379,7 @@ export default function App() {
             }}
             onAction={companionAction}
             onRiderSaved={(r) =>
-              changePrefs({ ...prefs, rider: parseRider(r) })
+              changePrefs({ ...prefs, rider: parseRider({ ...prefs.rider, ...r }) })
             }
             launcherBottom={dockHeight + 24}
             panelBottom={dockHeight + 12}

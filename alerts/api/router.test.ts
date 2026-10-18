@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLimiter } from "../../community/api/limits";
-import { DEFAULT_RIDER } from "../../force5/src/stars";
+import { CUSTOM_RATING_VERSION, DEFAULT_RIDER, standardRating, type CustomRating } from "../../force5/src/stars";
 import { RULE_DEFAULTS, type AlertRule, type DeviceRegistration, type PreviewPayload, type Registered } from "../shared/protocol";
 import { memoryAlertsRepo } from "./repo-memory";
 import { ALERTS_RATES, createAlertsRouter, type AlertsDeps } from "./router";
@@ -119,6 +119,20 @@ describe("devices", () => {
     expect((await call("PUT", "/devices/me", { rider: { weightKg: 500, skill: "x", wings: [] } }, b.auth)).status).toBe(400);
   });
 
+  it("keeps the rider's own star rating, clamped, and refuses one it cannot read", async () => {
+    const { register, call } = setup();
+    const { auth } = await register();
+    const custom: CustomRating = { ...standardRating(DEFAULT_RIDER), gust: { fine: 30, worst: 20, most: 9 } };
+    const put = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom } }, auth);
+    expect(put.status).toBe(200);
+    expect(((await put.json()) as { rider: { custom: CustomRating } }).rider.custom.gust).toEqual({ fine: 30, worst: 31, most: 5 });
+    const bad = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: { ...custom, version: 9 } } }, auth);
+    expect(bad.status).toBe(400);
+    expect(((await bad.json()) as { details: Record<string, string> }).details).toHaveProperty(["rider.custom"]);
+    const cleared = await call("PUT", "/devices/me", { rider: { ...DEFAULT_RIDER, custom: null } }, auth);
+    expect(((await cleared.json()) as { rider: { custom?: unknown } }).rider.custom ?? null).toBeNull();
+  });
+
   it("forgets a device and everything about it", async () => {
     const { register, call, repo } = setup();
     const { device, auth } = await register();
@@ -170,6 +184,25 @@ describe("preview", () => {
     ]);
     expect(body.rules[1].matches).toEqual([]);
     expect(body.unknownSpots).toEqual(["nowhere"]);
+  });
+
+  it("rates with the rider's own star rating when they have one", async () => {
+    const { register, call } = setup();
+    // Brandon's Saturday is cross-shore: a rider whose rating takes all five
+    // stars off for that has no window, one who takes none has the level's.
+    const own = (cross: number): CustomRating => {
+      const base = standardRating(DEFAULT_RIDER);
+      return { ...base, version: CUSTOM_RATING_VERSION, direction: { ...base.direction, cross } };
+    };
+    const windows = async (custom: CustomRating | null) => {
+      const { auth } = await register({ rider: { ...DEFAULT_RIDER, custom }, installationId: `install-${custom?.direction.cross ?? "x"}-device` });
+      await call("PUT", "/devices/me/rules", { rules: [rule({ fromHour: 0, toHour: 24, minStars: 1 })] }, auth);
+      const body = (await (await call("GET", "/devices/me/preview", undefined, auth)).json()) as PreviewPayload;
+      return body.rules[0].matches.map((m) => m.stars);
+    };
+    expect(await windows(null)).toEqual([5]);
+    expect(await windows(own(0))).toEqual([5]);
+    expect(await windows(own(5))).toEqual([]);
   });
 
   it("says when there is no forecast to preview", async () => {

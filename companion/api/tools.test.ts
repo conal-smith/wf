@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RIDER, type Rider } from "../../force5/src/stars";
+import {
+  DEFAULT_RIDER,
+  standardRating,
+  type Rider,
+} from "../../force5/src/stars";
 import { FIXTURE_NOW, fixtureSource } from "../../mcp/api/testing";
 import { shoreFacing as mapFacing } from "../../src/locations";
 import type { ChatContext } from "../shared/protocol";
@@ -82,6 +86,19 @@ describe("riderFrom", () => {
     expect(
       riderFrom({ weightKg: 900, skill: "beginner", wings: [] }).weightKg,
     ).toBeNull();
+  });
+  it("carries the rider's own star rating, made safe, so Gust rates with it", () => {
+    const custom = standardRating(DEFAULT_RIDER, "advanced");
+    expect(riderFrom({ ...DEFAULT_RIDER, custom }).custom).toEqual(custom);
+    expect(
+      riderFrom({
+        ...DEFAULT_RIDER,
+        custom: { ...custom, direction: { ...custom.direction, offshore: 7 } },
+      }).custom!.direction.offshore,
+    ).toBe(5);
+    expect(riderFrom({ ...DEFAULT_RIDER, custom: null })).toEqual(
+      DEFAULT_RIDER,
+    );
   });
 });
 
